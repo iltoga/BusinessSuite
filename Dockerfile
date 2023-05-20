@@ -16,6 +16,7 @@ RUN python3 -m venv venv
 COPY requirements.txt ./
 RUN /usr/src/app/venv/bin/pip install --upgrade pip
 RUN /usr/src/app/venv/bin/pip install --no-cache-dir -r requirements.txt
+RUN /usr/src/app/venv/bin/pip install gunicorn
 
 # Run Gunicorn
 CMD ["/usr/src/app/venv/bin/gunicorn", "RevisBaliCRM.wsgi:application", "--bind", "0.0.0.0:8000", "--log-file", "-"]
