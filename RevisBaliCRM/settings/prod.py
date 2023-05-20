@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-+6hzv4g^+$lys3q18gu*5k%goql(ysrq&ma+d0^w4vz^9=8%$g
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['crm.revisbali.com', 'www.revisbali.com']
+ALLOWED_HOSTS = ['crm.revisbali.com', 'www.revisbali.com', 'localhost']
 
 
 # Application definition
@@ -121,7 +121,7 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 # STEF Enable serving of static files
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
 # STEF Enable compression and caching support
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
