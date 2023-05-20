@@ -14,10 +14,9 @@ COPY requirements.txt ./
 RUN python3 -m pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy start script into the Docker image and make it executable
+# Copy start script into the Docker image
 COPY start.sh /usr/src/app/
-RUN chmod +x /usr/src/app/start.sh
 
-CMD ["/usr/src/app/start.sh"]
+CMD ["/bin/bash", "/usr/src/app/start.sh"]
 
 EXPOSE 8000
