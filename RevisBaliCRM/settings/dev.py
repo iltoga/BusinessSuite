@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-+6hzv4g^+$lys3q18gu*5k%goql(ysrq&ma+d0^w4vz^9=8%$g
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['crm.revisbali.com', 'www.revisbali.com', 'localhost']
 
 
 # Application definition

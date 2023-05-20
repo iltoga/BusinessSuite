@@ -1,0 +1,22 @@
+version: '3.5'
+services:
+  revisbali-crm:
+    container_name: revisbali-crm
+    image: 'revisbali-crm:custom'
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    networks:
+      dockernet:
+        ipv4_address: 192.168.2.60
+    volumes:
+      - le-certs:/etc/letsencrypt
+      - ./crm.revisbali.com:/usr/src/app
+    restart: unless-stopped
+networks:
+  dockernet:
+    external: true
+volumes:
+    le-certs:
+        external:
+            name: le-certs
