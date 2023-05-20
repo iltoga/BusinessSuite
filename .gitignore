@@ -1,5 +1,5 @@
 *.DS_Store
-RevisBaliCRM/static
+RevisBaliCRM/staticfiles
 .vscode
 # Byte-compiled / optimized / DLL files
 __pycache__/
