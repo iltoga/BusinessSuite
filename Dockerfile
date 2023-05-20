@@ -9,9 +9,13 @@ ENV DJANGO_SETTINGS_MODULE RevisBaliCRM.settings.prod
 # Set work directory
 WORKDIR /usr/src/app
 
+# Create and activate the virtual environment
+RUN python3 -m venv myenv
+RUN /bin/bash -c "source myenv/bin/activate"
+
 # Install dependencies
 COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+RUN myenv/bin/pip install --no-cache-dir -r requirements.txt
 
 # Copy project (STEF we use mount volume in the composer file instead)
 #COPY . .
@@ -20,6 +24,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # RUN python manage.py collectstatic --noinput
 
 # Run Gunicorn
-CMD ["gunicorn", "RevisBaliCRM.wsgi:application", "--bind", "0.0.0.0:8000", "--log-file", "-"]
+CMD ["myenv/bin/gunicorn", "RevisBaliCRM.wsgi:application", "--bind", "0.0.0.0:8000", "--log-file", "-"]
 
 EXPOSE 8000
