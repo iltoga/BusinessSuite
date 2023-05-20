@@ -15,10 +15,10 @@ RUN python3 -m pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy project (STEF we use mount volume in the composer file instead)
-#COPY . .
+COPY . .
 
 # Collect static files (STEF not working unless we copy the project)
-# RUN python manage.py collectstatic --noinput
+RUN python manage.py collectstatic --noinput
 
 # Run Gunicorn
 CMD ["gunicorn", "RevisBaliCRM.wsgi:application", "--bind", "0.0.0.0:8000", "--log-file", "-"]
