@@ -1,7 +1,7 @@
 # Use an official Python runtime as a parent image
 FROM python:3
 
-# Set environment varibles
+# Set environment variables
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 ENV DJANGO_SETTINGS_MODULE RevisBaliCRM.settings.prod
@@ -10,20 +10,20 @@ ENV DJANGO_SETTINGS_MODULE RevisBaliCRM.settings.prod
 WORKDIR /usr/src/app
 
 # Create and activate the virtual environment
-RUN python3 -m venv myenv
-RUN /bin/bash -c "source myenv/bin/activate"
+RUN python3 -m venv venv
+RUN /bin/bash -c "source venv/bin/activate"
 
 # Install dependencies
 COPY requirements.txt ./
-RUN myenv/bin/pip install --no-cache-dir -r requirements.txt
+RUN venv/bin/pip install --no-cache-dir -r requirements.txt
 
 # Copy project (STEF we use mount volume in the composer file instead)
-#COPY . .
+# COPY . .
 
 # Collect static files (STEF not working unless we copy the project)
 # RUN python manage.py collectstatic --noinput
 
 # Run Gunicorn
-CMD ["myenv/bin/gunicorn", "RevisBaliCRM.wsgi:application", "--bind", "0.0.0.0:8000", "--log-file", "-"]
+CMD ["venv/bin/gunicorn", "RevisBaliCRM.wsgi:application", "--bind", "0.0.0.0:8000", "--log-file", "-"]
 
 EXPOSE 8000
