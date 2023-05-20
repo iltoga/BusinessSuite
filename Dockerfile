@@ -12,10 +12,9 @@ WORKDIR /usr/src/app
 # Create the virtual environment
 RUN python3 -m venv venv
 
-RUN python3 -m pip install --upgrade pip
-
 # Install dependencies
 COPY requirements.txt ./
+RUN /usr/src/app/venv/bin/pip install --upgrade pip
 RUN /usr/src/app/venv/bin/pip install --no-cache-dir -r requirements.txt
 
 # Run Gunicorn
