@@ -1,0 +1,27 @@
+body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+form {
+    display: inline-block;
+    text-align: center;
+    margin: 0 auto;
+    border: 1px solid;
+    padding: 10px;
+}
+
+header img {
+    width: 50%;
+    display: block;
+    margin: 0 auto;
+}
+
+.form-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}

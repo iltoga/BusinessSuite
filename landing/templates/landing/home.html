@@ -16,15 +16,32 @@
         header img {
             display: block;
             margin: 0 auto;
+            width: 50%; /* Reduce the size of the logo */
+        }
+
+        .login-box {
+            border: 1pt solid black; /* Add border to the login box */
+            padding: 10px;
+            margin-top: 20px;
+            width: 200px; /* Set width */
+            align-self: center; /* Center the box */
         }
     </style>
-    <link rel="shortcut icon" type="image/x-icon" href="{% static 'landing/favicon.ico' %}">
+    <link rel="shortcut icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
 </head>
 <body>
     <header>
-        <img src="{% static 'landing/logo_revis_bw.png' %}" alt="Revis Bali Logo">
+        <img src="{% static 'logo_revis_bw.png' %}" alt="Revis Bali Logo">
     </header>
     <h1>Welcome to Revis Bali CRM</h1>
+    <!-- Login/Logout links -->
+    <div class="login-box">
+        {% if user.is_authenticated %}
+          <p>Welcome, {{ user.username }}. <a href="{% url 'logout' %}">Logout</a></p>
+        {% else %}
+          <p><a href="{% url 'login' %}">Login</a></p>
+        {% endif %}
+    </div>
     <!-- Under Construction -->
     <p>This site is under construction.</p>
 </body>

@@ -1,0 +1,24 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{% block title %}Revis Bali CRM{% endblock %}</title>
+    <link rel="stylesheet" type="text/css" href="{% static 'css/styles.css' %}">
+    <link rel="shortcut icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
+    {% block extrahead %}{% endblock %}
+</head>
+<body>
+    <header>
+        <img src="{% static 'logo_revis_bw.png' %}" alt="Revis Bali Logo">
+        <h1>Welcome to Revis Bali CRM</h1>
+    </header>
+
+    {% block content %}{% endblock %}
+
+    <footer>
+        <p>&copy; 2023 Revis Bali CRM. All rights reserved.</p>
+    </footer>
+
+    {% block extrabody %}{% endblock %}
+</body>
+</html>
