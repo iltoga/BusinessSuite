@@ -12,5 +12,15 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 from .base import *
 
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
+
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_DOMAIN = 'localhost'
+SESSION_COOKIE_DOMAIN = 'localhost'
+CSRF_TRUSTED_ORIGINS = ['http://*', 'https://*']
+SESSION_COOKIE_SAMESITE = 'None'
+CSRF_COOKIE_SAMESITE = 'None'
