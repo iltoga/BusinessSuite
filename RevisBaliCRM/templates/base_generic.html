@@ -3,22 +3,25 @@
 <html>
 <head>
     <title>{% block title %}Revis Bali CRM{% endblock %}</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
+    <!-- Custom CSS -->
     <link rel="stylesheet" type="text/css" href="{% static 'css/styles.css' %}">
     <link rel="shortcut icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
     {% block extrahead %}{% endblock %}
 </head>
-<body>
-    <header>
-        <img src="{% static 'logo_revis_bw.png' %}" alt="Revis Bali Logo">
+<body class="d-flex flex-column justify-content-center align-items-center vh-100 text-center">
+    <header class="mb-4">
+        <img src="{% static 'logo_revis_bw.png' %}" alt="Revis Bali Logo" style="width: 50%;">
         <h1>Welcome to Revis Bali CRM</h1>
     </header>
-
-    {% block content %}{% endblock %}
-
+    <main class="mb-4">
+        {% block content %}{% endblock %}
+    </main>
     <footer>
         <p>&copy; 2023 Revis Bali CRM. All rights reserved.</p>
     </footer>
-
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js"></script>
     {% block extrabody %}{% endblock %}
 </body>
 </html>
