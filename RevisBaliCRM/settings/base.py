@@ -151,4 +151,8 @@ STATICFILES_DIRS = [
 
 CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_DOMAIN = 'revisbali.com'
+CSRF_COOKIE_DOMAIN = 'crm.revisbali.com'
+SESSION_COOKIE_DOMAIN = 'crm.revisbali.com'
+CSRF_TRUSTED_ORIGINS = ['crm.revisbali.com', 'www.revisbali.com', 'revisbali.com', 'localhost']
+SESSION_COOKIE_SAMESITE = 'None'
+CSRF_COOKIE_SAMESITE = 'None'
