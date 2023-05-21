@@ -8,10 +8,31 @@ body {
 
 form {
     display: inline-block;
-    text-align: center;
+    text-align: left;
     margin: 0 auto;
     border: 1px solid;
     padding: 10px;
+}
+
+form.left-align {
+    text-align: left;
+}
+
+.input-group {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px; /* optional: add some space between each group */
+}
+
+.input-label {
+    width: 200px; /* set a fixed width */
+    text-align: right;
+    margin-right: 10px; /* optional: add some space between the label and the input */
+}
+
+.input-field {
+    flex-grow: 1; /* this will make the input field fill the remaining space */
 }
 
 header img {
@@ -24,4 +45,11 @@ header img {
     display: flex;
     flex-direction: column;
     align-items: center;
+}
+
+.centered-content {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
 }

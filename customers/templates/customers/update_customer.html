@@ -1,0 +1,24 @@
+{% extends "base_template.html" %}
+{% load static %}
+
+{% block content %}
+<div class="centered-content">
+  <h2>Create a new customer</h2>
+  <form method="post" class="border p-3 left-align" action="{% url 'update' customer.id %}">
+    {% csrf_token %}
+    {% for field in form %}
+      <div class="input-group">
+        <label class="input-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+        <div class="input-field">{{ field }}</div>
+        {% if field.help_text %}
+          <small class="form-text text-muted">{{ field.help_text }}</small>
+        {% endif %}
+        {% for error in field.errors %}
+          <div class="alert alert-danger">{{ error }}</div>
+        {% endfor %}
+      </div>
+    {% endfor %}
+    <button type="submit">Update</button>
+  </form>
+</div>
+{% endblock %}
