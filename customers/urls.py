@@ -9,6 +9,6 @@ urlpatterns = [
     path('list/', CustomerListView.as_view(), name='list'),
     path('create/', NewCustomerView.as_view(), name='create'),
     path('update/<int:pk>/', UpdateCustomerView.as_view(), name='update'),
-    # path('delete/<int:pk>/', DeleteView.as_view(model=Customer, success_url='/customers/list/'), name='delete'),
+    path('delete/<int:pk>/', DeleteView.as_view(model=Customer, success_url='/customers/list/'), name='delete'),
     # path('detail/<int:pk>/', DetailView.as_view(model=Customer), name='detail'),
 ]

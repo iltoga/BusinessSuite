@@ -17,6 +17,12 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
+GLOBAL_SETTINGS = {
+    'SITE_NAME': 'RevisBaliCRM',
+    'SITE_DESCRIPTION': 'RevisBaliCRM is a CRM for RevisBali',
+    'DOCUMENT_EXPIRATION_NOTIFICATION_DAYS': 60,
+}
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -42,6 +48,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'core',
     'landing',
     'customers',
     'invoices',
