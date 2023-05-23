@@ -1,23 +1,19 @@
 {% extends "bootstrap_base.html" %}
 {% load static %}
-
-
 {% block custom-css %}
-<link rel="stylesheet" type="text/css" href="{% static 'css/styles.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/bootstrap.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/styles.css' %}">
 {% endblock %}
-
 {% block head %}
-<link rel="shortcut icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
-<title>{% block title %}Revis Bali CRM{% endblock %}</title>
+    <link rel="shortcut icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
+    <title>{% block title %}Revis Bali CRM{% endblock %}</title>
 {% endblock %}
-
 {% block content %}
 <div class="d-flex justify-content-center align-items-center flex-column">
     <h1 class="mb-4 text-center">Welcome to Revis Bali CRM</h1>
     <img class="mb-4" src="{% static 'logo_revis_bw.png' %}" alt="Revis Bali Logo" style="width: 70%;">
 </div>
 {% endblock %}
-
 {% block navbar-links %}
 <div class="collapse navbar-collapse" id="navbarTop">
     <ul class="navbar-nav ms-auto">
@@ -49,8 +45,6 @@
     </ul>
 </div>
 {% endblock %}
-
-
 {% block sidebar %}
     <nav id="sidebar">
     <div class="text-center">
@@ -87,9 +81,6 @@
                 <li>
                     <a href="/customers/create">Add new</a>
                 </li>
-                <li>
-                    <a href="#">Search</a>
-                </li>
             </ul>
     </li>
     <li>
@@ -106,7 +97,6 @@
     {% endif %}
     </nav>
 {% endblock %}
-
 {% block footer %}
     {% if request.path == '/' %}
         <footer class="text-end text-secondary fst-italic mt-5">

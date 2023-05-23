@@ -20,7 +20,7 @@ load_dotenv()
 GLOBAL_SETTINGS = {
     'SITE_NAME': 'RevisBaliCRM',
     'SITE_DESCRIPTION': 'RevisBaliCRM is a CRM for RevisBali',
-    'DOCUMENT_EXPIRATION_NOTIFICATION_DAYS': 60,
+    'DOCUMENT_EXPIRATION_NOTIFICATION_DAYS': 180,
 }
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.

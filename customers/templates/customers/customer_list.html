@@ -41,6 +41,7 @@
         <td class="{% if customer.expiration_date|is_in_notification_period %}bg-danger{% endif %}">{{ customer.expiration_date }}</td>
 
         <td>
+          <a href="{% url 'detail' customer.id %}" class="btn btn-primary btn-sm">View</a>
           <a href="{% url 'update' customer.id %}" class="btn btn-warning btn-sm">Edit</a>
           <a href="{% url 'delete' customer.id %}" class="btn btn-danger btn-sm">Delete</a>
         </td>
@@ -75,4 +76,42 @@
   <p>No customers found.</p>
   {% endif %}
 </div>
+{% endblock %}
+
+{% block after-bootstrap-js %}
+<script>
+  var searchInput = document.querySelector('input[name="q"]');
+  var tableBody = document.querySelector('.table tbody');
+
+  function updateTable(customers) {
+      tableBody.innerHTML = '';
+      customers.forEach(customer => {
+          var row = document.createElement('tr');
+
+          ['full_name', 'email', 'telephone', 'document_type', 'document_id'].forEach(field => {
+              var td = document.createElement('td');
+              td.textContent = customer.fields[field] || '';
+              row.appendChild(td);
+          });
+
+          tableBody.appendChild(row);
+      });
+  }
+
+  searchInput.addEventListener('input', function(e) {
+      // if (e.target.value.length >= 2) {
+          fetch('{% url 'api_search' %}?q=' + e.target.value)
+          .then(response => response.json())
+          .then(data => {
+              data = JSON.parse(data)
+              full_name = data[0].fields.full_name;
+              console.log('Success:', data);
+              console.log('FullName:', full_name);
+              // Call updateTable function with the new data
+              updateTable(data);
+          })
+          .catch(error => console.error('Error:', error));
+      // }
+  });
+</script>
 {% endblock %}

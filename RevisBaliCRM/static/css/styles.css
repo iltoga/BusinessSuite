@@ -1,3 +1,9 @@
+header img {
+    width: 50%;
+    display: block;
+    margin: 0 auto;
+}
+
 body {
     display: flex;
     flex-direction: column;
@@ -33,12 +39,6 @@ form.left-align {
 
 .input-field {
     flex-grow: 1; /* this will make the input field fill the remaining space */
-}
-
-header img {
-    width: 50%;
-    display: block;
-    margin: 0 auto;
 }
 
 .form-container {
