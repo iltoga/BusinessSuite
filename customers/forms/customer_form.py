@@ -50,14 +50,15 @@ class CustomerForm(forms.ModelForm):
                   'address_bali', 'address_abroad', 'document_type', 'document_id', 'expiration_date',
                   'notify_expiration', 'notify_by']
 
-    def clean(self):
-        cleaned_data = super().clean()
-        if not self.is_valid():
-            return cleaned_data
-        notify_expiration = cleaned_data.get('notify_expiration')
-        notify_by = cleaned_data.get('notify_by')
+    # Already implemented in the model. I just wanted to show how to do it in the form class
+    # def clean(self):
+    #     cleaned_data = super().clean()
+    #     if not self.is_valid():
+    #         return cleaned_data
+    #     notify_expiration = cleaned_data.get('notify_expiration')
+    #     notify_by = cleaned_data.get('notify_by')
 
-        if notify_expiration and not notify_by:
-            self.add_error('notify_by', ValidationError('This field is required when "notify expiration" is checked'))
+    #     if notify_expiration and not notify_by:
+    #         self.add_error('notify_by', ValidationError('This field is required when "notify expiration" is checked'))
 
-        return cleaned_data
+    #     return cleaned_data

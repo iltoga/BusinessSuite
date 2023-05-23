@@ -49,6 +49,7 @@ class Customer(models.Model):
         return self.full_name
 
     # clean method is where you can add custom validations for your model
+    # note: it can be used here or in the form class
     def clean(self):
         if self.notify_expiration and not self.notify_by:
             raise ValidationError('If notify expiration is true, notify by is mandatory.')
