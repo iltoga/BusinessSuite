@@ -1,29 +1,21 @@
+{% extends "base_template.html" %}
 {% load static %}
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Revis Bali CRM</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
-    <link rel="shortcut icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
-</head>
-<body>
-    <div class="d-flex flex-column align-items-center justify-content-center vh-100 text-center">
-        <header>
-            <img src="{% static 'logo_revis_bw.png' %}" alt="Revis Bali Logo" class="mb-4" style="width: 50%;">
-        </header>
-        <h1>Welcome to Revis Bali CRM</h1>
-        <!-- Login/Logout links -->
-        <div class="border p-3 mt-2" style="width: 200px;">
-            {% if user.is_authenticated %}
-              <p>Welcome, {{ user.username }}. <a href="{% url 'logout' %}">Logout</a></p>
-            {% else %}
-              <p><a href="{% url 'login' %}">Login</a></p>
-            {% endif %}
-        </div>
-        <!-- Under Construction -->
-        <p class="mt-4">This site is under construction.</p>
+
+{% block content %}
+  <div class="d-flex flex-column align-items-center justify-content-center vh-100 text-center">
+    <header>
+        <img src="{% static 'logo_revis_bw.png' %}" alt="Revis Bali Logo" class="mb-4" style="width: 50%;">
+    </header>
+    <h1>Welcome to Revis Bali CRM</h1>
+    <!-- Login/Logout links -->
+    <div class="border p-3 mt-2" style="width: 200px;">
+        {% if user.is_authenticated %}
+          <p>Welcome, {{ user.username }}. <a href="{% url 'logout' %}">Logout</a></p>
+        {% else %}
+          <p><a href="{% url 'login' %}">Login</a></p>
+        {% endif %}
     </div>
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js"></script>
-</body>
-</html>
+    <!-- Under Construction -->
+    <p class="mt-4">This site is under construction.</p>
+  </div>
+{% endblock %}
