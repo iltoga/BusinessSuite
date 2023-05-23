@@ -12,7 +12,6 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 from pathlib import Path
 import os
-import re
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -56,6 +55,7 @@ INSTALLED_APPS = [
     'transactions',
     'bootstrapsidebar',
     'rest_framework',
+    'rest_framework.authtoken'
 ]
 
 MIDDLEWARE = [
@@ -162,6 +162,8 @@ LOGOUT_URL = '/logout/'
 LOGIN_EXEMPT_URLS = (
     r'^login/$',
     r'^logout/$',
+    r'^api/.*$',  # match 'api/' and any subpaths
+    r'^api-token-auth/$',
 )
 
 LOGIN_REDIRECT_URL = '/'
@@ -178,3 +180,13 @@ SESSION_COOKIE_DOMAIN = 'crm.revisbali.com'
 CSRF_TRUSTED_ORIGINS = ['https://crm.revisbali.com', 'https://www.revisbali.com', 'https://revisbali.com', 'https://localhost', 'http://localhost']
 SESSION_COOKIE_SAMESITE = 'None'
 CSRF_COOKIE_SAMESITE = 'None'
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+        'RevisBaliCRM.authentication.BearerAuthentication'
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+}
