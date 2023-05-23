@@ -26,4 +26,5 @@ urlpatterns = [
     # path('invoices', include('invoices.urls')),
     # path('transactions', include('transactions.urls')),
     path('',TemplateView.as_view(template_name="base_template.html"),name='home'),
+    path('api/', include('api.urls')),
 ]

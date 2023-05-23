@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 from pathlib import Path
 import os
+import re
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -54,6 +55,7 @@ INSTALLED_APPS = [
     'invoices',
     'transactions',
     'bootstrapsidebar',
+    'rest_framework',
 ]
 
 MIDDLEWARE = [
@@ -64,6 +66,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'RevisBaliCRM.middleware.LoginRequiredMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -152,6 +155,14 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 #
 # STEF
 #
+
+# by default, all views require login. To allow anonymous access, add the view name to UNAUTHENTICATED_URLS
+LOGIN_URL = '/login/'
+LOGOUT_URL = '/logout/'
+LOGIN_EXEMPT_URLS = (
+    r'^login/$',
+    r'^logout/$',
+)
 
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/login'
