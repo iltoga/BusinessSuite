@@ -56,6 +56,8 @@ class Customer(models.Model):
     full_name = models.CharField(max_length=50)
     email = models.EmailField(max_length=50, unique=True, blank=True, null=True, validators=[validateEmail])
     telephone = models.CharField(max_length=50, unique=True, blank=True, null=True, validators=[validate_phone_number])
+    whatsapp = models.CharField(max_length=50, unique=True, blank=True, null=True, validators=[validate_phone_number])
+    telegram = models.CharField(max_length=50, unique=True, blank=True, null=True, validators=[validate_phone_number])
     title = models.CharField(choices=TITLES_CHOICES, max_length=50)
     citizenship = models.CharField(max_length=100)
     birthdate = models.DateField(validators=[validate_birthdate])

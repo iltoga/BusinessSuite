@@ -12,7 +12,7 @@
       <input type="text" name="q" placeholder="Search customers">
       <input type="submit" value="Search">
     </form>
-    <a href="{% url 'create' %}" class="btn btn-primary">New customer</a>
+    <a href="{% url 'customer-create' %}" class="btn btn-primary">New customer</a>
   </div>
 
 <div class="centered-content">
@@ -41,9 +41,9 @@
         <td class="{% if customer.expiration_date|is_in_notification_period %}bg-danger{% endif %}">{{ customer.expiration_date }}</td>
 
         <td>
-          <a href="{% url 'detail' customer.id %}" class="btn btn-primary btn-sm">View</a>
-          <a href="{% url 'update' customer.id %}" class="btn btn-warning btn-sm">Edit</a>
-          <a href="{% url 'delete' customer.id %}" class="btn btn-danger btn-sm">Delete</a>
+          <a href="{% url 'customer-detail' customer.id %}" class="btn btn-primary btn-sm">View</a>
+          <a href="{% url 'customer-update' customer.id %}" class="btn btn-warning btn-sm">Edit</a>
+          <a href="{% url 'customer-delete' customer.id %}" class="btn btn-danger btn-sm">Delete</a>
         </td>
       </tr>
       {% endfor %}
@@ -88,7 +88,7 @@
       customers.forEach(customer => {
           var row = document.createElement('tr');
 
-          ['full_name', 'email', 'telephone', 'document_type', 'document_id'].forEach(field => {
+          ['full_name', 'email', 'telephone', 'whatsapp', 'telegram', 'document_type', 'document_id'].forEach(field => {
               var td = document.createElement('td');
               td.textContent = customer.fields[field] || '';
               row.appendChild(td);
@@ -100,7 +100,7 @@
 
   searchInput.addEventListener('input', function(e) {
       // if (e.target.value.length >= 2) {
-          fetch('{% url 'api_search' %}?q=' + e.target.value)
+          fetch('{% url 'customer-api-search' %}?q=' + e.target.value)
           .then(response => response.json())
           .then(data => {
               data = JSON.parse(data)

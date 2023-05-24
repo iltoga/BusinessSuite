@@ -51,11 +51,14 @@ INSTALLED_APPS = [
     'core',
     'landing',
     'customers',
+    'products',
     'invoices',
     'transactions',
     'bootstrapsidebar',
     'rest_framework',
-    'rest_framework.authtoken'
+    'rest_framework.authtoken',
+    'widget_tweaks',
+    'nested_admin',
 ]
 
 MIDDLEWARE = [

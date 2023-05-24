@@ -13,6 +13,8 @@
           <tr><th scope="row" class="text-start">Full Name</th><td class="text-start">{{ customer.full_name }}</td></tr>
           <tr><th scope="row" class="text-start">Email</th><td class="text-start">{{ customer.email }}</td></tr>
           <tr><th scope="row" class="text-start">Telephone</th><td class="text-start">{{ customer.telephone }}</td></tr>
+          <tr><th scope="row" class="text-start">Whatsapp</th><td class="text-start">{{ customer.whatsapp }}</td></tr>
+          <tr><th scope="row" class="text-start">Telegram</th><td class="text-start">{{ customer.telegram }}</td></tr>
           <tr><th scope="row" class="text-start">Title</th><td class="text-start">{{ customer.title }}</td></tr>
           <tr><th scope="row" class="text-start">Citizenship</th><td class="text-start">{{ customer.citizenship }}</td></tr>
           <tr><th scope="row" class="text-start">Birthdate</th><td class="text-start">{{ customer.birthdate }}</td></tr>
@@ -27,9 +29,9 @@
         </tbody>
       </table>
       <div class="card-body">
-        <a href="{% url 'list' %}" class="btn btn-primary">List All</a>
-        <a href="{% url 'update' customer.id %}" class="btn btn-warning">Edit</a>
-        <a href="{% url 'delete' customer.id %}" class="btn btn-danger">Delete</a>
+        <a href="{% url 'customer-list' %}" class="btn btn-primary">List All</a>
+        <a href="{% url 'customer-update' customer.id %}" class="btn btn-warning">Edit</a>
+        <a href="{% url 'customer-delete' customer.id %}" class="btn btn-danger">Delete</a>
       </div>
     </div>
   </div>

@@ -12,7 +12,7 @@ class CustomerForm(forms.ModelForm):
 
     class Meta:
         model = Customer
-        fields = ['full_name', 'email', 'telephone', 'title', 'citizenship', 'birthdate',
+        fields = ['full_name', 'email', 'telephone', 'whatsapp', 'telegram', 'title', 'citizenship', 'birthdate',
                   'address_bali', 'address_abroad', 'document_type', 'document_id', 'expiration_date',
                   'notify_expiration', 'notify_by']
 

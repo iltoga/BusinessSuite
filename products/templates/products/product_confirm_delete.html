@@ -5,12 +5,12 @@
 <div class="centered-content">
   <h2>Delete Customer</h2>
 
-  <p>Are you sure you want to delete "{{ object.full_name }}"?</p>
+  <p>Are you sure you want to delete "{{ object.name }}"?</p>
 
   <form method="POST">
     {% csrf_token %}
     <input type="submit" value="Confirm" class="btn btn-danger">
-    <a href="{% url 'customer-list' %}" class="btn btn-secondary">Cancel</a>
+    <a href="{% url 'list' %}" class="btn btn-secondary">Cancel</a>
   </form>
 </div>
 {% endblock %}

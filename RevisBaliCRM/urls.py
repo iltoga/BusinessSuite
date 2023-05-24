@@ -23,9 +23,11 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('landing.urls')),
     path('customers/', include('customers.urls')),
+    path('products/', include('products.urls')),
     # path('invoices', include('invoices.urls')),
     # path('transactions', include('transactions.urls')),
     path('',TemplateView.as_view(template_name="base_template.html"),name='home'),
     path('api/', include('api.urls')),
-    path('api-token-auth/', views.obtain_auth_token)
+    path('api-token-auth/', views.obtain_auth_token),
+    path('nested_admin/', include('nested_admin.urls')),
 ]

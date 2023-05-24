@@ -4,3 +4,5 @@ whitenoise==6.4.0
 gunicorn==20.1.0
 django-bootstrap-sidebar==1.1.1
 djangorestframework==3.14.0
+django-widget-tweaks==1.4.12
+django-nested-admin==1.16.0
