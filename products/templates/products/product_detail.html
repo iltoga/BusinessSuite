@@ -13,7 +13,7 @@
             <tr><th scope="row" class="text-start">Code</th><td class="text-start">{{ product.code }}</td></tr>
             <tr><th scope="row" class="text-start">Description</th><td class="text-start">{{ product.description }}</td></tr>
             <tr><th scope="row" class="text-start">Base Price</th><td class="text-start">{{ product.base_price }}</td></tr>
-            <tr><th scope="row" class="text-start">Type</th><td class="text-start">{{ product.get_type_display }}</td></tr>
+            <tr><th scope="row" class="text-start">Product Type</th><td class="text-start">{{ product.get_product_type_display }}</td></tr>
             <tr><th scope="row" class="text-start">Validity (days)</th><td class="text-start">{{ product.validity }}</td></tr>
           </tbody>
         </tbody>
@@ -27,7 +27,7 @@
             <th scope="col">Description</th>
             <th scope="col">Cost</th>
             <th scope="col">Duration (days)</th>
-            <th scope="col">Required Documents</th>
+            <th scope="col">Notify Days Before</th>
           </tr>
         </thead>
         <tbody>
@@ -38,15 +38,15 @@
               <td>{{ task.description }}</td>
               <td>{{ task.cost }}</td>
               <td>{{ task.duration }}</td>
-              <td>{{ task.required_documents }}</td>
+              <td>{{ task.notify_days_before }}</td>
             </tr>
           {% endfor %}
         </tbody>
       </table>
       <div class="card-body">
-        <a href="{% url 'list' %}" class="btn btn-primary">List All</a>
-        <a href="{% url 'update' product.id %}" class="btn btn-warning">Edit</a>
-        <a href="{% url 'delete' product.id %}" class="btn btn-danger">Delete</a>
+        <a href="{% url 'product-list' %}" class="btn btn-primary">List All</a>
+        <a href="{% url 'product-update' product.id %}" class="btn btn-warning">Edit</a>
+        <a href="{% url 'product-delete' product.id %}" class="btn btn-danger">Delete</a>
       </div>
     </div>
   </div>

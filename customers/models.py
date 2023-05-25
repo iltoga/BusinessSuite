@@ -73,7 +73,7 @@ class Customer(models.Model):
 
     class Meta:
         ordering = ['full_name']
-        unique_together = ('full_name', 'birthdate',)
+        unique_together = (('full_name', 'birthdate'),)
 
     def __str__(self):
         return self.full_name

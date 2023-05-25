@@ -22,7 +22,7 @@
       <tr>
         <th scope="col">Name</th>
         <th scope="col">Code</th>
-        <th scope="col">Type</th>
+        <th scope="col">Product Type</th>
         <th scope="col">Actions</th>
       </tr>
     </thead>
@@ -31,7 +31,7 @@
       <tr>
         <td>{{ product.name }}</td>
         <td>{{ product.code }}</td>
-        <td>{{ product.get_type_display }}</td>
+        <td>{{ product.get_product_type_display }}</td>
         <td>
           <a href="{% url 'product-detail' product.id %}" class="btn btn-primary btn-sm">View</a>
           <a href="{% url 'product-update' product.id %}" class="btn btn-warning btn-sm">Edit</a>

@@ -68,19 +68,35 @@
     <hr />
     <ul class="list-unstyled components">
     {% if user.is_authenticated %}
-        <li class="active">
-            <a href="#homeSubmenu"
+        <li>
+            <a href="#customerSubmenu"
                 data-bs-toggle="collapse"
                 aria-expanded="false"
                 role="button"
                 class="dropdown-toggle">Customers</a>
                 <ul class="collapse list-unstyled"
-                    id="homeSubmenu">
+                    id="customerSubmenu">
                     <li>
                         <a href="/customers/list">List</a>
                     </li>
                     <li>
                         <a href="/customers/create">Add new</a>
+                    </li>
+                </ul>
+        </li>
+        <li>
+            <a href="#productSubmenu"
+                data-bs-toggle="collapse"
+                aria-expanded="false"
+                role="button"
+                class="dropdown-toggle">Products</a>
+                <ul class="collapse list-unstyled"
+                    id="productSubmenu">
+                    <li>
+                        <a href="/products/list">List</a>
+                    </li>
+                    <li>
+                        <a href="/products/create">Add new</a>
                     </li>
                 </ul>
         </li>

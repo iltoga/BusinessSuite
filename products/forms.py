@@ -15,13 +15,13 @@ class TaskForm(forms.ModelForm):
 
     class Meta:
         model = Task
-        fields = ['step', 'last_step', 'name', 'description', 'cost', 'duration']
+        fields = ['product', 'step', 'last_step', 'name', 'description', 'cost', 'duration', 'notify_days_before']
 
 TaskModelFormSet = forms.inlineformset_factory(
     Product, # parent model
     Task, # child model
     form=TaskForm, # form to use
-    extra=1, # minimum number of forms to show
+    extra=0, # minimum number of forms to show
     max_num=10, # maximum number of forms to show
     can_delete=False, # enable deletion
 )

@@ -72,6 +72,7 @@
             var formIdx = $('#id_tasks-TOTAL_FORMS').val();
             $('#task-form-list').append($('#empty-form').html().replace(/__prefix__/g, formIdx));
             $('#id_tasks-TOTAL_FORMS').val(parseInt(formIdx) + 1);
+            $('#id_tasks-' + formIdx + '-step').val(parseInt(formIdx) + 1);
         }, false);
 
         $(document).on('click', '.remove-task-btn', function(){
