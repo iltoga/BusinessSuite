@@ -53,7 +53,7 @@ INSTALLED_APPS = [
     'customers',
     'products',
     'invoices',
-    'docs_workflow',
+    'customer_applications',
     'transactions',
     'bootstrapsidebar',
     'corsheaders',

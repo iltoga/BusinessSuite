@@ -10,6 +10,7 @@ class CustomerUpdateView(PermissionRequiredMixin, UpdateView):
     form_class = CustomerForm
     template_name = 'customers/customer_form.html'
     success_url = reverse_lazy('customer-list')
+    success_message = "Customer updated successfully!"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

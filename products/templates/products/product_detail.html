@@ -39,6 +39,11 @@
               <td>{{ task.cost }}</td>
               <td>{{ task.duration }}</td>
               <td>{{ task.notify_days_before }}</td>
+              {% if perms.products.change_task %}
+              <td>
+                <a href="{% url 'product-task-update' task.pk %}" class="btn btn-warning btn-sm">Edit</a>
+              </td>
+              {% endif %}
             </tr>
           {% endfor %}
         </tbody>

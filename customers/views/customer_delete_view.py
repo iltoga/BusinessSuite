@@ -8,3 +8,4 @@ class CustomerDeleteView(PermissionRequiredMixin, DeleteView):
     model = Customer
     template_name = 'customers/customer_confirm_delete.html'
     success_url = reverse_lazy('customer-list')
+    success_message = "Customer deleted successfully!"

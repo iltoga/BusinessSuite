@@ -6,6 +6,9 @@ from django.db import transaction
 from .models import Product, Task
 from .forms import ProductForm, TaskForm, TaskModelFormSet
 from django.views.generic import ListView, DetailView, DeleteView, UpdateView, CreateView
+from django.contrib.messages.views import SuccessMessageMixin
+from crispy_forms.helper import FormHelper
+from crispy_forms.layout import Submit
 
 class ProductCreateView(CreateView):
     permission_required = ('products.add_product',)
@@ -13,6 +16,7 @@ class ProductCreateView(CreateView):
     form_class = ProductForm
     template_name = 'products/product_form.html'
     success_url = reverse_lazy('product-list')
+    success_message = "Product created successfully!"
 
     def get_context_data(self, **kwargs):
         data = super().get_context_data(**kwargs)
@@ -38,6 +42,7 @@ class ProductUpdateView(UpdateView):
     form_class = ProductForm
     template_name = 'products/product_form.html'
     success_url = reverse_lazy('product-list')
+    success_message = "Product updated successfully!"
 
     def get_context_data(self, **kwargs):
         data = super().get_context_data(**kwargs)
@@ -57,11 +62,24 @@ class ProductUpdateView(UpdateView):
                 tasks.save()
         return super().form_valid(form)
 
+# a view to update a task
+class TaskUpdateView(SuccessMessageMixin, UpdateView):
+    permission_required = ('products.change_task',)
+    model = Task
+    form_class = TaskForm
+    template_name = 'products/task_update.html'
+    success_message = "Task updated successfully!"
+
+    def get_success_url(self):
+        return reverse_lazy('product-detail', kwargs={'pk': self.object.product.pk})
+
+
 class ProductDeleteView(DeleteView):
     permission_required = ('products.delete_product',)
     model = Product
     template_name = "products/product_confirm_delete.html"
     success_url = reverse_lazy('product-list')
+    success_message = "Product deleted successfully!"
 
 
 class ProductListView(ListView):

@@ -18,7 +18,7 @@ def generate_editors(apps, schema_editor):
     group = Group.objects.create(name='Editors')
 
     # Add permissions to the group
-    permissions = Permission.objects.filter(codename__in=['view_customer', 'change_customer', 'view_product', 'change_product', 'view_invoice', 'change_invoice', 'view_transaction', 'change_transaction', 'view_document', 'change_document'])
+    permissions = Permission.objects.filter(codename__in=['view_customer', 'change_customer', 'view_product', 'change_product', 'view_invoice', 'change_invoice', 'view_transaction', 'change_transaction', 'view_docworkflow', 'change_docworkflow'])
     for permission in permissions:
         group.permissions.add(permission)
 
@@ -28,7 +28,7 @@ def generate_viewers(apps, schema_editor):
     group = Group.objects.create(name='Viewers')
 
     # Add permissions to the group
-    permissions = Permission.objects.filter(codename__in=['view_customer', 'view_product', 'view_invoice', 'view_transaction', 'view_document'])
+    permissions = Permission.objects.filter(codename__in=['view_customer', 'view_product', 'view_invoice', 'view_transaction', 'view_docapplication', 'view_docworkflow'])
     for permission in permissions:
         group.permissions.add(permission)
 
@@ -38,7 +38,7 @@ def generate_creators(apps, schema_editor):
     group = Group.objects.create(name='Creators')
 
     # Add permissions to the group
-    permissions = Permission.objects.filter(codename__in=['add_customer', 'add_product', 'add_invoice', 'add_transaction', 'add_document'])
+    permissions = Permission.objects.filter(codename__in=['add_customer', 'add_product', 'add_invoice', 'add_transaction', 'add_docapplication', 'add_docworkflow'])
     for permission in permissions:
         group.permissions.add(permission)
 
@@ -48,7 +48,7 @@ def generate_deleters(apps, schema_editor):
     group = Group.objects.create(name='Deleters')
 
     # Add permissions to the group
-    permissions = Permission.objects.filter(codename__in=['delete_customer', 'delete_product', 'delete_invoice', 'delete_transaction', 'delete_document'])
+    permissions = Permission.objects.filter(codename__in=['delete_customer', 'delete_product', 'delete_invoice', 'delete_transaction', 'delete_docapplication', 'delete_docworkflow'])
     for permission in permissions:
         group.permissions.add(permission)
 
@@ -74,7 +74,7 @@ class Migration(migrations.Migration):
         ('products', '0001_initial'),
         ('invoices', '0001_initial'),
         ('transactions', '0001_initial'),
-        ('docs_workflow', '0001_initial'),
+        ('customer_applications', '0001_initial'),
     ]
 
     operations = [

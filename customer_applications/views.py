@@ -4,7 +4,7 @@ from .models import DocApplication, DocWorkflow, RequiredDocument
 from .forms import DocApplicationForm, DocWorkflowForm, RequiredDocumentForm
 
 class NewDocApplicationView(View):
-    permission_required = ('docs_workflow.add_doc_application',)
+    permission_required = ('customer_applications.add_doc_application',)
 
     def get(self, request):
         docapplication_form = DocApplicationForm()
