@@ -2,6 +2,8 @@
 {% load static %}
 {% load view_filters %}
 
+{% block title %}RevisCRM - Customer Details{% endblock %}
+
 {% block content %}
   <div class="container my-4">
     <div class="card">
@@ -30,8 +32,12 @@
       </table>
       <div class="card-body">
         <a href="{% url 'customer-list' %}" class="btn btn-primary">List All</a>
-        <a href="{% url 'customer-update' customer.id %}" class="btn btn-warning">Edit</a>
-        <a href="{% url 'customer-delete' customer.id %}" class="btn btn-danger">Delete</a>
+        {% if perms.customers.change_customer %}
+        <a href="{% url 'customer-update' customer.id %}" class="btn btn-warning btn-sm">Edit</a>
+        {% endif %}
+        {% if perms.customers.delete_customer %}
+        <a href="{% url 'customer-delete' customer.id %}" class="btn btn-danger btn-sm">Delete</a>
+        {% endif %}
       </div>
     </div>
   </div>

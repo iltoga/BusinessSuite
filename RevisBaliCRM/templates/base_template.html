@@ -4,9 +4,21 @@
     <link rel="stylesheet" type="text/css" href="{% static 'css/bootstrap.css' %}">
     <link rel="stylesheet" type="text/css" href="{% static 'css/styles.css' %}">
 {% endblock %}
+<!-- if overriding this one, remember to use {{ block.super}} at the beginning, otherwise jquery won't be loaded -->
 {% block head %}
     <link rel="shortcut icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
     <title>{% block title %}Revis Bali CRM{% endblock %}</title>
+    {% block head-extra %}
+    {% endblock %}
+    {% block head-scripts %}
+        <script
+            src="https://code.jquery.com/jquery-3.7.0.min.js"
+            integrity="sha256-2Pmvv0kuTBOenSvLm6bvfBSSHrUJ+3A7x6P5Ebd07/g="
+            crossorigin="anonymous">
+        </script>
+    {% endblock %}
+    {% block head-after-jquery %}
+    {% endblock %}
 {% endblock %}
 {% block content %}
 <div class="d-flex justify-content-center align-items-center flex-column">
@@ -121,5 +133,14 @@
             <p>&copy; 2023 Revis Bali CRM. All rights reserved.</p>
         </footer>
     {% endif %}
+    {% block footer-scripts %}
+        <script
+            src="https://code.jquery.com/jquery-3.7.0.min.js"
+            integrity="sha256-2Pmvv0kuTBOenSvLm6bvfBSSHrUJ+3A7x6P5Ebd07/g="
+            crossorigin="anonymous">
+        </script>
+        {% block body-after-jquery %}
+        {% endblock %}
+    {% endblock %}
 {% endblock %}
 

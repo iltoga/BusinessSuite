@@ -15,6 +15,7 @@ class DisableCsrfCheck(MiddlewareMixin):
             setattr(req, attr, True)
 
 class LoginRequiredMiddleware(MiddlewareMixin):
+    """ Middleware to require login for all views. """
     def __init__(self, get_response):
         self.get_response = get_response
 

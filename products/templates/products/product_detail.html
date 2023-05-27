@@ -45,8 +45,12 @@
       </table>
       <div class="card-body">
         <a href="{% url 'product-list' %}" class="btn btn-primary">List All</a>
-        <a href="{% url 'product-update' product.id %}" class="btn btn-warning">Edit</a>
-        <a href="{% url 'product-delete' product.id %}" class="btn btn-danger">Delete</a>
+        {% if perms.products.change_product %}
+        <a href="{% url 'product-update' product.id %}" class="btn btn-warning btn-sm">Edit</a>
+        {% endif %}
+        {% if perms.products.delete_product %}
+        <a href="{% url 'product-delete' product.id %}" class="btn btn-danger btn-sm">Delete</a>
+        {% endif %}
       </div>
     </div>
   </div>

@@ -2,6 +2,7 @@ from django.views.generic import ListView
 from customers.models import Customer
 
 class CustomerListView(ListView):
+    permission_required = ('customers.view_customer',)
     model = Customer
     paginate_by = 15  # Change this number to the desired items per page
     template_name = 'customers/customer_list.html'  # Assuming your template is in this location

@@ -8,6 +8,7 @@ from .forms import ProductForm, TaskForm, TaskModelFormSet
 from django.views.generic import ListView, DetailView, DeleteView, UpdateView, CreateView
 
 class ProductCreateView(CreateView):
+    permission_required = ('products.add_product',)
     model = Product
     form_class = ProductForm
     template_name = 'products/product_form.html'
@@ -32,6 +33,7 @@ class ProductCreateView(CreateView):
         return super().form_valid(form)
 
 class ProductUpdateView(UpdateView):
+    permission_required = ('products.change_product',)
     model = Product
     form_class = ProductForm
     template_name = 'products/product_form.html'
@@ -56,12 +58,14 @@ class ProductUpdateView(UpdateView):
         return super().form_valid(form)
 
 class ProductDeleteView(DeleteView):
+    permission_required = ('products.delete_product',)
     model = Product
     template_name = "products/product_confirm_delete.html"
     success_url = reverse_lazy('product-list')
 
 
 class ProductListView(ListView):
+    permission_required = ('products.view_product',)
     model = Product
     context_object_name = 'products'  # Default is object_list if not specified
     template_name = "products/product_list.html"
@@ -74,8 +78,8 @@ class ProductListView(ListView):
         else:
             return Product.objects.all()
 
-
 class ProductDetailView(DetailView):
+    permission_required = ('products.view_product',)
     model = Product
     template_name = "products/product_detail.html"
     context_object_name = 'product'

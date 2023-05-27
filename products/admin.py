@@ -5,7 +5,7 @@ from nested_admin import NestedModelAdmin, NestedStackedInline, NestedTabularInl
 
 class TaskTabularInline(NestedTabularInline):
     model = Task
-    extra = 1
+    extra = 0
 
 
 class ProductAdmin(NestedModelAdmin):

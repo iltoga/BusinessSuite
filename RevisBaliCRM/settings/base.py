@@ -56,10 +56,13 @@ INSTALLED_APPS = [
     'docs_workflow',
     'transactions',
     'bootstrapsidebar',
+    'corsheaders',
     'rest_framework',
     'rest_framework.authtoken',
     'widget_tweaks',
     'nested_admin',
+    'crispy_forms',
+    'crispy_bootstrap5',
 ]
 
 MIDDLEWARE = [
@@ -73,6 +76,7 @@ MIDDLEWARE = [
     'RevisBaliCRM.middleware.LoginRequiredMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
 ]
 
 
@@ -191,6 +195,15 @@ REST_FRAMEWORK = {
         'RevisBaliCRM.authentication.BearerAuthentication'
     ],
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
+        # 'rest_framework.permissions.IsAuthenticated', #the one below is more granular
+        'rest_framework.permissions.DjangoModelPermissions',
     ],
 }
+
+# in case we want to try using nodejs for the frontend
+CORS_ORIGIN_WHITELIST = [
+     'http://localhost:3000'
+]
+
+CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
+CRISPY_TEMPLATE_PACK = "bootstrap5"

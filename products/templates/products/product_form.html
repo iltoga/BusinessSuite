@@ -1,6 +1,10 @@
 {% extends "base_template.html" %}
 {% load static %}
+{% load crispy_forms_filters %}
+{% load crispy_forms_tags %}
 {% load widget_tweaks %}
+
+{% block title %}RevisCRM - products{% endblock %}
 
 {% block custom-css %}
     {{ block.super }}
@@ -18,15 +22,11 @@
     </style>
 {% endblock %}
 
-{% block head %}
-<title>{% block title %}RevisCRM - products{% endblock %}</title>
-<script
-    src="https://code.jquery.com/jquery-3.7.0.min.js"
-    integrity="sha256-2Pmvv0kuTBOenSvLm6bvfBSSHrUJ+3A7x6P5Ebd07/g="
-    crossorigin="anonymous">
-</script>
-<link rel="stylesheet" type="text/css" href="{% static 'plugins/tags-input/tagsinput.css' %}" />
-<script src="{% static 'plugins/tags-input/tagsinput.js' %}"></script>
+<!-- Add extra jquery components for this form -->
+{% block head-after-jquery-js %}
+    {{ block.super }}
+    <link rel="stylesheet" type="text/css" href="{% static 'plugins/tags-input/tagsinput.css' %}" />
+    <script src="{% static 'plugins/tags-input/tagsinput.js' %}"></script>
 {% endblock %}
 
 {% block content %}
@@ -34,27 +34,21 @@
     <h2 class="text-center my-4">Create a new product</h2>
     <form method="post" class="p-3 rounded w-100" action="" id="product-form">
         {% csrf_token %}
-        <table class="w-100" style="margin-bottom: 10px;">
-            {{ form.as_table }}
-        </table>
+        {{ form | crispy }}
         {{ tasks.management_form }}
         <div id="task-form-list">
             {% for task_form in tasks %}
-                <div class="task-form p-3 mb-4 border rounded">
-                    <table class="table">
-                        {{ task_form.as_table }}
-                    </table>
-                    <button type="button" class="btn btn-danger remove-task-btn mt-2">Remove Task</button>
-                </div>
+            <div class="task-form p-3 mb-4 border rounded">
+                {{ task_form | crispy }}
+                <button type="button" class="btn btn-danger remove-task-btn mt-2">Remove Task</button>
+            </div>
             {% endfor %}
         </div>
 
         <!-- Template for a new task form (hidden) -->
         <div id="empty-form" style="display:none;">
             <div class="task-form p-3 mb-4 border rounded">
-                <table class="table">
-                    {{ tasks.empty_form.as_table }}
-                </table>
+                {{ tasks.empty_form | crispy }}
                 <button type="button" class="btn btn-danger remove-task-btn mt-2">Remove Task</button>
             </div>
         </div>
@@ -98,10 +92,5 @@
                 $(this).removeClass('form-control');
             });
         });
-    </script>
-    <script
-    src="https://code.jquery.com/jquery-3.7.0.min.js"
-    integrity="sha256-2Pmvv0kuTBOenSvLm6bvfBSSHrUJ+3A7x6P5Ebd07/g="
-    crossorigin="anonymous">
     </script>
 {% endblock %}
