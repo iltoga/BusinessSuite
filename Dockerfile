@@ -5,6 +5,7 @@ FROM python:3
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 ENV DJANGO_SETTINGS_MODULE RevisBaliCRM.settings.prod
+ENV PATH="/home/revisbali/.local/bin:${PATH}"
 
 # Set work directory
 WORKDIR /usr/src/app
@@ -18,7 +19,7 @@ USER revisbali
 # Install dependencies
 COPY --chown=revisbali:revisbali requirements.txt ./
 RUN python3 -m pip install --upgrade pip
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-warn-script-location --no-cache-dir -r requirements.txt
 
 # Copy start script into the Docker image
 COPY --chown=revisbali:revisbali start.sh /usr/src/app/
