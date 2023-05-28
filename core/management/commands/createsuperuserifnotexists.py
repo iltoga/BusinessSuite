@@ -7,6 +7,12 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         if User.objects.filter(is_superuser=True).count() == 0:
             print("No superusers exist. Creating a superuser...")
-            User.objects.create_superuser('revisadmin', 'info@revisbali.com', 'Password123!')
+            user = User.objects.create_superuser('revisadmin', 'info@revisbali.com', 'Password123!')
+            # print the user's data
+            print("Superuser created:")
+            print("Username: " + user.username)
+            print("Email: " + user.email)
+            print("Password: " + 'Password123!')
+
         else:
             print("A superuser exists. Skipping createsuperuser command.")
