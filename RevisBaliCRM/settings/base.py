@@ -148,13 +148,6 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
-# STEF Enable serving of static files
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-
-# STEF Enable compression and caching support
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-
-
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
@@ -163,6 +156,12 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 #
 # STEF
 #
+
+# Enable serving of static files
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# Enable compression and caching support
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # by default, all views require login. To allow anonymous access, add the view name to UNAUTHENTICATED_URLS
 LOGIN_URL = '/login/'
