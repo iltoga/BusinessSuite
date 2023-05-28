@@ -1,5 +1,9 @@
 {% extends "base_template.html" %}
 {% load static form_extras %}
+{% load crispy_forms_filters %}
+{% load crispy_forms_tags %}
+
+{% block title %}RevisCRM - {{ action_name }} customer{% endblock %}
 
 {% block custom-css %}
     {{ block.super }}
@@ -12,35 +16,13 @@
 
 {% block content %}
 <div class="container-fluid"> <!-- Use container-fluid to make the content stretch to the full width -->
-    <h2 class="text-center my-4">Create a new customer</h2>
-    <form method="post" class="p-3 rounded w-50" action="{{ action }}"> <!-- Adding w-100 class -->
+    <h2 class="text-center my-4">{{ action_name }} a new customer</h2>
+    <form method="post" class="p-3 rounded w-50" action="{{ action }}">
         {% csrf_token %}
-        {% for field in form %}
-        <div class="form-group">
-            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-            {% if field.field.widget.input_type == 'checkbox' %}
-            <div class="form-check">
-                {{ field }}
-                <label class="form-check-label" for="{{ field.id_for_label }}"></label>
-            </div>
-            {% else %}
-            {{ field|add_class:"form-control" }}
-            {% endif %}
-            {% if field.help_text %}
-            <small class="form-text text-muted">{{ field.help_text }}</small>
-            {% endif %}
-            {% for error in field.errors %}
-            <div class="alert alert-danger">{{ error }}</div>
-            {% endfor %}
-        </div>
-        {% endfor %}
+        {{ form | crispy }}
         <div class="d-grid gap-2">
-        <button type="submit" class="btn btn-primary">Create</button>
+            <button type="submit" class="btn btn-primary">{{ action_name }}</button>
         </div>
-        {% for error in form.non_field_errors %}
-        <div class="alert alert-danger">{{ error }}</div>
-        {% endfor %}
-
     </form>
 </div>
 {% endblock %}

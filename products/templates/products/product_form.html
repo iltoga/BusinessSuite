@@ -1,0 +1,96 @@
+{% extends "base_template.html" %}
+{% load static %}
+{% load crispy_forms_filters %}
+{% load crispy_forms_tags %}
+{% load widget_tweaks %}
+
+{% block title %}RevisCRM - products{% endblock %}
+
+{% block custom-css %}
+    {{ block.super }}
+    <style>
+        .form-group {
+            margin-bottom: 10px;
+        }
+        .task-form {
+            overflow-x: auto;
+        }
+        .task-form table {
+            width: 100%;
+            table-layout: fixed;
+        }
+    </style>
+{% endblock %}
+
+<!-- Add extra jquery components for this form -->
+{% block head-after-jquery-js %}
+    {{ block.super }}
+    <link rel="stylesheet" type="text/css" href="{% static 'plugins/tags-input/tagsinput.css' %}" />
+    <script src="{% static 'plugins/tags-input/tagsinput.js' %}"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2 class="text-center my-4">Create a new product</h2>
+    <form method="post" class="p-3 rounded w-100" action="" id="product-form">
+        {% csrf_token %}
+        {{ form | crispy }}
+        {{ tasks.management_form }}
+        <div id="task-form-list">
+            {% for task_form in tasks %}
+            <div class="task-form p-3 mb-4 border rounded">
+                {{ task_form | crispy }}
+                <button type="button" class="btn btn-danger remove-task-btn mt-2">Remove Task</button>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Template for a new task form (hidden) -->
+        <div id="empty-form" style="display:none;">
+            <div class="task-form p-3 mb-4 border rounded">
+                {{ tasks.empty_form | crispy }}
+                <button type="button" class="btn btn-danger remove-task-btn mt-2">Remove Task</button>
+            </div>
+        </div>
+
+        <button type="button" class="btn btn-primary" id="add-task">Add Task</button>
+        <button type="submit" class="btn btn-primary">Create</button>
+    </form>
+</div>
+{% endblock %}
+
+{% block after-bootstrap-js %}
+    {{ block.super }}
+    <script>
+        document.getElementById('add-task').addEventListener('click', function() {
+            var formIdx = $('#id_tasks-TOTAL_FORMS').val();
+            $('#task-form-list').append($('#empty-form').html().replace(/__prefix__/g, formIdx));
+            $('#id_tasks-TOTAL_FORMS').val(parseInt(formIdx) + 1);
+            $('#id_tasks-' + formIdx + '-step').val(parseInt(formIdx) + 1);
+        }, false);
+
+        $(document).on('click', '.remove-task-btn', function(){
+            if ($('.task-form').length > 1) {
+                $(this).parent().remove();
+                var forms = $('#task-form-list .task-form'); // Get all the forms
+                $('#id_tasks-TOTAL_FORMS').val(forms.length); // Update the total number of forms
+                var i = 0;
+                // Go through the forms and set their indices, names and IDs
+                for (form of forms.toArray()) {
+                    $(form).find('input,select,checkbox').each(function() {
+                        $(this).attr('name', $(this).attr('name').replace(/-\d+-/, '-' + i + '-'));
+                        $(this).attr('id', $(this).attr('id').replace(/-\d+-/, '-' + i + '-'));
+                    });
+                    i++;
+                }
+            }
+        });
+
+        $(document).ready(function() {
+            // Fix checkbox display issue
+            $('input[type="checkbox"]').each(function() {
+                $(this).removeClass('form-control');
+            });
+        });
+    </script>
+{% endblock %}

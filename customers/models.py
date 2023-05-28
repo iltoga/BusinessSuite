@@ -5,6 +5,34 @@ from django.db.models.signals import post_migrate, pre_save, post_save
 from django.dispatch import receiver
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
+from django import forms
+from core.utils.form_validators import validate_phone_number, validate_birthdate, validate_document_id, validateEmail, validateDocumentType, validateExpirationDate
+
+DOCUMENT_TYPE_CHOICES = [
+    ('', '---------'),
+    ('Passport', 'Passport'),
+    ('KTP', 'KTP'),
+    ('SIM', 'SIM'),
+]
+
+TITLES_CHOICES = [
+    ('', '---------'),
+    ('Mr', 'Mr'),
+    ('Mrs', 'Mrs'),
+    ('Ms', 'Ms'),
+    ('Miss', 'Miss'),
+    ('Dr', 'Dr'),
+    ('Prof', 'Prof'),
+]
+
+NOTIFY_BY_CHOICES = [
+    ('', '---------'),
+    ('Email', 'Email'),
+    ('SMS', 'SMS'),
+    ('WhatsApp', 'WhatsApp'),
+    ('Telegram', 'Telegram'),
+    ('Telephone', 'Telephone'),
+]
 
 class CustomerManager(models.Manager):
     def search_customers(self, query):
@@ -26,24 +54,26 @@ class CustomerManager(models.Manager):
 class Customer(models.Model):
     id = models.AutoField(primary_key=True)
     full_name = models.CharField(max_length=50)
-    email = models.EmailField(max_length=50, unique=True, blank=True, null=True)
-    telephone = models.CharField(max_length=50, unique=True, blank=True, null=True)
-    title = models.CharField(max_length=50)
+    email = models.EmailField(max_length=50, unique=True, blank=True, null=True, validators=[validateEmail])
+    telephone = models.CharField(max_length=50, unique=True, blank=True, null=True, validators=[validate_phone_number])
+    whatsapp = models.CharField(max_length=50, unique=True, blank=True, null=True, validators=[validate_phone_number])
+    telegram = models.CharField(max_length=50, unique=True, blank=True, null=True, validators=[validate_phone_number])
+    title = models.CharField(choices=TITLES_CHOICES, max_length=50)
     citizenship = models.CharField(max_length=100)
-    birthdate = models.DateField()
+    birthdate = models.DateField(validators=[validate_birthdate])
     address_bali = models.TextField(blank=True, null=True)
     address_abroad = models.TextField(blank=True, null=True)
-    document_type = models.CharField(max_length=50)
-    document_id = models.CharField(max_length=50, unique=True)
-    expiration_date = models.DateField()
+    document_type = models.CharField(choices=DOCUMENT_TYPE_CHOICES, max_length=50)
+    document_id = models.CharField(max_length=50, unique=True, validators=[validate_document_id])
+    expiration_date = models.DateField(validators=[validateExpirationDate])
     notify_expiration = models.BooleanField(default=True)
-    notify_by = models.CharField(max_length=50, blank=True, null=True)
+    notify_by = models.CharField(choices=NOTIFY_BY_CHOICES, max_length=50, blank=True, null=True)
     notification_sent = models.BooleanField(default=False)
     objects = CustomerManager()
 
     class Meta:
         ordering = ['full_name']
-        unique_together = ('full_name', 'birthdate',)
+        unique_together = (('full_name', 'birthdate'),)
 
     def __str__(self):
         return self.full_name

@@ -51,9 +51,18 @@ INSTALLED_APPS = [
     'core',
     'landing',
     'customers',
+    'products',
     'invoices',
+    'customer_applications',
     'transactions',
     'bootstrapsidebar',
+    'corsheaders',
+    'rest_framework',
+    'rest_framework.authtoken',
+    'widget_tweaks',
+    'nested_admin',
+    'crispy_forms',
+    'crispy_bootstrap5',
 ]
 
 MIDDLEWARE = [
@@ -64,8 +73,10 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'RevisBaliCRM.middleware.LoginRequiredMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
 ]
 
 
@@ -96,7 +107,7 @@ WSGI_APPLICATION = 'RevisBaliCRM.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': os.path.join(BASE_DIR, 'files/db.sqlite3'),
     }
 }
 
@@ -125,7 +136,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Singapore'
 
 USE_I18N = True
 
@@ -137,13 +148,6 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
-# STEF Enable serving of static files
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-
-# STEF Enable compression and caching support
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-
-
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
@@ -152,6 +156,22 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 #
 # STEF
 #
+
+# Enable serving of static files
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# Enable compression and caching support
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# by default, all views require login. To allow anonymous access, add the view name to UNAUTHENTICATED_URLS
+LOGIN_URL = '/login/'
+LOGOUT_URL = '/logout/'
+LOGIN_EXEMPT_URLS = (
+    r'^login/$',
+    r'^logout/$',
+    r'^api/.*$',  # match 'api/' and any subpaths
+    r'^api-token-auth/$',
+)
 
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/login'
@@ -167,3 +187,26 @@ SESSION_COOKIE_DOMAIN = 'crm.revisbali.com'
 CSRF_TRUSTED_ORIGINS = ['https://crm.revisbali.com', 'https://www.revisbali.com', 'https://revisbali.com', 'https://localhost', 'http://localhost']
 SESSION_COOKIE_SAMESITE = 'None'
 CSRF_COOKIE_SAMESITE = 'None'
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+        'RevisBaliCRM.authentication.BearerAuthentication'
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        # 'rest_framework.permissions.IsAuthenticated', #the one below is more granular
+        'rest_framework.permissions.DjangoModelPermissions',
+    ],
+}
+
+# in case we want to try using nodejs for the frontend
+CORS_ORIGIN_WHITELIST = [
+     'http://localhost:3000'
+]
+
+CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
+CRISPY_TEMPLATE_PACK = "bootstrap5"
+
+MEDIA_URL = os.path.join(BASE_DIR, 'files/media/'),
+
+TIME_ZONE = 'Asia/Makassar'
