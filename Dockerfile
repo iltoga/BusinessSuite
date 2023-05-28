@@ -27,8 +27,9 @@ RUN pip install --no-warn-script-location --no-cache-dir -r requirements.txt
 # Copy project
 COPY --chown=revisbali:revisbali . /usr/src/app/
 
-# Copy start script into the Docker image
+# Copy start script into the Docker image and make it executable
 COPY --chown=revisbali:revisbali start.sh /usr/src/app/
+RUN chmod +x /usr/src/app/start.sh
 
 CMD ["/bin/bash", "/usr/src/app/start.sh"]
 
