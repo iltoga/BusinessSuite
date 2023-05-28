@@ -107,7 +107,7 @@ WSGI_APPLICATION = 'RevisBaliCRM.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': os.path.join(BASE_DIR, 'files/db.sqlite3'),
     }
 }
 
@@ -207,3 +207,5 @@ CORS_ORIGIN_WHITELIST = [
 
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
+
+MEDIA_URL = os.path.join(BASE_DIR, 'files/media/'),
