@@ -221,3 +221,5 @@ LOGGING_MODELS = (
     'customer_applications',
     'transactions',
 )
+
+SESSION_SAVE_EVERY_REQUEST = True
