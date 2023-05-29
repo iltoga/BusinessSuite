@@ -32,6 +32,9 @@
         </div>
 
         <button type="button" class="btn btn-secondary" id="add-requireddocument">Add Required Document</button>
+
+
+
         <button type="submit" class="btn btn-primary">Save Application</button>
     </form>
 </div>
@@ -61,19 +64,30 @@
             var selectedProduct = $(this).val();
             $('#requireddocument-form-list').empty(); // remove all existing required document forms
             if (selectedProduct) {
-                var url = "{% url 'product-required-documents' product_id='123456' %}";
+                var url = "{% url 'api-product-by-id' product_id='123456' %}";
                 url = url.replace('123456', selectedProduct);
                 fetch(url, {
                     credentials: 'same-origin'
                 })
                 .then(response => response.json())
                 .then(data => {
-                    $('#id_requireddocuments-TOTAL_FORMS').val(data.required_documents.length); // update total forms
+                    // get required documents from product
+                    if (data.product.required_documents == null) {
+                        data.product.required_documents = '';
+                    }
+                    required_documents = data.product.required_documents.split(',').map(function(item) {
+                        return item.trim();
+                    });
+                    // if product.base_price is not emtpy or null, set it as value of #id_price form field
+                    if (data.product.base_price) {
+                        $('#id_price').val(data.product.base_price);
+                    }
+                    $('#id_requireddocuments-TOTAL_FORMS').val(required_documents.length); // update total forms
                     // create new required document forms
-                    for (var i = 0; i < data.required_documents.length; i++) {
+                    for (var i = 0; i < required_documents.length; i++) {
                         var newFormHtml = $('#empty-form').html().replace(/__prefix__/g, i);
                         var newForm = $(newFormHtml);
-                        newForm.find('input[name=requireddocuments-' + i + '-doc_type]').val(data.required_documents[i]);
+                        newForm.find('input[name=requireddocuments-' + i + '-doc_type]').val(required_documents[i]);
                         $('#requireddocument-form-list').append(newForm);
                     }
                 })

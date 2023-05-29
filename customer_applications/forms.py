@@ -6,7 +6,7 @@ from .models import DocApplication, RequiredDocument, DocWorkflow
 class DocApplicationForm(forms.ModelForm):
     class Meta:
         model = DocApplication
-        fields = ['application_type', 'customer', 'product', 'doc_date']
+        fields = ['application_type', 'customer', 'product', 'doc_date', 'price']
         widgets = {
             'doc_date': forms.DateInput(attrs={'type': 'date', 'value': timezone.now().strftime("%Y-%m-%d")}),
             'product': forms.Select(attrs={'class': 'select2'}),

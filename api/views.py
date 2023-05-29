@@ -38,7 +38,7 @@ class ProductsView(APIView):
         serializer = ProductSerializer(products, many=True)
         return Response(serializer.data)
 
-class ProductRequiredDocumentsView(APIView):
+class ProductByIDView(APIView):
     queryset = Product.objects.all()
 
     def get(self, request, *args, **kwargs):
@@ -49,7 +49,9 @@ class ProductRequiredDocumentsView(APIView):
                 # split the string into a list and trim the spaces
                 required_documents = product.required_documents.split(',')
                 required_documents = [document.strip() for document in required_documents]
-                return Response({'required_documents': required_documents})
+
+                serializer = ProductSerializer(product, many=False)
+                return Response({'product': serializer.data})
             except Product.DoesNotExist:
                 return Response({'error': 'Product does not exist'}, status=status.HTTP_404_NOT_FOUND)
         else:

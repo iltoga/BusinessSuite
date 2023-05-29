@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     'nested_admin',
     'crispy_forms',
     'crispy_bootstrap5',
+    'models_logging',
 ]
 
 MIDDLEWARE = [
@@ -77,6 +78,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'corsheaders.middleware.CorsMiddleware',
+    'models_logging.middleware.LoggingStackMiddleware',     # it merge all changes of object per request
 ]
 
 
@@ -209,3 +211,13 @@ CRISPY_TEMPLATE_PACK = "bootstrap5"
 
 MEDIA_ROOT = os.path.join(BASE_DIR, 'files/media/'),
 MEDIA_URL = "/uploads/"
+
+# https://github.com/legion-an/django-models-logging
+LOGGING_MODELS = (
+    # 'app.ClassName',      # logging only for this model
+    'customers',            # logging of all models in this app
+    'products',
+    'invoices',
+    'customer_applications',
+    'transactions',
+)

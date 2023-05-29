@@ -21,6 +21,7 @@ class ProductCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateView
 
     def get_context_data(self, **kwargs):
         data = super().get_context_data(**kwargs)
+        data['action_name'] = "Create"
         if self.request.POST:
             data['tasks'] = TaskModelFormSet(self.request.POST, prefix='tasks')
         else:
@@ -29,7 +30,7 @@ class ProductCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateView
 
     def form_valid(self, form):
         context = self.get_context_data()
-        required_documents = context['requireddocuments']
+        required_documents = context['tasks']
         with transaction.atomic():
             self.object = form.save()  # Save the instance first
             if required_documents.is_valid():
@@ -49,6 +50,7 @@ class ProductUpdateView(PermissionRequiredMixin, SuccessMessageMixin, UpdateView
 
     def get_context_data(self, **kwargs):
         data = super().get_context_data(**kwargs)
+        data['action_name'] = "Update"
         if self.request.POST:
             data['tasks'] = TaskModelFormSet(self.request.POST, instance=self.object, prefix='tasks')
         else:
@@ -57,7 +59,7 @@ class ProductUpdateView(PermissionRequiredMixin, SuccessMessageMixin, UpdateView
 
     def form_valid(self, form):
         context = self.get_context_data()
-        required_documents = context['requireddocuments']
+        required_documents = context['tasks']
         with transaction.atomic():
             self.object = form.save()
             if required_documents.is_valid():
@@ -95,11 +97,11 @@ class ProductListView(PermissionRequiredMixin, ListView):
     paginate_by = 15
 
     def get_queryset(self):
+        queryset = super().get_queryset()
         query = self.request.GET.get('q')
         if query:
-            return Product.objects.filter(name__icontains=query)
-        else:
-            return Product.objects.all()
+            queryset = self.model.objects.search_products(query)
+        return queryset
 
 class ProductDetailView(PermissionRequiredMixin, DetailView):
     permission_required = ('products.view_product',)

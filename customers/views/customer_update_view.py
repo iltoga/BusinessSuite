@@ -3,8 +3,9 @@ from django.urls import reverse_lazy
 from customers.forms import CustomerForm
 from customers.models import Customer
 from django.contrib.auth.mixins import PermissionRequiredMixin
+from django.contrib.messages.views import SuccessMessageMixin
 
-class CustomerUpdateView(PermissionRequiredMixin, UpdateView):
+class CustomerUpdateView(PermissionRequiredMixin, SuccessMessageMixin, UpdateView):
     permission_required = ('customers.change_customer',)
     model = Customer
     form_class = CustomerForm

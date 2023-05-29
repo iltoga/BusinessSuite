@@ -11,7 +11,7 @@ class ProductForm(forms.ModelForm):
         fields = ['name', 'code', 'description', 'base_price', 'product_type', 'validity', 'required_documents']
 
 class TaskForm(forms.ModelForm):
-    description = forms.CharField(widget=forms.Textarea(attrs={'rows': 1}))
+    description = forms.CharField(widget=forms.Textarea(attrs={'rows': 1}), required=False)
 
     class Meta:
         model = Task

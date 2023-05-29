@@ -67,7 +67,7 @@
         $('#id_product').change(function() {
             var selectedProduct = $(this).val();
             if (selectedProduct) {
-                var url = "{% url 'product-required-documents' product_id='123456' %}";
+                var url = "{% url 'api-product-by-id' product_id='123456' %}";
                 url = url.replace('123456', selectedProduct);
                 fetch(url, {
                     credentials: 'same-origin'

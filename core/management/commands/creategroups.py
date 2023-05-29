@@ -18,6 +18,8 @@ class Command(BaseCommand):
         self.generate_open_document()
         self.generate_upload_document()
         self.generate_power_users()
+        self.generate_auditors()
+        self.generate_administration_office()
 
     def generate_administrators(self):
         group, created = Group.objects.get_or_create(name='Administrators')
@@ -25,6 +27,17 @@ class Command(BaseCommand):
             permissions = Permission.objects.all()
             group.permissions.set(permissions)
             print('Administrators group created')
+
+    def generate_administration_office(self):
+        """
+        This group is for the Administration Office staff:
+        they can view and edit customers, invoices, and documents, but not products or transactions.
+        """
+        group, created = Group.objects.get_or_create(name='Administration Office')
+        if created:
+            permissions = Permission.objects.filter(codename__in=['view_customer', 'change_customer', 'add_customer' 'view_invoice', 'change_invoice', 'add_invoice', 'view_docapplication', 'change_docapplication', 'add_docapplication', 'view_docworkflow', 'change_docworkflow', 'add_docworkflow', 'view_requireddocument', 'change_requireddocument', 'add_requireddocument'])
+            group.permissions.set(permissions)
+            print('Administration Office group created')
 
     def generate_editors(self):
         group, created = Group.objects.get_or_create(name='Editors')
@@ -77,6 +90,26 @@ class Command(BaseCommand):
         if created:
             group.permissions.add(permission)
             print('DocumentUploaders group created')
+
+    def generate_auditors(self):
+        group, group_created = Group.objects.get_or_create(name='Auditors')
+        for app_label in (
+            'customers',
+            'customer_applications',
+            'products',
+            'invoices',
+            'transactions',
+            ):
+            for model in ContentType.objects.filter(app_label=app_label):
+                permission, perm_created = Permission.objects.get_or_create(
+                    codename='can_audit',
+                    name=f'Can audit {model}',
+                    content_type=model,
+                )
+                if perm_created:
+                    group.permissions.add(permission)
+        if group_created:
+            print('Auditors group created')
 
     def generate_power_users(self):
         group, created = Group.objects.get_or_create(name='PowerUsers')

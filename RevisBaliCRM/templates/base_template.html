@@ -91,12 +91,16 @@
                 class="dropdown-toggle">Customers</a>
                 <ul class="collapse list-unstyled"
                     id="customerSubmenu">
+                    {% if perms.customers.view_customer %}
                     <li>
                         <a href="/customers/list">List</a>
                     </li>
+                    {% endif %}
+                    {% if perms.customers.add_customer %}
                     <li>
                         <a href="/customers/create">Add new</a>
                     </li>
+                    {% endif %}
                 </ul>
         </li>
         <li>
@@ -107,12 +111,16 @@
                 class="dropdown-toggle">Products</a>
                 <ul class="collapse list-unstyled"
                     id="productSubmenu">
+                    {% if perms.products.view_product %}
                     <li>
                         <a href="/products/list">List</a>
                     </li>
+                    {% endif %}
+                    {% if perms.products.add_product %}
                     <li>
                         <a href="/products/create">Add new</a>
                     </li>
+                    {% endif %}
                 </ul>
         </li>
         <li>
@@ -123,12 +131,16 @@
                 class="dropdown-toggle">Customer Applications</a>
                 <ul class="collapse list-unstyled"
                     id="customerApplicationSubmenu">
+                    {% if perms.customer_applications.view_docapplication %}
                     <li>
                         <a href="/customer_applications/list">List</a>
                     </li>
+                    {% endif %}
+                    {% if perms.customer_applications.add_docapplication %}
                     <li>
                         <a href="/customer_applications/create">Add new</a>
                     </li>
+                    {% endif %}
                 </ul>
         </li>
     {% endif %}

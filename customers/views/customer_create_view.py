@@ -3,8 +3,9 @@ from django.views.generic.edit import CreateView
 from customers.models import Customer
 from customers.forms import CustomerForm
 from django.contrib.auth.mixins import PermissionRequiredMixin
+from django.contrib.messages.views import SuccessMessageMixin
 
-class CustomerCreateView(PermissionRequiredMixin, CreateView):
+class CustomerCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateView):
     permission_required = ('customers.add_customer',)
     model = Customer
     form_class = CustomerForm
