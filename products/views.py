@@ -7,10 +7,11 @@ from .models import Product, Task
 from .forms import ProductForm, TaskForm, TaskModelFormSet
 from django.views.generic import ListView, DetailView, DeleteView, UpdateView, CreateView
 from django.contrib.messages.views import SuccessMessageMixin
+from django.contrib.auth.mixins import PermissionRequiredMixin
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit
 
-class ProductCreateView(CreateView):
+class ProductCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateView):
     permission_required = ('products.add_product',)
     model = Product
     form_class = ProductForm
@@ -28,15 +29,17 @@ class ProductCreateView(CreateView):
 
     def form_valid(self, form):
         context = self.get_context_data()
-        tasks = context['tasks']
+        required_documents = context['requireddocuments']
         with transaction.atomic():
-            self.object = form.save()
-            if tasks.is_valid():
-                tasks.instance = self.object
-                tasks.save()
+            self.object = form.save()  # Save the instance first
+            if required_documents.is_valid():
+                required_documents.instance = self.object
+                required_documents.save()
+            else:
+                return super().form_invalid(form)
         return super().form_valid(form)
 
-class ProductUpdateView(UpdateView):
+class ProductUpdateView(PermissionRequiredMixin, SuccessMessageMixin, UpdateView):
     permission_required = ('products.change_product',)
     model = Product
     form_class = ProductForm
@@ -54,16 +57,18 @@ class ProductUpdateView(UpdateView):
 
     def form_valid(self, form):
         context = self.get_context_data()
-        tasks = context['tasks']
+        required_documents = context['requireddocuments']
         with transaction.atomic():
             self.object = form.save()
-            if tasks.is_valid():
-                tasks.instance = self.object
-                tasks.save()
+            if required_documents.is_valid():
+                required_documents.instance = self.object
+                required_documents.save()
+            else:
+                return super().form_invalid(form)
         return super().form_valid(form)
 
 # a view to update a task
-class TaskUpdateView(SuccessMessageMixin, UpdateView):
+class TaskUpdateView(PermissionRequiredMixin, SuccessMessageMixin, UpdateView):
     permission_required = ('products.change_task',)
     model = Task
     form_class = TaskForm
@@ -74,7 +79,7 @@ class TaskUpdateView(SuccessMessageMixin, UpdateView):
         return reverse_lazy('product-detail', kwargs={'pk': self.object.product.pk})
 
 
-class ProductDeleteView(DeleteView):
+class ProductDeleteView(PermissionRequiredMixin, SuccessMessageMixin, DeleteView):
     permission_required = ('products.delete_product',)
     model = Product
     template_name = "products/product_confirm_delete.html"
@@ -82,7 +87,7 @@ class ProductDeleteView(DeleteView):
     success_message = "Product deleted successfully!"
 
 
-class ProductListView(ListView):
+class ProductListView(PermissionRequiredMixin, ListView):
     permission_required = ('products.view_product',)
     model = Product
     context_object_name = 'products'  # Default is object_list if not specified
@@ -96,7 +101,7 @@ class ProductListView(ListView):
         else:
             return Product.objects.all()
 
-class ProductDetailView(DetailView):
+class ProductDetailView(PermissionRequiredMixin, DetailView):
     permission_required = ('products.view_product',)
     model = Product
     template_name = "products/product_detail.html"

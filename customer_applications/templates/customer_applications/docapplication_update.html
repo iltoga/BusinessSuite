@@ -1,0 +1,91 @@
+{% extends "base_template.html" %}
+{% load static %}
+{% load crispy_forms_filters %}
+{% load crispy_forms_tags %}
+{% load widget_tweaks %}
+
+{% block title %}RevisCRM - {{ action_name }} Customer Application{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2 class="text-center my-4">New Customer Application</h2>
+    <form method="post" enctype="multipart/form-data" class="p-3 rounded w-100" action="" id="customer-application-form">
+        {% csrf_token %}
+        {{ form | crispy }}
+        <h3 class="text-center my-4">Required Documents</h3>
+        {{ requireddocuments.management_form }}
+        <div id="requireddocument-form-list">
+            {% for requireddocument_form in requireddocuments %}
+            <div class="requireddocument_form form-inline p-3 mb-4 border rounded">
+                {{ requireddocument_form | crispy }}
+                <button type="button" class="btn btn-danger remove-requireddocument-btn mt-2">Remove Document</button>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Template for a new task form (hidden) -->
+        <div id="empty-form" style="display:none;">
+            <div class="requireddocument_form  form-inline p-3 mb-4 border rounded">
+                {{ requireddocuments.empty_form | crispy }}
+                <button type="button" class="btn btn-danger remove-requireddocument-btn mt-2">Remove Document</button>
+            </div>
+        </div>
+
+        <button type="button" class="btn btn-secondary" id="add-requireddocument">Add Required Document</button>
+        <button type="submit" class="btn btn-primary">Create</button>
+    </form>
+</div>
+{% endblock %}
+
+{% block after-bootstrap-js %}
+    {{ block.super }}
+    <script>
+        document.getElementById('add-requireddocument').addEventListener('click', function() {
+            var formIdx = $('#id_tasks-TOTAL_FORMS').val();
+            $('#requireddocument-form-list').append($('#empty-form').html().replace(/__prefix__/g, formIdx));
+            $('#id_tasks-TOTAL_FORMS').val(parseInt(formIdx) + 1);
+            $('#id_tasks-' + formIdx + '-step').val(parseInt(formIdx) + 1);
+        }, false);
+
+        $(document).on('click', '.remove-requireddocument-btn', function(){
+            if ($('.requireddocument_form').length > 1) {
+                $(this).parent().remove();
+                var forms = $('#requireddocument-form-list .requireddocument_form'); // Get all the forms
+                $('#id_tasks-TOTAL_FORMS').val(forms.length); // Update the total number of forms
+                var i = 0;
+                // Go through the forms and set their indices, names and IDs
+                for (form of forms.toArray()) {
+                    $(form).find('input,select,checkbox').each(function() {
+                        $(this).attr('name', $(this).attr('name').replace(/-\d+-/, '-' + i + '-'));
+                        $(this).attr('id', $(this).attr('id').replace(/-\d+-/, '-' + i + '-'));
+                    });
+                    i++;
+                }
+            }
+        });
+
+        $('#id_product').change(function() {
+            var selectedProduct = $(this).val();
+            if (selectedProduct) {
+                var url = "{% url 'product-required-documents' product_id='123456' %}";
+                url = url.replace('123456', selectedProduct);
+                fetch(url, {
+                    credentials: 'same-origin'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    $('#requireddocument-form-list').empty(); // remove all existing required document forms
+                    $('#id_tasks-TOTAL_FORMS').val(data.required_documents.length); // update total forms
+                    // create new required document forms
+                    for (var i = 0; i < data.required_documents.length; i++) {
+                        var newFormHtml = $('#empty-form').html().replace(/__prefix__/g, i);
+                        var newForm = $(newFormHtml);
+                        newForm.find('input[name=requireddocuments-' + i + '-doc_type]').val(data.required_documents[i]);
+                        $('#requireddocument-form-list').append(newForm);
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+            }
+        });
+    </script>
+{% endblock %}

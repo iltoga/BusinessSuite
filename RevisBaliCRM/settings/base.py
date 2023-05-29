@@ -207,6 +207,5 @@ CORS_ORIGIN_WHITELIST = [
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
 
-MEDIA_URL = os.path.join(BASE_DIR, 'files/media/'),
-
-TIME_ZONE = 'Asia/Makassar'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'files/media/'),
+MEDIA_URL = "/uploads/"

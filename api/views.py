@@ -1,3 +1,4 @@
+from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import DjangoModelPermissions
@@ -5,7 +6,6 @@ from customers.models import Customer
 from products.models import Product
 from .serializers import CustomerSerializer, ProductSerializer
 from django.db.models import Q
-
 
 class SearchCustomers(APIView):
     queryset = Customer.objects.all()
@@ -22,6 +22,7 @@ class SearchCustomers(APIView):
 
 
 class CustomersView(APIView):
+    queryset = Customer.objects.all()
 
     def get(self, request):
         customers = Customer.objects.all()
@@ -30,20 +31,29 @@ class CustomersView(APIView):
 
 
 class ProductsView(APIView):
+    queryset = Product.objects.all()
 
     def get(self, request):
         products = Product.objects.all()
         serializer = ProductSerializer(products, many=True)
         return Response(serializer.data)
 
+class ProductRequiredDocumentsView(APIView):
+    queryset = Product.objects.all()
 
-class RequiredDocumentsView(APIView):
-
-    def get(self, request, product_id):
-        product = Product.objects.get(id=product_id)
-        required_documents = product.required_documents.split(',')
-        return Response(required_documents)
-
+    def get(self, request, *args, **kwargs):
+        product_id = self.kwargs.get('product_id')
+        if product_id:
+            try:
+                product = Product.objects.get(id=product_id)
+                # split the string into a list and trim the spaces
+                required_documents = product.required_documents.split(',')
+                required_documents = [document.strip() for document in required_documents]
+                return Response({'required_documents': required_documents})
+            except Product.DoesNotExist:
+                return Response({'error': 'Product does not exist'}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            return Response({'error': 'Invalid request'}, status=status.HTTP_400_BAD_REQUEST)
 
 class ProductsByTypeView(APIView):
 
