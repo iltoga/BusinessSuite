@@ -5,7 +5,7 @@ from django.contrib.auth.models import Group, Permission
 
 def generate_administrators(apps, schema_editor):
     # Create a new group
-    group = Group.objects.create(name='Administrators')
+    group = Group.objects.get(name='Administrators')
 
     # Add permissions to the group
     permissions = Permission.objects.all()
@@ -15,7 +15,7 @@ def generate_administrators(apps, schema_editor):
 # generate a group to edit all models
 def generate_editors(apps, schema_editor):
     # Create a new group
-    group = Group.objects.create(name='Editors')
+    group = Group.objects.get(name='Editors')
 
     # Add permissions to the group
     permissions = Permission.objects.filter(codename__in=['view_customer', 'change_customer', 'view_product', 'change_product', 'view_invoice', 'change_invoice', 'view_transaction', 'change_transaction', 'view_docworkflow', 'change_docworkflow', 'change_requireddocument'])
@@ -25,7 +25,7 @@ def generate_editors(apps, schema_editor):
 # generate a group to view all models
 def generate_viewers(apps, schema_editor):
     # Create a new group
-    group = Group.objects.create(name='Viewers')
+    group = Group.objects.get(name='Viewers')
 
     # Add permissions to the group
     permissions = Permission.objects.filter(codename__in=['view_customer', 'view_product', 'view_invoice', 'view_transaction', 'view_docapplication', 'view_docworkflow', 'view_requireddocument'])
@@ -35,7 +35,7 @@ def generate_viewers(apps, schema_editor):
 # generate a group to create all models
 def generate_creators(apps, schema_editor):
     # Create a new group
-    group = Group.objects.create(name='Creators')
+    group = Group.objects.get(name='Creators')
 
     # Add permissions to the group
     permissions = Permission.objects.filter(codename__in=['add_customer', 'add_product', 'add_invoice', 'add_transaction', 'add_docapplication', 'add_docworkflow', 'add_requireddocument'])
@@ -45,7 +45,7 @@ def generate_creators(apps, schema_editor):
 # generate a group to delete all models
 def generate_deleters(apps, schema_editor):
     # Create a new group
-    group = Group.objects.create(name='Deleters')
+    group = Group.objects.get(name='Deleters')
 
     # Add permissions to the group
     permissions = Permission.objects.filter(codename__in=['delete_customer', 'delete_product', 'delete_invoice', 'delete_transaction', 'delete_docapplication', 'delete_docworkflow', 'delete_requireddocument'])
@@ -83,9 +83,7 @@ def generate_upload_document(apps, schema_editor):
     group.permissions.add(permission)
 
 def generate_power_users(apps, schema_editor):
-    # Create a new group
-    group = Group.objects.create(name='PowerUsers')
-
+    group = Group.objects.get(name='PowerUsers')
     # Get the other groups
     editors = Group.objects.get(name='Editors')
     viewers = Group.objects.get(name='Viewers')
@@ -102,13 +100,7 @@ def generate_power_users(apps, schema_editor):
 class Migration(migrations.Migration):
     dependencies = [
         # Add the previous migration here
-        ('core', '0001_create_groups'),
-        # Also add any other migrations that introduce new models here
-        ('customers', '0001_initial'),
-        ('products', '0001_initial'),
-        ('invoices', '0001_initial'),
-        ('transactions', '0001_initial'),
-        ('customer_applications', '0001_initial'),
+        ('core', '0002_create_groups'),
     ]
 
     operations = [
