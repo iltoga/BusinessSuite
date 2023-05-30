@@ -3,14 +3,14 @@
 
 {% block content %}
 <div class="centered-content">
-  <h2>Delete Product</h2>
+  <h2>Delete Customer Application</h2>
 
   <p>Are you sure you want to delete "{{ object.name }}"?</p>
 
   <form method="POST">
     {% csrf_token %}
     <input type="submit" value="Confirm" class="btn btn-danger">
-    <a href="{% url 'product-list' %}" class="btn btn-secondary">Cancel</a>
+    <a href="{% url 'customer-application-list' %}" class="btn btn-secondary">Cancel</a>
   </form>
 </div>
 {% endblock %}

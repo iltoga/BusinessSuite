@@ -1,10 +1,11 @@
-# from django.urls import path
-# from .views import NewDocApplicationView, DocWorkflowCreateView
+from django.urls import path
+from .views import DocApplicationListView, DocApplicationCreateView, DocApplicationDetailView, DocApplicationUpdateView, DocApplicationDeleteView, RequiredDocumentUpdateView
 
-# urlpatterns = [
-#     path('list/', ProductListView.as_view(), name='product-list'),
-#     path('create/', ProductCreateView.as_view(), name='product-create'),
-#     path('detail/<int:pk>/', ProductDetailView.as_view(), name='product-detail'),
-#     path('update/<int:pk>/', ProductUpdateView.as_view(), name='product-update'),
-#     path('delete/<int:pk>/', ProductDeleteView.as_view(), name='product-delete'),
-# ]
+urlpatterns = [
+    path('list/', DocApplicationListView.as_view(), name='customer-application-list'),
+    path('create/', DocApplicationCreateView.as_view(), name='customer-application-create'),
+    path('detail/<int:pk>/', DocApplicationDetailView.as_view(), name='customer-application-detail'),
+    path('update/<int:pk>/', DocApplicationUpdateView.as_view(), name='customer-application-update'),
+    path('update_required_document/<int:pk>/', RequiredDocumentUpdateView.as_view(), name='customer-application-requireddocument-update'),
+    path('delete/<int:pk>/', DocApplicationDeleteView.as_view(), name='customer-application-delete'),
+]

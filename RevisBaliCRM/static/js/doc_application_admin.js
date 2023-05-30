@@ -29,7 +29,7 @@ script.onload = function () {
             var product_id = $(this).val();
 
             $.ajax({
-                url: '/api/products/get_required_documents/',  // the url of your Django view that returns a list of required_documents
+                url: '/api/products/get_product_by_id/',  // the url of your Django view that returns a list of required_documents
                 data: {
                     'product_id': product_id
                 },

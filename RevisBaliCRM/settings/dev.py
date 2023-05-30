@@ -24,5 +24,3 @@ SESSION_COOKIE_DOMAIN = 'localhost'
 CSRF_TRUSTED_ORIGINS = ['http://*', 'https://*']
 SESSION_COOKIE_SAMESITE = 'None'
 CSRF_COOKIE_SAMESITE = 'None'
-
-MEDIA_URL = '/Users/stefano.galassi/media/'

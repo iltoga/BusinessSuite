@@ -1,6 +1,15 @@
 from django.db import models
 from django.core.exceptions import ValidationError
 
+class ProductManager(models.Manager):
+    def search_products(self, query):
+        return self.filter(
+            models.Q(name__icontains=query) |
+            models.Q(code__icontains=query) |
+            models.Q(description__icontains=query) |
+            models.Q(product_type__icontains=query)
+        )
+
 class Product(models.Model):
     PRODUCT_TYPE_CHOICES = [
         ('visa', 'Visa'),
@@ -14,6 +23,7 @@ class Product(models.Model):
     product_type = models.CharField(max_length=50, choices=PRODUCT_TYPE_CHOICES, default='other')
     validity = models.PositiveIntegerField(blank=True, null=True)  # Validity in days
     required_documents = models.CharField(max_length=1024, blank=True)  # A comma-separated list of required documents
+    objects = ProductManager()
 
     class Meta:
         ordering = ['name']
@@ -27,7 +37,7 @@ class Task(models.Model):
     step = models.PositiveIntegerField()
     last_step = models.BooleanField(default=False)
     name = models.CharField(max_length=100)
-    description = models.TextField(blank=True)
+    description = models.TextField(blank=True, null=True)
     cost = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     duration = models.PositiveIntegerField()  # Duration in days
     notify_days_before = models.PositiveIntegerField(blank=True, null=True)  # Notify the user this many days before the task is due

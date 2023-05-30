@@ -11,11 +11,15 @@
     {% block head-extra %}
     {% endblock %}
     {% block head-scripts %}
+        <script src="{% static 'js/async_utils.js' %}"></script>
         <script
             src="https://code.jquery.com/jquery-3.7.0.min.js"
             integrity="sha256-2Pmvv0kuTBOenSvLm6bvfBSSHrUJ+3A7x6P5Ebd07/g="
             crossorigin="anonymous">
         </script>
+        <!-- Select2 -->
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
     {% endblock %}
     {% block head-after-jquery %}
     {% endblock %}
@@ -79,40 +83,66 @@
         </div>
     <hr />
     <ul class="list-unstyled components">
-    {% if user.is_authenticated %}
+        {% if user.is_authenticated %}
         <li>
             <a href="#customerSubmenu"
-                data-bs-toggle="collapse"
-                aria-expanded="false"
-                role="button"
-                class="dropdown-toggle">Customers</a>
-                <ul class="collapse list-unstyled"
-                    id="customerSubmenu">
-                    <li>
-                        <a href="/customers/list">List</a>
-                    </li>
-                    <li>
-                        <a href="/customers/create">Add new</a>
-                    </li>
-                </ul>
+               data-bs-toggle="collapse"
+               aria-expanded="{% if request.session.opened_submenu == 'customerSubmenu' %}true{% else %}false{% endif %}"
+               role="button"
+               class="dropdown-toggle">Customers</a>
+            <ul class="collapse list-unstyled" id="customerSubmenu">
+                {% if perms.customers.view_customer %}
+                <li>
+                    <a href="/customers/list">List</a>
+                </li>
+                {% endif %}
+                {% if perms.customers.add_customer %}
+                <li>
+                    <a href="/customers/create">Add new</a>
+                </li>
+                {% endif %}
+            </ul>
         </li>
         <li>
             <a href="#productSubmenu"
-                data-bs-toggle="collapse"
-                aria-expanded="false"
-                role="button"
-                class="dropdown-toggle">Products</a>
-                <ul class="collapse list-unstyled"
-                    id="productSubmenu">
-                    <li>
-                        <a href="/products/list">List</a>
-                    </li>
-                    <li>
-                        <a href="/products/create">Add new</a>
-                    </li>
-                </ul>
+               data-bs-toggle="collapse"
+               aria-expanded="{% if request.session.opened_submenu == 'productSubmenu' %}true{% else %}false{% endif %}"
+               role="button"
+               class="dropdown-toggle">Products</a>
+            <ul class="collapse list-unstyled" id="productSubmenu">
+                {% if perms.products.view_product %}
+                <li>
+                    <a href="/products/list">List</a>
+                </li>
+                {% endif %}
+                {% if perms.products.add_product %}
+                <li>
+                    <a href="/products/create">Add new</a>
+                </li>
+                {% endif %}
+            </ul>
+        </li>
+        <li>
+            <a href="#customerApplicationSubmenu"
+               data-bs-toggle="collapse"
+               aria-expanded="{% if request.session.opened_submenu == 'customerApplicationSubmenu' %}true{% else %}false{% endif %}"
+               role="button"
+               class="dropdown-toggle">Customer Applications</a>
+            <ul class="collapse list-unstyled" id="customerApplicationSubmenu">
+                {% if perms.customer_applications.view_docapplication %}
+                <li>
+                    <a href="/customer_applications/list">List</a>
+                </li>
+                {% endif %}
+                {% if perms.customer_applications.add_docapplication %}
+                <li>
+                    <a href="/customer_applications/create">Add new</a>
+                </li>
+                {% endif %}
+            </ul>
         </li>
     {% endif %}
+
     <li>
         <a href="#">About</a>
     </li>
@@ -134,13 +164,25 @@
         </footer>
     {% endif %}
     {% block footer-scripts %}
-        <script
-            src="https://code.jquery.com/jquery-3.7.0.min.js"
-            integrity="sha256-2Pmvv0kuTBOenSvLm6bvfBSSHrUJ+3A7x6P5Ebd07/g="
-            crossorigin="anonymous">
+        <!-- Initialize Select2 -->
+        <script>
+            $(document).ready(function() {
+                $('.select2').select2();
+
+                let opened_submenu = localStorage.getItem('opened_submenu');
+                if (opened_submenu) {
+                    // Perform the necessary action to expand the submenu
+                    $("#" + opened_submenu).collapse('show');
+                }
+            });
+
+            $(".dropdown-toggle").click(function() {
+                let submenuId = $(this).attr("href").substring(1); // Get the submenu ID from the href attribute
+                // Save submenu state to local storage
+                localStorage.setItem('opened_submenu', submenuId);
+            });
         </script>
         {% block body-after-jquery %}
         {% endblock %}
     {% endblock %}
 {% endblock %}
-

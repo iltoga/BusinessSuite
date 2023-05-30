@@ -1,7 +1,8 @@
 from django.views.generic import ListView
 from customers.models import Customer
+from django.contrib.auth.mixins import PermissionRequiredMixin
 
-class CustomerListView(ListView):
+class CustomerListView(PermissionRequiredMixin, ListView):
     permission_required = ('customers.view_customer',)
     model = Customer
     paginate_by = 15  # Change this number to the desired items per page

@@ -7,9 +7,6 @@ class TaskTabularInline(NestedTabularInline):
     model = Task
     extra = 0
 
-
+@admin.register(Product)
 class ProductAdmin(NestedModelAdmin):
     inlines = [TaskTabularInline, ]
-
-
-admin.site.register(Product, ProductAdmin)

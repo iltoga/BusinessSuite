@@ -23,6 +23,7 @@
         <th scope="col">Name</th>
         <th scope="col">Code</th>
         <th scope="col">Product Type</th>
+        <th scope="col">Description</th>
         <th scope="col">Actions</th>
       </tr>
     </thead>
@@ -32,6 +33,7 @@
         <td>{{ product.name }}</td>
         <td>{{ product.code }}</td>
         <td>{{ product.get_product_type_display }}</td>
+        <td>{{ product.description }}</td>
         <td>
           <a href="{% url 'product-detail' product.id %}" class="btn btn-primary btn-sm">View</a>
           {% if perms.products.change_product %}

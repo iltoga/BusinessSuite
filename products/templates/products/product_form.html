@@ -31,7 +31,7 @@
 
 {% block content %}
 <div class="container-fluid">
-    <h2 class="text-center my-4">Create a new product</h2>
+    <h2 class="text-center my-4">{{ action_name }} a new product</h2>
     <form method="post" class="p-3 rounded w-100" action="" id="product-form">
         {% csrf_token %}
         {{ form | crispy }}
@@ -54,7 +54,7 @@
         </div>
 
         <button type="button" class="btn btn-primary" id="add-task">Add Task</button>
-        <button type="submit" class="btn btn-primary">Create</button>
+        <button type="submit" class="btn btn-primary">{{ action_name }}</button>
     </form>
 </div>
 {% endblock %}
@@ -64,9 +64,17 @@
     <script>
         document.getElementById('add-task').addEventListener('click', function() {
             var formIdx = $('#id_tasks-TOTAL_FORMS').val();
-            $('#task-form-list').append($('#empty-form').html().replace(/__prefix__/g, formIdx));
+            var newTaskForm = $('#empty-form').html().replace(/__prefix__/g, formIdx);
+            $('#task-form-list').append(newTaskForm);
             $('#id_tasks-TOTAL_FORMS').val(parseInt(formIdx) + 1);
             $('#id_tasks-' + formIdx + '-step').val(parseInt(formIdx) + 1);
+
+            // If product type is 'visa', set default values for the first task form
+            var productType = $('#id_product_type').val();
+            if (productType === 'visa' && formIdx === '0') {
+                $('#id_tasks-' + formIdx + '-name').val('Document Collection');
+                $('#id_tasks-' + formIdx + '-description').val('Collecting documents from Customer');
+            }
         }, false);
 
         $(document).on('click', '.remove-task-btn', function(){
@@ -84,13 +92,6 @@
                     i++;
                 }
             }
-        });
-
-        $(document).ready(function() {
-            // Fix checkbox display issue
-            $('input[type="checkbox"]').each(function() {
-                $(this).removeClass('form-control');
-            });
         });
     </script>
 {% endblock %}
