@@ -64,17 +64,17 @@ class DocApplication(models.Model):
 
 
 class RequiredDocument(models.Model):
-    # helper function to construct the upload_to path
     def get_upload_to(instance, filename):
+        """
+        Returns the upload_to path for the file field.
+        """
         base_doc_path = 'documents'
-        # Get the extension of the original file
         _, extension = os.path.splitext(filename)
-        # construct the filename preserving the extension
         doc_application = instance.doc_application
         filename = f"{whitespaces_to_underscores(instance.doc_type)}{extension}"
         # return the complete upload to path, which is:
         # documents/<customer_name>_<customer_id>/<doc_application_id>/<doc_type>.<extension>
-        return f"{base_doc_path}/{whitespaces_to_underscores(doc_application.customer.full_name)}_{doc_application.customer.pk}/{doc_application.pk}/{filename}"
+        return f"{base_doc_path}/{whitespaces_to_underscores(doc_application.customer.full_name)}_{doc_application.customer.pk}/application_{doc_application.pk}/{filename}"
 
     doc_application = models.ForeignKey(DocApplication, related_name='required_documents', on_delete=models.CASCADE)
     doc_type = models.CharField(max_length=100)
@@ -111,7 +111,6 @@ class RequiredDocument(models.Model):
                 # Check if the file with same path exists and delete it
                 if default_storage.exists(file_path):
                     default_storage.delete(file_path)
-
         super().save(*args, **kwargs)
 
         if self.file:

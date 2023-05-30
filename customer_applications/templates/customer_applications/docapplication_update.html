@@ -8,7 +8,7 @@
 
 {% block content %}
 <div class="container-fluid">
-    <h2 class="text-center my-4">New Customer Application</h2>
+    <h2 class="text-center my-4">Update Customer Application</h2>
     <form method="post" enctype="multipart/form-data" class="p-3 rounded w-100" action="" id="customer-application-form">
         {% csrf_token %}
         {{ form | crispy }}
@@ -16,22 +16,21 @@
         {{ requireddocuments.management_form }}
         <div id="requireddocument-form-list">
             {% for requireddocument_form in requireddocuments %}
-            <div class="requireddocument_form form-inline p-3 mb-4 border rounded">
+            <div class="requireddocument_form p-3 mb-4 border rounded">
                 {{ requireddocument_form | crispy }}
-                <button type="button" class="btn btn-danger remove-requireddocument-btn mt-2">Remove Document</button>
+                <!-- <button type="button" class="btn btn-danger remove-requireddocument-btn mt-2">Remove Document</button> -->
             </div>
             {% endfor %}
         </div>
 
         <!-- Template for a new task form (hidden) -->
         <div id="empty-form" style="display:none;">
-            <div class="requireddocument_form  form-inline p-3 mb-4 border rounded">
+            <div class="requireddocument_form p-3 mb-4 border rounded">
                 {{ requireddocuments.empty_form | crispy }}
-                <button type="button" class="btn btn-danger remove-requireddocument-btn mt-2">Remove Document</button>
+                <!-- <button type="button" class="btn btn-danger remove-requireddocument-btn mt-2">Remove Document</button> -->
             </div>
         </div>
-
-        <button type="button" class="btn btn-secondary" id="add-requireddocument">Add Required Document</button>
+        <!-- <button type="button" class="btn btn-secondary" id="add-requireddocument">Add Required Document</button> -->
         <button type="submit" class="btn btn-primary">Create</button>
     </form>
 </div>
@@ -69,22 +68,21 @@
             if (selectedProduct) {
                 var url = "{% url 'api-product-by-id' product_id='123456' %}";
                 url = url.replace('123456', selectedProduct);
-                fetch(url, {
-                    credentials: 'same-origin'
-                })
-                .then(response => response.json())
-                .then(data => {
-                    $('#requireddocument-form-list').empty(); // remove all existing required document forms
-                    $('#id_tasks-TOTAL_FORMS').val(data.required_documents.length); // update total forms
-                    // create new required document forms
-                    for (var i = 0; i < data.required_documents.length; i++) {
-                        var newFormHtml = $('#empty-form').html().replace(/__prefix__/g, i);
-                        var newForm = $(newFormHtml);
-                        newForm.find('input[name=requireddocuments-' + i + '-doc_type]').val(data.required_documents[i]);
-                        $('#requireddocument-form-list').append(newForm);
-                    }
-                })
-                .catch(error => console.error('Error:', error));
+                restApiCall('GET', url, null,
+                    data => {
+                        $('#requireddocument-form-list').empty(); // remove all existing required document forms
+                        $('#id_tasks-TOTAL_FORMS').val(data.required_documents.length); // update total forms
+                        // create new required document forms
+                        for (var i = 0; i < data.required_documents.length; i++) {
+                            var newFormHtml = $('#empty-form').html().replace(/__prefix__/g, i);
+                            var newForm = $(newFormHtml);
+                            newForm.find('input[name=requireddocuments-' + i + '-doc_type]').val(data.required_documents[i]);
+                            $('#requireddocument-form-list').append(newForm);
+                        }
+                    },
+                    error => console.error('Error:', error)
+                );
+
             }
         });
     </script>

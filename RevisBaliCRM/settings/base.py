@@ -209,7 +209,8 @@ CORS_ORIGIN_WHITELIST = [
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
 
-MEDIA_ROOT = os.path.join(BASE_DIR, 'files/media/'),
+DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'files/media/')
 MEDIA_URL = "/uploads/"
 
 # https://github.com/legion-an/django-models-logging

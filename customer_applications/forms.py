@@ -3,7 +3,7 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 from .models import DocApplication, RequiredDocument, DocWorkflow
 
-class DocApplicationForm(forms.ModelForm):
+class DocApplicationFormCreate(forms.ModelForm):
     class Meta:
         model = DocApplication
         fields = ['application_type', 'customer', 'product', 'doc_date', 'price']
@@ -11,6 +11,17 @@ class DocApplicationForm(forms.ModelForm):
             'doc_date': forms.DateInput(attrs={'type': 'date', 'value': timezone.now().strftime("%Y-%m-%d")}),
             'product': forms.Select(attrs={'class': 'select2'}),
             'customer': forms.Select(attrs={'class': 'select2'}),
+        }
+
+class DocApplicationFormUpdate(forms.ModelForm):
+    class Meta:
+        model = DocApplication
+        fields = ['application_type', 'customer', 'product', 'doc_date', 'price']
+        widgets = {
+            'doc_date': forms.DateInput(attrs={'type': 'date', 'value': timezone.now().strftime("%Y-%m-%d")}),
+            # 'customer': forms.Select(attrs={'disabled': True}),
+            # 'product': forms.Select(attrs={'disabled': True}),
+            # 'application_type': forms.Select(attrs={'disabled': True}),
         }
 
 
@@ -21,7 +32,6 @@ class RequiredDocumentCreateForm(forms.ModelForm):
 
 
 class RequiredDocumentUpdateForm(forms.ModelForm):
-    completed = forms.BooleanField(required=False, disabled=True)
     doc_type = forms.CharField(required=False, disabled=True)
     # Only users with the 'upload_document' permission can upload documents
     field_permissions = {

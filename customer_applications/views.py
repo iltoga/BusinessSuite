@@ -2,7 +2,7 @@ from django.urls import reverse_lazy
 from django.db import transaction
 from django.views.generic import ListView, CreateView, UpdateView, DetailView, DeleteView
 from .models import DocApplication, RequiredDocument
-from .forms import DocApplicationForm, RequiredDocumentCreateFormSet, RequiredDocumentUpdateFormSet, RequiredDocumentUpdateForm
+from .forms import DocApplicationFormCreate, RequiredDocumentCreateFormSet, RequiredDocumentUpdateFormSet, RequiredDocumentUpdateForm, DocApplicationFormUpdate
 from django.contrib.messages.views import SuccessMessageMixin
 from django.contrib.auth.mixins import PermissionRequiredMixin
 
@@ -22,10 +22,11 @@ class DocApplicationListView(PermissionRequiredMixin, ListView):
 class DocApplicationCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateView):
     permission_required = ('customer_applications.add_docapplication',)
     model = DocApplication
-    form_class = DocApplicationForm
+    form_class = DocApplicationFormCreate
     template_name = 'customer_applications/docapplication_create.html'
     success_url = reverse_lazy('customer-application-list')
     success_message = 'Customer application created successfully!'
+    action_name = 'Create'
 
     def get_context_data(self, **kwargs):
         data = super().get_context_data(**kwargs)
@@ -58,8 +59,8 @@ class DocApplicationCreateView(PermissionRequiredMixin, SuccessMessageMixin, Cre
 class DocApplicationUpdateView(PermissionRequiredMixin, SuccessMessageMixin, UpdateView):
     permission_required = ('customer_applications.change_docapplication',)
     model = DocApplication
-    form_class = DocApplicationForm
-    template_name = 'customer_applications/docapplication_create.html'
+    form_class = DocApplicationFormUpdate
+    template_name = 'customer_applications/docapplication_update.html'
     success_url = reverse_lazy('customer-application-list')
     success_message = 'Customer application created successfully!'
 
