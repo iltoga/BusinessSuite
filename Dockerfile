@@ -16,6 +16,16 @@ RUN mkdir -p /usr/src/app && chown -R revisbali:revisbali /usr/src/app
 # Set work directory
 WORKDIR /usr/src/app
 
+ENV PYHTONUNBUFFERED=1
+
+# Install Tesseract and its language packs
+RUN apt-get update \
+  && apt-get -y install \
+  && apt-get -y install tesseract-ocr \
+  && apt-get -y install poppler-utils \
+  && apt-get clean \
+  && rm -rf /var/lib/apt/lists/*
+
 # Change to non-root privilege
 USER revisbali
 

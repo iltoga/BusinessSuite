@@ -50,6 +50,8 @@ class DocApplicationCreateView(PermissionRequiredMixin, SuccessMessageMixin, Cre
                     if required_document.cleaned_data and not required_document.cleaned_data.get('DELETE'):
                         if 'file' in required_document.files:
                             required_document.instance.file = required_document.files['file']
+                        if 'metadata' in required_document.cleaned_data:
+                            required_document.instance.metadata = required_document.cleaned_data['metadata']
                         required_document.instance.save()
             else:
                 return super().form_invalid(form)  # If formset is invalid, don't save the form either
@@ -86,6 +88,8 @@ class DocApplicationUpdateView(PermissionRequiredMixin, SuccessMessageMixin, Upd
                     if required_document.cleaned_data and not required_document.cleaned_data.get('DELETE'):
                         if 'file' in required_document.files:
                             required_document.instance.file = required_document.files['file']
+                        if 'metadata' in required_document.cleaned_data:
+                            required_document.instance.metadata = required_document.cleaned_data['metadata']
                         required_document.instance.save()
                 self.object.save()  # Now save the form
 

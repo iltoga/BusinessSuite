@@ -64,6 +64,7 @@ INSTALLED_APPS = [
     'crispy_forms',
     'crispy_bootstrap5',
     'models_logging',
+    'fontawesomefree'
 ]
 
 MIDDLEWARE = [
@@ -74,7 +75,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'RevisBaliCRM.middleware.LoginRequiredMiddleware',
+    'RevisBaliCRM.middlewares.AuthLoginRequiredMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'corsheaders.middleware.CorsMiddleware',
