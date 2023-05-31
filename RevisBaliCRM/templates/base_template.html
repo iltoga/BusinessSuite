@@ -1,8 +1,13 @@
 {% extends "bootstrap_base.html" %}
 {% load static %}
+{% load check_perms %}
 {% block custom-css %}
     <link rel="stylesheet" type="text/css" href="{% static 'css/bootstrap.css' %}">
     <link rel="stylesheet" type="text/css" href="{% static 'css/styles.css' %}">
+    <!-- Our project just needs Font Awesome Free's Solid and Brand files -->
+    <link href="{% static 'fontawesomefree/css/fontawesome.css' %}" rel="stylesheet" type="text/css">
+    <link href="{% static 'fontawesomefree/css/brands.css' %}" rel="stylesheet" type="text/css">
+    <link href="{% static 'fontawesomefree/css/solid.css' %}" rel="stylesheet">
 {% endblock %}
 <!-- if overriding this one, remember to use {{ block.super}} at the beginning, otherwise jquery won't be loaded -->
 {% block head %}
@@ -33,7 +38,19 @@
 {% block navbar-links %}
 <div class="collapse navbar-collapse" id="navbarTop">
     <ul class="navbar-nav ms-auto">
-        <li class="nav-item dropdown">
+        <!-- Login/Logout -->
+        <li class="nav-item ms-2">
+            {% if user.is_authenticated %}
+                <span class="nav-link text-dark">
+                    <small class="text-muted">Logged in as:</small>
+                    <strong>{{ user.username }}</strong>
+                </span>
+            {% else %}
+                <span class="nav-link text-dark">Not Logged in</span>
+            {% endif %}
+        </li>
+
+        <!-- <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#" id="navbarAdmin" role="button" data-bs-toggle="dropdown" aria-expanded="false">
               Menu
             </a>
@@ -48,9 +65,7 @@
           </li>
           <li class="nav-item active">
             <a class="nav-link" href="#">Page</a>
-        </li>
-
-
+        </li> -->
         <li class="nav-item">
             {% if user.is_authenticated %}
                 <a class="nav-link" href="{% url 'logout' %}">Logout</a>
@@ -61,100 +76,100 @@
     </ul>
 </div>
 {% endblock %}
+
 {% block sidebar %}
     <nav id="sidebar">
-    <div class="text-center">
-            <div class="mb-4">
-                <img id=logo
-                    src="{% static 'logo_revis_bw_inverted_transparent.png' %}"
-                    alt="Revis Bali Logo"
-                    style="width: 90%;">
-                <h3>CRM Platform</h3>
+        <div class="text-center">
+                <div class="mb-4">
+                    <img id=logo
+                        src="{% static 'logo_revis_bw_inverted_transparent.png' %}"
+                        alt="Revis Bali Logo"
+                        style="width: 90%;">
+                    <!-- <h4>CMS/CRM Platform</h4> -->
+                </div>
+                <hr />
             </div>
+        <ul class="list-unstyled components">
+            {% if user.is_authenticated %}
+                <li><h4>CMS</h4></li>
+                {% if user|has_any_perm:'customer' %}
+                <li>
+                    <a href="#customerSubmenu"
+                    data-bs-toggle="collapse"
+                    aria-expanded="{% if request.session.opened_submenu == 'customerSubmenu' %}true{% else %}false{% endif %}"
+                    role="button"
+                    class="dropdown-toggle">Customers</a>
+                    <ul class="collapse list-unstyled" id="customerSubmenu">
+                        {% if user|has_perm:'customers,customer,view' %}
+                        <li>
+                            <a href="/customers/list">List</a>
+                        </li>
+                        {% endif %}
+                        {% if user|has_perm:'customers,customer,add' %}
+                        <li>
+                            <a href="/customers/create">Add new</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </li>
+                {% endif %}
+                {% if user|has_any_perm:'product' %}
+                <li>
+                    <a href="#productSubmenu"
+                    data-bs-toggle="collapse"
+                    aria-expanded="{% if request.session.opened_submenu == 'productSubmenu' %}true{% else %}false{% endif %}"
+                    role="button"
+                    class="dropdown-toggle">Products</a>
+                    <ul class="collapse list-unstyled" id="productSubmenu">
+                        {% if user|has_perm:'products,product,view' %}
+                        <li>
+                            <a href="/products/list">List</a>
+                        </li>
+                        {% endif %}
+                        {% if user|has_perm:'products,product,add' %}
+                        <li>
+                            <a href="/products/create">Add new</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </li>
+                {% endif %}
+                {% if user|has_any_perm:'docapplication' %}
+                <li>
+                    <a href="#customerApplicationSubmenu"
+                    data-bs-toggle="collapse"
+                    aria-expanded="{% if request.session.opened_submenu == 'customerApplicationSubmenu' %}true{% else %}false{% endif %}"
+                    role="button"
+                    class="dropdown-toggle">Customer Applications</a>
+                    <ul class="collapse list-unstyled" id="customerApplicationSubmenu">
+                        {% if user|has_perm:'customer_applications,docapplication,view' %}
+                        <li>
+                            <a href="/customer_applications/list">List</a>
+                        </li>
+                        {% endif %}
+                        {% if user|has_perm:'customer_applications,docapplication,add' %}
+                        <li>
+                            <a href="/customer_applications/create">Add new</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </li>
+                {% endif %}
+            {% endif %}
             <hr />
-            <!-- Login/Logout links -->
-            <div>
-                {% if user.is_authenticated %}
-                <p>Logged in as:</br>&lt;{{ user.username }}&gt;</p>
-                {% else %}
-                <p>Not Logged in</p>
-                {% endif %}
-            </div>
-        </div>
-    <hr />
-    <ul class="list-unstyled components">
-        {% if user.is_authenticated %}
-        <li>
-            <a href="#customerSubmenu"
-               data-bs-toggle="collapse"
-               aria-expanded="{% if request.session.opened_submenu == 'customerSubmenu' %}true{% else %}false{% endif %}"
-               role="button"
-               class="dropdown-toggle">Customers</a>
-            <ul class="collapse list-unstyled" id="customerSubmenu">
-                {% if perms.customers.view_customer %}
-                <li>
-                    <a href="/customers/list">List</a>
-                </li>
-                {% endif %}
-                {% if perms.customers.add_customer %}
-                <li>
-                    <a href="/customers/create">Add new</a>
-                </li>
-                {% endif %}
-            </ul>
-        </li>
-        <li>
-            <a href="#productSubmenu"
-               data-bs-toggle="collapse"
-               aria-expanded="{% if request.session.opened_submenu == 'productSubmenu' %}true{% else %}false{% endif %}"
-               role="button"
-               class="dropdown-toggle">Products</a>
-            <ul class="collapse list-unstyled" id="productSubmenu">
-                {% if perms.products.view_product %}
-                <li>
-                    <a href="/products/list">List</a>
-                </li>
-                {% endif %}
-                {% if perms.products.add_product %}
-                <li>
-                    <a href="/products/create">Add new</a>
-                </li>
-                {% endif %}
-            </ul>
-        </li>
-        <li>
-            <a href="#customerApplicationSubmenu"
-               data-bs-toggle="collapse"
-               aria-expanded="{% if request.session.opened_submenu == 'customerApplicationSubmenu' %}true{% else %}false{% endif %}"
-               role="button"
-               class="dropdown-toggle">Customer Applications</a>
-            <ul class="collapse list-unstyled" id="customerApplicationSubmenu">
-                {% if perms.customer_applications.view_docapplication %}
-                <li>
-                    <a href="/customer_applications/list">List</a>
-                </li>
-                {% endif %}
-                {% if perms.customer_applications.add_docapplication %}
-                <li>
-                    <a href="/customer_applications/create">Add new</a>
-                </li>
-                {% endif %}
-            </ul>
-        </li>
-    {% endif %}
-
-    <li>
-        <a href="#">About</a>
-    </li>
-    </ul>
-
-    {% if user.is_authenticated %}
-        <ul class="list-unstyled " >
-        <li>
-        <a href="{% url 'logout' %}">Logout</a>
-        </li>
+            <li><h4>CRM</h4></li>
+            <li>
+                <a href="#">Marketing Campaigns (TODO)</a>
+            </li>
+            <hr />
         </ul>
-    {% endif %}
+
+        <ul class="list-unstyled " >
+            <li>
+                <a href="#">About</a>
+            </li>
+        </ul>
+
     </nav>
 {% endblock %}
 {% block footer %}

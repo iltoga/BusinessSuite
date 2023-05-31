@@ -30,12 +30,12 @@ class ProductCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateView
 
     def form_valid(self, form):
         context = self.get_context_data()
-        required_documents = context['tasks']
+        tasks = context['tasks']
         with transaction.atomic():
             self.object = form.save()  # Save the instance first
-            if required_documents.is_valid():
-                required_documents.instance = self.object
-                required_documents.save()
+            if tasks.is_valid():
+                tasks.instance = self.object
+                tasks.save()
             else:
                 return super().form_invalid(form)
         return super().form_valid(form)
@@ -59,12 +59,12 @@ class ProductUpdateView(PermissionRequiredMixin, SuccessMessageMixin, UpdateView
 
     def form_valid(self, form):
         context = self.get_context_data()
-        required_documents = context['tasks']
+        tasks = context['tasks']
         with transaction.atomic():
             self.object = form.save()
-            if required_documents.is_valid():
-                required_documents.instance = self.object
-                required_documents.save()
+            if tasks.is_valid():
+                tasks.instance = self.object
+                tasks.save()
             else:
                 return super().form_invalid(form)
         return super().form_valid(form)

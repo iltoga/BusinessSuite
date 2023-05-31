@@ -1,6 +1,9 @@
+import pprint
 from django import forms
 from django.utils import timezone
 from django.core.exceptions import ValidationError
+
+from core.utils.ocr import extract_mrz_data
 from .models import DocApplication, RequiredDocument, DocWorkflow
 
 class DocApplicationFormCreate(forms.ModelForm):
@@ -14,14 +17,17 @@ class DocApplicationFormCreate(forms.ModelForm):
         }
 
 class DocApplicationFormUpdate(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super(DocApplicationFormUpdate, self).__init__(*args, **kwargs)
+        self.fields['customer'].disabled = True
+        self.fields['product'].disabled = True
+        self.fields['application_type'].disabled = True
+
     class Meta:
         model = DocApplication
         fields = ['application_type', 'customer', 'product', 'doc_date', 'price']
         widgets = {
             'doc_date': forms.DateInput(attrs={'type': 'date', 'value': timezone.now().strftime("%Y-%m-%d")}),
-            # 'customer': forms.Select(attrs={'disabled': True}),
-            # 'product': forms.Select(attrs={'disabled': True}),
-            # 'application_type': forms.Select(attrs={'disabled': True}),
         }
 
 
@@ -32,17 +38,24 @@ class RequiredDocumentCreateForm(forms.ModelForm):
 
 
 class RequiredDocumentUpdateForm(forms.ModelForm):
-    doc_type = forms.CharField(required=False, disabled=True)
+    ocr_check = forms.BooleanField(required=False, label='OCR Check (only for Passports)')
+
+    def __init__(self, *args, **kwargs):
+        super(RequiredDocumentUpdateForm, self).__init__(*args, **kwargs)
+        self.fields['doc_type'].disabled = True
+
     # Only users with the 'upload_document' permission can upload documents
     field_permissions = {
         'file': ['upload_document'],
+        'ocr_check': ['upload_document'],
     }
 
     class Meta:
         model = RequiredDocument
-        fields = ['doc_type', 'file', 'doc_number', 'expiration_date']
+        fields = ['doc_type', 'file', 'ocr_check', 'doc_number', 'expiration_date']
         widgets = {
             'expiration_date': forms.DateInput(attrs={'type': 'date'}),
+            'metadata': forms.Textarea(attrs={'rows': 5}),
         }
 
     def clean_file(self):
@@ -60,6 +73,23 @@ class RequiredDocumentUpdateForm(forms.ModelForm):
             if expiration_date < timezone.now().date():
                 raise ValidationError("Expiration date must not be in the past.")
         return expiration_date
+
+    def clean(self):
+        # Perform OCR if the user has checked the OCR checkbox
+        cleaned_data = super().clean()
+        ocr_check = cleaned_data.get("ocr_check", False)
+        file = cleaned_data.get("file", False)
+        if ocr_check and not file:
+            raise ValidationError("You must upload a file to perform OCR.")
+
+        if file and ocr_check:
+            try:
+                doc_metadata, mrz_data = extract_mrz_data(file)
+                cleaned_data['metadata'] = doc_metadata
+                cleaned_data['doc_number'] = mrz_data.get('document_number', False)
+                cleaned_data['expiration_date'] = mrz_data.get('expiration_date', False)
+            except Exception as e:
+                self.add_error('file', str(e))
 
 
 RequiredDocumentCreateFormSet = forms.inlineformset_factory(

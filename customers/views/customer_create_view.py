@@ -15,6 +15,5 @@ class CustomerCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateVie
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['action'] = reverse_lazy('customer-create')
         context['action_name'] = 'Create'
         return context

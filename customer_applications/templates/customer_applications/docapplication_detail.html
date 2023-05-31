@@ -25,8 +25,13 @@
             <th scope="col">Document Type</th>
             <th scope="col">Document Number</th>
             <th scope="col">Expiration Date</th>
-            <th scope="col">Document Link</th>
+            {% if perms.customer_applicatiopns.upload_documents %}
+            <th scope="col">View Document</th>
+            {% endif %}
+            <th scope="col">Completed</th>
+            {% if perms.customer_applicatiopns.change_requireddocument %}
             <th scope="col">Actions</th>
+            {% endif %}
           </tr>
         </thead>
         <tbody>
@@ -35,16 +40,27 @@
               <td>{{ document.doc_type }}</td>
               <td>{{ document.doc_number }}</td>
               <td>{{ document.expiration_date }}</td>
+              {% if perms.customer_applicatiopns.upload_documents %}
               <td>
-                {% if document.file_link and perms.customer_applicatiopns.upload_document %}
-                <a href="{{ document.file_link }}" target="_blank">View Document</a>
+                {% if document.file_link %}
+                    <a href="{{ document.file_link }}" target="_blank">View Document</a>
                 {% else %}
                   Document not uploaded.
                 {% endif %}
               </td>
+              {% endif %}
+              <td>
+                {% if document.completed %}
+                  {% include "components/field_checked_true.html" with text="Yes" %}
+                {% else %}
+                  {% include "components/field_checked_false.html" with text="No" %}
+                {% endif %}
+              </td>
+              {% if perms.customer_applicatiopns.change_requireddocument %}
               <td>
                 <a href="{% url 'customer-application-requireddocument-update' document.pk %}" class="btn btn-sm btn-warning">Edit</a>
               </td>
+              {% endif %}
             </tr>
           {% endfor %}
         </tbody>

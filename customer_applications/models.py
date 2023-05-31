@@ -83,6 +83,7 @@ class RequiredDocument(models.Model):
     file = models.FileField(upload_to=get_upload_to, blank=True)
     file_link = models.CharField(max_length=1024, blank=True)
     # metadata field to store the extracted metadata from the document
+    ocr_check = models.BooleanField(default=False)
     metadata = models.JSONField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

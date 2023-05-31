@@ -16,3 +16,7 @@ Scan documents for MRZ (machine readable zones) and extract info such as name, n
 The package provides tools for recognizing machine readable zones (MRZ) from scanned identification documents. The documents may be located rather arbitrarily on the page - the code tries to find anything resembling a MRZ and parse it from there.
 
 
+## Links
+
+Django Reactive!
+[Unicorn - and competitors](https://www.django-unicorn.com/docs/)
