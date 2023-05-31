@@ -63,10 +63,7 @@ class Customer(models.Model):
     birthdate = models.DateField(validators=[validate_birthdate])
     address_bali = models.TextField(blank=True, null=True)
     address_abroad = models.TextField(blank=True, null=True)
-    document_type = models.CharField(choices=DOCUMENT_TYPE_CHOICES, max_length=50)
-    document_id = models.CharField(max_length=50, unique=True, validators=[validate_document_id])
-    expiration_date = models.DateField(validators=[validateExpirationDate])
-    notify_expiration = models.BooleanField(default=True)
+    notify_documents_expiration = models.BooleanField(default=True)
     notify_by = models.CharField(choices=NOTIFY_BY_CHOICES, max_length=50, blank=True, null=True)
     notification_sent = models.BooleanField(default=False)
     objects = CustomerManager()
@@ -81,7 +78,7 @@ class Customer(models.Model):
     # clean method is where you can add custom validations for your model
     # note: it can be used here or in the form class
     def clean(self):
-        if self.notify_expiration and not self.notify_by:
+        if self.notify_documents_expiration and not self.notify_by:
             raise ValidationError('If notify expiration is true, notify by is mandatory.')
 
     def delete(self, *args, **kwargs):
