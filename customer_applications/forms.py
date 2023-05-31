@@ -90,6 +90,18 @@ class RequiredDocumentUpdateForm(forms.ModelForm):
                 cleaned_data['expiration_date'] = mrz_data.get('expiration_date', False)
             except Exception as e:
                 self.add_error('file', str(e))
+        # Check that the document is not expiring in less than prodcut.documents_min_validity days from this applicn's doc_date
+        expiration_date = cleaned_data.get('expiration_date', False)
+        if expiration_date:
+            if expiration_date < timezone.now().date():
+                raise ValidationError("Expiration date must not be in the past.")
+            doc_date = cleaned_data.get('doc_date', False)
+            if doc_date:
+                product = self.instance.doc_application.product
+                if (expiration_date - doc_date).days < product.documents_min_validity:
+                    self.add_error('expiration_date', "Document is expiring in less than %d days from the application date." % product.documents_min_validity)
+
+        return cleaned_data
 
 
 RequiredDocumentCreateFormSet = forms.inlineformset_factory(

@@ -93,5 +93,10 @@
                 }
             }
         });
+
+        // Document min validity should be at least the same as product validity
+        $('#id_validity').on('change', function() {
+            $('#id_documents_min_validity').val($(this).val());
+        });
     </script>
 {% endblock %}

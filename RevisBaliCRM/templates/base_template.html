@@ -196,6 +196,9 @@
                 // Save submenu state to local storage
                 localStorage.setItem('opened_submenu', submenuId);
             });
+
+            // dismiss alerts: set the alert to automatically fade out
+            $('.alert-dismissible').delay(3000).fadeOut("slow");
         </script>
         {% block body-after-jquery %}
         {% endblock %}

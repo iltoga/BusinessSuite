@@ -23,6 +23,7 @@ class Product(models.Model):
     product_type = models.CharField(max_length=50, choices=PRODUCT_TYPE_CHOICES, default='other')
     validity = models.PositiveIntegerField(blank=True, null=True)  # Validity in days
     required_documents = models.CharField(max_length=1024, blank=True)  # A comma-separated list of required documents
+    documents_min_validity = models.PositiveIntegerField(blank=True, null=True)  # Documents must be valid for this many days
     objects = ProductManager()
 
     class Meta:
