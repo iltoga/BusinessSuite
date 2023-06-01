@@ -13,16 +13,3 @@ class CustomerForm(forms.ModelForm):
         model = Customer
         fields = ['full_name', 'email', 'telephone', 'whatsapp', 'telegram', 'title', 'citizenship', 'birthdate',
                   'address_bali', 'address_abroad', 'notify_documents_expiration', 'notify_by']
-
-    # Already implemented in the model. I just wanted to show how to do it in the form class
-    # def clean(self):
-    #     cleaned_data = super().clean()
-    #     if not self.is_valid():
-    #         return cleaned_data
-    #     notify_documents_expiration = cleaned_data.get('notify_documents_expiration')
-    #     notify_by = cleaned_data.get('notify_by')
-
-    #     if notify_documents_expiration and not notify_by:
-    #         self.add_error('notify_by', ValidationError('This field is required when "notify expiration" is checked'))
-
-    #     return cleaned_data

@@ -6,7 +6,7 @@ from django.dispatch import receiver
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 from django import forms
-from core.utils.form_validators import validate_phone_number, validate_birthdate, validate_document_id, validateEmail, validateDocumentType, validateExpirationDate
+from core.utils.form_validators import validate_phone_number, validate_birthdate, validateEmail
 
 DOCUMENT_TYPE_CHOICES = [
     ('', '---------'),
@@ -86,31 +86,3 @@ class Customer(models.Model):
                 DELETE FROM customer_fts WHERE id = %s;
             ''', [self.id])
         super().delete(*args, **kwargs)
-
-# Create an FTS table for Customers after each migration
-@receiver(post_migrate)
-def create_fts_table(sender, **kwargs):
-    with connection.cursor() as cursor:
-        cursor.execute('''
-            CREATE VIRTUAL TABLE IF NOT EXISTS customer_fts
-            USING fts5(id UNINDEXED, full_name, document_id);
-        ''')
-
-# Before a customer is saved into the Customers table,
-# delete the old matching entry in the FTS table
-@receiver(pre_save, sender=Customer)
-def customer_before_save(sender, instance, **kwargs):
-    with connection.cursor() as cursor:
-        cursor.execute('''
-            DELETE FROM customer_fts WHERE id = %s;
-        ''', [instance.id])
-
-# After a customer is saved into the Customers table,
-# insert a matching entry into the FTS table
-@receiver(post_save, sender=Customer)
-def customer_after_save(sender, instance, **kwargs):
-    with connection.cursor() as cursor:
-        cursor.execute('''
-            INSERT INTO customer_fts (id, full_name, document_id)
-            VALUES (%s, %s, %s);
-        ''', [instance.id, instance.full_name, instance.document_id])

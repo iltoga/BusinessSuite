@@ -6,26 +6,18 @@ class CustomerListView(UnicornView):
     customers = []
     search_input = ''
     page = 1
-    items_per_page = 10
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(**kwargs)
-        self.customers = kwargs.get("customers")
+    items_per_page = 7
+    start_search_at = 3 # start searching after 3 characters
 
     def mount(self):
         self.load_customers()
 
-    def clear_states(self):
-        self.customers = []
-        self.search_input = ''
-
     def load_customers(self):
-        self.customers = list(Customer.objects.all().values())
+        self.customers = list(Customer.objects.all()[self.items_per_page*(self.page-1):self.items_per_page*self.page].values())
 
     def search(self):
-        if self.search_input:
-            self.customers = list(Customer.objects.search_customers(self.search_input)[self.items_per_page*(self.page-1):self.items_per_page*self.page].values())
-            print(self.customers)
+        if self.search_input and len(self.search_input) >= self.start_search_at:
+            self.customers = list(Customer.objects.search_customers(self.search_input).values())
         else:
             self.load_customers()
 

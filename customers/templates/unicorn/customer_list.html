@@ -37,26 +37,20 @@
         </tbody>
       </table>
 
-      <div class="pagination">
-        <span class="step-links">
-            {% if customers.has_previous %}
-                <a href="?page=1">&laquo; first</a>
-                <a href="?page={{ customers.previous_page_number }}">previous</a>
+      <div class="d-flex justify-content-center mt-3">
+        <div class="btn-group" role="group" aria-label="Basic example">
+            {% if page > 1 %}
+                <button class="btn btn-secondary" unicorn:click="previous_page">« First</button>
+                <button class="btn btn-secondary" unicorn:click="previous_page">Previous</button>
             {% endif %}
 
-            <span class="current">
-                {% if customers.paginator.count > 0 %}
-                    Page {{ customers.number }} of {{ customers.paginator.num_pages }}.
-                {% else %}
-                    <!-- No pages to display. -->
-                {% endif %}
-            </span>
+            <button class="btn btn-info disabled">Page {{ page }}</button>
 
-            {% if customers.has_next %}
-                <a href="?page={{ customers.next_page_number }}">next</a>
-                <a href="?page={{ customers.paginator.num_pages }}">last &raquo;</a>
+            {% if customers %}
+                <button class="btn btn-secondary" unicorn:click="next_page">Next</button>
+                <button class="btn btn-secondary" unicorn:click="next_page">Last »</button>
             {% endif %}
-        </span>
+        </div>
       </div>
       {% else %}
       <p>No customers found.</p>
