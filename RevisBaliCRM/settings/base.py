@@ -65,7 +65,8 @@ INSTALLED_APPS = [
     'crispy_bootstrap5',
     'models_logging',
     'django.contrib.humanize',
-    'fontawesomefree'
+    'fontawesomefree',
+    'django_unicorn',
 ]
 
 MIDDLEWARE = [

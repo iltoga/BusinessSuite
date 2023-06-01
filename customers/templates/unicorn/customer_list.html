@@ -1,0 +1,80 @@
+{% load check_perms %}
+{% load unicorn %}
+<div>
+    <div class="centered-content">
+      <h2>Customer List</h2>
+
+      <div class="col mb-2 p-2">
+        <!-- Search form -->
+        <form class="d-inline-flex align-items-center me-2" unicorn:submit.prevent="search" style="border: 1px solid; padding: 5px;">
+          <!-- make this search input debounce 2 seconds -->
+          <input type="text" class="form-control"
+            unicorn:model="search_input"
+            unicorn:keyup="search"
+            unicorn:keyup.escape="search_input=''"
+            placeholder="Search Customers" id="search_customer"></input>
+          <!-- <button class="btn btn-outline-secondary ms-2" type="submit" unicorn:click="search">Search</button> -->
+        </form>
+        <a href="{% url 'customer-create' %}" class="btn btn-primary">New customer</a>
+      </div>
+    </div>
+
+    <div class="centered-content">
+      {% if customers %}
+      <table class="table table-striped table-bordered">
+        <thead class="thead-light">
+          <tr>
+            <th scope="col">Full Name</th>
+            <th scope="col">Email</th>
+            <th scope="col">Telephone</th>
+            <th scope="col">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for customer in customers %}
+          <div class="customer_row">
+            <tr>
+              <td>{{ customer.full_name }}</td>
+              <td>{{ customer.email }}</td>
+              <td>{{ customer.telephone }}</td>
+              <td>
+                <a href="{% url 'customer-detail' customer.id %}" class="btn btn-primary btn-sm">View</a>
+                {% if user|has_perm:'customers,customer,change' %}
+                <a href="{% url 'customer-update' customer.id %}" class="btn btn-warning btn-sm">Edit</a>
+                {% endif %}
+                {% if user|has_perm:'customers,customer,delete' %}
+                <a href="{% url 'customer-delete' customer.id %}" class="btn btn-danger btn-sm">Delete</a>
+                {% endif %}
+              </td>
+            </tr>
+          </div>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <div class="pagination">
+        <span class="step-links">
+            {% if customers.has_previous %}
+                <a href="?page=1">&laquo; first</a>
+                <a href="?page={{ customers.previous_page_number }}">previous</a>
+            {% endif %}
+
+            <span class="current">
+                {% if customers.paginator.count > 0 %}
+                    Page {{ customers.number }} of {{ customers.paginator.num_pages }}.
+                {% else %}
+                    <!-- No pages to display. -->
+                {% endif %}
+            </span>
+
+            {% if customers.has_next %}
+                <a href="?page={{ customers.next_page_number }}">next</a>
+                <a href="?page={{ customers.paginator.num_pages }}">last &raquo;</a>
+            {% endif %}
+        </span>
+      </div>
+      {% else %}
+      <p>No customers found.</p>
+      {% endif %}
+    </div>
+</div>
