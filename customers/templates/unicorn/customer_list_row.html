@@ -1,0 +1,17 @@
+{% load check_perms %}
+<div class="customer_row">
+    <tr>
+      <td>{{ customer.full_name }}</td>
+      <td>{{ customer.email }}</td>
+      <td>{{ customer.telephone }}</td>
+      <td>
+        <a href="{% url 'customer-detail' customer.id %}" class="btn btn-primary btn-sm">View</a>
+        {% if user|has_perm:'customers,customer,change' %}
+        <a href="{% url 'customer-update' customer.id %}" class="btn btn-warning btn-sm">Edit</a>
+        {% endif %}
+        {% if user|has_perm:'customers,customer,delete' %}
+        <a href="{% url 'customer-delete' customer.id %}" class="btn btn-danger btn-sm">Delete</a>
+        {% endif %}
+      </td>
+    </tr>
+</div>
