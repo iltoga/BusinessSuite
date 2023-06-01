@@ -27,32 +27,27 @@
         <th scope="col">Full Name</th>
         <th scope="col">Email</th>
         <th scope="col">Telephone</th>
-        <th scope="col">Doc Type</th>
-        <th scope="col">Doc ID</th>
-        <th scope="col">Expiration Date</th>
         <th scope="col">Actions</th>
       </tr>
     </thead>
     <tbody>
       {% for customer in object_list %}
-      <tr>
-        <td>{{ customer.full_name }}</td>
-        <td>{{ customer.email }}</td>
-        <td>{{ customer.telephone }}</td>
-        <td>{{ customer.document_type }}</td>
-        <td>{{ customer.document_id }}</td>
-        <td class="{% if customer.expiration_date|is_in_notification_period %}bg-danger{% endif %}">{{ customer.expiration_date }}</td>
-
-        <td>
-          <a href="{% url 'customer-detail' customer.id %}" class="btn btn-primary btn-sm">View</a>
-          {% if user|has_perm:'customers,customer,change' %}
-          <a href="{% url 'customer-update' customer.id %}" class="btn btn-warning btn-sm">Edit</a>
-          {% endif %}
-          {% if user|has_perm:'customers,customer,delete' %}
-          <a href="{% url 'customer-delete' customer.id %}" class="btn btn-danger btn-sm">Delete</a>
-          {% endif %}
-        </td>
-      </tr>
+      <div class="customer_row" id="customer_row_{customer.pk}">
+        <tr>
+          <td>{{ customer.full_name }}</td>
+          <td>{{ customer.email }}</td>
+          <td>{{ customer.telephone }}</td>
+          <td>
+            <a href="{% url 'customer-detail' customer.id %}" class="btn btn-primary btn-sm">View</a>
+            {% if user|has_perm:'customers,customer,change' %}
+            <a href="{% url 'customer-update' customer.id %}" class="btn btn-warning btn-sm">Edit</a>
+            {% endif %}
+            {% if user|has_perm:'customers,customer,delete' %}
+            <a href="{% url 'customer-delete' customer.id %}" class="btn btn-danger btn-sm">Delete</a>
+            {% endif %}
+          </td>
+        </tr>
+      </div>
       {% endfor %}
     </tbody>
   </table>
@@ -95,7 +90,7 @@
       customers.forEach(customer => {
           var row = document.createElement('tr');
 
-          ['full_name', 'email', 'telephone', 'whatsapp', 'telegram', 'document_type', 'document_id'].forEach(field => {
+          ['full_name', 'email', 'telephone'].forEach(field => {
               var td = document.createElement('td');
               td.textContent = customer[field] || '';
               row.appendChild(td);
@@ -106,17 +101,15 @@
   }
 
   searchInput.addEventListener('input', function(e) {
-    // if (e.target.value.length >= 2) {
-        fetch("{% url 'api-customer-search' %}?q=" + e.target.value, {
-            credentials: 'same-origin'
-        })
-        .then(response => response.json())
-        .then(data => {
-            full_name = data.full_name;
-            updateTable(data);
-        })
-        .catch(error => console.error('Error:', error));
-    // }
+    var url = "{% url 'api-customer-search' %}?q=123456";
+    url = url.replace('123456', e.target.value);
+    restApiCall('GET', url, null,
+        data => {
+          full_name = data.full_name;
+          updateTable(data);
+        },
+        error => console.error('Error:', error)
+    );
 });
 
 </script>

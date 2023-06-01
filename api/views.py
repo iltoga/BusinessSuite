@@ -14,7 +14,6 @@ class SearchCustomers(APIView):
         query = request.GET.get('q', '')
         customers = self.queryset.filter(
             Q(full_name__icontains=query) |
-            Q(document_id__icontains=query) |
             Q(email__icontains=query)
         )
         serializer = CustomerSerializer(customers, many=True)

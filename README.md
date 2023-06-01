@@ -20,3 +20,6 @@ The package provides tools for recognizing machine readable zones (MRZ) from sca
 
 Django Reactive!
 [Unicorn - and competitors](https://www.django-unicorn.com/docs/)
+
+Document-ai
+[Accelerating Document AI](https://huggingface.co/blog/document-ai)

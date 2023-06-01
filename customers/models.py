@@ -38,7 +38,6 @@ class CustomerManager(models.Manager):
     def search_customers(self, query):
         return self.filter(
             models.Q(full_name__icontains=query) |
-            models.Q(document_id__icontains=query) |
             models.Q(email__icontains=query)
         )
     def fulltext_search_customers(self, query):
