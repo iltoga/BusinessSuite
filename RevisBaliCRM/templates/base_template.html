@@ -1,6 +1,7 @@
 {% extends "bootstrap_base.html" %}
 {% load static %}
 {% load check_perms %}
+<!-- custom-css is in <head> -->
 {% block custom-css %}
     <link rel="stylesheet" type="text/css" href="{% static 'css/bootstrap.css' %}">
     <link rel="stylesheet" type="text/css" href="{% static 'css/styles.css' %}">
@@ -29,7 +30,11 @@
     {% block head-after-jquery %}
     {% endblock %}
 {% endblock %}
+
 {% block content %}
+{% block body-csrf %}
+<!-- CSRF token for unicorn pages goes here -->
+{% endblock %}
 <div class="d-flex justify-content-center align-items-center flex-column">
     <h1 class="mb-4 text-center">Welcome to Revis Bali CRM</h1>
     <img class="mb-4" src="{% static 'logo_revis_bw.png' %}" alt="Revis Bali Logo" style="width: 70%;">
