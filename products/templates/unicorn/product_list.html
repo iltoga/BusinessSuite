@@ -1,0 +1,42 @@
+{% load unicorn %}
+{% load check_perms %}
+
+<div>
+    <div class="centered-content">
+        <h2>Product List</h2>
+
+        <div class="col mb-2 p-2">
+            <!-- Search form -->
+            {% include 'components/list_search_form.html' with placeholder='Search Products...' %}
+            {% if user|has_perm:'list_items,product,add' %}
+            <a href="{% url 'product-create' %}" class="btn btn-primary">New product</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="centered-content">
+        {% if list_items %}
+        <table class="table table-striped table-bordered">
+            <thead class="thead-light">
+            <tr>
+                <th scope="col">Name</th>
+                <th scope="col">Code</th>
+                <th scope="col">Product Type</th>
+                <th scope="col">Description</th>
+                <th scope="col">Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for product in list_items %}
+                {% unicorn 'product_list_row' %}
+            {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="pagination d-flex justify-content-center mt-3">
+        {% include 'components/list_nav_buttons.html' %}
+        {% else %}
+        <p>No Products found.</p>
+        {% endif %}
+    </div>
+</div>

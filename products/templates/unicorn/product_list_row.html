@@ -1,0 +1,18 @@
+{% load check_perms %}
+<div class="list_row">
+    <tr>
+        <td>{{ product.name }}</td>
+        <td>{{ product.code }}</td>
+        <td>{{ product.get_product_type_display }}</td>
+        <td>{{ product.description }}</td>
+        <td>
+        <a href="{% url 'product-detail' product.id %}" class="btn btn-primary btn-sm">View</a>
+        {% if user|has_perm:'products,product,change' %}
+        <a href="{% url 'product-update' product.id %}" class="btn btn-warning btn-sm">Edit</a>
+        {% endif %}
+        {% if user|has_perm:'products,product,delete' %}
+        <a href="{% url 'product-delete' product.id %}" class="btn btn-danger btn-sm">Delete</a>
+        {% endif %}
+        </td>
+    </tr>
+</div>
