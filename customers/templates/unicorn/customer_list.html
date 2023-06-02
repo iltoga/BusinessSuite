@@ -6,15 +6,7 @@
 
       <div class="col mb-2 p-2">
         <!-- Search form -->
-        <form class="d-inline-flex align-items-center me-2" unicorn:submit.prevent="search" style="border: 1px solid; padding: 5px;">
-          <!-- make this search input debounce 2 seconds -->
-          <input type="text" class="form-control"
-            unicorn:model="search_input"
-            unicorn:keyup="search"
-            unicorn:keyup.escape="search_input=''"
-            placeholder="Search Customers" id="search_customer"></input>
-          <!-- <button class="btn btn-outline-secondary ms-2" type="submit" unicorn:click="search">Search</button> -->
-        </form>
+        {% include 'components/list_search_form.html' with placeholder='Search Customers...' %}
         <a href="{% url 'customer-create' %}" class="btn btn-primary">New customer</a>
       </div>
     </div>
@@ -36,22 +28,7 @@
             {% endfor %}
         </tbody>
       </table>
-
-      <div class="d-flex justify-content-center mt-3">
-        <div class="btn-group" role="group" aria-label="Basic example">
-            {% if page > 1 %}
-                <button class="btn btn-secondary" unicorn:click="previous_page">« First</button>
-                <button class="btn btn-secondary" unicorn:click="previous_page">Previous</button>
-            {% endif %}
-
-            <button class="btn btn-info disabled">Page {{ page }}</button>
-
-            {% if customers %}
-                <button class="btn btn-secondary" unicorn:click="next_page">Next</button>
-                <button class="btn btn-secondary" unicorn:click="next_page">Last »</button>
-            {% endif %}
-        </div>
-      </div>
+      {% include 'components/list_nav_buttons.html' %}
       {% else %}
       <p>No customers found.</p>
       {% endif %}
