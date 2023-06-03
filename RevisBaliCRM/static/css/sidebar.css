@@ -1,0 +1,17 @@
+/* Remove animation from the sidebar when collapsed */
+#sidebar.active {
+    margin-left: -250px;
+    transition: none;
+}
+
+/* Remove animation from the content when the sidebar is collapsed */
+#content.active {
+    margin-left: 0px;
+    transition: none;
+}
+
+/* Remove animation from showing and hiding the sidebar */
+#sidebar.active.animate,
+#content.active.animate {
+    transition: none;
+}

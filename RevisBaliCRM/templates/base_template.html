@@ -199,49 +199,18 @@
             <p>&copy; 2023 Revis Bali CRM. All rights reserved.</p>
         </footer>
     {% endif %}
-    {% block footer-scripts %}
-        <!-- Initialize Select2 -->
-        <script>
-            $(document).ready(function() {
-                $('.select2').select2();
+{% endblock %}
 
-                let activeLink = localStorage.getItem('active-link');
-                if (activeLink) {
-                    // set active link
-                    $(`#sidebar .collapse a[href="${activeLink}"]`).addClass('active');
-                }
-
-                let opened_submenu = localStorage.getItem('opened_submenu');
-                if (opened_submenu) {
-                    $("#" + opened_submenu).addClass('show');
-                    // set aria-expanded to true for the dropdown toggle of the opened submenu
-                    $('a[href="#' + opened_submenu + '"]').attr('aria-expanded', 'true');
-                }
-            });
-
-            $(".dropdown-toggle").click(function() {
-                let submenuId = $(this).attr("href").substring(1); // Get the submenu ID from the href attribute
-                // Save submenu state to local storage
-                localStorage.setItem('opened_submenu', submenuId);
-                // Set aria-expanded to true for the clicked dropdown toggle, and false for the others
-                $('.dropdown-toggle').attr('aria-expanded', 'false');
-                $(this).attr('aria-expanded', 'true');
-            });
-
-            // Only target anchors in submenus for the click handler
-            $('#sidebar .collapse a').on('click', function (e) {
-                // remove 'active' class from all other links
-                $('#sidebar .collapse a').removeClass('active');
-                // add 'active' class to clicked link
-                $(this).addClass('active');
-                // save active link to local storage
-                localStorage.setItem('active-link', $(this).attr('href'));
-            });
+{% block after-bootstrap-js %}
+    <script>
+        // Initialize select2 dropdown
+        $(document).ready(function() {
+            $('.select2').select2();
 
             // dismiss alerts: set the alert to automatically fade out
             $('.alert-dismissible').delay(3000).fadeOut("slow");
-        </script>
-        {% block body-after-jquery %}
-        {% endblock %}
-    {% endblock %}
+
+        });
+
+    </script>
 {% endblock %}
