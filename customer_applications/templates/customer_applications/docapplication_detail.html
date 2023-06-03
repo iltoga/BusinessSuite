@@ -3,64 +3,95 @@
 {% load humanize %}
 
 {% block content %}
-  <div class="container my-4">
-    <div class="card">
-      <div class="card-header bg-primary text-white">
-        <h3>{{ docapplication.product.name }} Application for {{ docapplication.customer.full_name }}</h3>
-      </div>
-      <table class="table">
-        <tbody>
-            <tr><th scope="row" class="text-start">Application ID</th><td class="text-start">{{ docapplication.pk }}</td></tr>
-            <tr><th scope="row" class="text-start">Application Type</th><td class="text-start">{{ docapplication.application_type }}</td></tr>
-            <tr><th scope="row" class="text-start">Customer</th><td class="text-start">{{ docapplication.customer.full_name }}</td></tr>
-            <tr><th scope="row" class="text-start">Product</th><td class="text-start">{{ docapplication.product.name }}</td></tr>
-            <tr><th scope="row" class="text-start">Document Date</th><td class="text-start">{{ docapplication.doc_date }}</td></tr>
-            <tr><th scope="row" class="text-start">Price</th><td class="text-start">{{ docapplication.price|floatformat:2|intcomma }}</td></tr>
-        </tbody>
-      </table>
+<div class="container my-4">
+  <div class="card">
+    <div class="card-header bg-primary text-white">
+      <h3>{{ docapplication.product.name }} Application for {{ docapplication.customer.full_name }}</h3>
+    </div>
+    <table class="table">
+      <tbody>
+        <tr>
+          <th scope="row" class="text-start">Application ID</th>
+          <td class="text-start">{{ docapplication.pk }}</td>
+        </tr>
+        <tr>
+          <th scope="row" class="text-start">Application Type</th>
+          <td class="text-start">{{ docapplication.application_type }}</td>
+        </tr>
+        <tr>
+          <th scope="row" class="text-start">Customer</th>
+          <td class="text-start">{{ docapplication.customer.full_name }}</td>
+        </tr>
+        <tr>
+          <th scope="row" class="text-start">Product</th>
+          <td class="text-start">{{ docapplication.product.name }}</td>
+        </tr>
+        <tr>
+          <th scope="row" class="text-start">Document Date</th>
+          <td class="text-start">{{ docapplication.doc_date }}</td>
+        </tr>
+        <tr>
+          <th scope="row" class="text-start">Price</th>
+          <td class="text-start">{{ docapplication.price|floatformat:2|intcomma }}</td>
+        </tr>
+      </tbody>
+    </table>
 
-      <h4 class="my-4">Required Documents</h4>
-      {% include "customer_applications/_required_documents_table.html" with required_documents=docapplication.required_documents.all %}
+    <h4 class="my-4">Required Documents</h4>
+    {% include "customer_applications/_required_documents_table.html" with
+    required_documents=docapplication.required_documents.all %}
 
-      <h4 class="my-4">Workflow</h4>
-      {% for workflow in docapplication.workflows.all %}
-      <table class="table">
-        <tbody>
-            <tr><th scope="row" class="text-start">Task</th><td class="text-start">{{ workflow.task.name }}</td></tr>
-            <tr><th scope="row" class="text-start">Application Date</th><td class="text-start">{{ workflow.application_date }}</td></tr>
-            <tr><th scope="row" class="text-start">Status</th><td class="text-start">{{ workflow.status }}</td></tr>
-            <tr><th scope="row" class="text-start">Notes</th><td class="text-start">{{ workflow.notes }}</td></tr>
-        </tbody>
-      </table>
-      {% endfor %}
-      <div class="card-body">
-        <a href="{% url 'customer-application-list' %}" class="btn btn-primary">Back to Applications List</a>
-      </div>
-      <div class="card-footer text-muted">
-        {% if perms.customer_applications.can_audit %}
-        <table>
-            <tr>
-                <th scope="row" class="text-start">Created By</th>
-                <td class="text-start">
-                    <small style="margin-left: 20px;">
-                        {{ docapplication.created_by }}
-                        (Created At: {{ docapplication.created_at|date:"Y-m-d H:i" }})
-                    </small>
-                </td>
-            </tr>
-            {% if docapplication.created_at|date:"Y-m-d H:i" != docapplication.updated_at|date:"Y-m-d H:i" %}
-            <tr>
-                <th scope="row" class="text-start">Updated By</th>
-                <td class="text-start">
-                    <small style="margin-left: 20px;">
-                        {{ docapplication.updated_by }}
-                        (Last Updated At: {{ docapplication.updated_at|date:"Y-m-d H:i" }})
-                    </small>
-                </td>
-            </tr>
-            {% endif %}
-        </table>
+    <h4 class="my-4">Workflow</h4>
+    {% for workflow in docapplication.workflows.all %}
+    <table class="table">
+      <tbody>
+        <tr>
+          <th scope="row" class="text-start">Task</th>
+          <td class="text-start">{{ workflow.task.name }}</td>
+        </tr>
+        <tr>
+          <th scope="row" class="text-start">Application Date</th>
+          <td class="text-start">{{ workflow.application_date }}</td>
+        </tr>
+        <tr>
+          <th scope="row" class="text-start">Status</th>
+          <td class="text-start">{{ workflow.status }}</td>
+        </tr>
+        <tr>
+          <th scope="row" class="text-start">Notes</th>
+          <td class="text-start">{{ workflow.notes }}</td>
+        </tr>
+      </tbody>
+    </table>
+    {% endfor %}
+    <div class="card-body">
+      <a href="{% url 'customer-application-list' %}" class="btn btn-primary">Back to List</a>
+    </div>
+    <div class="card-footer text-muted">
+      {% if perms.customer_applications.can_audit %}
+      <table>
+        <tr>
+          <th scope="row" class="text-start">Created By</th>
+          <td class="text-start">
+            <small style="margin-left: 20px;">
+              {{ docapplication.created_by }}
+              (Created At: {{ docapplication.created_at|date:"Y-m-d H:i" }})
+            </small>
+          </td>
+        </tr>
+        {% if docapplication.created_at|date:"Y-m-d H:i" != docapplication.updated_at|date:"Y-m-d H:i" %}
+        <tr>
+          <th scope="row" class="text-start">Updated By</th>
+          <td class="text-start">
+            <small style="margin-left: 20px;">
+              {{ docapplication.updated_by }}
+              (Last Updated At: {{ docapplication.updated_at|date:"Y-m-d H:i" }})
+            </small>
+          </td>
+        </tr>
         {% endif %}
+      </table>
+      {% endif %}
     </div>
   </div>
-{% endblock %}
+  {% endblock %}

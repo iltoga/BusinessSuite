@@ -1,119 +1,12 @@
 {% extends "base_template.html" %}
-{% load static %}
-{% load view_filters %}
+{% load unicorn %}
 
 {% block title %}RevisCRM - List Customer Applications{% endblock %}
 
-{% block content %}
-<div class="centered-content">
-  <h2>Customer Applications</h2>
-
-  <div class="col", style="margin-bottom: 10px;padding: 10px;">
-    <!-- Search form -->
-    <form method="get" style="margin-right: 20px;">
-      <input type="text" name="q" placeholder="Search applications">
-      <input type="submit" value="Search">
-    </form>
-    <a href="{% url 'customer-application-create' %}" class="btn btn-primary">New application</a>
-  </div>
-
-<div class="centered-content">
-
-  {% if object_list %}
-  <table class="table table-striped table-bordered">
-    <thead class="thead-light">
-      <tr>
-        <th scope="col">Application ID</th>
-        <th scope="col">Doc Type</th>
-        <th scope="col">Product</th>
-        <th scope="col">Customer</th>
-        <th scope="col">Document Date</th>
-        <th scope="col">Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for docapplication in object_list %}
-      <tr>
-        <td>{{ docapplication.pk }}</td>
-        <td>{{ docapplication.application_type }}</td>
-        <td>{{ docapplication.product }}</td>
-        <td>{{ docapplication.customer }}</td>
-        <td>{{ docapplication.doc_date }}</td>
-        <td>
-          <a href="{% url 'customer-application-detail' docapplication.id %}" class="btn btn-primary btn-sm">View</a>
-          {% if perms.customer_applicatiopns.change_docapplication %}
-          <a href="{% url 'customer-application-update' docapplication.id %}" class="btn btn-warning btn-sm">Edit</a>
-          {% endif %}
-          {% if perms.customer_applicatiopns.delete_docapplication %}
-          <a href="{% url 'customer-application-delete' docapplication.id %}" class="btn btn-danger btn-sm">Delete</a>
-          {% endif %}
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-
-  <div class="pagination">
-    <span class="step-links">
-        {% if object_list.has_previous %}
-            <a href="?page=1">&laquo; first</a>
-            <a href="?page={{ object_list.previous_page_number }}">previous</a>
-        {% endif %}
-
-        <span class="current">
-            {% if object_list.paginator.count > 0 %}
-                Page {{ object_list.number }} of {{ object_list.paginator.num_pages }}.
-            {% else %}
-                <!-- No pages to display. -->
-            {% endif %}
-        </span>
-
-        {% if object_list.has_next %}
-            <a href="?page={{ object_list.next_page_number }}">next</a>
-            <a href="?page={{ object_list.paginator.num_pages }}">last &raquo;</a>
-        {% endif %}
-    </span>
-  </div>
-
-  {% else %}
-  <p>No applications found.</p>
-  {% endif %}
-</div>
+{% block head-after-jquery %}
+  {% unicorn_scripts %}
 {% endblock %}
 
-{% block after-bootstrap-js %}
-<!-- <script>
-  var searchInput = document.querySelector('input[name="q"]');
-  var tableBody = document.querySelector('.table tbody');
-
-  function updateTable(customers) {
-      tableBody.innerHTML = '';
-      customers.forEach(customer => {
-          var row = document.createElement('tr');
-
-          ['full_name', 'email', 'telephone', 'whatsapp', 'telegram', 'document_type', 'document_id'].forEach(field => {
-              var td = document.createElement('td');
-              td.textContent = customer[field] || '';
-              row.appendChild(td);
-          });
-
-          tableBody.appendChild(row);
-      });
-  }
-
-  searchInput.addEventListener('input', function(e) {
-    // if (e.target.value.length >= 2) {
-        fetch("{% url 'api-customer-search' %}?q=" + e.target.value, {
-            credentials: 'same-origin'
-        })
-        .then(response => response.json())
-        .then(data => {
-            full_name = data.full_name;
-            updateTable(data);
-        })
-        .catch(error => console.error('Error:', error));
-    // }
-});
-
-</script> -->
+{% block content %}
+  {% unicorn 'docapplication_list' %}
 {% endblock %}

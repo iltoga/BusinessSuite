@@ -1,0 +1,43 @@
+{% load unicorn %}
+{% load check_perms %}
+
+<div>
+  <div class="centered-content">
+    <h2>Customer Applications</h2>
+
+    <div class="col mb-2 p-2">
+      <!-- Search form -->
+      {% include 'components/list_search_form.html' with placeholder='Search Customers...' %}
+      {% if user|has_perm:'customer_applicatiopns,docapplication,add' %}
+      <a href="{% url 'customer-application-create' %}" class="btn btn-primary">New application</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <div>
+    <div class="centered-content">
+
+      {% if list_items %}
+      <table class="table table-striped table-bordered">
+        <thead class="thead-light">
+          <tr>
+            <th scope="col">Application ID</th>
+            <th scope="col">Doc Type</th>
+            <th scope="col">Product</th>
+            <th scope="col">Customer</th>
+            <th scope="col">Document Date</th>
+            <th scope="col">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for docapplication in list_items %}
+          {% unicorn 'docapplication_list_row' %}
+          {% endfor %}
+        </tbody>
+      </table>
+      {% include 'components/list_pagination_buttons.html' %}
+      {% else %}
+      <p>No applications found.</p>
+      {% endif %}
+    </div>
+  </div>

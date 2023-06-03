@@ -13,18 +13,17 @@ class SearchListView(UnicornView):
     model_search_method = ''
 
     def mount(self):
-        model = self.model
         self.total_items = self.model.objects.count()
         self.total_pages = ceil(self.total_items / self.items_per_page)
         self.load_items()
 
     def load_items(self):
-        self.list_items = list(self.model.objects.all()[self.items_per_page*(self.page-1):self.items_per_page*self.page].values())
+        self.list_items = list(self.model.objects.all()[self.items_per_page*(self.page-1):self.items_per_page*self.page])
 
     def search(self):
         if self.search_input and len(self.search_input) >= self.start_search_at:
             search_func = getattr(self.model.objects, self.model_search_method)
-            self.list_items = list(search_func(self.search_input).values())
+            self.list_items = list(search_func(self.search_input))
             self.total_items = len(self.list_items)
             self.total_pages = ceil(self.total_items / self.items_per_page)
         else:

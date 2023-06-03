@@ -40,6 +40,10 @@
 {% block after-bootstrap-js %}
     {{ block.super }}
     <script>
+        $(document).ready(function() {
+            // set application type to 'visa' by default
+            $('#id_application_type').val('visa');
+        });
         // Function to check if customer and application type are selected
         function checkSelected() {
             if ($('#id_customer').val() && $('#id_application_type').val()) {
