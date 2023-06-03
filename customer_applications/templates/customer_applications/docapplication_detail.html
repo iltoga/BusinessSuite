@@ -6,17 +6,13 @@
 <div class="container my-4">
   <div class="card">
     <div class="card-header bg-primary text-white">
-      <h3>{{ docapplication.product.name }} Application for {{ docapplication.customer.full_name }}</h3>
+      <h3>(#{{ docapplication.pk }}) {{ docapplication.product.name }} Application - {{ docapplication.customer.full_name }}</h3>
     </div>
     <table class="table">
       <tbody>
         <tr>
-          <th scope="row" class="text-start">Application ID</th>
-          <td class="text-start">{{ docapplication.pk }}</td>
-        </tr>
-        <tr>
           <th scope="row" class="text-start">Application Type</th>
-          <td class="text-start">{{ docapplication.application_type }}</td>
+          <td class="text-start">{{ docapplication.get_application_type_display }}</td>
         </tr>
         <tr>
           <th scope="row" class="text-start">Customer</th>
@@ -37,35 +33,22 @@
       </tbody>
     </table>
 
-    <h4 class="my-4">Required Documents</h4>
-    {% include "customer_applications/_required_documents_table.html" with
-    required_documents=docapplication.required_documents.all %}
+    <h3 class="text-center my-4">Required Documents</h3>
+    {% include "customer_applications/_required_documents_table.html" with required_documents=docapplication.required_documents.all %}
 
-    <h4 class="my-4">Workflow</h4>
-    {% for workflow in docapplication.workflows.all %}
-    <table class="table">
-      <tbody>
-        <tr>
-          <th scope="row" class="text-start">Task</th>
-          <td class="text-start">{{ workflow.task.name }}</td>
-        </tr>
-        <tr>
-          <th scope="row" class="text-start">Application Date</th>
-          <td class="text-start">{{ workflow.application_date }}</td>
-        </tr>
-        <tr>
-          <th scope="row" class="text-start">Status</th>
-          <td class="text-start">{{ workflow.status }}</td>
-        </tr>
-        <tr>
-          <th scope="row" class="text-start">Notes</th>
-          <td class="text-start">{{ workflow.notes }}</td>
-        </tr>
-      </tbody>
-    </table>
-    {% endfor %}
+    {% if docapplication.is_document_collection_completed == False %}
+    <div class="alert alert-warning" role="alert">
+      <h3 class="alert-heading">Cannot Start Processing Application</h3>
+      <p>
+        All documents must be uploaded before can start processing it.
+      </p>
+    </div>
+    {% else %}
+      <h3 class="my-4">Process Application</h3>
+      {% include "customer_applications/_doc_workflow_table.html" with workflow=docapplication.doc_workflow.all %}
+    {% endif %}
     <div class="card-body">
-      <a href="{% url 'customer-application-list' %}" class="btn btn-primary">Back to List</a>
+      <a href="{% url 'customer-application-list' %}" class="btn btn-primary">Back</a>
     </div>
     <div class="card-footer text-muted">
       {% if perms.customer_applications.can_audit %}

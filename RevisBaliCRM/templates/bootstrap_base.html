@@ -13,15 +13,18 @@
     <link href="{% static 'fonts.css' %}" rel="stylesheet">
     <link href="{% static 'layout.css' %}" rel="stylesheet">
 
-    <script>
-        var cssLink = document.createElement("link");
-        cssLink.href = "{% static 'css/sidebar.css' %}";
-        cssLink.rel = "stylesheet";
-        cssLink.type = "text/css";
-        if (localStorage.getItem('sidebarCollapse') === 'active') {
-            document.getElementsByTagName("head")[0].appendChild(cssLink);
+    <style>
+        /* content for the sidebar when collapsed */
+        #sidebar.active {
+            margin-left: -250px;
         }
-    </script>
+
+        /* content when the sidebar is collapsed */
+        #content.active {
+            margin-left: 0px;
+        }
+
+    </style>
     {% block custom-css %}
 
     {% endblock %}

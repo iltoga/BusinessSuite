@@ -1,3 +1,4 @@
+{% load check_perms %}
 <table class="table">
     <thead>
       <tr>
@@ -8,7 +9,7 @@
         <th scope="col">View Document</th>
         {% endif %}
         <th scope="col">Completed</th>
-        {% if perms.customer_applications.change_requireddocument %}
+        {% if user|has_perm:'customer_applications,requireddocument,change' %}
         <th scope="col">Actions</th>
         {% endif %}
       </tr>
@@ -19,7 +20,7 @@
           <td>{{ document.doc_type }}</td>
           <td>{{ document.doc_number }}</td>
           <td>{{ document.expiration_date }}</td>
-          {% if perms.customer_applications.upload_documents %}
+          {% if user|has_perm:'customer_applications,requireddocument,upload_document' %}
           <td>
             {% if document.file_link %}
               <a href="{{ document.file_link }}" target="_blank">View Document</a>
@@ -35,9 +36,13 @@
               {% include "components/field_checked_false.html" with text="No" %}
             {% endif %}
           </td>
-          {% if perms.customer_applications.change_requireddocument %}
+          {% if user|has_perm:'customer_applications,requireddocument,change' %}
           <td>
-            <a href="{% url 'customer-application-requireddocument-update' document.pk %}" class="btn btn-sm btn-warning">Edit</a>
+            {% if document.completed %}
+              <a href="{% url 'customer-application-requireddocument-update' document.pk %}" class="btn btn-sm btn-danger">Update Document</a>
+            {% else %}
+              <a href="{% url 'customer-application-requireddocument-update' document.pk %}" class="btn btn-sm btn-warning">Upload Document</a>
+            {% endif %}
           </td>
           {% endif %}
         </tr>

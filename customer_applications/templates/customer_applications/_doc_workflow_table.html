@@ -1,0 +1,29 @@
+{% load check_perms %}
+<table class="table">
+    <thead>
+      <tr>
+        <th scope="col">Task/th>
+        <th scope="col">Application Date</th>
+        <th scope="col">Status</th>
+        <th scope="col">Notes</th>
+        {% if user|has_perm:'customer_applications,docworkflow,change' %}
+        <th scope="col">Actions</th>
+        {% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for docworkflow in workflow %}
+        <tr>
+          <td>{{ docworkflow.task.name }}</td>
+          <td>{{ docworkflow.application_date }}</td>
+          <td>{{ docworkflow.status }}</td>
+          <td>{{ docworkflow.notes }}</td>
+          {% if user|has_perm:'customer_applications,requireddocument,change' %}
+          <td>
+              <a href="{% url 'customer-application-requireddocument-update' document.pk %}" class="btn btn-sm btn-danger">Update Document</a>
+          </td>
+          {% endif %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>

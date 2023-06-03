@@ -35,19 +35,21 @@ class DocApplication(models.Model):
     objects = DocApplicationManager()
 
     @property
-    def current_step(self):
-        """Returns the current step of the application, which is the first non Completed step of the workflow."""
-        return self.workflows.exclude(status='completed').first().step
+    def is_document_collection_completed(self):
+        """Returns True if all required documents are completed, False otherwise."""
+        all_docs_count = self.required_documents.count()
+        completed_docs_count = self.required_documents.filter(completed=True).count()
+        return all_docs_count == completed_docs_count
 
     @property
-    def current_task(self):
-        """Returns the current task of the application, which is the first non Completed task of the workflow."""
-        return self.workflows.exclude(status='completed').first().task
+    def current_workflow_task(self):
+        last_workflow = self.workflows.last()
+        return last_workflow.task if last_workflow else None
 
     @property
-    def current_status(self):
-        """Returns the current status of the application, which is the status of the first non Completed step of the workflow."""
-        return self.workflows.exclude(status='completed').first().status
+    def current_workflow_status(self):
+        last_workflow = self.workflows.last()
+        return last_workflow.status if last_workflow else None
 
     class Meta:
         ordering = ['application_type']

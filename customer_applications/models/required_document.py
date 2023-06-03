@@ -27,15 +27,12 @@ class RequiredDocument(models.Model):
     file_link = models.CharField(max_length=1024, blank=True)
     # metadata field to store the extracted metadata from the document
     ocr_check = models.BooleanField(default=False)
+    completed = models.BooleanField(default=False)
     metadata = models.JSONField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='created_by_required_document')
     updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='updated_by_required_document', blank=True, null=True)
-
-    @property
-    def completed(self):
-        return bool(self.file_link)
 
     class Meta:
         ordering = ['doc_type']
@@ -59,7 +56,9 @@ class RequiredDocument(models.Model):
 
         if self.file:
             self.file_link = self.file.url
+            self.completed = True
         else:
             self.file_link = ''
+            self.completed = False
 
         super(RequiredDocument, self).save(*args, **kwargs)

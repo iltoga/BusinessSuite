@@ -6,8 +6,11 @@
     <td>{{ docapplication.product }}</td>
     <td>{{ docapplication.customer }}</td>
     <td>{{ docapplication.doc_date }}</td>
+    {% if docapplication.current_workflow_task %}
+      <td>{{ docapplication.current_workflow_task }} (docapplication.current_workflow_status)</td>
+    {% endif %}
     <td>
-      <a href="{% url 'customer-application-detail' docapplication.id %}" class="btn btn-primary btn-sm">View</a>
+      <a href="{% url 'customer-application-detail' docapplication.id %}" class="btn btn-primary btn-sm">Manage</a>
       {% if user|has_perm:'customer_applicatiopns,docapplication,change' %}
       <a href="{% url 'customer-application-update' docapplication.id %}" class="btn btn-warning btn-sm">Edit</a>
       {% endif %}
