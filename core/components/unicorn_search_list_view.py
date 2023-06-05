@@ -1,7 +1,7 @@
 from django_unicorn.components import UnicornView
 from math import ceil
 
-class SearchListView(UnicornView):
+class UnicornSearchListView(UnicornView):
     list_items = []
     search_input = ''
     page = 1

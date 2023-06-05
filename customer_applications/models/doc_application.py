@@ -54,6 +54,7 @@ class DocApplication(models.Model):
     class Meta:
         ordering = ['application_type']
 
+    # return component_id
     def __str__(self):
         return self.product.name + ' - ' + self.customer.full_name + ' - ' + self.doc_date.strftime('%d/%m/%Y')
 

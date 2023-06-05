@@ -1,0 +1,80 @@
+{% extends "base_template.html" %}
+{% load static %}
+{% load humanize %}
+
+{% block content %}
+<div class="container my-4">
+  <div class="card">
+    <div class="card-header bg-primary text-white">
+      <h3>(#{{ docapplication.pk }}) {{ docapplication.product.name }} Application - {{ docapplication.customer.full_name }}</h3>
+    </div>
+    <table class="table">
+      <tbody>
+        <tr>
+          <th scope="row" class="text-start">Application Type</th>
+          <td class="text-start">{{ docapplication.get_application_type_display }}</td>
+        </tr>
+        <tr>
+          <th scope="row" class="text-start">Customer</th>
+          <td class="text-start">{{ docapplication.customer.full_name }}</td>
+        </tr>
+        <tr>
+          <th scope="row" class="text-start">Product</th>
+          <td class="text-start">{{ docapplication.product.name }}</td>
+        </tr>
+        <tr>
+          <th scope="row" class="text-start">Document Date</th>
+          <td class="text-start">{{ docapplication.doc_date }}</td>
+        </tr>
+        <tr>
+          <th scope="row" class="text-start">Price</th>
+          <td class="text-start">{{ docapplication.price|floatformat:2|intcomma }}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3 class="text-center my-4">Required Documents</h3>
+    {% include "customer_applications/_required_documents_table.html" with required_documents=docapplication.required_documents.all %}
+
+    {% if docapplication.is_document_collection_completed == False %}
+    <div class="alert alert-warning" role="alert">
+      <h3 class="alert-heading">Cannot Start Processing Application</h3>
+      <p>
+        All documents must be uploaded before can start processing it.
+      </p>
+    </div>
+    {% else %}
+      <h3 class="my-4">Process Application</h3>
+      {% include "customer_applications/_doc_workflow_table.html" with workflow=docapplication.doc_workflow.all %}
+    {% endif %}
+    <div class="card-body">
+      <a href="{% url 'customer-application-list' %}" class="btn btn-primary">Back</a>
+    </div>
+    <div class="card-footer text-muted">
+      {% if perms.customer_applications.can_audit %}
+      <table>
+        <tr>
+          <th scope="row" class="text-start">Created By</th>
+          <td class="text-start">
+            <small style="margin-left: 20px;">
+              {{ docapplication.created_by }}
+              (Created At: {{ docapplication.created_at|date:"Y-m-d H:i" }})
+            </small>
+          </td>
+        </tr>
+        {% if docapplication.created_at|date:"Y-m-d H:i" != docapplication.updated_at|date:"Y-m-d H:i" %}
+        <tr>
+          <th scope="row" class="text-start">Updated By</th>
+          <td class="text-start">
+            <small style="margin-left: 20px;">
+              {{ docapplication.updated_by }}
+              (Last Updated At: {{ docapplication.updated_at|date:"Y-m-d H:i" }})
+            </small>
+          </td>
+        </tr>
+        {% endif %}
+      </table>
+      {% endif %}
+    </div>
+  </div>
+  {% endblock %}
