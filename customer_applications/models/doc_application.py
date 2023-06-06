@@ -41,22 +41,38 @@ class DocApplication(models.Model):
         completed_docs_count = self.required_documents.filter(completed=True).count()
         return all_docs_count == completed_docs_count
 
+    # check if all workflows are completed (workflow status = completed)
     @property
-    def current_workflow_task(self):
-        last_workflow = self.workflows.last()
-        return last_workflow.task if last_workflow else None
+    def all_workflow_completed(self):
+        """Returns True if all workflows are completed, False otherwise."""
+        all_workflows_count = self.workflows.count()
+        completed_workflows_count = self.workflows.filter(status='completed').count()
+        return all_workflows_count == completed_workflows_count
 
     @property
-    def current_workflow_status(self):
+    def current_workflow(self):
         last_workflow = self.workflows.last()
-        return last_workflow.status if last_workflow else None
+        return last_workflow if last_workflow else None
+
+    # get next workflow task
+    @property
+    def next_task(self):
+        tasks = self.product.tasks
+        if self.current_workflow:
+            cur_task_step_no = self.current_workflow.task.step
+            # if current task is the last task, return None
+            if cur_task_step_no == tasks.last().step:
+                return None
+            return tasks.filter(step=cur_task_step_no+1).first()
+        else:
+            task = tasks.first()
+            return task if task else None
 
     class Meta:
         ordering = ['application_type']
 
-    # return component_id
     def __str__(self):
-        return self.product.name + ' - ' + self.customer.full_name + ' - ' + self.doc_date.strftime('%d/%m/%Y')
+        return self.product.name + ' - ' + self.customer.full_name + ' - ' + f'appID_{self.pk}'
 
     def save(self, *args, **kwargs):
         self.updated_at = timezone.now()

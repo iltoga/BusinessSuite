@@ -8,7 +8,7 @@
     <div class="col mb-2 p-2">
       <!-- Search form -->
       {% include 'components/list_search_form.html' with placeholder='Search Customers...' %}
-      {% if user|has_perm:'customer_applicatiopns,docapplication,add' %}
+      {% if user|has_perm:'customer_applications,docapplication,add' %}
       <a href="{% url 'customer-application-create' %}" class="btn btn-primary">New application</a>
       {% endif %}
     </div>
@@ -24,7 +24,7 @@
           <th scope="col">Product</th>
           <th scope="col">Customer</th>
           <th scope="col">Document Date</th>
-          {% if docapplication.current_workflow_task %}
+          {% if docapplication.current_workflow %}
             <th scope="col">Cur. Task (Status)</th>
           {% endif %}
           <th scope="col">Actions</th>

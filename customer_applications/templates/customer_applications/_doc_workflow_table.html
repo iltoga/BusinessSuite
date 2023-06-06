@@ -1,8 +1,12 @@
 {% load check_perms %}
-<table class="table">
+{% load unicorn %}
+
+{% if docapplication.workflows.all|length > 0 %}
+<div unicorn:partial.key="doc_workflow">
+  <table class="table">
     <thead>
       <tr>
-        <th scope="col">Task/th>
+        <th scope="col">Task</th>
         <th scope="col">Application Date</th>
         <th scope="col">Status</th>
         <th scope="col">Notes</th>
@@ -12,18 +16,27 @@
       </tr>
     </thead>
     <tbody>
-      {% for docworkflow in workflow %}
+      {% for docworkflow in docapplication.workflows.all %}
         <tr>
           <td>{{ docworkflow.task.name }}</td>
-          <td>{{ docworkflow.application_date }}</td>
+          <td>{{ docworkflow.start_date }}</td>
           <td>{{ docworkflow.status }}</td>
           <td>{{ docworkflow.notes }}</td>
-          {% if user|has_perm:'customer_applications,requireddocument,change' %}
+          {% if user|has_perm:'customer_applications,docworkflow,change' %}
           <td>
-              <a href="{% url 'customer-application-requireddocument-update' document.pk %}" class="btn btn-sm btn-danger">Update Document</a>
+              <a href="{% url 'customer-application-docworkflow-update' docworkflow.pk %}" class="btn btn-sm btn-warning">Edit</a>
+              <button class="btn btn-sm btn-primary" unicorn:click="complete_workflow( {{ docworkflow.pk }} )" unicorn:partial.key="doc_workflow">Complete Task</button>
           </td>
           {% endif %}
         </tr>
       {% endfor %}
     </tbody>
   </table>
+  {% endif %}
+  <div class="col mb-2 p-2">
+    {% if user|has_perm:'customer_applications,docworkflow,change' and docapplication.all_workflow_completed %}
+    <a href="{% url 'customer-application-docworkflow-create' docapplication.pk docapplication.next_task.step %}" class="btn btn-sm btn-warning">{% if docapplication.next_task.step == 1 %}Start{% else %}Next Step{% endif %}</a>
+  </div>
+</div>
+{% endif %}
+

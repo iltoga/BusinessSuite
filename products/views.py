@@ -31,14 +31,16 @@ class ProductCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateView
     def form_valid(self, form):
         context = self.get_context_data()
         tasks = context['tasks']
-        with transaction.atomic():
-            self.object = form.save()  # Save the instance first
-            if tasks.is_valid():
+
+        if tasks.is_valid():  # Check if tasks formset is valid first
+            with transaction.atomic():
+                self.object = form.save()  # Save the main form only if tasks formset is valid
                 tasks.instance = self.object
-                tasks.save()
-            else:
-                return super().form_invalid(form)
-        return super().form_valid(form)
+                tasks.save()  # Save the tasks formset
+                return super().form_valid(form)
+
+        return super().form_invalid(form)  # If tasks formset is not valid, don't save anything
+
 
 class ProductUpdateView(PermissionRequiredMixin, SuccessMessageMixin, UpdateView):
     permission_required = ('products.change_product',)
@@ -61,13 +63,14 @@ class ProductUpdateView(PermissionRequiredMixin, SuccessMessageMixin, UpdateView
         context = self.get_context_data()
         tasks = context['tasks']
         with transaction.atomic():
-            self.object = form.save()
+            self.object = form.save(commit=False)  # Don't save the form to the database yet
             if tasks.is_valid():
                 tasks.instance = self.object
-                tasks.save()
-            else:
-                return super().form_invalid(form)
-        return super().form_valid(form)
+                tasks.save()  # Save the tasks to the database
+                self.object.save()  # Now save the form to the database
+                return super().form_valid(form)
+
+            return super().form_invalid(form)  # If tasks aren't valid, don't save anything
 
 # a view to update a task
 class TaskUpdateView(PermissionRequiredMixin, SuccessMessageMixin, UpdateView):

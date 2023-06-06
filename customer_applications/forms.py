@@ -38,7 +38,7 @@ class RequiredDocumentCreateForm(forms.ModelForm):
 
 
 class RequiredDocumentUpdateForm(forms.ModelForm):
-    ocr_check = forms.BooleanField(label='OCR Check (only for Passports)')
+    ocr_check = forms.BooleanField(required=False, label='OCR Check (only for Passports)')
     # checkbox to force update even if there are errors. the field is hideen by default and shown only if there are errors
     force_update = forms.BooleanField(required=False, label='Force Update', widget=forms.HiddenInput())
     # Only users with the 'upload_document' permission can upload documents
@@ -123,6 +123,41 @@ class RequiredDocumentUpdateForm(forms.ModelForm):
             self.fields['force_update'].widget = forms.CheckboxInput()
         return valid
 
+class DocWorkflowForm(forms.ModelForm):
+    class Meta:
+        model = DocWorkflow
+        # fields = ['status', 'comment']
+        exclude = ['completion_date','doc_application', 'task' 'user', 'created_at', 'updated_at', 'created_by', 'updated_by']
+        widgets = {
+            'comment': forms.Textarea(attrs={'rows': 5}),
+            'start_date': forms.DateInput(attrs={'type': 'date', 'value': timezone.now().strftime("%Y-%m-%d")}),
+            'due_date': forms.DateInput(attrs={'type': 'date'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super(DocWorkflowForm, self).__init__(*args, **kwargs)
+        self.fields['task'].disabled = True
+
+    def clean(self):
+        cleaned_data = super().clean()
+
+        start_date = cleaned_data.get('start_date')
+        due_date = cleaned_data.get('due_date')
+        completion_date = cleaned_data.get('completion_date')
+
+        doc_date = self.instance.doc_application.doc_date
+
+        if start_date and doc_date and start_date < doc_date:
+            doc_date_fmt = doc_date.strftime("%d/%m/%Y")
+            self.add_error('start_date', f"Start date must be after document's application date, which is {doc_date_fmt}.")
+
+        if start_date and due_date and due_date < start_date:
+            self.add_error('due_date', 'Due date must be after start date.')
+
+        if completion_date and due_date and completion_date < due_date:
+            self.add_error('completion_date', 'Completion date must be after due date.')
+
+        return cleaned_data
 
 RequiredDocumentCreateFormSet = forms.inlineformset_factory(
     DocApplication, # parent model
@@ -144,7 +179,7 @@ RequiredDocumentUpdateFormSet = forms.inlineformset_factory(
 )
 
 
-# DocWorkflowFormSet = forms.inlineformset_factory(
+# DocWorkflowCreateFormSet = forms.inlineformset_factory(
 #     DocApplication, # parent model
 #     DocWorkflow, # child model
 #     form=DocWorkflowForm, # form to use

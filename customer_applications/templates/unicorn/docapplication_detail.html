@@ -30,49 +30,17 @@
         </tbody>
       </table>
 
-      <h3 class="text-center my-4">Required Documents</h3>
-      {% include "customer_applications/_required_documents_table.html" with required_documents=docapplication.required_documents.all %}
-
-      {% if docapplication.is_document_collection_completed == False %}
-      <div class="alert alert-warning" role="alert">
-        <h3 class="alert-heading">Cannot Start Processing Application</h3>
-        <p>
-          All documents must be uploaded before can start processing it.
-        </p>
-      </div>
-      {% else %}
-        <h3 class="my-4">Process Application</h3>
-        {% include "customer_applications/_doc_workflow_table.html" with workflow=docapplication.doc_workflow.all %}
+      {% if docapplication.workflows.all|length > 0 %}
+        <h3 class="my-4">Application Workflow</h3>
       {% endif %}
+      {% include "customer_applications/_doc_workflow_table.html" with docapplication=docapplication %}
+
+      <h3 class="text-center my-4">Uploaded Documents</h3>
+      {% include "customer_applications/_required_documents_table.html" with required_documents=docapplication.required_documents.all %}
       <div class="card-body">
-        <a href="{% url 'customer-application-list' %}" class="btn btn-primary">Back</a>
+        <a href="{% url 'customer-application-list' %}" class="btn btn-outline-primary">Back to List</a>
       </div>
-      <div class="card-footer text-muted">
-        {% if perms.customer_applications.can_audit %}
-        <table>
-          <tr>
-            <th scope="row" class="text-start">Created By</th>
-            <td class="text-start">
-              <small style="margin-left: 20px;">
-                {{ docapplication.created_by }}
-                (Created At: {{ docapplication.created_at|date:"Y-m-d H:i" }})
-              </small>
-            </td>
-          </tr>
-          {% if docapplication.created_at|date:"Y-m-d H:i" != docapplication.updated_at|date:"Y-m-d H:i" %}
-          <tr>
-            <th scope="row" class="text-start">Updated By</th>
-            <td class="text-start">
-              <small style="margin-left: 20px;">
-                {{ docapplication.updated_by }}
-                (Last Updated At: {{ docapplication.updated_at|date:"Y-m-d H:i" }})
-              </small>
-            </td>
-          </tr>
-          {% endif %}
-        </table>
-        {% endif %}
-      </div>
+      {% include "components/audit_card.html" with model=docapplication perm='customer_applications,docapplication,can_audit' %}
     </div>
   </div>
 </div>

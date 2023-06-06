@@ -1,8 +1,11 @@
+from django.utils import timezone
+from django.http import Http404
 from django.urls import reverse_lazy
 from django.db import transaction
 from django.views.generic import ListView, CreateView, UpdateView, DetailView, DeleteView
-from .models import DocApplication, RequiredDocument
-from .forms import DocApplicationFormCreate, RequiredDocumentCreateFormSet, RequiredDocumentUpdateFormSet, RequiredDocumentUpdateForm, DocApplicationFormUpdate
+from .models import DocApplication, RequiredDocument, DocWorkflow
+from products.models import Task
+from .forms import DocApplicationFormCreate, RequiredDocumentCreateFormSet, RequiredDocumentUpdateFormSet, RequiredDocumentUpdateForm, DocApplicationFormUpdate, DocWorkflowForm
 from django.contrib.messages.views import SuccessMessageMixin
 from django.contrib.auth.mixins import PermissionRequiredMixin
 
@@ -129,3 +132,87 @@ class RequiredDocumentUpdateView(PermissionRequiredMixin, SuccessMessageMixin, U
 
     def get_success_url(self):
         return reverse_lazy('customer-application-detail', kwargs={'pk': self.object.doc_application.id})
+
+# views for document workflow
+class DocWorkflowCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateView):
+    permission_required = ('customer_applications.add_docworkflow',)
+    model = DocWorkflow
+    form_class = DocWorkflowForm
+    template_name = 'customer_applications/docworkflow_form.html'
+    success_message = 'Customer applicaion updated successfully!'
+
+    doc_application = None
+    task = None
+    action_name = 'Create'
+
+    def get_success_url(self):
+        return reverse_lazy('customer-application-detail', kwargs={'pk': self.object.doc_application.id})
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        self.doc_application = DocApplication.objects.get(id=self.kwargs['docapplication_pk'])
+        if not self.doc_application.product:
+            raise Http404
+        self.task = Task.objects.get(step=self.kwargs['step_no'], product=self.doc_application.product)
+        if not self.task:
+            raise Http404
+        kwargs['initial'] = {
+            'task': self.task,
+            'due_date': timezone.now() + timezone.timedelta(days=self.task.duration),
+        }
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        data = super().get_context_data(**kwargs)
+        # Add some useful data to the context for the template to use
+        data['docapplication'] = self.doc_application
+        data['task'] = self.task
+        data['action_name'] = self.action_name
+        return data
+
+    def form_valid(self, form):
+        form.instance.created_by = self.request.user
+        form.instance.task = self.task
+        form.instance.doc_application = self.doc_application
+        return super().form_valid(form)
+
+class DocWorkflowUpdateView(PermissionRequiredMixin, SuccessMessageMixin, UpdateView):
+    permission_required = ('customer_applications.change_docworkflow',)
+    model = DocWorkflow
+    form_class = DocWorkflowForm
+    template_name = 'customer_applications/docworkflow_form.html'
+    success_message = 'Customer applicaion updated successfully!'
+
+    doc_application = None
+    task = None
+    action_name = 'Update'
+
+    def get_success_url(self):
+        return reverse_lazy('customer-application-detail', kwargs={'pk': self.object.doc_application.id})
+
+    # def get_form_kwargs(self):
+    #     kwargs = super().get_form_kwargs()
+    #     self.doc_application = DocApplication.objects.get(id=self.kwargs['pk'])
+    #     if not self.doc_application.product:
+    #         raise Http404
+    #     self.task = Task.objects.get(step=self.kwargs['step_no'], product=self.doc_application.product)
+    #     if not self.task:
+    #         raise Http404
+    #     kwargs['initial'] = {
+    #         'task': self.task,
+    #         'due_date': timezone.now() + timezone.timedelta(days=self.task.duration),
+    #     }
+    #     return kwargs
+
+    def get_context_data(self, **kwargs):
+        data = super().get_context_data(**kwargs)
+        # Add some useful data to the context for the template to use
+        data['docapplication'] = self.model.doc_application
+        data['task'] = self.model.task
+        data['action_name'] = self.action_name
+        return data
+
+    def form_valid(self, form):
+        form.instance.updated_by = self.request.user
+        return super().form_valid(form)
+

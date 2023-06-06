@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import DocApplicationListView, DocApplicationCreateView, DocApplicationDetailView, DocApplicationUpdateView, DocApplicationDeleteView, RequiredDocumentUpdateView
+from .views import DocApplicationListView, DocApplicationCreateView, DocApplicationDetailView, DocApplicationUpdateView, DocApplicationDeleteView, RequiredDocumentUpdateView, DocWorkflowCreateView, DocWorkflowUpdateView
 
 urlpatterns = [
     path('list/', DocApplicationListView.as_view(), name='customer-application-list'),
@@ -7,5 +7,7 @@ urlpatterns = [
     path('detail/<int:pk>/', DocApplicationDetailView.as_view(), name='customer-application-detail'),
     path('update/<int:pk>/', DocApplicationUpdateView.as_view(), name='customer-application-update'),
     path('update_required_document/<int:pk>/', RequiredDocumentUpdateView.as_view(), name='customer-application-requireddocument-update'),
+    path('create_doc_workflow/<int:docapplication_pk>/<int:step_no>', DocWorkflowCreateView.as_view(), name='customer-application-docworkflow-create'),
+    path('update_doc_workflow/<int:pk>', DocWorkflowUpdateView.as_view(), name='customer-application-docworkflow-update'),
     path('delete/<int:pk>/', DocApplicationDeleteView.as_view(), name='customer-application-delete'),
 ]

@@ -82,7 +82,7 @@ class Command(BaseCommand):
     def generate_upload_document(self):
         required_document_ct = ContentType.objects.get(app_label='customer_applications', model='requireddocument')
         permission, _ = Permission.objects.get_or_create(
-            codename='upload_document',
+            codename='can_upload_requireddocument',
             name='Can upload a document to the server',
             content_type=required_document_ct
         )
@@ -99,17 +99,19 @@ class Command(BaseCommand):
             'products',
             'invoices',
             'transactions',
-            ):
-            for model in ContentType.objects.filter(app_label=app_label):
+        ):
+            for ct in ContentType.objects.filter(app_label=app_label):
+                model_name = ct.model  # Get the model name
                 permission, perm_created = Permission.objects.get_or_create(
-                    codename='can_audit',
-                    name=f'Can audit {model}',
-                    content_type=model,
+                    codename=f'can_audit_{model_name}',
+                    name=f'Can audit {model_name}',
+                    content_type=ct,
                 )
                 if perm_created:
                     group.permissions.add(permission)
         if group_created:
             print('Auditors group created')
+
 
     def generate_power_users(self):
         group, created = Group.objects.get_or_create(name='PowerUsers')
