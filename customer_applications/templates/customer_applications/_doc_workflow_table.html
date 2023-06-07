@@ -21,9 +21,9 @@
           {% for docworkflow in docapplication.workflows.all %}
             {% if not docworkflow.is_completed %}
               {% if docworkflow.is_overdue %}
-                <tr class="alert-danger">
+                <tr class="table-danger">
               {% elif docworkflow.is_notification_date_reached %}
-                <tr class="alert-warning">
+                <tr class="table-warning">
               {% else %}
                 <tr>
               {% endif %}

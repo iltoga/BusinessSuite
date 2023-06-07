@@ -7,7 +7,7 @@
 
     <div class="col mb-2 p-2">
       <!-- Search form -->
-      {% include 'components/list_search_form.html' with placeholder='Search Customers...' %}
+      {% include 'components/list_search_form.html' with placeholder='Search Customers...' extra_html='customer_applications/_list_search_form_extra.html' %}
       {% if user|has_perm:'customer_applications,docapplication,add' %}
       <a href="{% url 'customer-application-create' %}" class="btn btn-primary">New application</a>
       {% endif %}
@@ -16,22 +16,63 @@
 
   <div class="centered-content">
     {% if list_items %}
-    <table class="table table-striped table-bordered">
+    <table class="table table-bordered">
       <thead class="thead-light">
         <tr>
-          <th scope="col">Application ID</th>
-          <th scope="col">Doc Type</th>
-          <th scope="col">Product</th>
-          <th scope="col">Customer</th>
-          <th scope="col">Document Date</th>
+          {% include 'components/list_sorting_col.html' with col_field='pk' col_name='#ID' %}
+          {% include 'components/list_sorting_col.html' with col_field='application_type' col_name='Type' %}
+          {% include 'components/list_sorting_col.html' with col_field='product' col_name='Product' %}
+          {% include 'components/list_sorting_col.html' with col_field='customer' col_name='Customer' %}
+          {% include 'components/list_sorting_col.html' with col_field='doc_date' col_name='Document Date' %}
           <th scope="col">Current Task</th>
+          <th scope="col">Due Date</th>
           <th scope="col">Status</th>
           <th scope="col">Actions</th>
         </tr>
       </thead>
       <tbody>
         {% for docapplication in list_items %}
-        {% unicorn 'docapplication_list_row' %}
+          {% with current_workflow=docapplication.current_workflow %}
+            {% if not docapplication.is_application_completed %}
+              {% if current_workflow.is_overdue %}
+                <tr class="table-danger">
+              {% elif current_workflow.is_notification_date_reached %}
+                <tr class="table-warning">
+              {% else %}
+                <tr>
+              {% endif %}
+            {% else %}
+              <tr>
+            {% endif %}
+              <td>{{ docapplication.id }}</td>
+              <td>{{ docapplication.get_application_type_display }}</td>
+              <td>{{ docapplication.product }}</td>
+              <td>{{ docapplication.customer }}</td>
+              <td>{{ docapplication.doc_date }}</td>
+              {% if docapplication and current_workflow %}
+                <td>{{ current_workflow.task }}</td>
+                <td>{{ current_workflow.due_date }}</td>
+                {% if docapplication.is_application_completed %}
+                  <td>{% include "components/model_status_badge.html" with status='closed' %}</td>
+                {% else %}
+                  <td>{% include "components/model_status_badge.html" with status=current_workflow.status %}</td>
+                {% endif %}
+              {% else %}
+                <td>None</td>
+                <td>None</td>
+                <td>{% include "components/model_status_badge.html" with status='notstarted' %}</td>
+              {% endif %}
+              <td>
+                <a href="{% url 'customer-application-detail' docapplication.id %}" class="btn btn-primary btn-sm">{% if docapplication.is_application_completed %}View{% else %}Manage{% endif %}</a>
+                {% if user|has_perm:'customer_applications,docapplication,change' and not docapplication.is_application_completed %}
+                <a href="{% url 'customer-application-update' docapplication.id %}" class="btn btn-warning btn-sm">Edit</a>
+                {% endif %}
+                {% if user|has_perm:'customer_applications,docapplication,delete' %}
+                <a href="{% url 'customer-application-delete' docapplication.id %}" class="btn btn-danger btn-sm">Delete</a>
+                {% endif %}
+              </td>
+            </tr>
+          {% endwith %}
         {% endfor %}
       </tbody>
     </table>

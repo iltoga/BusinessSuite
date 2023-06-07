@@ -1,0 +1,7 @@
+<!-- Checkbox -->
+<div class="form-check ms-3 col-md-5">
+    <input class="form-check-input" type="checkbox" id="hide_finished_check"
+        unicorn:model.debounce-{{debounce|default:1000}}="hide_finished"
+        unicorn:change="handle_hide_finished">
+    <label class="form-check-label" for="hide_finished_check"><small>Hide Closed</small></label>
+</div>

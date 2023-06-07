@@ -20,6 +20,13 @@ class TaskForm(forms.ModelForm):
         model = Task
         fields = ['product', 'step', 'last_step', 'name', 'description', 'cost', 'duration', 'notify_days_before']
 
+    # if update a new task, then the product field is disabled
+    def __init__(self, *args, **kwargs):
+        super(TaskForm, self).__init__(*args, **kwargs)
+        if self.instance.pk:
+            self.fields['product'].disabled = True
+            self.fields['step'].disabled = True
+
 TaskModelFormSet = forms.inlineformset_factory(
     Product, # parent model
     Task, # child model

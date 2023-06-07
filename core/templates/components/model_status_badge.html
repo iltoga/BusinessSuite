@@ -1,13 +1,13 @@
-{% if model.status == model.STATUS_COMPLETED %}
-<span class="badge badge-success">{{ model.status }}</span>
-{% elif model.status == model.STATUS_PENDING %}
-<span class="badge badge-secondary">{{ model.status }}</span>
-{% elif model.status == model.STATUS_PROCESSING %}
-<span class="badge badge-warning">{{ model.status }}</span>
-{% elif model.status == model.STATUS_REJECTED %}
-<span class="badge badge-danger">{{ model.status }}</span>
-{% elif model.status == model.STATUS_REJECTED %}
-<span class="badge badge-danger">{{ model.status }}</span>
+{% if status == 'completed' %}
+<span class="badge badge-success">{{ status }}</span>
+{% elif status == 'pending' %}
+<span class="badge badge-primary">{{ status }}</span>
+{% elif status == 'processing' %}
+<span class="badge badge-warning">{{ status }}</span>
+{% elif status == 'rejected' %}
+<span class="badge badge-danger">{{ status }}</span>
+{% elif status == 'notstarted' %}
+<span class="badge badge-secondary">Not Started</span>
 {% else %}
-{{ model.status }}
+{{ status }}
 {% endif %}

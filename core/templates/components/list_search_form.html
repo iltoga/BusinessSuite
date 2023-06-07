@@ -1,10 +1,14 @@
-<form class="d-inline-flex align-items-center me-2" unicorn:submit.prevent="search" style="border: 1px solid; padding: 5px;">
-    <!-- make this search input debounce 2 seconds -->
-    <input type="text" class="form-control"
-      unicorn:model.debounce-{debounce|default:1000}}="search_input"
-      unicorn:keyup.debounce-{{debounce|default:1000}}="search"
-      unicorn:keyup.escape="search_input=''"
-      placeholder="{{placeholder|default:'Search...'}}"
-      id="id_search_input"></input>
-    <!-- <button class="btn btn-outline-secondary ms-2" type="submit" unicorn:click="search">Search</button> -->
+<form class="d-inline-flex align-items-center me-2" unicorn:submit.prevent="search" style="border: 1px solid;">
+  <!-- Search input -->
+  <input type="text" class="form-control"
+    unicorn:model.debounce-{{debounce|default:1000}}="search_input"
+    unicorn:keyup.debounce-{{debounce|default:1000}}="search"
+    unicorn:keyup.escape="search_input=''"
+    placeholder="{{placeholder|default:'Search...'}}"
+    id="id_search_input"></input>
+
+  <!-- Extra HTML -->
+  {% if extra_html %}
+      {% include extra_html %}
+  {% endif %}
 </form>

@@ -57,3 +57,7 @@ form.left-align {
     align-items: center;
     flex-direction: column;
 }
+
+th.sortable:hover {
+    background-color: #cce5ff;
+}

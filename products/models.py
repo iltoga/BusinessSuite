@@ -51,6 +51,8 @@ class Task(models.Model):
         return self.name
 
     def clean(self):
+        cleaned_data = super().clean()
+
         if self.notify_days_before and self.notify_days_before > self.duration:
             raise ValidationError("notify_days_before cannot be greater than duration.")
 
@@ -62,4 +64,15 @@ class Task(models.Model):
             other_tasks = other_tasks.exclude(pk=self.pk)
         if other_tasks.exists():
             raise ValidationError("Each step within a product must be unique.")
+
+        # there cannot be two last steps in a product
+        if self.last_step:
+            other_last_steps = Task.objects.filter(product=self.product, last_step=True)
+            if self.pk:  # If this task is already in the database
+                other_last_steps = other_last_steps.exclude(pk=self.pk)
+            if other_last_steps.exists():
+                raise ValidationError(f"Each product can only have one last step. The other last step is {other_last_steps[0].step}.")
+
+
+        return cleaned_data
 

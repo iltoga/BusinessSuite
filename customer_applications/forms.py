@@ -17,11 +17,6 @@ class DocApplicationFormCreate(forms.ModelForm):
         }
 
 class DocApplicationFormUpdate(forms.ModelForm):
-    def __init__(self, *args, **kwargs):
-        super(DocApplicationFormUpdate, self).__init__(*args, **kwargs)
-        self.fields['customer'].disabled = True
-        self.fields['product'].disabled = True
-        self.fields['application_type'].disabled = True
 
     class Meta:
         model = DocApplication
@@ -29,6 +24,12 @@ class DocApplicationFormUpdate(forms.ModelForm):
         widgets = {
             'doc_date': forms.DateInput(attrs={'type': 'date', 'value': timezone.now().strftime("%Y-%m-%d")}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super(DocApplicationFormUpdate, self).__init__(*args, **kwargs)
+        self.fields['customer'].disabled = True
+        self.fields['product'].disabled = True
+        self.fields['application_type'].disabled = True
 
 
 class RequiredDocumentCreateForm(forms.ModelForm):
@@ -47,6 +48,14 @@ class RequiredDocumentUpdateForm(forms.ModelForm):
         'ocr_check': ['upload_document'],
     }
 
+    class Meta:
+        model = RequiredDocument
+        fields = ['doc_type', 'file', 'ocr_check', 'doc_number', 'expiration_date', 'force_update']
+        widgets = {
+            'expiration_date': forms.DateInput(attrs={'type': 'date'}),
+            'metadata': forms.Textarea(attrs={'rows': 5}),
+        }
+
     def __init__(self, *args, **kwargs):
         super(RequiredDocumentUpdateForm, self).__init__(*args, **kwargs)
         self.fields['doc_type'].disabled = True
@@ -58,15 +67,6 @@ class RequiredDocumentUpdateForm(forms.ModelForm):
         #TODO: if the check to show force_update in case of errors in validate method is not working, try with this one
         # if self.instance.expiration_date and self.instance.expiration_date < timezone.now().date():
         #     self.fields['force_update'].widget = forms.CheckboxInput()
-
-
-    class Meta:
-        model = RequiredDocument
-        fields = ['doc_type', 'file', 'ocr_check', 'doc_number', 'expiration_date', 'force_update']
-        widgets = {
-            'expiration_date': forms.DateInput(attrs={'type': 'date'}),
-            'metadata': forms.Textarea(attrs={'rows': 5}),
-        }
 
     def clean_file(self):
         file = self.cleaned_data.get('file', False)
