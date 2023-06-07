@@ -1,0 +1,13 @@
+{% if model.status == model.STATUS_COMPLETED %}
+<span class="badge badge-success">{{ model.status }}</span>
+{% elif model.status == model.STATUS_PENDING %}
+<span class="badge badge-secondary">{{ model.status }}</span>
+{% elif model.status == model.STATUS_PROCESSING %}
+<span class="badge badge-warning">{{ model.status }}</span>
+{% elif model.status == model.STATUS_REJECTED %}
+<span class="badge badge-danger">{{ model.status }}</span>
+{% elif model.status == model.STATUS_REJECTED %}
+<span class="badge badge-danger">{{ model.status }}</span>
+{% else %}
+{{ model.status }}
+{% endif %}

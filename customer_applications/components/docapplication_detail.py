@@ -1,26 +1,20 @@
 from django_unicorn.components import QuerySetType
+from django.contrib import messages
 from core.components.unicorn_model_view import UnicornModelView
 from customer_applications.models import DocApplication, DocWorkflow
 
 class DocapplicationDetailView(UnicornModelView):
-    workflows: QuerySetType[DocWorkflow] = DocWorkflow.objects.none()
+    docapplication: QuerySetType[DocApplication] = DocApplication.objects.none()
 
-    def mount(self):
-        #FIXME: delete this if unused
-        if self.model:
-            self.model = DocApplication.objects.get(pk=self.model)
-            self.workflows = self.model.workflows.all()
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.docapplication_pk = kwargs.get('docapplication_pk')
+        #get the model instance
+        self.docapplication = DocApplication.objects.get(pk=self.docapplication_pk)
 
-    def complete_workflow(self, docworkflow_pk):
+    def update_status(self, docworkflow_pk, new_status):
         # get the model instance
         workflow = DocWorkflow.objects.get(pk=docworkflow_pk)
-        # update the workflow status to completed
-        workflow.status = workflow.STATUS_COMPLETED
+        # update the workflow status based on dropdown selection
+        workflow.status = new_status
         workflow.save()
-        # re-fetch the model and let mount() method update the workflows
-        self.model = DocApplication.objects.get(pk=self.model.pk)
-        self.workflows = self.model.workflows.all()
-
-
-
-

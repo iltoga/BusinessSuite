@@ -18,6 +18,7 @@ class DocWorkflowManager(models.Manager):
         )
 
 class DocWorkflow(models.Model):
+    #TODO: remove this as it is a duplicate of the DocApplication model
     STATUS_COMPLETED = 'completed'
     STATUS_REJECTED = 'rejected'
     STATUS_PENDING = 'pending'
@@ -31,7 +32,7 @@ class DocWorkflow(models.Model):
     ]
 
     doc_application = models.ForeignKey(DocApplication, related_name='workflows', on_delete=models.CASCADE)
-    task = models.OneToOneField(Task, on_delete=models.CASCADE)
+    task = models.ForeignKey(Task, related_name='task', on_delete=models.CASCADE)
     start_date = models.DateField()
     completion_date = models.DateField(blank=True, null=True)
     due_date = models.DateField()
@@ -43,11 +44,42 @@ class DocWorkflow(models.Model):
     updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='updated_by_doc_workflow', blank=True, null=True)
 
     class Meta:
-        ordering = ['start_date']
+        ordering = ['created_at']
 
     @property
     def is_completed(self):
         return self.status == 'completed'
+
+    @property
+    def is_current_step(self):
+        next_step = self.doc_application.workflows.filter(task__step=self.task.step+1).first()
+        return next_step is None
+
+    @property
+    def is_workflow_completed(self):
+        return self.task.last_step and self.is_completed
+
+    @property
+    def is_notification_date_reached(self):
+        if not self.due_date:
+            return False
+        notify_days_before = self.task.notify_days_before or 0
+        return self.due_date - timezone.now().date() <= timezone.timedelta(days=notify_days_before)
+
+    @property
+    def is_overdue(self):
+        if not self.due_date:
+            return False
+        return self.due_date < timezone.now().date()
+
+    @property
+    def updated_or_created_at(self):
+        return self.updated_at or self.created_at
+
+    @property
+    def updated_or_created_by(self):
+        return self.updated_by or self.created_by
+
 
     def __str__(self):
         return self.task.name

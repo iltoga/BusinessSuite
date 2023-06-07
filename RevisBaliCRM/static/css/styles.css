@@ -28,17 +28,21 @@ form.left-align {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 10px; /* optional: add some space between each group */
+    margin-bottom: 10px;
+    /* optional: add some space between each group */
 }
 
 .input-label {
-    width: 200px; /* set a fixed width */
+    width: 200px;
+    /* set a fixed width */
     text-align: right;
-    margin-right: 10px; /* optional: add some space between the label and the input */
+    margin-right: 10px;
+    /* optional: add some space between the label and the input */
 }
 
 .input-field {
-    flex-grow: 1; /* this will make the input field fill the remaining space */
+    flex-grow: 1;
+    /* this will make the input field fill the remaining space */
 }
 
 .form-container {

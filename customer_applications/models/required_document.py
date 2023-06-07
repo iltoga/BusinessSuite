@@ -37,6 +37,20 @@ class RequiredDocument(models.Model):
     class Meta:
         ordering = ['doc_type']
 
+    @property
+    def is_expired(self):
+        if self.expiration_date:
+            return self.expiration_date < timezone.now().date()
+        return False
+
+    @property
+    def updated_or_created_at(self):
+        return self.updated_at or self.created_at
+
+    @property
+    def updated_or_created_by(self):
+        return self.updated_by or self.created_by
+
     def __str__(self):
         return self.doc_type + ' - ' + self.doc_application.product.name + ' - ' + self.doc_application.customer.full_name + ' - ' + self.doc_application.doc_date.strftime('%d/%m/%Y')
 

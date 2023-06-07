@@ -1,26 +1,32 @@
 {% load check_perms %}
-<div>
+<div class="table-responsive">
   <table class="table">
     <thead>
       <tr>
-        <th scope="col">Document Type</th>
-        <th scope="col">Document Number</th>
+        <th scope="col">Doc.Type</th>
+        <th scope="col">Doc. Number</th>
         <th scope="col">Expiration Date</th>
         {% if perms.customer_applications.upload_documents %}
         <th scope="col">View Document</th>
         {% endif %}
+        <th scope="col">Last Updated</th>
         <th scope="col">Completed</th>
-        {% if user|has_perm:'customer_applications,requireddocument,change' %}
+        {% if user|has_perm:'customer_applications,requireddocument,change' and not docapplication.is_application_completed%}
         <th scope="col">Actions</th>
         {% endif %}
       </tr>
     </thead>
     <tbody>
       {% for document in required_documents %}
-        <tr>
+        {% if document.is_expired %}
+          <tr class="table-danger">
+        {% else %}
+          <tr>
+        {% endif %}
           <td>{{ document.doc_type }}</td>
           <td>{{ document.doc_number }}</td>
           <td>{{ document.expiration_date }}</td>
+
           {% if user|has_perm:'customer_applications,requireddocument,upload_document' %}
           <td>
             {% if document.file_link %}
@@ -30,6 +36,9 @@
             {% endif %}
           </td>
           {% endif %}
+
+          {% include "components/updated_at_by_table_col.html" with model=document %}
+
           <td>
             {% if document.completed %}
               {% include "components/field_checked_true.html" with text="Yes" %}
@@ -37,15 +46,19 @@
               {% include "components/field_checked_false.html" with text="No" %}
             {% endif %}
           </td>
+
           {% if user|has_perm:'customer_applications,requireddocument,change' %}
           <td>
-            {% if document.completed %}
-              <a href="{% url 'customer-application-requireddocument-update' document.pk %}" class="btn btn-sm btn-danger">Update Document</a>
-            {% else %}
-              <a href="{% url 'customer-application-requireddocument-update' document.pk %}" class="btn btn-sm btn-warning">Upload Document</a>
+            {% if not docapplication.is_application_completed %}
+              {% if document.completed %}
+                <a href="{% url 'customer-application-requireddocument-update' document.pk %}" class="btn btn-sm btn-danger">Update Document</a>
+              {% else %}
+                <a href="{% url 'customer-application-requireddocument-update' document.pk %}" class="btn btn-sm btn-warning">Upload Document</a>
+              {% endif %}
             {% endif %}
           </td>
           {% endif %}
+
         </tr>
       {% endfor %}
     </tbody>

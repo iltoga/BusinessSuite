@@ -159,6 +159,7 @@ class DocWorkflowCreateView(PermissionRequiredMixin, SuccessMessageMixin, Create
         kwargs['initial'] = {
             'task': self.task,
             'due_date': timezone.now() + timezone.timedelta(days=self.task.duration),
+            'doc_application': self.doc_application,
         }
         return kwargs
 

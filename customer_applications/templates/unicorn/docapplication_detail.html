@@ -30,13 +30,14 @@
         </tbody>
       </table>
 
+      <h3 class="text-center my-4">Uploaded Documents</h3>
+      {% include "customer_applications/_required_documents_table.html" with required_documents=docapplication.required_documents.all docapplication=docapplication %}
+
       {% if docapplication.workflows.all|length > 0 %}
-        <h3 class="my-4">Application Workflow</h3>
+        <h3 class="my-4">Application Workflow (Tasks)</h3>
       {% endif %}
       {% include "customer_applications/_doc_workflow_table.html" with docapplication=docapplication %}
 
-      <h3 class="text-center my-4">Uploaded Documents</h3>
-      {% include "customer_applications/_required_documents_table.html" with required_documents=docapplication.required_documents.all %}
       <div class="card-body">
         <a href="{% url 'customer-application-list' %}" class="btn btn-outline-primary">Back to List</a>
       </div>

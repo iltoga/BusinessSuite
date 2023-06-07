@@ -2,41 +2,89 @@
 {% load unicorn %}
 
 {% if docapplication.workflows.all|length > 0 %}
-<div unicorn:partial.key="doc_workflow">
-  <table class="table">
-    <thead>
-      <tr>
-        <th scope="col">Task</th>
-        <th scope="col">Application Date</th>
-        <th scope="col">Status</th>
-        <th scope="col">Notes</th>
-        {% if user|has_perm:'customer_applications,docworkflow,change' %}
-        <th scope="col">Actions</th>
-        {% endif %}
-      </tr>
-    </thead>
-    <tbody>
-      {% for docworkflow in docapplication.workflows.all %}
-        <tr>
-          <td>{{ docworkflow.task.name }}</td>
-          <td>{{ docworkflow.start_date }}</td>
-          <td>{{ docworkflow.status }}</td>
-          <td>{{ docworkflow.notes }}</td>
-          {% if user|has_perm:'customer_applications,docworkflow,change' %}
-          <td>
-              <a href="{% url 'customer-application-docworkflow-update' docworkflow.pk %}" class="btn btn-sm btn-warning">Edit</a>
-              <button class="btn btn-sm btn-primary" unicorn:click="complete_workflow( {{ docworkflow.pk }} )" unicorn:partial.key="doc_workflow">Complete Task</button>
-          </td>
-          {% endif %}
-        </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% endif %}
-  <div class="col mb-2 p-2">
-    {% if user|has_perm:'customer_applications,docworkflow,change' and docapplication.all_workflow_completed %}
-    <a href="{% url 'customer-application-docworkflow-create' docapplication.pk docapplication.next_task.step %}" class="btn btn-sm btn-warning">{% if docapplication.next_task.step == 1 %}Start{% else %}Next Step{% endif %}</a>
-  </div>
-</div>
-{% endif %}
+  <div id="doc_workflow_table" >
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th scope="col">Task</th>
+            <th scope="col">Start Date</th>
+            <th scope="col">Due Date</th>
+            <th scope="col">Last Updated</th>
+            <th scope="col">Status</th>
+            {% if user|has_perm:'customer_applications,docworkflow,change' and not docapplication.is_application_completed %}
+            <th scope="col">Edit</th>
+            {% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for docworkflow in docapplication.workflows.all %}
+            {% if not docworkflow.is_completed %}
+              {% if docworkflow.is_overdue %}
+                <tr class="alert-danger">
+              {% elif docworkflow.is_notification_date_reached %}
+                <tr class="alert-warning">
+              {% else %}
+                <tr>
+              {% endif %}
+            {% else %}
+              <tr>
+            {% endif %}
+              <td>{{ docworkflow.task.name }}</td>
+              <td>{{ docworkflow.start_date }}</td>
+              <td>{{ docworkflow.due_date }}</td>
+              {% include "components/updated_at_by_table_col.html" with model=docworkflow %}
 
+
+              {% if not docapplication.is_application_completed %}
+                {% if user|has_perm:'customer_applications,docworkflow,change' %}
+                  {% if docworkflow.is_current_step %}
+                    <td>
+                      <!-- Dropdown to select workflow status -->
+                      <div class="d-md-flex align-items-md-center justify-content-md-center">
+                        <select class="form-select form-select-sm text-sm-start" style="width:auto;" unicorn:change="update_status({{ docworkflow.pk }}, $event.target.value)">
+                            <option value="{{docapplication.STATUS_PENDING}}" {% if docworkflow.status == docapplication.STATUS_PENDING %}selected{% endif %}>Pending</option>
+                            <option value="{{docapplication.STATUS_PROCESSING}}" {% if docworkflow.status == docapplication.STATUS_PROCESSING %}selected{% endif %}>Processing</option>
+                            <option value="{{docapplication.STATUS_COMPLETED}}" {% if docworkflow.status == docapplication.STATUS_COMPLETED %}selected{% endif %}>Completed</option>
+                            <option value="{{docapplication.STATUS_REJECTED}}" {% if docworkflow.status == docapplication.STATUS_REJECTED %}selected{% endif %}>Rejected</option>
+                        </select>
+                      </div>
+                    </td>
+                    {% endif %}
+                {% endif %}
+              {% else %}
+                <td>{% include "components/model_status_badge.html" with model=docworkflow %}</td>
+              {% endif %}
+
+              <td>
+              {% if not docapplication.is_application_completed %}
+                {% if user|has_perm:'customer_applications,docworkflow,change' %}
+                  {% if docworkflow.is_current_step %}
+                      <div class="d-md-flex align-items-md-center justify-content-md-center">
+                        <div class="mb-2 mb-md-0 me-md-2">
+                            <a href="{% url 'customer-application-docworkflow-update' docworkflow.pk %}" class="btn btn-sm btn-warning">Edit</a>
+                        </div>
+                      </div>
+                    {% endif %}
+                {% endif %}
+              {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endif %}
+<div id="doc_workflow_next_btn" class="col mb-2 p-2">
+  {% if docapplication.is_application_completed %}
+    <h1><span class="badge badge-success">Application Completed</span></h1>
+  {% else %}
+    {% if user|has_perm:'customer_applications,docworkflow,change' and docapplication.has_next_task %}
+    <a href="{% url 'customer-application-docworkflow-create' docapplication.pk docapplication.next_task.step %}" class="btn btn-sm btn-warning">{% if docapplication.next_task.step == 1 %}Start{% else %}Next Step{% endif %}</a>
+    {% endif %}
+    {% if not docapplication.is_document_collection_completed %}
+      <h1><span class="badge badge-danger">Document Collection Pending</span></h1>
+    {% endif %}
+  {% endif %}
+</div>
