@@ -38,10 +38,11 @@
       {% endif %}
       {% include "customer_applications/_doc_workflow_table.html" with docapplication=docapplication %}
 
-      <div class="card-body">
-        <a href="{% url 'customer-application-list' %}" class="btn btn-outline-primary">Back to List</a>
-      </div>
       {% include "components/audit_card.html" with model=docapplication perm='customer_applications,docapplication,can_audit' %}
+
+      <div class="card-footer text-muted">
+        <a href="javascript:history.back()" class="btn btn-outline-primary">Back</a>
+      </div>
     </div>
   </div>
 </div>

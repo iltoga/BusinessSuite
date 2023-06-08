@@ -243,6 +243,6 @@ CACHES = {
         # "LOCATION": "unique-snowflake",
     }
 }
-SESSION_ENGINE = "django.contrib.sessions.backends.cache"
-# SESSION_COOKIE_AGE = 60 * 60 * 24  # One day
-SESSION_COOKIE_AGE = 60 * 5 # 5 minutes
+# SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+# # SESSION_COOKIE_AGE = 60 * 60 * 24  # One day
+# SESSION_COOKIE_AGE = 60 * 5 # 5 minutes

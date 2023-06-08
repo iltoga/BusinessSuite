@@ -3,10 +3,15 @@
 {% load crispy_forms_tags %}
 
 {% block content %}
+<div class="container my-4">
   <h1>Edit Task</h1>
   <form method="post">
     {% csrf_token %}
     {{ form | crispy }}
     <button type="submit">Save Changes</button>
   </form>
+  <div class="card-footer text-muted">
+    <a href="javascript:history.back()" class="btn btn-outline-primary">Back</a>
+  </div>
+</div>
 {% endblock %}

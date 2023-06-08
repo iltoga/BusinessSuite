@@ -29,7 +29,7 @@
         </tbody>
       </table>
       <div class="card-body">
-        <a href="{% url 'customer-list' %}" class="btn btn-primary">List All</a>
+        <a href="javascript:history.back()" class="btn btn-primary">Back</a>
         {% if perms.customers.change_customer %}
         <a href="{% url 'customer-update' customer.id %}" class="btn btn-warning btn-sm">Edit</a>
         {% endif %}
@@ -37,6 +37,9 @@
         <a href="{% url 'customer-delete' customer.id %}" class="btn btn-danger btn-sm">Delete</a>
         {% endif %}
       </div>
+    </div>
+    <div class="card-footer text-muted">
+      <a href="javascript:history.back()" class="btn btn-outline-primary">Back</a>
     </div>
   </div>
 {% endblock %}

@@ -31,25 +31,38 @@ class UnicornSearchListView(UnicornView):
         return queryset
 
     def load_items(self):
-        if self.query:
-            if self.get_order():
-                search_func = getattr(self.model.objects, self.model_search_method)
-
-            else:
-                queryset = search_func(self.query)
-        else:
-            if self.get_order():
-                queryset = self.model.objects.all().order_by(self.get_order())
-            else:
-                queryset = self.model.objects.all()
-
-        queryset = self.apply_filters(queryset)
+        queryset = self.get_queryset()
         start = self.items_per_page*(self.page-1)
         end = self.items_per_page*self.page
 
         self.list_items = list(queryset[start:end])
         self.total_items = queryset.count()
         self.total_pages = ceil(self.total_items / self.items_per_page)
+
+    def search(self):
+        if self.search_input and len(self.search_input) >= self.start_search_at:
+            self.query = self.search_input
+            queryset = self.get_queryset()
+            start = self.items_per_page*(self.page-1)
+            end = self.items_per_page*self.page
+
+            self.list_items = list(queryset[start:end])
+            self.total_items = queryset.count()
+            self.total_pages = ceil(self.total_items / self.items_per_page)
+        else:
+            self.total_items = self.model.objects.count()
+            self.total_pages = ceil(self.total_items / self.items_per_page)
+            self.load_items()
+
+    def get_queryset(self):
+        if self.query:
+            search_func = getattr(self.model.objects, self.model_search_method)
+            queryset = search_func(self.query).order_by(self.get_order())
+        else:
+            queryset = self.model.objects.all().order_by(self.get_order())
+
+        queryset = self.apply_filters(queryset)
+        return queryset
 
     def sort(self, column):
         if column == self.order_by:  # Toggle direction if the column is already being sorted
@@ -64,27 +77,11 @@ class UnicornSearchListView(UnicornView):
         # if self.order_by is '', use order from meta class
         if self.order_by == '':
             if self.model._meta.ordering is None or len(self.model._meta.ordering) == 0:
-                return None
+                # set a default if anything else fails
+                return 'id'
             # self.model._meta.ordering is an array of strings. Join them with commas
             return ','.join(self.model._meta.ordering)
         return self.order_by if self.sort_dir == 'asc' else '-' + self.order_by
-
-    def search(self):
-        if self.search_input and len(self.search_input) >= self.start_search_at:
-            search_func = getattr(self.model.objects, self.model_search_method)
-            queryset = search_func(self.search_input).order_by(self.order_by)
-            queryset = self.apply_filters(queryset)
-
-            start = self.items_per_page*(self.page-1)
-            end = self.items_per_page*self.page
-
-            self.list_items = list(queryset[start:end])
-            self.total_items = queryset.count()
-            self.total_pages = ceil(self.total_items / self.items_per_page)
-        else:
-            self.total_items = self.model.objects.count()
-            self.total_pages = ceil(self.total_items / self.items_per_page)
-            self.load_items()
 
     def next_page(self):
         self.page += 1

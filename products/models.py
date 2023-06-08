@@ -30,7 +30,7 @@ class Product(models.Model):
         ordering = ['name']
 
     def __str__(self):
-        return self.code + " - "+ self.name
+        return self.code
 
 
 class Task(models.Model):

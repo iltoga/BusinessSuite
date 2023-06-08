@@ -46,8 +46,12 @@
             {% endif %}
               <td>{{ docapplication.id }}</td>
               <td>{{ docapplication.get_application_type_display }}</td>
-              <td>{{ docapplication.product }}</td>
-              <td>{{ docapplication.customer }}</td>
+              <td>
+                <a href="{% url 'product-detail' docapplication.product.pk %}" class="text-primary font-weight-light">{{ docapplication.product }}</a>
+              </td>
+              <td>
+                <a href="{% url 'customer-detail' docapplication.customer.pk %}" class="text-primary font-weight-light">{{ docapplication.customer }}</a>
+              </td>
               <td>{{ docapplication.doc_date }}</td>
               {% if docapplication and current_workflow %}
                 <td>{{ current_workflow.task }}</td>
