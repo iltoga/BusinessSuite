@@ -1,3 +1,4 @@
+from typing import Any, Dict
 from django import forms
 from django.db import transaction
 from .models import Product, Task

@@ -61,3 +61,10 @@ form.left-align {
 th.sortable:hover {
     background-color: #cce5ff;
 }
+
+.spinner-border {
+    width: 3em;
+    height: 3em;
+    border-width: .25em;
+    opacity: 0.5;
+}

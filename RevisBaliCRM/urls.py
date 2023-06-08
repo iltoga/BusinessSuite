@@ -32,5 +32,6 @@ urlpatterns = [
     path('api/', include('api.urls')),
     path('nested_admin/', include('nested_admin.urls')),
     path("unicorn/", include("django_unicorn.urls")),
+    path("__debug__/", include("debug_toolbar.urls")),
     # to serve media files in development (TODO: in production use nginx or S3)
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

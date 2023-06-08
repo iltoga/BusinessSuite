@@ -30,7 +30,7 @@ class Product(models.Model):
         ordering = ['name']
 
     def __str__(self):
-        return self.name
+        return self.code + " - "+ self.name
 
 
 class Task(models.Model):
@@ -51,28 +51,19 @@ class Task(models.Model):
         return self.name
 
     def clean(self):
-        cleaned_data = super().clean()
-
         if self.notify_days_before and self.notify_days_before > self.duration:
             raise ValidationError("notify_days_before cannot be greater than duration.")
 
         if self.cost and self.cost < 0:
             raise ValidationError("cost cannot be negative.")
 
-        other_tasks = Task.objects.filter(product=self.product, step=self.step)
-        if self.pk:  # If this task is already in the database
-            other_tasks = other_tasks.exclude(pk=self.pk)
+        other_tasks = Task.objects.filter(product=self.product, step=self.step).exclude(pk=self.pk).select_related('product')
         if other_tasks.exists():
             raise ValidationError("Each step within a product must be unique.")
 
         # there cannot be two last steps in a product
         if self.last_step:
-            other_last_steps = Task.objects.filter(product=self.product, last_step=True)
-            if self.pk:  # If this task is already in the database
-                other_last_steps = other_last_steps.exclude(pk=self.pk)
+            other_last_steps = Task.objects.filter(product=self.product, last_step=True).exclude(pk=self.pk).select_related('product')
             if other_last_steps.exists():
+                # add error to the field
                 raise ValidationError(f"Each product can only have one last step. The other last step is {other_last_steps[0].step}.")
-
-
-        return cleaned_data
-

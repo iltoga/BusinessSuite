@@ -32,7 +32,7 @@ class DocWorkflow(models.Model):
     ]
 
     doc_application = models.ForeignKey(DocApplication, related_name='workflows', on_delete=models.CASCADE)
-    task = models.ForeignKey(Task, related_name='task', on_delete=models.CASCADE)
+    task = models.ForeignKey(Task, related_name='doc_workflows', on_delete=models.CASCADE)
     start_date = models.DateField()
     completion_date = models.DateField(blank=True, null=True)
     due_date = models.DateField()

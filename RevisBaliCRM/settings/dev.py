@@ -24,3 +24,8 @@ SESSION_COOKIE_DOMAIN = 'localhost'
 CSRF_TRUSTED_ORIGINS = ['http://*', 'https://*']
 SESSION_COOKIE_SAMESITE = 'None'
 CSRF_COOKIE_SAMESITE = 'None'
+
+# This is to show django-debug-toolbar (https://django-debug-toolbar.readthedocs.io/en/latest/installation.html)
+INTERNAL_IPS = [
+    "127.0.0.1",
+]

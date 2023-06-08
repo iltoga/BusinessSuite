@@ -41,6 +41,10 @@ class DocApplication(models.Model):
     updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='updated_by_doc_application', blank=True, null=True)
     objects = DocApplicationManager()
 
+
+    # class Meta:
+    #     ordering = ['-id']
+
     @property
     def is_document_collection_completed(self):
         """Returns True if all required documents are completed, False otherwise."""
@@ -100,10 +104,6 @@ class DocApplication(models.Model):
         if next_task and next_task.step:
             return True
         return False
-
-
-    class Meta:
-        ordering = ['application_type']
 
     def __str__(self):
         return self.product.name + ' - ' + self.customer.full_name + f' #{self.pk}'

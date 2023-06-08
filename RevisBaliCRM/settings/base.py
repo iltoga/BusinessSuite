@@ -67,10 +67,12 @@ INSTALLED_APPS = [
     'django.contrib.humanize',
     'fontawesomefree',
     'django_unicorn',
+    'debug_toolbar',
 ]
 
 MIDDLEWARE = [
     # 'RevisBaliCRM.middleware.DisableCsrfCheck',  # Your custom middleware
+    'debug_toolbar.middleware.DebugToolbarMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',  # to serve static files
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -227,3 +229,20 @@ LOGGING_MODELS = (
 )
 
 SESSION_SAVE_EVERY_REQUEST = True
+
+# This is for the debug toolbar when using docker
+# https://docs.djangoproject.com/en/3.2/ref/settings/#internal-ips
+# if DEBUG:
+#     import socket  # only if you haven't already imported this
+#     hostname, _, ips = socket.gethostbyname_ex(socket.gethostname())
+#     INTERNAL_IPS = [ip[: ip.rfind(".")] + ".1" for ip in ips] + ["127.0.0.1", "10.0.2.2"]
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        # "LOCATION": "unique-snowflake",
+    }
+}
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+# SESSION_COOKIE_AGE = 60 * 60 * 24  # One day
+SESSION_COOKIE_AGE = 60 * 5 # 5 minutes

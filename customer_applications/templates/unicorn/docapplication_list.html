@@ -25,7 +25,7 @@
           {% include 'components/list_sorting_col.html' with col_field='customer' col_name='Customer' %}
           {% include 'components/list_sorting_col.html' with col_field='doc_date' col_name='Document Date' %}
           <th scope="col">Current Task</th>
-          <th scope="col">Due Date</th>
+          {% include 'components/list_sorting_col.html' with col_field='workflows__task__step' col_name='Due Date' %}
           <th scope="col">Status</th>
           <th scope="col">Actions</th>
         </tr>

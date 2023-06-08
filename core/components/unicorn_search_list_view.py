@@ -12,7 +12,7 @@ class UnicornSearchListView(UnicornView):
     model = None
     model_search_method = ''
     query = ''
-    order_by = 'id'
+    order_by = ''
     sort_dir = 'asc'
     filter_type = 'exclude'
     qry_filter_args = None
@@ -32,10 +32,16 @@ class UnicornSearchListView(UnicornView):
 
     def load_items(self):
         if self.query:
-            search_func = getattr(self.model.objects, self.model_search_method)
-            queryset = search_func(self.query).order_by(self.get_order())
+            if self.get_order():
+                search_func = getattr(self.model.objects, self.model_search_method)
+
+            else:
+                queryset = search_func(self.query)
         else:
-            queryset = self.model.objects.all().order_by(self.get_order())
+            if self.get_order():
+                queryset = self.model.objects.all().order_by(self.get_order())
+            else:
+                queryset = self.model.objects.all()
 
         queryset = self.apply_filters(queryset)
         start = self.items_per_page*(self.page-1)
@@ -55,6 +61,12 @@ class UnicornSearchListView(UnicornView):
         self.load_items()  # Re-load items after sorting
 
     def get_order(self):
+        # if self.order_by is '', use order from meta class
+        if self.order_by == '':
+            if self.model._meta.ordering is None or len(self.model._meta.ordering) == 0:
+                return None
+            # self.model._meta.ordering is an array of strings. Join them with commas
+            return ','.join(self.model._meta.ordering)
         return self.order_by if self.sort_dir == 'asc' else '-' + self.order_by
 
     def search(self):
