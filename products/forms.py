@@ -19,7 +19,7 @@ class TaskForm(forms.ModelForm):
 
     class Meta:
         model = Task
-        fields = ['product', 'step', 'last_step', 'name', 'description', 'cost', 'duration', 'notify_days_before']
+        fields = ['product', 'step', 'last_step', 'name', 'description', 'cost', 'duration', 'duration_is_business_days', 'notify_days_before']
 
     # if update a new task, then the product field is disabled
     def __init__(self, *args, **kwargs):

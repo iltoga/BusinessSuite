@@ -8,6 +8,7 @@ from products.models import Task
 from .forms import DocApplicationFormCreate, RequiredDocumentCreateFormSet, RequiredDocumentUpdateFormSet, RequiredDocumentUpdateForm, DocApplicationFormUpdate, DocWorkflowForm
 from django.contrib.messages.views import SuccessMessageMixin
 from django.contrib.auth.mixins import PermissionRequiredMixin
+from core.utils.dateutils import calculate_due_date
 
 class DocApplicationListView(PermissionRequiredMixin, ListView):
     permission_required = ('customer_applications.view_docapplication',)
@@ -156,9 +157,13 @@ class DocWorkflowCreateView(PermissionRequiredMixin, SuccessMessageMixin, Create
         self.task = Task.objects.get(step=self.kwargs['step_no'], product=self.doc_application.product)
         if not self.task:
             raise Http404
+        # Calculate due date from task duration, using dateutils calculate_due_date
+        # Take in account if task duration_is_business_days
+        business_days = self.task.duration_is_business_days
+        default_due_date = calculate_due_date(timezone.now(), self.task.duration, business_days)
         kwargs['initial'] = {
             'task': self.task,
-            'due_date': timezone.now() + timezone.timedelta(days=self.task.duration),
+            'due_date': default_due_date,
             'doc_application': self.doc_application,
         }
         return kwargs

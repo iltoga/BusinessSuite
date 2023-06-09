@@ -40,7 +40,10 @@ class Task(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
     cost = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
-    duration = models.PositiveIntegerField()  # Duration in days
+    # Duration in days and a boolean to indicate if the duration is in business days
+    duration = models.PositiveIntegerField()
+    duration_is_business_days = models.BooleanField(default=True)
+
     notify_days_before = models.PositiveIntegerField(blank=True, null=True)  # Notify the user this many days before the task is due
 
     class Meta:

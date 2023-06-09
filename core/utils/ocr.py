@@ -1,4 +1,3 @@
-# core/utils/ocr.py
 from datetime import datetime
 import os
 import tempfile

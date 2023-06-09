@@ -1,8 +1,11 @@
 from django.db import models
+from django.db.models import F, Sum
 from django.conf import settings
 from django.utils import timezone
 from products.models import Product
 from customers.models import Customer
+from datetime import timedelta
+from core.utils.dateutils import calculate_due_date
 
 class DocApplicationManager(models.Manager):
     def search_doc_applications(self, query):
@@ -41,9 +44,35 @@ class DocApplication(models.Model):
     updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='updated_by_doc_application', blank=True, null=True)
     objects = DocApplicationManager()
 
+    class Meta:
+        ordering = ['-id']
 
-    # class Meta:
-    #     ordering = ['-id']
+
+    @property
+    def due_date(self):
+        """
+        Calculates the due date of a DocApplication based on its associated DocWorkflows and tasks.
+
+        If the DocApplication has a current workflow, the calculation starts from the due date of the current workflow.
+        Otherwise, the calculation starts from the DocApplication's doc_date.
+
+        For every task, it checks if task.duration_is_business_days is True then uses
+        `due_date = calculate_due_date(start_date, task.duration, business_days_only=True)`,
+        otherwise, `due_date = calculate_due_date(start_date, task.duration, business_days_only=False)`,
+        to calculate the due_date for that task.
+        """
+        if self.current_workflow:
+            start_date = self.current_workflow.due_date
+            remaining_tasks = self.product.tasks.filter(step__gt=self.current_workflow.task.step)
+        else:
+            start_date = self.doc_date
+            remaining_tasks = self.product.tasks.all()
+
+        due_date = start_date
+        for task in remaining_tasks:
+            due_date = calculate_due_date(due_date, task.duration, business_days_only=task.duration_is_business_days)
+
+        return due_date
 
     @property
     def is_document_collection_completed(self):

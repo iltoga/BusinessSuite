@@ -13,6 +13,9 @@ python manage.py collectstatic --noinput
 # Create groups
 python manage.py creategroups
 
+# Populate holidays
+python manage.py populateholiday
+
 # Create superuser if none exists
 python manage.py createsuperuserifnotexists
 

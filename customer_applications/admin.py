@@ -12,6 +12,6 @@ class RequiredDocumentTabularInline(NestedTabularInline):
 
 @admin.register(DocApplication)
 class DocApplicationAdmin(NestedModelAdmin):
-    inlines = [DocWorkflowTabularInline, RequiredDocumentTabularInline, ]
+    inlines = [DocWorkflowTabularInline, RequiredDocumentTabularInline ]
 
 
