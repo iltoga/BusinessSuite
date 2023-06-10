@@ -17,8 +17,6 @@ class DocApplicationManager(models.Manager):
             models.Q(doc_date__icontains=query)
         )
 
-    def get_current_workflow(self, docapplication):
-        return docapplication.workflows.order_by('-task__step').first()
 
 class DocApplication(models.Model):
     STATUS_COMPLETED = 'completed'
@@ -37,6 +35,7 @@ class DocApplication(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     doc_date = models.DateField()
+    due_date = models.DateField(blank=True, null=True)
     price = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -46,33 +45,6 @@ class DocApplication(models.Model):
 
     class Meta:
         ordering = ['-id']
-
-
-    @property
-    def due_date(self):
-        """
-        Calculates the due date of a DocApplication based on its associated DocWorkflows and tasks.
-
-        If the DocApplication has a current workflow, the calculation starts from the due date of the current workflow.
-        Otherwise, the calculation starts from the DocApplication's doc_date.
-
-        For every task, it checks if task.duration_is_business_days is True then uses
-        `due_date = calculate_due_date(start_date, task.duration, business_days_only=True)`,
-        otherwise, `due_date = calculate_due_date(start_date, task.duration, business_days_only=False)`,
-        to calculate the due_date for that task.
-        """
-        if self.current_workflow:
-            start_date = self.current_workflow.due_date
-            remaining_tasks = self.product.tasks.filter(step__gt=self.current_workflow.task.step)
-        else:
-            start_date = self.doc_date
-            remaining_tasks = self.product.tasks.all()
-
-        due_date = start_date
-        for task in remaining_tasks:
-            due_date = calculate_due_date(due_date, task.duration, business_days_only=task.duration_is_business_days)
-
-        return due_date
 
     @property
     def is_document_collection_completed(self):
@@ -91,7 +63,7 @@ class DocApplication(models.Model):
 
     @property
     def current_workflow(self):
-        current_workflow = self.__class__.objects.get_current_workflow(self)
+        current_workflow = self.workflows.order_by('-task__step').first()
         return current_workflow if current_workflow else None
 
     # get next workflow task
@@ -139,4 +111,31 @@ class DocApplication(models.Model):
 
     def save(self, *args, **kwargs):
         self.updated_at = timezone.now()
+        self.due_date = self.calculate_application_due_date()
+
         return super(DocApplication, self).save(*args, **kwargs)
+
+    def calculate_application_due_date(self):
+        """
+        Calculates the due date of a DocApplication based on its associated DocWorkflows and tasks.
+
+        If the DocApplication has a current workflow, the calculation starts from the due date of the current workflow.
+        Otherwise, the calculation starts from the DocApplication's doc_date.
+
+        For every task, it checks if task.duration_is_business_days is True then uses
+        `due_date = calculate_due_date(start_date, task.duration, business_days_only=True)`,
+        otherwise, `due_date = calculate_due_date(start_date, task.duration, business_days_only=False)`,
+        to calculate the due_date for that task.
+        """
+        if self.current_workflow:
+            start_date = self.current_workflow.due_date
+            remaining_tasks = self.product.tasks.filter(step__gt=self.current_workflow.task.step)
+        else:
+            start_date = self.doc_date
+            remaining_tasks = self.product.tasks.all()
+
+        due_date = start_date
+        for task in remaining_tasks:
+            due_date = calculate_due_date(due_date, task.duration, business_days_only=task.duration_is_business_days)
+
+        return due_date

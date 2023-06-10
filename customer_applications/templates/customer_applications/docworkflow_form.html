@@ -6,7 +6,7 @@
 
 {% block content %}
 <div class="container-fluid">
-    <h2 class="text-center my-4">{{ docapplication.get_application_type_display }} application for {{ docapplication.customer.full_name }}<br><small>Step {{ task.step }} - {{ task.name }}</small> </h2>
+    <h2 class="text-center my-4">{{ docapplication.product.name }} {{ docapplication.get_application_type_display }} application for {{ docapplication.customer.full_name }}<br><small>Step {{ task.step }} - {{ task.name }}</small> </h2>
     <form method="post" class="p-3 rounded w-100" action="" id="doc-workflow-step-form">
         {% csrf_token %}
         {{ form | crispy }}

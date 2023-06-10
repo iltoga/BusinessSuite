@@ -88,4 +88,13 @@ class DocWorkflow(models.Model):
         if not self.id:
             self.created_at = timezone.now()
         self.updated_at = timezone.now()
-        return super(DocWorkflow, self).save(*args, **kwargs)
+        if self.status == 'completed':
+            self.completion_date = timezone.now().date()
+        else:
+            self.completion_date = None
+
+        updated_doc_workflow = super(DocWorkflow, self).save(*args, **kwargs)
+        # save the doc_application model to update the due_date field
+        self.doc_application.save()
+
+        return updated_doc_workflow

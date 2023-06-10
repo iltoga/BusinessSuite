@@ -1,5 +1,5 @@
 from django.utils import timezone
-from core.models import Holiday
+from core.models.holiday import Holiday
 
 def calculate_due_date(start_date, days_to_complete, business_days_only=False, country='ID'):
     if not start_date or not days_to_complete:
