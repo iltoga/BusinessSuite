@@ -50,8 +50,7 @@ class UnicornSearchListView(UnicornView):
             self.total_items = queryset.count()
             self.total_pages = ceil(self.total_items / self.items_per_page)
         else:
-            self.total_items = self.model.objects.count()
-            self.total_pages = ceil(self.total_items / self.items_per_page)
+            self.query = None  # Or whatever is appropriate to reset the query
             self.load_items()
 
     def get_queryset(self):

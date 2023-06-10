@@ -4,13 +4,13 @@ from products.models.product import Product
 
 class Task(models.Model):
     product = models.ForeignKey(Product, related_name='tasks', on_delete=models.CASCADE)
-    step = models.PositiveIntegerField()
-    last_step = models.BooleanField(default=False)
-    name = models.CharField(max_length=100)
+    step = models.PositiveIntegerField(db_index=True)
+    last_step = models.BooleanField(default=False, db_index=True)
+    name = models.CharField(max_length=100, db_index=True)
     description = models.TextField(blank=True, null=True)
     cost = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     # Duration in days and a boolean to indicate if the duration is in business days
-    duration = models.PositiveIntegerField()
+    duration = models.PositiveIntegerField(db_index=True)
     duration_is_business_days = models.BooleanField(default=True)
 
     notify_days_before = models.PositiveIntegerField(blank=True, null=True)  # Notify the user this many days before the task is due

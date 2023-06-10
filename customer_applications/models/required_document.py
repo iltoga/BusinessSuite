@@ -20,17 +20,17 @@ class RequiredDocument(models.Model):
         return f"{base_doc_path}/{whitespaces_to_underscores(doc_application.customer.full_name)}_{doc_application.customer.pk}/application_{doc_application.pk}/{filename}"
 
     doc_application = models.ForeignKey(DocApplication, related_name='required_documents', on_delete=models.CASCADE)
-    doc_type = models.CharField(max_length=100)
+    doc_type = models.CharField(max_length=100, db_index=True)
     doc_number = models.CharField(max_length=50, blank=True)
-    expiration_date = models.DateField(blank=True, null=True)
+    expiration_date = models.DateField(blank=True, null=True, db_index=True)
     file = models.FileField(upload_to=get_upload_to, blank=True)
     file_link = models.CharField(max_length=1024, blank=True)
     # metadata field to store the extracted metadata from the document
     ocr_check = models.BooleanField(default=False)
-    completed = models.BooleanField(default=False)
+    completed = models.BooleanField(default=False, db_index=True)
     metadata = models.JSONField(blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True, db_index=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='created_by_required_document')
     updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='updated_by_required_document', blank=True, null=True)
 

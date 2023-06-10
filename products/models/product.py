@@ -15,11 +15,11 @@ class Product(models.Model):
         ('other', 'Other'),
     ]
 
-    name = models.CharField(max_length=100)
-    code = models.CharField(max_length=20, unique=True)
-    description = models.TextField(blank=True)
+    name = models.CharField(max_length=100, db_index=True)
+    code = models.CharField(max_length=20, unique=True, db_index=True)
+    description = models.TextField(blank=True, db_index=True)
     base_price = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True, default=0.00)
-    product_type = models.CharField(max_length=50, choices=PRODUCT_TYPE_CHOICES, default='other')
+    product_type = models.CharField(max_length=50, choices=PRODUCT_TYPE_CHOICES, default='other', db_index=True)
     validity = models.PositiveIntegerField(blank=True, null=True)  # Validity in days
     required_documents = models.CharField(max_length=1024, blank=True)  # A comma-separated list of required documents
     documents_min_validity = models.PositiveIntegerField(blank=True, null=True)  # Documents must be valid for this many days
@@ -27,6 +27,12 @@ class Product(models.Model):
 
     class Meta:
         ordering = ['name']
+        indexes = [
+            models.Index(fields=['name'], name='product_name_idx'),
+            models.Index(fields=['code'], name='product_code_idx'),
+            models.Index(fields=['description'], name='product_description_idx'),
+            models.Index(fields=['product_type'], name='product_type_idx'),
+        ]
 
     def __str__(self):
         return self.code
