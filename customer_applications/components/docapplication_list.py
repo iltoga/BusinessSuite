@@ -2,6 +2,7 @@ from django.db.models import Exists, OuterRef
 from customer_applications.models import DocApplication
 from core.components.unicorn_search_list_view import UnicornSearchListView
 from customer_applications.models.doc_workflow import DocWorkflow
+from django.db.models import Count, Q, F
 
 class DocapplicationListView(UnicornSearchListView):
     model = DocApplication
@@ -20,11 +21,10 @@ class DocapplicationListView(UnicornSearchListView):
     def apply_filters(self, queryset):
         queryset = super().apply_filters(queryset)  # Call parent class method
         if self.hide_finished:
-            qry_filter_args = {
-                'workflows__status': 'completed',
-                'workflows__task__last_step': True
-            }
-            queryset = queryset.exclude(**qry_filter_args)
+            queryset = queryset.annotate(
+                total_workflows=Count('workflows'),
+                completed_workflows=Count('workflows', filter=Q(workflows__status='completed', workflows__task__last_step=True))
+            ).exclude(Q(total_workflows=F('completed_workflows')) & Q(total_workflows__gt=0))
 
         if self.hide_not_started:
             # exclude the applications that have no workflows

@@ -3,13 +3,13 @@ from django.contrib.messages.views import SuccessMessageMixin
 from django.db import transaction
 from django.urls import reverse_lazy
 from django.views.generic import UpdateView
-from customer_applications.forms import DocApplicationFormUpdate, RequiredDocumentUpdateFormSet
+from customer_applications.forms import DocApplicationForm, RequiredDocumentUpdateFormSet
 from customer_applications.models import DocApplication
 
 class DocApplicationUpdateView(PermissionRequiredMixin, SuccessMessageMixin, UpdateView):
     permission_required = ('customer_applications.change_docapplication',)
     model = DocApplication
-    form_class = DocApplicationFormUpdate
+    form_class = DocApplicationForm
     template_name = 'customer_applications/docapplication_update.html'
     success_url = reverse_lazy('customer-application-list')
     success_message = 'Customer application created successfully!'

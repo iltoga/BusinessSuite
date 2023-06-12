@@ -2,8 +2,8 @@ from django.utils import timezone
 from core.models.holiday import Holiday
 
 def calculate_due_date(start_date, days_to_complete, business_days_only=False, country='ID'):
-    if not start_date or not days_to_complete:
-        return None
+    if not start_date or days_to_complete == 0:
+        return start_date
 
     due_date = start_date
     added_days = 0

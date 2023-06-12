@@ -9,7 +9,6 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    text-align: center;
 }
 
 form {
@@ -24,38 +23,36 @@ form.left-align {
     text-align: left;
 }
 
+/*
 .input-group {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 10px;
-    /* optional: add some space between each group */
 }
 
 .input-label {
     width: 200px;
-    /* set a fixed width */
     text-align: right;
     margin-right: 10px;
-    /* optional: add some space between the label and the input */
 }
 
 .input-field {
     flex-grow: 1;
-    /* this will make the input field fill the remaining space */
 }
 
 .form-container {
     display: flex;
     flex-direction: column;
     align-items: center;
-}
+} */
 
 .centered-content {
     display: flex;
     justify-content: center;
     align-items: center;
     flex-direction: column;
+    text-align: center;
 }
 
 th.sortable:hover {
@@ -67,4 +64,12 @@ th.sortable:hover {
     height: 3em;
     border-width: .25em;
     opacity: 0.5;
+}
+
+.wide-form .form-control {
+    width: 100%;
+}
+
+.table-condensed {
+    font-size: 85%;
 }

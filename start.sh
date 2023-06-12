@@ -16,6 +16,9 @@ python manage.py creategroups
 # Populate holidays
 python manage.py populateholiday
 
+# Populate document types
+python manage.py populate_documenttypes
+
 # Create superuser if none exists
 python manage.py createsuperuserifnotexists
 

@@ -16,14 +16,15 @@
 
   <div class="centered-content">
     {% if list_items %}
-    <table class="table table-bordered">
+    <table class="table table-bordered table-condensed">
       <thead class="thead-light">
         <tr>
           {% include 'components/list_sorting_col.html' with col_field='pk' col_name='#ID' %}
+          {% include 'components/list_sorting_col.html' with col_field='customer' col_name='Customer' %}
           {% include 'components/list_sorting_col.html' with col_field='application_type' col_name='Type' %}
           {% include 'components/list_sorting_col.html' with col_field='product' col_name='Product' %}
-          {% include 'components/list_sorting_col.html' with col_field='customer' col_name='Customer' %}
           {% include 'components/list_sorting_col.html' with col_field='doc_date' col_name='Document Date' %}
+          {% include 'components/list_sorting_col.html' with col_field='due_date' col_name='Due Date' %}
           <th scope="col">Current Task</th>
           {% include 'components/list_sorting_col.html' with col_field='workflows__task__step' col_name='Due Date' %}
           <th scope="col">Status</th>
@@ -45,14 +46,15 @@
               <tr>
             {% endif %}
               <td>{{ docapplication.id }}</td>
+              <td>
+                <a href="{% url 'customer-detail' docapplication.customer.pk %}" class="text-primary font-weight-light">{{ docapplication.customer }}</a>
+              </td>
               <td>{{ docapplication.get_application_type_display }}</td>
               <td>
                 <a href="{% url 'product-detail' docapplication.product.pk %}" class="text-primary font-weight-light">{{ docapplication.product }}</a>
               </td>
-              <td>
-                <a href="{% url 'customer-detail' docapplication.customer.pk %}" class="text-primary font-weight-light">{{ docapplication.customer }}</a>
-              </td>
               <td>{{ docapplication.doc_date }}</td>
+              <td>{{ docapplication.due_date }}</td>
               {% if docapplication and current_workflow %}
                 <td>{{ current_workflow.task }}</td>
                 <td>{{ current_workflow.due_date }}</td>

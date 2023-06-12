@@ -27,7 +27,8 @@ class RequiredDocument(models.Model):
     file_link = models.CharField(max_length=1024, blank=True)
     # metadata field to store the extracted metadata from the document
     ocr_check = models.BooleanField(default=False)
-    completed = models.BooleanField(default=False, db_index=True)
+    details = models.TextField(blank=True)
+    completed = models.BooleanField(default=False)
     metadata = models.JSONField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True, db_index=True)
@@ -67,12 +68,3 @@ class RequiredDocument(models.Model):
                 if default_storage.exists(file_path):
                     default_storage.delete(file_path)
         super().save(*args, **kwargs)
-
-        if self.file:
-            self.file_link = self.file.url
-            self.completed = True
-        else:
-            self.file_link = ''
-            self.completed = False
-
-        super(RequiredDocument, self).save(*args, **kwargs)

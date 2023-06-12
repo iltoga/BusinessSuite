@@ -21,5 +21,5 @@ TaskModelFormSet = forms.inlineformset_factory(
     form=TaskForm, # form to use
     extra=0, # minimum number of forms to show
     max_num=10, # maximum number of forms to show
-    can_delete=False, # enable deletion
+    can_delete=True, # enable deletion
 )

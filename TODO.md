@@ -2,12 +2,16 @@
 
 ## BUGS
 
-### 2023-06-08
-- edit workflow form: general data not showing in form
-
+### 2023-06-12
 
 ## RESOLVED ✓
 
+### 2023-06-12
+- customer application: not saving (pk error)
+- update product: required documents not showing in form
+- update product: after inserting new ones, required documents not updating
+### 2023-06-09
+- edit workflow form: general data not showing in form
 ### 2023-06-08
 - edit product task: can change the product in dropdown
 - create product: parent model is not included in a transaction together with its children

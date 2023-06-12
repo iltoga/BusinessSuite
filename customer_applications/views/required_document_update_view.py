@@ -12,6 +12,12 @@ class RequiredDocumentUpdateView(PermissionRequiredMixin, SuccessMessageMixin, U
     template_name = 'customer_applications/requireddocument_update.html'
     success_message = 'Required document updated successfully!'
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        form_instance = context['form']
+        context['product_doc_type'] = form_instance.product_doc_type
+        return context
+
     def form_valid(self, form):
         form.instance.updated_by = self.request.user
         return super().form_valid(form)

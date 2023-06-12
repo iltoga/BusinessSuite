@@ -112,7 +112,6 @@ class DocApplication(models.Model):
     def save(self, *args, **kwargs):
         self.updated_at = timezone.now()
         self.due_date = self.calculate_application_due_date()
-
         return super(DocApplication, self).save(*args, **kwargs)
 
     def calculate_application_due_date(self):
@@ -127,7 +126,7 @@ class DocApplication(models.Model):
         otherwise, `due_date = calculate_due_date(start_date, task.duration, business_days_only=False)`,
         to calculate the due_date for that task.
         """
-        if self.current_workflow:
+        if self.pk and self.current_workflow:
             start_date = self.current_workflow.due_date
             remaining_tasks = self.product.tasks.filter(step__gt=self.current_workflow.task.step)
         else:

@@ -241,8 +241,15 @@ CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
         # "LOCATION": "unique-snowflake",
+    },
+    'select2': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
     }
 }
+
+# select2
+SELECT2_CACHE_BACKEND = 'select2'
+
 # SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 # # SESSION_COOKIE_AGE = 60 * 60 * 24  # One day
 # SESSION_COOKIE_AGE = 60 * 5 # 5 minutes

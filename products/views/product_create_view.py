@@ -1,3 +1,4 @@
+from django.forms import formset_factory
 from django.urls import reverse_lazy
 from django.db import transaction
 from products.models import Product
@@ -17,6 +18,7 @@ class ProductCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateView
     def get_context_data(self, **kwargs):
         data = super().get_context_data(**kwargs)
         data['action_name'] = "Create"
+
         if self.request.POST:
             data['tasks'] = TaskModelFormSet(self.request.POST, prefix='tasks')
         else:
@@ -27,11 +29,23 @@ class ProductCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateView
         context = self.get_context_data()
         tasks = context['tasks']
 
-        if tasks.is_valid():  # Check if tasks formset is valid first
+        # Check if tasks formset and required_documents formset are valid
+        if tasks.is_valid():
             with transaction.atomic():
-                self.object = form.save()  # Save the main form only if tasks formset is valid
+                required_documents = form.cleaned_data['required_documents']
+                if len(required_documents) == 0:
+                    form.instance.required_documents = ''
+                else:
+                    required_documents_str = ''
+                    for document in required_documents:
+                        required_documents_str += document.name + ','
+                    form.instance.required_documents = required_documents_str[:-1]
+
+                self.object = form.save()
                 tasks.instance = self.object
-                tasks.save()  # Save the tasks formset
+                # Save the tasks formset
+                tasks.save()
                 return super().form_valid(form)
 
-        return super().form_invalid(form)  # If tasks formset is not valid, don't save anything
+        # If either formset is not valid, don't save anything
+        return super().form_invalid(form)

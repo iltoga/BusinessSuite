@@ -3,13 +3,13 @@ from django.contrib.messages.views import SuccessMessageMixin
 from django.db import transaction
 from django.urls import reverse_lazy
 from django.views.generic import CreateView
-from customer_applications.forms import DocApplicationFormCreate, RequiredDocumentCreateFormSet
+from customer_applications.forms import DocApplicationForm, RequiredDocumentCreateFormSet
 from customer_applications.models import DocApplication
 
 class DocApplicationCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateView):
     permission_required = ('customer_applications.add_docapplication',)
     model = DocApplication
-    form_class = DocApplicationFormCreate
+    form_class = DocApplicationForm
     template_name = 'customer_applications/docapplication_create.html'
     success_url = reverse_lazy('customer-application-list')
     success_message = 'Customer application created successfully!'

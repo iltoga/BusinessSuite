@@ -3,7 +3,7 @@ from django.contrib.messages.views import SuccessMessageMixin
 from django.urls import reverse_lazy
 from django.views.generic import UpdateView
 from products.forms import ProductForm, TaskModelFormSet
-from products.models import Product
+from products.models import Product, DocumentType
 from django.db import transaction
 
 class ProductUpdateView(PermissionRequiredMixin, SuccessMessageMixin, UpdateView):
@@ -26,12 +26,25 @@ class ProductUpdateView(PermissionRequiredMixin, SuccessMessageMixin, UpdateView
     def form_valid(self, form):
         context = self.get_context_data()
         tasks = context['tasks']
-        with transaction.atomic():
-            self.object = form.save(commit=False)  # Don't save the form to the database yet
-            if tasks.is_valid():
+
+        # Check if tasks formset is valid
+        if tasks.is_valid():
+            with transaction.atomic():
+                # get the values from the multiselect field
+                required_documents_multiselect = form.cleaned_data.get('required_documents_multiselect')
+                if not required_documents_multiselect:
+                    self.object.required_documents = ''
+                else:
+                    required_documents_str = ''
+                    for document in required_documents_multiselect:
+                        required_documents_str += document.name + ','
+                    self.object.required_documents = required_documents_str[:-1]
+                self.object = form.save(commit=False)
                 tasks.instance = self.object
-                tasks.save()  # Save the tasks to the database
-                self.object.save()  # Now save the form to the database
+                # Save the tasks formset
+                tasks.save()
+                self.object.save()
                 return super().form_valid(form)
 
-            return super().form_invalid(form)  # If tasks aren't valid, don't save anything
+        # If either formset is not valid, don't save anything
+        return super().form_invalid(form)
