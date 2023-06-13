@@ -72,23 +72,54 @@
                 <span class="nav-link text-dark">Not Logged in</span>
             {% endif %}
         </li>
-
-        <!-- <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" href="#" id="navbarAdmin" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-              Menu
-            </a>
-            <ul class="dropdown-menu" aria-labelledby="navbarAdmin">
-              <li><a class="dropdown-item" href="#">
-                  Item</a></li>
-              <li><a class="dropdown-item" href="#">
-                  Item</a></li>
-              <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item" href="#">Item</a></li>
-            </ul>
-          </li>
-          <li class="nav-item active">
-            <a class="nav-link" href="#">Page</a>
-        </li> -->
+        <!-- CMS Section -->
+        {% if user.is_authenticated %}
+            {% if user|has_any_perm:'customer' %}
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" id="customerMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    Customers
+                </a>
+                <ul class="dropdown-menu" aria-labelledby="customerMenu">
+                    {% if user|has_perm:'customers,customer,view' %}
+                    <li><a class="dropdown-item" href="/customers/list">List</a></li>
+                    {% endif %}
+                    {% if user|has_perm:'customers,customer,add' %}
+                    <li><a class="dropdown-item" href="/customers/create">Add new</a></li>
+                    {% endif %}
+                </ul>
+            </li>
+            {% endif %}
+            {% if user|has_any_perm:'product' %}
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" id="productMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    Products
+                </a>
+                <ul class="dropdown-menu" aria-labelledby="productMenu">
+                    {% if user|has_perm:'products,product,view' %}
+                    <li><a class="dropdown-item" href="/products/list">List</a></li>
+                    {% endif %}
+                    {% if user|has_perm:'products,product,add' %}
+                    <li><a class="dropdown-item" href="/products/create">Add new</a></li>
+                    {% endif %}
+                </ul>
+            </li>
+            {% endif %}
+            {% if user|has_any_perm:'docapplication' %}
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" id="appMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    Customer Applications
+                </a>
+                <ul class="dropdown-menu" aria-labelledby="appMenu">
+                    {% if user|has_perm:'customer_applications,docapplication,view' %}
+                    <li><a class="dropdown-item" href="/customer_applications/list">List</a></li>
+                    {% endif %}
+                    {% if user|has_perm:'customer_applications,docapplication,add' %}
+                    <li><a class="dropdown-item" href="/customer_applications/create">Add new</a></li>
+                    {% endif %}
+                </ul>
+            </li>
+            {% endif %}
+        {% endif %}
         <li class="nav-item">
             {% if user.is_authenticated %}
                 <a class="nav-link" href="{% url 'logout' %}">Logout</a>
@@ -204,15 +235,97 @@
 {% endblock %}
 
 {% block after-bootstrap-js %}
+<script type="text/javascript">
+    document.addEventListener("DOMContentLoaded", function(event) {
+        if (!localStorage.getItem('sidebarCollapse')) {
+            localStorage.setItem('sidebarCollapse', 'inactive');
+        }
+
+        let sidebarCollapseState = localStorage.getItem('sidebarCollapse');
+
+        // Add 'no-transition' class to instantly toggle visibility
+        $('#sidebar, #content').addClass('no-transition');
+
+        if (sidebarCollapseState === 'active') {
+            // add active class to sidebar and content
+            $('#sidebar, #content').addClass('active');
+        } else {
+            // remove active class from sidebar and content
+            $('#sidebar, #content').removeClass('active');
+        }
+
+        // Remove 'no-transition' class to enable CSS transitions again
+        setTimeout(function() {
+            $('#sidebar, #content').removeClass('no-transition');
+        }, 1);  // Use timeout to ensure this happens after state update
+    });
+    </script>
     <script>
         // Initialize select2 dropdown
         $(document).ready(function() {
-            $('.select2').select2();
 
-            // dismiss alerts: set the alert to automatically fade out
-            $('.alert-dismissible').delay(3000).fadeOut("slow");
+            // Check if sidebarCollapse is in localStorage and has active class
+            let sidebarCollapseState = localStorage.getItem('sidebarCollapse');
+            if (sidebarCollapseState === 'active') {
+                // add active class to sidebar and content
+                $('#sidebar, #content').addClass('active');
+            } else {
+                // remove active class from sidebar and content
+                $('#sidebar, #content').removeClass('active');
+            }
+
+            let activeLink = localStorage.getItem('active-link');
+            // if screen is less than 768px add active class to sidebar-collapse button
+            if ($(window).width() < 768) {
+                $('#sidebar').addClass('active');
+                $('#content').removeClass('active');
+            } else {
+                if (activeLink) {
+                    // set active link
+                    $(`#sidebar .collapse a[href="${activeLink}"]`).addClass('active');
+                }
+
+                let opened_submenu = localStorage.getItem('opened_submenu');
+                if (opened_submenu) {
+                    $("#" + opened_submenu).addClass('show');
+                    // set aria-expanded to true for the dropdown toggle of the opened submenu
+                    $('a[href="#' + opened_submenu + '"]').attr('aria-expanded', 'true');
+                }
+
+            }
 
         });
+        // Store the state of the sidebar toggle button in localStorage
+        $('#sidebarCollapse').on('click', function() {
+            if ($('#sidebar, #content').hasClass('active')) {
+                localStorage.setItem('sidebarCollapse', 'inactive');
+                document.getElementById("sidebar").classList.remove("active");
+                document.getElementById("content").classList.remove("active");
+            } else {
+                localStorage.setItem('sidebarCollapse', 'active');
+                document.getElementById("sidebar").classList.add("active");
+                document.getElementById("content").classList.add("active");
+            }
+        });
 
+        $(".dropdown-toggle").click(function() {
+            let submenuId = $(this).attr("href").substring(1); // Get the submenu ID from the href attribute
+            // Save submenu state to local storage
+            localStorage.setItem('opened_submenu', submenuId);
+            // Set aria-expanded to true for the clicked dropdown toggle, and false for the others
+            $('.dropdown-toggle').attr('aria-expanded', 'false');
+            $(this).attr('aria-expanded', 'true');
+        });
+
+        // Only target anchors in submenus for the click handler
+        $('#sidebar .collapse a').on('click', function (e) {
+            // remove 'active' class from all other links
+            $('#sidebar .collapse a').removeClass('active');
+            // add 'active' class to clicked link
+            $(this).addClass('active');
+            // save active link to local storage
+            localStorage.setItem('active-link', $(this).attr('href'));
+        });
     </script>
+
 {% endblock %}

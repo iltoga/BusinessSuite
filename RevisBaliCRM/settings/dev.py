@@ -12,20 +12,34 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 from .base import *
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+CSRF_COOKIE_SECURE = False
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_DOMAIN = None
+CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_SAMESITE = None
+SESSION_COOKIE_DOMAIN = None
+CSRF_TRUSTED_ORIGINS = ["http://192.168.100.80", "https://192.168.100.80"]
+SESSION_COOKIE_SAMESITE = None
+ALLOWED_HOSTS = ["*"]
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-CSRF_COOKIE_SECURE = True
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_DOMAIN = 'localhost'
-SESSION_COOKIE_DOMAIN = 'localhost'
-CSRF_TRUSTED_ORIGINS = ['http://*', 'https://*']
-SESSION_COOKIE_SAMESITE = 'None'
-CSRF_COOKIE_SAMESITE = 'None'
-
 # This is to show django-debug-toolbar (https://django-debug-toolbar.readthedocs.io/en/latest/installation.html)
 INTERNAL_IPS = [
     "127.0.0.1",
+]
+
+MIDDLEWARE = [
+    "debug_toolbar.middleware.DebugToolbarMiddleware",
+    "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # to serve static files
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "RevisBaliCRM.middlewares.AuthLoginRequiredMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
+    "models_logging.middleware.LoggingStackMiddleware",  # it merge all changes of object per request
 ]

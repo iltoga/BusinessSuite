@@ -1,3 +1,44 @@
+/* hide the sidebar on small screens */
+@media (max-width: 991px) {
+    #sidebar {
+        display: none;
+    }
+
+    #sidebarCollapse {
+        display: none;
+    }
+
+    #content-wrapper {
+        padding-left: 15px;
+        padding-right: 15px;
+    }
+}
+
+@media (max-width: 576px) {
+    #sidebar {
+        display: none;
+    }
+
+    #sidebarCollapse {
+        display: none;
+    }
+
+    #content-wrapper {
+        padding-left: 15px;
+        padding-right: 15px;
+    }
+
+    body {
+        font-size: 80%;
+    }
+}
+
+/* Remove animations and transitions from dom with this class */
+.no-transition {
+    transition: none !important;
+    -webkit-transition: none !important;
+}
+
 header img {
     width: 50%;
     display: block;
