@@ -26,17 +26,27 @@ function restApiCall(method, url, data, successCallback, errorCallback) {
     if (method.toUpperCase() !== 'GET') {
         let csrftoken = getCookie('csrftoken');
         options.headers = {
-            'Content-Type': 'application/json',
             'X-CSRFToken': csrftoken
         };
-        options.body = JSON.stringify(data);
+
+        // if the data is an instance of FormData, we should not set the Content-Type header
+        // the browser will automatically set this to multipart/form-data and include the necessary boundary parameter
+        if (data instanceof FormData) {
+            // options.headers['Content-Type'] = 'multipart/form-data';
+            options.body = data;
+        } else {
+            options.body = JSON.stringify(data);
+            options.headers['Content-Type'] = 'application/json';
+        }
     }
 
     // Perform the fetch
     fetch(url, options)
-        .then(response => {
+        .then(async response => {
             if (!response.ok) {
-                throw Error(response.statusText);
+                // Read the response to get the error message
+                const error = await response.json();
+                throw Error(error.message); // Assume server sends { "message": "Error details" }
             }
             return response.json();
         })
@@ -50,4 +60,5 @@ function restApiCall(method, url, data, successCallback, errorCallback) {
                 errorCallback(error);
             }
         });
+
 }

@@ -213,6 +213,12 @@ REST_FRAMEWORK = {
         # 'rest_framework.permissions.IsAuthenticated', #the one below is more granular
         "rest_framework.permissions.DjangoModelPermissions",
     ],
+    "DEFAULT_PARSER_CLASSES": [
+        "rest_framework.parsers.JSONParser",
+        "rest_framework.parsers.FormParser",
+        "rest_framework.parsers.MultiPartParser",
+        "rest_framework.parsers.FileUploadParser",
+    ],
 }
 
 # in case we want to try using nodejs for the frontend

@@ -4,7 +4,6 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 
-from core.utils.ocr import extract_mrz_data
 from customer_applications.models import RequiredDocument
 from products.models import DocumentType
 
@@ -16,7 +15,7 @@ class RequiredDocumentCreateForm(forms.ModelForm):
 
 
 class RequiredDocumentUpdateForm(forms.ModelForm):
-    ocr_check = forms.BooleanField(required=False, label="OCR Check (only for Passports)")
+    # ocr_check = forms.BooleanField(required=False, label="OCR Check (only for Passports)")
     # checkbox to force update even if there are errors. the field is hideen by default and shown only if there are errors
     force_update = forms.BooleanField(required=False, label="Force Update", widget=forms.HiddenInput())
     # Only users with the 'upload_document' permission can upload documents
@@ -47,6 +46,7 @@ class RequiredDocumentUpdateForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super(RequiredDocumentUpdateForm, self).__init__(*args, **kwargs)
         self.fields["doc_type"].widget = forms.HiddenInput()
+        self.fields["ocr_check"].widget = forms.HiddenInput()
         form_doc_type = self.instance.doc_type
 
         # Set form fields visibility based on the document type
@@ -99,19 +99,19 @@ class RequiredDocumentUpdateForm(forms.ModelForm):
     def clean(self):
         # Perform OCR if the user has checked the OCR checkbox
         cleaned_data = super().clean()
-        ocr_check = cleaned_data.get("ocr_check", False)
-        file = cleaned_data.get("file", False)
-        if ocr_check and not file:
-            raise ValidationError("You must upload a file to perform OCR.")
 
-        if file and ocr_check:
-            try:
-                doc_metadata, mrz_data = extract_mrz_data(file)
-                cleaned_data["metadata"] = doc_metadata
-                cleaned_data["doc_number"] = mrz_data.get("document_number", False)
-                cleaned_data["expiration_date"] = mrz_data.get("expiration_date", False)
-            except Exception as e:
-                self.add_error("file", str(e))
+        # TODO: delete this, since we are using OCR via ajax call
+        # ocr_check = cleaned_data.get("ocr_check", False)
+        # file = cleaned_data.get("file", False)
+
+        # if file and ocr_check:
+        #     try:
+        #         doc_metadata, mrz_data = extract_mrz_data(file)
+        #         cleaned_data["metadata"] = doc_metadata
+        #         cleaned_data["doc_number"] = mrz_data.get("document_number", False)
+        #         cleaned_data["expiration_date"] = mrz_data.get("expiration_date", False)
+        #     except Exception as e:
+        #         self.add_error("file", str(e))
         # if we are forcing update, we don't need to check for errors
         force_update = cleaned_data.get("force_update", False)
         if force_update:
