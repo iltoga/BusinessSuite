@@ -1,6 +1,7 @@
 from django.core.exceptions import ValidationError
 from django.db import models
 
+
 class DocumentType(models.Model):
     name = models.CharField(max_length=50, unique=True, db_index=True)
     description = models.CharField(max_length=500, blank=True)
@@ -9,9 +10,10 @@ class DocumentType(models.Model):
     has_doc_number = models.BooleanField(default=False)
     has_file = models.BooleanField(default=False)
     has_details = models.BooleanField(default=False)
+    validation_rule_regex = models.CharField(max_length=500, blank=True)
 
     class Meta:
-        ordering = ['name']
+        ordering = ["name"]
 
     def __str__(self):
         return self.name

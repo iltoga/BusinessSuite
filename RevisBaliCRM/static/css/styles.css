@@ -107,6 +107,11 @@ th.sortable:hover {
     opacity: 0.5;
 }
 
+.spinner-small {
+    width: 1em;
+    height: 1em;
+}
+
 .wide-form .form-control {
     width: 100%;
 }

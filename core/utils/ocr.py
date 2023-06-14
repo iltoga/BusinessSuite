@@ -23,9 +23,17 @@ def extract_mrz_data(file) -> tuple[dict, dict]:
         file_to_delete = file_path
     else:
         # If the file is not in memory, it's already a temporary file on disk
-        file_path = file.temporary_file_path()
+        file_path = file.path
 
-    if file.content_type == "application/pdf":
+    # Convert PDF to image
+    content_type = ""
+    file_ext = ""
+    try:
+        content_type = file.content_type
+    except Exception:
+        # try to extract extension from file name
+        file_ext = os.path.splitext(file_path)[1]
+    if content_type == "application/pdf" or file_ext == ".pdf":
         images = convert_from_path(file_path)
         if images:
             file_name, _ = os.path.splitext(file_path)
