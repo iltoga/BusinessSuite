@@ -1,4 +1,7 @@
 from django.urls import path
+from django.views.generic import DetailView
+
+from customer_applications.models.doc_workflow import DocWorkflow
 
 from .views import (
     DocApplicationCreateView,
@@ -52,6 +55,11 @@ urlpatterns = [
         "update_doc_workflow/<int:pk>",
         DocWorkflowUpdateView.as_view(),
         name="customer-application-docworkflow-update",
+    ),
+    path(
+        "doc_workflow_detail/<int:pk>/",
+        DetailView.as_view(model=DocWorkflow, template_name="customer_applications/docworkflow_detail.html"),
+        name="customer-application-docworkflow-detail",
     ),
     path(
         "delete/<int:pk>/",

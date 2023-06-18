@@ -3,81 +3,85 @@
 
 {% if docapplication.workflows.all|length > 0 %}
   <div id="doc_workflow_table" >
-    <div class="table-responsive">
-      <table class="table">
-        <thead>
-          <tr>
-            <th scope="col">Task</th>
-            <th scope="col">Start Date</th>
-            <th scope="col">Due Date</th>
-            <th scope="col">Last Updated</th>
-            <th scope="col">Status</th>
-            {% if user|has_perm:'customer_applications,docworkflow,change' and not docapplication.is_application_completed %}
-            <th scope="col">Edit</th>
-            {% endif %}
-          </tr>
-        </thead>
-        <tbody>
-          {% for docworkflow in docapplication.workflows.all %}
-            {% if not docworkflow.is_completed %}
-              {% if docworkflow.is_overdue %}
-                <tr class="table-danger">
-              {% elif docworkflow.is_notification_date_reached %}
-                <tr class="table-warning">
-              {% else %}
-                <tr>
-              {% endif %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th scope="col">Task</th>
+          <th scope="col">Start Date</th>
+          <th scope="col">Due Date</th>
+          <th scope="col">Last Updated</th>
+          <th scope="col">Status</th>
+          {% if user|has_perm:'customer_applications,docworkflow,change' and not docapplication.is_application_completed %}
+          <th scope="col">Edit</th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for docworkflow in docapplication.workflows.all %}
+          {% if not docworkflow.is_completed %}
+            {% if docworkflow.is_overdue %}
+              <tr class="table-danger">
+            {% elif docworkflow.is_notification_date_reached %}
+              <tr class="table-warning">
             {% else %}
               <tr>
             {% endif %}
-              <td>{{ docworkflow.task.name }}</td>
-              <td>{{ docworkflow.start_date }}</td>
-              <td>{{ docworkflow.due_date }}</td>
-              {% include "components/updated_at_by_table_col.html" with model=docworkflow %}
+          {% else %}
+            <tr>
+          {% endif %}
+            <!-- Task -->
+            <td>{{ docworkflow.task.name }}</td>
+            <!-- Start Date -->
+            <td>{{ docworkflow.start_date }}</td>
+            <!-- Due Date -->
+            <td>{{ docworkflow.due_date }}</td>
+            <!-- Last Updated -->
+            {% include "components/updated_at_by_table_col.html" with model=docworkflow %}
 
-              <td>
-                <div class="d-md-flex text-center">
-                {% if not docapplication.is_application_completed %}
-                  {% if user|has_perm:'customer_applications,docworkflow,change' and docworkflow.is_current_step %}
-                      <!-- Dropdown to select workflow status -->
-                        <select class="form-select form-select-sm text-sm-start" style="width:auto;" unicorn:change="update_status({{ docworkflow.pk }}, $event.target.value)">
-                            <option value="{{docapplication.STATUS_PENDING}}" {% if docworkflow.status == docapplication.STATUS_PENDING %}selected{% endif %}>Pending</option>
-                            <option value="{{docapplication.STATUS_PROCESSING}}" {% if docworkflow.status == docapplication.STATUS_PROCESSING %}selected{% endif %}>Processing</option>
-                            <option value="{{docapplication.STATUS_COMPLETED}}" {% if docworkflow.status == docapplication.STATUS_COMPLETED %}selected{% endif %}>Completed</option>
-                            <option value="{{docapplication.STATUS_REJECTED}}" {% if docworkflow.status == docapplication.STATUS_REJECTED %}selected{% endif %}>Rejected</option>
-                        </select>
-                  {% else %}
-                    {% include "components/model_status_badge.html" with status=docworkflow.status %}
-                  {% endif %}
+            <!-- Status -->
+            <td>
+              <div class="d-md-flex text-center">
+              {% if not docapplication.is_application_completed %}
+                {% if user|has_perm:'customer_applications,docworkflow,change' and docworkflow.is_current_step %}
+                    <!-- Dropdown to select workflow status -->
+                      <select class="form-select form-select-sm text-sm-start" style="width:auto;" unicorn:change="update_status({{ docworkflow.pk }}, $event.target.value)">
+                          <option value="{{docapplication.STATUS_PENDING}}" {% if docworkflow.status == docapplication.STATUS_PENDING %}selected{% endif %}>Pending</option>
+                          <option value="{{docapplication.STATUS_PROCESSING}}" {% if docworkflow.status == docapplication.STATUS_PROCESSING %}selected{% endif %}>Processing</option>
+                          <option value="{{docapplication.STATUS_COMPLETED}}" {% if docworkflow.status == docapplication.STATUS_COMPLETED %}selected{% endif %}>Completed</option>
+                          <option value="{{docapplication.STATUS_REJECTED}}" {% if docworkflow.status == docapplication.STATUS_REJECTED %}selected{% endif %}>Rejected</option>
+                      </select>
                 {% else %}
                   {% include "components/model_status_badge.html" with status=docworkflow.status %}
                 {% endif %}
-                {% if docworkflow.has_notes %}
-                  <div class="ml-2">
-                    <i class="bi bi-exclamation-triangle-fill text-warning"></i>
-                  </div>
-                {% endif %}
+              {% else %}
+                {% include "components/model_status_badge.html" with status=docworkflow.status %}
+              {% endif %}
+              {% if docworkflow.has_notes %}
+                <div class="ml-2">
+                  <i class="bi bi-exclamation-triangle-fill text-warning"></i>
                 </div>
-              </td>
+              {% endif %}
+              </div>
+            </td>
 
-              <td>
+            <!-- Edit -->
+            <td>
+              {% if user|has_perm:'customer_applications,docworkflow,view' %}
+                <a href="{% url 'customer-application-docworkflow-detail' docworkflow.pk %}" class="btn btn-sm btn-primary">View</a>
+              {% endif %}
               {% if not docapplication.is_application_completed %}
                 {% if user|has_perm:'customer_applications,docworkflow,change' %}
                   {% if docworkflow.is_current_step %}
-                      <div class="d-md-flex align-items-md-center justify-content-md-center">
-                        <div class="mb-2 mb-md-0 me-md-2">
-                            <a href="{% url 'customer-application-docworkflow-update' docworkflow.pk %}" class="btn btn-sm btn-warning">Edit</a>
-                        </div>
-                      </div>
-                    {% endif %}
+                    <a href="{% url 'customer-application-docworkflow-update' docworkflow.pk %}" class="btn btn-sm btn-warning">Edit</a>
+                  {% endif %}
                 {% endif %}
               {% endif %}
-              </td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+            </td>
+
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
 {% endif %}
 <div id="doc_workflow_next_btn" class="col mb-2 p-2">

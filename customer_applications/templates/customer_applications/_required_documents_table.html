@@ -23,10 +23,14 @@
         {% else %}
           <tr>
         {% endif %}
+
           <td>{{ document.doc_type }}</td>
+          <!-- Document Number -->
           <td>{{ document.doc_number }}</td>
+          <!-- Expiration Date -->
           <td>{{ document.expiration_date }}</td>
 
+          <!-- View Document -->
           {% if user|has_perm:'customer_applications,requireddocument,upload_document' %}
           <td>
             {% if document.file_link %}
@@ -37,8 +41,10 @@
           </td>
           {% endif %}
 
+          <!-- Last Updated -->
           {% include "components/updated_at_by_table_col.html" with model=document %}
 
+          <!-- Completed -->
           <td>
             {% if document.completed %}
               {% include "components/field_checked_true.html" with text="Yes" %}
@@ -47,17 +53,20 @@
             {% endif %}
           </td>
 
-          {% if user|has_perm:'customer_applications,requireddocument,change' %}
+          <!-- Actions -->
           <td>
-              <a href="{% url 'customer-application-requireddocument-detail' document.pk %}" class="btn btn-sm btn-primary">View</a>
-              {% if not docapplication.is_application_completed %}
-                {% if document.doc_type.has_file %}
-                  <a href="{% url 'customer-application-requireddocument-update' document.pk %}" class="btn btn-sm btn-warning">Upload</a>
-                {% else %}
-                  <a href="{% url 'customer-application-requireddocument-update' document.pk %}" class="btn btn-sm btn-warning">Update</a>
-                {% endif %}
+          {% if user|has_perm:'customer_applications,requireddocument,view' %}
+            <a href="{% url 'customer-application-requireddocument-detail' document.pk %}" class="btn btn-sm btn-primary">View</a>
+          {% endif %}
+          {% if user|has_perm:'customer_applications,requireddocument,change' %}
+            {% if not docapplication.is_application_completed %}
+              {% if document.doc_type.has_file %}
+                <a href="{% url 'customer-application-requireddocument-update' document.pk %}" class="btn btn-sm btn-warning">Upload</a>
+              {% else %}
+                <a href="{% url 'customer-application-requireddocument-update' document.pk %}" class="btn btn-sm btn-warning">Update</a>
               {% endif %}
             {% endif %}
+          {% endif %}
           </td>
 
         </tr>

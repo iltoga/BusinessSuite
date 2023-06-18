@@ -13,4 +13,9 @@ urlpatterns = [
     path("products/get_product_by_id/<int:product_id>/", views.ProductByIDView.as_view(), name="api-product-by-id"),
     path("products/get_products_by_product_type/<str:product_type>/", views.ProductsByTypeView.as_view()),
     path("ocr/check/", views.OCRCheckView.as_view(), name="api-ocr-check"),
+    path(
+        "compute/doc_workflow_due_date/<int:task_id>/<slug:start_date>/",
+        views.ComputeDocworkflowDueDate.as_view(),
+        name="api-compute-docworkflow-due-date",
+    ),
 ]

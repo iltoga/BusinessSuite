@@ -1,4 +1,5 @@
 import mimetypes
+from datetime import datetime
 
 from django.db.models import Q
 from rest_framework import status
@@ -6,10 +7,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from api.serializers.document_type_serializer import DocumentTypeSerializer
+from core.utils.dateutils import calculate_due_date
 from core.utils.passport_ocr import extract_mrz_data
 from customers.models import Customer
 from products.models import Product
 from products.models.document_type import DocumentType
+from products.models.task import Task
 
 from .serializers import CustomerSerializer, ProductSerializer
 
@@ -111,3 +114,38 @@ class OCRCheckView(APIView):
             # the one below always returns a error message of "Bad Request". I want to return the actual error message
             return Response(data={"error": errMsg}, status=status.HTTP_400_BAD_REQUEST)
         return res
+
+
+# the urlpattern for this view is:
+"""
+    path(
+        "compute/doc_workflow_due_date/int:<task_id>/date:start_date>/",
+        views.ComputeDocworkflowDueDate.as_view(),
+        name="api-compute-docworkflow-due-date",
+    ),
+
+"""
+
+
+class ComputeDocworkflowDueDate(APIView):
+    queryset = Task.objects.none()
+
+    def get(self, request, *args, **kwargs):
+        task_id = self.kwargs.get("task_id")
+        start_date = self.kwargs.get("start_date")
+        # check that the date is a valid date and convert it to a datetime object
+        if start_date:
+            try:
+                start_date = datetime.strptime(start_date, "%Y-%m-%d")
+            except ValueError:
+                return Response({"error": "Invalid date format. Date must be in the format YYYY-MM-DD"})
+        if task_id:
+            try:
+                task = Task.objects.get(id=task_id)
+                due_date = calculate_due_date(start_date, task.duration, task.duration_is_business_days)
+                due_date = due_date.strftime("%Y-%m-%d")
+                return Response({"due_date": due_date})
+            except Task.DoesNotExist:
+                return Response({"error": "Task does not exist"}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            return Response({"error": "Invalid request"}, status=status.HTTP_400_BAD_REQUEST)
