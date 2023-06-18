@@ -23,10 +23,10 @@
           {% include 'components/list_sorting_col.html' with col_field='customer' col_name='Customer' %}
           {% include 'components/list_sorting_col.html' with col_field='application_type' col_name='Type' %}
           {% include 'components/list_sorting_col.html' with col_field='product' col_name='Product' %}
-          {% include 'components/list_sorting_col.html' with col_field='doc_date' col_name='Document Date' %}
-          {% include 'components/list_sorting_col.html' with col_field='due_date' col_name='Doc Due' %}
+          {% include 'components/list_sorting_col.html' with col_field='doc_date' col_name='Doc Date' %}
+          {% include 'components/list_sorting_col.html' with col_field='due_date' col_name='Completed Date' %}
           <th scope="col">Current Task</th>
-          {% include 'components/list_sorting_col.html' with col_field='workflows__task__step' col_name='Task Due' %}
+          {% include 'components/list_sorting_col.html' with col_field='wf_due_date' col_name='Task Due' %}
           <th scope="col">Status</th>
           <th scope="col">Actions</th>
         </tr>

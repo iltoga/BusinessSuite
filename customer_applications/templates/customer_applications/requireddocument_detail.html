@@ -1,0 +1,92 @@
+{% extends "base_template.html" %}
+{% load filters %}
+
+{% block title %}RevisCRM - View Required Document Details{% endblock %}
+
+{% block content %}
+<div>
+    <div class="container my-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h3>(#{{ requireddocument.pk }}) {{ requireddocument.doc_type.name }} Document - {{ requireddocument.doc_application.customer.full_name }}</h3>
+            </div>
+            <table class="table">
+                <tbody>
+                    {% if requireddocument.doc_type.name %}
+                    <tr>
+                        <th scope="row" class="text-start col-3">Document Type</th>
+                        <td class="text-start col-9">{{ requireddocument.doc_type.name }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if requireddocument.doc_number %}
+                    <tr>
+                        <th scope="row" class="text-start col-3">Document Number</th>
+                        <td class="text-start col-9">{{ requireddocument.doc_number }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if requireddocument.expiration_date %}
+                    <tr>
+                        <th scope="row" class="text-start col-3">Expiration Date</th>
+                        <td class="text-start col-9">{{ requireddocument.expiration_date }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if requireddocument.file and requireddocument.file.url %}
+                    <tr>
+                        <th scope="row" class="text-start col-3">File</th>
+                        <td class="text-start col-9">
+                            {% if requireddocument.file.url|lower|endswith:".pdf" %}
+                            <object data="{{ requireddocument.file.url }}" type="application/pdf" width="60%" height="600px">
+                                <!-- Fallback content if the PDF cannot be displayed -->
+                                <p>It appears you don't have a PDF plugin for this browser. You can <a href="{{ requireddocument.file.url }}" target="_blank">click here to download the PDF file.</a></p>
+                            </object>
+                            {% else %}
+                            <a href="{{ requireddocument.file.url }}" target="_blank">
+                                <img src="{{ requireddocument.file.url }}" alt="Document preview" width="600">
+                            </a>
+                            {% endif %}
+                            <br>
+                            <a href="{{ requireddocument.file.url }}" target="_blank" type="application/pdf">Open File in New Tab</a>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% if requireddocument.doc_type.has_ocr_check %}
+                    <tr>
+                        <th scope="row" class="text-start col-3">OCR Checked</th>
+                        {% if requireddocument.ocr_check %}
+                            <td class="text-start col-9"><i class="bi bi-check-circle-fill"></i></td>
+                        {% else %}
+                            <td class="text-start col-9"><i class="bi bi-x-circle-fill"></i></td>
+                        {% endif %}
+                    </tr>
+                    {% endif %}
+                    {% if requireddocument.details %}
+                    <tr>
+                        <th scope="row" class="text-start col-3">Details</th>
+                        <td class="text-start col-9">{{ requireddocument.details }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if requireddocument.metadata != "" and requireddocument.metadata != "{}" %}
+                    <tr>
+                        <th scope="row" class="text-start col-3">Metadata</th>
+                        <td class="text-start col-9">
+                            <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMetadata" aria-expanded="false" aria-controls="collapseMetadata">
+                                Show Metadata
+                            </button>
+                            <div class="collapse" id="collapseMetadata">
+                                <div class="card card-body">
+                                    <code>{{ requireddocument.metadata|pretty_json }}</code>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+            {% include "components/audit_card.html" with model=requireddocument perm='required_documents,requireddocument,can_audit' %}
+            <div class="card-footer text-muted">
+                <a href="javascript:history.back()" class="btn btn-outline-primary">Back</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -45,8 +45,23 @@ function restApiCall(method, url, data, successCallback, errorCallback) {
         .then(async response => {
             if (!response.ok) {
                 // Read the response to get the error message
-                const error = await response.json();
-                throw Error(error.message); // Assume server sends { "message": "Error details" }
+                // Assume server sends { "error": "Error details" } in the response body
+                const jsonResponse = await response.json();
+                if (jsonResponse.error === undefined || jsonResponse.error === null || jsonResponse.error === '') {
+                    jsonResponse.error = response.statusText;
+                }
+                switch (response.status) {
+                    case 403:
+                        jsonResponse.error = 'You do not have permission to perform this action';
+                        break;
+                    case 404:
+                        jsonResponse.error = 'The requested resource was not found';
+                        break;
+                    case 500:
+                        jsonResponse.error = 'An internal server error occurred';
+                        break;
+                }
+                throw Error(jsonResponse.error);
             }
             return response.json();
         })
@@ -61,4 +76,107 @@ function restApiCall(method, url, data, successCallback, errorCallback) {
             }
         });
 
+}
+
+function toggleMessageDisplay(success, message, errorElementId, successElementId) {
+    var errorElement = document.getElementById(errorElementId);
+    var successElement = document.getElementById(successElementId);
+
+    if (success) {
+        errorElement.style.display = 'none';
+        successElement.innerHTML = message;
+        successElement.style.display = 'block';
+    } else {
+        successElement.style.display = 'none';
+        errorElement.innerHTML = message;
+        errorElement.style.display = 'block';
+    }
+}
+
+function toggleSpinnerDisplay(show, buttonId, spinnerId) {
+    var button = document.getElementById(buttonId);
+    var spinner = document.getElementById(spinnerId);
+
+    if (show) {
+        button.disabled = true;
+        spinner.style.display = 'inline-block';
+    } else {
+        button.disabled = false;
+        spinner.style.display = 'none';
+    }
+}
+
+// Set the value of a form field based on the field type
+// Note: specify a type for hidden fields
+function setFormFieldValue(fieldId, value, type = null) {
+    var field = document.getElementById(fieldId);
+    type = type || field.type;
+
+    // Handle undefined field
+    if (!field) {
+        console.error(`Field with ID ${fieldId} does not exist`);
+        return;
+    }
+
+    switch (type) {
+        case 'text':
+        case 'textarea':
+        case 'password':
+        case 'email':
+        case 'hidden':
+        case 'search':
+        case 'tel':
+        case 'url':
+        case 'select-one':
+        case 'select-multiple':
+        case 'file':
+        case 'range':
+        case 'color':
+            field.value = value;
+            break;
+
+        case 'number':
+            field.value = Number(value);
+            break;
+
+        case 'date':
+        case 'datetime':
+        case 'datetime-local':
+            var date = new Date(value);
+            field.value = date.toISOString().split('T')[0];
+            break;
+
+        case 'month':
+            var date = new Date(value);
+            field.value = date.toISOString().substring(0, 7); // YYYY-MM
+            break;
+
+        case 'week':
+            var date = new Date(value);
+            var week = getWeekNumber(date);
+            field.value = date.getFullYear() + '-W' + (week < 10 ? '0' : '') + week; // YYYY-WWW
+            break;
+
+        case 'time':
+            var date = new Date(value);
+            field.value = date.toTimeString().split(' ')[0]; // HH:mm:ss
+            break;
+
+        case 'radio':
+        case 'checkbox':
+            field.checked = Boolean(value);
+            break;
+
+        default:
+            console.error(`Unsupported field type: ${field.type}`);
+            break;
+    }
+}
+
+function getWeekNumber(d) {
+    d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+    var yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    var weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    return weekNo;
 }

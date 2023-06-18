@@ -48,6 +48,7 @@ def extract_mrz_data(file) -> tuple[dict, dict]:
 
     try:
         mrz = read_mrz(image_path)
+
         # remove temporary files if exist
         if converted_file_name != "" and os.path.exists(converted_file_name):
             os.remove(converted_file_name)

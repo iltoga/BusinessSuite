@@ -49,15 +49,16 @@
 
           {% if user|has_perm:'customer_applications,requireddocument,change' %}
           <td>
-            {% if not docapplication.is_application_completed %}
-              {% if document.completed %}
-                <a href="{% url 'customer-application-requireddocument-update' document.pk %}" class="btn btn-sm btn-danger">Update Document</a>
-              {% else %}
-                <a href="{% url 'customer-application-requireddocument-update' document.pk %}" class="btn btn-sm btn-warning">Upload Document</a>
+              <a href="{% url 'customer-application-requireddocument-detail' document.pk %}" class="btn btn-sm btn-primary">View</a>
+              {% if not docapplication.is_application_completed %}
+                {% if document.doc_type.has_file %}
+                  <a href="{% url 'customer-application-requireddocument-update' document.pk %}" class="btn btn-sm btn-warning">Upload</a>
+                {% else %}
+                  <a href="{% url 'customer-application-requireddocument-update' document.pk %}" class="btn btn-sm btn-warning">Update</a>
+                {% endif %}
               {% endif %}
             {% endif %}
           </td>
-          {% endif %}
 
         </tr>
       {% endfor %}

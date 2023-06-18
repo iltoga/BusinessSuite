@@ -2,9 +2,14 @@
 
 ## BUGS
 
-### 2023-06-12
+### 2023-06-17
 
 ## RESOLVED ✓
+
+### 2023-06-18
+- list document application: not sorting correctly by task due date. not filtering by 'closed' status
+- update required documents: showing meta field in form even if it is not required. showing ocr_check even if it is not required
+- update required documents: files are uploaed to the wrong folder
 
 ### 2023-06-12
 - customer application: not saving (pk error)
@@ -19,16 +24,19 @@
 
 ## TODO:
 
+### 2023-06-17
+- add a view to see details of a document workflow.
+
 ### 2023-06-09
-- update required documents:
-  - user must be able to choose if a document has a file to upload. If not just show the notes
-  - user must be able to complete a document by checking the ‘completed’ checkbox. in case a file has been uploaded, the document will be
-
-- update customers applications:
-  - due date must be calculated taking into account weekends and holidays
-
 - add exit_date to customer application: optional field telling us if and when the customer wants to go out of the country. This should trigger a notification in case the customer’s application is still on process and he has to leave the country.
 
 ## DONE:
 
-### 2023-06-09
+### 2023-06-18
+- new customer application: add the first step of the process (document collection) automatically when creating the application. when all documents are collected, the first step will be completed automatically
+- add icon to workflows that have notes
+### 2023-06-18
+- required document update: if the document is address, copy the address (in Bali) from the Customer model
+
+- update customers applications:
+  - due date must be calculated taking into account weekends and holidays

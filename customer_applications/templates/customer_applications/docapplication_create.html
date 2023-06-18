@@ -17,7 +17,7 @@
             {% for requireddocument_form in requireddocuments %}
             <div class="requireddocument_form p-3 mb-4 border rounded">
                 {{ requireddocument_form | crispy }}
-                <button type="button" class="btn btn-danger remove-requireddocument-btn mt-2">Remove Document</button>
+                <!-- <button type="button" class="btn btn-danger remove-requireddocument-btn mt-2">Remove Document</button> -->
             </div>
             {% endfor %}
         </div>
@@ -75,9 +75,7 @@
                         if (data.product.required_documents == null) {
                             data.product.required_documents = '';
                         }
-                        required_documents = data.product.required_documents.split(',').map(function(item) {
-                            return item.trim();
-                        });
+                        required_documents = data.required_documents
                         // if product.base_price is not emtpy or null, set it as value of #id_price form field
                         if (data.product.base_price) {
                             $('#id_price').val(data.product.base_price);
@@ -87,7 +85,7 @@
                         for (var i = 0; i < required_documents.length; i++) {
                             var newFormHtml = $('#empty-form').html().replace(/__prefix__/g, i);
                             var newForm = $(newFormHtml);
-                            newForm.find('input[name=requireddocuments-' + i + '-doc_type]').val(required_documents[i]);
+                            newForm.find('select[name=requireddocuments-' + i + '-doc_type]').val(required_documents[i].id);
                             $('#requireddocument-form-list').append(newForm);
                         }
                     },

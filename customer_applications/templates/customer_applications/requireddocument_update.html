@@ -15,7 +15,7 @@
             {% csrf_token %}
             {% for field in form %}
                 {{ field | as_crispy_field }}
-                {% if field.name == 'file' %}
+                {% if field.name == 'file' and  product_doc_type.has_ocr_check %}
                     <!-- button to check the file via ocr using restApiCall -->
                     <div class="mb-3">
                       <button id="ocr_check_btn_id" type="button" class="btn btn-primary btn-sm">
@@ -39,65 +39,36 @@
 
 {% block after-bootstrap-js %}
   {{ block.super }}
-<script>
-  function toggleOcrCheckErrorAndSuccess(success, message) {
-    var ocr_check_error = document.getElementById('ocr_check_error_id');
-    var ocr_check_success = document.getElementById('ocr_check_success_id');
-    if (success) {
-      ocr_check_error.style.display = 'none';
-      ocr_check_success.innerHTML = message;
-      ocr_check_success.style.display = 'block';
-    } else {
-      ocr_check_success.style.display = 'none';
-      ocr_check_error.innerHTML = message;
-      ocr_check_error.style.display = 'block';
-    }
-  }
+{% if product_doc_type.has_ocr_check %}
+  <script>
+    $(document).ready(function() {
+      var ocr_check_btn = document.getElementById('ocr_check_btn_id');
 
-  function toggleOcrCheckSpinner(show) {
-    var ocr_check_btn = document.getElementById('ocr_check_btn_id');
-    var ocr_check_spinner = document.getElementById('ocr_check_spinner');
-    if (show) {
-      ocr_check_btn.disabled = true;
-      ocr_check_spinner.style.display = 'inline-block';
-    } else {
-      ocr_check_btn.disabled = false;
-      ocr_check_spinner.style.display = 'none';
-    }
-  }
-
-
-  $(document).ready(function() {
-    var ocr_check_btn = document.getElementById('ocr_check_btn_id');
-
-    ocr_check_btn.addEventListener('click', function(e) {
-      var url = "{% url 'api-ocr-check' %}";
-      var formData = new FormData();
-      formData.append('file', document.querySelector('input[name="file"]').files[0],);
-      formData.append('doc_type', "{{ product_doc_type.name }}");
-      toggleOcrCheckSpinner(true);
-      restApiCall('POST', url, formData,
-          data => {
-            toggleOcrCheckErrorAndSuccess(true, 'File successfully checked via OCR!');
-            var doc_number = document.getElementById('id_doc_number');
-            doc_number.value = data.document_number;
-            var expiration_date = document.getElementById('id_expiration_date');
-            // expiration_date is a date field, so we need to format the date
-            var date = new Date(data.expiration_date);
-            expiration_date.value = date.toISOString().split('T')[0];
-            // set id_ocr_check to true and make it visible in the form (readonly)
-            var ocr_check = document.getElementById('id_ocr_check');
-            ocr_check.checked = true;
-            ocr_check.style.display = 'block';
-            ocr_check.readOnly = true;
-            toggleOcrCheckSpinner(false);
-          },
-          error => {
-            toggleOcrCheckErrorAndSuccess(false, error.message);
-            toggleOcrCheckSpinner(false);
-          }
-      );
+      ocr_check_btn.addEventListener('click', function(e) {
+        var url = "{% url 'api-ocr-check' %}";
+        var formData = new FormData();
+        formData.append('file', document.querySelector('input[name="file"]').files[0],);
+        formData.append('doc_type', "{{ product_doc_type.name }}");
+        toggleSpinnerDisplay(true, 'ocr_check_btn_id', 'ocr_check_spinner');
+        restApiCall('POST', url, formData,
+            data => {
+              toggleMessageDisplay(true, 'File successfully checked via OCR!', 'ocr_check_error_id', 'ocr_check_success_id');
+              setFormFieldValue('id_doc_number', data.document_number);
+              setFormFieldValue('id_expiration_date', data.expiration_date);
+              setFormFieldValue('id_ocr_check', true, 'checkbox');
+              setFormFieldValue('id_metadata', JSON.stringify(data.metadata))
+              setFormFieldValue('id_metadata_display', JSON.stringify(data.metadata))
+              // show dom with id_metadata_display
+              document.getElementById('id_metadata_display').parentElement.style.display = 'block';
+              toggleSpinnerDisplay(false, 'ocr_check_btn_id', 'ocr_check_spinner');
+            },
+            error => {
+              toggleMessageDisplay(false, error.message, 'ocr_check_error_id', 'ocr_check_success_id');
+              toggleSpinnerDisplay(false, 'ocr_check_btn_id', 'ocr_check_spinner');
+            }
+        );
+      });
     });
-  });
-</script>
+  </script>
+{% endif %}
 {% endblock %}

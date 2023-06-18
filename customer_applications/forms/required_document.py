@@ -5,7 +5,6 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 
 from customer_applications.models import RequiredDocument
-from products.models import DocumentType
 
 
 class RequiredDocumentCreateForm(forms.ModelForm):
@@ -15,13 +14,14 @@ class RequiredDocumentCreateForm(forms.ModelForm):
 
 
 class RequiredDocumentUpdateForm(forms.ModelForm):
-    # ocr_check = forms.BooleanField(required=False, label="OCR Check (only for Passports)")
     # checkbox to force update even if there are errors. the field is hideen by default and shown only if there are errors
     force_update = forms.BooleanField(required=False, label="Force Update", widget=forms.HiddenInput())
+    metadata = forms.JSONField(required=False, widget=forms.HiddenInput())
+    # helper field to show the metadata in the template (it's a hidden field and could be used for testing purposes)
+    metadata_display = forms.JSONField(required=False, disabled=True, label="Metadata", widget=forms.HiddenInput())
     # Only users with the 'upload_document' permission can upload documents
     field_permissions = {
         "file": ["upload_document"],
-        "ocr_check": ["upload_document"],
     }
 
     class Meta:
@@ -29,52 +29,37 @@ class RequiredDocumentUpdateForm(forms.ModelForm):
         fields = [
             "doc_type",
             "file",
-            "ocr_check",
             "doc_number",
             "expiration_date",
             "details",
             "force_update",
-            "completed",
             "metadata",
         ]
         widgets = {
             "expiration_date": forms.DateInput(attrs={"type": "date"}),
-            "metadata": forms.HiddenInput(),
-            "completed": forms.HiddenInput(),
         }
 
     def __init__(self, *args, **kwargs):
         super(RequiredDocumentUpdateForm, self).__init__(*args, **kwargs)
-        self.fields["doc_type"].widget = forms.HiddenInput()
-        self.fields["ocr_check"].widget = forms.HiddenInput()
-        form_doc_type = self.instance.doc_type
+        self.fields["doc_type"].disabled = True
+        if self.instance.metadata:
+            self.initial["metadata_display"] = self.instance.metadata
+        else:
+            # hide the field if there is no metadata
+            self.initial["metadata_display"] = None
 
-        # Set form fields visibility based on the document type
-        self.product_doc_type = DocumentType.objects.get(name=form_doc_type)
-        if not self.product_doc_type:
-            raise ValidationError("Document type not found.")
-        if not self.product_doc_type.has_ocr_check:
-            self.fields["ocr_check"].widget = forms.HiddenInput()
-        elif not self.instance.file_link:
-            self.initial["ocr_check"] = True
-
-        if not self.product_doc_type.has_expiration_date:
+        if not self.instance.doc_type.has_expiration_date:
             self.fields["expiration_date"].widget = forms.HiddenInput()
-        if not self.product_doc_type.has_doc_number:
+        if not self.instance.doc_type.has_doc_number:
             self.fields["doc_number"].widget = forms.HiddenInput()
-        if not self.product_doc_type.has_file:
+        if not self.instance.doc_type.has_file:
             self.fields["file"].widget = forms.HiddenInput()
-        if not self.product_doc_type.has_details:
+        if not self.instance.doc_type.has_details:
             self.fields["details"].widget = forms.HiddenInput()
-        if self.product_doc_type.has_file and not self.product_doc_type.has_details:
+        if self.instance.doc_type.has_file and not self.instance.doc_type.has_details:
             self.fields["file"].required = True
-        elif self.product_doc_type.has_details and not self.product_doc_type.has_file:
+        elif self.instance.doc_type.has_details and not self.instance.doc_type.has_file:
             self.fields["details"].required = True
-
-        # if the document is already expired, show the force_update checkbox
-        # TODO: if the check to show force_update in case of errors in validate method is not working, try with this one
-        # if self.instance.expiration_date and self.instance.expiration_date < timezone.now().date():
-        #     self.fields['force_update'].widget = forms.CheckboxInput()
 
     def clean_file(self):
         file = self.cleaned_data.get("file", False)
@@ -100,19 +85,13 @@ class RequiredDocumentUpdateForm(forms.ModelForm):
         # Perform OCR if the user has checked the OCR checkbox
         cleaned_data = super().clean()
 
-        # TODO: delete this, since we are using OCR via ajax call
-        # ocr_check = cleaned_data.get("ocr_check", False)
-        # file = cleaned_data.get("file", False)
+        # if doc_type has_file and has_details, then at least one of them is required
+        if self.instance.doc_type.has_file and self.instance.doc_type.has_details:
+            cleaned_file = cleaned_data.get("file", False)
+            cleaned_details = cleaned_data.get("details", False)
+            if not cleaned_file and (not cleaned_details or cleaned_details == ""):
+                self.add_error("file", "You have to fill in at least File or Details.")
 
-        # if file and ocr_check:
-        #     try:
-        #         doc_metadata, mrz_data = extract_mrz_data(file)
-        #         cleaned_data["metadata"] = doc_metadata
-        #         cleaned_data["doc_number"] = mrz_data.get("document_number", False)
-        #         cleaned_data["expiration_date"] = mrz_data.get("expiration_date", False)
-        #     except Exception as e:
-        #         self.add_error("file", str(e))
-        # if we are forcing update, we don't need to check for errors
         force_update = cleaned_data.get("force_update", False)
         if force_update:
             return cleaned_data
@@ -130,26 +109,7 @@ class RequiredDocumentUpdateForm(forms.ModelForm):
                         "Document is expiring in less than %d days from the application date."
                         % product.documents_min_validity,
                     )
-
-        # if all required fields are filled, set completed to True
-        if self.product_doc_type.has_file and self.product_doc_type.has_details:
-            if cleaned_data.get("file", False) or cleaned_data.get("details", False):
-                cleaned_data["completed"] = True
-        elif self.product_doc_type.has_file and cleaned_data.get("file", False):
-            cleaned_data["completed"] = True
-        elif self.product_doc_type.has_details and cleaned_data.get("details", False):
-            cleaned_data["completed"] = True
-        else:
-            cleaned_data["completed"] = False
-
         return cleaned_data
-
-    def save(self, commit=True):
-        instance = super().save(commit=False)
-        instance.completed = self.cleaned_data.get("completed", False)
-        if commit:
-            instance.save()
-        return instance
 
     def is_valid(self):
         valid = super(RequiredDocumentUpdateForm, self).is_valid()
@@ -157,3 +117,23 @@ class RequiredDocumentUpdateForm(forms.ModelForm):
         if not valid:
             self.fields["force_update"].widget = forms.CheckboxInput()
         return valid
+
+    # if the required document.completed (we know it after saving it) is True and all other required documents of the doc_application are uploaded, set the satus of the fisrt doc_application's workflow (the one with task.step = 1) to "completed"
+    def save(self, commit=True):
+        required_document = super(RequiredDocumentUpdateForm, self).save(commit=True)
+        doc_application = required_document.doc_application
+        # find the first doc_application's workflow (the one with task.step = 1)
+        if doc_application.workflows.filter(task__step=1).exists():
+            workflow = doc_application.workflows.get(task__step=1)
+            # check if all required documents of the doc_application are uploaded
+            if doc_application.required_documents.filter(completed=False).exists():
+                # if not, set the workflow status to "in progress"
+                workflow.status = workflow.STATUS_PROCESSING
+            else:
+                # if yes, set the workflow status to "completed"
+                workflow.status = workflow.STATUS_COMPLETED
+            workflow.save()
+
+        if commit:
+            required_document.save()
+        return required_document

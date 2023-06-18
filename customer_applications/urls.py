@@ -1,13 +1,61 @@
 from django.urls import path
-from .views import DocApplicationListView, DocApplicationCreateView, DocApplicationDetailView, DocApplicationUpdateView, DocApplicationDeleteView, RequiredDocumentUpdateView, DocWorkflowCreateView, DocWorkflowUpdateView
+
+from .views import (
+    DocApplicationCreateView,
+    DocApplicationDeleteView,
+    DocApplicationDetailView,
+    DocApplicationListView,
+    DocApplicationUpdateView,
+    DocWorkflowCreateView,
+    DocWorkflowUpdateView,
+    RequiredDocumentDetailView,
+    RequiredDocumentUpdateView,
+)
 
 urlpatterns = [
-    path('list/', DocApplicationListView.as_view(), name='customer-application-list'),
-    path('create/', DocApplicationCreateView.as_view(), name='customer-application-create'),
-    path('detail/<int:pk>/', DocApplicationDetailView.as_view(), name='customer-application-detail'),
-    path('update/<int:pk>/', DocApplicationUpdateView.as_view(), name='customer-application-update'),
-    path('update_required_document/<int:pk>/', RequiredDocumentUpdateView.as_view(), name='customer-application-requireddocument-update'),
-    path('create_doc_workflow/<int:docapplication_pk>/<int:step_no>', DocWorkflowCreateView.as_view(), name='customer-application-docworkflow-create'),
-    path('update_doc_workflow/<int:pk>', DocWorkflowUpdateView.as_view(), name='customer-application-docworkflow-update'),
-    path('delete/<int:pk>/', DocApplicationDeleteView.as_view(), name='customer-application-delete'),
+    path(
+        "list/",
+        DocApplicationListView.as_view(),
+        name="customer-application-list",
+    ),
+    path(
+        "create/",
+        DocApplicationCreateView.as_view(),
+        name="customer-application-create",
+    ),
+    path(
+        "detail/<int:pk>/",
+        DocApplicationDetailView.as_view(),
+        name="customer-application-detail",
+    ),
+    path(
+        "update/<int:pk>/",
+        DocApplicationUpdateView.as_view(),
+        name="customer-application-update",
+    ),
+    path(
+        "update_required_document/<int:pk>/",
+        RequiredDocumentUpdateView.as_view(),
+        name="customer-application-requireddocument-update",
+    ),
+    path(
+        "required_document_detail/<int:pk>/",
+        RequiredDocumentDetailView.as_view(),
+        name="customer-application-requireddocument-detail",
+    ),
+    path(
+        "create_doc_workflow/<int:docapplication_pk>/<int:step_no>",
+        DocWorkflowCreateView.as_view(),
+        name="customer-application-docworkflow-create",
+    ),
+    path(
+        "update_doc_workflow/<int:pk>",
+        DocWorkflowUpdateView.as_view(),
+        name="customer-application-docworkflow-update",
+    ),
+    path(
+        "delete/<int:pk>/",
+        DocApplicationDeleteView.as_view(),
+        name="customer-application-delete",
+    ),
 ]

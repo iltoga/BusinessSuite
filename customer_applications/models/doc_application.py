@@ -43,6 +43,7 @@ class DocApplication(models.Model):
     doc_date = models.DateField(db_index=True)
     due_date = models.DateField(blank=True, null=True, db_index=True)
     price = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default=STATUS_PENDING, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True, db_index=True)
     created_by = models.ForeignKey(
@@ -57,7 +58,7 @@ class DocApplication(models.Model):
         blank=True,
         null=True,
     )
-    objects = DocApplicationManager()
+    objects = DocApplicationManager
 
     class Meta:
         ordering = ["-id"]
@@ -128,7 +129,14 @@ class DocApplication(models.Model):
     def save(self, *args, **kwargs):
         self.updated_at = timezone.now()
         self.due_date = self.calculate_application_due_date()
-        return super(DocApplication, self).save(*args, **kwargs)
+        if self.pk is not None:
+            if self.is_application_completed:
+                self.status = self.STATUS_COMPLETED
+            elif self.is_document_collection_completed:
+                self.status = self.STATUS_PROCESSING
+            elif self.workflows.filter(status=self.STATUS_REJECTED).exists():
+                self.status = self.STATUS_REJECTED
+        super(DocApplication, self).save(*args, **kwargs)
 
     def calculate_application_due_date(self):
         """
@@ -152,8 +160,6 @@ class DocApplication(models.Model):
 
         due_date = start_date
         for task in remaining_tasks:
-            due_date = calculate_due_date(
-                due_date, task.duration, business_days_only=task.duration_is_business_days
-            )
+            due_date = calculate_due_date(due_date, task.duration, business_days_only=task.duration_is_business_days)
 
         return due_date

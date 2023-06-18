@@ -5,9 +5,11 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.utils.ocr import extract_mrz_data
+from api.serializers.document_type_serializer import DocumentTypeSerializer
+from core.utils.passport_ocr import extract_mrz_data
 from customers.models import Customer
 from products.models import Product
+from products.models.document_type import DocumentType
 
 from .serializers import CustomerSerializer, ProductSerializer
 
@@ -41,7 +43,7 @@ class ProductsView(APIView):
 
 
 class ProductByIDView(APIView):
-    queryset = Product.objects.all()
+    queryset = Product.objects.none()
 
     def get(self, request, *args, **kwargs):
         product_id = self.kwargs.get("product_id")
@@ -49,11 +51,16 @@ class ProductByIDView(APIView):
             try:
                 product = Product.objects.get(id=product_id)
                 # split the string into a list and trim the spaces
-                required_documents = product.required_documents.split(",")
-                required_documents = [document.strip() for document in required_documents]
-
-                serializer = ProductSerializer(product, many=False)
-                return Response({"product": serializer.data})
+                required_document_types_str = product.required_documents.split(",")
+                required_document_types_str = [document.strip() for document in required_document_types_str]
+                # get the corresponting DocumentType objects
+                required_document_types = DocumentType.objects.filter(name__in=required_document_types_str)
+                # serialize the product and the required documents
+                serialized_product = ProductSerializer(product, many=False)
+                serialzed_document_types = DocumentTypeSerializer(required_document_types, many=True)
+                return Response(
+                    {"product": serialized_product.data, "required_documents": serialzed_document_types.data}
+                )
             except Product.DoesNotExist:
                 return Response({"error": "Product does not exist"}, status=status.HTTP_404_NOT_FOUND)
         else:
@@ -68,24 +75,24 @@ class ProductsByTypeView(APIView):
 
 
 class OCRCheckView(APIView):
-    queryset = Product.objects.all()
+    queryset = Product.objects.none()
 
     # This is a multipart/form-data request
     def post(self, request):
         file = request.data.get("file")
         if not file or file == "undefined":
-            return Response(data={"message": "No file provided!"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(data={"error": "No file provided!"}, status=status.HTTP_400_BAD_REQUEST)
         # check if file is a valid format
         valid_file_types = ["image/jpeg", "image/png", "image/tiff", "application/pdf"]
         file_type = mimetypes.guess_type(file.name)[0]
         if file_type not in valid_file_types:
             return Response(
-                data={"message": "File format not supported. Only images (jpeg and png) and pdf are accepted!"},
+                data={"error": "File format not supported. Only images (jpeg and png) and pdf are accepted!"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         doc_type = request.data.get("doc_type").lower()
         if not doc_type or doc_type == "undefined":
-            return Response(data={"message": "No doc_type provided!"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(data={"error": "No doc_type provided!"}, status=status.HTTP_400_BAD_REQUEST)
         res = Response()
         try:
             doc_metadata, mrz_data = extract_mrz_data(file)
@@ -102,5 +109,5 @@ class OCRCheckView(APIView):
         except Exception as e:
             errMsg = e.args[0]
             # the one below always returns a error message of "Bad Request". I want to return the actual error message
-            return Response(data={"message": errMsg}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(data={"error": errMsg}, status=status.HTTP_400_BAD_REQUEST)
         return res

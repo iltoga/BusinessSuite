@@ -26,4 +26,4 @@ class DocumentType(models.Model):
 
     def save(self, *args, **kwargs):
         self.full_clean()
-        return super(DocumentType, self).save(*args, **kwargs)
+        super(DocumentType, self).save(*args, **kwargs)
