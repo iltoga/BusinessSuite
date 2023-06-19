@@ -27,6 +27,7 @@ class DocWorkflowCreateView(PermissionRequiredMixin, SuccessMessageMixin, Create
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
+        kwargs.update({"user": self.request.user})
         self.doc_application = DocApplication.objects.get(id=self.kwargs["docapplication_pk"])
         if not self.doc_application.product:
             raise Http404

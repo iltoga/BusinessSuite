@@ -22,6 +22,7 @@ class DocWorkflowForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop("user", None)
         super(DocWorkflowForm, self).__init__(*args, **kwargs)
         self.doc_application = kwargs.pop("doc_application", None)
 
@@ -52,3 +53,10 @@ class DocWorkflowForm(forms.ModelForm):
             self.add_error("completion_date", "Completion date must be after due date.")
 
         return cleaned_data
+
+    def save(self, commit=True):
+        doc_workflow = super().save()
+        # update the doc_application's updated_by field with the current user
+        doc_workflow.doc_application.updated_by = self.user
+        doc_workflow.doc_application.save()
+        return doc_workflow

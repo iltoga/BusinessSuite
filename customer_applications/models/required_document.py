@@ -11,6 +11,18 @@ from products.models.document_type import DocumentType
 from .doc_application import DocApplication
 
 
+class DocApplicationManager(models.Manager):
+    def search_doc_applications(self, query):
+        return self.filter(
+            models.Q(product__name__icontains=query)
+            | models.Q(product__code__icontains=query)
+            | models.Q(product__product_type__icontains=query)
+            | models.Q(customer__first_name__icontains=query)
+            | models.Q(customer__last_name__icontains=query)
+            | models.Q(doc_date__icontains=query)
+        )
+
+
 class RequiredDocument(models.Model):
     def get_upload_to(instance, filename):
         """
@@ -47,6 +59,7 @@ class RequiredDocument(models.Model):
         blank=True,
         null=True,
     )
+    objects = DocApplicationManager()
 
     class Meta:
         ordering = ["-updated_at"]
@@ -55,6 +68,14 @@ class RequiredDocument(models.Model):
     def is_expired(self):
         if self.expiration_date:
             return self.expiration_date < timezone.now().date()
+        return False
+
+    @property
+    def is_expiring(self):
+        """Returns True if the document is expiring within its minimum validity period."""
+        if self.expiration_date:
+            min_validity = self.doc_application.product.documents_min_validity
+            return bool(self.expiration_date < timezone.now().date() + timezone.timedelta(days=min_validity))
         return False
 
     @property
@@ -86,7 +107,10 @@ class RequiredDocument(models.Model):
         is_details_filled = self.details != ""
         is_doc_number_filled = self.doc_type.has_doc_number and self.doc_number != ""
         is_expiration_date_filled = self.doc_type.has_expiration_date and self.expiration_date is not None
-
+        # if file and details are required and one of them is filled
+        is_file_or_details_filled = (
+            self.doc_type.has_file and self.doc_type.has_details and (is_file_filled or is_details_filled)
+        )
         # Check the overall condition for completed
         self.completed = any(
             [
@@ -97,6 +121,7 @@ class RequiredDocument(models.Model):
                 and is_details_filled,  # if only details are required and filled
                 is_doc_number_filled,  # if document number is required and filled
                 is_expiration_date_filled,  # if expiration date is required and filled
+                is_file_or_details_filled,  # if file and details are required and one of them is filled
             ]
         )
 

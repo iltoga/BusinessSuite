@@ -31,7 +31,10 @@
             <th scope="row" class="text-start">Price</th>
             <td class="text-start">{{ docapplication.price|floatformat:2|intcomma }}</td>
           </tr>
-        </tbody>
+          <tr>
+            <th scope="row" class="text-start">Application Status</th>
+            <td class="text-start">{% include "components/model_status_badge.html" with status=docapplication.status %}</td>
+          </tr></tbody>
       </table>
 
       <h3 class="text-center my-4">Uploaded Documents</h3>

@@ -1,6 +1,5 @@
 from math import ceil
 
-from django.db.models import Max
 from django_unicorn.components import UnicornView
 
 
@@ -57,35 +56,25 @@ class UnicornSearchListView(UnicornView):
             self.load_items()
 
     def get_queryset(self):
-        # queryset = super().get_queryset()
         if self.query:
             search_func = getattr(self.model.objects, self.model_search_method)
             queryset = search_func(self.query)
         else:
             queryset = self.model.objects.all()
 
-        if self.order_by == "wf_due_date":
-            queryset = queryset.annotate(max_due_date=Max("workflows__due_date"))
-
         queryset = self.apply_filters(queryset)
-        queryset = queryset.order_by(self.get_order())  # move order_by here
+
+        # Unpack the list when calling order_by
+        queryset = queryset.order_by(*self.get_order())
 
         return queryset
 
     def get_order(self):
-        # if self.order_by is '', use order from meta class
         if self.order_by == "":
             if self.model._meta.ordering is None or len(self.model._meta.ordering) == 0:
-                # set a default if anything else fails
-                return "id"
-            # self.model._meta.ordering is an array of strings. Join them with commas
-            return ",".join(self.model._meta.ordering)
-
-        if self.order_by == "wf_due_date":
-            # add annotation to the queryset in get_queryset()
-            return "max_due_date" if self.sort_dir == "asc" else "-max_due_date"
-        else:
-            return self.order_by if self.sort_dir == "asc" else "-" + self.order_by
+                return ["id"]
+            return self.model._meta.ordering
+        return [self.order_by] if self.sort_dir == "asc" else ["-" + self.order_by]
 
     def sort(self, column):
         if column == self.order_by:

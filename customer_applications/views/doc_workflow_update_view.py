@@ -18,6 +18,11 @@ class DocWorkflowUpdateView(PermissionRequiredMixin, SuccessMessageMixin, Update
     task = None
     action_name = "Update"
 
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs.update({"user": self.request.user})
+        return kwargs
+
     def get_success_url(self):
         return reverse_lazy("customer-application-detail", kwargs={"pk": self.object.doc_application.id})
 
@@ -32,16 +37,3 @@ class DocWorkflowUpdateView(PermissionRequiredMixin, SuccessMessageMixin, Update
     def form_valid(self, form):
         form.instance.updated_by = self.request.user
         return super().form_valid(form)
-
-    # Note that this method is called when valid form data has been POSTed.
-    # if we update the status via unicorn view, it will be skipped because `update_status` method saves the model directly
-    def save(self, commit=True):
-        self.instance = super().save(commit=False)  # Instance of model
-        # add the updated_by field to the doc_application
-        self.instance.doc_application.updated_by = self.request.user
-        # save the doc_application
-        self.instance.doc_application.save()
-        # save the instance
-        if commit:
-            self.instance.save()
-        return self.instance

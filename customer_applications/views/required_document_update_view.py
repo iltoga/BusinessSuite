@@ -1,3 +1,4 @@
+from django.contrib import messages
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
 from django.urls import reverse_lazy
@@ -27,9 +28,38 @@ class RequiredDocumentUpdateView(PermissionRequiredMixin, SuccessMessageMixin, U
         # Reset metadata so that if we don't hit ocr check button and save, the metadata will be reset to None
         initial["metadata"] = None
         # if doc_type.name is "Address" and details field is empty, take the address from the customer
-        if self.object.doc_type.name == "Address" and not self.object.details:
+        if self.object.doc_type.name == "Address" and (not self.object.details or self.object.details == ""):
             initial["details"] = self.object.doc_application.customer.address_bali
 
+        if self.object.doc_type.name == "Passport" and not self.object.file and not self.object.file_link:
+            required_document = (
+                RequiredDocument.objects.filter(
+                    doc_application__customer__pk=self.object.doc_application.customer.pk,
+                    doc_type__name="Passport",
+                    completed=True,
+                )
+                .order_by("-updated_at")
+                .first()
+            )
+
+            if required_document:
+                if required_document.is_expiring:
+                    messages.warning(
+                        self.request, "We have a previous Passport, but is expiring soon. Please upload a new one."
+                    )
+                elif required_document.is_expired:
+                    messages.warning(
+                        self.request, "We have a previous Passport, but is already expired. Please upload a new one."
+                    )
+                else:
+                    initial["file"] = required_document.file
+                    initial["file_link"] = required_document.file_link
+                    initial["doc_number"] = required_document.doc_number
+                    initial["expiration_date"] = required_document.expiration_date
+                    initial["ocr_check"] = required_document.ocr_check
+                    initial["details"] = required_document.details
+                    initial["metadata"] = required_document.metadata
+                    messages.success(self.request, "Data imported from previous Customer's application")
         return initial
 
     def form_valid(self, form):
@@ -37,14 +67,6 @@ class RequiredDocumentUpdateView(PermissionRequiredMixin, SuccessMessageMixin, U
             form.instance.created_by = self.request.user
         form.instance.updated_by = self.request.user
         return super().form_valid(form)
-
-    # if completed is True and all other required documents of the doc_application are uploaded, set the satus of the fisrt doc_application's workflow (the one with task.step = 1) to "completed"
-    def save(self, commit=True):
-        self.instance = super().save(commit=False)
-        if self.instance.completed:
-            doc_application = self.instance.doc_application
-            if doc_application.all_required_documents_uploaded():
-                doc_application.set_status_completed()
 
     def get_success_url(self):
         return reverse_lazy("customer-application-detail", kwargs={"pk": self.object.doc_application.id})

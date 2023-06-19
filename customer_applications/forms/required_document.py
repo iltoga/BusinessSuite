@@ -18,7 +18,7 @@ class RequiredDocumentUpdateForm(forms.ModelForm):
     force_update = forms.BooleanField(required=False, label="Force Update", widget=forms.HiddenInput())
     metadata = forms.JSONField(required=False, widget=forms.HiddenInput())
     # helper field to show the metadata in the template (it's a hidden field and could be used for testing purposes)
-    metadata_display = forms.JSONField(required=False, disabled=True, label="Metadata")
+    metadata_display = forms.JSONField(required=False, disabled=True, label="Metadata", widget=forms.HiddenInput())
     # Only users with the 'upload_document' permission can upload documents
     field_permissions = {
         "file": ["upload_document"],
@@ -40,6 +40,7 @@ class RequiredDocumentUpdateForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop("user", None)
         super(RequiredDocumentUpdateForm, self).__init__(*args, **kwargs)
         self.fields["doc_type"].disabled = True
         if self.instance.metadata:
@@ -85,6 +86,15 @@ class RequiredDocumentUpdateForm(forms.ModelForm):
         # Perform OCR if the user has checked the OCR checkbox
         cleaned_data = super().clean()
 
+        # if the doc_type.name is "Passport" both doc_number and expiration_date are required
+        if self.instance.doc_type.name == "Passport":
+            cleaned_doc_number = cleaned_data.get("doc_number", False)
+            cleaned_expiration_date = cleaned_data.get("expiration_date", False)
+            if not cleaned_doc_number:
+                self.add_error("doc_number", "This field is required.")
+            if not cleaned_expiration_date:
+                self.add_error("expiration_date", "This field is required.")
+
         # if doc_type has_file and has_details, then at least one of them is required
         if self.instance.doc_type.has_file and self.instance.doc_type.has_details:
             cleaned_file = cleaned_data.get("file", False)
@@ -120,20 +130,23 @@ class RequiredDocumentUpdateForm(forms.ModelForm):
 
     # if the required document.completed (we know it after saving it) is True and all other required documents of the doc_application are uploaded, set the satus of the fisrt doc_application's workflow (the one with task.step = 1) to "completed"
     def save(self, commit=True):
-        required_document = super(RequiredDocumentUpdateForm, self).save(commit=True)
+        required_document = super().save()
         doc_application = required_document.doc_application
+
         # find the first doc_application's workflow (the one with task.step = 1)
-        if doc_application.workflows.filter(task__step=1).exists():
+        # check if there is only one workflow with task.step = 1
+
+        if doc_application.workflows.filter().count() == 1:
             workflow = doc_application.workflows.get(task__step=1)
             # check if all required documents of the doc_application are uploaded
-            if doc_application.required_documents.filter(completed=False).exists():
-                # if not, set the workflow status to "in progress"
-                workflow.status = workflow.STATUS_PROCESSING
-            else:
+            if doc_application.is_document_collection_completed:
                 # if yes, set the workflow status to "completed"
                 workflow.status = workflow.STATUS_COMPLETED
-            workflow.save()
+            else:
+                # if not, set the workflow status to "in progress"
+                workflow.status = workflow.STATUS_PROCESSING
 
-        if commit:
-            required_document.save()
+            workflow.save()
+            workflow.doc_application.save()
+
         return required_document

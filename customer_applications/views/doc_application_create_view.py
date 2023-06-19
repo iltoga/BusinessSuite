@@ -20,6 +20,11 @@ class DocApplicationCreateView(PermissionRequiredMixin, SuccessMessageMixin, Cre
     success_message = "Customer application created successfully!"
     action_name = "Create"
 
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs.update({"user": self.request.user})
+        return kwargs
+
     def get_context_data(self, **kwargs):
         data = super().get_context_data(**kwargs)
         if self.request.POST:

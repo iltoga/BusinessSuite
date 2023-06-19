@@ -16,6 +16,11 @@ class ProductCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateView
     success_url = reverse_lazy("product-list")
     success_message = "Product created successfully!"
 
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs.update({"user": self.request.user})
+        return kwargs
+
     def get_context_data(self, **kwargs):
         data = super().get_context_data(**kwargs)
         data["action_name"] = "Create"

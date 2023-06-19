@@ -65,7 +65,7 @@
                         <td class="text-start col-9">{{ requireddocument.details }}</td>
                     </tr>
                     {% endif %}
-                    {% if requireddocument.metadata != "" and requireddocument.metadata != "{}" %}
+                    {% if requireddocument.doc_type.has_ocr_check and requireddocument.metadata != "" and requireddocument.metadata != "{}" and requireddocument.metadata != "null" %}
                     <tr>
                         <th scope="row" class="text-start col-3">Metadata</th>
                         <td class="text-start col-9">

@@ -69,7 +69,7 @@ class DocApplication(models.Model):
         """Returns True if all required documents are completed, False otherwise."""
         all_docs_count = self.required_documents.count()
         completed_docs_count = self.required_documents.filter(completed=True).count()
-        return all_docs_count == completed_docs_count
+        return bool(all_docs_count == completed_docs_count)
 
     # check if all workflows are completed (workflow status = completed)
     @property
@@ -106,9 +106,8 @@ class DocApplication(models.Model):
     @property
     def is_application_completed(self):
         # get last workflow and check if it is completed
-        current_workflow = self.current_workflow
-        if current_workflow:
-            return current_workflow.is_workflow_completed
+        if self.current_workflow:
+            return self.current_workflow.is_workflow_completed
         return False
 
     @property
@@ -137,7 +136,7 @@ class DocApplication(models.Model):
                 self.status = self.STATUS_PROCESSING
             elif self.workflows.filter(status=self.STATUS_REJECTED).exists():
                 self.status = self.STATUS_REJECTED
-        super(DocApplication, self).save(*args, **kwargs)
+        super().save(*args, **kwargs)
 
     def calculate_application_due_date(self):
         """

@@ -34,6 +34,7 @@ class CustomerForm(forms.ModelForm):
         ]
 
     def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
         # Move 'passport_file' to the beginning of the form fields
         self.fields = OrderedDict([("passport_file", self.fields["passport_file"])] + list(self.fields.items()))
