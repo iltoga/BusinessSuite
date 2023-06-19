@@ -18,7 +18,21 @@
     <h2 class="text-center my-4">{{ action_name }} a new customer</h2>
     <form method="post" class="p-3 rounded w-50" action="{{ action }}">
         {% csrf_token %}
-        {{ form | crispy }}
+        {% for field in form %}
+            {{ field | as_crispy_field }}
+            {% if field.name == 'passport_file' %}
+                <!-- button to check the file via ocr using restApiCall -->
+                <div class="mb-3">
+                  <button id="passport_file_btn_id" type="button" class="btn btn-primary btn-sm">
+                    Import
+                    <div id="passport_file_spinner" class="spinner-border spinner-small text-secondary" style="display: none;"></div>
+                  </button>
+                  <div class="invalid-feedback" id="passport_file_error_id" style="display: none;"></div>
+                  <div class="valid-feedback" id="passport_file_success_id" style="display: none;"></div>
+                </div>
+            {% endif %}
+        {% endfor %}
+
         <div class="d-grid gap-2">
             <button type="submit" class="btn btn-primary">{{ action_name }}</button>
         </div>
@@ -27,4 +41,48 @@
         <a href="javascript:history.back()" class="btn btn-outline-primary">Back</a>
     </div>
 </div>
+{% endblock %}
+
+{% block after-bootstrap-js %}
+  {{ block.super }}
+  <script>
+    $(document).ready(function() {
+      var passport_file_btn = document.getElementById('passport_file_btn_id');
+
+      passport_file_btn.addEventListener('click', function(e) {
+        var url = "{% url 'api-ocr-check' %}";
+        var formData = new FormData();
+        formData.append('file', document.querySelector('input[name="passport_file"]').files[0],);
+        formData.append('doc_type', "passport");
+        toggleSpinnerDisplay(true, 'passport_file_btn_id', 'passport_file_spinner');
+        restApiCall('POST', url, formData,
+            data => {
+                toggleMessageDisplay(true, 'Data successfully imported via OCR!', 'passport_file_error_id', 'passport_file_success_id');
+                console.log(data);
+                setFormFieldValue('id_first_name', data.names);
+                setFormFieldValue('id_last_name', data.surname);
+                setFormFieldValue('id_gender', data.sex);
+                // set the title ('M' or 'F') to the title field depending on data.sex (remember that this is javascript)
+                title = '';
+                if (data.sex == 'M') {
+                    title = 'Mr';
+                } else {
+                    title = 'Ms';
+
+                }
+                setFormFieldValue('id_title', title);
+                setFormFieldValue('id_nationality', data.country_name);
+                setFormFieldValue('id_birthdate', data.date_of_birth_yyyy_mm_dd);
+                // show dom with id_metadata_display
+                // document.getElementById('id_metadata_display').parentElement.style.display = 'block';
+                toggleSpinnerDisplay(false, 'passport_file_btn_id', 'passport_file_spinner');
+            },
+            error => {
+                toggleMessageDisplay(false, error.message, 'passport_file_error_id', 'passport_file_success_id');
+                toggleSpinnerDisplay(false, 'passport_file_btn_id', 'passport_file_spinner');
+            }
+        );
+      });
+    });
+  </script>
 {% endblock %}

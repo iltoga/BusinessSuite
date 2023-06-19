@@ -146,6 +146,10 @@ function setFormFieldValue(fieldId, value, type = null) {
             field.value = date.toISOString().split('T')[0];
             break;
 
+        // passport date format is: yymmdd (example: 201231)
+        case 'passport_date':
+            field.value = convertDateFormat(value);
+
         case 'month':
             var date = new Date(value);
             field.value = date.toISOString().substring(0, 7); // YYYY-MM
@@ -180,3 +184,33 @@ function getWeekNumber(d) {
     var weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
     return weekNo;
 }
+
+// Convert date format from yymmdd to yyyy-mm-dd
+function convertDateFormat(input, futureDate = false) {
+    var yearSuffix = input.slice(0, 2);
+    var currentYearSuffix = new Date().getFullYear().toString().slice(2, 4);
+    var yearPrefix;
+
+    if (futureDate) {
+        yearPrefix = "20";
+    } else {
+        yearPrefix = (parseInt(yearSuffix, 10) <= parseInt(currentYearSuffix, 10)) ? "20" : "19";
+    }
+
+    var year = yearPrefix + yearSuffix;
+    var month = input.slice(2, 4);
+    var day = input.slice(4, 6);
+
+    // create a new Date object (months are 0-indexed in JavaScript)
+    var date = new Date(year, month - 1, day);
+
+    // convert the Date object to ISO string and split on 'T'
+    var output = date.toISOString().split('T')[0];
+
+    return output;
+}
+
+
+
+
+

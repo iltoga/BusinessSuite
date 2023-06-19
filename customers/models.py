@@ -23,11 +23,21 @@ NOTIFY_BY_CHOICES = [
     ("Telephone", "Telephone"),
 ]
 
+GENDERS = [
+    ("", "---------"),
+    ("M", "Male"),
+    (
+        "F",
+        "Female",
+    ),
+]
+
 
 class CustomerManager(models.Manager):
     def search_customers(self, query):
         return self.filter(
-            models.Q(full_name__icontains=query)
+            models.Q(first_name__icontains=query)
+            | models.Q(last_name__icontains=query)
             | models.Q(email__icontains=query)
             | models.Q(telephone__icontains=query)
             | models.Q(telegram__icontains=query)
@@ -38,7 +48,7 @@ class CustomerManager(models.Manager):
         with connection.cursor() as cursor:
             cursor.execute(
                 f"""
-                SELECT id, full_name, document_id
+                SELECT id, first_name, last_name, document_id
                 FROM customer_fts
                 WHERE customer_fts MATCH '{query}*'
                 ORDER BY rank;
@@ -49,7 +59,8 @@ class CustomerManager(models.Manager):
 
 class Customer(models.Model):
     id = models.AutoField(primary_key=True)
-    full_name = models.CharField(max_length=50, db_index=True)
+    first_name = models.CharField(max_length=50, db_index=True)
+    last_name = models.CharField(max_length=50, db_index=True)
     email = models.EmailField(
         max_length=50, unique=True, blank=True, null=True, validators=[validateEmail], db_index=True
     )
@@ -63,8 +74,9 @@ class Customer(models.Model):
         max_length=50, unique=True, blank=True, null=True, validators=[validate_phone_number], db_index=True
     )
     title = models.CharField(choices=TITLES_CHOICES, max_length=50)
-    citizenship = models.CharField(max_length=100, db_index=True)
+    nationality = models.CharField(max_length=100, db_index=True)
     birthdate = models.DateField(validators=[validate_birthdate])
+    gender = models.CharField(max_length=1, blank=True, null=True)
     address_bali = models.TextField(blank=True, null=True)
     address_abroad = models.TextField(blank=True, null=True)
     notify_documents_expiration = models.BooleanField(default=True)
@@ -73,11 +85,15 @@ class Customer(models.Model):
     objects = CustomerManager()
 
     class Meta:
-        ordering = ["full_name"]
-        unique_together = (("full_name", "birthdate"),)
+        ordering = ["last_name", "first_name"]
+        unique_together = (("first_name", "last_name", "birthdate"),)
 
     def __str__(self):
         return self.full_name
+
+    @property
+    def full_name(self):
+        return f"{self.first_name} {self.last_name}"
 
     # clean method is where you can add custom validations for your model
     # note: it can be used here or in the form class

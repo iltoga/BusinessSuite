@@ -53,13 +53,13 @@
         restApiCall('POST', url, formData,
             data => {
               toggleMessageDisplay(true, 'File successfully checked via OCR!', 'ocr_check_error_id', 'ocr_check_success_id');
-              setFormFieldValue('id_doc_number', data.document_number);
-              setFormFieldValue('id_expiration_date', data.expiration_date);
+              setFormFieldValue('id_doc_number', data.number);
+              setFormFieldValue('id_expiration_date', data.expiration_date_yyyy_mm_dd);
               setFormFieldValue('id_ocr_check', true, 'checkbox');
-              setFormFieldValue('id_metadata', JSON.stringify(data.metadata))
-              setFormFieldValue('id_metadata_display', JSON.stringify(data.metadata))
+              setFormFieldValue('id_metadata', JSON.stringify(data))
+              setFormFieldValue('id_metadata_display', JSON.stringify(data))
               // show dom with id_metadata_display
-              document.getElementById('id_metadata_display').parentElement.style.display = 'block';
+              // document.getElementById('id_metadata_display').parentElement.style.display = 'block';
               toggleSpinnerDisplay(false, 'ocr_check_btn_id', 'ocr_check_spinner');
             },
             error => {

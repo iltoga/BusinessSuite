@@ -18,7 +18,7 @@ class RequiredDocumentUpdateForm(forms.ModelForm):
     force_update = forms.BooleanField(required=False, label="Force Update", widget=forms.HiddenInput())
     metadata = forms.JSONField(required=False, widget=forms.HiddenInput())
     # helper field to show the metadata in the template (it's a hidden field and could be used for testing purposes)
-    metadata_display = forms.JSONField(required=False, disabled=True, label="Metadata", widget=forms.HiddenInput())
+    metadata_display = forms.JSONField(required=False, disabled=True, label="Metadata")
     # Only users with the 'upload_document' permission can upload documents
     field_permissions = {
         "file": ["upload_document"],

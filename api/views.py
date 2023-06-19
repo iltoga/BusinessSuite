@@ -22,7 +22,9 @@ class SearchCustomers(APIView):
 
     def get(self, request, format=None):
         query = request.GET.get("q", "")
-        customers = self.queryset.filter(Q(full_name__icontains=query) | Q(email__icontains=query))
+        customers = self.queryset.filter(
+            Q(first_name__icontains=query) | Q(last_name__icontains=query) | Q(email__icontains=query)
+        )
         serializer = CustomerSerializer(customers, many=True)
         return Response(serializer.data)
 
@@ -98,17 +100,8 @@ class OCRCheckView(APIView):
             return Response(data={"error": "No doc_type provided!"}, status=status.HTTP_400_BAD_REQUEST)
         res = Response()
         try:
-            doc_metadata, mrz_data = extract_mrz_data(file)
-            if doc_type == "passport":
-                # doc_metadata["doc_type"] = "P"
-                res.data = {
-                    "metadata": doc_metadata,
-                    "document_number": mrz_data.get("document_number", False),
-                    "expiration_date": mrz_data.get("expiration_date", False),
-                    "mrz_data": mrz_data,
-                }
-            else:
-                res.data = {"metadata": doc_metadata, "mrz_data": mrz_data}
+            mrz_data = extract_mrz_data(file)
+            return Response(data=mrz_data, status=status.HTTP_200_OK)
         except Exception as e:
             errMsg = e.args[0]
             # the one below always returns a error message of "Bad Request". I want to return the actual error message

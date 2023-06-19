@@ -19,6 +19,9 @@ python manage.py populateholiday
 # Populate document types
 python manage.py populate_documenttypes
 
+# Populate country codes
+python manage.py populatecountrycodes
+
 # Create superuser if none exists
 python manage.py createsuperuserifnotexists
 

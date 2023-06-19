@@ -13,7 +13,8 @@ class DocApplicationManager(models.Manager):
             models.Q(product__name__icontains=query)
             | models.Q(product__code__icontains=query)
             | models.Q(product__product_type__icontains=query)
-            | models.Q(customer__full_name__icontains=query)
+            | models.Q(customer__first_name__icontains=query)
+            | models.Q(customer__last_name__icontains=query)
             | models.Q(doc_date__icontains=query)
         )
 
