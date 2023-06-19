@@ -15,15 +15,17 @@ from .base import *
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['crm.revisbali.com', 'www.revisbali.com', 'revisbali.com']
+ALLOWED_HOSTS = ["crm.revisbali.com", "www.revisbali.com", "revisbali.com"]
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': '/db/revisbalicrm.sqlite3',
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": "/db/revisbalicrm.sqlite3",
     }
 }
 
-MEDIA_ROOT = '/media/'
+MEDIA_ROOT = "/media/"
 
-STATIC_ROOT = '/staticfiles/'
+STATIC_ROOT = "/staticfiles/"
+
+TESSERACT_CMD = "/usr/bin/tesseract"
