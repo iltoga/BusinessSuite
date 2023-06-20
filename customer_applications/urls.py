@@ -12,6 +12,7 @@ from .views import (
     DocWorkflowCreateView,
     DocWorkflowUpdateView,
     RequiredDocumentDetailView,
+    RequiredDocumentDetailViewPrint,
     RequiredDocumentUpdateView,
 )
 
@@ -45,6 +46,11 @@ urlpatterns = [
         "required_document_detail/<int:pk>/",
         RequiredDocumentDetailView.as_view(),
         name="customer-application-requireddocument-detail",
+    ),
+    path(
+        "required_document_detail_print/<int:pk>/",
+        RequiredDocumentDetailViewPrint.as_view(),
+        name="customer-application-requireddocument-detail-print",
     ),
     path(
         "create_doc_workflow/<int:docapplication_pk>/<int:step_no>",

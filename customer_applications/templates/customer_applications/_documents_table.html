@@ -6,9 +6,6 @@
         <th scope="col">Doc.Type</th>
         <th scope="col">Doc. Number</th>
         <th scope="col">Expiration Date</th>
-        {% if perms.customer_applications.upload_documents %}
-        <th scope="col">View Document</th>
-        {% endif %}
         <th scope="col">Last Updated</th>
         <th scope="col">Completed</th>
         {% if user|has_perm:'customer_applications,requireddocument,change' and not docapplication.is_application_completed%}
@@ -30,17 +27,6 @@
           <!-- Expiration Date -->
           <td>{{ document.expiration_date }}</td>
 
-          <!-- View Document -->
-          {% if user|has_perm:'customer_applications,requireddocument,upload_document' %}
-          <td>
-            {% if document.file_link %}
-              <a href="{{ document.file_link }}" target="_blank">View Document</a>
-            {% else %}
-              Document not uploaded.
-            {% endif %}
-          </td>
-          {% endif %}
-
           <!-- Last Updated -->
           {% include "components/updated_at_by_table_col.html" with model=document %}
 
@@ -57,6 +43,7 @@
           <td>
           {% if user|has_perm:'customer_applications,requireddocument,view' %}
             <a href="{% url 'customer-application-requireddocument-detail' document.pk %}" class="btn btn-sm btn-primary">View</a>
+            <a href="{% url 'customer-application-requireddocument-detail-print' document.pk %}" target="_blank" class="btn btn-sm btn-secondary">Print</a>
           {% endif %}
           {% if user|has_perm:'customer_applications,requireddocument,change' %}
             {% if not docapplication.is_application_completed %}

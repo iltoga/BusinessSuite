@@ -11,10 +11,16 @@ class ProductForm(forms.ModelForm):
 
     # Extra form fields
     required_documents_multiselect = forms.ModelMultipleChoiceField(
-        queryset=DocumentType.objects.all(),
+        queryset=DocumentType.objects.filter(is_in_required_documents=True),
         widget=forms.SelectMultiple(attrs={"class": "select2"}),
         required=False,
         label="Required documents",
+    )
+    optional_documents_multiselect = forms.ModelMultipleChoiceField(
+        queryset=DocumentType.objects.filter(is_in_required_documents=False),
+        widget=forms.SelectMultiple(attrs={"class": "select2"}),
+        required=False,
+        label="Optional documents",
     )
 
     class Meta:
@@ -28,3 +34,7 @@ class ProductForm(forms.ModelForm):
             document_names = kwargs["instance"].required_documents.split(",")
             document_objects = DocumentType.objects.filter(name__in=document_names)
             self.fields["required_documents_multiselect"].initial = document_objects
+
+            document_names = kwargs["instance"].optional_documents.split(",")
+            document_objects = DocumentType.objects.filter(name__in=document_names)
+            self.fields["optional_documents_multiselect"].initial = document_objects

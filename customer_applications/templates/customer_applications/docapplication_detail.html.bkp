@@ -34,7 +34,7 @@
     </table>
 
     <h3 class="text-center my-4">Required Documents</h3>
-    {% include "customer_applications/_required_documents_table.html" with required_documents=docapplication.required_documents.all %}
+    {% include "customer_applications/_documents_table.html" with required_documents=docapplication.required_documents.all %}
 
     {% if docapplication.is_document_collection_completed == False %}
     <div class="alert alert-warning" role="alert">

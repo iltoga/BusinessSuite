@@ -7,4 +7,5 @@ from .doc_workflow_create_view import DocWorkflowCreateView
 from .doc_workflow_detail_view import DocWorkflowDetailView
 from .doc_workflow_update_view import DocWorkflowUpdateView
 from .required_document_detail_view import RequiredDocumentDetailView
+from .required_document_detail_view_print import RequiredDocumentDetailViewPrint
 from .required_document_update_view import RequiredDocumentUpdateView

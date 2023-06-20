@@ -46,6 +46,16 @@ class ProductUpdateView(PermissionRequiredMixin, SuccessMessageMixin, UpdateView
                     for document in required_documents_multiselect:
                         required_documents_str += document.name + ","
                     self.object.required_documents = required_documents_str[:-1]
+
+                optional_documents_multiselect = form.cleaned_data.get("optional_documents_multiselect")
+                if not optional_documents_multiselect:
+                    self.object.optional_documents = ""
+                else:
+                    optional_documents_str = ""
+                    for document in optional_documents_multiselect:
+                        optional_documents_str += document.name + ","
+                    self.object.optional_documents = optional_documents_str[:-1]
+
                 self.object = form.save(commit=False)
                 tasks.instance = self.object
                 # Save the tasks formset

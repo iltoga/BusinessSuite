@@ -123,6 +123,12 @@ class DocApplication(models.Model):
             return True
         return False
 
+    def get_completed_documents(self):
+        return self.required_documents.filter(completed=True)
+
+    def get_incomplete_documents(self):
+        return self.required_documents.filter(completed=False)
+
     def __str__(self):
         return self.product.name + " - " + self.customer.full_name + f" #{self.pk}"
 

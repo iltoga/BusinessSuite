@@ -11,6 +11,7 @@ class DocumentType(models.Model):
     has_file = models.BooleanField(default=False)
     has_details = models.BooleanField(default=False)
     validation_rule_regex = models.CharField(max_length=500, blank=True)
+    is_in_required_documents = models.BooleanField(default=False)
 
     class Meta:
         ordering = ["name"]

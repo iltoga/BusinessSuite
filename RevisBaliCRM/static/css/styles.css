@@ -33,6 +33,12 @@
     }
 }
 
+@media print {
+    .no-print {
+        display: none;
+    }
+}
+
 /* Remove animations and transitions from dom with this class */
 .no-transition {
     transition: none !important;

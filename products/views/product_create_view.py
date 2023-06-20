@@ -47,6 +47,15 @@ class ProductCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateView
                         required_documents_str += document.name + ","
                     form.instance.required_documents = required_documents_str[:-1]
 
+                optional_documents = form.cleaned_data["optional_documents_multiselect"]
+                if len(optional_documents) == 0:
+                    form.instance.optional_documents = ""
+                else:
+                    optional_documents_str = ""
+                    for document in optional_documents:
+                        optional_documents_str += document.name + ","
+                    form.instance.optional_documents = optional_documents_str[:-1]
+
                 self.object = form.save()
                 tasks.instance = self.object
                 # Save the tasks formset

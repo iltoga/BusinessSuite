@@ -24,7 +24,8 @@
 
 ## TODO:
 
-### 2023-06-18
+### 2023-06-19
+- after doc application is closed, add a button to upload the processed_document (eg. the visa stamp on the passport). this is a special document type which is not required and cannot be chosen by the user as a required document. it is only available after the application is closed.
 
 ### 2023-06-09
 - add exit_date to customer application: optional field telling us if and when the customer wants to go out of the country. This should trigger a notification in case the customer’s application is still on process and he has to leave the country.
@@ -32,6 +33,9 @@
 - add ajax call to update the workflow due_date when user updates the start_date
 
 ## DONE:
+
+### 2023-06-20
+- add print preview for documents (maybe add the template to the document_type model)
 
 ### 2023-06-18
 - new customer application: add the first step of the process (document collection) automatically when creating the application. when all documents are collected, the first step will be completed automatically
