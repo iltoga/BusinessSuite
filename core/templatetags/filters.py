@@ -14,3 +14,22 @@ def pretty_json(value):
 def endswith(value, arg):
     """Returns True if the value ends with the arg"""
     return str(value).endswith(str(arg))
+
+
+@register.filter
+def slice_after(value, arg):
+    try:
+        position = value.index(arg) + len(arg)
+        return value[:position]
+    except ValueError:
+        return value
+
+
+@register.simple_tag
+def get_incomplete_documents(docapplication, doc_type):
+    return docapplication.get_incomplete_documents(doc_type)
+
+
+@register.simple_tag
+def get_completed_documents(docapplication, doc_type):
+    return docapplication.get_completed_documents(doc_type)

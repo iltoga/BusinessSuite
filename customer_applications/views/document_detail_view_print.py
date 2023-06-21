@@ -5,13 +5,13 @@ from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.views.generic import DetailView
 from pdf2image.pdf2image import convert_from_path
 
-from customer_applications.models import RequiredDocument
+from customer_applications.models import Document
 
 
-class RequiredDocumentDetailViewPrint(PermissionRequiredMixin, DetailView):
-    permission_required = ("customer_applications.view_requireddocument",)
-    model = RequiredDocument
-    template_name = "customer_applications/requireddocument_detail_print.html"
+class DocumentDetailViewPrint(PermissionRequiredMixin, DetailView):
+    permission_required = ("customer_applications.view_document",)
+    model = Document
+    template_name = "customer_applications/document_detail_print.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

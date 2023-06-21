@@ -25,7 +25,16 @@ class ProductForm(forms.ModelForm):
 
     class Meta:
         model = Product
-        fields = ["name", "code", "description", "base_price", "product_type", "validity", "documents_min_validity"]
+        fields = [
+            "name",
+            "code",
+            "description",
+            "immigration_id",
+            "base_price",
+            "product_type",
+            "validity",
+            "documents_min_validity",
+        ]
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop("user", None)

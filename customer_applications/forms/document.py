@@ -4,16 +4,16 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 
-from customer_applications.models import RequiredDocument
+from customer_applications.models import Document
 
 
-class RequiredDocumentCreateForm(forms.ModelForm):
+class DocumentCreateForm(forms.ModelForm):
     class Meta:
-        model = RequiredDocument
-        fields = ["doc_type"]
+        model = Document
+        fields = ["doc_type", "required"]
 
 
-class RequiredDocumentUpdateForm(forms.ModelForm):
+class DocumentUpdateForm(forms.ModelForm):
     # checkbox to force update even if there are errors. the field is hideen by default and shown only if there are errors
     force_update = forms.BooleanField(required=False, label="Force Update", widget=forms.HiddenInput())
     metadata = forms.JSONField(required=False, widget=forms.HiddenInput())
@@ -25,7 +25,7 @@ class RequiredDocumentUpdateForm(forms.ModelForm):
     }
 
     class Meta:
-        model = RequiredDocument
+        model = Document
         fields = [
             "doc_type",
             "file",
@@ -41,7 +41,7 @@ class RequiredDocumentUpdateForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop("user", None)
-        super(RequiredDocumentUpdateForm, self).__init__(*args, **kwargs)
+        super(DocumentUpdateForm, self).__init__(*args, **kwargs)
         self.fields["doc_type"].disabled = True
         if self.instance.metadata:
             self.initial["metadata_display"] = self.instance.metadata
@@ -122,16 +122,18 @@ class RequiredDocumentUpdateForm(forms.ModelForm):
         return cleaned_data
 
     def is_valid(self):
-        valid = super(RequiredDocumentUpdateForm, self).is_valid()
+        valid = super(DocumentUpdateForm, self).is_valid()
         # if the form is not valid, show the force_update checkbox
         if not valid:
             self.fields["force_update"].widget = forms.CheckboxInput()
         return valid
 
-    # if the required document.completed (we know it after saving it) is True and all other required documents of the doc_application are uploaded, set the satus of the fisrt doc_application's workflow (the one with task.step = 1) to "completed"
+    # if the required document.completed (we know it after saving it) is True
+    # and all other required documents of the doc_application are uploaded,
+    # set the satus of the fisrt doc_application's workflow (the one with task.step = 1) to "completed"
     def save(self, commit=True):
-        required_document = super().save()
-        doc_application = required_document.doc_application
+        document = super().save()
+        doc_application = document.doc_application
 
         # find the first doc_application's workflow (the one with task.step = 1)
         # check if there is only one workflow with task.step = 1
@@ -149,4 +151,4 @@ class RequiredDocumentUpdateForm(forms.ModelForm):
             workflow.save()
             workflow.doc_application.save()
 
-        return required_document
+        return document

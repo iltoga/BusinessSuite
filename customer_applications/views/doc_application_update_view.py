@@ -4,7 +4,7 @@ from django.db import transaction
 from django.urls import reverse_lazy
 from django.views.generic import UpdateView
 
-from customer_applications.forms import DocApplicationForm, RequiredDocumentUpdateFormSet
+from customer_applications.forms import DocApplicationForm, DocumentUpdateFormSet
 from customer_applications.models import DocApplication
 
 
@@ -24,30 +24,28 @@ class DocApplicationUpdateView(PermissionRequiredMixin, SuccessMessageMixin, Upd
     def get_context_data(self, **kwargs):
         data = super().get_context_data(**kwargs)
         if self.request.POST:
-            data["requireddocuments"] = RequiredDocumentUpdateFormSet(
-                self.request.POST, instance=self.object, prefix="requireddocuments"
-            )
+            data["documents"] = DocumentUpdateFormSet(self.request.POST, instance=self.object, prefix="documents")
         else:
-            data["requireddocuments"] = RequiredDocumentUpdateFormSet(instance=self.object, prefix="requireddocuments")
+            data["documents"] = DocumentUpdateFormSet(instance=self.object, prefix="documents")
         return data
 
     def form_valid(self, form):
         context = self.get_context_data()
-        required_documents = context["requireddocuments"]
+        documents = context["documents"]
         form.instance.updated_by = self.request.user
         with transaction.atomic():
             self.object = form.save(commit=False)  # Don't save it yet
-            if required_documents.is_valid():
-                required_documents.instance = self.object
-                required_documents.save(commit=False)
-                for required_document in required_documents:
-                    required_document.instance.updated_by = self.request.user
-                    if required_document.cleaned_data and not required_document.cleaned_data.get("DELETE"):
-                        if "file" in required_document.files:
-                            required_document.instance.file = required_document.files["file"]
-                        if "metadata" in required_document.cleaned_data:
-                            required_document.instance.metadata = required_document.cleaned_data["metadata"]
-                        required_document.instance.save()
+            if documents.is_valid():
+                documents.instance = self.object
+                documents.save(commit=False)
+                for document in documents:
+                    document.instance.updated_by = self.request.user
+                    if document.cleaned_data and not document.cleaned_data.get("DELETE"):
+                        if "file" in document.files:
+                            document.instance.file = document.files["file"]
+                        if "metadata" in document.cleaned_data:
+                            document.instance.metadata = document.cleaned_data["metadata"]
+                        document.instance.save()
                 self.object.save()  # Now save the form
 
         return super().form_valid(form)

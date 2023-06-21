@@ -1,0 +1,77 @@
+[
+    {
+        "reasons": [
+            "government business",
+            "arts and culture",
+            "business"
+        ],
+        "id": "1fac474b-41f3-495b-ad1b-452099b7cfc5",
+        "name": "Single-Entry Visitor Visa 60 Days"
+    },
+    {
+        "reasons": [
+            "government business",
+            "business",
+            "tourism",
+            "purchase of goods"
+        ],
+        "id": "59e5c2c3-525d-485b-928b-ed25079d0fd1",
+        "name": "Visa on Arrival 30 Days"
+    },
+    {
+        "reasons": [
+            "pre investment"
+        ],
+        "id": "ebac4c1c-10bf-4b0d-9ffd-05099a7cca96",
+        "name": "Pre-Investment Single-Entry Visitor Visa 180 Days"
+    },
+    {
+        "reasons": [
+            "tourism"
+        ],
+        "id": "dd5c2220-28a7-4024-9a10-82f30a09e0d2",
+        "name": "Tourism Single-Entry Visitor Visa 60 Days"
+    },
+    {
+        "reasons": [
+            "sport"
+        ],
+        "id": "fce03865-2bcf-4801-8725-a2813c874d8e",
+        "name": "Sport Single-Entry Visitor Visa 60 Days"
+    },
+    {
+        "reasons": [
+            "filming"
+        ],
+        "id": "e40c9cc2-cd1a-452c-a9ab-d15deafb9a3d",
+        "name": "Filming Multiple Re-Entry Visitor Visa 180 Days"
+    },
+    {
+        "reasons": [
+            "second home for family"
+        ],
+        "id": "b6469147-09ae-44c0-878e-74e2c4c2c14e",
+        "name": "SECOND HOME FOR FAMILY"
+    },
+    {
+        "reasons": [
+            "second home"
+        ],
+        "id": "0e6b4213-6b94-450a-9d14-9c9cb971fd06",
+        "name": "SECOND HOME"
+    },
+    {
+        "reasons": [
+            "employment trial"
+        ],
+        "id": "9bb1b8dc-1f48-4b72-9e27-2c9f8231f402",
+        "name": "Single-Entry Visitor Visa for Employment Trial 60 Days"
+    },
+    {
+        "reasons": [
+            "journalistic"
+        ],
+        "id": "da0017ae-9257-4f47-abbf-837beebb0da4",
+        "name": "Single-Entry Visitor Visa For Journalistic 60 Days"
+    }
+]

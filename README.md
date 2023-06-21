@@ -29,3 +29,19 @@ Document-ai
 [Accelerating Document AI](https://huggingface.co/blog/document-ai)
 
 [Improove OCR](https://pyimagesearch.com/2021/11/22/improving-ocr-results-with-basic-image-processing/)
+
+## HOWTO
+
+### Export and import data
+
+#### Export model to json
+
+```bash
+python manage.py export_model products DocumentType fixtures/document_types.json --settings=RevisBaliCRM.settings.dev
+```
+
+#### Import model from json
+
+```bash
+python manage.py import_model fixtures/document_types.json --settings=RevisBaliCRM.settings.dev
+```

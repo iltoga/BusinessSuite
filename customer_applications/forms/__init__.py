@@ -1,4 +1,4 @@
-from .required_document import RequiredDocumentCreateForm, RequiredDocumentUpdateForm
-from .doc_workflow import DocWorkflowForm
 from .doc_application import DocApplicationForm
-from .doc_application_formsets import RequiredDocumentCreateFormSet, RequiredDocumentUpdateFormSet, DocWorkflowCreateFormSet
+from .doc_application_formsets import DocumentCreateFormSet, DocumentUpdateFormSet, DocWorkflowCreateFormSet
+from .doc_workflow import DocWorkflowForm
+from .document import DocumentCreateForm, DocumentUpdateForm

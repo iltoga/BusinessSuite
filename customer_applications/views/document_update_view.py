@@ -4,15 +4,15 @@ from django.contrib.messages.views import SuccessMessageMixin
 from django.urls import reverse_lazy
 from django.views.generic import UpdateView
 
-from customer_applications.forms import RequiredDocumentUpdateForm
-from customer_applications.models import RequiredDocument
+from customer_applications.forms import DocumentUpdateForm
+from customer_applications.models import Document
 
 
-class RequiredDocumentUpdateView(PermissionRequiredMixin, SuccessMessageMixin, UpdateView):
-    permission_required = ("customer_applications.change_requireddocument",)
-    model = RequiredDocument
-    form_class = RequiredDocumentUpdateForm
-    template_name = "customer_applications/requireddocument_update.html"
+class DocumentUpdateView(PermissionRequiredMixin, SuccessMessageMixin, UpdateView):
+    permission_required = ("customer_applications.change_document",)
+    model = Document
+    form_class = DocumentUpdateForm
+    template_name = "customer_applications/document_update.html"
     success_message = "Required document updated successfully!"
 
     def get_context_data(self, **kwargs):
@@ -32,8 +32,8 @@ class RequiredDocumentUpdateView(PermissionRequiredMixin, SuccessMessageMixin, U
             initial["details"] = self.object.doc_application.customer.address_bali
 
         if self.object.doc_type.name == "Passport" and not self.object.file and not self.object.file_link:
-            required_document = (
-                RequiredDocument.objects.filter(
+            document = (
+                Document.objects.filter(
                     doc_application__customer__pk=self.object.doc_application.customer.pk,
                     doc_type__name="Passport",
                     completed=True,
@@ -42,23 +42,23 @@ class RequiredDocumentUpdateView(PermissionRequiredMixin, SuccessMessageMixin, U
                 .first()
             )
 
-            if required_document:
-                if required_document.is_expiring:
+            if document:
+                if document.is_expiring:
                     messages.warning(
                         self.request, "We have a previous Passport, but is expiring soon. Please upload a new one."
                     )
-                elif required_document.is_expired:
+                elif document.is_expired:
                     messages.warning(
                         self.request, "We have a previous Passport, but is already expired. Please upload a new one."
                     )
                 else:
-                    initial["file"] = required_document.file
-                    initial["file_link"] = required_document.file_link
-                    initial["doc_number"] = required_document.doc_number
-                    initial["expiration_date"] = required_document.expiration_date
-                    initial["ocr_check"] = required_document.ocr_check
-                    initial["details"] = required_document.details
-                    initial["metadata"] = required_document.metadata
+                    initial["file"] = document.file
+                    initial["file_link"] = document.file_link
+                    initial["doc_number"] = document.doc_number
+                    initial["expiration_date"] = document.expiration_date
+                    initial["ocr_check"] = document.ocr_check
+                    initial["details"] = document.details
+                    initial["metadata"] = document.metadata
                     messages.success(self.request, "Data imported from previous Customer's application")
         return initial
 

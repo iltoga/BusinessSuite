@@ -1,24 +1,24 @@
 from django import forms
 
-from customer_applications.models import DocApplication, DocWorkflow, RequiredDocument
+from customer_applications.models import DocApplication, Document, DocWorkflow
 
 from .doc_workflow import DocWorkflowForm
-from .required_document import RequiredDocumentCreateForm, RequiredDocumentUpdateForm
+from .document import DocumentCreateForm, DocumentUpdateForm
 
-RequiredDocumentCreateFormSet = forms.inlineformset_factory(
+DocumentCreateFormSet = forms.inlineformset_factory(
     DocApplication,  # parent model
-    RequiredDocument,  # child model
-    form=RequiredDocumentCreateForm,  # form to use
+    Document,  # child model
+    form=DocumentCreateForm,  # form to use
     extra=0,  # minimum number of forms to show
     max_num=20,  # maximum number of forms to show
     can_delete=False,  # enable deletion
 )
 
 
-RequiredDocumentUpdateFormSet = forms.inlineformset_factory(
+DocumentUpdateFormSet = forms.inlineformset_factory(
     DocApplication,  # parent model
-    RequiredDocument,  # child model
-    form=RequiredDocumentUpdateForm,  # form to use
+    Document,  # child model
+    form=DocumentUpdateForm,  # form to use
     extra=0,  # minimum number of forms to show
     max_num=20,  # maximum number of forms to show
     can_delete=False,  # enable deletion

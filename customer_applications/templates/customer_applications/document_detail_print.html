@@ -25,34 +25,34 @@
             <div class="card">
                 <div class="card-body">
                     <div class="row">
-                        <h1 class="text-center">{{ requireddocument.doc_type.name }} - {{ requireddocument.doc_application.customer.full_name }}</h1>
-                        <h5 class="text-center">Application ID #{{ requireddocument.pk }}</h5>
+                        <h1 class="text-center">{{ document.doc_type.name }} - {{ document.doc_application.customer.full_name }}</h1>
+                        <h5 class="text-center">Application ID #{{ document.pk }}</h5>
                     </div>
 
                     <table class="table table-borderless">
                         <tbody>
-                            {% if requireddocument.doc_number %}
+                            {% if document.doc_number %}
                             <tr>
                                 <th scope="row">Document Number</th>
-                                <td>{{ requireddocument.doc_number }}</td>
+                                <td>{{ document.doc_number }}</td>
                             </tr>
                             {% endif %}
-                            {% if requireddocument.expiration_date %}
+                            {% if document.expiration_date %}
                             <tr>
                                 <th scope="row">Expiration Date</th>
-                                <td>{{ requireddocument.expiration_date }}</td>
+                                <td>{{ document.expiration_date }}</td>
                             </tr>
                             {% endif %}
-                            {% if requireddocument.details %}
+                            {% if document.details %}
                             <tr>
                                 <th scope="row">Details</th>
-                                <td>{{ requireddocument.details }}</td>
+                                <td>{{ document.details }}</td>
                             </tr>
                             {% endif %}
-                            {% if requireddocument.doc_type.has_ocr_check %}
+                            {% if document.doc_type.has_ocr_check %}
                             <tr>
                                 <th scope="row">OCR Checked</th>
-                                {% if requireddocument.ocr_check %}
+                                {% if document.ocr_check %}
                                     <td><i class="bi bi-check-circle-fill"></i></td>
                                 {% else %}
                                     <td><i class="bi bi-x-circle-fill"></i></td>
@@ -61,13 +61,13 @@
                             {% endif %}
                         </tbody>
                     </table>
-                    {% if requireddocument.file and requireddocument.file.url %}
+                    {% if document.file and document.file.url %}
                     <div class="my-5 text-center">
-                        {% if requireddocument.file.url|lower|endswith:".pdf" %}
+                        {% if document.file.url|lower|endswith:".pdf" %}
                             <img src="{{ file_url }}" alt="Document preview" class="img-fluid">
                         {% else %}
                             <p>Document preview:</p>
-                            <img src="{{ requireddocument.file.url }}" alt="Document preview" class="img-fluid">
+                            <img src="{{ document.file.url }}" alt="Document preview" class="img-fluid">
                         {% endif %}
                     </div>
                     {% endif %}
@@ -75,15 +75,15 @@
             </div>
         </div>
 
-        {% if requireddocument.file and requireddocument.file.url %}
+        {% if document.file and document.file.url %}
         <div class="pagebreak"> </div>
         <div class="my-5 text-center">
             <!-- <p>Attached Document:</p> -->
             <p class="mt-10"></p>
-            {% if requireddocument.file.url|lower|endswith:".pdf" %}
-            <p id="pdf_link_id"><a href="{{ requireddocument.file.url }}" target="_blank">Click here to view and print the PDF file</a></p>
+            {% if document.file.url|lower|endswith:".pdf" %}
+            <p id="pdf_link_id"><a href="{{ document.file.url }}" target="_blank">Click here to view and print the PDF file</a></p>
             {% else %}
-            <img src="{{ requireddocument.file.url }}" alt="Document preview" class="img-fluid">
+            <img src="{{ document.file.url }}" alt="Document preview" class="img-fluid">
             {% endif %}
         </div>
         {% endif %}

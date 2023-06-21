@@ -67,8 +67,9 @@ class DocApplication(models.Model):
     @property
     def is_document_collection_completed(self):
         """Returns True if all required documents are completed, False otherwise."""
-        all_docs_count = self.required_documents.count()
-        completed_docs_count = self.required_documents.filter(completed=True).count()
+        all_docs_count = self.documents.count()
+        # get all completed documents: completed=True and required = True
+        completed_docs_count = self.documents.filter(completed=True, required=True).count()
         return bool(all_docs_count == completed_docs_count)
 
     # check if all workflows are completed (workflow status = completed)
@@ -123,11 +124,25 @@ class DocApplication(models.Model):
             return True
         return False
 
-    def get_completed_documents(self):
-        return self.required_documents.filter(completed=True)
+    def get_completed_documents(self, type="all"):
+        if type == "all":
+            return self.documents.filter(completed=True)
+        elif type == "required":
+            return self.documents.filter(completed=True, required=True)
+        elif type == "optional":
+            return self.documents.filter(completed=True, required=False)
+        else:
+            return self.documents.none()
 
-    def get_incomplete_documents(self):
-        return self.required_documents.filter(completed=False)
+    def get_incomplete_documents(self, type="all"):
+        if type == "all":
+            return self.documents.filter(completed=False)
+        elif type == "required":
+            return self.documents.filter(completed=False, required=True)
+        elif type == "optional":
+            return self.documents.filter(completed=False, required=False)
+        else:
+            return self.documents.none()
 
     def __str__(self):
         return self.product.name + " - " + self.customer.full_name + f" #{self.pk}"

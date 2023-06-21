@@ -23,7 +23,7 @@ class DocApplicationManager(models.Manager):
         )
 
 
-class RequiredDocument(models.Model):
+class Document(models.Model):
     def get_upload_to(instance, filename):
         """
         Returns the upload_to path for the file field.
@@ -36,7 +36,7 @@ class RequiredDocument(models.Model):
         # documents/<customer_name>_<customer_id>/<doc_application_id>/<doc_type>.<extension>
         return f"{base_doc_path}/{whitespaces_to_underscores(doc_application.customer.full_name)}_{doc_application.customer.pk}/application_{doc_application.pk}/{filename}"
 
-    doc_application = models.ForeignKey(DocApplication, related_name="required_documents", on_delete=models.CASCADE)
+    doc_application = models.ForeignKey(DocApplication, related_name="documents", on_delete=models.CASCADE)
     doc_type = models.ForeignKey(DocumentType, on_delete=models.PROTECT)
     doc_number = models.CharField(max_length=50, blank=True)
     expiration_date = models.DateField(blank=True, null=True, db_index=True)
@@ -47,15 +47,16 @@ class RequiredDocument(models.Model):
     details = models.TextField(blank=True)
     completed = models.BooleanField(default=False)
     metadata = models.JSONField(blank=True, null=True)
+    required = models.BooleanField(default=True)
     created_at = models.DateTimeField(db_index=True)
     updated_at = models.DateTimeField(db_index=True)
     created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="created_by_required_document"
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="created_by_document"
     )
     updated_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
-        related_name="updated_by_required_document",
+        related_name="updated_by_document",
         blank=True,
         null=True,
     )
@@ -127,7 +128,7 @@ class RequiredDocument(models.Model):
 
         # In case of an update operation, if a new file is being uploaded
         if self.pk is not None and self.file and self.file.name:
-            orig = RequiredDocument.objects.get(pk=self.pk)
+            orig = Document.objects.get(pk=self.pk)
             # If a different file is being uploaded
             if orig.file and orig.file.name != self.file.name:
                 # Get the upload_to path

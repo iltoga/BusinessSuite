@@ -9,11 +9,11 @@ from .views import (
     DocApplicationDetailView,
     DocApplicationListView,
     DocApplicationUpdateView,
+    DocumentDetailView,
+    DocumentDetailViewPrint,
+    DocumentUpdateView,
     DocWorkflowCreateView,
     DocWorkflowUpdateView,
-    RequiredDocumentDetailView,
-    RequiredDocumentDetailViewPrint,
-    RequiredDocumentUpdateView,
 )
 
 urlpatterns = [
@@ -38,19 +38,19 @@ urlpatterns = [
         name="customer-application-update",
     ),
     path(
-        "update_required_document/<int:pk>/",
-        RequiredDocumentUpdateView.as_view(),
-        name="customer-application-requireddocument-update",
+        "update_document/<int:pk>/",
+        DocumentUpdateView.as_view(),
+        name="customer-application-document-update",
     ),
     path(
-        "required_document_detail/<int:pk>/",
-        RequiredDocumentDetailView.as_view(),
-        name="customer-application-requireddocument-detail",
+        "document_detail/<int:pk>/",
+        DocumentDetailView.as_view(),
+        name="customer-application-document-detail",
     ),
     path(
-        "required_document_detail_print/<int:pk>/",
-        RequiredDocumentDetailViewPrint.as_view(),
-        name="customer-application-requireddocument-detail-print",
+        "document_detail_print/<int:pk>/",
+        DocumentDetailViewPrint.as_view(),
+        name="customer-application-document-detail-print",
     ),
     path(
         "create_doc_workflow/<int:docapplication_pk>/<int:step_no>",

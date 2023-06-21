@@ -63,8 +63,17 @@ class ProductByIDView(APIView):
                 # serialize the product and the required documents
                 serialized_product = ProductSerializer(product, many=False)
                 serialzed_document_types = DocumentTypeSerializer(required_document_types, many=True)
+                # also return the optional documents
+                optional_document_types_str = product.optional_documents.split(",")
+                optional_document_types_str = [document.strip() for document in optional_document_types_str]
+                optional_document_types = DocumentType.objects.filter(name__in=optional_document_types_str)
+                serialzed_optional_document_types = DocumentTypeSerializer(optional_document_types, many=True)
                 return Response(
-                    {"product": serialized_product.data, "required_documents": serialzed_document_types.data}
+                    {
+                        "product": serialized_product.data,
+                        "required_documents": serialzed_document_types.data,
+                        "optional_documents": serialzed_optional_document_types.data,
+                    }
                 )
             except Product.DoesNotExist:
                 return Response({"error": "Product does not exist"}, status=status.HTTP_404_NOT_FOUND)

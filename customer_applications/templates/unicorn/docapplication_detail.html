@@ -1,4 +1,6 @@
 {% load humanize %}
+{% load filters %}
+
 <div>
   <div class="container my-4">
     <div class="card">
@@ -38,10 +40,15 @@
       </table>
 
       <h3 class="text-center my-4">Uploaded Documents</h3>
-      {% include "customer_applications/_documents_table.html" with required_documents=docapplication.get_completed_documents docapplication=docapplication %}
+      {% include "customer_applications/_documents_table.html" with documents=docapplication.get_completed_documents docapplication=docapplication %}
 
       <h3 class="text-center my-4">Required Documents</h3>
-      {% include "customer_applications/_documents_table.html" with required_documents=docapplication.get_incomplete_documents docapplication=docapplication %}
+      {% get_incomplete_documents docapplication "required" as incomplete_required_docs %}
+      {% include "customer_applications/_documents_table.html" with documents=incomplete_required_docs docapplication=docapplication %}
+
+      <h3 class="text-center my-4">Other Documents</h3>
+      {% get_incomplete_documents docapplication "optional" as incomplete_optional_docs %}
+      {% include "customer_applications/_documents_table.html" with documents=incomplete_optional_docs docapplication=docapplication %}
 
       {% if docapplication.workflows.all|length > 0 %}
         <h3 class="my-4">Application Workflow (Tasks)</h3>

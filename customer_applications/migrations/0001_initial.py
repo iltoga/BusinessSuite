@@ -49,7 +49,7 @@ class Migration(migrations.Migration):
                 ("expiration_date", models.DateField(blank=True, null=True)),
                 (
                     "file",
-                    models.FileField(blank=True, upload_to=customer_applications.models.RequiredDocument.get_upload_to),
+                    models.FileField(blank=True, upload_to=customer_applications.models.Document.get_upload_to),
                 ),
                 ("file_link", models.CharField(blank=True, max_length=1024)),
                 ("metadata", models.JSONField(blank=True, null=True)),

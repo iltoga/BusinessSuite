@@ -20,6 +20,7 @@ class Product(models.Model):
     name = models.CharField(max_length=100, db_index=True)
     code = models.CharField(max_length=20, unique=True, db_index=True)
     description = models.TextField(blank=True, db_index=True)
+    immigration_id = models.UUIDField(blank=True, null=True, db_index=True)
     base_price = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True, default=0.00)
     product_type = models.CharField(max_length=50, choices=PRODUCT_TYPE_CHOICES, default="other", db_index=True)
     # Validity in days
