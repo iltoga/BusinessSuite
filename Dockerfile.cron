@@ -1,0 +1,46 @@
+# Use an official Python runtime as a parent image
+FROM python:3
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+ENV DJANGO_SETTINGS_MODULE RevisBaliCRM.settings.prod
+ENV PATH="/home/revisbali/.local/bin:${PATH}"
+
+# Create a new user 'revisbali' with UID 1000 and GID 1000
+RUN addgroup --gid 1000 revisbali && adduser --uid 1000 --ingroup revisbali --home /home/revisbali --shell /bin/sh --disabled-password --gecos "" revisbali
+
+# Create /usr/src/app directory and change ownership to revisbali
+RUN mkdir -p /usr/src/app && chown -R revisbali:revisbali /usr/src/app
+
+# Set work directory
+WORKDIR /usr/src/app
+
+# Install cron
+RUN apt-get update \
+    && apt-get -y install cron \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Change to non-root privilege
+USER revisbali
+
+# Install dependencies
+COPY --chown=revisbali:revisbali requirements.txt ./
+RUN python3 -m pip install --upgrade pip
+RUN pip install --no-warn-script-location --no-cache-dir -r requirements.txt
+# Copy project
+COPY --chown=revisbali:revisbali . /usr/src/app/
+
+# Copy cronjob file into Docker image and add execute permissions
+COPY --chown=revisbali:revisbali cronjob /etc/cron.d/cronjob
+RUN chmod 0644 /etc/cron.d/cronjob
+
+# Apply cron job
+RUN crontab /etc/cron.d/cronjob
+
+# Create the log file to be able to run tail
+RUN touch /var/log/cron.log
+
+# Run the command on container startup
+CMD cron && tail -f /var/log/cron.log

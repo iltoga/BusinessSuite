@@ -1,17 +1,19 @@
 {% load check_perms %}
 <div class="list_row">
     <tr>
-      <td>{{ customer.full_name }}</td>
-      <td>{{ customer.email }}</td>
-      <td>{{ customer.telephone }}</td>
-      <td>
-        <a href="{% url 'customer-detail' customer.id %}" class="btn btn-primary btn-sm">View</a>
-        {% if user|has_perm:'customers,customer,change' %}
-        <a href="{% url 'customer-update' customer.id %}" class="btn btn-warning btn-sm">Edit</a>
-        {% endif %}
-        {% if user|has_perm:'customers,customer,delete' %}
-        <a href="{% url 'customer-delete' customer.id %}" class="btn btn-danger btn-sm">Delete</a>
-        {% endif %}
-      </td>
+        <td>{{ customer.full_name }}</td>
+        <td>{{ customer.email }}</td>
+        <td>{{ customer.telephone }}</td>
+        <td>
+        <div class="btn-group" role="group" aria-label="Basic example">
+            <a href="{% url 'customer-detail' customer.id %}" class="btn btn-primary btn-sm me-1">View</a>
+            {% if user|has_perm:'customers,customer,change' %}
+            <a href="{% url 'customer-update' customer.id %}" class="btn btn-warning btn-sm me-1">Edit</a>
+            {% endif %}
+            {% if user|has_perm:'customers,customer,delete' %}
+            <a href="{% url 'customer-delete' customer.id %}" class="btn btn-danger btn-sm me-1">Delete</a>
+            {% endif %}
+        </div>
+        </td>
     </tr>
 </div>

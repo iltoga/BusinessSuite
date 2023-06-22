@@ -10,10 +10,13 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
+
 import os
 from pathlib import Path
 
 from dotenv import load_dotenv
+
+from core.utils.dropbox_refresh_token import refresh_dropbox_token
 
 # Load environment variables from .env file
 load_dotenv()
@@ -69,6 +72,9 @@ INSTALLED_APPS = [
     "fontawesomefree",
     "django_unicorn",
     "debug_toolbar",
+    "dbbackup",
+    "storages",
+    "django_cron",
 ]
 
 MIDDLEWARE = [
@@ -166,11 +172,6 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # STEF
 #
 
-# Enable serving of static files
-STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
-
-# Enable compression and caching support
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 # by default, all views require login. To allow anonymous access, add the view name to UNAUTHENTICATED_URLS
 LOGIN_URL = "/login/"
@@ -226,10 +227,6 @@ CORS_ORIGIN_WHITELIST = ["http://localhost:3000"]
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
 
-DEFAULT_FILE_STORAGE = "django.core.files.storage.FileSystemStorage"
-MEDIA_ROOT = os.path.join(BASE_DIR, "files/media/")
-MEDIA_URL = "/uploads/"
-
 # https://github.com/legion-an/django-models-logging
 LOGGING_MODELS = (
     # 'app.ClassName',      # logging only for this model
@@ -267,3 +264,31 @@ SELECT2_CACHE_BACKEND = "select2"
 # SESSION_COOKIE_AGE = 60 * 5 # 5 minutes
 
 TESSERACT_CMD = "/opt/homebrew/bin/tesseract"
+
+
+# Settings for Django static and media files
+DEFAULT_FILE_STORAGE = "django.core.files.storage.FileSystemStorage"
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+MEDIA_ROOT = os.path.join(BASE_DIR, "files/media/")
+MEDIA_URL = "/uploads/"
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+
+# Settings for django-dbbackup
+DBBACKUP_STORAGE = "storages.backends.dropbox.DropBoxStorage"
+
+DBBACKUP_STORAGE_OPTIONS = {
+    "oauth2_access_token": refresh_dropbox_token(
+        os.getenv("DROPBOX_APP_KEY"),
+        os.getenv("DROPBOX_APP_SECRET"),
+        os.getenv("DROPBOX_OAUTH2_REFRESH_TOKEN"),
+    ),
+    "app_key": os.getenv("DROPBOX_APP_KEY"),
+    "app_secret": os.getenv("DROPBOX_APP_SECRET"),
+}
+
+
+CRON_CLASSES = [
+    "core.cron.FullBackupJob",
+]
+
+FULL_BACKUP_RUNS_EVERY_MINS = 60 * 24  # 24 hours

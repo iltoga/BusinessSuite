@@ -1,0 +1,2 @@
+*/5 * * * * cd /usr/src/app && python manage.py runcrons >> /var/log/cron.log 2>&1
+# Don't remove the empty line at the end of the file, cron requires it

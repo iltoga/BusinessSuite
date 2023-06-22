@@ -26,6 +26,28 @@
         .collapse:not(.show) {
             display: none;
         }
+        /* This is the CSS that will be applied when the screen is less than 1024 pixels wide */
+        @media (max-width:1023px) {
+            /* Styles for smaller screens */
+            #sidebar {
+                display: none; /* Hides the sidebar */
+            }
+            #content {
+                width: 100%; /* Ensures content takes up full width of screen */
+            }
+        }
+
+        /* This is the CSS that will be applied when the screen is 1024 pixels wide or wider */
+        @media (min-width:1024px) {
+            /* Styles for larger screens */
+            #sidebar {
+                display: block; /* Shows the sidebar */
+            }
+            #content {
+                width: calc(100% - 300px); /* Adjust the width of the content to account for the sidebar */
+            }
+        }
+
     </style>
 {% endblock %}
 <!-- if overriding this one, remember to use {{ block.super}} at the beginning, otherwise jquery won't be loaded -->
@@ -237,6 +259,20 @@
 {% block after-bootstrap-js %}
 {{ block.super }}
 <script type="text/javascript">
+    $(window).on('resize', function(){
+        var win = $(this); //this = window
+
+        if (win.width() >= 1024) {
+            // if width is greater than or equal to 1024px, show sidebar
+            $('#sidebar').show();
+            $('#content').removeClass('active');
+        } else {
+            // if width is less than 1024px, hide sidebar
+            $('#sidebar').hide();
+            $('#content').addClass('active');
+        }
+    }).resize(); // Trigger resize handler initially
+
     document.addEventListener("DOMContentLoaded", function(event) {
         if (!localStorage.getItem('sidebarCollapse')) {
             localStorage.setItem('sidebarCollapse', 'inactive');

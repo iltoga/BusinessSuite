@@ -3,7 +3,7 @@
 
 {% if docapplication.workflows.all|length > 0 %}
   <div id="doc_workflow_table" >
-    <table class="table">
+    <table class="table table-responsive-md">
       <thead>
         <tr>
           <th scope="col">Task</th>
@@ -44,7 +44,7 @@
               {% if not docapplication.is_application_completed %}
                 {% if user|has_perm:'customer_applications,docworkflow,change' and docworkflow.is_current_step %}
                     <!-- Dropdown to select workflow status -->
-                      <select class="form-select form-select-sm text-sm-start" style="width:auto;" unicorn:change="update_status({{ docworkflow.pk }}, $event.target.value)">
+                      <select class="form-select form-select-sm text-sm-start" style="max-width: 100%;" unicorn:change="update_status({{ docworkflow.pk }}, $event.target.value)">
                           <option value="{{docapplication.STATUS_PENDING}}" {% if docworkflow.status == docapplication.STATUS_PENDING %}selected{% endif %}>Pending</option>
                           <option value="{{docapplication.STATUS_PROCESSING}}" {% if docworkflow.status == docapplication.STATUS_PROCESSING %}selected{% endif %}>Processing</option>
                           <option value="{{docapplication.STATUS_COMPLETED}}" {% if docworkflow.status == docapplication.STATUS_COMPLETED %}selected{% endif %}>Completed</option>
@@ -66,16 +66,18 @@
 
             <!-- Edit -->
             <td>
+              <div class="btn-group btn-group-sm" role="group">
               {% if user|has_perm:'customer_applications,docworkflow,view' %}
-                <a href="{% url 'customer-application-docworkflow-detail' docworkflow.pk %}" class="btn btn-sm btn-primary">View</a>
+                  <a href="{% url 'customer-application-docworkflow-detail' docworkflow.pk %}" class="btn btn-sm btn-primary">View</a>
               {% endif %}
               {% if not docapplication.is_application_completed %}
-                {% if user|has_perm:'customer_applications,docworkflow,change' %}
-                  {% if docworkflow.is_current_step %}
-                    <a href="{% url 'customer-application-docworkflow-update' docworkflow.pk %}" class="btn btn-sm btn-warning">Edit</a>
+                  {% if user|has_perm:'customer_applications,docworkflow,change' %}
+                    {% if docworkflow.is_current_step %}
+                      <a href="{% url 'customer-application-docworkflow-update' docworkflow.pk %}" class="btn btn-sm btn-warning">Edit</a>
+                    {% endif %}
                   {% endif %}
-                {% endif %}
               {% endif %}
+              </div>
             </td>
 
           </tr>
@@ -90,7 +92,9 @@
       <h1><span class="badge badge-success">Application Completed</span></h1>
     {% else %}
       {% if user|has_perm:'customer_applications,docworkflow,change' and docapplication.has_next_task %}
-      <a href="{% url 'customer-application-docworkflow-create' docapplication.pk docapplication.next_task.step %}" class="btn btn-sm btn-warning">{% if docapplication.next_task.step == 1 %}Start{% else %}Next Step{% endif %}</a>
+      <div class="btn-group btn-group-sm" role="group">
+        <a href="{% url 'customer-application-docworkflow-create' docapplication.pk docapplication.next_task.step %}" class="btn btn-sm btn-warning">{% if docapplication.next_task.step == 1 %}Start{% else %}Next Step{% endif %}</a>
+      </div>
       {% endif %}
       {% if not docapplication.is_document_collection_completed %}
         <h1><span class="badge badge-danger">Document Collection Pending</span></h1>
