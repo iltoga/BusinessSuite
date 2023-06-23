@@ -74,7 +74,16 @@ class DocApplicationCreateView(PermissionRequiredMixin, SuccessMessageMixin, Cre
                     document.instance.required = document.cleaned_data["required"]
                     document.instance.created_at = timezone.now()
                     document.instance.updated_at = timezone.now()
-                    document_instances.append(document.instance)
+
+                    # if doc_type is passport, and we have the file in the request session, then skip this (we will create it later)
+                    if (
+                        document.instance.doc_type.name == "Passport"
+                        and self.request.session.get("file_path", None)
+                        and self.request.session.get("mrz_data", None)
+                    ):
+                        continue
+
+                document_instances.append(document.instance)
 
             Document.objects.bulk_create(document_instances)  # Use your actual Document model
 
