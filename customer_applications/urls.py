@@ -28,6 +28,11 @@ urlpatterns = [
         name="customer-application-create",
     ),
     path(
+        "create_from_customer/<int:customer_pk>",
+        DocApplicationCreateView.as_view(),
+        name="customer-application-create-from-customer",
+    ),
+    path(
         "detail/<int:pk>/",
         DocApplicationDetailView.as_view(),
         name="customer-application-detail",

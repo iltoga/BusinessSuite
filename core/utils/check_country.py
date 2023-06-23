@@ -1,4 +1,5 @@
 from rapidfuzz import process
+from rapidfuzz.fuzz import ratio
 
 from core.models import CountryCode
 
@@ -11,11 +12,13 @@ def check_country_by_code(code) -> CountryCode:
         return country.first()
 
     # Get all the alpha3_code from the database
-    country_codes = CountryCode.objects.values_list("alpha3_code", flat=True)
+    country_codes = [country.alpha3_code for country in CountryCode.objects.all()]
 
     # Use RapidFuzz to find the closest match
-    best_match, score = process.extractOne(code, country_codes)
-    if score > 70:
-        return CountryCode.objects.get(alpha3_code=best_match)
+    # Note: it returns a tuple of (best_match, score, choice_idx) or None if no match was found
+    best_match = process.extractOne(code, country_codes, scorer=ratio, score_cutoff=60)
+    if best_match is not None:
+        country = CountryCode.objects.get(alpha3_code=best_match[0])
+        return country
 
     raise ValueError(f"Country code {code} does not exist in the database.")

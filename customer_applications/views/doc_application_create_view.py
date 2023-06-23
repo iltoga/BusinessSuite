@@ -1,3 +1,5 @@
+from typing import Any, Dict
+
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
 from django.db import transaction
@@ -17,9 +19,11 @@ class DocApplicationCreateView(PermissionRequiredMixin, SuccessMessageMixin, Cre
     model = DocApplication
     form_class = DocApplicationForm
     template_name = "customer_applications/docapplication_create.html"
-    success_url = reverse_lazy("customer-application-list")
     success_message = "Customer application created successfully!"
     action_name = "Create"
+
+    def get_success_url(self) -> str:
+        return reverse_lazy("customer-application-detail", kwargs={"pk": self.object.pk})
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -28,12 +32,20 @@ class DocApplicationCreateView(PermissionRequiredMixin, SuccessMessageMixin, Cre
 
     def get_context_data(self, **kwargs):
         data = super().get_context_data(**kwargs)
+        # get customer_pk from url
         if self.request.POST:
             print(self.request.POST)
             data["documents"] = DocumentCreateFormSet(self.request.POST, prefix="documents")
         else:
             data["documents"] = DocumentCreateFormSet(prefix="documents")
         return data
+
+    def get_initial(self) -> Dict[str, Any]:
+        initial = super().get_initial()
+        customer_pk = self.kwargs.get("customer_pk", None)
+        if customer_pk:
+            initial["customer"] = customer_pk
+        return initial
 
     def form_valid(self, form):
         context = self.get_context_data()

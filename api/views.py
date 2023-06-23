@@ -33,8 +33,7 @@ class CustomersView(APIView):
     queryset = Customer.objects.all()
 
     def get(self, request):
-        customers = Customer.objects.all()
-        serializer = CustomerSerializer(customers, many=True)
+        serializer = CustomerSerializer(self.queryset, many=True)
         return Response(serializer.data)
 
 
@@ -42,8 +41,7 @@ class ProductsView(APIView):
     queryset = Product.objects.all()
 
     def get(self, request):
-        products = Product.objects.all()
-        serializer = ProductSerializer(products, many=True)
+        serializer = ProductSerializer(self.queryset, many=True)
         return Response(serializer.data)
 
 
@@ -89,7 +87,8 @@ class ProductsByTypeView(APIView):
 
 
 class OCRCheckView(APIView):
-    queryset = Product.objects.none()
+    def get_queryset(self):
+        return Product.objects.none()
 
     # This is a multipart/form-data request
     def post(self, request):
@@ -107,6 +106,7 @@ class OCRCheckView(APIView):
         doc_type = request.data.get("doc_type").lower()
         if not doc_type or doc_type == "undefined":
             return Response(data={"error": "No doc_type provided!"}, status=status.HTTP_400_BAD_REQUEST)
+
         res = Response()
         try:
             mrz_data = extract_mrz_data(file)
@@ -130,7 +130,8 @@ class OCRCheckView(APIView):
 
 
 class ComputeDocworkflowDueDate(APIView):
-    queryset = Task.objects.none()
+    def get_queryset(self):
+        return Product.objects.none()
 
     def get(self, request, *args, **kwargs):
         task_id = self.kwargs.get("task_id")

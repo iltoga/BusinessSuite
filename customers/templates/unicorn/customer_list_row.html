@@ -13,6 +13,10 @@
             {% if user|has_perm:'customers,customer,delete' %}
             <a href="{% url 'customer-delete' customer.id %}" class="btn btn-danger btn-sm me-1">Delete</a>
             {% endif %}
+            <!-- Button to create a customer application by customer: url customer-application-create-from-customer -->
+            {% if user|has_perm:'customer_applications,docapplication,add' %}
+            <a href="{% url 'customer-application-create-from-customer' customer.pk %}" class="btn btn-success btn-sm me-1">New Application</a>
+            {% endif %}
         </div>
         </td>
     </tr>

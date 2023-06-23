@@ -4,7 +4,8 @@ from datetime import datetime
 
 import pytesseract
 from django.conf import settings
-from django.core.files.uploadedfile import InMemoryUploadedFile
+from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUploadedFile
+from django.utils import timezone
 from passporteye import read_mrz
 from pdf2image.pdf2image import convert_from_path
 
@@ -29,13 +30,14 @@ MRZ_FORMAT = {
 }
 
 
-def extract_mrz_data(file) -> dict:
+def extract_mrz_data(file, check_expiration=True, expiration_days=180) -> dict:
     converted_file_name = ""
     file_to_delete = ""
     file_name, file_ext = os.path.splitext(file.name)
 
     # Check if file is an instance of InMemoryUploadedFile
-    if isinstance(file, InMemoryUploadedFile):
+    # Check if file is an instance of InMemoryUploadedFile or TemporaryUploadedFile
+    if isinstance(file, (InMemoryUploadedFile, TemporaryUploadedFile)):
         # If the file is in memory, create a temporary file and write the contents of the uploaded file to it
         temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=file_ext)
         for chunk in file.chunks():
@@ -76,7 +78,7 @@ def extract_mrz_data(file) -> dict:
         for key in ["date_of_birth", "expiration_date"]:
             if key in parsed_mrz:
                 dt = datetime.strptime(parsed_mrz[key], "%y%m%d").date()
-                parsed_mrz[f"{key}_yyyy_mm_dd"] = dt
+                parsed_mrz[f"{key}_yyyy_mm_dd"] = dt.strftime("%Y-%m-%d")
         return parsed_mrz
 
     try:
@@ -93,7 +95,16 @@ def extract_mrz_data(file) -> dict:
             parsed_mrz["country"] = country_code
             parsed_mrz["country_name"] = closest_code.country
             if closest_code.alpha3_code != country_code:
-                parsed_mrz["country_closest_code"] = closest_code
+                parsed_mrz["country_closest_code"] = closest_code.alpha3_code
+
+        # Check expiration date
+        if check_expiration:
+            if "expiration_date" in parsed_mrz:
+                dt = datetime.strptime(parsed_mrz["expiration_date"], "%y%m%d").date()
+                if dt < datetime.now().date():
+                    raise Exception("Passport has expired")
+                elif dt < datetime.now().date() + timezone.timedelta(days=expiration_days):
+                    raise Exception(f"Passport is expiring in less than 6 months: {dt.strftime('%d/%m/%Y') }")
 
         if not check_mrz_all_info(parsed_mrz):
             raise Exception(
@@ -114,8 +125,14 @@ def extract_mrz_data(file) -> dict:
         raise Exception("The specified file could not be found")
     except Exception as e:
         # delete temporary file
-        # if file_to_delete:
-        #     os.unlink(file_to_delete)
+        try:
+            if file_to_delete:
+                os.unlink(file_to_delete)
+        except Exception:
+            pass
+        # if e is "mrz_type" or e is "mrz_format" translate the error to a more user friendly message
+        if e.args[0] == "mrz_type" or e.args[0] == "mrz_format":
+            raise Exception("The specified file is not a valid passport")
         raise Exception(str(e))
 
 
@@ -205,8 +222,12 @@ def parse_mrz(mrz, mrz_format):
     """
     mrz_parsed = {}
     for key in mrz_format.keys():
-        if key == "surname" or key == "name":
+        if key == "surname" or key == "name" or key == "names":
             mrz_parsed[key] = mrz[key].split(" K ")[0]
+            # First letter capitalized and other letters in lower case.
+            # if there are multiple names, they are separated by a space and
+            # every name has the first letter capitalized and other letters in lower case.
+            mrz_parsed[key] = " ".join([name.capitalize() for name in mrz_parsed[key].split(" ")])
         else:
             mrz_parsed[key] = mrz[key]
 

@@ -1,5 +1,5 @@
 from django.core.exceptions import ValidationError
-from django.db import connection, models
+from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 from core.utils.form_validators import validate_birthdate, validate_phone_number, validateEmail
@@ -44,18 +44,6 @@ class CustomerManager(models.Manager):
             | models.Q(whatsapp__icontains=query)
         )
 
-    def fulltext_search_customers(self, query):
-        with connection.cursor() as cursor:
-            cursor.execute(
-                f"""
-                SELECT id, first_name, last_name, document_id
-                FROM customer_fts
-                WHERE customer_fts MATCH '{query}*'
-                ORDER BY rank;
-            """
-            )
-            return [Customer.objects.get(id=row[0]) for row in cursor.fetchall()]
-
 
 class Customer(models.Model):
     id = models.AutoField(primary_key=True)
@@ -73,6 +61,11 @@ class Customer(models.Model):
     telegram = models.CharField(
         max_length=50, unique=True, blank=True, null=True, validators=[validate_phone_number], db_index=True
     )
+    # social media accounts
+    facebook = models.CharField(max_length=50, blank=True, null=True, db_index=True)
+    instagram = models.CharField(max_length=50, blank=True, null=True, db_index=True)
+    twitter = models.CharField(max_length=50, blank=True, null=True, db_index=True)
+
     title = models.CharField(choices=TITLES_CHOICES, max_length=50)
     nationality = models.CharField(max_length=100, db_index=True)
     birthdate = models.DateField(validators=[validate_birthdate])
@@ -100,13 +93,3 @@ class Customer(models.Model):
     def clean(self):
         if self.notify_documents_expiration and not self.notify_by:
             raise ValidationError("If notify expiration is true, notify by is mandatory.")
-
-    def delete(self, *args, **kwargs):
-        with connection.cursor() as cursor:
-            cursor.execute(
-                """
-                DELETE FROM customer_fts WHERE id = %s;
-            """,
-                [self.id],
-            )
-        super().delete(*args, **kwargs)
