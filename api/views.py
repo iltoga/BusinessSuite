@@ -1,6 +1,7 @@
 import mimetypes
 from datetime import datetime
 
+from django.core.files.storage import default_storage
 from django.db.models import Q
 from rest_framework import status
 from rest_framework.response import Response
@@ -110,12 +111,19 @@ class OCRCheckView(APIView):
         res = Response()
         try:
             mrz_data = extract_mrz_data(file)
+            save_session = request.data.get("save_session")
+            if save_session:
+                # Save the file on the server
+                file_path = default_storage.save("myfiles/" + file.name, file)
+                # Save the file path in the session
+                request.session["file_path"] = default_storage.path(file_path)
+                request.session["file_url"] = default_storage.url(file_path)
+                request.session["mrz_data"] = mrz_data
+                request.session.save()
             return Response(data=mrz_data, status=status.HTTP_200_OK)
         except Exception as e:
             errMsg = e.args[0]
-            # the one below always returns a error message of "Bad Request". I want to return the actual error message
             return Response(data={"error": errMsg}, status=status.HTTP_400_BAD_REQUEST)
-        return res
 
 
 # the urlpattern for this view is:

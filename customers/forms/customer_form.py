@@ -12,7 +12,10 @@ class CustomerForm(forms.ModelForm):
     gender = forms.ChoiceField(choices=GENDERS, required=False)
     notify_documents_expiration = forms.BooleanField(widget=forms.CheckboxInput, required=False)
     notify_by = forms.ChoiceField(choices=NOTIFY_BY_CHOICES, required=False)
-    passport_file = forms.FileField(required=False, label="Import data from Passport")
+    passport_file = forms.FileField(
+        required=False,
+        label="Import data from Passport",
+    )
 
     class Meta:
         model = Customer

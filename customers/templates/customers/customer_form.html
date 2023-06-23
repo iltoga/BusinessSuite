@@ -54,6 +54,7 @@
         var formData = new FormData();
         formData.append('file', document.querySelector('input[name="passport_file"]').files[0],);
         formData.append('doc_type', "passport");
+        formData.append('save_session', true);
         toggleSpinnerDisplay(true, 'passport_file_btn_id', 'passport_file_spinner');
         restApiCall('POST', url, formData,
             data => {

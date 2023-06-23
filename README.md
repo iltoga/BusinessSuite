@@ -6,6 +6,10 @@ CRM for RevisBali
 ### Telegram bot
 [tgbot on github](https://github.com/Ali-Toosi/django-tgbot)
 
+
+### Openai GPT-3 and GPT-4 integration
+[example project](https://github.com/Kouidersif/openai-API/tree/sif/openapp)
+
 A bot to get (and possibly insert) data from/to the CRM.
 
 ### Parse uploaded documents

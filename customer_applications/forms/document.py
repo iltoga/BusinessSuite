@@ -128,9 +128,7 @@ class DocumentUpdateForm(forms.ModelForm):
             self.fields["force_update"].widget = forms.CheckboxInput()
         return valid
 
-    # if the required document.completed (we know it after saving it) is True
-    # and all other required documents of the doc_application are uploaded,
-    # set the satus of the fisrt doc_application's workflow (the one with task.step = 1) to "completed"
+    # if the required document.completed (we know it after saving it) is True and all other required documents of the doc_application are uploaded, set the satus of the fisrt doc_application's workflow (the one with task.step = 1) to "completed"
     def save(self, commit=True):
         document = super().save()
         doc_application = document.doc_application

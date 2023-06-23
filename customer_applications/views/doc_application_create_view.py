@@ -1,7 +1,11 @@
+from os import unlink
 from typing import Any, Dict
 
+from django.contrib import messages
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
+from django.core.files import File
+from django.core.files.storage import default_storage
 from django.db import transaction
 from django.urls import reverse_lazy
 from django.utils import timezone
@@ -11,7 +15,7 @@ from customer_applications.forms import DocApplicationForm, DocumentCreateFormSe
 from customer_applications.models import DocApplication
 from customer_applications.models.doc_workflow import DocWorkflow
 from customer_applications.models.document import Document
-from products.models import Task
+from products.models import DocumentType, Task
 
 
 class DocApplicationCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateView):
@@ -88,5 +92,54 @@ class DocApplicationCreateView(PermissionRequiredMixin, SuccessMessageMixin, Cre
             step1.status = DocWorkflow.STATUS_PENDING
             step1.due_date = step1.calculate_workflow_due_date()
             step1.save()
+
+            # create the passport Document if we have the file in the request session
+            session_mrz_data = self.request.session.get("mrz_data", None)
+            file_path = self.request.session.get("file_path", None)
+            file_url = self.request.session.get("file_url", None)
+            if session_mrz_data and file_path and file_url:
+                # fist check if the customer's name is the same as the name in the passport
+                # convert the names to uppercase
+                session_mrz_data["names"] = session_mrz_data["names"].upper().strip()
+                session_mrz_data["surname"] = session_mrz_data["surname"].upper().strip()
+                first_name = self.object.customer.first_name.upper()
+                last_name = self.object.customer.last_name.upper()
+                if first_name == session_mrz_data["names"] and last_name == session_mrz_data["surname"]:
+                    # if the customer's name is the same as the name in the passport, then we can import the file
+                    try:
+                        with open(file_path, "rb") as f:
+                            file = File(f)
+                            file_to_delete = file_path
+                            doc_model = Document()
+                            doc_model.file_link = file_url
+                            doc_model.doc_number = session_mrz_data["number"]
+                            doc_model.expiration_date = session_mrz_data["expiration_date_yyyy_mm_dd"]
+                            doc_model.ocr_check = True
+                            doc_model.metadata = session_mrz_data
+                            doc_model.completed = True
+                            doc_model.doc_application = self.object
+                            doc_model.doc_type = DocumentType.objects.get(name="Passport")
+                            doc_model.created_by = self.request.user
+                            doc_model.created_at = timezone.now()
+                            doc_model.updated_at = timezone.now()
+
+                            file_path = default_storage.save(doc_model.get_upload_to(file.name), file)
+                            unlink(file_to_delete)
+                            doc_model.file = file_path
+
+                            doc_model.save()
+                            # Unset the session variables
+                            del self.request.session["mrz_data"]
+                            del self.request.session["file_path"]
+                            del self.request.session["file_url"]
+                            messages.success(
+                                self.request,
+                                "Passport file automatically imported from New Customer. Remember to always check that data are correct.",
+                            )
+                    except FileNotFoundError:
+                        messages.warning(
+                            self.request,
+                            "Passport file not found in New Customer's session. Please upload it manually.",
+                        )
 
         return super().form_valid(form)
