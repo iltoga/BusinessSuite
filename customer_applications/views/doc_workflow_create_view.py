@@ -16,10 +16,8 @@ class DocWorkflowCreateView(PermissionRequiredMixin, SuccessMessageMixin, Create
     model = DocWorkflow
     form_class = DocWorkflowForm
     template_name = "customer_applications/docworkflow_form.html"
-    success_message = "Customer applicaion updated successfully!"
+    success_message = "Customer application updated successfully!"
 
-    doc_application = None
-    task = None
     action_name = "Create"
 
     def get_success_url(self):
@@ -28,42 +26,53 @@ class DocWorkflowCreateView(PermissionRequiredMixin, SuccessMessageMixin, Create
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs.update({"user": self.request.user})
-        self.doc_application = DocApplication.objects.get(id=self.kwargs["docapplication_pk"])
-        if not self.doc_application.product:
-            raise Http404
-        self.task = Task.objects.get(step=self.kwargs["step_no"], product=self.doc_application.product)
-        if not self.task:
-            raise Http404
-        # get the current workflow. if there is one, set start_date to the current workflow's completion_date (if any), otherwise set it to now
-        # use docapplication relation to get the current workflow
-        current_workflow = self.doc_application.current_workflow
-        if current_workflow and current_workflow.completion_date:
-            start_date = current_workflow.completion_date
-        else:
-            start_date = timezone.now()
-
-        # calculate_workflow_due_date due date from task duration, using dateutils calculate_due_date
-        # Take in account if task duration_is_business_days
-        business_days = self.task.duration_is_business_days
-        duration = self.task.duration
-        default_due_date = calculate_due_date(start_date, duration, business_days)
+        doc_application = self.get_doc_application()
+        task = self.get_task(doc_application)
+        start_date = self.get_workflow_start_date(doc_application)
+        default_due_date = self.get_default_due_date(start_date, task)
         kwargs["initial"] = {
-            "task": self.task,
+            "task": task,
             "due_date": default_due_date,
-            "doc_application": self.doc_application,
+            "doc_application": doc_application,
         }
         return kwargs
 
     def get_context_data(self, **kwargs):
         data = super().get_context_data(**kwargs)
-        # Add some useful data to the context for the template to use
-        data["docapplication"] = self.doc_application
-        data["task"] = self.task
-        data["action_name"] = self.action_name
+        doc_application = self.get_doc_application()
+        task = self.get_task(doc_application)
+        data.update({"docapplication": doc_application, "task": task, "action_name": self.action_name})
         return data
 
     def form_valid(self, form):
         form.instance.created_by = self.request.user
-        form.instance.task = self.task
-        form.instance.doc_application = self.doc_application
+        doc_application = self.get_doc_application()
+        task = self.get_task(doc_application)
+        form.instance.task = task
+        form.instance.doc_application = doc_application
         return super().form_valid(form)
+
+    def get_doc_application(self):
+        doc_application = DocApplication.objects.filter(id=self.kwargs["docapplication_pk"]).first()
+        if doc_application and doc_application.product:
+            return doc_application
+        raise Http404
+
+    def get_task(self, doc_application):
+        task = Task.objects.filter(step=self.kwargs["step_no"], product=doc_application.product).first()
+        if task:
+            return task
+        raise Http404
+
+    def get_workflow_start_date(self, doc_application):
+        current_workflow = getattr(doc_application, "current_workflow", None)
+        if current_workflow and getattr(current_workflow, "completion_date", None):
+            return current_workflow.completion_date
+        return timezone.now()
+
+    def get_default_due_date(self, start_date, task):
+        business_days = getattr(task, "duration_is_business_days", None)
+        duration = getattr(task, "duration", None)
+        if business_days is not None and duration is not None:
+            return calculate_due_date(start_date, duration, business_days)
+        raise Http404

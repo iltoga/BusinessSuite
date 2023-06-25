@@ -47,10 +47,10 @@
           {% endif %}
           {% if user|has_perm:'customer_applications,document,change' %}
             {% if not docapplication.is_application_completed %}
-              {% if document.doc_type.has_file %}
-                <a href="{% url 'customer-application-document-update' document.pk %}" class="btn btn-sm btn-warning">Upload</a>
+              {% if btn_update_text %}
+                <a href="{% url 'customer-application-document-update' document.pk %}" class="btn btn-sm btn-warning">{{ btn_update_text }}</a>
               {% else %}
-                <a href="{% url 'customer-application-document-update' document.pk %}" class="btn btn-sm btn-warning">Update</a>
+                <a href="{% url 'customer-application-document-update' document.pk %}" class="btn btn-sm btn-warning">Upload</a>
               {% endif %}
             {% endif %}
           {% endif %}

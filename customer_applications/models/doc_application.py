@@ -1,14 +1,32 @@
+import logging
+import os
+import shutil
+
 from django.conf import settings
 from django.db import models
+from django.db.models.signals import post_delete, pre_delete
+from django.dispatch import receiver
 from django.utils import timezone
 
 from core.utils.dateutils import calculate_due_date
 from customers.models import Customer
 from products.models import Product
 
+# Get an instance of a logger
+logger = logging.getLogger(__name__)
+
 
 class DocApplicationManager(models.Manager):
+    """
+    DocApplication Manager to enhance the default manager and
+    add a search functionality.
+    """
+
     def search_doc_applications(self, query):
+        """
+        Search DocApplications by product name, product code, product type,
+        customer first name, customer last name, and doc date.
+        """
         return self.filter(
             models.Q(product__name__icontains=query)
             | models.Q(product__code__icontains=query)
@@ -20,6 +38,10 @@ class DocApplicationManager(models.Manager):
 
 
 class DocApplication(models.Model):
+    """
+    The DocApplication model which represents a document application in the system.
+    """
+
     STATUS_COMPLETED = "completed"
     STATUS_REJECTED = "rejected"
     STATUS_PENDING = "pending"
@@ -32,13 +54,16 @@ class DocApplication(models.Model):
         (STATUS_REJECTED, "Rejected"),
     ]
 
+    def get_upload_folder(instance):
+        customer_folder = instance.customer.get_upload_folder()
+        return f"{customer_folder}/application_{instance.pk}"
+
     application_type = models.CharField(
         max_length=50,
         choices=Product.PRODUCT_TYPE_CHOICES,
         default="other",
         db_index=True,
     )
-
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     doc_date = models.DateField(db_index=True)
@@ -59,128 +84,147 @@ class DocApplication(models.Model):
         blank=True,
         null=True,
     )
-    objects = DocApplicationManager
+    objects = DocApplicationManager()
 
     class Meta:
         ordering = ["-id"]
 
-    @property
-    def is_document_collection_completed(self):
-        """Returns True if all required documents are completed, False otherwise."""
-        all_docs_count = self.documents.count()
-        # get all completed documents: completed=True and required = True
-        completed_docs_count = self.documents.filter(completed=True, required=True).count()
-        return bool(all_docs_count == completed_docs_count)
-
-    # check if all workflows are completed (workflow status = completed)
-    @property
-    def all_workflow_completed(self):
-        """Returns True if all workflows are completed, False otherwise."""
-        all_workflows_count = self.workflows.count()
-        completed_workflows_count = self.workflows.filter(status="completed").count()
-        return all_workflows_count == completed_workflows_count
-
-    @property
-    def current_workflow(self):
-        current_workflow = self.workflows.order_by("-task__step").first()
-        return current_workflow if current_workflow else None
-
-    # get next workflow task
-    @property
-    def next_task(self):
-        tasks = self.product.tasks.order_by("step")
-
-        # Get the last workflow associated with this application.
-        current_workflow = self.current_workflow
-
-        if current_workflow and current_workflow.status == self.STATUS_COMPLETED:
-            # If there is a last workflow and it's completed, get the next task.
-            next_task_step = current_workflow.task.step + 1
-            next_task = tasks.filter(step=next_task_step).first()
-            return next_task
-
-        else:
-            # If there is no last workflow or it's not completed, return the task of
-            # the last workflow or the first task if there is no workflow.
-            return current_workflow.task if current_workflow else tasks.first()
-
-    @property
-    def is_application_completed(self):
-        # get last workflow and check if it is completed
-        if self.current_workflow:
-            return self.current_workflow.is_workflow_completed
-        return False
-
-    @property
-    def has_next_task(self):
-        if self.is_application_completed:
-            return False
-        if not self.is_document_collection_completed:
-            return False
-        if self.current_workflow and self.current_workflow.status != self.STATUS_COMPLETED:
-            return False
-        next_task = self.next_task
-        if next_task and next_task.step:
-            return True
-        return False
-
-    def get_completed_documents(self, type="all"):
-        if type == "all":
-            return self.documents.filter(completed=True)
-        elif type == "required":
-            return self.documents.filter(completed=True, required=True)
-        elif type == "optional":
-            return self.documents.filter(completed=True, required=False)
-        else:
-            return self.documents.none()
-
-    def get_incomplete_documents(self, type="all"):
-        if type == "all":
-            return self.documents.filter(completed=False)
-        elif type == "required":
-            return self.documents.filter(completed=False, required=True)
-        elif type == "optional":
-            return self.documents.filter(completed=False, required=False)
-        else:
-            return self.documents.none()
-
     def __str__(self):
         return self.product.name + " - " + self.customer.full_name + f" #{self.pk}"
 
+    @property
+    def is_document_collection_completed(self):
+        """
+        Checks whether all required documents are completed.
+        """
+        return (
+            self.documents.filter(required=True).count() == self.documents.filter(completed=True, required=True).count()
+        )
+
+    @property
+    def all_workflow_completed(self):
+        """
+        Checks whether all workflows are completed.
+        """
+        return self.workflows.count() == self.workflows.filter(status=self.STATUS_COMPLETED).count()
+
+    @property
+    def current_workflow(self):
+        """
+        Gets the current workflow.
+        """
+        return self.workflows.order_by("-task__step").first()
+
+    @property
+    def is_application_completed(self):
+        """
+        Checks whether the application is completed.
+        """
+        current_workflow = self.current_workflow
+        return current_workflow.is_workflow_completed if current_workflow else False
+
+    @property
+    def has_next_task(self):
+        """
+        Checks whether there is a next task.
+        """
+        if not self.is_document_collection_completed or self.is_application_completed:
+            return False
+        current_workflow = self.current_workflow
+        if current_workflow and current_workflow.status != self.STATUS_COMPLETED:
+            return False
+        next_task = self.next_task
+        return bool(next_task and next_task.step)
+
+    @property
+    def next_task(self):
+        """
+        Gets the next task.
+        """
+        tasks = self.product.tasks.order_by("step")
+        current_workflow = self.current_workflow
+
+        if current_workflow and current_workflow.status == self.STATUS_COMPLETED:
+            return tasks.filter(step=current_workflow.task.step + 1).first()
+        elif current_workflow:
+            return current_workflow.task
+        else:
+            return tasks.first()
+
+    def get_completed_documents(self, type="all"):
+        """
+        Gets completed documents by type.
+        """
+        filters = {"completed": True}
+        if type != "all":
+            filters["required"] = True if type == "required" else False
+        return self.documents.filter(**filters)
+
+    def get_incomplete_documents(self, type="all"):
+        """
+        Gets incomplete documents by type.
+        """
+        filters = {"completed": False}
+        if type != "all":
+            filters["required"] = True if type == "required" else False
+        return self.documents.filter(**filters)
+
     def save(self, *args, **kwargs):
+        """
+        Overrides the default save method.
+        Updates the due date and status before saving.
+        """
         self.updated_at = timezone.now()
         self.due_date = self.calculate_application_due_date()
-        if self.pk is not None:
-            if self.is_application_completed:
-                self.status = self.STATUS_COMPLETED
-            elif self.is_document_collection_completed:
-                self.status = self.STATUS_PROCESSING
-            elif self.workflows.filter(status=self.STATUS_REJECTED).exists():
-                self.status = self.STATUS_REJECTED
+        if self.pk:
+            self.status = self._get_application_status()
         super().save(*args, **kwargs)
+
+    def _get_application_status(self):
+        """
+        Gets the application status based on the workflows and documents.
+        """
+        if self.is_application_completed:
+            return self.STATUS_COMPLETED
+        elif self.is_document_collection_completed:
+            return self.STATUS_PROCESSING
+        elif self.workflows.filter(status=self.STATUS_REJECTED).exists():
+            return self.STATUS_REJECTED
+        else:
+            return self.status
 
     def calculate_application_due_date(self):
         """
-        Calculates the due date of a DocApplication based on its associated DocWorkflows and tasks.
-
-        If the DocApplication has a current workflow, the calculation starts
-        from the due date of the current workflow.
-        Otherwise, the calculation starts from the DocApplication's doc_date.
-
-        For every task, it checks if task.duration_is_business_days is True then uses
-        `due_date = calculate_due_date(start_date, task.duration, business_days_only=True)`,
-        otherwise, `due_date = calculate_due_date(start_date, task.duration,
-        business_days_only=False)`, to calculate the due_date for that task.
+        Calculates the due date of the application.
         """
         if self.pk and self.current_workflow:
             start_date = self.current_workflow.due_date
-            remaining_tasks = self.product.tasks.filter(step__gt=self.current_workflow.task.step)
+            tasks = self.product.tasks.filter(step__gt=self.current_workflow.task.step)
         else:
             start_date = self.doc_date
-            remaining_tasks = self.product.tasks.all()
+            tasks = self.product.tasks.all()
 
         due_date = start_date
-        for task in remaining_tasks:
-            due_date = calculate_due_date(due_date, task.duration, business_days_only=task.duration_is_business_days)
-
+        for task in tasks:
+            due_date = calculate_due_date(
+                start_date=due_date, days_to_complete=task.duration, business_days_only=task.duration_is_business_days
+            )
         return due_date
+
+
+@receiver(pre_delete, sender=DocApplication)
+def pre_delete_doc_application_signal(sender, instance, **kwargs):
+    # retain the folder path before deleting the doc application
+    instance.folder_path = instance.get_upload_folder()
+
+
+@receiver(post_delete, sender=DocApplication)
+def post_delete_doc_application_signal(sender, instance, **kwargs):
+    logger.info("Deleted: %s", instance)
+    # get media root path from settings
+    media_root = settings.MEDIA_ROOT
+    # delete the folder containing the documents' files
+    try:
+        shutil.rmtree(os.path.join(media_root, instance.folder_path))
+    except FileNotFoundError:
+        logger.info("Folder not found: %s", instance.folder_path)

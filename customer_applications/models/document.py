@@ -11,15 +11,12 @@ from products.models.document_type import DocumentType
 from .doc_application import DocApplication
 
 
-class DocApplicationManager(models.Manager):
-    def search_doc_applications(self, query):
+class DocumentManager(models.Manager):
+    def search_documents(self, query):
         return self.filter(
-            models.Q(product__name__icontains=query)
-            | models.Q(product__code__icontains=query)
-            | models.Q(product__product_type__icontains=query)
-            | models.Q(customer__first_name__icontains=query)
-            | models.Q(customer__last_name__icontains=query)
-            | models.Q(doc_date__icontains=query)
+            models.Q(doc_type__name__icontains=query)
+            | models.Q(doc_number__icontains=query)
+            | models.Q(details__icontains=query)
         )
 
 
@@ -28,13 +25,12 @@ class Document(models.Model):
         """
         Returns the upload_to path for the file field.
         """
-        base_doc_path = "documents"
         _, extension = os.path.splitext(filename)
-        doc_application = instance.doc_application
         filename = f"{whitespaces_to_underscores(instance.doc_type.name)}{extension}"
         # return the complete upload to path, which is:
         # documents/<customer_name>_<customer_id>/<doc_application_id>/<doc_type>.<extension>
-        return f"{base_doc_path}/{whitespaces_to_underscores(doc_application.customer.full_name)}_{doc_application.customer.pk}/application_{doc_application.pk}/{filename}"
+        doc_application_folder = instance.doc_application.get_upload_folder()
+        return f"{doc_application_folder}/{filename}"
 
     doc_application = models.ForeignKey(DocApplication, related_name="documents", on_delete=models.CASCADE)
     doc_type = models.ForeignKey(DocumentType, on_delete=models.PROTECT)
@@ -60,7 +56,7 @@ class Document(models.Model):
         blank=True,
         null=True,
     )
-    objects = DocApplicationManager()
+    objects = DocumentManager()
 
     class Meta:
         ordering = ["-updated_at"]

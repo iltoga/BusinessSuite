@@ -58,6 +58,11 @@ services:
         bind:
           propagation: rslave
       - type: bind
+        source: /home/iltoga/revisbali/crm/logs
+        target: /logs
+        bind:
+          propagation: rslave
+      - type: bind
         source: /home/iltoga/revisbali/crm/staticfiles
         target: /staticfiles
         bind:

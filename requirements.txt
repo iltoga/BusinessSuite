@@ -19,3 +19,4 @@ rapidfuzz>=3.1.1
 django-storages~=1.13.2
 django-dbbackup~=4.0.2
 django-cron~=0.6.0
+django-cleanup~=8.0.0

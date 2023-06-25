@@ -1,8 +1,18 @@
+import logging
+import os
+import shutil
+
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models.signals import post_delete, pre_delete
+from django.dispatch import receiver
 from django.utils.translation import gettext_lazy as _
 
 from core.utils.form_validators import validate_birthdate, validate_phone_number, validateEmail
+from core.utils.helpers import whitespaces_to_underscores
+
+logger = logging.getLogger(__name__)
 
 TITLES_CHOICES = [
     ("", "---------"),
@@ -46,6 +56,10 @@ class CustomerManager(models.Manager):
 
 
 class Customer(models.Model):
+    def get_upload_folder(instance):
+        base_doc_path = settings.DOCUMENTS_FOLDER
+        return f"{base_doc_path}/{whitespaces_to_underscores(instance.full_name)}_{instance.pk}"
+
     id = models.AutoField(primary_key=True)
     first_name = models.CharField(max_length=50, db_index=True)
     last_name = models.CharField(max_length=50, db_index=True)
@@ -93,3 +107,21 @@ class Customer(models.Model):
     def clean(self):
         if self.notify_documents_expiration and not self.notify_by:
             raise ValidationError("If notify expiration is true, notify by is mandatory.")
+
+
+@receiver(pre_delete, sender=Customer)
+def pre_delete_customer_signal(sender, instance, **kwargs):
+    # retain the folder path before deleting the customer
+    instance.folder_path = instance.get_upload_folder()
+
+
+@receiver(post_delete, sender=Customer)
+def post_delete_customer_signal(sender, instance, **kwargs):
+    logger.info("Deleted: %s", instance)
+    # get media root path from settings
+    media_root = settings.MEDIA_ROOT
+    # delete the folder containing the customer's files
+    try:
+        shutil.rmtree(os.path.join(media_root, instance.folder_path))
+    except FileNotFoundError:
+        logger.info("Folder not found: %s", instance.folder_path)

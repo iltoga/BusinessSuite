@@ -41,8 +41,8 @@ class DocApplicationUpdateView(PermissionRequiredMixin, SuccessMessageMixin, Upd
                 for document in documents:
                     document.instance.updated_by = self.request.user
                     if document.cleaned_data and not document.cleaned_data.get("DELETE"):
-                        if "file" in document.files:
-                            document.instance.file = document.files["file"]
+                        if "file" in document.cleaned_data:
+                            document.instance.file = document.cleaned_data["file"]
                         if "metadata" in document.cleaned_data:
                             document.instance.metadata = document.cleaned_data["metadata"]
                         document.instance.save()

@@ -29,3 +29,8 @@ MEDIA_ROOT = "/media/"
 STATIC_ROOT = "/staticfiles/"
 
 TESSERACT_CMD = "/usr/bin/tesseract"
+
+LOGGING.loggers["django"]["handlers"] = "file"
+LOGGING.loggers["django"]["propagate"] = True
+
+LOGGING.loggers["handlers"]["file"]["filename"] = "/logs/django.log"
