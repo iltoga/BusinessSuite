@@ -29,7 +29,7 @@ class Document(models.Model):
         filename = f"{whitespaces_to_underscores(instance.doc_type.name)}{extension}"
         # return the complete upload to path, which is:
         # documents/<customer_name>_<customer_id>/<doc_application_id>/<doc_type>.<extension>
-        doc_application_folder = instance.doc_application.get_upload_folder()
+        doc_application_folder = instance.doc_application.upload_folder
         return f"{doc_application_folder}/{filename}"
 
     doc_application = models.ForeignKey(DocApplication, related_name="documents", on_delete=models.CASCADE)

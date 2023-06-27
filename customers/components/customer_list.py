@@ -5,4 +5,3 @@ from customers.models import Customer
 class CustomerListView(UnicornSearchListView):
     model = Customer
     model_search_method = "search_customers"
-    start_search_at = 3

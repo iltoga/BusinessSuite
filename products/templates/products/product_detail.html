@@ -3,7 +3,7 @@
 {% load humanize %}
 
 {% block content %}
-  <div class="container my-4">
+  <div>
     <div class="card">
       <div class="card-header bg-primary text-white">
         <h3>Product Details</h3>
@@ -55,15 +55,13 @@
       <div class="card-body">
         <a href="{% url 'product-list' %}" class="btn btn-primary">List All</a>
         {% if perms.products.change_product %}
-        <a href="{% url 'product-update' product.id %}" class="btn btn-warning btn-sm">Edit</a>
+        <a href="{% url 'product-update' product.id %}" class="btn btn-warning">Edit</a>
         {% endif %}
         {% if perms.products.delete_product %}
-        <a href="{% url 'product-delete' product.id %}" class="btn btn-danger btn-sm">Delete</a>
+        <a href="{% url 'product-delete' product.id %}" class="btn btn-danger">Delete</a>
         {% endif %}
+        <a href="javascript:history.back()" class="btn btn-outline-primary">Back</a>
       </div>
-    </div>
-    <div class="card-footer text-muted">
-      <a href="javascript:history.back()" class="btn btn-outline-primary">Back</a>
     </div>
   </div>
 {% endblock %}

@@ -41,19 +41,21 @@
 
           <!-- Actions -->
           <td>
-          {% if user|has_perm:'customer_applications,document,view' %}
-            <a href="{% url 'customer-application-document-detail' document.pk %}" class="btn btn-sm btn-primary">View</a>
-            <a href="{% url 'customer-application-document-detail-print' document.pk %}" target="_blank" class="btn btn-sm btn-secondary">Print</a>
-          {% endif %}
-          {% if user|has_perm:'customer_applications,document,change' %}
-            {% if not docapplication.is_application_completed %}
-              {% if btn_update_text %}
-                <a href="{% url 'customer-application-document-update' document.pk %}" class="btn btn-sm btn-warning">{{ btn_update_text }}</a>
-              {% else %}
-                <a href="{% url 'customer-application-document-update' document.pk %}" class="btn btn-sm btn-warning">Upload</a>
+            <div class="btn-group-sm" role="group">
+            {% if user|has_perm:'customer_applications,document,view' %}
+              <a href="{% url 'customer-application-document-detail' document.pk %}" class="btn btn-primary">View</a>
+              <a href="{% url 'customer-application-document-detail-print' document.pk %}" target="_blank" class="btn btn-secondary">Print</a>
+            {% endif %}
+            {% if user|has_perm:'customer_applications,document,change' %}
+              {% if not docapplication.is_application_completed or upload_after_app_completed%}
+                {% if btn_update_text %}
+                  <a href="{% url 'customer-application-document-update' document.pk %}" class="btn btn-warning">{{ btn_update_text }}</a>
+                {% else %}
+                  <a href="{% url 'customer-application-document-update' document.pk %}" class="btn btn-warning">Upload</a>
+                {% endif %}
               {% endif %}
             {% endif %}
-          {% endif %}
+            </div>
           </td>
 
         </tr>

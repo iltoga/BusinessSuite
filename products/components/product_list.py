@@ -5,5 +5,4 @@ from products.models import Product
 class ProductListView(UnicornSearchListView):
     model = Product
     model_search_method = "search_products"
-    start_search_at = 2
     items_per_page = 15

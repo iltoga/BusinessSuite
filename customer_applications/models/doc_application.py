@@ -54,10 +54,6 @@ class DocApplication(models.Model):
         (STATUS_REJECTED, "Rejected"),
     ]
 
-    def get_upload_folder(instance):
-        customer_folder = instance.customer.get_upload_folder()
-        return f"{customer_folder}/application_{instance.pk}"
-
     application_type = models.CharField(
         max_length=50,
         choices=Product.PRODUCT_TYPE_CHOICES,
@@ -151,6 +147,11 @@ class DocApplication(models.Model):
         else:
             return tasks.first()
 
+    @property
+    def upload_folder(self):
+        customer_folder = self.customer.upload_folder
+        return f"{customer_folder}/application_{self.pk}"
+
     def get_completed_documents(self, type="all"):
         """
         Gets completed documents by type.
@@ -215,7 +216,7 @@ class DocApplication(models.Model):
 @receiver(pre_delete, sender=DocApplication)
 def pre_delete_doc_application_signal(sender, instance, **kwargs):
     # retain the folder path before deleting the doc application
-    instance.folder_path = instance.get_upload_folder()
+    instance.folder_path = instance.upload_folder
 
 
 @receiver(post_delete, sender=DocApplication)

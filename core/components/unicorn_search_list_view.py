@@ -7,8 +7,8 @@ class UnicornSearchListView(UnicornView):
     list_items = []
     search_input = ""
     page = 1
-    items_per_page = 7
-    start_search_at = 2
+    items_per_page = 10
+    start_search_at = 0
     total_items = 0
     total_pages = 0
     model = None
@@ -38,17 +38,21 @@ class UnicornSearchListView(UnicornView):
         end = self.items_per_page * self.page
 
         self.list_items = list(queryset[start:end])
+        # self.list_items = queryset[start:end]
         self.total_items = queryset.count()
         self.total_pages = ceil(self.total_items / self.items_per_page)
 
-    def search(self):
-        if self.search_input and len(self.search_input) >= self.start_search_at:
+    def search(self, clear_input=False):
+        if clear_input:
+            self.search_input = ""
+        if self.search_input and self.search_input != "" and len(self.search_input) >= self.start_search_at:
             self.query = self.search_input
             queryset = self.get_queryset()
             start = self.items_per_page * (self.page - 1)
             end = self.items_per_page * self.page
 
             self.list_items = list(queryset[start:end])
+            # self.list_items = queryset[start:end]
             self.total_items = queryset.count()
             self.total_pages = ceil(self.total_items / self.items_per_page)
         else:
@@ -65,7 +69,8 @@ class UnicornSearchListView(UnicornView):
         queryset = self.apply_filters(queryset)
 
         # Unpack the list when calling order_by
-        queryset = queryset.order_by(*self.get_order())
+        order = self.get_order()
+        queryset = queryset.order_by(*order)
 
         return queryset
 

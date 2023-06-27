@@ -6,7 +6,7 @@
 {% block title %}RevisCRM - Customer Details{% endblock %}
 
 {% block content %}
-  <div class="container my-4">
+  <div class="my-4">
     <div class="card">
       <div class="card-header bg-primary text-white">
         <h3>Customer ID #{{ customer.pk }}</h3>
@@ -30,17 +30,14 @@
         </tbody>
       </table>
       <div class="card-body">
-        <a href="javascript:history.back()" class="btn btn-primary">Back</a>
         {% if perms.customers.change_customer %}
-        <a href="{% url 'customer-update' customer.id %}" class="btn btn-warning btn-sm">Edit</a>
+        <a href="{% url 'customer-update' customer.id %}" class="btn btn-warning">Edit</a>
         {% endif %}
         {% if perms.customers.delete_customer %}
-        <a href="{% url 'customer-delete' customer.id %}" class="btn btn-danger btn-sm">Delete</a>
+        <a href="{% url 'customer-delete' customer.id %}" class="btn btn-danger">Delete</a>
         {% endif %}
+        <a href="javascript:history.back()" class="btn btn-primary">Back</a>
       </div>
-    </div>
-    <div class="card-footer text-muted">
-      <a href="javascript:history.back()" class="btn btn-outline-primary">Back</a>
     </div>
   </div>
 {% endblock %}

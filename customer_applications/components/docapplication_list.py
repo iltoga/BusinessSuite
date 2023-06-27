@@ -8,7 +8,7 @@ from customer_applications.models.doc_workflow import DocWorkflow
 class DocapplicationListView(UnicornSearchListView):
     model = DocApplication
     model_search_method = "search_doc_applications"
-    start_search_at = 1
+    start_search_at = 0
     order_by = ""
     hide_finished = True
     hide_not_started = False

@@ -7,7 +7,6 @@ from products.models import Product
 class ProductListView(PermissionRequiredMixin, ListView):
     permission_required = ("products.view_product",)
     model = Product
-    context_object_name = "products"  # Default is object_list if not specified
     template_name = "products/product_list.html"
     paginate_by = 15
 
@@ -15,5 +14,6 @@ class ProductListView(PermissionRequiredMixin, ListView):
         queryset = super().get_queryset()
         query = self.request.GET.get("q")
         if query and self.model is not None:
-            queryset = self.model.objects.search_products(query)
+            order_by = self.model._meta.ordering
+            queryset = self.model.objects.search_products(query).order_by(*order_by)
         return queryset

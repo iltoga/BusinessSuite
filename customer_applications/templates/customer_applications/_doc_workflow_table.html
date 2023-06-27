@@ -66,14 +66,14 @@
 
             <!-- Edit -->
             <td>
-              <div class="btn-group btn-group-sm" role="group">
+              <div class="btn-group-sm" role="group">
               {% if user|has_perm:'customer_applications,docworkflow,view' %}
-                  <a href="{% url 'customer-application-docworkflow-detail' docworkflow.pk %}" class="btn btn-sm btn-primary">View</a>
+                  <a href="{% url 'customer-application-docworkflow-detail' docworkflow.pk %}" class="btn btn-primary">View</a>
               {% endif %}
               {% if not docapplication.is_application_completed %}
                   {% if user|has_perm:'customer_applications,docworkflow,change' %}
                     {% if docworkflow.is_current_step %}
-                      <a href="{% url 'customer-application-docworkflow-update' docworkflow.pk %}" class="btn btn-sm btn-warning">Edit</a>
+                      <a href="{% url 'customer-application-docworkflow-update' docworkflow.pk %}" class="btn btn-warning">Edit</a>
                     {% endif %}
                   {% endif %}
               {% endif %}

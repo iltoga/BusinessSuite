@@ -1,8 +1,7 @@
 {% load unicorn %}
 {% load check_perms %}
-
-<div class="container">
-    <div class="text-center">
+<div>
+    <div class="centered-content">
         <h2>Product List</h2>
 
         <div class="col mb-2 p-2">
@@ -14,14 +13,14 @@
         </div>
     </div>
 
-    <div class="row">
+    <div class="justify-content-center">
         {% if list_items %}
-        <table class="table table-bordered">
+        <table class="table table-bordered table-condensed">
             <thead class="thead-light">
             <tr>
                 <th scope="col">Name</th>
                 <th scope="col">Code</th>
-                <th scope="col">Product Type</th>
+                <th scope="col">Type</th>
                 <th scope="col">Description</th>
                 <th scope="col">Actions</th>
             </tr>

@@ -26,25 +26,38 @@
         .collapse:not(.show) {
             display: none;
         }
-        /* This is the CSS that will be applied when the screen is less than 1024 pixels wide */
-        @media (max-width:1023px) {
-            /* Styles for smaller screens */
+        #navbarTop {
+            padding: 0rem 0rem;
+            margin: 0rem 0rem;
+        }
+
+        #content {
+            padding: 10px;
+        }
+
+        @media (max-width:1280px) {
             #sidebar {
-                display: none; /* Hides the sidebar */
+                display: none;
             }
             #content {
-                width: 100%; /* Ensures content takes up full width of screen */
+                width: 100%;
+                padding: 10px;
+            }
+            #sidebarCollapse {
+                display: none;
             }
         }
 
-        /* This is the CSS that will be applied when the screen is 1024 pixels wide or wider */
-        @media (min-width:1024px) {
-            /* Styles for larger screens */
+        @media (min-width:1281px) {
             #sidebar {
-                display: block; /* Shows the sidebar */
+                display: block;
             }
             #content {
-                width: calc(100% - 300px); /* Adjust the width of the content to account for the sidebar */
+                width: calc(100% - 250px); /* Adjust the width of the content to account for the sidebar */
+                padding: 10px;
+            }
+            #sidebarCollapse {
+                display: block;
             }
         }
 
@@ -259,113 +272,102 @@
 {% block after-bootstrap-js %}
 {{ block.super }}
 <script type="text/javascript">
-    $(window).on('resize', function(){
-        var win = $(this); //this = window
+    $(document).ready(function() {
+        const SIDEBAR = $('#sidebar');
+        const CONTENT = $('#content');
+        const SIDEBAR_COLLAPSE = $('#sidebarCollapse');
+        const COLLAPSE_LINKS = $('#sidebar .collapse a');
+        const DROPDOWN_TOGGLE = $(".dropdown-toggle");
 
-        if (win.width() >= 1024) {
-            // if width is greater than or equal to 1024px, show sidebar
-            $('#sidebar').show();
-            $('#content').removeClass('active');
-        } else {
-            // if width is less than 1024px, hide sidebar
-            $('#sidebar').hide();
-            $('#content').addClass('active');
-        }
-    }).resize(); // Trigger resize handler initially
-
-    document.addEventListener("DOMContentLoaded", function(event) {
+        // Check if sidebarCollapse is in localStorage
         if (!localStorage.getItem('sidebarCollapse')) {
             localStorage.setItem('sidebarCollapse', 'inactive');
         }
 
-        let sidebarCollapseState = localStorage.getItem('sidebarCollapse');
+        // Function to adjust sidebar and content based on window width
+        function adjustView() {
+            var win = $(window); //this = window
 
-        // Add 'no-transition' class to instantly toggle visibility
-        $('#sidebar, #content').addClass('no-transition');
+            if (win.width() >= 1280) {
+                // if width is greater than or equal to 1280px, show sidebar
+                SIDEBAR.show();
+                CONTENT.removeClass('active');
+                SIDEBAR_COLLAPSE.show(); //Show sidebar collapse button
+            } else {
+                // if width is less than 1280px, hide sidebar
+                SIDEBAR.hide();
+                CONTENT.addClass('active');
+                SIDEBAR_COLLAPSE.hide(); //Hide sidebar collapse button
+            }
+        }
+
+        // Call adjustView initially and on window resize
+        adjustView();
+        $(window).on('resize', adjustView);
+
+        // Check localStorage and set sidebar state
+        let sidebarCollapseState = localStorage.getItem('sidebarCollapse');
 
         if (sidebarCollapseState === 'active') {
             // add active class to sidebar and content
-            $('#sidebar, #content').addClass('active');
-        } else {
-            // remove active class from sidebar and content
-            $('#sidebar, #content').removeClass('active');
+            SIDEBAR.addClass('active');
+            CONTENT.addClass('active');
         }
 
-        // Remove 'no-transition' class to enable CSS transitions again
-        setTimeout(function() {
-            $('#sidebar, #content').removeClass('no-transition');
-        }, 1);  // Use timeout to ensure this happens after state update
-    });
-    </script>
-    <script>
         // Initialize select2 dropdown
-        $(document).ready(function() {
-            $('.select2').select2();
-            // dismiss alerts: set the alert to automatically fade out
-            $('.alert-dismissible').delay(5000).fadeOut("slow");
+        $('.select2').select2();
+        // Dismiss alerts: set the alert to automatically fade out
+        $('.alert-dismissible').delay(5000).fadeOut("slow");
 
-            // Check if sidebarCollapse is in localStorage and has active class
-            let sidebarCollapseState = localStorage.getItem('sidebarCollapse');
-            if (sidebarCollapseState === 'active') {
-                // add active class to sidebar and content
-                $('#sidebar, #content').addClass('active');
-            } else {
-                // remove active class from sidebar and content
-                $('#sidebar, #content').removeClass('active');
-            }
+        // Restore submenu state from local storage
+        let opened_submenu = localStorage.getItem('opened_submenu');
+        if (opened_submenu) {
+            $("#" + opened_submenu).addClass('show');
+            // set aria-expanded to true for the dropdown toggle of the opened submenu
+            $('a[href="#' + opened_submenu + '"]').attr('aria-expanded', 'true');
+        }
 
-            let activeLink = localStorage.getItem('active-link');
-            // if screen is less than 768px add active class to sidebar-collapse button
-            if ($(window).width() < 768) {
-                $('#sidebar').addClass('active');
-                $('#content').removeClass('active');
-            } else {
-                if (activeLink) {
-                    // set active link
-                    $(`#sidebar .collapse a[href="${activeLink}"]`).addClass('active');
-                }
+        // Restore active state of last selected item
+        let activeLink = localStorage.getItem('active-link');
+        if (activeLink) {
+            // remove 'active' class from all other links
+            COLLAPSE_LINKS.removeClass('active');
+            // set active link
+            $(`#sidebar .collapse a[href="${activeLink}"]`).addClass('active');
+        }
 
-                let opened_submenu = localStorage.getItem('opened_submenu');
-                if (opened_submenu) {
-                    $("#" + opened_submenu).addClass('show');
-                    // set aria-expanded to true for the dropdown toggle of the opened submenu
-                    $('a[href="#' + opened_submenu + '"]').attr('aria-expanded', 'true');
-                }
-
-            }
-
-        });
-        // Store the state of the sidebar toggle button in localStorage
-        $('#sidebarCollapse').on('click', function() {
-            if ($('#sidebar, #content').hasClass('active')) {
+        // Sidebar collapse button click handler
+        SIDEBAR_COLLAPSE.on('click', function() {
+            if (SIDEBAR.hasClass('active')) {
                 localStorage.setItem('sidebarCollapse', 'inactive');
-                document.getElementById("sidebar").classList.remove("active");
-                document.getElementById("content").classList.remove("active");
+                SIDEBAR.removeClass('active');
+                CONTENT.removeClass('active');
             } else {
                 localStorage.setItem('sidebarCollapse', 'active');
-                document.getElementById("sidebar").classList.add("active");
-                document.getElementById("content").classList.add("active");
+                SIDEBAR.addClass('active');
+                CONTENT.addClass('active');
             }
         });
 
-        $(".dropdown-toggle").click(function() {
+        DROPDOWN_TOGGLE.click(function() {
             let submenuId = $(this).attr("href").substring(1); // Get the submenu ID from the href attribute
             // Save submenu state to local storage
             localStorage.setItem('opened_submenu', submenuId);
             // Set aria-expanded to true for the clicked dropdown toggle, and false for the others
-            $('.dropdown-toggle').attr('aria-expanded', 'false');
+            DROPDOWN_TOGGLE.attr('aria-expanded', 'false');
             $(this).attr('aria-expanded', 'true');
         });
 
         // Only target anchors in submenus for the click handler
-        $('#sidebar .collapse a').on('click', function (e) {
+        COLLAPSE_LINKS.on('click', function (e) {
             // remove 'active' class from all other links
-            $('#sidebar .collapse a').removeClass('active');
+            COLLAPSE_LINKS.removeClass('active');
             // add 'active' class to clicked link
             $(this).addClass('active');
             // save active link to local storage
             localStorage.setItem('active-link', $(this).attr('href'));
         });
+    });
     </script>
 
 {% endblock %}

@@ -7,9 +7,9 @@ from django.conf import settings
 from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUploadedFile
 from django.utils import timezone
 from passporteye import read_mrz
-from pdf2image.pdf2image import convert_from_path
 
 from core.utils.check_country import check_country_by_code
+from core.utils.imgutils import convert_and_resize_image
 
 pytesseract.pytesseract.tesseract_cmd = settings.TESSERACT_CMD
 
@@ -59,16 +59,19 @@ def extract_mrz_data(file, check_expiration=True, expiration_days=180) -> dict:
         file_ext = os.path.splitext(file_path)[1]
 
     if content_type == "application/pdf" or file_ext == ".pdf":
-        images = convert_from_path(file_path)
-        if images:
-            file_name, _ = os.path.splitext(file_path)
-            converted_file_name = f"{file_name}.png"
-            images[0].save(converted_file_name, "PNG")
-        else:
+        file_name, _ = os.path.splitext(file_path)
+        converted_file_name = f"{file_name}.png"
+        try:
+            img, _ = convert_and_resize_image(file_path, content_type, return_encoded=False, resize=False)
+            img.save(converted_file_name)
+        except Exception as e:
             # delete temporary file
-            if file_to_delete:
-                os.unlink(file_to_delete)
-            raise Exception("Failed to convert PDF to image")
+            try:
+                if file_to_delete:
+                    os.unlink(file_to_delete)
+            except Exception:
+                pass
+            raise Exception(f"Failed to convert PDF to image: {e}")
 
     # Extract data from image
     # image_path: if converted_file_name exists, use it, otherwise use file_path
@@ -119,9 +122,11 @@ def extract_mrz_data(file, check_expiration=True, expiration_days=180) -> dict:
         # Success
         return parsed_mrz
     except FileNotFoundError:
-        # delete temporary file
-        # if file_to_delete:
-        #     os.unlink(file_to_delete)
+        try:
+            if file_to_delete:
+                os.unlink(file_to_delete)
+        except Exception:
+            pass
         raise Exception("The specified file could not be found")
     except Exception as e:
         # delete temporary file

@@ -7,7 +7,7 @@
 {% block title %}RevisCRM - {{ action_name }} Customer Application{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
+<div>
     <h2 class="text-center my-4">New Customer Application</h2>
     <form method="post" enctype="multipart/form-data" class="p-3 rounded w-100" action="" id="customer-application-form">
         {% csrf_token %}
@@ -29,13 +29,12 @@
                 <button type="button" class="btn btn-danger remove-document-btn mt-2">Remove Document</button>
             </div>
         </div>
-
-        <button type="button" class="btn btn-secondary" id="add-document">Add Required Document</button>
-        <button type="submit" class="btn btn-primary">Save Application</button>
+        <div>
+            <button type="button" class="btn btn-secondary" id="add-document">Add Required Document</button>
+            <button type="submit" class="btn btn-primary">Save Application</button>
+            <a href="javascript:history.back()" class="btn btn-outline-primary">Back</a>
+        </div>
     </form>
-    <div class="card-footer text-muted">
-        <a href="javascript:history.back()" class="btn btn-outline-primary">Back</a>
-    </div>
 </div>
 {% endblock %}
 

@@ -9,6 +9,7 @@ from rest_framework.views import APIView
 
 from api.serializers.document_type_serializer import DocumentTypeSerializer
 from core.utils.dateutils import calculate_due_date
+from core.utils.imgutils import convert_and_resize_image
 from core.utils.passport_ocr import extract_mrz_data
 from customers.models import Customer
 from products.models import Product
@@ -91,12 +92,11 @@ class OCRCheckView(APIView):
     def get_queryset(self):
         return Product.objects.none()
 
-    # This is a multipart/form-data request
     def post(self, request):
         file = request.data.get("file")
         if not file or file == "undefined":
             return Response(data={"error": "No file provided!"}, status=status.HTTP_400_BAD_REQUEST)
-        # check if file is a valid format
+
         valid_file_types = ["image/jpeg", "image/png", "image/tiff", "application/pdf"]
         file_type = mimetypes.guess_type(file.name)[0]
         if file_type not in valid_file_types:
@@ -104,23 +104,39 @@ class OCRCheckView(APIView):
                 data={"error": "File format not supported. Only images (jpeg and png) and pdf are accepted!"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
         doc_type = request.data.get("doc_type").lower()
         if not doc_type or doc_type == "undefined":
             return Response(data={"error": "No doc_type provided!"}, status=status.HTTP_400_BAD_REQUEST)
 
-        res = Response()
         try:
             mrz_data = extract_mrz_data(file)
             save_session = request.data.get("save_session")
             if save_session:
-                # Save the file on the server
                 file_path = default_storage.save("myfiles/" + file.name, file)
-                # Save the file path in the session
                 request.session["file_path"] = default_storage.path(file_path)
                 request.session["file_url"] = default_storage.url(file_path)
                 request.session["mrz_data"] = mrz_data
                 request.session.save()
-            return Response(data=mrz_data, status=status.HTTP_200_OK)
+
+            # Convert and resize the image. the file is the file path, not the file itself
+            img_preview = request.data.get("img_preview", False)
+            if img_preview:
+                img_preview = True
+            resize = request.data.get("resize", False)
+            if resize:
+                resize = True
+            width = request.data.get("width", None)
+            if width:
+                width = int(width)
+            _, img_str = convert_and_resize_image(
+                file,
+                file_type,
+                return_encoded=img_preview,
+                resize=resize,
+                base_width=width,
+            )
+            return Response(data={"b64_resized_image": img_str, "mrz_data": mrz_data}, status=status.HTTP_200_OK)
         except Exception as e:
             errMsg = e.args[0]
             return Response(data={"error": errMsg}, status=status.HTTP_400_BAD_REQUEST)

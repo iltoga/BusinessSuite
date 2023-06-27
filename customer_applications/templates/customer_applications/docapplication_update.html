@@ -5,15 +5,16 @@
 {% block title %}RevisCRM - {{ action_name }} Customer Application{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
+<div>
     <h2 class="text-center my-4">Update Customer Application</h2>
     <form method="post" enctype="multipart/form-data" class="p-3 rounded w-100" action="" id="customer-application-form">
         {% csrf_token %}
         {{ form | crispy }}
-        <button type="submit" class="btn btn-primary">Update</button>
+        <div>
+            <hr \>
+            <button type="submit" class="btn btn-primary">Update</button>
+            <a href="javascript:history.back()" class="btn btn-outline-primary">Back</a>
+        </div>
     </form>
-    <div class="card-footer text-muted">
-        <a href="javascript:history.back()" class="btn btn-outline-primary">Back</a>
-    </div>
 </div>
 {% endblock %}

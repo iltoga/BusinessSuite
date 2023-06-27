@@ -24,9 +24,11 @@ class DocumentUpdateForm(forms.ModelForm):
             "details",
             "force_update",
             "metadata",
+            "ocr_check",
         ]
         widgets = {
             "expiration_date": forms.DateInput(attrs={"type": "date"}),
+            "ocr_check": forms.HiddenInput(),
         }
 
     def __init__(self, *args, **kwargs):
