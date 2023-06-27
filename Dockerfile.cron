@@ -22,9 +22,6 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Change to non-root privilege
-USER revisbali
-
 # Install dependencies
 COPY --chown=revisbali:revisbali requirements.txt ./
 RUN python3 -m pip install --upgrade pip
@@ -43,7 +40,12 @@ RUN chmod 0644 /etc/cron.d/cronjob
 # Apply cron job
 RUN crontab /etc/cron.d/cronjob
 
+# Change back to root to copy start-cron.sh with root permissions
+USER root
+
+# Copy start-cron.sh script into Docker image and add execute permissions
+COPY start-cron.sh /usr/src/app/
+RUN chmod +x /usr/src/app/start-cron.sh
+
 # Run the command on container startup
-CMD bash -c "su root -c 'touch /logs/cron.log && cron' && su revisbali -c '/usr/src/app/start.sh && tail -f /logs/cron.log'"
-
-
+CMD ["/usr/src/app/start-cron.sh"]
