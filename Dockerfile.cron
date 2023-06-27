@@ -43,8 +43,6 @@ RUN chmod 0644 /etc/cron.d/cronjob
 # Apply cron job
 RUN crontab /etc/cron.d/cronjob
 
-# Create the log file to be able to run tail
-RUN touch /logs/cron.log
-
 # Run the command on container startup
-CMD bash -c "cron && /usr/src/app/start.sh && tail -f /logs/cron.log"
+CMD bash -c "mkdir -p /logs && touch /logs/cron.log && cron && /usr/src/app/start.sh && tail -f /logs/cron.log"
+
