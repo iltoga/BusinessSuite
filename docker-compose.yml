@@ -35,6 +35,8 @@ services:
 
   revisbali-cron:
     container_name: revisbali-cron
+    depends_on:
+      - revisbali-crm
     image: 'revisbali-cron:custom'
     build:
       context: ./crm.revisbali.com
