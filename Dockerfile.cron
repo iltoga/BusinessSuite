@@ -29,8 +29,12 @@ USER revisbali
 COPY --chown=revisbali:revisbali requirements.txt ./
 RUN python3 -m pip install --upgrade pip
 RUN pip install --no-warn-script-location --no-cache-dir -r requirements.txt
+
 # Copy project
 COPY --chown=revisbali:revisbali . /usr/src/app/
+
+COPY --chown=revisbali:revisbali start.sh /usr/src/app/
+RUN chmod +x /usr/src/app/start.sh
 
 # Copy cronjob file into Docker image and add execute permissions
 COPY --chown=revisbali:revisbali cronjob /etc/cron.d/cronjob
@@ -43,4 +47,4 @@ RUN crontab /etc/cron.d/cronjob
 RUN touch /logs/cron.log
 
 # Run the command on container startup
-CMD cron && tail -f /logs/cron.log
+CMD bash -c "cron && /usr/src/app/start.sh && tail -f /logs/cron.log"
