@@ -4,6 +4,8 @@
 # This script is copied to the container, together with the .env file and executed by the cron job.
 #
 
+echo "Cron api executed at $(date)"
+
 # Load environment variables from .env file
 if [ -f .env ]
 then
