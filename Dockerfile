@@ -42,6 +42,6 @@ COPY --chown=revisbali:revisbali . /usr/src/app/
 # COPY --chown=revisbali:revisbali scripts/start.sh /usr/src/app/
 # RUN chmod +x /usr/src/app/start.sh
 
-CMD /bin/bash -c "chmod +x /usr/src/app/scripts/* && /usr/src/app/scripts/start.sh"
+CMD /bin/bash -c "chmod +x /usr/src/app/scripts/* && /usr/src/app/start.sh"
 
 EXPOSE 8000
