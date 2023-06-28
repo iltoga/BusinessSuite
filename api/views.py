@@ -5,7 +5,8 @@ from django.core.files.storage import default_storage
 from django.core.management import call_command
 from django.db.models import Q
 from rest_framework import status
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -181,11 +182,11 @@ class ComputeDocworkflowDueDate(APIView):
 
 
 @api_view(["GET"])
+@permission_classes([IsAuthenticated])
 def exec_cron_jobs(request):
     """
     Execute cron jobs via django_cron
     """
     # run all jobs
-    response = call_command("runcrons")
-    print(response)
+    call_command("runcrons")
     return Response({"status": "success"}, status=status.HTTP_200_OK)

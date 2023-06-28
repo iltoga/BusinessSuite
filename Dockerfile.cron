@@ -1,37 +1,16 @@
-# Use an official Python runtime as a parent image
-FROM python:3
-
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
-ENV DJANGO_SETTINGS_MODULE RevisBaliCRM.settings.prod
-ENV PATH="/home/revisbali/.local/bin:${PATH}"
-
-# Create a new user 'revisbali' with UID 1000 and GID 1000
-RUN addgroup --gid 1000 revisbali && adduser --uid 1000 --ingroup revisbali --home /home/revisbali --shell /bin/sh --disabled-password --gecos "" revisbali
+FROM debian:slim
 
 # Create /usr/src/app directory and change ownership to revisbali
-RUN mkdir -p /usr/src/app && chown -R revisbali:revisbali /usr/src/app
+RUN mkdir -p /usr/src/app
 
 # Set work directory
 WORKDIR /usr/src/app
 
 # Install cron
 RUN apt-get update \
-    && apt-get -y install cron \
+    && apt-get install -y cron jq \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
-
-# Install dependencies
-COPY --chown=revisbali:revisbali requirements.txt ./
-RUN python3 -m pip install --upgrade pip
-RUN pip install --no-warn-script-location --no-cache-dir -r requirements.txt
-
-# Copy project
-COPY --chown=revisbali:revisbali . /usr/src/app/
-
-COPY --chown=revisbali:revisbali scripts/start.sh /usr/src/app/
-RUN chmod +x /usr/src/app/start.sh
 
 # Copy cronjob file into Docker image and add execute permissions
 COPY --chown=revisbali:revisbali cronjob /etc/cron.d/cronjob
@@ -40,12 +19,10 @@ RUN chmod 0644 /etc/cron.d/cronjob
 # Apply cron job
 RUN crontab /etc/cron.d/cronjob
 
-# Change back to root to copy start-cron.sh with root permissions
-USER root
-
 # Copy start-cron.sh script into Docker image and add execute permissions
-COPY scripts/start-cron.sh /usr/src/app/
-RUN chmod +x /usr/src/app/start-cron.sh
+COPY scripts/exec_cron_api.sh /usr/src/app/
+RUN chmod +x /usr/src/app/exec_cron_api.sh
 
-# Run the command on container startup
-CMD ["/usr/src/app/start-cron.sh"]
+# Create the log file, start cron and keep the container alive with tail
+RUN touch /var/log/cron.log
+CMD cron && tail -f /var/log/cron.log

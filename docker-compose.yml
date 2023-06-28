@@ -38,6 +38,19 @@ services:
       - le-certs:/etc/letsencrypt
     restart: unless-stopped
 
+  revisbali-cron:
+    container_name: revisbali-cron
+    depends_on:
+      - revisbali-crm
+    image: 'revisbali-cron:custom'
+    build:
+      context: ./crm.revisbali.com
+      dockerfile: Dockerfile.cron
+    networks:
+      dockernet:
+        ipv4_address: 192.168.2.61
+    restart: unless-stopped
+
 networks:
   dockernet:
     external: true
