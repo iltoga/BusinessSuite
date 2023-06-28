@@ -4,7 +4,7 @@
 # This script is copied to the container, together with the .env file and executed by the cron job.
 #
 
-echo "Cron api executed at $(date)"
+echo "Cron api started at $(date)"
 
 # Load environment variables from .env file
 if [ -f .env ]
@@ -33,3 +33,4 @@ RESPONSE=$(curl -s -H "Authorization: Bearer ${TOKEN}" -X POST revisbali-crm:800
 
 # Optional: Print the response
 echo "${RESPONSE}"
+echo "Cron api executed at $(date)"
