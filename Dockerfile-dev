@@ -15,7 +15,7 @@ RUN python3 -m pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy start script into the Docker image
-COPY start.sh /usr/src/app/
+COPY scripts/start.sh /usr/src/app/
 
 CMD ["/bin/bash", "/usr/src/app/start.sh"]
 

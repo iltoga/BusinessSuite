@@ -1,3 +1,4 @@
+import logging
 import os
 
 from django.conf import settings
@@ -6,6 +7,9 @@ from django.core.management.base import BaseCommand
 from storages.backends.dropbox import DropBoxStorage
 
 from core.utils.dropbox_refresh_token import refresh_dropbox_token
+
+# file logger in prod and console in dev
+logger = logging.getLogger("django")
 
 
 class Command(BaseCommand):
@@ -51,4 +55,5 @@ class Command(BaseCommand):
 
                     # Save file to Dropbox
                     ds._save(dropbox_file_path, django_file)
-        self.stdout.write(self.style.SUCCESS("Directory has been successfully uploaded to Dropbox"))
+                    logger.info(f"Uploaded {dropbox_file_path} to Dropbox")
+        logger.info(f"Directory has been successfully uploaded to Dropbox")

@@ -38,45 +38,6 @@ services:
       - le-certs:/etc/letsencrypt
     restart: unless-stopped
 
-  revisbali-cron:
-    container_name: revisbali-cron
-    depends_on:
-      - revisbali-crm
-    image: 'revisbali-cron:custom'
-    build:
-      context: ./crm.revisbali.com
-      dockerfile: Dockerfile.cron
-    networks:
-      dockernet:
-    volumes:
-      - type: bind
-        source: ./crm.revisbali.com
-        target: /usr/src/app
-        bind:
-          propagation: rslave
-      - type: bind
-        source: /home/iltoga/revisbali/crm/media
-        target: /media
-        bind:
-          propagation: rslave
-      - type: bind
-        source: /home/iltoga/revisbali/crm/db
-        target: /db
-        bind:
-          propagation: rslave
-      - type: bind
-        source: /home/iltoga/revisbali/crm/logs
-        target: /logs
-        bind:
-          propagation: rslave
-      - type: bind
-        source: /home/iltoga/revisbali/crm/staticfiles
-        target: /staticfiles
-        bind:
-          propagation: rslave
-      - le-certs:/etc/letsencrypt
-    restart: unless-stopped
-
 networks:
   dockernet:
     external: true

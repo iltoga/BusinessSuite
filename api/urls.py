@@ -18,4 +18,6 @@ urlpatterns = [
         views.ComputeDocworkflowDueDate.as_view(),
         name="api-compute-docworkflow-due-date",
     ),
+    # exec_cron_jobs
+    path("cron/exec_cron_jobs/", views.exec_cron_jobs, name="api-exec-cron-jobs"),
 ]

@@ -2,8 +2,10 @@ import mimetypes
 from datetime import datetime
 
 from django.core.files.storage import default_storage
+from django.core.management import call_command
 from django.db.models import Q
 from rest_framework import status
+from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -176,3 +178,14 @@ class ComputeDocworkflowDueDate(APIView):
                 return Response({"error": "Task does not exist"}, status=status.HTTP_404_NOT_FOUND)
         else:
             return Response({"error": "Invalid request"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["GET"])
+def exec_cron_jobs(request):
+    """
+    Execute cron jobs via django_cron
+    """
+    # run all jobs
+    response = call_command("runcrons")
+    print(response)
+    return Response({"status": "success"}, status=status.HTTP_200_OK)
