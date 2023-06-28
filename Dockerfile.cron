@@ -20,6 +20,7 @@ RUN chmod 0644 /etc/cron.d/cronjob
 RUN crontab /etc/cron.d/cronjob
 
 # Copy start-cron.sh script into Docker image and add execute permissions
+COPY .env /usr/src/app/
 COPY scripts/exec_cron_api.sh /usr/src/app/
 RUN chmod +x /usr/src/app/exec_cron_api.sh
 
