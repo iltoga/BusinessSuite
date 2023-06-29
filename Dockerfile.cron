@@ -8,7 +8,7 @@ WORKDIR /usr/src/app
 
 # Install cron
 RUN apt-get update \
-    && apt-get install -y cron jq curl \
+    && apt-get install -y cron jq curl procps \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
