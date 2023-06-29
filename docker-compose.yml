@@ -14,7 +14,7 @@ services:
       - dockernet
     volumes:
       - type: bind
-        source: /home/iltoga/revisbali/crm/db
+        source: ${DB_PATH}
         target: /var/lib/postgresql/data
         bind:
           propagation: rslave
