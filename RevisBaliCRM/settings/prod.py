@@ -17,13 +17,6 @@ DEBUG = True
 
 ALLOWED_HOSTS = ["crm.revisbali.com", "www.revisbali.com", "revisbali.com", "revisbali-cron"]
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": "/db/revisbalicrm.sqlite3",
-    }
-}
-
 MEDIA_ROOT = "/media/"
 
 STATIC_ROOT = "/staticfiles/"
