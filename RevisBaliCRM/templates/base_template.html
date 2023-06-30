@@ -32,19 +32,15 @@
             margin: 0rem 0rem;
         }
 
-        #content {
-            padding: 10px;
-        }
-
         @media (max-width:1280px) {
             #sidebar {
                 display: none;
             }
             #content {
                 width: 100%;
-                padding: 10px;
+                padding: 5px;
             }
-            #sidebarCollapse {
+            #sidebarCollapse span {
                 display: none;
             }
         }
@@ -57,7 +53,7 @@
                 width: calc(100% - 250px); /* Adjust the width of the content to account for the sidebar */
                 padding: 10px;
             }
-            #sidebarCollapse {
+            #sidebarCollapse span {
                 display: block;
             }
         }
