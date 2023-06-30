@@ -45,12 +45,13 @@ LOGGING = {
         "console": {
             "class": "logging.StreamHandler",
             "formatter": "simple",
-            "filters": ["require_debug_true"],
+            # "filters": ["require_debug_true"],
         },
         "file": {
-            "level": "DEBUG",
+            "level": "WARNING",
             "class": "logging.FileHandler",
             "filename": "/logs/django.log",
+            "formatter": "verbose",
         },
         # "mail_admins": {
         #     "level": "ERROR",
@@ -64,8 +65,8 @@ LOGGING = {
     },
     "loggers": {
         "django": {
-            "handlers": ["file"],
-            "level": os.getenv("DJANGO_LOG_LEVEL", "INFO"),
+            "handlers": ["file", "console"],
+            "level": os.getenv("DJANGO_LOG_LEVEL", "WARNING"),
             "propagate": True,
         },
         # "django.request": {
