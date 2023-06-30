@@ -15,7 +15,7 @@ from .base import *
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ["crm.revisbali.com", "www.revisbali.com", "revisbali.com", "revisbali-cron"]
+ALLOWED_HOSTS = ["crm.revisbali.com", "www.revisbali.com", "revisbali.com", "revisbali-cron", "revisbali-crm"]
 
 MEDIA_ROOT = "/media/"
 
