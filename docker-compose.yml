@@ -20,7 +20,7 @@ services:
     container_name: pgadmin
     image: dpage/pgadmin4
     depends_on:
-      - postgres-srv
+      - db
     restart: unless-stopped
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
@@ -30,7 +30,7 @@ services:
   revisbali-crm:
     container_name: revisbali-crm
     depends_on:
-      - postgres-srv
+      - db
     image: 'revisbali-crm:custom'
     build:
       context: ./crm.revisbali.com
