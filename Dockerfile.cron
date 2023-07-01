@@ -8,25 +8,27 @@ WORKDIR /usr/src/app
 
 # Install cron
 RUN apt-get update \
-    && apt-get install -y cron jq curl procps \
+    && apt-get install -y cron jq curl procps vim \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy cronjob file into Docker image and add execute permissions
-COPY scripts/cronjob /etc/cron.d/cronjob
-RUN chmod 0644 /etc/cron.d/cronjob
+# COPY scripts/cronjob /etc/cron.d/cronjob
+# RUN chmod 0644 /etc/cron.d/cronjob
 
 # Apply cron job
-RUN crontab /etc/cron.d/cronjob
+# RUN crontab /etc/cron.d/cronjob
 
 # Copy start-cron.sh script into Docker image and add execute permissions
 COPY .env /usr/src/app/
 COPY scripts/exec_cron_api.sh /usr/src/app/
 RUN chmod +x /usr/src/app/exec_cron_api.sh
 
+# Add a test cron job
+RUN echo "*/1 * * * * root /bin/echo 'Hello, world!' >> /var/log/cron.log" >> /etc/crontab
+
 # Create the log file, start cron and keep the container alive with verbose logging
 RUN touch /var/log/cron.log
-CMD cron -f -L 15
 
-# restart cron service
-RUN service cron restart
+# Start cron in foreground with verbose logging
+CMD cron -f -L 15
