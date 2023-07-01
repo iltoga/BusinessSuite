@@ -307,9 +307,7 @@ CRON_CLASSES = [
     "core.cron.FullBackupJob",
 ]
 
-# TODO: (STEF) I changed this
-# FULL_BACKUP_RUNS_EVERY_MINS = 60 * 24  # 24 hours
-FULL_BACKUP_RUNS_EVERY_MINS = 1  # 1 minute
+FULL_BACKUP_RUNS_EVERY_MINS = 60 * 24  # 24 hours
 
 LOGGING = {
     "version": 1,
