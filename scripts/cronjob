@@ -1,2 +1,4 @@
 */5 * * * * sh /usr/src/app/exec_cron_api.sh >> /var/logs/cron.log 2>&1
+*/1 * * * * /bin/echo "Hello, world!" >> /var/log/helloworld.log
+*/1 * * * * env > /var/log/cron.env.log
 # Don't remove the empty line at the end of the file, cron requires it
