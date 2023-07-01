@@ -42,29 +42,25 @@ class Command(BaseCommand):
                 ds.delete(dropbox_destination_directory)
 
             exclude_folders = settings.DBBACKUP_EXCLUDE_MEDIA_FODERS
-
             # Iterate over files in the local directory
             for root, dirs, files in os.walk(local_directory):
                 # Exclude directories in exclude_folders
                 dirs[:] = [d for d in dirs if d not in exclude_folders]
+                for file in files:
+                    # Construct full local file path
+                    local_file_path = os.path.join(root, file)
 
-                # Process files only if root is not in exclude_folders
-                if not any(excluded_folder in root for excluded_folder in exclude_folders):
-                    for file in files:
-                        # Construct full local file path
-                        local_file_path = os.path.join(root, file)
+                    # Construct destination file path in Dropbox
+                    relative_path = os.path.relpath(local_file_path, local_directory)
+                    dropbox_file_path = os.path.join(dropbox_destination_directory, relative_path)
 
-                        # Construct destination file path in Dropbox
-                        relative_path = os.path.relpath(local_file_path, local_directory)
-                        dropbox_file_path = os.path.join(dropbox_destination_directory, relative_path)
+                    # Open the local file in binary mode
+                    with open(local_file_path, "rb") as f:
+                        django_file = File(f)
 
-                        # Open the local file in binary mode
-                        with open(local_file_path, "rb") as f:
-                            django_file = File(f)
-
-                            # Save file to Dropbox
-                            ds._save(dropbox_file_path, django_file)
-                            logger.info(f"Uploaded {dropbox_file_path} to Dropbox")
+                        # Save file to Dropbox
+                        ds._save(dropbox_file_path, django_file)
+                        logger.info(f"Uploaded {dropbox_file_path} to Dropbox")
             logger.info(f"Directory has been successfully uploaded to Dropbox")
         except Exception as e:
             logger.error(f"An error occurred while uploading the directory to Dropbox: {e}")
