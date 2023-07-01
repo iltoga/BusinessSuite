@@ -19,6 +19,8 @@ services:
   pgadmin:
     container_name: pgadmin
     image: dpage/pgadmin4
+    depends_on:
+      - postgres-srv
     restart: unless-stopped
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
@@ -27,6 +29,8 @@ services:
       - dockernet
   revisbali-crm:
     container_name: revisbali-crm
+    depends_on:
+      - postgres-srv
     image: 'revisbali-crm:custom'
     build:
       context: ./crm.revisbali.com
