@@ -24,6 +24,7 @@ RUN apt-get update \
   && apt-get -y install \
   && apt-get -y install tesseract-ocr \
   && apt-get -y install poppler-utils \
+  && apt-get -y install postgresql-client \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 

@@ -7,9 +7,9 @@
 echo "Cron api started at $(date)"
 
 # Load environment variables from .env file
-if [ -f .env ]
+if [ -f /usr/src/app/.env ]
 then
-  export $(cat .env | sed 's/#.*//g' | xargs)
+  export $(cat /usr/src/app/.env | sed 's/#.*//g' | xargs)
 fi
 
 # Check if SYSTEM_USER_PASSWORD and SYSTEM_USER_EMAIL are set and not empty
