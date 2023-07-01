@@ -302,7 +302,8 @@ CRON_CLASSES = [
     "core.cron.FullBackupJob",
 ]
 
-FULL_BACKUP_RUNS_EVERY_MINS = 60 * 24  # 24 hours
+# FULL_BACKUP_RUNS_EVERY_MINS = 60 * 24  # 24 hours
+FULL_BACKUP_RUNS_EVERY_MINS = 60
 
 LOGGING = {
     "version": 1,
