@@ -24,6 +24,6 @@ COPY .env /usr/src/app/
 COPY scripts/exec_cron_api.sh /usr/src/app/
 RUN chmod +x /usr/src/app/exec_cron_api.sh
 
-# Create the log file, start cron and keep the container alive with tail
+# Create the log file, start cron and keep the container alive with verbose logging
 RUN touch /var/log/cron.log
-CMD cron && tail -f /var/log/cron.log
+CMD cron -f -L 15
