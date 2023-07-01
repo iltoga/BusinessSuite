@@ -1,4 +1,4 @@
-FROM bitnami/minideb:latest
+FROM debian:latest
 
 # Create /usr/src/app directory and change ownership to revisbali
 RUN mkdir -p /usr/src/app
