@@ -18,7 +18,7 @@ COPY scripts/exec_cron_api.sh /usr/src/app/
 RUN chmod +x /usr/src/app/exec_cron_api.sh
 
 # Add a test cron job
-RUN echo "*/1 * * * * root /bin/echo 'Hello, world!' >> /var/log/cron.log" >> /etc/crontab
+RUN crontab -l | { cat; echo "* * * * * bash /usr/src/app/exec_cron_api.sh"; } | crontab -
 
 # Create the log file, start cron and give write permissions
 RUN touch /var/log/cron.log && chmod 0666 /var/log/cron.log
