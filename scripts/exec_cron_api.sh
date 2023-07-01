@@ -23,13 +23,14 @@ if [[ -z "${SYSTEM_USER_EMAIL}" ]]; then
 fi
 
 HOSTADDR="revisbali-crm"
+BIN_DIR="/usr/bin"
 
 # Add Curl command to obtain the access token from revisbali-crm container
 # using a GET request
-TOKEN=$(curl -v -X POST -F "username=system" -F "password=${SYSTEM_USER_PASSWORD}" $HOSTADDR:8000/api/api-token-auth/ | jq -r '.token')
+TOKEN=$($BIN_DIR/curl -v -X POST -F "username=system" -F "password=${SYSTEM_USER_PASSWORD}" $HOSTADDR:8000/api/api-token-auth/ | $BIN_DIR/jq -r '.token')
 
 # Add Curl command to execute the API call to the endpoint
-RESPONSE=$(curl -s -H "Authorization: Bearer ${TOKEN}" -X GET $HOSTADDR:8000/api/cron/exec_cron_jobs/)
+RESPONSE=$($BIN_DIR/curl -s -H "Authorization: Bearer ${TOKEN}" -X GET $HOSTADDR:8000/api/cron/exec_cron_jobs/)
 
 # Optional: Print the response
 echo "${RESPONSE}"
