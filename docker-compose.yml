@@ -27,6 +27,11 @@ services:
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASS}
     networks:
       - dockernet
+  memcached:
+    image: 'bitnami/memcached:latest'
+    networks:
+      dockernet:
+        ipv4_address: 192.168.2.62
   revisbali-crm:
     container_name: revisbali-crm
     depends_on:
