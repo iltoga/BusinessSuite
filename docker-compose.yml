@@ -86,5 +86,5 @@ networks:
 
 volumes:
   le-certs:
-    external:
-      name: le-certs
+    name: le-certs
+    external: true
