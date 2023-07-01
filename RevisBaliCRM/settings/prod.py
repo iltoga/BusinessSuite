@@ -60,12 +60,12 @@ LOGGING = {
     },
     "root": {
         "handlers": ["console", "file"],
-        "level": os.getenv("DJANGO_LOG_LEVEL", "WARNING"),
+        "level": os.getenv("DJANGO_LOG_LEVEL", "INFO"),
     },
     "loggers": {
         "django": {
             "handlers": ["console", "file"],
-            "level": os.getenv("DJANGO_LOG_LEVEL", "WARNING"),
+            "level": os.getenv("DJANGO_LOG_LEVEL", "INFO"),
             "propagate": False,
         },
         # "django.request": {
