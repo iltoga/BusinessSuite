@@ -1,6 +1,8 @@
 import mimetypes
+import os
 from datetime import datetime
 
+from django.conf import settings
 from django.core.files.storage import default_storage
 from django.core.management import call_command
 from django.db.models import Q
@@ -116,7 +118,8 @@ class OCRCheckView(APIView):
             mrz_data = extract_mrz_data(file)
             save_session = request.data.get("save_session")
             if save_session:
-                file_path = default_storage.save("myfiles/" + file.name, file)
+                tmp_file_path = os.path.join(settings.MEDIA_ROOT, settings.TMPFILES_FOLDER, file.name)
+                file_path = default_storage.save(tmp_file_path, file)
                 request.session["file_path"] = default_storage.path(file_path)
                 request.session["file_url"] = default_storage.url(file_path)
                 request.session["mrz_data"] = mrz_data

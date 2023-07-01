@@ -284,6 +284,9 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "files/media/")
 MEDIA_URL = "/uploads/"
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 
+DOCUMENTS_FOLDER = "documents"
+TMPFILES_FOLDER = "tmpfiles"
+
 # Settings for django-dbbackup
 DBBACKUP_STORAGE = "storages.backends.dropbox.DropBoxStorage"
 
@@ -297,6 +300,8 @@ DBBACKUP_STORAGE_OPTIONS = {
     "app_secret": os.getenv("DROPBOX_APP_SECRET"),
 }
 
+# Folders to exclude from media backup
+DBBACKUP_EXCLUDE_MEDIA_FODERS = ["tmpfiles"]
 
 CRON_CLASSES = [
     "core.cron.FullBackupJob",
@@ -357,5 +362,3 @@ LOGGING = {
         # },
     },
 }
-
-DOCUMENTS_FOLDER = "documents"
