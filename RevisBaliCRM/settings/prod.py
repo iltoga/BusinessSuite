@@ -63,6 +63,11 @@ LOGGING = {
         "level": os.getenv("DJANGO_LOG_LEVEL", "WARNING"),
     },
     "loggers": {
+        "django": {
+            "handlers": ["console", "file"],
+            "level": os.getenv("DJANGO_LOG_LEVEL", "WARNING"),
+            "propagate": False,
+        },
         # "django.request": {
         #     "handlers": ["mail_admins"],
         #     "level": "ERROR",
