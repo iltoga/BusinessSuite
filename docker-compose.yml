@@ -16,6 +16,7 @@ services:
         target: /var/lib/postgresql/data
         bind:
           propagation: rslave
+
   pgadmin:
     container_name: pgadmin
     image: dpage/pgadmin4
@@ -27,14 +28,30 @@ services:
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASS}
     networks:
       - dockernet
+
+  revisbali-cron:
+    container_name: revisbali-cron
+    depends_on:
+      - revisbali-crm
+    image: 'revisbali-cron:custom'
+    build:
+      context: ./crm.revisbali.com
+      dockerfile: Dockerfile.cron
+    networks:
+      dockernet:
+        ipv4_address: 192.168.2.61
+    restart: unless-stopped
+
   memcached:
     image: 'bitnami/memcached:latest'
     networks:
       dockernet:
         ipv4_address: 192.168.2.62
+
   revisbali-crm:
     container_name: revisbali-crm
     depends_on:
+      - memcached
       - db
     image: 'revisbali-crm:custom'
     build:
@@ -70,19 +87,6 @@ services:
         bind:
           propagation: rslave
       - le-certs:/etc/letsencrypt
-    restart: unless-stopped
-
-  revisbali-cron:
-    container_name: revisbali-cron
-    depends_on:
-      - revisbali-crm
-    image: 'revisbali-cron:custom'
-    build:
-      context: ./crm.revisbali.com
-      dockerfile: Dockerfile.cron
-    networks:
-      dockernet:
-        ipv4_address: 192.168.2.61
     restart: unless-stopped
 
 networks:

@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class FullBackupJob(CronJobBase):
-    schedule = Schedule(run_every_mins=settings.FULL_BACKUP_RUNS_EVERY_MINS)
+    schedule = Schedule(run_every_mins=settings.EVERY_ONE_DAY)
     code = "core.full_backup_job"
 
     def do(self):
@@ -23,3 +23,12 @@ class FullBackupJob(CronJobBase):
         call_command("uploadmediatodropbox", dir)
         # log the upload
         logger.info("Media files uploaded successfully")
+
+
+class ClearCacheJob(CronJobBase):
+    schedule = Schedule(run_at_times=settings.CLEAR_CACHE_SCHEDULE)
+    code = "core.clear_cache_job"
+
+    def do(self):
+        call_command("clear_cache")
+        logger.info("Cache cleared successfully")

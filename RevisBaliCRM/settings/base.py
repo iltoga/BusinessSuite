@@ -305,9 +305,12 @@ DBBACKUP_EXCLUDE_MEDIA_FODERS = ["tmpfiles"]
 
 CRON_CLASSES = [
     "core.cron.FullBackupJob",
+    "core.cron.ClearCacheJob",
 ]
 
-FULL_BACKUP_RUNS_EVERY_MINS = 60 * 24  # 24 hours
+EVERY_ONE_MINUTE = 1  # 1 minute
+EVERY_ONE_DAY = 60 * 24  # 24 hours
+CLEAR_CACHE_SCHEDULE = ["03:00"]
 
 LOGGING = {
     "version": 1,

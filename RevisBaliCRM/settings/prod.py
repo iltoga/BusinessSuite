@@ -75,3 +75,19 @@ LOGGING = {
         # },
     },
 }
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.memcached.PyMemcacheCache",
+        "LOCATION": os.getenv("MEMCACHED_HOST", "memcached") + ":11211",
+        "TIMEOUT": 300,
+    },
+    "select2": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "TIMEOUT": 300,
+    },
+}
+
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+# When the cookie expires the user will be required to log in again (after 20 minutes of inactivity)
+SESSION_COOKIE_AGE = 60 * 20  # 20 minutes
