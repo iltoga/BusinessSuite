@@ -113,10 +113,10 @@
                 </a>
                 <ul class="dropdown-menu" aria-labelledby="customerMenu">
                     {% if user|has_perm:'customers,customer,view' %}
-                    <li><a class="dropdown-item" href="/customers/list">List</a></li>
+                    <li><a class="dropdown-item" href="{% url 'customer-list' %}">List</a></li>
                     {% endif %}
                     {% if user|has_perm:'customers,customer,add' %}
-                    <li><a class="dropdown-item" href="/customers/create">Add new</a></li>
+                    <li><a class="dropdown-item" href="{% url 'customer-create' %}">Add new</a></li>
                     {% endif %}
                 </ul>
             </li>
@@ -128,10 +128,10 @@
                 </a>
                 <ul class="dropdown-menu" aria-labelledby="productMenu">
                     {% if user|has_perm:'products,product,view' %}
-                    <li><a class="dropdown-item" href="/products/list">List</a></li>
+                    <li><a class="dropdown-item" href="{% url 'product-list' %}">List</a></li>
                     {% endif %}
                     {% if user|has_perm:'products,product,add' %}
-                    <li><a class="dropdown-item" href="/products/create">Add new</a></li>
+                    <li><a class="dropdown-item" href="{% url 'product-create' %}">Add new</a></li>
                     {% endif %}
                 </ul>
             </li>
@@ -143,10 +143,25 @@
                 </a>
                 <ul class="dropdown-menu" aria-labelledby="appMenu">
                     {% if user|has_perm:'customer_applications,docapplication,view' %}
-                    <li><a class="dropdown-item" href="/customer_applications/list">List</a></li>
+                    <li><a class="dropdown-item" href="{% url 'customer-application-list' %}">List</a></li>
                     {% endif %}
                     {% if user|has_perm:'customer_applications,docapplication,add' %}
-                    <li><a class="dropdown-item" href="/customer_applications/create">Add new</a></li>
+                    <li><a class="dropdown-item" href="{% url 'customer-application-create' %}">Add new</a></li>
+                    {% endif %}
+                </ul>
+            </li>
+            {% endif %}
+            {% if user|has_any_perm:'invoice' %}
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" id="appMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    Invoices
+                </a>
+                <ul class="dropdown-menu" aria-labelledby="appMenu">
+                    {% if user|has_perm:'invoices,invoice,view' %}
+                    <li><a class="dropdown-item" href="{% url 'invoice-list' %}">List</a></li>
+                    {% endif %}
+                    {% if user|has_perm:'invoices,invoice,add' %}
+                    <li><a class="dropdown-item" href="{% url 'invoice-create' %}">Add new</a></li>
                     {% endif %}
                 </ul>
             </li>
@@ -188,12 +203,12 @@
                     <ul class="collapse list-unstyled" id="customerSubmenu">
                         {% if user|has_perm:'customers,customer,view' %}
                         <li>
-                            <a href="/customers/list">List</a>
+                            <a href="{% url 'customer-list' %}">List</a>
                         </li>
                         {% endif %}
                         {% if user|has_perm:'customers,customer,add' %}
                         <li>
-                            <a href="/customers/create">Add new</a>
+                            <a href="{% url 'customer-create' %}">Add new</a>
                         </li>
                         {% endif %}
                     </ul>
@@ -209,12 +224,12 @@
                     <ul class="collapse list-unstyled" id="productSubmenu">
                         {% if user|has_perm:'products,product,view' %}
                         <li>
-                            <a href="/products/list">List</a>
+                            <a href="{% url 'product-list' %}">List</a>
                         </li>
                         {% endif %}
                         {% if user|has_perm:'products,product,add' %}
                         <li>
-                            <a href="/products/create">Add new</a>
+                            <a href="{% url 'product-create' %}">Add new</a>
                         </li>
                         {% endif %}
                     </ul>
@@ -230,12 +245,33 @@
                     <ul class="collapse list-unstyled" id="customerApplicationSubmenu">
                         {% if user|has_perm:'customer_applications,docapplication,view' %}
                         <li>
-                            <a href="/customer_applications/list">List</a>
+                            <a href="{% url 'customer-application-list' %}">List</a>
                         </li>
                         {% endif %}
                         {% if user|has_perm:'customer_applications,docapplication,add' %}
                         <li>
-                            <a href="/customer_applications/create">Add new</a>
+                            <a href="{% url 'customer-application-create' %}">Add new</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </li>
+                {% endif %}
+                {% if user|has_any_perm:'invoice' %}
+                <li>
+                    <a href="#invoiceSubmenu"
+                    data-bs-toggle="collapse"
+                    aria-expanded="{% if request.session.opened_submenu == 'invoiceSubmenu' %}true{% else %}false{% endif %}"
+                    role="button"
+                    class="dropdown-toggle">Invoices</a>
+                    <ul class="collapse list-unstyled" id="invoiceSubmenu">
+                        {% if user|has_perm:'invoices,invoice,view' %}
+                        <li>
+                            <a href="{% url 'invoice-list' %}">List</a>
+                        </li>
+                        {% endif %}
+                        {% if user|has_perm:'invoices,invoice,add' %}
+                        <li>
+                            <a href="{% url 'invoice-create' %}">Add new</a>
                         </li>
                         {% endif %}
                     </ul>

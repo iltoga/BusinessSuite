@@ -19,7 +19,7 @@
 - edit workflow form: general data not showing in form
 ### 2023-06-08
 - edit product task: can change the product in dropdown
-- create product: parent model is not included in a transaction together with its children
+- create product: parent model is not included in a payment together with its children
 
 
 ## TODO:

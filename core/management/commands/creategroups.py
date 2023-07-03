@@ -31,7 +31,7 @@ class Command(BaseCommand):
     def generate_administration_office(self):
         """
         This group is for the Administration Office staff:
-        they can view and edit customers, invoices, and documents, but not products or transactions.
+        they can view and edit customers, invoices, and documents, but not products or payments.
         """
         group, created = Group.objects.get_or_create(name="Administration Office")
         if created:
@@ -67,8 +67,8 @@ class Command(BaseCommand):
                     "change_product",
                     "view_invoice",
                     "change_invoice",
-                    "view_transaction",
-                    "change_transaction",
+                    "view_payment",
+                    "change_payment",
                     "view_docworkflow",
                     "change_docworkflow",
                     "change_document",
@@ -85,7 +85,7 @@ class Command(BaseCommand):
                     "view_customer",
                     "view_product",
                     "view_invoice",
-                    "view_transaction",
+                    "view_payment",
                     "view_docapplication",
                     "view_docworkflow",
                     "view_document",
@@ -102,7 +102,7 @@ class Command(BaseCommand):
                     "add_customer",
                     "add_product",
                     "add_invoice",
-                    "add_transaction",
+                    "add_payment",
                     "add_docapplication",
                     "add_docworkflow",
                     "add_document",
@@ -119,7 +119,7 @@ class Command(BaseCommand):
                     "delete_customer",
                     "delete_product",
                     "delete_invoice",
-                    "delete_transaction",
+                    "delete_payment",
                     "delete_docapplication",
                     "delete_docworkflow",
                     "delete_document",
@@ -155,7 +155,7 @@ class Command(BaseCommand):
             "customer_applications",
             "products",
             "invoices",
-            "transactions",
+            "payments",
         ):
             for ct in ContentType.objects.filter(app_label=app_label):
                 model_name = ct.model  # Get the model name

@@ -58,7 +58,6 @@ INSTALLED_APPS = [
     "products",
     "invoices",
     "customer_applications",
-    "transactions",
     "bootstrapsidebar",
     "corsheaders",
     "rest_framework",
@@ -245,7 +244,6 @@ LOGGING_MODELS = (
     "products",
     "invoices",
     "customer_applications",
-    "transactions",
 )
 
 SESSION_SAVE_EVERY_REQUEST = True

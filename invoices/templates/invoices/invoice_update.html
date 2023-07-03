@@ -1,0 +1,23 @@
+{% extends "base_template.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}RevisCRM - Update Invoice{% endblock %}
+
+{% block content %}
+<div>
+    <h2 class="text-center my-4">Update Invoice</h2>
+    <form method="post" class="p-3 rounded w-100">
+        {% csrf_token %}
+        {{ form | crispy }}
+        {{ invoiceapplications.management_form }}
+        {% for form in invoiceapplications %}
+            {{ form | crispy }}
+        {% endfor %}
+        <div>
+            <hr \>
+            <button type="submit" class="btn btn-primary">Update</button>
+            <a href="javascript:history.back()" class="btn btn-outline-primary">Back</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
