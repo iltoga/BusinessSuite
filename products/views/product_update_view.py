@@ -5,7 +5,7 @@ from django.urls import reverse_lazy
 from django.views.generic import UpdateView
 
 from products.forms import ProductForm, TaskModelFormSet
-from products.models import Product
+from products.models import Product, Task
 
 
 class ProductUpdateView(PermissionRequiredMixin, SuccessMessageMixin, UpdateView):
@@ -32,12 +32,10 @@ class ProductUpdateView(PermissionRequiredMixin, SuccessMessageMixin, UpdateView
 
     def form_valid(self, form):
         context = self.get_context_data()
-        tasks = context["tasks"]
+        tasks_formset = context["tasks"]
 
-        # Check if tasks formset is valid
-        if tasks.is_valid():
+        if tasks_formset.is_valid():
             with transaction.atomic():
-                # get the values from the multiselect field
                 required_documents_multiselect = form.cleaned_data.get("required_documents_multiselect")
                 if not required_documents_multiselect:
                     self.object.required_documents = ""
@@ -56,12 +54,13 @@ class ProductUpdateView(PermissionRequiredMixin, SuccessMessageMixin, UpdateView
                         optional_documents_str += document.name + ","
                     self.object.optional_documents = optional_documents_str[:-1]
 
-                self.object = form.save(commit=False)
-                tasks.instance = self.object
-                # Save the tasks formset
-                tasks.save()
-                self.object.save()
+                self.object = form.save()
+
+                for form in tasks_formset:
+                    # check if form instance already exists in the db or it's a new instance
+                    if form.instance.pk is None:
+                        form.instance.product = self.object
+                    form.save()
                 return super().form_valid(form)
 
-        # If either formset is not valid, don't save anything
         return super().form_invalid(form)
