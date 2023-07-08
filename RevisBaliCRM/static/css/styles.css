@@ -35,29 +35,14 @@ form.left-align {
     text-align: left;
 }
 
-/*
-.input-group {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
+input[readonly] {
+    background-color: #ddd;
 }
 
-.input-label {
-    width: 200px;
-    text-align: right;
-    margin-right: 10px;
+.bordered {
+    border: 1px solid;
+    margin-bottom: 2em;
 }
-
-.input-field {
-    flex-grow: 1;
-}
-
-.form-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-} */
 
 .centered-content {
     display: flex;

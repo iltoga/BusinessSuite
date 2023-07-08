@@ -9,6 +9,7 @@
             <a href="{% url 'customer-detail' customer.pk %}" class="btn btn-primary btn-sm me-1">View</a>
             {% if user|has_perm:'customers,customer,change' %}
             <a href="{% url 'customer-update' customer.pk %}" class="btn btn-warning btn-sm me-1">Edit</a>
+            <button unicorn:click="toggle_active_status({{customer.pk}})" class="btn btn-secondary btn-sm me-1" >{% if customer and customer.active %}Disable{% else %}Enable{% endif %}</button>
             {% endif %}
             {% if user|has_perm:'customers,customer,delete' %}
             <a href="{% url 'customer-delete' customer.pk %}" class="btn btn-danger btn-sm me-1">Delete</a>

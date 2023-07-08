@@ -67,7 +67,7 @@
     {% block head-extra %}
     {% endblock %}
     {% block head-scripts %}
-        <script src="{% static 'js/async_utils.js' %}"></script>
+        <script src="{% static 'js/utils.js' %}"></script>
         <script
             src="https://code.jquery.com/jquery-3.7.0.min.js"
             integrity="sha256-2Pmvv0kuTBOenSvLm6bvfBSSHrUJ+3A7x6P5Ebd07/g="
@@ -76,6 +76,8 @@
         <!-- Select2 -->
         <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
         <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
+        <!-- Mask -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
     {% endblock %}
     {% block head-after-jquery %}
     {% endblock %}

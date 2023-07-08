@@ -43,7 +43,20 @@ GENDERS = [
 ]
 
 
+class CustomerQuerySet(models.QuerySet):
+    # Return a queryset of active customers
+    def active(self):
+        return self.filter(active=True)
+
+
 class CustomerManager(models.Manager):
+    def get_queryset(self):
+        return CustomerQuerySet(self.model, using=self._db)
+
+    # Shortcut for Customer.objects.active()
+    def active(self):
+        return self.get_queryset().active()
+
     def search_customers(self, query):
         return self.filter(
             models.Q(first_name__icontains=query)
@@ -84,6 +97,7 @@ class Customer(models.Model):
     notify_documents_expiration = models.BooleanField(default=True)
     notify_by = models.CharField(choices=NOTIFY_BY_CHOICES, max_length=50, blank=True, null=True)
     notification_sent = models.BooleanField(default=False)
+    active = models.BooleanField(default=True)
 
     objects = CustomerManager()
 

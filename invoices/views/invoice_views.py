@@ -1,9 +1,13 @@
+from django.conf import settings
+from django.contrib import messages
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
+from django.db import transaction
 from django.forms import inlineformset_factory
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
 
+from customers.models import Customer
 from invoices.forms import BaseInvoiceApplicationFormSet, InvoiceApplicationForm, InvoiceForm
 from invoices.models import Invoice
 from invoices.models.invoice import InvoiceApplication
@@ -40,24 +44,64 @@ class InvoiceCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateView
     success_url = reverse_lazy("invoice-list")  # URL pattern name for the invoice list view
     success_message = "Invoice created successfully!"
 
+    def get_customer(self):
+        customer_id = self.kwargs.get("customer_id", None)
+        if customer_id:
+            try:
+                return Customer.objects.get(pk=customer_id)
+            except Customer.DoesNotExist:
+                messages.error(self.request, "Customer not found!")
+        return None
+
     def get_context_data(self, **kwargs):
         data = super().get_context_data(**kwargs)
+
+        customer = self.get_customer()
+        if customer:
+            data["customer"] = customer
+
         if self.request.POST:
-            data["invoiceapplications"] = InvoiceApplicationFormSet(self.request.POST)
+            data["invoice_applications"] = InvoiceApplicationFormSet(
+                self.request.POST, form_kwargs={"customer": customer}
+            )
         else:
-            data["invoiceapplications"] = InvoiceApplicationFormSet()
+            formset = InvoiceApplicationFormSet(form_kwargs={"customer": customer})
+            data["invoice_applications"] = formset
+            data["customer_applications_json"] = formset.forms[0].customer_applications_json if formset.forms else "[]"
+
+        # get currency settings
+        data["currency"] = settings.CURRENCY
+        data["currency_symbol"] = settings.CURRENCY_SYMBOL
+        data["currency_decimal_places"] = settings.CURRENCY_DECIMAL_PLACES
         return data
 
+    def get_initial(self):
+        initial = super().get_initial()
+        customer = self.get_customer()
+        if customer:
+            initial["customer"] = customer
+        return initial
+
+    @transaction.atomic
     def form_valid(self, form):
         context = self.get_context_data()
-        invoiceapplications = context["invoiceapplications"]
+        invoice_applications = context["invoice_applications"]
 
-        self.object = form.save()
-        if invoiceapplications.is_valid():
-            invoiceapplications.instance = self.object
-            invoiceapplications.save()
+        self.object = form.save(commit=False)
+
+        if invoice_applications.is_valid():
+            self.object.save()  # Save the Invoice after checking InvoiceApplications
+            invoice_applications.instance = self.object
+            invoice_applications.save()
+        else:
+            return self.form_invalid(form)
 
         return super().form_valid(form)
+
+    def form_invalid(self, form):
+        print(form.errors)  # Check the form errors in console
+        messages.error(self.request, "Please correct the errors below and resubmit.")
+        return super().form_invalid(form)
 
 
 class InvoiceUpdateView(PermissionRequiredMixin, SuccessMessageMixin, UpdateView):
@@ -71,19 +115,19 @@ class InvoiceUpdateView(PermissionRequiredMixin, SuccessMessageMixin, UpdateView
     def get_context_data(self, **kwargs):
         data = super().get_context_data(**kwargs)
         if self.request.POST:
-            data["invoiceapplications"] = InvoiceApplicationFormSet(self.request.POST, instance=self.object)
+            data["invoice_applications"] = InvoiceApplicationFormSet(self.request.POST, instance=self.object)
         else:
-            data["invoiceapplications"] = InvoiceApplicationFormSet(instance=self.object)
+            data["invoice_applications"] = InvoiceApplicationFormSet(instance=self.object)
         return data
 
     def form_valid(self, form):
         context = self.get_context_data()
-        invoiceapplications = context["invoiceapplications"]
+        invoice_applications = context["invoice_applications"]
 
         self.object = form.save()
-        if invoiceapplications.is_valid():
-            invoiceapplications.instance = self.object
-            invoiceapplications.save()
+        if invoice_applications.is_valid():
+            invoice_applications.instance = self.object
+            invoice_applications.save()
 
         return super().form_valid(form)
 

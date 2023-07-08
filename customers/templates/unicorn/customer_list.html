@@ -7,7 +7,7 @@
 
         <div class="col mb-2 p-2">
             <!-- Search form -->
-            {% include 'components/list_search_form.html' with placeholder='Search Customers...' %}
+            {% include 'components/list_search_form.html' with placeholder='Search Customers...' extra_html='customers/_list_search_form_extra.html' %}
             {% if user|has_perm:'customers,customer,add' %}
             <a href="{% url 'customer-create' %}" class="btn btn-primary">New customer</a>
             {% endif %}

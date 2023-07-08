@@ -4,6 +4,7 @@ import shutil
 
 from django.conf import settings
 from django.db import models
+from django.db.models import Count, F, Q
 from django.db.models.signals import post_delete, pre_delete
 from django.dispatch import receiver
 from django.utils import timezone
@@ -16,11 +17,37 @@ from products.models import Product
 logger = logging.getLogger(__name__)
 
 
+class DocApplicationQuerySet(models.QuerySet):
+    """
+    Custom queryset for DocApplication model.
+    """
+
+    def filter_by_document_collection_completed(self):
+        # First, we annotate each DocApplication with the count of required documents
+        # and the count of required, completed documents
+        doc_applications_with_counts = self.annotate(
+            total_required_documents=Count("documents", filter=Q(documents__required=True)),
+            completed_required_documents=Count(
+                "documents", filter=Q(documents__required=True, documents__completed=True)
+            ),
+        )
+
+        # Then, we filter to only include DocApplications where the counts are equal
+        return doc_applications_with_counts.filter(total_required_documents=F("completed_required_documents"))
+
+
 class DocApplicationManager(models.Manager):
     """
     DocApplication Manager to enhance the default manager and
     add a search functionality.
     """
+
+    def get_queryset(self):
+        return DocApplicationQuerySet(self.model, using=self._db)
+
+    # So we can use the custom queryset methods on the manager too
+    def filter_by_document_collection_completed(self):
+        return self.get_queryset().filter_by_document_collection_completed()
 
     def search_doc_applications(self, query):
         """

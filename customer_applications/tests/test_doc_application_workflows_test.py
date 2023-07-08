@@ -14,7 +14,7 @@ from products.models import Product, Task
 warnings.filterwarnings("ignore", category=UserWarning, module="whitenoise.base")
 
 
-class DocApplicationTest(TestCase):
+class DocApplicationTestWorkflows(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="testuser", password="12345")
         self.customer = Customer.objects.create(

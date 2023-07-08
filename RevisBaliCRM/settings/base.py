@@ -362,3 +362,7 @@ LOGGING = {
         # },
     },
 }
+
+CURRENCY = "IDR"
+CURRENCY_SYMBOL = "Rp"
+CURRENCY_DECIMAL_PLACES = 0

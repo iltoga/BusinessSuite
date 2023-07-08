@@ -1,27 +1,27 @@
 import mimetypes
 import os
 from datetime import datetime
+from math import e
 
 from django.conf import settings
 from django.core.files.storage import default_storage
 from django.core.management import call_command
-from django.db.models import Q
+from django.db.models import Count, Q
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from api.serializers.document_type_serializer import DocumentTypeSerializer
+from api.serializers import CustomerSerializer, DocApplicationSerializer, DocumentTypeSerializer, ProductSerializer
 from core.utils.dateutils import calculate_due_date
 from core.utils.imgutils import convert_and_resize_image
 from core.utils.passport_ocr import extract_mrz_data
+from customer_applications.models import DocApplication
 from customers.models import Customer
 from products.models import Product
 from products.models.document_type import DocumentType
 from products.models.task import Task
-
-from .serializers import CustomerSerializer, ProductSerializer
 
 
 class SearchCustomers(APIView):
@@ -84,6 +84,55 @@ class ProductByIDView(APIView):
                 return Response({"error": "Product does not exist"}, status=status.HTTP_404_NOT_FOUND)
         else:
             return Response({"error": "Invalid request"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CustomerApplicationsView(APIView):
+    queryset = DocApplication.objects.none()
+
+    def get(self, request, *args, **kwargs):
+        """
+        Returns all applications for a customer
+        """
+        customer_id = self.kwargs.get("customer_id")
+        if customer_id:
+            try:
+                applications = DocApplication.objects.filter(customer_id=customer_id)
+
+                # Get applications related to the customer and annotate them with the count of invoice_applications
+                applications = applications.annotate(num_invoices=Count("invoice_applications"))
+
+                # Filter applications based on provided kwargs. If not provided, use defaults
+                # Defaults: exclude_incomplete_document_collection=True, status!=STATUS_REJECTED, num_invoices=0
+                exclude_incomplete_document_collection = (
+                    request.query_params.get("exclude_incomplete_document_collection", "true").lower() == "true"
+                )
+                exclude_statuses_string = request.query_params.get("exclude_statuses", None)
+                if exclude_statuses_string:
+                    exclude_statuses = [status for status in exclude_statuses_string.split(",")]
+                    STATUS_DICT = dict(DocApplication.STATUS_CHOICES)
+                    if not all(status in STATUS_DICT.keys() for status in exclude_statuses):
+                        return Response(data={"error": "Invalid status provided"}, status=status.HTTP_400_BAD_REQUEST)
+                else:
+                    exclude_statuses = [DocApplication.STATUS_REJECTED]
+                exclude_with_invoices = request.query_params.get("exclude_with_invoices", "true").lower() == "true"
+
+                if exclude_incomplete_document_collection:
+                    applications = applications.filter_by_document_collection_completed()
+
+                if exclude_statuses:
+                    applications = applications.exclude(status__in=exclude_statuses)
+
+                if exclude_with_invoices:
+                    applications = applications.exclude(num_invoices__gt=0)
+
+                serializer = DocApplicationSerializer(applications, many=True)
+                return Response(serializer.data)
+            except Customer.DoesNotExist:
+                return Response(data={"error": "Customer does not exist"}, status=status.HTTP_404_NOT_FOUND)
+            except Exception as e:
+                return Response(data={"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response(data={"error": "Invalid request"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class ProductsByTypeView(APIView):

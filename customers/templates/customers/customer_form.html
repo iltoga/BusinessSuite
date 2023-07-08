@@ -1,12 +1,18 @@
 {% extends "base_template.html" %}
-{% load static form_extras %}
 {% load crispy_forms_tags %}
+{% load static form_extras %}
+{% load widget_tweaks %}
 
 {% block title %}RevisCRM - {{ action_name }} customer{% endblock %}
 
 {% block content %}
 <div>
     <h2 class="text-center my-4">{{ action_name }} a new customer</h2>
+    {% if form.non_field_errors %}
+    <div class="alert alert-danger" role="alert">
+        {{ form.non_field_errors }}
+    </div>
+    {% endif %}
     <form method="post" class="p-3 rounded w-100" action="{{ action }}">
         {% csrf_token %}
         {% for field in form %}
@@ -23,6 +29,11 @@
                     <div class="mb-3 d-flex">
                         <img id="resized_image_id" style="display: none;">
                     </div>
+                    {% if form.passport_file.errors %}
+                    <div class="alert alert-danger" role="alert">
+                        {{ form.passport_file.errors }}
+                    </div>
+                    {% endif %}
                 </div>
             {% endif %}
         {% endfor %}

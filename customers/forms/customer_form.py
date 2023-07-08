@@ -6,6 +6,12 @@ from customers.models import GENDERS, NOTIFY_BY_CHOICES, Customer
 
 
 class CustomerForm(forms.ModelForm):
+    # add first_name with validation: first letter must be uppercase
+    first_name = forms.CharField(
+        max_length=50,
+        required=True,
+        widget=forms.TextInput(attrs={"pattern": "[A-Z][a-z]*"}),
+    )
     birthdate = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
     address_bali = forms.CharField(widget=forms.Textarea(attrs={"rows": 5}), required=False)
     address_abroad = forms.CharField(widget=forms.Textarea(attrs={"rows": 5}), required=False)

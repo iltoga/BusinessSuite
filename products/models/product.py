@@ -36,4 +36,4 @@ class Product(models.Model):
         ordering = ["name"]
 
     def __str__(self):
-        return self.code
+        return self.code + " - " + self.name

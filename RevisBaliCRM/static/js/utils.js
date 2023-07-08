@@ -210,7 +210,38 @@ function convertDateFormat(input, futureDate = false) {
     return output;
 }
 
+// Format a currency field using the jQuery Mask plugin
+function formatCurrency(el, decimals = 0, prefix = 'Rp', thousands_symbol = '.', decimal_symbol = ',') {
+    var decimals = parseInt("{{ currency_decimal_places }}");
+    var msk_decimals = '';
+    var msk = '000' + thousands_symbol;
+    const thousands_places = 5;
+    for (var i = 0; i < thousands_places; i++) {
+        msk = '000' + thousands_symbol + msk;
+    }
+    for (var i = 0; i < decimals; i++) {
+        if (i === 0) {
+            msk_decimals += '.';
+        }
+        msk_decimals += '0';
+    }
+    msk += msk_decimals;
+    setTimeout(function () {
+        el.mask(msk, { reverse: true });
+    }, 0);
+}
 
+// Unformat a currency field using the jQuery Mask plugin
+function unformatCurrency(el, decimals, thousands_symbol = '.', decimal_symbol = ',') {
+    var unformatted = el.unmask();
+    unformatted = unformatted.replace(thousands_symbol, '');
+    if (decimals > 0) {
+        unformatted = unformatted.replace(decimal_symbol, '.');
+    }
+    return parseFloat(unformatted);
+}
 
-
-
+// Round to currency decimal places
+function roundToCurrencyDecimalPlaces(value, decimals = 0) {
+    return value.toFixed(decimals);
+}

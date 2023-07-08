@@ -24,5 +24,5 @@ class DocApplicationForm(forms.ModelForm):
         else:  # Creating new record
             self.fields["customer"].widget = forms.Select(attrs={"class": "select2"})
             self.fields["product"].widget = forms.Select(attrs={"class": "select2"})
-            self.fields["customer"].queryset = Customer.objects.all()
+            self.fields["customer"].queryset = Customer.objects.all().active()
             self.fields["product"].queryset = Product.objects.all()

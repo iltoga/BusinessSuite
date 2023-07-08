@@ -1,6 +1,7 @@
 import json
 
 from django import template
+from django.contrib.humanize.templatetags.humanize import intcomma
 
 register = template.Library()
 
@@ -33,3 +34,8 @@ def get_incomplete_documents(docapplication, doc_type):
 @register.simple_tag
 def get_completed_documents(docapplication, doc_type):
     return docapplication.get_completed_documents(doc_type)
+
+
+@register.filter(is_safe=True)
+def as_currency(value):
+    return "$ %s" % intcomma(value)

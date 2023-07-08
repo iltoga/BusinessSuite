@@ -9,8 +9,8 @@
     <form method="post" class="p-3 rounded w-100">
         {% csrf_token %}
         {{ form | crispy }}
-        {{ invoiceapplications.management_form }}
-        {% for form in invoiceapplications %}
+        {{ invoice_applications.management_form }}
+        {% for form in invoice_applications %}
             {{ form | crispy }}
         {% endfor %}
         <div>
