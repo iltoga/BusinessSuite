@@ -1,10 +1,57 @@
 # models.py
 from django.conf import settings
+from django.contrib.postgres.search import SearchVector, TrigramSimilarity
 from django.core import serializers
 from django.db import models
+from django.db.models import Q
 
 from customer_applications.models.doc_application import DocApplication
 from customers.models import Customer
+
+
+class InvoiceQuerySet(models.QuerySet):
+    """
+    Custom queryset for Invoice model.
+    """
+
+    pass
+
+
+class InvoiceManager(models.Manager):
+    """
+    Invoice Manager to enhance the default manager and
+    add a search functionality.
+    """
+
+    def get_queryset(self):
+        return InvoiceQuerySet(self.model, using=self._db)
+
+    def search_invoices(self, query):
+        """
+        Search Invoices by customer, invoice number, invoice date, due date, status, invoice date year (this one exact match).
+        Use the SearchVector to search across multiple fields.
+        """
+        return self.annotate(
+            search=SearchVector(
+                "invoice_no",
+                "invoice_date",
+                "due_date",
+                "status",
+                "invoice_date__year",
+            ),
+            first_name_similarity=TrigramSimilarity("customer__first_name", query),
+            last_name_similarity=TrigramSimilarity("customer__last_name", query),
+        ).filter(Q(search=query) | Q(first_name_similarity__gt=0.3) | Q(last_name_similarity__gt=0.3))
+
+        # return self.filter(
+        #     models.Q(customer__first_name__icontains=query)
+        #     | models.Q(customer__last_name__icontains=query)
+        #     | models.Q(invoice_no__icontains=query)
+        #     | models.Q(invoice_date__icontains=query)
+        #     | models.Q(due_date__icontains=query)
+        #     | models.Q(status__icontains=query)
+        #     | (models.Q(invoice_date__year=year_query) if year_query is not None else models.Q())
+        # )
 
 
 class Invoice(models.Model):
@@ -56,6 +103,7 @@ class Invoice(models.Model):
         null=True,
         blank=True,
     )
+    objects = InvoiceManager()
 
     class Meta:
         ordering = ("-invoice_no",)
@@ -66,12 +114,9 @@ class Invoice(models.Model):
         return applications
 
     @property
-    def tot_paid_amount(self):
-        return sum(application.paid_amount for application in self.invoiceapplication_set.all())
-
-    @property
-    def tot_due_amount(self):
-        return self.total_amount - self.tot_paid_amount
+    def invoice_no_display(self):
+        # return f"{self.invoice_date.year}/{self.invoice_no:06d}"
+        return f"{self.invoice_date.strftime('%Y-%m-%d')}/{self.invoice_no:08d}"
 
     def delete(self, *args, **kwargs):
         raise Exception("You can't delete an invoice.")
@@ -79,25 +124,20 @@ class Invoice(models.Model):
     def save(self, *args, **kwargs):
         if not self.invoice_no:
             self.invoice_no = self.get_next_invoice_no()
-            self.total_amount = self.calculate_total_amount()
         super().save(*args, **kwargs)
 
     def __str__(self):
-        inv_no = f"Inv no. {self.invoice_no} -" if self.invoice_no else "New -"
-        inv_year = f"- {self.invoice_date.year}" if self.invoice_date else ""
-        return f"{inv_no} {self.customer} {self.invoice_date}"
+        inv_no = f"{self.invoice_no_display}" if self.invoice_no else "New"
+        customer = self.customer
+        return f"{inv_no} - {customer}"
 
     # Custom methods
 
     def calculate_total_amount(self):
-        if self.pk is None:
-            # The instance has not been saved to the database yet, return a default value
-            return 0
-        else:
-            tot = 0
-            if self.invoice_applications.exists():
-                tot = self.invoice_applications.aggregate(models.Sum("amount"))["amount__sum"]
-            return tot
+        tot = 0
+        if self.invoice_applications and self.invoice_applications.exists():
+            tot = self.invoice_applications.aggregate(models.Sum("amount"))["amount__sum"]
+        return tot
 
     def get_next_invoice_no(self):
         last_invoice = Invoice.objects.last()
@@ -134,6 +174,12 @@ class InvoiceApplication(models.Model):
     due_amount = models.DecimalField(max_digits=10, decimal_places=2)
     paid_amount = models.DecimalField(default=0, max_digits=10, decimal_places=2)
     payment_status = models.CharField(choices=PAYMENT_STATUS_CHOICES, default=PENDING, max_length=20, db_index=True)
+
+    class Meta:
+        ordering = ("-id",)
+
+    def __str__(self):
+        return f"{self.invoice} - {self.customer_application}"
 
 
 class Payment(models.Model):

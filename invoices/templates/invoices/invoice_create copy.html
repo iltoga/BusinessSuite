@@ -1,0 +1,207 @@
+{% extends "base_template.html" %}
+{% load crispy_forms_tags %}
+{% load filters %}
+
+{% block title %}RevisCRM - Create Invoice{% endblock %}
+
+{% block content %}
+<div>
+    {% if form.non_field_errors %}
+    <div class="alert alert-danger" role="alert">
+        {{ form.non_field_errors }}
+    </div>
+    {% endif %}
+
+    {% if invoice_applications.non_form_errors %}
+        <div class="alert alert-danger" role="alert">
+            {{ invoice_applications.non_form_errors }}
+        </div>
+    {% endif %}
+
+    <h2 class="text-center my-4">Create a new Invoice</h2>
+    <form method="post" class="p-3 rounded w-100" action="" id="invoice-application-form">
+        {% csrf_token %}
+        {{ form | crispy}}
+        <!-- instead of using form | crispy, expand all form fields using form  -->
+        <h3 class="text-center my-4">Invoice Applications</h3>
+        {{ invoice_applications.management_form }}
+        <div id="invoiceapplication-form-list">
+            {% for invoiceapplication_form in invoice_applications %}
+            <div class="invoiceapplication_form p-3 mb-4 border rounded">
+                {% if invoiceapplication_form.non_field_errors %}
+                <div class="alert alert-danger" role="alert">
+                    {{ invoiceapplication_form.non_field_errors }}
+                </div>
+                {% endif %}
+                {{ invoiceapplication_form | crispy }}
+            </div>
+            {% endfor %}
+        </div>
+
+
+        <div id="empty-form" style="display:none;">
+            <div class="invoiceapplication_form p-3 mb-4 border rounded">
+                {{ invoice_applications.empty_form | crispy | slice_after:'<ul class="errorlist nonfield">' | safe }}
+                <button type="button" class="btn btn-danger remove-invoiceapplication-btn mt-2">Remove Application</button>
+            </div>
+        </div>
+        <div>
+            <button type="button" class="btn btn-secondary" id="add-invoiceapplication">Add Customer Application</button>
+            <button type="submit" class="btn btn-primary">Save Application</button>
+            <a href="javascript:history.back()" class="btn btn-outline-primary">Back</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block after-bootstrap-js %}
+    {{ block.super }}
+    <script>
+        var customerApplications = [];
+
+        $(document).ready(function() {
+            checkSelected();
+        });
+
+        function checkSelected() {
+            customerVal = $('#id_customer').val();
+            customerApplicationsHasData = customerApplications.length > 0;
+            if (customerVal) {
+                $('#add-invoiceapplication').prop('disabled', !customerApplicationsHasData);
+
+            } else {
+                $('#add-invoiceapplication').prop('disabled', true);
+            }
+        }
+
+        function resetForms() {
+            $('#invoiceapplication-form-list').empty();
+            $('#id_invoice_applications-TOTAL_FORMS').val(0);
+            updateTotalAmount();
+        }
+
+        function doMask(el) {
+            var decimals = parseInt("{{ currency_decimal_places }}");
+            mm = '000,000,000,000,000';
+            if (decimals > 0) {
+                return '000,000,000,000,000.00';
+            }
+            setTimeout(function() {
+                el.mask(mm, {reverse: true});
+            }, 0);
+        }
+
+        function updateTotalAmount() {
+            var total = 0.0;
+            $('[id$=-due_amount]').each(function() {
+                // unmaks the value and parse it as a float
+                total += parseFloat($(this).val().replace(/,/g, '')) || 0;
+            });
+            $('#id_total_amount').val(total);
+        }
+
+        $(document).on('change', "input[name$='-due_amount']", function () {
+            updateTotalAmount();
+        });
+
+        $('#id_customer').change(function() {
+            $('#restApiError').remove();
+            var selection = $(this).val();
+            // remove all existing required document forms
+            resetForms();
+            if (selection) {
+                var exclude_incomplete_document_collection = true;
+                var exclude_statuses = ['rejected'];
+                var exclude_with_invoices = true;
+                var url = "{% url 'api-customer-applications' customer_id='123456' %}";
+                url = url.replace('123456', selection);
+                url += '?exclude_incomplete_document_collection=' + exclude_incomplete_document_collection.toString();
+                url += '&exclude_statuses=' + exclude_statuses;
+                url += '&exclude_with_invoices=' + exclude_with_invoices.toString();
+                restApiCall('GET', url, null,
+                    data => {
+                        customerApplications = data;
+                        checkSelected();
+
+                        if (data.length == 0) {
+                            var errorMessage = $('<div id="restApiError" class="error-message text-danger"></div>').text('No applications ready to invoice found for this customer! Check if you have completed all the required documents.');
+                            $('#div_id_customer').append(errorMessage);
+                            return
+                        }
+                        // if currency has no decimal places, remove the decimal places from the price
+                        // TODO: implement mask for the price field
+                        var decimals = parseInt("{{ currency_decimal_places }}");
+                        if (decimals == 0) {
+                            $.each(customerApplications, function (index, application) {
+                                if (application.price) {
+                                    application.price = parseFloat(application.price).toFixed(0);
+                                }
+                            });
+                        }
+                    },
+                    error => {
+                        var errorMessage = $('<div id="restApiError" class="error-message text-danger"></div>').text(error);
+                        $('#div_id_customer').append(errorMessage);
+                        checkSelected();
+                    }
+                );
+            }
+        });
+
+        document.getElementById('add-invoiceapplication').addEventListener('click', function() {
+            var formIdx = $('#id_invoice_applications-TOTAL_FORMS').val();
+            var newForm = $('#empty-form').clone().html().replace(/__prefix__/g, formIdx);
+            $('#invoiceapplication-form-list').append(newForm);
+            $('#id_invoice_applications-TOTAL_FORMS').val(parseInt(formIdx) + 1);
+            $('#id_invoice_applications-' + formIdx + '-step').val(parseInt(formIdx) + 1);
+            $('#id_invoice_applications-' + formIdx + '-DELETE').parent().hide();
+
+            // Populate the customer application dropdown list using Select2
+
+            // first check if the we have a regular select box or a select2 element
+            // var selectBox = $('#id_invoice_applications-' + formIdx + '-customer_application').select2({
+            //     data: customerApplications.map(application => ({
+            //         id: application.id,
+            //         text: application.str_field,
+            //     })),
+            //     width: '100%',
+            // });
+            var selectBox = $('#id_invoice_applications-' + formIdx + '-customer_application');
+            $.each(customerApplications, function (index, application) {
+                selectBox.append(new Option(application.str_field, application.id));
+            });
+
+            // Attach a change event handler to the Select2 element
+            selectBox.on('change', function() {
+                // When a customer application is selected, find the corresponding application data
+                var selectedApplicationId = $(this).val();
+                var selectedApplication = customerApplications.find(application => application.id === parseInt(selectedApplicationId));
+                // Populate the 'due_amount' field and update the total amount
+                if (selectedApplication) {
+                    due_amount = $('#id_invoice_applications-' + formIdx + '-due_amount');
+                    due_amount.val(selectedApplication.price);
+                    updateTotalAmount();
+                }
+            });
+        });
+
+        $(document).on('click', '.remove-invoiceapplication-btn', function(){
+            if ($('.invoiceapplication_form').length > 1) {
+                $(this).parent().remove();
+                var forms = $('#invoiceapplication-form-list .invoiceapplication_form'); // Get all the forms
+                $('#id_invoice_applications-TOTAL_FORMS').val(forms.length); // Update the total number of forms
+                var i = 0;
+                // Go through the forms and set their indices, names and IDs
+                for (form of forms.toArray()) {
+                    $(form).find('input,select,checkbox').each(function() {
+                        $(this).attr('name', $(this).attr('name').replace(/-\d+-/, '-' + i + '-'));
+                        $(this).attr('id', $(this).attr('id').replace(/-\d+-/, '-' + i + '-'));
+                    });
+                    i++;
+                }
+                updateTotalAmount();
+            }
+        });
+
+    </script>
+{% endblock %}

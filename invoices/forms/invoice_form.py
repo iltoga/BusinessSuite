@@ -22,7 +22,7 @@ class InvoiceForm(forms.ModelForm):
             "sent": forms.CheckboxInput(),
         }
 
-    def __init__(self, *args, customer=None, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self.instance and self.instance.pk:
             self.fields["customer"].disabled = True
@@ -35,9 +35,35 @@ class InvoiceForm(forms.ModelForm):
             self.fields["customer"].queryset = Customer.objects.all().active()
 
         # populate customer field if customer is provided
-        if customer:
-            self.fields["customer"].initial = customer
-            self.fields["customer"].queryset = Customer.objects.get(pk=customer.pk)
+        # if customer:
+        #     self.fields["customer"].initial = customer
+        #     self.fields["customer"].queryset = Customer.objects.get(pk=customer.pk)
+        #     customer_applications = DocApplication.objects.filter(
+        #         customer=customer
+        #     ).filter_by_document_collection_completed()
+
+        #     if not customer_applications.exists():
+        #         self.add_error("customer", "No applications found for this customer!")
+
+    def clean(self):
+        cleaned_data = super().clean()
+        invoice_no = cleaned_data.get("invoice_no")
+
+        # invoice_no is the unique field we're using for duplicate checks
+        if invoice_no and self.instance.pk is None:
+            invoice_applications = self.cleaned_data.get("invoice_applications")
+
+            for application_form in invoice_applications:
+                # clean() method is called on each form automatically
+                customer_application = application_form.cleaned_data.get("customer_application")
+
+                if InvoiceApplication.objects.filter(
+                    invoice__invoice_no=invoice_no, customer_application=customer_application
+                ).exists():
+                    raise forms.ValidationError(
+                        "This customer application has already been added.", code="invalid_customer_application"
+                    )
+        return cleaned_data
 
 
 class InvoiceApplicationForm(forms.ModelForm):
@@ -49,30 +75,16 @@ class InvoiceApplicationForm(forms.ModelForm):
             "paid_amount": forms.NumberInput(),
         }
 
-    def __init__(self, *args, customer=None, **kwargs):
+    def __init__(self, *args, customer_applications=None, **kwargs):
         super().__init__(*args, **kwargs)
 
         if self.instance and self.instance.pk:
             self.fields["customer_application"].widget = forms.TextInput(attrs={"readonly": True})
         else:
-            queryset = DocApplication.objects.filter(customer=customer).filter_by_document_collection_completed()
-            self.fields["customer_application"].queryset = queryset
-
-            # Serializing queryset into JSON
-            self.customer_applications_json = serializers.serialize("json", queryset)
+            self.fields["customer_application"].queryset = customer_applications
 
             self.fields["paid_amount"].widget = forms.HiddenInput()
             self.fields["payment_status"].widget = forms.HiddenInput()
-
-    def clean_customer_application(self):
-        """Checks that the customer application has not already been added."""
-        customer_application = self.cleaned_data["customer_application"]
-        invoice = self.instance.invoice
-        if invoice.invoiceapplication_set.filter(customer_application=customer_application).exists():
-            raise forms.ValidationError(
-                "This customer application has already been added.", code="invalid_customer_application"
-            )
-        return customer_application
 
     def clean(self):
         """Checks that the paid amount is not greater than the due amount."""

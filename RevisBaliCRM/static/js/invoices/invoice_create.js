@@ -1,8 +1,5 @@
 // Use IIFE to avoid polluting the global namespace
 (function (currencyDecimalPlaces, customerApplications, maskedUrlNewInvoice) {
-    console.log('invoice_create.js loaded');
-    console.log('customerApplications: ', customerApplications);
-
     $(document).ready(function () {
         checkSelected();
     });
@@ -16,10 +13,13 @@
             var dueAmount = customerApplications.find(function (application) {
                 return application.pk == selected;
             }).fields.price;
+            // sanitize the value given currencyDecimalPlaces
+            dueAmount = roundToCurrencyDecimalPlaces(dueAmount, currencyDecimalPlaces)
             dueAmountInput.val(dueAmount);
         } else {
             dueAmountInput.val('');
         }
+        updateTotalAmount();
     });
 
     $(document).on('change', "input[name$='-due_amount']", function () {

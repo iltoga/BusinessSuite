@@ -8,7 +8,7 @@
           class="bi bi-search mr-2"
         ></i>
         <input type="text" class="form-control"
-          unicorn:model.debounce-{{debounce|default:3000}}="search_input"
+          unicorn:model.prevent.debounce-{{debounce|default:9999999999}}="search_input"
           unicorn:keyup.enter.prevent.debounce-{{debounce|default:3000}}="search"
           unicorn:keyup.escape.prevent="search(True)"
           placeholder="{{placeholder|default:'Search...'}}"

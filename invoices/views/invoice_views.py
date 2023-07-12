@@ -2,11 +2,14 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
+from django.core import serializers
 from django.db import transaction
 from django.forms import inlineformset_factory
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
 
+import customer_applications
+from customer_applications.models import DocApplication
 from customers.models import Customer
 from invoices.forms import BaseInvoiceApplicationFormSet, InvoiceApplicationForm, InvoiceForm
 from invoices.models import Invoice
@@ -57,17 +60,27 @@ class InvoiceCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateView
         data = super().get_context_data(**kwargs)
 
         customer = self.get_customer()
+        customer_applications = DocApplication.objects.none()
         if customer:
-            data["customer"] = customer
+            data["customer"] = serializers.serialize("json", [])
+            customer_applications = DocApplication.objects.filter(
+                customer=customer
+            ).filter_by_document_collection_completed()
+            # TODO: find a better place to put this message
+            if not customer_applications:
+                messages.error(
+                    self.request, "No applications found for this customer! Did you complete the document collection?"
+                )
+        data["customer_applications_json"] = serializers.serialize("json", customer_applications)
 
         if self.request.POST:
             data["invoice_applications"] = InvoiceApplicationFormSet(
-                self.request.POST, form_kwargs={"customer": customer}
+                self.request.POST,
+                form_kwargs={"customer_applications": customer_applications},
             )
         else:
-            formset = InvoiceApplicationFormSet(form_kwargs={"customer": customer})
+            formset = InvoiceApplicationFormSet(form_kwargs={"customer_applications": customer_applications})
             data["invoice_applications"] = formset
-            data["customer_applications_json"] = formset.forms[0].customer_applications_json if formset.forms else "[]"
 
         # get currency settings
         data["currency"] = settings.CURRENCY
@@ -89,7 +102,7 @@ class InvoiceCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateView
 
         self.object = form.save(commit=False)
 
-        if invoice_applications.is_valid():
+        if all(form.is_valid() for form in invoice_applications) and invoice_applications.is_valid():
             self.object.save()  # Save the Invoice after checking InvoiceApplications
             invoice_applications.instance = self.object
             invoice_applications.save()

@@ -1,19 +1,60 @@
 {% extends "base_template.html" %}
+{% load static %}
+{% load filters %}
+{% load form_extras %}
+
 {% block title %}RevisCRM - Invoice Detail{% endblock %}
 
 {% block content %}
-<div>
-    <h2 class="text-center my-4">Invoice Detail</h2>
-    <div class="p-3 rounded w-100">
-        <p>Customer: {{ object.customer }}</p>
-        <p>Invoice Number: {{ object.invoice_no }}</p>
-        <p>Invoice Date: {{ object.invoice_date }}</p>
-        <p>Due Date: {{ object.due_date }}</p>
-        <p>Status: {{ object.status }}</p>
-        <p>Notes: {{ object.notes }}</p>
-        <p>Total Amount: {{ object.total_amount }}</p>
-        <hr \>
-        <a href="javascript:history.back()" class="btn btn-outline-primary">Back</a>
+  <div class="my-4">
+    <div class="card">
+      <div class="card-header bg-primary text-white">
+        <h3>Invoice No. {{ object }}</h3>
+      </div>
+      <table class="table">
+        <tbody>
+          <tr><th scope="row" class="text-start">Customer</th><td class="text-start">{{ object.customer }}</td></tr>
+          <tr><th scope="row" class="text-start">Invoice Number</th><td class="text-start">{{ object.invoice_no_display }}</td></tr>
+          <tr><th scope="row" class="text-start">Invoice Date</th><td class="text-start">{{ object.invoice_date }}</td></tr>
+          <tr><th scope="row" class="text-start">Due Date</th><td class="text-start">{{ object.due_date }}</td></tr>
+          <tr><th scope="row" class="text-start">Status</th><td class="text-start">{% include "components/model_invoice_status_badge.html" with status=object.status status_display=object.get_status_display %}</td></tr>
+          <tr><th scope="row" class="text-start">Notes</th><td class="text-start">{{ object.notes }}</td></tr>
+          <tr><th scope="row" class="text-start">Total Amount</th><td class="text-start">{{ object.total_amount|as_currency }}</td></tr>
+        </tbody>
+      </table>
+
+      <div class="card-header bg-secondary text-white">
+        <h3>Customer Applications</h3>
+      </div>
+      <table class="table">
+        <thead>
+          <tr>
+            <th scope="col" class="text-start">Application</th>
+            <th scope="col" class="text-start">Due Amount</th>
+            <th scope="col" class="text-start">Paid Amount</th>
+            <th scope="col" class="text-start">Payment Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for app in object.invoice_applications.all %}
+            <tr>
+              <!-- add a link to customer application's details {} -->
+              <td class="text-start"><a href="{% url 'customer-application-detail' app.customer_application.id %}">{{ app.customer_application }}</a></td>
+              <td class="text-start">{{ app.due_amount|as_currency }}</td>
+              <td class="text-start">{{ app.paid_amount|as_currency }}</td>
+              <td class="text-start">{% include "components/model_payment_status_badge.html" with status=app.payment_status status_display=app.get_payment_status_display %}</td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="4">No applications found for this invoice</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <div class="card-body">
+        <a href="javascript:history.back()" class="btn btn-primary">Back</a>
+      </div>
     </div>
-</div>
+  </div>
 {% endblock %}

@@ -243,5 +243,6 @@ function unformatCurrency(el, decimals, thousands_symbol = '.', decimal_symbol =
 
 // Round to currency decimal places
 function roundToCurrencyDecimalPlaces(value, decimals = 0) {
-    return value.toFixed(decimals);
+    v = parseFloat(value);
+    return v.toFixed(decimals);
 }

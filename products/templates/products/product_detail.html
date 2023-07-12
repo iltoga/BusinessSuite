@@ -1,6 +1,6 @@
 {% extends "base_template.html" %}
 {% load static %}
-{% load humanize %}
+{% load filters %}
 
 {% block content %}
   <div>
@@ -13,7 +13,7 @@
             <tr><th scope="row" class="text-start">Name</th><td class="text-start">{{ product.name }}</td></tr>
             <tr><th scope="row" class="text-start">Code</th><td class="text-start">{{ product.code }}</td></tr>
             <tr><th scope="row" class="text-start">Description</th><td class="text-start">{{ product.description }}</td></tr>
-            <tr><th scope="row" class="text-start">Base Price</th><td class="text-start">{{ product.base_price|floatformat:2|intcomma }}</td></tr>
+            <tr><th scope="row" class="text-start">Base Price</th><td class="text-start">{{ product.base_price|as_currency }}</td></tr>
             <tr><th scope="row" class="text-start">Product Type</th><td class="text-start">{{ product.get_product_type_display }}</td></tr>
             <tr><th scope="row" class="text-start">Product Validity (days)</th><td class="text-start">{{ product.validity }}</td></tr>
             <tr><th scope="row" class="text-start">Documents Min Validity (days)</th><td class="text-start">{{ product.documents_min_validity }}</td></tr>

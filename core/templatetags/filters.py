@@ -1,7 +1,11 @@
 import json
 
 from django import template
+from django.conf import settings
 from django.contrib.humanize.templatetags.humanize import intcomma
+from django.template.defaultfilters import floatformat
+
+from RevisBaliCRM.settings.base import CURRENCY_DECIMAL_PLACES, CURRENCY_SYMBOL
 
 register = template.Library()
 
@@ -38,4 +42,9 @@ def get_completed_documents(docapplication, doc_type):
 
 @register.filter(is_safe=True)
 def as_currency(value):
-    return "$ %s" % intcomma(value)
+    CURRENCY_SYMBOL = getattr(settings, "CURRENCY_SYMBOL", "Rp")
+    CURRENCY_DECIMAL_PLACES = getattr(settings, "CURRENCY_DECIMAL_PLACES", 0)
+    if value == "":
+        value = 0
+    value = floatformat(value, CURRENCY_DECIMAL_PLACES)
+    return "%s %s" % (CURRENCY_SYMBOL, intcomma(value))
