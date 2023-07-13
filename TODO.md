@@ -23,6 +23,10 @@
 
 
 ## TODO:
+### 2023-07-12
+- remove price from customer application
+- in invoice application, when selecting the customer application, the price will be taken from the product base price
+- remove quantity and unit price from the invoice template (docx)
 
 ### 2023-06-09
 - add exit_date to customer application: optional field telling us if and when the customer wants to go out of the country. This should trigger a notification in case the customer’s application is still on process and he has to leave the country.

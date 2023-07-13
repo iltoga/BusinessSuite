@@ -9,6 +9,7 @@ urlpatterns = [
     path("update/<int:pk>/", views.InvoiceUpdateView.as_view(), name="invoice-update"),
     path("delete/<int:pk>/", views.InvoiceDeleteView.as_view(), name="invoice-delete"),
     path("detail/<int:pk>/", views.InvoiceDetailView.as_view(), name="invoice-detail"),
+    path("download/<int:pk>", views.InvoiceDownloadView.as_view(), name="invoice-download"),
     # Add paths for InvoiceApplication and Payment views here
     path(
         "invoiceapplication/<int:pk>/update/",

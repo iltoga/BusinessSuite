@@ -1,3 +1,10 @@
-from .invoice_form import BaseInvoiceApplicationFormSet, InvoiceApplicationForm, InvoiceForm, PaymentForm
+from .invoice_form import (
+    BaseInvoiceApplicationFormSet,
+    InvoiceApplicationCreateForm,
+    InvoiceApplicationUpdateForm,
+    InvoiceCreateForm,
+    InvoiceUpdateForm,
+    PaymentForm,
+)
 
 # import other form classes here

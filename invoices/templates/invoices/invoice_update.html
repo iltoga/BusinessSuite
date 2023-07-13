@@ -1,23 +1,64 @@
 {% extends "base_template.html" %}
 {% load crispy_forms_tags %}
+{% load filters %}
+{% load static %}
 
-{% block title %}RevisCRM - Update Invoice{% endblock %}
+{% block title %}RevisCRM - Create Invoice{% endblock %}
 
 {% block content %}
 <div>
-    <h2 class="text-center my-4">Update Invoice</h2>
-    <form method="post" class="p-3 rounded w-100">
+    {% if form.non_field_errors %}
+    <div class="alert alert-danger" role="alert">
+        {{ form.non_field_errors }}
+    </div>
+    {% endif %}
+
+    {% if invoice_applications.non_form_errors %}
+        <div class="alert alert-danger" role="alert">
+            {{ invoice_applications.non_form_errors }}
+        </div>
+    {% endif %}
+
+    <h2 class="text-center my-4">Create a new Invoice</h2>
+    <form method="post" class="p-3 rounded w-100" action="" id="invoice-application-form">
         {% csrf_token %}
         {{ form | crispy }}
+        <h3 class="text-center my-4">Invoice Applications</h3>
         {{ invoice_applications.management_form }}
-        {% for form in invoice_applications %}
-            {{ form | crispy }}
-        {% endfor %}
+        <div id="invoiceapplication-form-list">
+            {% for invoiceapplication_form in invoice_applications %}
+            <div class="invoiceapplication_form p-3 mb-4 border rounded">
+                {% if invoiceapplication_form.non_field_errors %}
+                <div class="alert alert-danger" role="alert">
+                    {{ invoiceapplication_form.non_field_errors }}
+                </div>
+                {% endif %}
+                {{ invoiceapplication_form | crispy }}
+            </div>
+            {% endfor %}
+        </div>
+        <div id="empty-form" style="display:none;">
+            <div class="invoiceapplication_form p-3 mb-4 border rounded">
+                {{ invoice_applications.empty_form | crispy | slice_after:'<ul class="errorlist nonfield">' | safe }}
+                <button type="button" class="btn btn-danger remove-invoiceapplication-btn mt-2">Remove Application</button>
+            </div>
+        </div>
         <div>
-            <hr \>
-            <button type="submit" class="btn btn-primary">Update</button>
+            <button type="button" class="btn btn-secondary" id="add-invoiceapplication">Add Customer Application</button>
+            <button type="submit" class="btn btn-primary">Save Application</button>
             <a href="javascript:history.back()" class="btn btn-outline-primary">Back</a>
         </div>
     </form>
 </div>
 {% endblock %}
+
+{% block after-bootstrap-js %}
+    {{ block.super }}
+    <script>
+        var decimals = parseInt("{{ currency_decimal_places }}");
+        var customerApplications = JSON.parse('{{ customer_applications_json|escapejs }}');
+        var masked_url = "{% url 'invoice-create-by-customer' customer_id='123456' %}";
+    </script>
+    <script src="{% static 'js/invoices/invoice_update.js' %}"></script>
+{% endblock %}
+

@@ -8,19 +8,33 @@ from django.forms import inlineformset_factory
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
 
-import customer_applications
 from customer_applications.models import DocApplication
 from customers.models import Customer
-from invoices.forms import BaseInvoiceApplicationFormSet, InvoiceApplicationForm, InvoiceForm
+from invoices.forms import (
+    BaseInvoiceApplicationFormSet,
+    InvoiceApplicationCreateForm,
+    InvoiceApplicationUpdateForm,
+    InvoiceCreateForm,
+    InvoiceUpdateForm,
+)
 from invoices.models import Invoice
 from invoices.models.invoice import InvoiceApplication
 
-InvoiceApplicationFormSet = inlineformset_factory(
+InvoiceApplicationCreateFormSet = inlineformset_factory(
     Invoice,
     InvoiceApplication,
-    form=InvoiceApplicationForm,
+    form=InvoiceApplicationCreateForm,
     formset=BaseInvoiceApplicationFormSet,
     extra=1,
+    can_delete=True,
+)
+
+InvoiceApplicationUpdateFormSet = inlineformset_factory(
+    Invoice,
+    InvoiceApplication,
+    form=InvoiceApplicationUpdateForm,
+    formset=BaseInvoiceApplicationFormSet,
+    extra=0,
     can_delete=True,
 )
 
@@ -42,10 +56,15 @@ class InvoiceListView(PermissionRequiredMixin, ListView):
 class InvoiceCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateView):
     permission_required = ("invoices.add_invoice",)
     model = Invoice
-    form_class = InvoiceForm
+    form_class = InvoiceCreateForm
     template_name = "invoices/invoice_create.html"
     success_url = reverse_lazy("invoice-list")  # URL pattern name for the invoice list view
     success_message = "Invoice created successfully!"
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs.update({"user": self.request.user})
+        return kwargs
 
     def get_customer(self):
         customer_id = self.kwargs.get("customer_id", None)
@@ -74,12 +93,12 @@ class InvoiceCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateView
         data["customer_applications_json"] = serializers.serialize("json", customer_applications)
 
         if self.request.POST:
-            data["invoice_applications"] = InvoiceApplicationFormSet(
+            data["invoice_applications"] = InvoiceApplicationCreateFormSet(
                 self.request.POST,
                 form_kwargs={"customer_applications": customer_applications},
             )
         else:
-            formset = InvoiceApplicationFormSet(form_kwargs={"customer_applications": customer_applications})
+            formset = InvoiceApplicationCreateFormSet(form_kwargs={"customer_applications": customer_applications})
             data["invoice_applications"] = formset
 
         # get currency settings
@@ -100,6 +119,7 @@ class InvoiceCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateView
         context = self.get_context_data()
         invoice_applications = context["invoice_applications"]
 
+        form.instance.created_by = self.request.user
         self.object = form.save(commit=False)
 
         if all(form.is_valid() for form in invoice_applications) and invoice_applications.is_valid():
@@ -112,7 +132,6 @@ class InvoiceCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateView
         return super().form_valid(form)
 
     def form_invalid(self, form):
-        print(form.errors)  # Check the form errors in console
         messages.error(self.request, "Please correct the errors below and resubmit.")
         return super().form_invalid(form)
 
@@ -120,29 +139,57 @@ class InvoiceCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateView
 class InvoiceUpdateView(PermissionRequiredMixin, SuccessMessageMixin, UpdateView):
     permission_required = ("invoices.change_invoice",)
     model = Invoice
-    form_class = InvoiceForm
+    form_class = InvoiceUpdateForm
     template_name = "invoices/invoice_update.html"
     success_url = reverse_lazy("invoice-list")  # URL pattern name for the invoice list view
     success_message = "Invoice updated successfully!"
 
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs.update({"user": self.request.user})
+        return kwargs
+
     def get_context_data(self, **kwargs):
         data = super().get_context_data(**kwargs)
+
+        customer_applications = DocApplication.objects.filter(
+            customer=self.object.customer
+        ).filter_by_document_collection_completed()
+        data["customer_applications_json"] = serializers.serialize("json", customer_applications)
+
         if self.request.POST:
-            data["invoice_applications"] = InvoiceApplicationFormSet(self.request.POST, instance=self.object)
+            data["invoice_applications"] = InvoiceApplicationUpdateFormSet(
+                self.request.POST, instance=self.object, prefix="invoice_applications"
+            )
         else:
-            data["invoice_applications"] = InvoiceApplicationFormSet(instance=self.object)
+            data["invoice_applications"] = InvoiceApplicationUpdateFormSet(
+                instance=self.object, prefix="invoice_applications"
+            )
+
+        # get currency settings
+        data["currency"] = settings.CURRENCY
+        data["currency_symbol"] = settings.CURRENCY_SYMBOL
+        data["currency_decimal_places"] = settings.CURRENCY_DECIMAL_PLACES
         return data
 
+    @transaction.atomic
     def form_valid(self, form):
         context = self.get_context_data()
         invoice_applications = context["invoice_applications"]
+        form.instance.updated_by = self.request.user
 
-        self.object = form.save()
-        if invoice_applications.is_valid():
+        if all(form.is_valid() for form in invoice_applications) and invoice_applications.is_valid():
+            self.object = form.save()  # Save the Invoice after checking InvoiceApplications
             invoice_applications.instance = self.object
             invoice_applications.save()
+        else:
+            return self.form_invalid(form)
 
         return super().form_valid(form)
+
+    def form_invalid(self, form):
+        messages.error(self.request, "Please correct the errors below and resubmit.")
+        return super().form_invalid(form)
 
 
 class InvoiceDeleteView(PermissionRequiredMixin, DeleteView):

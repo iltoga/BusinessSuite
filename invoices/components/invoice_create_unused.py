@@ -9,7 +9,7 @@ from django_unicorn.components import UnicornView
 
 from customer_applications.models import DocApplication
 from customers.models import Customer
-from invoices.forms import InvoiceForm
+from invoices.forms import InvoiceCreateForm
 from invoices.models import Invoice, InvoiceApplication
 
 

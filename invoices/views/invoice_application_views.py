@@ -3,16 +3,16 @@ from django.contrib.messages.views import SuccessMessageMixin
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
 
-from invoices.forms import InvoiceApplicationForm
+from invoices.forms import InvoiceApplicationCreateForm
 from invoices.models import InvoiceApplication
 from invoices.models.invoice import InvoiceApplication
-from invoices.views.invoice_views import InvoiceApplicationFormSet
+from invoices.views.invoice_views import InvoiceApplicationCreateFormSet
 
 
 class InvoiceApplicationUpdateView(PermissionRequiredMixin, SuccessMessageMixin, UpdateView):
     permission_required = ("invoices.change_invoice",)
     model = InvoiceApplication
-    form_class = InvoiceApplicationForm
+    form_class = InvoiceApplicationCreateForm
     template_name = "invoices/invoice_application_update.html"
     success_url = reverse_lazy("invoiceapplication-list")
     success_message = "Invoice Application updated successfully!"

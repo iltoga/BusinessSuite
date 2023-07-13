@@ -282,6 +282,7 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 MEDIA_ROOT = os.path.join(BASE_DIR, "files/media/")
 MEDIA_URL = "/uploads/"
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+STATIC_SOURCE_ROOT = os.path.join(BASE_DIR, "static")
 
 DOCUMENTS_FOLDER = "documents"
 TMPFILES_FOLDER = "tmpfiles"

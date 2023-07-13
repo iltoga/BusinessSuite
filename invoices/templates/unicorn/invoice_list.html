@@ -69,6 +69,7 @@
                             <a href="{% url 'invoice-detail' invoice.pk %}" class="btn btn-primary btn-sm me-1">View</a>
                             {% if user|has_perm:'invoices,invoice,change' %}
                             <a href="{% url 'invoice-update' invoice.pk %}" class="btn btn-warning btn-sm me-1">Edit</a>
+                            <a href="{% url 'invoice-download' invoice.pk %}" class="btn btn-secondary btn-sm me-1">Download</a>
                             {% endif %}
                             <!-- {% if user|has_perm:'invoices,invoice,delete' %}
                             <a href="{% url 'invoice-delete' invoice.pk %}" class="btn btn-danger btn-sm me-1">Delete</a>
