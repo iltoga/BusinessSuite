@@ -78,10 +78,6 @@
                             data.product.optional_documents = '';
                         }
                         optional_documents = data.optional_documents;
-                        // if product.base_price is not emtpy or null, set it as value of #id_price form field
-                        if (data.product.base_price) {
-                            $('#id_price').val(data.product.base_price);
-                        }
 
                         // create new required document forms
                         for (var i = 0; i < required_documents.length; i++) {

@@ -30,6 +30,8 @@ class InvoiceDownloadView(View):
             "customer_name": str(invoice.customer),
             "invoice_date": formatutils.as_date_str(invoice.invoice_date),
             "total_amount": formatutils.as_currency(invoice.total_amount),
+            "total_paid": formatutils.as_currency(invoice.total_paid_amount),
+            "total_due": formatutils.as_currency(invoice.total_due_amount),
         }
 
         # Prepare invoice items
@@ -42,11 +44,14 @@ class InvoiceDownloadView(View):
                     "invoice_item": str(item.customer_application.product.code),
                     "description": item.customer_application.product.name,
                     "quantity": str(qty),
-                    "unit_price": formatutils.as_currency(item.customer_application.price),
-                    "amount": formatutils.as_currency(item.customer_application.price * qty),
+                    "unit_price": formatutils.as_currency(item.amount),
+                    "amount": formatutils.as_currency(item.amount * qty),
+                    "paid": formatutils.as_currency(item.paid_amount),
+                    "due_amount": formatutils.as_currency(item.amount - item.paid_amount),
                 }
             )
 
+        # TODO: add a second template for partial payments: if the invoice already has payments, use the partial payments template
         # Generate invoice from the Word template
         template_path = os.path.join(settings.STATIC_SOURCE_ROOT, "reporting/invoice_template_with_footer.docx")
         with open(template_path, "rb") as template:

@@ -1,9 +1,11 @@
 import logging
 import os
 import shutil
+from dataclasses import fields
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.serializers import serialize
 from django.db import models
 from django.db.models.signals import post_delete, pre_delete
 from django.dispatch import receiver
@@ -108,6 +110,17 @@ class Customer(models.Model):
     def __str__(self):
         return self.full_name
 
+    def natural_key(self):
+        """
+        Returns a natural key that can be used to serialize this object.
+        """
+        return {
+            "full_name": self.full_name,
+            "email": self.email,
+            "birthdate": self.birthdate,
+            "active": self.active,
+        }
+
     @property
     def full_name(self):
         return f"{self.first_name} {self.last_name}"
@@ -129,6 +142,34 @@ class Customer(models.Model):
             shutil.rmtree(os.path.join(media_root, self.upload_folder))
         except FileNotFoundError:
             logger.info("Folder not found: %s", self.upload_folder)
+
+    def doc_applications_to_json(
+        self, filter_by_doc_collection_completed=True, exclude_already_invoiced=True, current_invoice_to_include=None
+    ):
+        # Serialize the customer's applications to JSON
+        doc_application_qs = self.get_doc_applications_for_invoice(
+            filter_by_doc_collection_completed, exclude_already_invoiced, current_invoice_to_include
+        )
+
+        # Serialize the queryset to JSON including the natural keys (related objects)
+        json_obj = serialize("json", doc_application_qs, use_natural_foreign_keys=True)
+        return json_obj
+
+    def get_doc_applications_for_invoice(
+        self, filter_by_doc_collection_completed=True, exclude_already_invoiced=True, current_invoice_to_include=None
+    ):
+        """
+        Return a queryset of DocApplications that have their document collection completed (default behavior).
+        If exclude_already_invoiced is True, exclude DocApplications that have already been invoiced.
+        Note: by providing current_invoice_to_include, we can include DocApplications that are part of the current invoice (for updating an invoice).
+        """
+        doc_application_qs = self.doc_applications.all()
+        if exclude_already_invoiced:
+            doc_application_qs = doc_application_qs.exclude_already_invoiced(current_invoice_to_include)
+        if filter_by_doc_collection_completed:
+            doc_application_qs = doc_application_qs.filter_by_document_collection_completed()
+
+        return doc_application_qs
 
 
 @receiver(pre_delete, sender=Customer)

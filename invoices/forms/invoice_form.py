@@ -1,9 +1,13 @@
 # forms.py
+from typing import Any
+
 from django import forms
 from django.core import serializers
+from django.forms.fields import Field
 from django.utils import timezone
 from matplotlib import widgets
 
+import customer_applications
 from customer_applications.models import DocApplication
 from customers.models import Customer
 from invoices.models import Invoice, InvoiceApplication, Payment
@@ -35,6 +39,11 @@ class InvoiceCreateForm(forms.ModelForm):
             self.fields["sent"].widget = forms.HiddenInput()
             self.fields["customer"].widget = forms.Select(attrs={"class": "select2"})
             self.fields["customer"].queryset = Customer.objects.all().active()
+
+        if self.initial:
+            customer = self.initial.get("customer", None)
+            if customer:
+                self.fields["customer"].queryset = Customer.objects.filter(pk=customer.pk)
 
     def clean(self):
         cleaned_data = super().clean()
@@ -102,20 +111,23 @@ class InvoiceUpdateForm(forms.ModelForm):
 class InvoiceApplicationCreateForm(forms.ModelForm):
     class Meta:
         model = InvoiceApplication
-        fields = ["customer_application", "due_amount", "paid_amount", "payment_status"]
+        fields = ["customer_application", "amount", "paid_amount", "payment_status"]
         widgets = {
-            "due_amount": forms.NumberInput(),
+            "amount": forms.NumberInput(),
             "paid_amount": forms.NumberInput(),
         }
 
-    def __init__(self, *args, customer_applications=None, **kwargs):
+    def __init__(self, *args, customer_applications=None, selected_customer_application=None, **kwargs):
         super().__init__(*args, **kwargs)
 
         if self.instance and self.instance.pk:
             self.fields["customer_application"].queryset = DocApplication.objects.filter(
                 pk=self.instance.customer_application.pk
             )
-            self.fields["customer_application"].widget = forms.TextInput(attrs={"readonly": True})
+        elif selected_customer_application:
+            self.fields["customer_application"].queryset = DocApplication.objects.filter(
+                pk=selected_customer_application.pk
+            )
         else:
             self.fields["customer_application"].queryset = customer_applications
 
@@ -125,32 +137,34 @@ class InvoiceApplicationCreateForm(forms.ModelForm):
     def clean(self):
         """Checks that the paid amount is not greater than the due amount."""
         cleaned_data = super().clean()
-        due_amount = cleaned_data.get("due_amount", 0)
+        amount = cleaned_data.get("amount", 0)
         paid_amount = cleaned_data.get("paid_amount", 0)
 
-        if paid_amount > due_amount:
+        if paid_amount > amount:
             raise forms.ValidationError("Paid amount cannot be greater than due amount.", code="invalid_amount")
 
 
 class InvoiceApplicationUpdateForm(forms.ModelForm):
     class Meta:
         model = InvoiceApplication
-        fields = ["customer_application", "due_amount", "paid_amount", "payment_status"]
+        fields = ["customer_application", "amount", "paid_amount", "payment_status"]
         widgets = {
-            "due_amount": forms.NumberInput(),
+            "amount": forms.NumberInput(),
             "paid_amount": forms.NumberInput(attrs={"readonly": True}),
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, customer_applications=None, **kwargs):
         super().__init__(*args, **kwargs)
+
+        self.fields["customer_application"].queryset = customer_applications
 
     def clean(self):
         """Checks that the paid amount is not greater than the due amount."""
         cleaned_data = super().clean()
-        due_amount = cleaned_data.get("due_amount", 0)
+        amount = cleaned_data.get("amount", 0)
         paid_amount = cleaned_data.get("paid_amount", 0)
 
-        if paid_amount > due_amount:
+        if paid_amount > amount:
             raise forms.ValidationError("Paid amount cannot be greater than due amount.", code="invalid_amount")
 
 

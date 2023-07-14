@@ -20,6 +20,8 @@
           <tr><th scope="row" class="text-start">Status</th><td class="text-start">{% include "components/model_invoice_status_badge.html" with status=object.status status_display=object.get_status_display %}</td></tr>
           <tr><th scope="row" class="text-start">Notes</th><td class="text-start">{{ object.notes }}</td></tr>
           <tr><th scope="row" class="text-start">Total Amount</th><td class="text-start">{{ object.total_amount|as_currency }}</td></tr>
+          <tr><th scope="row" class="text-start">Total Paid</th><td class="text-start">{{ object.total_paid_amount|as_currency }}</td></tr>
+          <tr><th scope="row" class="text-start">Total Due</th><td class="text-start">{{ object.total_due_amount|as_currency }}</td></tr>
         </tbody>
       </table>
 
@@ -30,8 +32,8 @@
         <thead>
           <tr>
             <th scope="col" class="text-start">Application</th>
-            <th scope="col" class="text-start">Due Amount</th>
-            <th scope="col" class="text-start">Paid Amount</th>
+            <th scope="col" class="text-start">Amount</th>
+            <th scope="col" class="text-start">Paid</th>
             <th scope="col" class="text-start">Payment Status</th>
           </tr>
         </thead>
@@ -40,7 +42,7 @@
             <tr>
               <!-- add a link to customer application's details {} -->
               <td class="text-start"><a href="{% url 'customer-application-detail' app.customer_application.id %}">{{ app.customer_application }}</a></td>
-              <td class="text-start">{{ app.due_amount|as_currency }}</td>
+              <td class="text-start">{{ app.amount|as_currency }}</td>
               <td class="text-start">{{ app.paid_amount|as_currency }}</td>
               <td class="text-start">{% include "components/model_payment_status_badge.html" with status=app.payment_status status_display=app.get_payment_status_display %}</td>
             </tr>

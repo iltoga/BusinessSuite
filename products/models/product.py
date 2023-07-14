@@ -37,3 +37,14 @@ class Product(models.Model):
 
     def __str__(self):
         return self.code + " - " + self.name
+
+    def natural_key(self):
+        """
+        Returns a natural key that can be used to serialize this object.
+        """
+        return {
+            "code": self.code,
+            "name": self.name,
+            "base_price": self.base_price,
+            "product_type": self.product_type,
+        }

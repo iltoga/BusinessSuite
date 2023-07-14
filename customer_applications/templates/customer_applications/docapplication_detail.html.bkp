@@ -26,10 +26,6 @@
           <th scope="row" class="text-start">Document Date</th>
           <td class="text-start">{{ docapplication.doc_date }}</td>
         </tr>
-        <tr>
-          <th scope="row" class="text-start">Price</th>
-          <td class="text-start">{{ docapplication.price|floatformat:2|intcomma }}</td>
-        </tr>
       </tbody>
     </table>
 

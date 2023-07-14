@@ -39,6 +39,15 @@ input[readonly] {
     background-color: #ddd;
 }
 
+.btn-sm {
+    font-size: small;
+}
+
+.btn-sm-fix-width {
+    width: 80px;
+    font-size: small;
+}
+
 .bordered {
     border: 1px solid;
     margin-bottom: 2em;

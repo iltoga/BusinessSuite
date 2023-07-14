@@ -35,6 +35,18 @@ class DocApplicationQuerySet(models.QuerySet):
         # Then, we filter to only include DocApplications where the counts are equal
         return doc_applications_with_counts.filter(total_required_documents=F("completed_required_documents"))
 
+    def exclude_already_invoiced(self, current_invoice_to_include=None):
+        """
+        Excludes DocApplications that are already invoiced.
+        In case of updating an invoice, we need to include all DocApplications tha are part of the current invoice.
+        """
+        qs = self.exclude(invoice_applications__isnull=False)
+        if current_invoice_to_include:
+            # use logical or on queryset to add the current invoice's DocApplications
+            qs = qs | self.filter(invoice_applications__invoice=current_invoice_to_include)
+
+        return qs
+
 
 class DocApplicationManager(models.Manager):
     """
@@ -48,6 +60,9 @@ class DocApplicationManager(models.Manager):
     # So we can use the custom queryset methods on the manager too
     def filter_by_document_collection_completed(self):
         return self.get_queryset().filter_by_document_collection_completed()
+
+    def exclude_already_invoiced(self, current_invoice_to_include=None):
+        return self.get_queryset().exclude_already_invoiced(current_invoice_to_include)
 
     def search_doc_applications(self, query):
         """
@@ -87,11 +102,10 @@ class DocApplication(models.Model):
         default="other",
         db_index=True,
     )
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name="doc_applications")
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="doc_applications")
     doc_date = models.DateField(db_index=True)
     due_date = models.DateField(blank=True, null=True, db_index=True)
-    price = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     status = models.CharField(max_length=50, choices=STATUS_CHOICES, default=STATUS_PENDING, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True, db_index=True)
@@ -179,24 +193,6 @@ class DocApplication(models.Model):
         customer_folder = self.customer.upload_folder
         return f"{customer_folder}/application_{self.pk}"
 
-    def get_completed_documents(self, type="all"):
-        """
-        Gets completed documents by type.
-        """
-        filters = {"completed": True}
-        if type != "all":
-            filters["required"] = True if type == "required" else False
-        return self.documents.filter(**filters)
-
-    def get_incomplete_documents(self, type="all"):
-        """
-        Gets incomplete documents by type.
-        """
-        filters = {"completed": False}
-        if type != "all":
-            filters["required"] = True if type == "required" else False
-        return self.documents.filter(**filters)
-
     def save(self, *args, **kwargs):
         """
         Overrides the default save method.
@@ -238,6 +234,36 @@ class DocApplication(models.Model):
                 start_date=due_date, days_to_complete=task.duration, business_days_only=task.duration_is_business_days
             )
         return due_date
+
+    def get_completed_documents(self, type="all"):
+        """
+        Gets completed documents by type.
+        """
+        filters = {"completed": True}
+        if type != "all":
+            filters["required"] = True if type == "required" else False
+        return self.documents.filter(**filters)
+
+    def get_incomplete_documents(self, type="all"):
+        """
+        Gets incomplete documents by type.
+        """
+        filters = {"completed": False}
+        if type != "all":
+            filters["required"] = True if type == "required" else False
+        return self.documents.filter(**filters)
+
+    def has_invoice(self):
+        """
+        Checks whether the application has an invoice.
+        """
+        return self.invoice_applications.exists()
+
+    def get_invoice(self):
+        """
+        Gets the application's invoice.
+        """
+        return self.invoice_applications.first().invoice if self.has_invoice() else None
 
 
 @receiver(pre_delete, sender=DocApplication)

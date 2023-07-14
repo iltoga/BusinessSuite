@@ -13,7 +13,12 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from api.serializers import CustomerSerializer, DocApplicationSerializer, DocumentTypeSerializer, ProductSerializer
+from api.serializers import (
+    CustomerSerializer,
+    DocApplicationSerializerWithRelations,
+    DocumentTypeSerializer,
+    ProductSerializer,
+)
 from core.utils.dateutils import calculate_due_date
 from core.utils.imgutils import convert_and_resize_image
 from core.utils.passport_ocr import extract_mrz_data
@@ -125,7 +130,7 @@ class CustomerApplicationsView(APIView):
                 if exclude_with_invoices:
                     applications = applications.exclude(num_invoices__gt=0)
 
-                serializer = DocApplicationSerializer(applications, many=True)
+                serializer = DocApplicationSerializerWithRelations(applications, many=True)
                 return Response(serializer.data)
             except Customer.DoesNotExist:
                 return Response(data={"error": "Customer does not exist"}, status=status.HTTP_404_NOT_FOUND)

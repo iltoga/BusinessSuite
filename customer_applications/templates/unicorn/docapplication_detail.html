@@ -1,4 +1,3 @@
-{% load humanize %}
 {% load filters %}
 
 <div>
@@ -28,10 +27,6 @@
           <tr>
             <th scope="row" class="text-start">Due Date</th>
             <td class="text-start">{{ docapplication.due_date }}</td>
-          </tr>
-          <tr>
-            <th scope="row" class="text-start">Price</th>
-            <td class="text-start">{{ docapplication.price|floatformat:0|intcomma }}</td>
           </tr>
           <tr>
             <th scope="row" class="text-start">Application Status</th>

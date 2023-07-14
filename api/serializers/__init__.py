@@ -1,4 +1,4 @@
 from .customer_serializer import CustomerSerializer
-from .doc_application_serializer import DocApplicationSerializer
+from .doc_application_serializer import DocApplicationSerializer, DocApplicationSerializerWithRelations
 from .document_type_serializer import DocumentTypeSerializer
 from .product_serializer import ProductSerializer

@@ -54,7 +54,6 @@ class InvoiceCreateView(UnicornView):
             customer_application = DocApplication.objects.get(pk=value)
             # generate a unique pk (random number) for the invoice application
             self.invoiceapplications[idx].customer_application = customer_application
-            self.invoiceapplications[idx].amount = customer_application.price
 
     def add_form(self):
         self.invoiceapplications.append(self.create_invoice_application())

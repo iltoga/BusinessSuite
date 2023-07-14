@@ -29,8 +29,8 @@
                 <th scope="col">Due Date</th>
                 <th scope="col">Status</th>
                 <th scope="col">Amount</th>
-                <th scope="col">Paid Amount</th>
-                <th scope="col">Due Amount</th>
+                <th scope="col">Paid</th>
+                <th scope="col">Due</th>
                 <th scope="col">Actions</th>
             </tr>
             </thead>
@@ -62,8 +62,8 @@
                         <td>{{ invoice.invoice_date }}</td>
                         <td>{% include "components/model_invoice_status_badge.html" with status=invoice.status status_display=invoice.get_status_display %}</td>
                         <td>{{ invoice.total_amount|as_currency }}</td>
-                        <td>{{ invoice.tot_paid_amount|as_currency }}</td>
-                        <td>{{ invoice.tot_due_amount|as_currency }}</td>
+                        <td>{{ invoice.total_paid_amount|as_currency }}</td>
+                        <td>{{ invoice.total_due_amount|as_currency }}</td>
                         <td>
                         <div class="btn-group" role="group" aria-label="Basic example">
                             <a href="{% url 'invoice-detail' invoice.pk %}" class="btn btn-primary btn-sm me-1">View</a>

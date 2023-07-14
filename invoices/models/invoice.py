@@ -109,14 +109,22 @@ class Invoice(models.Model):
         ordering = ("-invoice_no",)
 
     @property
-    def applications_json(self):
-        applications = serializers.serialize("json", self.applications.all())
-        return applications
+    def invoice_no_display(self):
+        return f"{self.invoice_date.strftime('%Y-%m-%d')}/{self.invoice_no:08d}"
 
     @property
-    def invoice_no_display(self):
-        # return f"{self.invoice_date.year}/{self.invoice_no:06d}"
-        return f"{self.invoice_date.strftime('%Y-%m-%d')}/{self.invoice_no:08d}"
+    def total_paid_amount(self):
+        tot = 0
+        if self.invoice_applications and self.invoice_applications.exists():
+            result = self.invoice_applications.aggregate(models.Sum("paid_amount"))
+            # Extract the sum value from the dictionary
+            tot = result.get("paid_amount__sum") or 0
+        return tot
+
+    @property
+    def total_due_amount(self):
+        tot = self.total_amount - self.total_paid_amount
+        return tot
 
     def delete(self, *args, **kwargs):
         raise Exception("You can't delete an invoice.")
@@ -140,7 +148,8 @@ class Invoice(models.Model):
         return tot
 
     def get_next_invoice_no(self):
-        last_invoice = Invoice.objects.last()
+        # get the highest invoice number
+        last_invoice = Invoice.objects.all().order_by("-invoice_no").first()
         if last_invoice:
             return last_invoice.invoice_no + 1
         return 1
@@ -171,12 +180,15 @@ class InvoiceApplication(models.Model):
     customer_application = models.ForeignKey(
         DocApplication, related_name="invoice_applications", on_delete=models.CASCADE
     )
-    due_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
     paid_amount = models.DecimalField(default=0, max_digits=10, decimal_places=2)
     payment_status = models.CharField(choices=PAYMENT_STATUS_CHOICES, default=PENDING, max_length=20, db_index=True)
 
     class Meta:
         ordering = ("-id",)
+        constraints = [
+            models.UniqueConstraint(fields=["customer_application", "invoice"], name="unique_invoice_application")
+        ]
 
     def __str__(self):
         return f"{self.invoice} - {self.customer_application}"
