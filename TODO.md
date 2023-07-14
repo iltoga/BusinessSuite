@@ -6,6 +6,11 @@
 
 ## RESOLVED ✓
 
+### 2023-07-14
+- in invoice application, when selecting the customer application, the price will be taken from the product base price
+### 2023-07-13
+- remove price from customer application
+
 ### 2023-06-18
 - list document application: not sorting correctly by task due date. not filtering by 'closed' status
 - update required documents: showing meta field in form even if it is not required. showing ocr_check even if it is not required
@@ -23,9 +28,11 @@
 
 
 ## TODO:
+
+### 2023-07-13
+- add a second template for partial payments when generating the invoice (download): if the invoice already has payments, use the partial payments template
+
 ### 2023-07-12
-- remove price from customer application
-- in invoice application, when selecting the customer application, the price will be taken from the product base price
 - remove quantity and unit price from the invoice template (docx)
 
 ### 2023-06-09
