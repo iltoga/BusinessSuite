@@ -17,9 +17,9 @@ class Command(BaseCommand):
         self.generate_deleters()
         self.generate_open_document()
         self.generate_upload_document()
-        self.generate_power_users()
-        self.generate_auditors()
         self.generate_administration_office()
+        self.generate_auditors()
+        self.generate_power_users()
 
     def generate_administrators(self):
         group, created = Group.objects.get_or_create(name="Administrators")
