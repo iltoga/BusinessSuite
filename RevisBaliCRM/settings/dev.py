@@ -42,4 +42,5 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "models_logging.middleware.LoggingStackMiddleware",  # it merge all changes of object per request
+    "django_user_agents.middleware.UserAgentMiddleware",
 ]

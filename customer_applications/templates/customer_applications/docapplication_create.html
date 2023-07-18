@@ -8,7 +8,7 @@
 {% block content %}
 <div>
     <h2 class="text-center my-4">New Customer Application</h2>
-    <form method="post" enctype="multipart/form-data" class="p-3 rounded w-100" action="" id="customer-application-form">
+    <form method="post" enctype="multipart/form-data" class="p-3 rounded w-100" action="" id="customer-application-form" novalidate>
         {% csrf_token %}
         {{ form | crispy }}
         <h3 class="text-center my-4">Application Documents</h3>

@@ -1,0 +1,16 @@
+{% extends "base_template.html" %}
+{% block title %}RevisCRM - Delete Payment{% endblock %}
+
+{% block content %}
+<div>
+    <h2 class="text-center my-4">Are you sure you want to delete this payment?</h2>
+    <form method="post" class="p-3 rounded w-100">
+        {% csrf_token %}
+        <div>
+            <hr \>
+            <button type="submit" class="btn btn-danger">Delete</button>
+            <a href="javascript:history.back()" class="btn btn-outline-primary">Back</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

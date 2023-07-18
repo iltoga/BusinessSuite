@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     "customers",
     "products",
     "invoices",
+    "payments",
     "customer_applications",
     "bootstrapsidebar",
     "corsheaders",
@@ -76,6 +77,7 @@ INSTALLED_APPS = [
     "storages",
     "django_cron",
     "django_cleanup.apps.CleanupConfig",
+    "django_user_agents",
 ]
 
 MIDDLEWARE = [
@@ -93,6 +95,7 @@ MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     # it merge all changes of object per request
     "models_logging.middleware.LoggingStackMiddleware",
+    "django_user_agents.middleware.UserAgentMiddleware",
 ]
 
 
@@ -109,6 +112,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "django.template.context_processors.request",
             ],
         },
     },
@@ -268,6 +272,8 @@ CACHES = {
 
 # select2
 SELECT2_CACHE_BACKEND = "select2"
+
+USER_AGENTS_CACHE = "default"
 
 # SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 # # SESSION_COOKIE_AGE = 60 * 60 * 24  # One day

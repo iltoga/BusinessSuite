@@ -11,7 +11,11 @@
 
     <link href="{% static 'bootstrap/sidebar-bootstrap.css' %}" rel="stylesheet">
     <link href="{% static 'fonts.css' %}" rel="stylesheet">
-    <link href="{% static 'layout.css' %}" rel="stylesheet">
+    {% if request.user_agent.is_pc %}
+        <link href="{% static 'layout.css' %}" rel="stylesheet">
+    {% else %}
+        <link href="{% static 'layout_mobile.css' %}" rel="stylesheet">
+    {% endif %}
 
 
     {% block custom-css %}

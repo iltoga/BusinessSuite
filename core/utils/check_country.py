@@ -7,8 +7,7 @@ from core.models import CountryCode
 def check_country_by_code(code) -> CountryCode:
     """Check if the country code exists in the database. If not, find the closest match."""
     country = CountryCode.objects.filter(alpha3_code=code)
-    country_exists = country.exists()
-    if country_exists:
+    if country.exists():
         return country.first()
 
     # Get all the alpha3_code from the database

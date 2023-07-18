@@ -24,3 +24,7 @@ psycopg2-binary~=2.9.6
 dropbox~=11.36.2
 pymemcache~=4.0.0
 docx-mailmerge~=0.5.0
+pyyaml
+ua-parser
+user-agents
+django-user-agents

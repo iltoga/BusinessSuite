@@ -13,7 +13,7 @@
         </div>
     </div>
 
-    <div class="justify-content-center">
+    <div class="justify-content-center table-responsive">
         {% if list_items %}
         <table class="table table-bordered table-condensed">
             <thead class="thead-light">
@@ -32,11 +32,11 @@
             </tbody>
         </table>
 
-        <div class="d-flex justify-content-center mt-3">
-        {% include 'components/list_pagination_buttons.html' %}
-        {% else %}
-        <p>No Products found.</p>
-        {% endif %}
+        <div class="d-flex justify-content-center my-3">
+            {% include 'components/list_pagination_buttons.html' %}
         </div>
+        {% else %}
+            <p>No Products found.</p>
+        {% endif %}
     </div>
 </div>

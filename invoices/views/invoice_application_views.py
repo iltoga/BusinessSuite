@@ -9,6 +9,7 @@ from invoices.models.invoice import InvoiceApplication
 from invoices.views.invoice_views import InvoiceApplicationCreateFormSet
 
 
+# TODO: delete (unused)
 class InvoiceApplicationUpdateView(PermissionRequiredMixin, SuccessMessageMixin, UpdateView):
     permission_required = ("invoices.change_invoice",)
     model = InvoiceApplication
@@ -18,6 +19,7 @@ class InvoiceApplicationUpdateView(PermissionRequiredMixin, SuccessMessageMixin,
     success_message = "Invoice Application updated successfully!"
 
 
+# TODO: delete (unused)
 class InvoiceApplicationDetailView(PermissionRequiredMixin, DetailView):
     permission_required = ("invoices.view_invoice",)
     model = InvoiceApplication

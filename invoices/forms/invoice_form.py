@@ -1,4 +1,5 @@
 # forms.py
+import re
 from typing import Any
 
 from django import forms
@@ -10,7 +11,7 @@ from matplotlib import widgets
 import customer_applications
 from customer_applications.models import DocApplication
 from customers.models import Customer
-from invoices.models import Invoice, InvoiceApplication, Payment
+from invoices.models import Invoice, InvoiceApplication
 
 
 class InvoiceCreateForm(forms.ModelForm):
@@ -111,10 +112,9 @@ class InvoiceUpdateForm(forms.ModelForm):
 class InvoiceApplicationCreateForm(forms.ModelForm):
     class Meta:
         model = InvoiceApplication
-        fields = ["customer_application", "amount", "paid_amount", "payment_status"]
+        fields = ["customer_application", "amount"]
         widgets = {
             "amount": forms.NumberInput(),
-            "paid_amount": forms.NumberInput(),
         }
 
     def __init__(self, *args, customer_applications=None, selected_customer_application=None, **kwargs):
@@ -131,9 +131,6 @@ class InvoiceApplicationCreateForm(forms.ModelForm):
         else:
             self.fields["customer_application"].queryset = customer_applications
 
-            self.fields["paid_amount"].widget = forms.HiddenInput()
-            self.fields["payment_status"].widget = forms.HiddenInput()
-
     def clean(self):
         """Checks that the paid amount is not greater than the due amount."""
         cleaned_data = super().clean()
@@ -145,18 +142,28 @@ class InvoiceApplicationCreateForm(forms.ModelForm):
 
 
 class InvoiceApplicationUpdateForm(forms.ModelForm):
+    # add extra (calculated) field paid_amount and payment_status (read-only)
+    paid_amount = forms.DecimalField(max_digits=12, decimal_places=2, required=False)
+    payment_status = forms.CharField(max_length=20, required=False)
+
     class Meta:
         model = InvoiceApplication
-        fields = ["customer_application", "amount", "paid_amount", "payment_status"]
+        fields = ["customer_application", "amount"]
         widgets = {
             "amount": forms.NumberInput(),
-            "paid_amount": forms.NumberInput(attrs={"readonly": True}),
         }
 
     def __init__(self, *args, customer_applications=None, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.fields["customer_application"].queryset = customer_applications
+        self.fields["paid_amount"].disabled = True
+        self.fields["payment_status"].disabled = True
+
+        # Set initial values for paid_amount and payment_status
+        if self.instance and self.instance.pk:
+            self.initial["paid_amount"] = self.instance.paid_amount
+            self.initial["payment_status"] = self.instance.get_status_display()
 
     def clean(self):
         """Checks that the paid amount is not greater than the due amount."""
@@ -178,9 +185,3 @@ class BaseInvoiceApplicationFormSet(forms.BaseInlineFormSet):
 
         if not any(form.cleaned_data and not form.cleaned_data.get("DELETE", False) for form in self.forms):
             raise forms.ValidationError("At least one application is required.", code="missing_application")
-
-
-class PaymentForm(forms.ModelForm):
-    class Meta:
-        model = Payment
-        fields = ["invoice_application", "amount", "from_customer", "notes"]

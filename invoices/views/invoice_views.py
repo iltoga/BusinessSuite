@@ -1,5 +1,3 @@
-from typing import Any, Dict, Optional
-
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.mixins import PermissionRequiredMixin
@@ -11,7 +9,6 @@ from django.shortcuts import get_object_or_404
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
 
-import customer_applications
 from customer_applications.models import DocApplication
 from customers.models import Customer
 from invoices.forms import (
@@ -137,9 +134,9 @@ class InvoiceCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateView
 
         form.instance.created_by = self.request.user
         self.object = form.save(commit=False)
+        self.object.save()  # Save the Invoice before checking InvoiceApplications
 
         if all(form.is_valid() for form in invoice_applications) and invoice_applications.is_valid():
-            self.object.save()  # Save the Invoice after checking InvoiceApplications
             invoice_applications.instance = self.object
             invoice_applications.save()
         else:
@@ -251,7 +248,7 @@ class InvoiceDetailView(PermissionRequiredMixin, DetailView):
     model = Invoice
     template_name = "invoices/invoice_detail.html"
 
-    def get_object(self):
+    def get_object(self, queryset=None):
         """
         Returns the object the view is displaying.
         It can be used to call the same view with different arguments of the same type (eg. int:pk and int:doc_application_pk).

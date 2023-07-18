@@ -1,5 +1,7 @@
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
+from django.forms.models import BaseModelForm
+from django.http import HttpResponse
 from django.urls import reverse_lazy
 from django.views.generic.edit import CreateView
 
@@ -26,6 +28,7 @@ class CustomerCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateVie
         return context
 
     def form_valid(self, form):
+        print(form.errors)
         form.instance.created_by = self.request.user
         mrz_data = self.request.session.get("mrz_data", None)
         if mrz_data and form.is_valid():
@@ -35,3 +38,7 @@ class CustomerCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateVie
             mrz_data["surname"] = form.instance.surname
             self.request.session["mrz_data"] = mrz_data  # Update session data
         return super().form_valid(form)
+
+    def form_invalid(self, form: BaseModelForm) -> HttpResponse:
+        print(form.errors)
+        return super().form_invalid(form)

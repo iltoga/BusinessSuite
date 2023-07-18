@@ -1,7 +1,7 @@
 {% extends "base_template.html" %}
 {% load static %}
 {% load filters %}
-{% load form_extras %}
+{% load check_perms %}
 
 {% block title %}RevisCRM - Invoice Detail{% endblock %}
 
@@ -34,18 +34,81 @@
             <th scope="col" class="text-start">Application</th>
             <th scope="col" class="text-start">Amount</th>
             <th scope="col" class="text-start">Paid</th>
+            <th scope="col" class="text-start">Due</th>
             <th scope="col" class="text-start">Payment Status</th>
+            <th scope="col" class="text-start">Actions</th>
           </tr>
         </thead>
         <tbody>
           {% for app in object.invoice_applications.all %}
             <tr>
-              <!-- add a link to customer application's details {} -->
-              <td class="text-start"><a href="{% url 'customer-application-detail' app.customer_application.id %}">{{ app.customer_application }}</a></td>
+              <!-- customer application -->
+              <td class="text-start"><a href="{% url 'customer-application-detail' app.customer_application.pk %}">{{ app.customer_application }}</a></td>
+              <!-- invoice application amount -->
               <td class="text-start">{{ app.amount|as_currency }}</td>
+              <!-- paid amount -->
               <td class="text-start">{{ app.paid_amount|as_currency }}</td>
-              <td class="text-start">{% include "components/model_payment_status_badge.html" with status=app.payment_status status_display=app.get_payment_status_display %}</td>
+              <!-- due amount -->
+              <td class="text-start">{{ app.due_amount|as_currency }}</td>
+              <!-- invoice application status (payment status)-->
+              <td class="text-start">
+                {% include "components/model_payment_status_badge.html" with status=app.status status_display=app.get_status_display %}
+              </td>
+              <!-- actions -->
+              <td>
+                <div class="btn-group-sm" role="group">
+                  {% if user|has_perm:'payments,payment,add' and not app.is_payment_complete %}
+                    <a href="{% url 'payment-by-invoice-application-create' app.pk %}" class="btn btn-success me-1">Add Payment</a>
+                  {% endif %}
+                </div>
+              </td>
             </tr>
+            <!-- payments breadkdown (accordion) -->
+            <tr>
+              <td colspan="6">
+                <div class="accordion" id="accordionPayments{{ app.pk }}">
+                  <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingPayments{{ app.pk }}">
+                      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePayments{{ app.pk }}" aria-expanded="false" aria-controls="collapsePayments{{ app.pk }}">
+                        View Payments
+                      </button>
+                    </h2>
+                    <div id="collapsePayments{{ app.pk }}" class="accordion-collapse collapse" aria-labelledby="headingPayments{{ app.pk }}" data-bs-parent="#accordionPayments{{ app.pk }}">
+                      <div class="accordion-body">
+                        <!-- payment details table -->
+                        <table class="table table-bordered">
+                          <thead>
+                            <tr>
+                              <th scope="col" class="text-start">Payment Date</th>
+                              <th scope="col" class="text-start">Amount</th>
+                              <th scope="col" class="text-start">Notes</th>
+                              <th scope="col" class="text-start">Created At</th>
+                              <th scope="col" class="text-start">Created By</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {% for payment in app.payments.all %}
+                              <tr>
+                                <td>{{ payment.payment_date }}</td>
+                                <td>{{ payment.amount|as_currency }}</td>
+                                <td>{{ payment.notes }}</td>
+                                <td>{{ payment.created_at }}</td>
+                                <td>{{ payment.created_by }}</td>
+                              </tr>
+                            {% empty %}
+                              <tr>
+                                <td colspan="5">No payments found for this application</td>
+                              </tr>
+                            {% endfor %}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+
           {% empty %}
             <tr>
               <td colspan="4">No applications found for this invoice</td>

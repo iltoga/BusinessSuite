@@ -92,11 +92,26 @@
       <h1><span class="badge badge-success">Application Completed</span></h1>
     {% else %}
       {% if user|has_perm:'customer_applications,docworkflow,change' and docapplication.has_next_task %}
-      <div class="btn-group-sm">
+      <div>
         <a href="{% url 'customer-application-docworkflow-create' docapplication.pk docapplication.next_task.step %}" class="btn btn-warning">{% if docapplication.next_task.step == 1 %}Start{% else %}Next Step{% endif %}</a>
-        {% if docapplication.is_document_collection_completed and not docapplication.has_invoice and user|has_perm:'invoices,invoice,add' %}
+        {% if docapplication.is_document_collection_completed and not docapplication.has_invoice and user|has_perm:'invoices,invoice,add'%}
           <a href="{% url 'invoice-create-by-doc-application' docapplication.pk %}" class="btn btn-success">Create Invoice</a>
+        {% elif docapplication.has_invoice %}
+          {% if user|has_perm:'invoices,invoice,view' %}
+            <a href="{% url 'invoice-detail' docapplication.get_invoice.pk %}" class="btn btn-primary">View Invoice</a>
+          {% endif %}
+          {% if user|has_perm:'invoices,invoice,change' %}
+            <a href="{% url 'invoice-update' docapplication.get_invoice.pk %}" class="btn btn-warning">Edit Invoice</a>
+          {% endif %}
+        {% else %}
+          <div class="col-6">
+            <div class="badge bg-secondary">Not Ready</div>
+          </div>
+          <div class="col-6">
+          </div>
         {% endif %}
+
+
       </div>
       {% endif %}
       {% if not docapplication.is_document_collection_completed %}

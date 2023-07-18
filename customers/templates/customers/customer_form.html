@@ -1,6 +1,6 @@
 {% extends "base_template.html" %}
+{% load static %}
 {% load crispy_forms_tags %}
-{% load static form_extras %}
 {% load widget_tweaks %}
 
 {% block title %}RevisCRM - {{ action_name }} customer{% endblock %}
@@ -13,10 +13,9 @@
         {{ form.non_field_errors }}
     </div>
     {% endif %}
-    <form method="post" class="p-3 rounded w-100" action="{{ action }}">
+    <form method="post" class="p-3 rounded w-100" action="{{ action }}" novalidate>
         {% csrf_token %}
         {% for field in form %}
-            {{ field | as_crispy_field }}
             {% if field.name == 'passport_file' %}
                 <!-- button to check the file via ocr using restApiCall -->
                 <div class="mb-3">
@@ -35,6 +34,8 @@
                     </div>
                     {% endif %}
                 </div>
+            {% else %}
+                {{ field | as_crispy_field }}
             {% endif %}
         {% endfor %}
 
@@ -53,6 +54,16 @@
     $(document).ready(function() {
       var passport_file_btn = document.getElementById('passport_file_btn_id');
       var resizedImage = document.getElementById('resized_image_id');
+      var firstNameInput = document.getElementById('id_first_name');
+      var lastNameInput = document.getElementById('id_last_name');
+
+      firstNameInput.addEventListener('change', function(e) {
+        firstNameInput.value = capitalizeFirstLetter(firstNameInput.value);
+      });
+
+      lastNameInput.addEventListener('change', function(e) {
+        lastNameInput.value = capitalizeFirstLetter(lastNameInput.value);
+      });
 
       passport_file_btn.addEventListener('click', function(e) {
         var url = "{% url 'api-ocr-check' %}";

@@ -41,3 +41,8 @@ def get_completed_documents(docapplication, doc_type):
 @register.filter(is_safe=True)
 def as_currency(value):
     return formatutils.as_currency(value)
+
+
+@register.filter(is_safe=True)
+def as_date_str(value):
+    return formatutils.as_date_str(value)

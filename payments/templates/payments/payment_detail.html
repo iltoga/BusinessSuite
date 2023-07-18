@@ -1,0 +1,35 @@
+{% extends "base_template.html" %}
+{% load static %}
+{% load filters %}
+
+{% block title %}RevisCRM - Payment Detail{% endblock %}
+
+{% block content %}
+  <div class="my-4">
+    <div class="card">
+      <div class="card-header bg-primary text-white">
+        <h3>Payment for Invoice Application: {{ object.invoice_application }}</h3>
+      </div>
+      <table class="table">
+        <tbody>
+          <tr><th scope="row" class="text-start">From Customer</th><td class="text-start">{{ object.from_customer }}</td></tr>
+          <tr><th scope="row" class="text-start">Payment Date</th><td class="text-start">{{ object.payment_date }}</td></tr>
+          <tr><th scope="row" class="text-start">Amount</th><td class="text-start">{{ object.amount|as_currency }}</td></tr>
+          <tr><th scope="row" class="text-start">Notes</th><td class="text-start">{{ object.notes }}</td></tr>
+          <tr><th scope="row" class="text-start">Created At</th><td class="text-start">{{ object.created_at }}</td></tr>
+          <tr><th scope="row" class="text-start">Updated At</th><td class="text-start">{{ object.updated_at }}</td></tr>
+          <tr><th scope="row" class="text-start">Created By</th><td class="text-start">{{ object.created_by }}</td></tr>
+          <tr><th scope="row" class="text-start">Updated By</th><td class="text-start">{{ object.updated_by }}</td></tr>
+        </tbody>
+      </table>
+
+      <div class="card-body">
+        {% if back_url %}
+            <a href="{{ back_url }}" class="btn btn-primary">Back</a>
+        {% else %}
+            <a href="{% url 'payment-list' %}" class="btn btn-primary">Back</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+{% endblock %}

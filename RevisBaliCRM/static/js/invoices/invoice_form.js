@@ -161,88 +161,75 @@
     // Update the customer application dropdowns
     // Disable the selected value in all other dropdowns
     function updateCustomerApplicationSelections() {
-        // // Find all the customer application select boxes
-        // var $selects = $("select[name$='-customer_application']");
+        // Find all the customer application select boxes
+        var $selects = $("select[name$='-customer_application']");
 
-        // // Keep track of all selected options
-        // var selectedOptions = new Set();
+        // Keep track of all selected options
+        var selectedOptions = new Set();
 
-        // $selects.each(function () {
-        //     // Enable all options for this select
-        //     $(this).find('option').prop('disabled', false);
-        // });
+        $selects.each(function () {
+            // Enable all options for this select
+            $(this).find('option').prop('disabled', false);
+        });
 
-        // // First, mark all selected options
-        // $selects.each(function () {
-        //     var selectedVal = $(this).val();
-        //     // Skip if no value selected or if placeholder selected
-        //     if (!selectedVal || selectedVal == "") {
-        //         return;
-        //     }
-        //     selectedOptions.add(selectedVal);
-        // });
+        // First, mark all selected options
+        $selects.each(function () {
+            var selectedVal = $(this).val();
+            // Skip if no value selected or if placeholder selected
+            if (!selectedVal || selectedVal == "") {
+                return;
+            }
+            selectedOptions.add(selectedVal);
+        });
 
-        // // Then, disable selected options in all select boxes and check if there are any options left
-        // var availableOptions = new Set();
-        // $selects.each(function () {
-        //     var $select = $(this);
-        //     $select.find('option').each(function () {
-        //         var optionVal = $(this).val();
-        //         if (selectedOptions.has(optionVal)) {
-        //             // This option is selected in another select box, disable it
-        //             $(this).prop('disabled', true);
-        //         } else if (optionVal != "") {
-        //             // This option is available, add it to the set of available options
-        //             availableOptions.add(optionVal);
-        //         }
-        //     });
-        // });
+        // Then, disable selected options in all select boxes and check if there are any options left
+        var availableOptions = new Set();
+        $selects.each(function () {
+            var $select = $(this);
+            $select.find('option').each(function () {
+                var optionVal = $(this).val();
+                if (selectedOptions.has(optionVal)) {
+                    // This option is selected in another select box, disable it
+                    $(this).prop('disabled', true);
+                } else if (optionVal != "") {
+                    // This option is available, add it to the set of available options
+                    availableOptions.add(optionVal);
+                }
+            });
+        });
 
-        // // Disable the "add invoice application" button if there are no available options left
-        // $('#add-invoiceapplication').prop('disabled', availableOptions.size === 0);
+        // Disable the "add invoice application" button if there are no available options left
+        $('#add-invoiceapplication').prop('disabled', availableOptions.size === 0);
     }
 
     function addHiddenFieldsForDisabledElements(formset) {
-        var promises = [];
-
         formset.each(function () {
             var form = $(this);
 
             // For non-select fields
             form.find(':disabled[name]').each(function () {
                 var disabledElement = $(this);
-                var promise = new Promise(function (resolve) {
-                    form.append(
-                        $('<input>', {
-                            type: 'hidden',
-                            name: disabledElement.attr('name'),
-                            value: disabledElement.val()
-                        })
-                    );
-                    resolve();
-                });
-                promises.push(promise);
+                form.append(
+                    $('<input>', {
+                        type: 'hidden',
+                        name: disabledElement.attr('name'),
+                        value: disabledElement.val()
+                    })
+                );
             });
 
             // For select fields
             form.find('select option:selected').each(function () {
                 var selectedOption = $(this);
-                var promise = new Promise(function (resolve) {
-                    form.append(
-                        $('<input>', {
-                            type: 'hidden',
-                            name: selectedOption.parent().attr('name'),
-                            value: selectedOption.val()
-                        })
-                    );
-                    resolve();
-                });
-                promises.push(promise);
+                form.append(
+                    $('<input>', {
+                        type: 'hidden',
+                        name: selectedOption.parent().attr('name'),
+                        value: selectedOption.val()
+                    })
+                );
             });
         });
-
-        // Return a promise that resolves when all the promises in the array are resolved
-        return Promise.all(promises);
     }
 
 

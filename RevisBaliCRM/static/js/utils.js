@@ -246,3 +246,8 @@ function roundToCurrencyDecimalPlaces(value, decimals = 0) {
     v = parseFloat(value);
     return v.toFixed(decimals);
 }
+
+// Function to capitalize the first letter of a string
+function capitalizeFirstLetter(string) {
+    return string.charAt(0).toUpperCase() + string.slice(1);
+}

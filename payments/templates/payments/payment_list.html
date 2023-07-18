@@ -1,0 +1,12 @@
+{% extends "base_template.html" %}
+{% load unicorn %}
+
+{% block title %}RevisCRM - List Payments{% endblock %}
+
+{% block head-after-jquery %}
+  {% unicorn_scripts %}
+{% endblock %}
+
+{% block content %}
+  {% unicorn 'payment_list' %}
+{% endblock %}

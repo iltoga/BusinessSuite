@@ -29,17 +29,14 @@ class Command(BaseCommand):
             print("Administrators group created")
 
     def generate_administration_office(self):
-        """
-        This group is for the Administration Office staff:
-        they can view and edit customers, invoices, and documents, but not products or payments.
-        """
         group, created = Group.objects.get_or_create(name="Administration Office")
         if created:
             permissions = Permission.objects.filter(
                 codename__in=[
                     "view_customer",
                     "change_customer",
-                    "add_customer" "view_invoice",
+                    "add_customer",
+                    "view_invoice",
                     "change_invoice",
                     "add_invoice",
                     "view_docapplication",
@@ -172,7 +169,16 @@ class Command(BaseCommand):
     def generate_power_users(self):
         group, created = Group.objects.get_or_create(name="PowerUsers")
         if created:
-            other_group_names = ["Editors", "Viewers", "Creators", "Deleters", "DocumentViewers", "DocumentUploaders"]
+            other_group_names = [
+                "Editors",
+                "Viewers",
+                "Creators",
+                "Deleters",
+                "DocumentViewers",
+                "DocumentUploaders",
+                "Administration Office",
+                "Auditors",
+            ]
             permissions = Permission.objects.none()
 
             for other_group_name in other_group_names:

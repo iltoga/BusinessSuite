@@ -12,53 +12,6 @@
     <link href="{% static 'fontawesomefree/css/brands.css' %}" rel="stylesheet" type="text/css">
     <link href="{% static 'fontawesomefree/css/solid.css' %}" rel="stylesheet">
     <link href="{% static 'fontawesomefree/css/solid.css' %}" rel="stylesheet">
-
-    <style>
-        /* Override Bootstrap's default transition duration */
-        #sidebar .collapse.show {
-            transition-duration: 0s !important;
-        }
-        .active {
-            background-color: rgba(221, 221, 221, 0.2);
-        }
-        #sidebar ul li.active>a, a[aria-expanded="true"] {
-            background-color: rgba(221, 221, 221, 0);
-        }
-        .collapse:not(.show) {
-            display: none;
-        }
-        #navbarTop {
-            padding: 0rem 0rem;
-            margin: 0rem 0rem;
-        }
-
-        @media (max-width:1280px) {
-            #sidebar {
-                display: none;
-            }
-            #content {
-                width: 100%;
-                padding: 5px;
-            }
-            #sidebarCollapse span {
-                display: none;
-            }
-        }
-
-        @media (min-width:1281px) {
-            #sidebar {
-                display: block;
-            }
-            #content {
-                width: calc(100% - 250px); /* Adjust the width of the content to account for the sidebar */
-                padding: 10px;
-            }
-            #sidebarCollapse span {
-                display: block;
-            }
-        }
-
-    </style>
 {% endblock %}
 <!-- if overriding this one, remember to use {{ block.super}} at the beginning, otherwise jquery won't be loaded -->
 {% block head %}
@@ -92,95 +45,136 @@
     <img class="mb-4" src="{% static 'logo_revis_bw.png' %}" alt="Revis Bali Logo" style="width: 70%;">
 </div>
 {% endblock %}
-{% block navbar-links %}
-<div class="collapse navbar-collapse" id="navbarTop">
-    <ul class="navbar-nav ms-auto">
-        <!-- Login/Logout -->
-        <li class="nav-item ms-2">
-            {% if user.is_authenticated %}
-                <span class="nav-link text-dark">
-                    <small class="text-muted">Logged in as:</small>
-                    <strong>{{ user.username }}</strong>
-                </span>
-            {% else %}
-                <span class="nav-link text-dark">Not Logged in</span>
-            {% endif %}
-        </li>
-        <!-- CMS Section -->
-        {% if user.is_authenticated %}
-            {% if user|has_any_perm:'customer' %}
-            <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle" href="#" id="customerMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                    Customers
-                </a>
-                <ul class="dropdown-menu" aria-labelledby="customerMenu">
-                    {% if user|has_perm:'customers,customer,view' %}
-                    <li><a class="dropdown-item" href="{% url 'customer-list' %}">List</a></li>
-                    {% endif %}
-                    {% if user|has_perm:'customers,customer,add' %}
-                    <li><a class="dropdown-item" href="{% url 'customer-create' %}">Add new</a></li>
-                    {% endif %}
-                </ul>
-            </li>
-            {% endif %}
-            {% if user|has_any_perm:'product' %}
-            <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle" href="#" id="productMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                    Products
-                </a>
-                <ul class="dropdown-menu" aria-labelledby="productMenu">
-                    {% if user|has_perm:'products,product,view' %}
-                    <li><a class="dropdown-item" href="{% url 'product-list' %}">List</a></li>
-                    {% endif %}
-                    {% if user|has_perm:'products,product,add' %}
-                    <li><a class="dropdown-item" href="{% url 'product-create' %}">Add new</a></li>
-                    {% endif %}
-                </ul>
-            </li>
-            {% endif %}
-            {% if user|has_any_perm:'docapplication' %}
-            <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle" href="#" id="appMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                    Customer Applications
-                </a>
-                <ul class="dropdown-menu" aria-labelledby="appMenu">
-                    {% if user|has_perm:'customer_applications,docapplication,view' %}
-                    <li><a class="dropdown-item" href="{% url 'customer-application-list' %}">List</a></li>
-                    {% endif %}
-                    {% if user|has_perm:'customer_applications,docapplication,add' %}
-                    <li><a class="dropdown-item" href="{% url 'customer-application-create' %}">Add new</a></li>
-                    {% endif %}
-                </ul>
-            </li>
-            {% endif %}
-            {% if user|has_any_perm:'invoice' %}
-            <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle" href="#" id="appMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                    Invoices
-                </a>
-                <ul class="dropdown-menu" aria-labelledby="appMenu">
-                    {% if user|has_perm:'invoices,invoice,view' %}
-                    <li><a class="dropdown-item" href="{% url 'invoice-list' %}">List</a></li>
-                    {% endif %}
-                    {% if user|has_perm:'invoices,invoice,add' %}
-                    <li><a class="dropdown-item" href="{% url 'invoice-create' %}">Add new</a></li>
-                    {% endif %}
-                </ul>
-            </li>
-            {% endif %}
+
+
+{% block navbar %}
+<nav id="navbar-top" class="navbar navbar-expand-sm navbar-light w-100">
+    <div class="container-fluid">
+
+        {% if request.user_agent.is_pc %}
+        <button type="button" id="sidebarCollapse" class="btn btn-primary">
+            <img class="mdi-svg" src="{% static 'mdi/menu.svg' %}" type="image/svg+xml" />
+        </button>
         {% endif %}
-        <li class="nav-item">
-            {% if user.is_authenticated %}
-                <a class="nav-link" href="{% url 'logout' %}">Logout</a>
-            {% else %}
-                <a class="nav-link" href="{% url 'login' %}">Login</a>
-            {% endif %}
-        </li>
-    </ul>
-</div>
+
+        <button class="btn btn-dark d-inline-block d-sm-none ms-auto"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#navbarTop"
+                aria-controls="navbarTop"
+                aria-expanded="false" aria-label="Toggle navigation">
+            <img class="mdi-svg" src="{% static 'mdi/menu.svg' %}" type="image/svg+xml" />
+        </button>
+
+        {% block navbar-links %}
+        <div class="collapse navbar-collapse" id="navbarTop">
+            <ul class="navbar-nav ms-auto">
+                <!-- Login/Logout -->
+                <li class="nav-item ms-2">
+                    {% if user.is_authenticated %}
+                        <span class="nav-link text-dark">
+                            <small class="text-muted">Logged in as:</small>
+                            <strong>{{ user.username }}</strong>
+                        </span>
+                    {% else %}
+                        <span class="nav-link text-dark">Not Logged in</span>
+                    {% endif %}
+                </li>
+                <!-- CMS Section -->
+                {% if user.is_authenticated %}
+                    {% if user|has_any_perm:'customer' %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="customerMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Customers
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="customerMenu">
+                            {% if user|has_perm:'customers,customer,view' %}
+                            <li><a class="dropdown-item" href="{% url 'customer-list' %}">List</a></li>
+                            {% endif %}
+                            {% if user|has_perm:'customers,customer,add' %}
+                            <li><a class="dropdown-item" href="{% url 'customer-create' %}">Add new</a></li>
+                            {% endif %}
+                        </ul>
+                    </li>
+                    {% endif %}
+                    {% if user|has_any_perm:'product' %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="productMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Products
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="productMenu">
+                            {% if user|has_perm:'products,product,view' %}
+                            <li><a class="dropdown-item" href="{% url 'product-list' %}">List</a></li>
+                            {% endif %}
+                            {% if user|has_perm:'products,product,add' %}
+                            <li><a class="dropdown-item" href="{% url 'product-create' %}">Add new</a></li>
+                            {% endif %}
+                        </ul>
+                    </li>
+                    {% endif %}
+                    {% if user|has_any_perm:'docapplication' %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="appMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Customer Applications
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="appMenu">
+                            {% if user|has_perm:'customer_applications,docapplication,view' %}
+                            <li><a class="dropdown-item" href="{% url 'customer-application-list' %}">List</a></li>
+                            {% endif %}
+                            {% if user|has_perm:'customer_applications,docapplication,add' %}
+                            <li><a class="dropdown-item" href="{% url 'customer-application-create' %}">Add new</a></li>
+                            {% endif %}
+                        </ul>
+                    </li>
+                    {% endif %}
+                    {% if user|has_any_perm:'invoice' %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="appMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Invoices
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="appMenu">
+                            {% if user|has_perm:'invoices,invoice,view' %}
+                            <li><a class="dropdown-item" href="{% url 'invoice-list' %}">List</a></li>
+                            {% endif %}
+                            {% if user|has_perm:'invoices,invoice,add' %}
+                            <li><a class="dropdown-item" href="{% url 'invoice-create' %}">Add new</a></li>
+                            {% endif %}
+                        </ul>
+                    </li>
+                    {% endif %}
+                    {% if user|has_any_perm:'payments' %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="appMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Payments
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="appMenu">
+                            {% if user|has_perm:'payments,payment,view' %}
+                            <li><a class="dropdown-item" href="{% url 'payment-list' %}">List</a></li>
+                            {% endif %}
+                            {% if user|has_perm:'payments,payment,add' %}
+                            <li><a class="dropdown-item" href="{% url 'payment-create' %}">Add new</a></li>
+                            {% endif %}
+                        </ul>
+                    </li>
+                    {% endif %}
+                {% endif %}
+                <li class="nav-item">
+                    {% if user.is_authenticated %}
+                        <a class="nav-link" href="{% url 'logout' %}">Logout</a>
+                    {% else %}
+                        <a class="nav-link" href="{% url 'login' %}">Login</a>
+                    {% endif %}
+                </li>
+            </ul>
+        </div>
+        {% endblock %}
+    </div>
+</nav>
 {% endblock %}
 
+
 {% block sidebar %}
+    {% if request.user_agent.is_pc %}
     <nav id="sidebar">
         <div class="text-center">
                 <div class="mb-4">
@@ -279,6 +273,27 @@
                     </ul>
                 </li>
                 {% endif %}
+                {% if user|has_any_perm:'payment' %}
+                <li>
+                    <a href="#paymentSubmenu"
+                    data-bs-toggle="collapse"
+                    aria-expanded="{% if request.session.opened_submenu == 'paymentSubmenu' %}true{% else %}false{% endif %}"
+                    role="button"
+                    class="dropdown-toggle">Payments</a>
+                    <ul class="collapse list-unstyled" id="paymentSubmenu">
+                        {% if user|has_perm:'payments,payment,view' %}
+                        <li>
+                            <a href="{% url 'payment-list' %}">List</a>
+                        </li>
+                        {% endif %}
+                        {% if user|has_perm:'payments,payment,add' %}
+                        <li>
+                            <a href="{% url 'payment-create' %}">Add new</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </li>
+                {% endif %}
             {% endif %}
             <hr />
             <li><h4>CRM</h4></li>
@@ -295,7 +310,9 @@
         </ul>
 
     </nav>
+    {% endif %}
 {% endblock %}
+
 {% block footer %}
     {% if request.path == '/' %}
         <footer class="text-end text-secondary fst-italic mt-5">

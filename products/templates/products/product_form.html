@@ -15,7 +15,7 @@
 {% block content %}
 <div>
     <h2 class="text-center my-4">{{ action_name }} a new product</h2>
-    <form method="post" class="p-3 rounded w-100" action="" id="product-form">
+    <form method="post" class="p-3 rounded w-100" action="" id="product-form" novalidate>
         {% csrf_token %}
         {{ form | crispy }}
         {{ tasks.management_form }}

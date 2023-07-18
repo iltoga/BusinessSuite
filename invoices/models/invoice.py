@@ -1,9 +1,9 @@
 # models.py
 from django.conf import settings
 from django.contrib.postgres.search import SearchVector, TrigramSimilarity
-from django.core import serializers
 from django.db import models
-from django.db.models import Q
+from django.db.models import Q, Sum
+from django.utils import timezone
 
 from customer_applications.models.doc_application import DocApplication
 from customers.models import Customer
@@ -86,7 +86,7 @@ class Invoice(models.Model):
     sent = models.BooleanField(default=False)
     status = models.CharField(choices=INVOICE_STATUS_CHOICES, default=CREATED, max_length=20, db_index=True)
     notes = models.TextField(blank=True)
-    total_amount = models.DecimalField(max_digits=12, decimal_places=2)
+    total_amount = models.DecimalField(max_digits=12, decimal_places=2, default="0")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(
@@ -114,17 +114,27 @@ class Invoice(models.Model):
 
     @property
     def total_paid_amount(self):
-        tot = 0
-        if self.invoice_applications and self.invoice_applications.exists():
-            result = self.invoice_applications.aggregate(models.Sum("paid_amount"))
-            # Extract the sum value from the dictionary
-            tot = result.get("paid_amount__sum") or 0
-        return tot
+        if self.pk:  # Check if the Invoice instance has been saved
+            return (
+                self.invoice_applications.annotate(total_payment=Sum("payments__amount")).aggregate(
+                    total_paid=Sum("total_payment")
+                )["total_paid"]
+                or 0
+            )
+        return 0
 
     @property
     def total_due_amount(self):
         tot = self.total_amount - self.total_paid_amount
         return tot
+
+    @property
+    def is_payment_complete(self):
+        return self.invoice_applications.payment_complete().exists()
+
+    @property
+    def is_fully_paid(self):
+        return self.status == Invoice.PAID or self.status == Invoice.REFUNDED or self.status == Invoice.WRITE_OFF
 
     def delete(self, *args, **kwargs):
         raise Exception("You can't delete an invoice.")
@@ -132,6 +142,8 @@ class Invoice(models.Model):
     def save(self, *args, **kwargs):
         if not self.invoice_no:
             self.invoice_no = self.get_next_invoice_no()
+        self.total_amount = self.calculate_total_amount()
+        self.status = self.get_invoice_status()
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -142,10 +154,13 @@ class Invoice(models.Model):
     # Custom methods
 
     def calculate_total_amount(self):
-        tot = 0
-        if self.invoice_applications and self.invoice_applications.exists():
-            tot = self.invoice_applications.aggregate(models.Sum("amount"))["amount__sum"]
-        return tot
+        try:
+            if self.invoice_applications.exists():
+                return self.invoice_applications.aggregate(models.Sum("amount"))["amount__sum"]
+        except ValueError:
+            # Invoice hasn't been saved yet, so it can't have any InvoiceApplications
+            pass
+        return 0
 
     def get_next_invoice_no(self):
         # get the highest invoice number
@@ -153,6 +168,65 @@ class Invoice(models.Model):
         if last_invoice:
             return last_invoice.invoice_no + 1
         return 1
+
+    def get_invoice_status(self):
+        if self.total_due_amount < 0:
+            raise ValueError("Overpayment detected on invoice")
+
+        if self.total_due_amount == 0:
+            return Invoice.PAID
+
+        if self.total_due_amount == self.total_amount:
+            if self.sent:
+                return Invoice.PENDING_PAYMENT
+            return Invoice.CREATED
+
+        if self.total_due_amount < self.total_amount:
+            return Invoice.PARTIAL_PAYMENT
+
+        if self.total_due_amount > 0 and self.due_date < timezone.now().date():
+            return Invoice.OVERDUE
+
+        raise ValueError("Unable to determine invoice status")
+
+
+class InvoiceApplicationQuerySet(models.QuerySet):
+    def not_fully_paid(self):
+        return self.filter(
+            status__in=[
+                InvoiceApplication.PENDING,
+                InvoiceApplication.PARTIAL_PAYMENT,
+                InvoiceApplication.OVERDUE,
+                InvoiceApplication.DISPUTED,
+            ]
+        )
+
+    def fully_paid(self):
+        return self.filter(status=InvoiceApplication.PAID)
+
+    def payment_complete(self):
+        return self.filter(
+            status__in=[
+                InvoiceApplication.PAID,
+                InvoiceApplication.REFUNDED,
+                InvoiceApplication.WRITE_OFF,
+                InvoiceApplication.CANCELLED,
+            ]
+        )
+
+
+class InvoiceApplicationManager(models.Manager):
+    def get_queryset(self):
+        return InvoiceApplicationQuerySet(self.model, using=self._db)
+
+    def not_fully_paid(self):
+        return self.get_queryset().not_fully_paid()
+
+    def fully_paid(self):
+        return self.get_queryset().fully_paid()
+
+    def payment_complete(self):
+        return self.get_queryset().payment_complete()
 
 
 class InvoiceApplication(models.Model):
@@ -181,8 +255,8 @@ class InvoiceApplication(models.Model):
         DocApplication, related_name="invoice_applications", on_delete=models.CASCADE
     )
     amount = models.DecimalField(max_digits=10, decimal_places=2)
-    paid_amount = models.DecimalField(default=0, max_digits=10, decimal_places=2)
-    payment_status = models.CharField(choices=PAYMENT_STATUS_CHOICES, default=PENDING, max_length=20, db_index=True)
+    status = models.CharField(choices=PAYMENT_STATUS_CHOICES, default=PENDING, max_length=20, db_index=True)
+    objects = InvoiceApplicationManager()
 
     class Meta:
         ordering = ("-id",)
@@ -190,29 +264,43 @@ class InvoiceApplication(models.Model):
             models.UniqueConstraint(fields=["customer_application", "invoice"], name="unique_invoice_application")
         ]
 
+    @property
+    def paid_amount(self):
+        try:
+            if self.payments.exists():
+                return self.payments.aggregate(models.Sum("amount"))["amount__sum"] or 0
+        except ValueError:
+            # InvoiceApplication hasn't been saved yet, so it can't have any Payments
+            pass
+        return 0
+
+    @property
+    def due_amount(self):
+        return self.amount - self.paid_amount
+
+    @property
+    def is_payment_complete(self):
+        completed_statuses = [
+            InvoiceApplication.PAID,
+            InvoiceApplication.REFUNDED,
+            InvoiceApplication.WRITE_OFF,
+            InvoiceApplication.CANCELLED,
+        ]
+        return self.status in completed_statuses
+
+    def calculate_payment_status(self):
+        if self.amount == self.paid_amount:
+            return InvoiceApplication.PAID
+        if self.paid_amount > 0:
+            return InvoiceApplication.PARTIAL_PAYMENT
+        if self.paid_amount == 0 and self.invoice.due_date > timezone.now().date():
+            return InvoiceApplication.OVERDUE
+        # set self.status to this status
+        return InvoiceApplication.PENDING
+
     def __str__(self):
-        return f"{self.invoice} - {self.customer_application}"
+        return f"{self.invoice.invoice_no_display} - {self.customer_application}"
 
-
-class Payment(models.Model):
-    invoice_application = models.ForeignKey(InvoiceApplication, related_name="payments", on_delete=models.CASCADE)
-    payment_date = models.DateField(auto_now_add=True, db_index=True)
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
-    from_customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
-    notes = models.TextField(blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.PROTECT,
-        related_name="created_by_payment",
-        null=True,
-        blank=True,
-    )
-    updated_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.PROTECT,
-        related_name="updated_by_payment",
-        null=True,
-        blank=True,
-    )
+    def save(self, *args, **kwargs):
+        self.status = self.calculate_payment_status()
+        super().save(*args, **kwargs)
