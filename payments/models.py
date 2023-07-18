@@ -52,7 +52,7 @@ class PaymentManager(models.Manager):
 class Payment(models.Model):
     invoice_application = models.ForeignKey(InvoiceApplication, related_name="payments", on_delete=models.CASCADE)
     from_customer = models.ForeignKey(Customer, related_name="payments", on_delete=models.CASCADE)
-    payment_date = models.DateField(db_index=True, default=timezone.now())
+    payment_date = models.DateField(db_index=True, default=timezone.now)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

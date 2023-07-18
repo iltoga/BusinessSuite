@@ -170,6 +170,7 @@ class Command(BaseCommand):
         group, created = Group.objects.get_or_create(name="PowerUsers")
         if created:
             other_group_names = [
+                "Administrators",
                 "Editors",
                 "Viewers",
                 "Creators",
@@ -182,8 +183,12 @@ class Command(BaseCommand):
             permissions = Permission.objects.none()
 
             for other_group_name in other_group_names:
-                other_group = Group.objects.get(name=other_group_name)
-                permissions = permissions | other_group.permissions.all()
+                try:
+                    other_group = Group.objects.get(name=other_group_name)
+                    permissions = permissions | other_group.permissions.all()
+                except Group.DoesNotExist:
+                    print(f"The group '{other_group_name}' does not exist.")
+                    continue
 
             group.permissions.set(permissions)
             print("PowerUsers group created")
