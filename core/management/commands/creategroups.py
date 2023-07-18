@@ -147,24 +147,24 @@ class Command(BaseCommand):
 
     def generate_auditors(self):
         group, group_created = Group.objects.get_or_create(name="Auditors")
-        for app_label in (
-            "customers",
-            "customer_applications",
-            "products",
-            "invoices",
-            "payments",
-        ):
-            for ct in ContentType.objects.filter(app_label=app_label):
-                model_name = ct.model  # Get the model name
-                permission, perm_created = Permission.objects.get_or_create(
-                    codename=f"can_audit_{model_name}",
-                    name=f"Can audit {model_name}",
-                    content_type=ct,
-                )
-                if perm_created:
-                    group.permissions.add(permission)
-        if group_created:
-            print("Auditors group created")
+        for app_label in ("customers", "customer_applications", "products", "invoices", "payments"):
+            try:
+                cts = ContentType.objects.filter(app_label=app_label)
+                for ct in cts:
+                    model_name = ct.model  # Get the model name
+                    permission, perm_created = Permission.objects.get_or_create(
+                        codename=f"can_audit_{model_name}",
+                        name=f"Can audit {model_name}",
+                        content_type=ct,
+                    )
+                    if perm_created:
+                        group.permissions.add(permission)
+                if group_created:
+                    print("Auditors group created")
+                else:
+                    print("Auditors group already exists.")
+            except ContentType.DoesNotExist:
+                print(f"Content type for '{app_label}' does not exist.")
 
     def generate_power_users(self):
         group, created = Group.objects.get_or_create(name="PowerUsers")
@@ -181,14 +181,16 @@ class Command(BaseCommand):
                 "Auditors",
             ]
             permissions = Permission.objects.none()
+            all_groups = Group.objects.filter(name__in=other_group_names)
 
             for other_group_name in other_group_names:
-                try:
-                    other_group = Group.objects.get(name=other_group_name)
+                other_group = all_groups.filter(name=other_group_name).first()
+                if other_group is not None:
                     permissions = permissions | other_group.permissions.all()
-                except Group.DoesNotExist:
+                else:
                     print(f"The group '{other_group_name}' does not exist.")
-                    continue
 
             group.permissions.set(permissions)
             print("PowerUsers group created")
+        else:
+            print("PowerUsers group already exists.")

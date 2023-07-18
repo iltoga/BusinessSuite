@@ -23,9 +23,6 @@ fi
 # Run migrations
 python manage.py migrate
 
-# Collect static files
-python manage.py collectstatic --noinput
-
 # Create groups
 python manage.py creategroups
 
@@ -34,6 +31,9 @@ python manage.py createsuperuserifnotexists
 
 # Create system user
 python manage.py create_user system $SYSTEM_USER_PASSWORD --superuser --email=$SYSTEM_USER_EMAIL
+
+# Collect static files
+python manage.py collectstatic --noinput
 
 # Run Gunicorn
 gunicorn RevisBaliCRM.wsgi:application --bind 0.0.0.0:8000 --log-file -
