@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.utils import timezone
 
+from core.models.country_code import CountryCode
 from customer_applications.models import DocApplication, Document
 from customers.models import Customer
 from products.models import DocumentType, Product
@@ -11,6 +12,9 @@ from products.models import DocumentType, Product
 
 class DocApplicationTestDocumentCompleted(TestCase):
     def setUp(self):
+        self.country_code = CountryCode.objects.create(
+            country="United States of America", alpha2_code="US", alpha3_code="USA", numeric_code="840"
+        )
         self.customer = Customer.objects.create(
             first_name="John",
             last_name="Doe",
@@ -22,7 +26,7 @@ class DocApplicationTestDocumentCompleted(TestCase):
             instagram="john.doe",
             twitter="john.doe",
             title="Mr.",
-            nationality="US",
+            nationality=self.country_code,
             birthdate=date(1990, 1, 1),
             gender="M",
             address_bali="123 Bali Street",

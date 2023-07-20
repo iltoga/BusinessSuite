@@ -1,7 +1,6 @@
 import logging
 import os
 import shutil
-from dataclasses import fields
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -11,6 +10,7 @@ from django.db.models.signals import post_delete, pre_delete
 from django.dispatch import receiver
 from django.utils.translation import gettext_lazy as _
 
+from core.models import CountryCode
 from core.utils.form_validators import validate_birthdate, validate_email, validate_phone_number
 from core.utils.helpers import whitespaces_to_underscores
 
@@ -91,7 +91,14 @@ class Customer(models.Model):
     instagram = models.CharField(max_length=50, blank=True, null=True, db_index=True)
     twitter = models.CharField(max_length=50, blank=True, null=True, db_index=True)
     title = models.CharField(choices=TITLES_CHOICES, max_length=50)
-    nationality = models.CharField(max_length=100, db_index=True)
+    nationality = models.ForeignKey(
+        CountryCode,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="customers",
+        to_field="alpha3_code",
+    )
     birthdate = models.DateField(validators=[validate_birthdate])
     gender = models.CharField(choices=GENDERS, max_length=5, blank=True, null=True)
     address_bali = models.TextField(blank=True, null=True)

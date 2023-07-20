@@ -17,26 +17,28 @@
         {% csrf_token %}
         {% for field in form %}
             {% if field.name == 'passport_file' %}
-                <!-- button to check the file via ocr using restApiCall -->
-                <div class="mb-3">
-                    <button id="passport_file_btn_id" type="button" class="btn btn-primary btn-sm">
-                    Import
-                    <div id="passport_file_spinner" class="spinner-border spinner-small text-secondary" style="display: none;"></div>
-                    </button>
-                    <div class="invalid-feedback" id="passport_file_error_id" style="display: none;"></div>
-                    <div class="valid-feedback" id="passport_file_success_id" style="display: none;"></div>
-                    <div class="mb-3 d-flex">
-                        <img id="resized_image_id" style="display: none;">
-                    </div>
-                    {% if form.passport_file.errors %}
-                    <div class="alert alert-danger" role="alert">
-                        {{ form.passport_file.errors }}
-                    </div>
-                    {% endif %}
+            {{ field | as_crispy_field }}
+            <!-- button to check the file via ocr using restApiCall -->
+            <div class="mb-3">
+                <button id="passport_file_btn_id" type="button" class="btn btn-primary btn-sm">
+                Import
+                <div id="passport_file_spinner" class="spinner-border spinner-small text-secondary" style="display: none;"></div>
+                </button>
+                <div class="invalid-feedback" id="passport_file_error_id" style="display: none;"></div>
+                <div class="valid-feedback" id="passport_file_success_id" style="display: none;"></div>
+                <div class="mb-3 d-flex">
+                    <img id="resized_image_id" style="display: none;">
                 </div>
-            {% else %}
-                {{ field | as_crispy_field }}
-            {% endif %}
+                {% if form.passport_file.errors %}
+                <div class="alert alert-danger" role="alert">
+                    {{ form.passport_file.errors }}
+                </div>
+                {% endif %}
+            </div>
+        {% else %}
+            {{ field | as_crispy_field }}
+        {% endif %}
+
         {% endfor %}
 
         <div>
@@ -91,7 +93,7 @@
 
                 }
                 setFormFieldValue('id_title', title);
-                setFormFieldValue('id_nationality', mrz.country_name);
+                setFormFieldValue('id_nationality', mrz.nationality);
                 setFormFieldValue('id_birthdate', mrz.date_of_birth_yyyy_mm_dd);
                 // show dom with id_metadata_display
                 // document.getElementById('id_metadata_display').parentElement.style.display = 'block';

@@ -5,6 +5,7 @@ from django.http import HttpResponse
 from django.urls import reverse_lazy
 from django.views.generic.edit import CreateView
 
+from core.models.country_code import CountryCode
 from customers.forms import CustomerForm
 from customers.models import Customer
 
@@ -28,7 +29,6 @@ class CustomerCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateVie
         return context
 
     def form_valid(self, form):
-        print(form.errors)
         form.instance.created_by = self.request.user
         mrz_data = self.request.session.get("mrz_data", None)
         if mrz_data and form.is_valid():

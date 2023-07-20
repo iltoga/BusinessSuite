@@ -3,6 +3,7 @@ import io
 from datetime import date
 
 import seaborn as sns
+from django.db.models import Count
 from django.views.generic import TemplateView
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.figure import Figure
@@ -66,14 +67,17 @@ class CustomerAnalysisView(TemplateView):
 
         return context
 
-    def _prepare_nationality_data(self, customers):
-        data = {}
-        for customer in customers:
-            nationality = customer.nationality
-            if nationality in data:
-                data[nationality] += 1
-            else:
-                data[nationality] = 1
+    def _prepare_nationality_data(self):
+        from collections import defaultdict
+
+        # Query to count the customers by nationality
+        count_data = Customer.objects.values("nationality__country").annotate(num_customers=Count("id"))
+
+        # Create a dictionary to store the data
+        data = defaultdict(int)
+        for entry in count_data:
+            data[entry["nationality__country"]] = entry["num_customers"]
+
         return data
 
     def _prepare_age_data(self, customers):

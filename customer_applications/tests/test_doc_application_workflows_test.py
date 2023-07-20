@@ -6,6 +6,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from core.management.commands.populateholiday import Command as PopulateHolidayCommand
+from core.models.country_code import CountryCode
 from core.utils.dateutils import calculate_due_date
 from customer_applications.models import DocApplication, DocWorkflow
 from customers.models import Customer
@@ -17,11 +18,14 @@ warnings.filterwarnings("ignore", category=UserWarning, module="whitenoise.base"
 class DocApplicationTestWorkflows(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="testuser", password="12345")
+        self.country_code = CountryCode.objects.create(
+            country="Indonesia", alpha2_code="ID", alpha3_code="IDN", numeric_code="360"
+        )
         self.customer = Customer.objects.create(
             first_name="Test",
             last_name="Customer",
             title="Mr",
-            nationality="Indonesia",
+            nationality=self.country_code,
             birthdate=timezone.now().date(),
             gender="M",
         )

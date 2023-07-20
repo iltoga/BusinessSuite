@@ -18,7 +18,7 @@ class CountryCodeManager(models.Manager):
 class CountryCode(models.Model):
     country = models.CharField(max_length=100, unique=True, blank=False, null=False, db_index=True)
     alpha2_code = models.CharField(max_length=2, unique=True, blank=False, null=False, db_index=True)
-    alpha3_code = models.CharField(max_length=3, unique=True, blank=False, null=False, db_index=True)
+    alpha3_code = models.CharField(primary_key=True, max_length=3, unique=True, blank=False, null=False)
     numeric_code = models.CharField(max_length=3, unique=True, blank=False, null=False, db_index=True)
     objects = CountryCodeManager()
 
@@ -26,4 +26,4 @@ class CountryCode(models.Model):
         ordering = ["country"]
 
     def __str__(self):
-        return self.country + " (" + self.alpha3_code + ")"
+        return self.country + " (" + self.alpha2_code + ")"

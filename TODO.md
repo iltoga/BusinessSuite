@@ -6,6 +6,9 @@
 
 ## RESOLVED ✓
 
+### 2023-07-20
+- Customer nationality: transform from string to foreign key with CountryCode (note that the ocr already check the country code from passport against the CountryCode table, in `check_country_by_code` function)
+
 ### 2023-07-14
 - in invoice application, when selecting the customer application, the price will be taken from the product base price
 ### 2023-07-13
@@ -30,7 +33,6 @@
 ## TODO:
 
 ### 2023-07-18
-- Customer nationality: transform from string to foreign key with CountryCode (note that the ocr already check the country code from passport against the CountryCode table, in `check_country_by_code` function)
 
 ### 2023-07-13
 - add a second template for partial payments when generating the invoice (download): if the invoice already has payments, use the partial payments template

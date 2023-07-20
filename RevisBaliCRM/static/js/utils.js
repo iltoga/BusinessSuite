@@ -127,8 +127,6 @@ function setFormFieldValue(fieldId, value, type = null) {
         case 'search':
         case 'tel':
         case 'url':
-        case 'select-one':
-        case 'select-multiple':
         case 'file':
         case 'range':
         case 'color':
@@ -149,6 +147,7 @@ function setFormFieldValue(fieldId, value, type = null) {
         // passport date format is: yymmdd (example: 201231)
         case 'passport_date':
             field.value = convertDateFormat(value);
+            break;
 
         case 'month':
             var date = new Date(value);
@@ -169,6 +168,18 @@ function setFormFieldValue(fieldId, value, type = null) {
         case 'radio':
         case 'checkbox':
             field.checked = Boolean(value);
+            break;
+
+        case 'select-one':
+        case 'select-multiple':
+            var fieldJq = $(field);
+            if (fieldJq.hasClass('select2-hidden-accessible')) {
+                // It is a select2 element
+                fieldJq.val(value).trigger('change');
+            } else {
+                // It is a regular select element
+                field.value = value;
+            }
             break;
 
         default:
