@@ -1,3 +1,4 @@
+from datetime import datetime
 from os import unlink
 from typing import Any, Dict
 
@@ -9,6 +10,7 @@ from django.core.files.storage import default_storage
 from django.db import transaction
 from django.urls import reverse_lazy
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from django.views.generic import CreateView
 
 from customer_applications.forms import DocApplicationForm, DocumentCreateFormSet
@@ -63,6 +65,20 @@ class DocApplicationCreateView(PermissionRequiredMixin, SuccessMessageMixin, Cre
             form.add_error(None, "Documents are invalid")
             # Return the form invalid function from the parent class
             return super().form_invalid(form)
+
+        # check if the session is expired and
+        # if the customer_pk in the session is the same as the customer_pk in the form
+        session_mrz_data = self.request.session.get("mrz_data", None)
+        if session_mrz_data:
+            expiry_time_str = session_mrz_data.get("expiry_time", None)
+            customer_pk = session_mrz_data.get("customer_pk", None)
+            if expiry_time_str and customer_pk:
+                expiry_timestamp = float(expiry_time_str)
+                if (expiry_timestamp < timezone.now().timestamp()) or (customer_pk != form.instance.customer.pk):
+                    del self.request.session["mrz_data"]
+                    unlink(self.request.session["file_path"])
+                    del self.request.session["file_path"]
+                    del self.request.session["file_url"]
 
         # Ensure all operations inside are atomic, meaning that if any operation fails,
         # all operations are rolled back to maintain database consistency
@@ -123,15 +139,15 @@ class DocApplicationCreateView(PermissionRequiredMixin, SuccessMessageMixin, Cre
 
     def create_passport_document_from_session(self, form) -> bool:
         session_mrz_data = self.request.session.get("mrz_data", None)
+        # check if expiry_time is in session and if it is expired.
+        # if it is, delete the session data and also delete the file
+        if not session_mrz_data:
+            return False
+
         file_path = self.request.session.get("file_path", None)
         file_url = self.request.session.get("file_url", None)
         if session_mrz_data and file_path and file_url:
-            # Convert the names to uppercase
-            session_mrz_data["names"] = session_mrz_data["names"].upper().strip()
-            session_mrz_data["surname"] = session_mrz_data["surname"].upper().strip()
-            first_name = self.object.customer.first_name.upper()
-            last_name = self.object.customer.last_name.upper()
-            if first_name == session_mrz_data["names"] and last_name == session_mrz_data["surname"]:
+            if session_mrz_data.get("customer_pk", None) == form.instance.customer.pk:
                 try:
                     with open(file_path, "rb") as f:
                         self.import_passport_file(session_mrz_data, file_path, file_url, f)

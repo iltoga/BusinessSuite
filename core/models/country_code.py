@@ -26,4 +26,4 @@ class CountryCode(models.Model):
         ordering = ["country"]
 
     def __str__(self):
-        return self.country + " (" + self.alpha2_code + ")"
+        return self.country + " (" + self.alpha3_code + ")"

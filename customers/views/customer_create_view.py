@@ -3,6 +3,7 @@ from django.contrib.messages.views import SuccessMessageMixin
 from django.forms.models import BaseModelForm
 from django.http import HttpResponse
 from django.urls import reverse_lazy
+from django.utils import timezone
 from django.views.generic.edit import CreateView
 
 from core.models.country_code import CountryCode
@@ -15,8 +16,16 @@ class CustomerCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateVie
     model = Customer
     form_class = CustomerForm
     template_name = "customers/customer_form.html"
-    success_url = reverse_lazy("customer-list")
     success_message = "Customer added successfully!"
+
+    def get_success_url(self):
+        mrz_data = self.request.session.get("mrz_data", None)
+        if mrz_data:
+            # Add the customer pk to the session data so that we can match it against
+            # the customer.pk of the customer when creating a customer application
+            mrz_data["customer_pk"] = self.object.pk
+            self.request.session["mrz_data"] = mrz_data
+        return reverse_lazy("customer-list")
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -36,6 +45,9 @@ class CustomerCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateVie
             form.instance.surname = form.cleaned_data.get("last_name")
             mrz_data["names"] = form.instance.names
             mrz_data["surname"] = form.instance.surname
+            # set the expiry time to 5 minutes from now
+            expiry_time = timezone.now() + timezone.timedelta(seconds=300)
+            mrz_data["expiry_time"] = expiry_time.timestamp()
             self.request.session["mrz_data"] = mrz_data  # Update session data
         return super().form_valid(form)
 
