@@ -12,7 +12,7 @@ from .models import Payment
 class PaymentForm(forms.ModelForm):
     class Meta:
         model = Payment
-        fields = ["from_customer", "invoice_application", "payment_date", "amount"]
+        fields = ["from_customer", "invoice_application", "payment_date", "payment_type", "amount"]
         widgets = {
             "payment_date": forms.DateInput(attrs={"type": "date"}),
             "amount": forms.NumberInput(attrs={"step": "10000"}),

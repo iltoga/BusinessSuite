@@ -2,11 +2,23 @@
 
 ## BUGS
 
-### 2023-06-17
-
 ## RESOLVED ✓
 
+
+
+## TODO:
+
+### 2023-06-09
+- add exit_date to customer application: optional field telling us if and when the customer wants to go out of the country. This should trigger a notification in case the customer’s application is still on process and he has to leave the country.
+- add a view to see details of a document workflow.
+- add ajax call to update the workflow due_date when user updates the start_date
+
+## DONE:
+
+### 2023-07-25
+- add a second template for partial payments when generating the invoice (download): if the invoice already has payments, use the partial payments template
 ### 2023-07-20
+- remove quantity and unit price from the invoice template (docx)
 - Customer nationality: transform from string to foreign key with CountryCode (note that the ocr already check the country code from passport against the CountryCode table, in `check_country_by_code` function)
 
 ### 2023-07-14
@@ -28,25 +40,6 @@
 ### 2023-06-08
 - edit product task: can change the product in dropdown
 - create product: parent model is not included in a payment together with its children
-
-
-## TODO:
-
-### 2023-07-18
-
-### 2023-07-13
-- add a second template for partial payments when generating the invoice (download): if the invoice already has payments, use the partial payments template
-
-### 2023-07-12
-- remove quantity and unit price from the invoice template (docx)
-
-### 2023-06-09
-- add exit_date to customer application: optional field telling us if and when the customer wants to go out of the country. This should trigger a notification in case the customer’s application is still on process and he has to leave the country.
-- add a view to see details of a document workflow.
-- add ajax call to update the workflow due_date when user updates the start_date
-
-## DONE:
-
 ### 2023-06-20
 - add print preview for documents (maybe add the template to the document_type model)
 - add optional documents to customer application. These documents are not required but can be uploaded by the customer if he wants to.

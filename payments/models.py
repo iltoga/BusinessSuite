@@ -50,11 +50,26 @@ class PaymentManager(models.Manager):
 
 
 class Payment(models.Model):
+    CASH = "cash"
+    CREDIT_CARD = "credit_card"
+    WIRE_TRANSFER = "wire_transfer"
+    CRYPTO = "crypto"
+    PAYPAL = "paypal"
+
+    PAYMENT_TYPES = [
+        (CASH, "Cash"),
+        (CREDIT_CARD, "Credit card"),
+        (WIRE_TRANSFER, "Wire transfer"),
+        (CRYPTO, "Crypto"),
+        (PAYPAL, "PayPal"),
+    ]
+
     invoice_application = models.ForeignKey(InvoiceApplication, related_name="payments", on_delete=models.CASCADE)
     from_customer = models.ForeignKey(Customer, related_name="payments", on_delete=models.CASCADE)
     payment_date = models.DateField(db_index=True, default=timezone.now)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     notes = models.TextField(blank=True)
+    payment_type = models.CharField(max_length=20, choices=PAYMENT_TYPES, default=CASH)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(
