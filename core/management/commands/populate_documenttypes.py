@@ -16,6 +16,7 @@ class Command(BaseCommand):
                 "has_doc_number": False,
                 "has_file": False,
                 "has_details": True,
+                "is_in_required_documents": True,
             },
             {
                 "name": "Bank Statement",
@@ -25,6 +26,7 @@ class Command(BaseCommand):
                 "has_doc_number": False,
                 "has_file": True,
                 "has_details": False,
+                "is_in_required_documents": True,
             },
             {
                 "name": "Flight Ticket",
@@ -34,6 +36,7 @@ class Command(BaseCommand):
                 "has_doc_number": False,
                 "has_file": True,
                 "has_details": True,
+                "is_in_required_documents": True,
             },
             {
                 "name": "Passport",
@@ -43,6 +46,7 @@ class Command(BaseCommand):
                 "has_doc_number": True,
                 "has_file": True,
                 "has_details": True,
+                "is_in_required_documents": True,
             },
             {
                 "name": "Selfie Photo",
@@ -52,6 +56,7 @@ class Command(BaseCommand):
                 "has_doc_number": False,
                 "has_file": True,
                 "has_details": False,
+                "is_in_required_documents": True,
             },
             {
                 "name": "Covid-19 Certificate",
@@ -61,6 +66,27 @@ class Command(BaseCommand):
                 "has_doc_number": False,
                 "has_file": True,
                 "has_details": True,
+                "is_in_required_documents": True,
+            },
+            {
+                "name": "Arrival Stamp",
+                "description": "Stamp from Airport",
+                "has_ocr_check": False,
+                "has_expiration_date": True,
+                "has_doc_number": False,
+                "has_file": True,
+                "has_details": False,
+                "is_in_required_documents": True,
+            },
+            {
+                "name": "Processed Visa Stamp",
+                "description": "Stamp of the visa on the passport processed by immigration",
+                "has_ocr_check": False,
+                "has_expiration_date": True,
+                "has_doc_number": False,
+                "has_file": True,
+                "has_details": True,
+                "is_in_required_documents": False,
             },
         ]
 

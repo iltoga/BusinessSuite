@@ -14,7 +14,7 @@ pdf2image==1.16.3
 fontawesomefree==6.4.0
 django-unicorn==0.52.0
 django-debug-toolbar>=4.1.0
-rapidfuzz>=3.1.1
+rapidfuzz>=3.1.2
 django-storages~=1.13.2
 django-dbbackup~=4.0.2
 django-cron~=0.6.0
@@ -29,3 +29,6 @@ ua-parser
 user-agents
 django-user-agents
 seaborn
+# temporary fix to avoid pillow 10.0.0 which breaks passporteye (ATLANTIS algorithm has been removed)
+pillow==9.5.0
+
