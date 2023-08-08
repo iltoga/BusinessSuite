@@ -78,10 +78,9 @@ class DocApplicationCreateView(PermissionRequiredMixin, SuccessMessageMixin, Cre
             if expiry_time_str and customer_pk:
                 expiry_timestamp = float(expiry_time_str)
                 if (expiry_timestamp < timezone.now().timestamp()) or (customer_pk != form.instance.customer.pk):
-                    del self.request.session["mrz_data"]
-                    unlink(self.request.session["file_path"])
-                    del self.request.session["file_path"]
-                    del self.request.session["file_url"]
+                    self.request.session.pop("mrz_data", None)
+                    unlink(self.request.session.pop("file_path", None))
+                    self.request.session.pop("file_url", None)
 
         # Ensure all operations inside are atomic, meaning that if any operation fails,
         # all operations are rolled back to maintain database consistency
@@ -170,7 +169,6 @@ class DocApplicationCreateView(PermissionRequiredMixin, SuccessMessageMixin, Cre
             file = File(f)
         except FileNotFoundError:
             logger.error("Passport file not found.")
-            # Delete session variables
             for key in ["mrz_data", "file_path", "file_url"]:
                 self.request.session.pop(key, None)
             return
@@ -199,6 +197,10 @@ class DocApplicationCreateView(PermissionRequiredMixin, SuccessMessageMixin, Cre
         except Exception as e:
             logger.error(f"Error deleting file from temporary storage. Exception: {str(e)}")
 
+        # Delete session variables
+        for key in ["mrz_data", "file_path", "file_url"]:
+            self.request.session.pop(key, None)
+
         doc_model.file = file_path
 
         try:
@@ -206,9 +208,6 @@ class DocApplicationCreateView(PermissionRequiredMixin, SuccessMessageMixin, Cre
         except Exception as e:
             messages.error(self.request, f"Error saving document to database. Exception: {str(e)}")
             return
-
-        for key in ["mrz_data", "file_path", "file_url"]:
-            self.request.session.pop(key, None)
 
         messages.success(
             self.request,
