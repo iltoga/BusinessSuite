@@ -1,4 +1,5 @@
-from datetime import datetime
+import logging
+import os
 from os import unlink
 from typing import Any, Dict
 
@@ -10,7 +11,6 @@ from django.core.files.storage import default_storage
 from django.db import transaction
 from django.urls import reverse_lazy
 from django.utils import timezone
-from django.utils.dateparse import parse_datetime
 from django.views.generic import CreateView
 
 from customer_applications.forms import DocApplicationForm, DocumentCreateFormSet
@@ -18,6 +18,9 @@ from customer_applications.models import DocApplication
 from customer_applications.models.doc_workflow import DocWorkflow
 from customer_applications.models.document import Document
 from products.models import DocumentType, Task
+
+# File logger in prod and console in dev
+logger = logging.getLogger(__name__)
 
 
 class DocApplicationCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateView):
@@ -113,9 +116,12 @@ class DocApplicationCreateView(PermissionRequiredMixin, SuccessMessageMixin, Cre
                 document.instance.updated_at = timezone.now()
 
                 if document.instance.doc_type.name == "Passport":
-                    if (
-                        self.request.session.get("file_path", None) and self.request.session.get("mrz_data", None)
-                    ) or self.get_previous_valid_passport_document(False):
+                    file_path = self.request.session.get("file_path", None)
+                    if file_path and os.path.isfile(file_path) and self.request.session.get("mrz_data", None):
+                        continue
+
+                    previous_passport_document = self.get_previous_valid_passport_document(False)
+                    if previous_passport_document and os.path.isfile(previous_passport_document.file.path):
                         continue
 
                 document_instances.append(document.instance)
@@ -160,30 +166,50 @@ class DocApplicationCreateView(PermissionRequiredMixin, SuccessMessageMixin, Cre
         return False
 
     def import_passport_file(self, session_mrz_data, file_path, file_url, f):
-        file = File(f)
+        try:
+            file = File(f)
+        except FileNotFoundError:
+            logger.error("Passport file not found.")
+            # Delete session variables
+            for key in ["mrz_data", "file_path", "file_url"]:
+                self.request.session.pop(key, None)
+            return
+        except Exception as e:
+            logger.error(f"Error opening file. Exception: {str(e)}")
+            return
+
         file_to_delete = file_path
-        doc_model = Document()
-        doc_model.file_link = file_url
-        doc_model.doc_number = session_mrz_data["number"]
-        doc_model.expiration_date = session_mrz_data["expiration_date_yyyy_mm_dd"]
-        doc_model.ocr_check = True
-        doc_model.metadata = session_mrz_data
-        doc_model.completed = True
-        doc_model.doc_application = self.object
-        doc_model.doc_type = DocumentType.objects.get(name="Passport")
-        doc_model.created_by = self.request.user
-        doc_model.created_at = timezone.now()
-        doc_model.updated_at = timezone.now()
+        doc_model = Document(
+            file_link=file_url,
+            doc_number=session_mrz_data["number"],
+            expiration_date=session_mrz_data["expiration_date_yyyy_mm_dd"],
+            ocr_check=True,
+            metadata=session_mrz_data,
+            completed=True,
+            doc_application=self.object,
+            doc_type=DocumentType.objects.get(name="Passport"),
+            created_by=self.request.user,
+            created_at=timezone.now(),
+            updated_at=timezone.now(),
+        )
 
         file_path = default_storage.save(doc_model.get_upload_to(file.name), file)
-        unlink(file_to_delete)
+        try:
+            unlink(file_to_delete)
+        except Exception as e:
+            logger.error(f"Error deleting file from temporary storage. Exception: {str(e)}")
+
         doc_model.file = file_path
 
-        doc_model.save()
+        try:
+            doc_model.save()
+        except Exception as e:
+            messages.error(self.request, f"Error saving document to database. Exception: {str(e)}")
+            return
 
-        del self.request.session["mrz_data"]
-        del self.request.session["file_path"]
-        del self.request.session["file_url"]
+        for key in ["mrz_data", "file_path", "file_url"]:
+            self.request.session.pop(key, None)
+
         messages.success(
             self.request,
             "Passport file automatically imported from New Customer. Remember to always check that data are correct.",
@@ -193,7 +219,6 @@ class DocApplicationCreateView(PermissionRequiredMixin, SuccessMessageMixin, Cre
         """
         Create a passport document from the previous docapplication.
         """
-        customer = self.object.customer
         doc_type = DocumentType.objects.get(name="Passport")
         previous_passport_doc = self.get_previous_valid_passport_document()
         if previous_passport_doc:
@@ -220,12 +245,18 @@ class DocApplicationCreateView(PermissionRequiredMixin, SuccessMessageMixin, Cre
     def get_previous_valid_passport_document(self, with_messages=True):
         customer = self.object.customer
         passport_doc_type = DocumentType.objects.get(name="Passport")
-        previous_passport_doc = (
-            Document.objects.filter(doc_application__customer=customer, doc_type=passport_doc_type)
-            .exclude(doc_application=self.object)
-            .order_by("-created_at")
-            .first()
-        )
+
+        try:
+            previous_passport_doc = (
+                Document.objects.filter(doc_application__customer=customer, doc_type=passport_doc_type)
+                .exclude(doc_application=self.object)
+                .order_by("-created_at")
+                .first()
+            )
+        except Document.DoesNotExist:
+            logger.warning("No previous passport document found.")
+            return False
+
         if previous_passport_doc:
             if previous_passport_doc.is_expired:
                 if with_messages:
