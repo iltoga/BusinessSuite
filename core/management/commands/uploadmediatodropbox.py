@@ -21,12 +21,14 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         # Initialize DropboxStorage with the options from DBBACKUP_STORAGE_OPTIONS
         try:
+            access_token = refresh_dropbox_token(
+                os.getenv("DROPBOX_APP_KEY"),
+                os.getenv("DROPBOX_APP_SECRET"),
+                os.getenv("DROPBOX_OAUTH2_REFRESH_TOKEN"),
+            )
+
             ds = DropBoxStorage(
-                oauth2_access_token=refresh_dropbox_token(
-                    os.getenv("DROPBOX_APP_KEY"),
-                    os.getenv("DROPBOX_APP_SECRET"),
-                    os.getenv("DROPBOX_OAUTH2_REFRESH_TOKEN"),
-                ),
+                oauth2_access_token=access_token,
                 app_key=os.getenv("DROPBOX_APP_KEY"),
                 app_secret=os.getenv("DROPBOX_APP_SECRET"),
             )
@@ -59,8 +61,19 @@ class Command(BaseCommand):
                         django_file = File(f)
 
                         # Save file to Dropbox
-                        ds._save(dropbox_file_path, django_file)
-                        logger.info(f"Uploaded {dropbox_file_path} to Dropbox")
-            logger.info(f"Directory has been successfully uploaded to Dropbox")
+                        self.save_to_dropbox(ds, dropbox_file_path, django_file, access_token)
+                        logger.info(f"Directory has been successfully uploaded to Dropbox")
         except Exception as e:
             logger.error(f"An error occurred while uploading the directory to Dropbox: {e}")
+
+    def save_to_dropbox(self, ds, dropbox_file_path, django_file, access_token):
+        try:
+            ds._save(dropbox_file_path, django_file)
+        except:
+            ds = DropBoxStorage(
+                oauth2_access_token=access_token,
+                app_key=os.getenv("DROPBOX_APP_KEY"),
+                app_secret=os.getenv("DROPBOX_APP_SECRET"),
+            )
+            ds._save(dropbox_file_path, django_file)
+            logger.info(f"Refreshed token and uploaded {dropbox_file_path} to Dropbox")
