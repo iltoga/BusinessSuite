@@ -1,0 +1,12 @@
+{% load unicorn %}
+
+<th scope="col" class="text-primary sortable" unicorn:click="sort('{{ col_field }}')">
+    {{ col_name }}
+    {% if order_by == col_field %}
+        {% if sort_dir == 'asc' %}
+            <i class="bi bi-arrow-down-short"></i>
+        {% else %}
+            <i class="bi bi-arrow-up-short"></i>
+        {% endif %}
+    {% endif %}
+</th>

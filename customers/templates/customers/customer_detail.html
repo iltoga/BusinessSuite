@@ -1,43 +1,42 @@
 {% extends "base_template.html" %}
 {% load static %}
 {% load view_filters %}
+{% load form_extras %}
 
 {% block title %}RevisCRM - Customer Details{% endblock %}
 
 {% block content %}
-  <div class="container my-4">
+  <div class="my-4">
     <div class="card">
       <div class="card-header bg-primary text-white">
-        <h3>Customer Details</h3>
+        <h3>Customer ID #{{ customer.pk }}</h3>
       </div>
       <table class="table">
         <tbody>
-          <tr><th scope="row" class="text-start">Full Name</th><td class="text-start">{{ customer.full_name }}</td></tr>
+          <tr><th scope="row" class="text-start">First Name</th><td class="text-start">{{ customer.first_name }}</td></tr>
+          <tr><th scope="row" class="text-start">Last Name</th><td class="text-start">{{ customer.last_name }}</td></tr>
           <tr><th scope="row" class="text-start">Email</th><td class="text-start">{{ customer.email }}</td></tr>
           <tr><th scope="row" class="text-start">Telephone</th><td class="text-start">{{ customer.telephone }}</td></tr>
           <tr><th scope="row" class="text-start">Whatsapp</th><td class="text-start">{{ customer.whatsapp }}</td></tr>
           <tr><th scope="row" class="text-start">Telegram</th><td class="text-start">{{ customer.telegram }}</td></tr>
           <tr><th scope="row" class="text-start">Title</th><td class="text-start">{{ customer.title }}</td></tr>
-          <tr><th scope="row" class="text-start">Citizenship</th><td class="text-start">{{ customer.citizenship }}</td></tr>
+          <tr><th scope="row" class="text-start">Nationality</th><td class="text-start">{{ customer.nationality }}</td></tr>
           <tr><th scope="row" class="text-start">Birthdate</th><td class="text-start">{{ customer.birthdate }}</td></tr>
           <tr><th scope="row" class="text-start">Address in Bali</th><td class="text-start">{{ customer.address_bali }}</td></tr>
           <tr><th scope="row" class="text-start">Address Abroad</th><td class="text-start">{{ customer.address_abroad }}</td></tr>
-          <tr><th scope="row" class="text-start">Document Type</th><td class="text-start">{{ customer.document_type }}</td></tr>
-          <tr><th scope="row" class="text-start">Document ID</th><td class="text-start">{{ customer.document_id }}</td></tr>
-          <tr><th scope="row" class="text-start">Expiration Date</th><td class="text-start {% if customer.expiration_date|is_in_notification_period %}bg-danger{% endif %}">{{ customer.expiration_date }}</td></tr>
-          <tr><th scope="row" class="text-start">Notify Expiration</th><td class="text-start">{{ customer.notify_expiration }}</td></tr>
+          <tr><th scope="row" class="text-start">Notify Documents Expiration</th><td class="text-start">{{ customer.notify_documents_expiration|boolean_to_yes_no }}</td></tr>
           <tr><th scope="row" class="text-start">Notify By</th><td class="text-start">{{ customer.notify_by }}</td></tr>
-          <tr><th scope="row" class="text-start">Notification Sent</th><td class="text-start">{{ customer.notification_sent }}</td></tr>
+          <tr><th scope="row" class="text-start">Notification Sent</th><td class="text-start">{{ customer.notification_sent|boolean_to_yes_no }}</td></tr>
         </tbody>
       </table>
       <div class="card-body">
-        <a href="{% url 'customer-list' %}" class="btn btn-primary">List All</a>
         {% if perms.customers.change_customer %}
-        <a href="{% url 'customer-update' customer.id %}" class="btn btn-warning btn-sm">Edit</a>
+        <a href="{% url 'customer-update' customer.id %}" class="btn btn-warning">Edit</a>
         {% endif %}
         {% if perms.customers.delete_customer %}
-        <a href="{% url 'customer-delete' customer.id %}" class="btn btn-danger btn-sm">Delete</a>
+        <a href="{% url 'customer-delete' customer.id %}" class="btn btn-danger">Delete</a>
         {% endif %}
+        <a href="javascript:history.back()" class="btn btn-primary">Back</a>
       </div>
     </div>
   </div>

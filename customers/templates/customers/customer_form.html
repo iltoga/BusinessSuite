@@ -1,28 +1,116 @@
 {% extends "base_template.html" %}
-{% load static form_extras %}
-{% load crispy_forms_filters %}
+{% load static %}
 {% load crispy_forms_tags %}
+{% load widget_tweaks %}
 
 {% block title %}RevisCRM - {{ action_name }} customer{% endblock %}
 
-{% block custom-css %}
-    {{ block.super }}
-    <style>
-        .form-group {
-            margin-bottom: 10px;  /* Reduce the space between form elements */
-        }
-    </style>
-{% endblock %}
-
 {% block content %}
-<div class="container-fluid"> <!-- Use container-fluid to make the content stretch to the full width -->
+<div>
     <h2 class="text-center my-4">{{ action_name }} a new customer</h2>
-    <form method="post" class="p-3 rounded w-50" action="{{ action }}">
+    {% if form.non_field_errors %}
+    <div class="alert alert-danger" role="alert">
+        {{ form.non_field_errors }}
+    </div>
+    {% endif %}
+    <form method="post" class="p-3 rounded w-100" action="{{ action }}" novalidate>
         {% csrf_token %}
-        {{ form | crispy }}
-        <div class="d-grid gap-2">
+        {% for field in form %}
+            {% if field.name == 'passport_file' %}
+            {{ field | as_crispy_field }}
+            <!-- button to check the file via ocr using restApiCall -->
+            <div class="mb-3">
+                <button id="passport_file_btn_id" type="button" class="btn btn-primary btn-sm">
+                Import
+                <div id="passport_file_spinner" class="spinner-border spinner-small text-secondary" style="display: none;"></div>
+                </button>
+                <div class="invalid-feedback" id="passport_file_error_id" style="display: none;"></div>
+                <div class="valid-feedback" id="passport_file_success_id" style="display: none;"></div>
+                <div class="mb-3 d-flex">
+                    <img id="resized_image_id" style="display: none;">
+                </div>
+                {% if form.passport_file.errors %}
+                <div class="alert alert-danger" role="alert">
+                    {{ form.passport_file.errors }}
+                </div>
+                {% endif %}
+            </div>
+        {% else %}
+            {{ field | as_crispy_field }}
+        {% endif %}
+
+        {% endfor %}
+
+        <div>
+            <hr \>
             <button type="submit" class="btn btn-primary">{{ action_name }}</button>
+            <a href="javascript:history.back()" class="btn btn-outline-primary">Back</a>
         </div>
     </form>
 </div>
+{% endblock %}
+
+{% block after-bootstrap-js %}
+  {{ block.super }}
+  <script>
+    $(document).ready(function() {
+      var passport_file_btn = document.getElementById('passport_file_btn_id');
+      var resizedImage = document.getElementById('resized_image_id');
+      var firstNameInput = document.getElementById('id_first_name');
+      var lastNameInput = document.getElementById('id_last_name');
+
+      firstNameInput.addEventListener('change', function(e) {
+        firstNameInput.value = capitalizeFirstLetter(firstNameInput.value);
+      });
+
+      lastNameInput.addEventListener('change', function(e) {
+        lastNameInput.value = capitalizeFirstLetter(lastNameInput.value);
+      });
+
+      passport_file_btn.addEventListener('click', function(e) {
+        var url = "{% url 'api-ocr-check' %}";
+        var formData = new FormData();
+        formData.append('file', document.querySelector('input[name="passport_file"]').files[0],);
+        formData.append('doc_type', "passport");
+        formData.append('save_session', true);
+        formData.append('img_preview', true);
+        formData.append('resize', true);
+        formData.append('width', 500);
+        toggleSpinnerDisplay(true, 'passport_file_btn_id', 'passport_file_spinner');
+        restApiCall('POST', url, formData,
+            data => {
+                mrz = data.mrz_data;
+                toggleMessageDisplay(true, 'Data successfully imported via OCR!', 'passport_file_error_id', 'passport_file_success_id');
+                setFormFieldValue('id_first_name', mrz.names);
+                setFormFieldValue('id_last_name', mrz.surname);
+                setFormFieldValue('id_gender', mrz.sex);
+                // set the title ('M' or 'F') to the title field depending on data.sex (remember that this is javascript)
+                title = '';
+                if (data.sex == 'M') {
+                    title = 'Mr';
+                } else {
+                    title = 'Ms';
+
+                }
+                setFormFieldValue('id_title', title);
+                setFormFieldValue('id_nationality', mrz.nationality);
+                setFormFieldValue('id_birthdate', mrz.date_of_birth_yyyy_mm_dd);
+                // show dom with id_metadata_display
+                // document.getElementById('id_metadata_display').parentElement.style.display = 'block';
+                toggleSpinnerDisplay(false, 'passport_file_btn_id', 'passport_file_spinner');
+
+                // Display the resized image if it's present in the response data
+                if (data.b64_resized_image) {
+                    resizedImage.src = "data:image/jpeg;base64," + data.b64_resized_image;
+                    resizedImage.style.display = 'block';
+                }
+            },
+            error => {
+                toggleMessageDisplay(false, error.message, 'passport_file_error_id', 'passport_file_success_id');
+                toggleSpinnerDisplay(false, 'passport_file_btn_id', 'passport_file_spinner');
+            }
+        );
+      });
+    });
+  </script>
 {% endblock %}

@@ -14,22 +14,28 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 from django.views.generic import TemplateView
-from django.conf import settings
-from django.conf.urls.static import static
 
-urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('', include('landing.urls')),
-    path('customers/', include('customers.urls')),
-    path('products/', include('products.urls')),
-    path('customer_applications/', include('customer_applications.urls')),
-    # path('invoices', include('invoices.urls')),
-    # path('transactions', include('transactions.urls')),
-    path('',TemplateView.as_view(template_name="base_template.html"),name='home'),
-    path('api/', include('api.urls')),
-    path('nested_admin/', include('nested_admin.urls')),
-    # to serve media files in development (TODO: in production use nginx or S3)
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+urlpatterns = (
+    [
+        path("admin/", admin.site.urls),
+        path("", include("landing.urls")),
+        path("customers/", include("customers.urls")),
+        path("products/", include("products.urls")),
+        path("customer_applications/", include("customer_applications.urls")),
+        path("invoices/", include("invoices.urls")),
+        path("payments/", include("payments.urls")),
+        path("", TemplateView.as_view(template_name="base_template.html"), name="home"),
+        path("api/", include("api.urls")),
+        path("nested_admin/", include("nested_admin.urls")),
+        path("unicorn/", include("django_unicorn.urls")),
+        path("__debug__/", include("debug_toolbar.urls")),
+        # to serve media files in development (TODO: in production use nginx or S3)
+    ]
+    + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+)

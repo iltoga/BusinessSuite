@@ -1,0 +1,66 @@
+{% load check_perms %}
+<div class="table-responsive">
+  <table class="table table-responsive-md">
+    <thead>
+      <tr>
+        <th scope="col">Doc.Type</th>
+        <th scope="col">Doc. Number</th>
+        <th scope="col">Expiration Date</th>
+        <th scope="col">Last Updated</th>
+        <th scope="col">Completed</th>
+        {% if user|has_perm:'customer_applications,document,change' and not docapplication.is_application_completed%}
+        <th scope="col">Actions</th>
+        {% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for document in documents %}
+        {% if document.is_expired %}
+          <tr class="table-danger">
+        {% else %}
+          <tr>
+        {% endif %}
+
+          <td>{{ document.doc_type }}</td>
+          <!-- Document Number -->
+          <td>{{ document.doc_number }}</td>
+          <!-- Expiration Date -->
+          <td>{{ document.expiration_date }}</td>
+
+          <!-- Last Updated -->
+          {% include "components/updated_at_by_table_col.html" with model=document %}
+
+          <!-- Completed -->
+          <td>
+            {% if document.completed %}
+              {% include "components/field_checked_true.html" with text="Yes" %}
+            {% else %}
+              {% include "components/field_checked_false.html" with text="No" %}
+            {% endif %}
+          </td>
+
+          <!-- Actions -->
+          <td>
+            <div class="btn-group-sm" role="group">
+            {% if user|has_perm:'customer_applications,document,change' %}
+              {% if not docapplication.is_application_completed or upload_after_app_completed%}
+                {% if btn_update_text %}
+                  <a href="{% url 'customer-application-document-update' document.pk %}" class="btn btn-warning">{{ btn_update_text }}</a>
+                {% else %}
+                  <a href="{% url 'customer-application-document-update' document.pk %}" class="btn btn-warning">Upload</a>
+                {% endif %}
+              {% endif %}
+            {% endif %}
+
+            {% if user|has_perm:'customer_applications,document,view' %}
+              <a href="{% url 'customer-application-document-detail' document.pk %}" class="btn btn-primary">View</a>
+              <a href="{% url 'customer-application-document-detail-print' document.pk %}" target="_blank" class="btn btn-secondary">Print</a>
+            {% endif %}
+            </div>
+          </td>
+
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

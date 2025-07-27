@@ -1,20 +1,56 @@
-from django.urls import reverse_lazy
-from django.views.generic.edit import CreateView
-from customers.models import Customer
-from customers.forms import CustomerForm
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
+from django.forms.models import BaseModelForm
+from django.http import HttpResponse
+from django.urls import reverse_lazy
+from django.utils import timezone
+from django.views.generic.edit import CreateView
+
+from core.models.country_code import CountryCode
+from customers.forms import CustomerForm
+from customers.models import Customer
+
 
 class CustomerCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateView):
-    permission_required = ('customers.add_customer',)
+    permission_required = ("customers.add_customer",)
     model = Customer
     form_class = CustomerForm
-    template_name = 'customers/customer_form.html'
-    success_url = reverse_lazy('customer-list')
+    template_name = "customers/customer_form.html"
     success_message = "Customer added successfully!"
+
+    def get_success_url(self):
+        mrz_data = self.request.session.get("mrz_data", None)
+        if mrz_data:
+            # Add the customer pk to the session data so that we can match it against
+            # the customer.pk of the customer when creating a customer application
+            mrz_data["customer_pk"] = self.object.pk
+            self.request.session["mrz_data"] = mrz_data
+        return reverse_lazy("customer-list")
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs.update({"user": self.request.user})
+        return kwargs
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['action'] = reverse_lazy('customer-create')
-        context['action_name'] = 'Create'
+        context["action_name"] = "Create"
         return context
+
+    def form_valid(self, form):
+        form.instance.created_by = self.request.user
+        mrz_data = self.request.session.get("mrz_data", None)
+        if mrz_data and form.is_valid():
+            form.instance.names = form.cleaned_data.get("first_name")
+            form.instance.surname = form.cleaned_data.get("last_name")
+            mrz_data["names"] = form.instance.names
+            mrz_data["surname"] = form.instance.surname
+            # set the expiry time to 5 minutes from now
+            expiry_time = timezone.now() + timezone.timedelta(seconds=300)
+            mrz_data["expiry_time"] = expiry_time.timestamp()
+            self.request.session["mrz_data"] = mrz_data  # Update session data
+        return super().form_valid(form)
+
+    def form_invalid(self, form: BaseModelForm) -> HttpResponse:
+        print(form.errors)
+        return super().form_invalid(form)

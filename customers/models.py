@@ -1,120 +1,192 @@
-from django.db import models
+import logging
+import os
+import shutil
 
-from django.db import models, connection
-from django.db.models.signals import post_migrate, pre_save, post_save
-from django.dispatch import receiver
+from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.serializers import serialize
+from django.db import models
+from django.db.models.signals import post_delete, pre_delete
+from django.dispatch import receiver
 from django.utils.translation import gettext_lazy as _
-from django import forms
-from core.utils.form_validators import validate_phone_number, validate_birthdate, validate_document_id, validateEmail, validateDocumentType, validateExpirationDate
 
-DOCUMENT_TYPE_CHOICES = [
-    ('', '---------'),
-    ('Passport', 'Passport'),
-    ('KTP', 'KTP'),
-    ('SIM', 'SIM'),
-]
+from core.models import CountryCode
+from core.utils.form_validators import validate_birthdate, validate_email, validate_phone_number
+from core.utils.helpers import whitespaces_to_underscores
+
+logger = logging.getLogger(__name__)
 
 TITLES_CHOICES = [
-    ('', '---------'),
-    ('Mr', 'Mr'),
-    ('Mrs', 'Mrs'),
-    ('Ms', 'Ms'),
-    ('Miss', 'Miss'),
-    ('Dr', 'Dr'),
-    ('Prof', 'Prof'),
+    ("", "---------"),
+    ("Mr", "Mr"),
+    ("Mrs", "Mrs"),
+    ("Ms", "Ms"),
+    ("Miss", "Miss"),
+    ("Dr", "Dr"),
+    ("Prof", "Prof"),
 ]
 
 NOTIFY_BY_CHOICES = [
-    ('', '---------'),
-    ('Email', 'Email'),
-    ('SMS', 'SMS'),
-    ('WhatsApp', 'WhatsApp'),
-    ('Telegram', 'Telegram'),
-    ('Telephone', 'Telephone'),
+    ("", "---------"),
+    ("Email", "Email"),
+    ("SMS", "SMS"),
+    ("WhatsApp", "WhatsApp"),
+    ("Telegram", "Telegram"),
+    ("Telephone", "Telephone"),
 ]
 
+GENDERS = [
+    ("", "---------"),
+    ("M", "Male"),
+    (
+        "F",
+        "Female",
+    ),
+]
+
+
+class CustomerQuerySet(models.QuerySet):
+    # Return a queryset of active customers
+    def active(self):
+        return self.filter(active=True)
+
+
 class CustomerManager(models.Manager):
+    def get_queryset(self):
+        return CustomerQuerySet(self.model, using=self._db)
+
+    # Shortcut for Customer.objects.active()
+    def active(self):
+        return self.get_queryset().active()
+
     def search_customers(self, query):
         return self.filter(
-            models.Q(full_name__icontains=query) |
-            models.Q(document_id__icontains=query) |
-            models.Q(email__icontains=query)
+            models.Q(first_name__icontains=query)
+            | models.Q(last_name__icontains=query)
+            | models.Q(email__icontains=query)
+            | models.Q(telephone__icontains=query)
+            | models.Q(telegram__icontains=query)
+            | models.Q(whatsapp__icontains=query)
         )
-    def fulltext_search_customers(self, query):
-        with connection.cursor() as cursor:
-            cursor.execute(f'''
-                SELECT id, full_name, document_id
-                FROM customer_fts
-                WHERE customer_fts MATCH '{query}*'
-                ORDER BY rank;
-            ''')
-            return [Customer.objects.get(id=row[0]) for row in cursor.fetchall()]
+
 
 class Customer(models.Model):
+    # Fields are ordered: default fields, custom fields, and finally relationships
     id = models.AutoField(primary_key=True)
-    full_name = models.CharField(max_length=50)
-    email = models.EmailField(max_length=50, unique=True, blank=True, null=True, validators=[validateEmail])
-    telephone = models.CharField(max_length=50, unique=True, blank=True, null=True, validators=[validate_phone_number])
-    whatsapp = models.CharField(max_length=50, unique=True, blank=True, null=True, validators=[validate_phone_number])
-    telegram = models.CharField(max_length=50, unique=True, blank=True, null=True, validators=[validate_phone_number])
+    first_name = models.CharField(max_length=50, db_index=True)
+    last_name = models.CharField(max_length=50, db_index=True)
+    email = models.EmailField(
+        max_length=50, unique=True, blank=True, null=True, validators=[validate_email], db_index=True
+    )
+    telephone = models.CharField(
+        max_length=50, unique=True, blank=True, null=True, validators=[validate_phone_number], db_index=True
+    )
+    whatsapp = models.CharField(
+        max_length=50, unique=True, blank=True, null=True, validators=[validate_phone_number], db_index=True
+    )
+    telegram = models.CharField(
+        max_length=50, unique=True, blank=True, null=True, validators=[validate_phone_number], db_index=True
+    )
+    facebook = models.CharField(max_length=50, blank=True, null=True, db_index=True)
+    instagram = models.CharField(max_length=50, blank=True, null=True, db_index=True)
+    twitter = models.CharField(max_length=50, blank=True, null=True, db_index=True)
     title = models.CharField(choices=TITLES_CHOICES, max_length=50)
-    citizenship = models.CharField(max_length=100)
+    nationality = models.ForeignKey(
+        CountryCode,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="customers",
+        to_field="alpha3_code",
+    )
     birthdate = models.DateField(validators=[validate_birthdate])
+    gender = models.CharField(choices=GENDERS, max_length=5, blank=True, null=True)
     address_bali = models.TextField(blank=True, null=True)
     address_abroad = models.TextField(blank=True, null=True)
-    document_type = models.CharField(choices=DOCUMENT_TYPE_CHOICES, max_length=50)
-    document_id = models.CharField(max_length=50, unique=True, validators=[validate_document_id])
-    expiration_date = models.DateField(validators=[validateExpirationDate])
-    notify_expiration = models.BooleanField(default=True)
+    notify_documents_expiration = models.BooleanField(default=True)
     notify_by = models.CharField(choices=NOTIFY_BY_CHOICES, max_length=50, blank=True, null=True)
     notification_sent = models.BooleanField(default=False)
+    active = models.BooleanField(default=True)
+
     objects = CustomerManager()
 
     class Meta:
-        ordering = ['full_name']
-        unique_together = (('full_name', 'birthdate'),)
+        ordering = ["first_name", "last_name"]
+        unique_together = (("first_name", "last_name", "birthdate"),)
 
     def __str__(self):
         return self.full_name
 
-    # clean method is where you can add custom validations for your model
-    # note: it can be used here or in the form class
+    def natural_key(self):
+        """
+        Returns a natural key that can be used to serialize this object.
+        """
+        return {
+            "full_name": self.full_name,
+            "email": self.email,
+            "birthdate": self.birthdate,
+            "active": self.active,
+        }
+
+    @property
+    def full_name(self):
+        return f"{self.first_name} {self.last_name}"
+
     def clean(self):
-        if self.notify_expiration and not self.notify_by:
-            raise ValidationError('If notify expiration is true, notify by is mandatory.')
+        if self.notify_documents_expiration and not self.notify_by:
+            raise ValidationError("If notify expiration is true, notify by is mandatory.")
 
-    def delete(self, *args, **kwargs):
-        with connection.cursor() as cursor:
-            cursor.execute('''
-                DELETE FROM customer_fts WHERE id = %s;
-            ''', [self.id])
-        super().delete(*args, **kwargs)
+    @property
+    def upload_folder(self):
+        base_doc_path = settings.DOCUMENTS_FOLDER
+        return f"{base_doc_path}/{whitespaces_to_underscores(self.full_name)}_{self.pk}"
 
-# Create an FTS table for Customers after each migration
-@receiver(post_migrate)
-def create_fts_table(sender, **kwargs):
-    with connection.cursor() as cursor:
-        cursor.execute('''
-            CREATE VIRTUAL TABLE IF NOT EXISTS customer_fts
-            USING fts5(id UNINDEXED, full_name, document_id);
-        ''')
+    def delete_customer_files(self):
+        # get media root path from settings
+        media_root = settings.MEDIA_ROOT
+        # delete the folder containing the customer's files
+        try:
+            shutil.rmtree(os.path.join(media_root, self.upload_folder))
+        except FileNotFoundError:
+            logger.info("Folder not found: %s", self.upload_folder)
 
-# Before a customer is saved into the Customers table,
-# delete the old matching entry in the FTS table
-@receiver(pre_save, sender=Customer)
-def customer_before_save(sender, instance, **kwargs):
-    with connection.cursor() as cursor:
-        cursor.execute('''
-            DELETE FROM customer_fts WHERE id = %s;
-        ''', [instance.id])
+    def doc_applications_to_json(
+        self, filter_by_doc_collection_completed=True, exclude_already_invoiced=True, current_invoice_to_include=None
+    ):
+        # Serialize the customer's applications to JSON
+        doc_application_qs = self.get_doc_applications_for_invoice(
+            filter_by_doc_collection_completed, exclude_already_invoiced, current_invoice_to_include
+        )
 
-# After a customer is saved into the Customers table,
-# insert a matching entry into the FTS table
-@receiver(post_save, sender=Customer)
-def customer_after_save(sender, instance, **kwargs):
-    with connection.cursor() as cursor:
-        cursor.execute('''
-            INSERT INTO customer_fts (id, full_name, document_id)
-            VALUES (%s, %s, %s);
-        ''', [instance.id, instance.full_name, instance.document_id])
+        # Serialize the queryset to JSON including the natural keys (related objects)
+        json_obj = serialize("json", doc_application_qs, use_natural_foreign_keys=True)
+        return json_obj
+
+    def get_doc_applications_for_invoice(
+        self, filter_by_doc_collection_completed=True, exclude_already_invoiced=True, current_invoice_to_include=None
+    ):
+        """
+        Return a queryset of DocApplications that have their document collection completed (default behavior).
+        If exclude_already_invoiced is True, exclude DocApplications that have already been invoiced.
+        Note: by providing current_invoice_to_include, we can include DocApplications that are part of the current invoice (for updating an invoice).
+        """
+        doc_application_qs = self.doc_applications.all()
+        if exclude_already_invoiced:
+            doc_application_qs = doc_application_qs.exclude_already_invoiced(current_invoice_to_include)
+        if filter_by_doc_collection_completed:
+            doc_application_qs = doc_application_qs.filter_by_document_collection_completed()
+
+        return doc_application_qs
+
+
+@receiver(pre_delete, sender=Customer)
+def pre_delete_customer_signal(sender, instance, **kwargs):
+    # retain the folder path before deleting the customer
+    instance.folder_path = instance.upload_folder
+
+
+@receiver(post_delete, sender=Customer)
+def post_delete_customer_signal(sender, instance, **kwargs):
+    logger.info("Deleted: %s", instance)
+    # delete the customer's files
+    instance.delete_customer_files()

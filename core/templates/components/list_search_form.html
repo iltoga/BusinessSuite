@@ -1,0 +1,25 @@
+<form class="d-inline-flex align-items-center mb-2" unicorn:submit.prevent="search" style="border: 1px solid;">
+  <div style="position: relative;">
+    <div class="d-flex align-items-center">
+      <!-- Search input -->
+      <div class="input-group-text col-md-auto">
+        <i
+          unicorn:click.prevent="search"
+          class="bi bi-search mr-2"
+        ></i>
+        <input type="text" class="form-control"
+          unicorn:model.prevent.debounce-{{debounce|default:9999999999}}="search_input"
+          unicorn:keyup.enter.prevent.debounce-{{debounce|default:3000}}="search"
+          unicorn:keyup.escape.prevent="search(True)"
+          placeholder="{{placeholder|default:'Search...'}}"
+          id="id_search_input"></input>
+      </div>
+      <!-- Extra HTML -->
+      {% if extra_html %}
+          {% include extra_html %}
+      {% endif %}
+      <div unicorn:loading id="spinner" class="spinner-border text-primary" style="position: absolute; top: 5px;left: -70px;">
+      </div>
+    </div>
+  </div>
+</form>

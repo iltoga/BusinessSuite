@@ -1,38 +1,38 @@
 {% extends "base_template.html" %}
-{% load static %}
-{% load crispy_forms_filters %}
 {% load crispy_forms_tags %}
 {% load widget_tweaks %}
+{% load filters %}
 
 {% block title %}RevisCRM - {{ action_name }} Customer Application{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
+<div>
     <h2 class="text-center my-4">New Customer Application</h2>
-    <form method="post" enctype="multipart/form-data" class="p-3 rounded w-100" action="" id="customer-application-form">
+    <form method="post" enctype="multipart/form-data" class="p-3 rounded w-100" action="" id="customer-application-form" novalidate>
         {% csrf_token %}
         {{ form | crispy }}
-        <h3 class="text-center my-4">Required Documents</h3>
-        {{ requireddocuments.management_form }}
-        <div id="requireddocument-form-list">
-            {% for requireddocument_form in requireddocuments %}
-            <div class="requireddocument_form p-3 mb-4 border rounded">
-                {{ requireddocument_form | crispy }}
-                <button type="button" class="btn btn-danger remove-requireddocument-btn mt-2">Remove Document</button>
+        <h3 class="text-center my-4">Application Documents</h3>
+        {{ documents.management_form }}
+        <div id="document-form-list">
+            {% for document_form in documents %}
+            <div class="document_form p-3 mb-4 border rounded">
+                {{ document_form | crispy }}
             </div>
             {% endfor %}
         </div>
 
         <!-- Template for a new task form (hidden) -->
         <div id="empty-form" style="display:none;">
-            <div class="requireddocument_form p-3 mb-4 border rounded">
-                {{ requireddocuments.empty_form | crispy }}
-                <button type="button" class="btn btn-danger remove-requireddocument-btn mt-2">Remove Document</button>
+            <div class="document_form p-3 mb-4 border rounded">
+                {{ documents.empty_form | crispy | slice_after:'<ul class="errorlist nonfield">' | safe }}
+                <button type="button" class="btn btn-danger remove-document-btn mt-2">Remove Document</button>
             </div>
         </div>
-
-        <button type="button" class="btn btn-secondary" id="add-requireddocument">Add Required Document</button>
-        <button type="submit" class="btn btn-primary">Save Application</button>
+        <div>
+            <button type="button" class="btn btn-secondary" id="add-document">Add Required Document</button>
+            <button type="submit" class="btn btn-primary">Save Application</button>
+            <a href="javascript:history.back()" class="btn btn-outline-primary">Back</a>
+        </div>
     </form>
 </div>
 {% endblock %}
@@ -40,14 +40,18 @@
 {% block after-bootstrap-js %}
     {{ block.super }}
     <script>
+        $(document).ready(function() {
+            // set application type to 'visa' by default
+            $('#id_application_type').val('visa');
+        });
         // Function to check if customer and application type are selected
         function checkSelected() {
             if ($('#id_customer').val() && $('#id_application_type').val()) {
                 $('#id_product').prop('disabled', false);
-                $('#add-requireddocument').prop('disabled', false);
+                $('#add-document').prop('disabled', false);
             } else {
                 $('#id_product').prop('disabled', true);
-                $('#add-requireddocument').prop('disabled', true);
+                $('#add-document').prop('disabled', true);
             }
         }
         checkSelected(); // check on page load
@@ -59,7 +63,7 @@
 
         $('#id_product').change(function() {
             var selectedProduct = $(this).val();
-            $('#requireddocument-form-list').empty(); // remove all existing required document forms
+            $('#document-form-list').empty(); // remove all existing required document forms
             if (selectedProduct) {
                 var url = "{% url 'api-product-by-id' product_id='123456' %}";
                 url = url.replace('123456', selectedProduct);
@@ -69,39 +73,49 @@
                         if (data.product.required_documents == null) {
                             data.product.required_documents = '';
                         }
-                        required_documents = data.product.required_documents.split(',').map(function(item) {
-                            return item.trim();
-                        });
-                        // if product.base_price is not emtpy or null, set it as value of #id_price form field
-                        if (data.product.base_price) {
-                            $('#id_price').val(data.product.base_price);
+                        required_documents = data.required_documents;
+                        if (data.product.optional_documents == null) {
+                            data.product.optional_documents = '';
                         }
-                        $('#id_requireddocuments-TOTAL_FORMS').val(required_documents.length); // update total forms
+                        optional_documents = data.optional_documents;
+
                         // create new required document forms
                         for (var i = 0; i < required_documents.length; i++) {
                             var newFormHtml = $('#empty-form').html().replace(/__prefix__/g, i);
                             var newForm = $(newFormHtml);
-                            newForm.find('input[name=requireddocuments-' + i + '-doc_type]').val(required_documents[i]);
-                            $('#requireddocument-form-list').append(newForm);
+                            newForm.find('select[name=documents-' + i + '-doc_type]').val(required_documents[i].id);
+                            $('#document-form-list').append(newForm);
                         }
+                        // create new optional document forms
+                        // note: the optional document form fields are the same as the required document form fields, with the exception of the 'required' checkbox, which must be set as false
+                        for (var i = 0; i < optional_documents.length; i++) {
+                            var newFormHtml = $('#empty-form').html().replace(/__prefix__/g, i + required_documents.length);
+                            var newForm = $(newFormHtml);
+                            newForm.find('select[name=documents-' + (i + required_documents.length) + '-doc_type]').val(optional_documents[i].id);
+                            newForm.find('input[name=documents-' + (i + required_documents.length) + '-required]').prop('checked', false);
+                            $('#document-form-list').append(newForm);
+                        }
+                        // update total forms
+                        $('#id_documents-TOTAL_FORMS').val(required_documents.length + optional_documents.length);
                     },
                     error => console.error('Error:', error)
                 );
             }
         });
 
-        document.getElementById('add-requireddocument').addEventListener('click', function() {
-            var formIdx = $('#id_requireddocuments-TOTAL_FORMS').val();
-            $('#requireddocument-form-list').append($('#empty-form').html().replace(/__prefix__/g, formIdx));
-            $('#id_requireddocuments-TOTAL_FORMS').val(parseInt(formIdx) + 1);
-            $('#id_requireddocuments-' + formIdx + '-step').val(parseInt(formIdx) + 1);
+        document.getElementById('add-document').addEventListener('click', function() {
+            var formIdx = $('#id_documents-TOTAL_FORMS').val();
+            var newForm = $('#empty-form').clone().html().replace(/__prefix__/g, formIdx);
+            $('#document-form-list').append(newForm);
+            $('#id_documents-TOTAL_FORMS').val(parseInt(formIdx) + 1);
+            $('#id_documents-' + formIdx + '-step').val(parseInt(formIdx) + 1);
         }, false);
 
-        $(document).on('click', '.remove-requireddocument-btn', function(){
-            if ($('.requireddocument_form').length > 1) {
+        $(document).on('click', '.remove-document-btn', function(){
+            if ($('.document_form').length > 1) {
                 $(this).parent().remove();
-                var forms = $('#requireddocument-form-list .requireddocument_form'); // Get all the forms
-                $('#id_requireddocuments-TOTAL_FORMS').val(forms.length); // Update the total number of forms
+                var forms = $('#document-form-list .document_form'); // Get all the forms
+                $('#id_documents-TOTAL_FORMS').val(forms.length); // Update the total number of forms
                 var i = 0;
                 // Go through the forms and set their indices, names and IDs
                 for (form of forms.toArray()) {

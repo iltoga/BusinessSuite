@@ -1,0 +1,109 @@
+{% load unicorn %}
+{% load check_perms %}
+{% load filters %}
+
+<div>
+    <div class="centered-content">
+        <h2>Invoice List</h2>
+
+        <div class="col mb-2 p-2">
+            <!-- Search form -->
+            {% include 'components/list_search_form.html' with placeholder='Search Invoices...' %}
+            {% if user|has_perm:'invoices,invoice,add' %}
+            <a href="{% url 'invoice-create' %}" class="btn btn-primary">New invoice</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="justify-content-center table-responsive">
+        {% if list_items %}
+        <table class="table table-bordered table-condensed">
+            <thead class="thead-light">
+            <tr>
+                <th scope="col">Invoice No</th>
+                <th scope="col">Invoice Date</th>
+                <th scope="col">Full Name</th>
+                <th scope="col">Items</th>
+                <th scope="col">Email</th>
+                <th scope="col">Telephone</th>
+                <th scope="col">Due Date</th>
+                <th scope="col">Status</th>
+                <th scope="col">Amount</th>
+                <th scope="col">Paid</th>
+                <th scope="col">Due</th>
+                <th scope="col">Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for invoice in list_items %}
+                <div class="list_row">
+                    <tr>
+                        <!-- invoice no -->
+                        <td>{{ invoice.invoice_no_display }}</td>
+                        <!-- due date -->
+                        <td>{{ invoice.due_date }}</td>
+                        <!-- customer full name -->
+                        <td>
+                            <a href="{% url 'customer-detail' invoice.customer.pk %}" class="text-primary font-weight-light">{{ invoice.customer }}</a>
+                        </td>
+                        <!-- Items: customer applications -->
+                        <td class="font-sm">
+                            <ul>
+                                {% for item in invoice.invoice_applications.all %}
+                                    <li>
+                                        <a href="{% url 'customer-application-detail' item.customer_application.pk %}" class="text-primary font-weight-light">{{ item.customer_application }}</a>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </td>
+                        <!-- customer email -->
+                        <td>
+                        {% if invoice.customer.email %}
+                            <a href="mailto:{{ invoice.customer.email }}" target="_blank">{{ invoice.customer.email }}</a>
+                        {% endif %}
+                        </td>
+                        <!-- customer telephone -->
+                        <td>
+                        {% if invoice.customer.telephone %}
+                            {{ invoice.customer.telephone }}
+                        {% endif %}
+                        </td>
+                        <!-- invoice date -->
+                        <td>{{ invoice.invoice_date }}</td>
+                        <!-- invoice status -->
+                        <td>{% include "components/model_invoice_status_badge.html" with status=invoice.status status_display=invoice.get_status_display %}</td>
+                        <!-- invoice amount -->
+                        <td>{{ invoice.total_amount|as_currency }}</td>
+                        <!-- invoice paid amount -->
+                        <td>{{ invoice.total_paid_amount|as_currency }}</td>
+                        <!-- invoice due amount -->
+                        <td>{{ invoice.total_due_amount|as_currency }}</td>
+                        <!-- actions -->
+                        <td>
+                        <div class="btn-group" role="group" aria-label="Basic example">
+                            {% if user|has_perm:'invoices,invoice,view' %}
+                            <a href="{% url 'invoice-detail' invoice.pk %}" class="btn btn-primary btn-sm me-1">View</a>
+                            {% endif %}
+                            {% if user|has_perm:'invoices,invoice,change' %}
+                            <a href="{% url 'invoice-update' invoice.pk %}" class="btn btn-warning btn-sm me-1">Edit</a>
+                            <a href="{% url 'invoice-download' invoice.pk %}" class="btn btn-secondary btn-sm me-1">Download</a>
+                            {% endif %}
+                            <!-- {% if user|has_perm:'invoices,invoice,delete' %}
+                            <a href="{% url 'invoice-delete' invoice.pk %}" class="btn btn-danger btn-sm me-1">Delete</a>
+                            {% endif %} -->
+                        </div>
+                        </td>
+                    </tr>
+                </div>
+            {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="d-flex justify-content-center my-3">
+            {% include 'components/list_pagination_buttons.html' %}
+        </div>
+        {% else %}
+        <p>No Invoices found.</p>
+        {% endif %}
+    </div>
+</div>

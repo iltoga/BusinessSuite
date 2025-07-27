@@ -10,17 +10,20 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
-from pathlib import Path
 import os
+from pathlib import Path
+
 from dotenv import load_dotenv
+
+from core.utils.dropbox_refresh_token import refresh_dropbox_token
 
 # Load environment variables from .env file
 load_dotenv()
 
 GLOBAL_SETTINGS = {
-    'SITE_NAME': 'RevisBaliCRM',
-    'SITE_DESCRIPTION': 'RevisBaliCRM is a CRM for RevisBali',
-    'DOCUMENT_EXPIRATION_NOTIFICATION_DAYS': 180,
+    "SITE_NAME": "RevisBaliCRM",
+    "SITE_DESCRIPTION": "RevisBaliCRM is a CRM for RevisBali",
+    "DOCUMENT_EXPIRATION_NOTIFICATION_DAYS": 180,
 }
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -31,7 +34,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY')
+SECRET_KEY = os.getenv("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -42,74 +45,95 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'core',
-    'landing',
-    'customers',
-    'products',
-    'invoices',
-    'customer_applications',
-    'transactions',
-    'bootstrapsidebar',
-    'corsheaders',
-    'rest_framework',
-    'rest_framework.authtoken',
-    'widget_tweaks',
-    'nested_admin',
-    'crispy_forms',
-    'crispy_bootstrap5',
-    'models_logging',
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    "django.contrib.postgres",
+    "core",
+    "landing",
+    "customers",
+    "products",
+    "invoices",
+    "payments",
+    "customer_applications",
+    "corsheaders",
+    "rest_framework",
+    "rest_framework.authtoken",
+    "widget_tweaks",
+    "nested_admin",
+    "crispy_forms",
+    "crispy_bootstrap5",
+    "django.contrib.humanize",
+    "fontawesomefree",
+    "django_unicorn",
+    "debug_toolbar",
+    "dbbackup",
+    "storages",
+    # "django_cron",  # Temporarily disabled due to index_together deprecation in Django 5.x
+    "django_cleanup.apps.CleanupConfig",
+    "django_user_agents",
 ]
 
 MIDDLEWARE = [
+    "debug_toolbar.middleware.DebugToolbarMiddleware",
+    "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # to serve static files
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
     # 'RevisBaliCRM.middleware.DisableCsrfCheck',  # Your custom middleware
-    'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # to serve static files
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'RevisBaliCRM.middleware.LoginRequiredMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
-    'models_logging.middleware.LoggingStackMiddleware',     # it merge all changes of object per request
+    "RevisBaliCRM.middlewares.AuthLoginRequiredMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
+    # it merge all changes of object per request
+    "django_user_agents.middleware.UserAgentMiddleware",
 ]
 
 
-ROOT_URLCONF = 'RevisBaliCRM.urls'
+ROOT_URLCONF = "RevisBaliCRM.urls"
 
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(BASE_DIR, 'templates')],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.debug',
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [os.path.join(BASE_DIR, "templates")],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
+                "django.template.context_processors.request",
             ],
         },
     },
 ]
 
-WSGI_APPLICATION = 'RevisBaliCRM.wsgi.application'
+WSGI_APPLICATION = "RevisBaliCRM.wsgi.application"
 
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
+# DATABASES = {
+#     "default": {
+#         "ENGINE": "django.db.backends.sqlite3",
+#         "NAME": os.path.join(BASE_DIR, "files/db.sqlite3"),
+#     }
+# }
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'files/db.sqlite3'),
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("DB_NAME"),
+        "USER": os.getenv("DB_USER"),
+        "PASSWORD": os.getenv("DB_PASS"),
+        "HOST": os.getenv("DB_HOST"),
+        "PORT": os.getenv("DB_PORT"),
     }
 }
 
@@ -119,16 +143,16 @@ DATABASES = {
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
 
@@ -136,9 +160,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = 'Asia/Singapore'
+TIME_ZONE = "Asia/Singapore"
 
 USE_I18N = True
 
@@ -148,79 +172,206 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = "static/"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 #
 # STEF
 #
 
-# Enable serving of static files
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-
-# Enable compression and caching support
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # by default, all views require login. To allow anonymous access, add the view name to UNAUTHENTICATED_URLS
-LOGIN_URL = '/login/'
-LOGOUT_URL = '/logout/'
+LOGIN_URL = "/login/"
+LOGOUT_URL = "/logout/"
 LOGIN_EXEMPT_URLS = (
-    r'^login/$',
-    r'^logout/$',
-    r'^api/.*$',  # match 'api/' and any subpaths
-    r'^api-token-auth/$',
+    r"^login/$",
+    r"^logout/$",
+    r"^api/.*$",  # match 'api/' and any subpaths
+    r"^api-token-auth/$",
 )
 
-LOGIN_REDIRECT_URL = '/'
-LOGOUT_REDIRECT_URL = '/login'
+LOGIN_REDIRECT_URL = "/"
+LOGOUT_REDIRECT_URL = "/login"
 
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static'),
+    os.path.join(BASE_DIR, "static"),
 ]
 
 CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_DOMAIN = 'crm.revisbali.com'
-SESSION_COOKIE_DOMAIN = 'crm.revisbali.com'
-CSRF_TRUSTED_ORIGINS = ['https://crm.revisbali.com', 'https://www.revisbali.com', 'https://revisbali.com', 'https://localhost', 'http://localhost']
-SESSION_COOKIE_SAMESITE = 'None'
-CSRF_COOKIE_SAMESITE = 'None'
+CSRF_COOKIE_DOMAIN = "crm.revisbali.com"
+SESSION_COOKIE_DOMAIN = "crm.revisbali.com"
+CSRF_TRUSTED_ORIGINS = [
+    "https://crm.revisbali.com",
+    "https://www.revisbali.com",
+    "https://revisbali.com",
+    "https://localhost",
+    "http://localhost",
+]
+SESSION_COOKIE_SAMESITE = "None"
+CSRF_COOKIE_SAMESITE = "None"
 
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
-        'RevisBaliCRM.authentication.BearerAuthentication'
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
+        "RevisBaliCRM.authentication.BearerAuthentication",
     ],
-    'DEFAULT_PERMISSION_CLASSES': [
+    "DEFAULT_PERMISSION_CLASSES": [
         # 'rest_framework.permissions.IsAuthenticated', #the one below is more granular
-        'rest_framework.permissions.DjangoModelPermissions',
+        "rest_framework.permissions.DjangoModelPermissions",
+    ],
+    "DEFAULT_PARSER_CLASSES": [
+        "rest_framework.parsers.JSONParser",
+        "rest_framework.parsers.FormParser",
+        "rest_framework.parsers.MultiPartParser",
+        "rest_framework.parsers.FileUploadParser",
     ],
 }
 
 # in case we want to try using nodejs for the frontend
-CORS_ORIGIN_WHITELIST = [
-     'http://localhost:3000'
-]
+CORS_ORIGIN_WHITELIST = ["http://localhost:3000"]
 
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
 
-DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'files/media/')
-MEDIA_URL = "/uploads/"
-
 # https://github.com/legion-an/django-models-logging
 LOGGING_MODELS = (
     # 'app.ClassName',      # logging only for this model
-    'customers',            # logging of all models in this app
-    'products',
-    'invoices',
-    'customer_applications',
-    'transactions',
+    "customers",  # logging of all models in this app
+    "products",
+    "invoices",
+    "customer_applications",
 )
 
 SESSION_SAVE_EVERY_REQUEST = True
+
+# This is for the debug toolbar when using docker
+# https://docs.djangoproject.com/en/3.2/ref/settings/#internal-ips
+# if DEBUG:
+#     import socket  # only if you haven't already imported this
+#     hostname, _, ips = socket.gethostbyname_ex(socket.gethostname())
+#     INTERNAL_IPS = [ip[: ip.rfind(".")] + ".1" for ip in ips] + ["127.0.0.1", "10.0.2.2"]
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        # "LOCATION": "unique-snowflake",
+    },
+    "select2": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+    },
+}
+
+# select2
+SELECT2_CACHE_BACKEND = "select2"
+
+USER_AGENTS_CACHE = "default"
+
+# SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+# # SESSION_COOKIE_AGE = 60 * 60 * 24  # One day
+# SESSION_COOKIE_AGE = 60 * 5 # 5 minutes
+
+TESSERACT_CMD = "/opt/homebrew/bin/tesseract"
+
+
+# Settings for Django static and media files
+DEFAULT_FILE_STORAGE = "django.core.files.storage.FileSystemStorage"
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+MEDIA_ROOT = os.path.join(BASE_DIR, "files/media/")
+MEDIA_URL = "/uploads/"
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+STATIC_SOURCE_ROOT = os.path.join(BASE_DIR, "static")
+
+DOCUMENTS_FOLDER = "documents"
+TMPFILES_FOLDER = "tmpfiles"
+
+# Settings for django-dbbackup
+DBBACKUP_STORAGE = "storages.backends.dropbox.DropBoxStorage"
+
+DBBACKUP_STORAGE_OPTIONS = {
+    "oauth2_access_token": refresh_dropbox_token(
+        os.getenv("DROPBOX_APP_KEY"),
+        os.getenv("DROPBOX_APP_SECRET"),
+        os.getenv("DROPBOX_OAUTH2_REFRESH_TOKEN"),
+    ),
+    "app_key": os.getenv("DROPBOX_APP_KEY"),
+    "app_secret": os.getenv("DROPBOX_APP_SECRET"),
+}
+
+# Folders to exclude from media backup
+DBBACKUP_EXCLUDE_MEDIA_FODERS = ["tmpfiles"]
+
+CRON_CLASSES = [
+    "core.cron.FullBackupJob",
+    "core.cron.ClearCacheJob",
+]
+
+EVERY_ONE_MINUTE = 1  # 1 minute
+EVERY_ONE_DAY = 60 * 24  # 24 hours
+CLEAR_CACHE_SCHEDULE = ["03:00"]
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
+            "style": "{",
+        },
+        "simple": {
+            "format": "{levelname} {message}",
+            "style": "{",
+        },
+    },
+    "filters": {
+        "require_debug_true": {
+            "()": "django.utils.log.RequireDebugTrue",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+            "filters": ["require_debug_true"],
+        },
+        "file": {
+            "level": "DEBUG",
+            "class": "logging.FileHandler",
+            "filename": os.path.join(BASE_DIR, "files/logs/") + "debug.log",
+        },
+        # "mail_admins": {
+        #     "level": "ERROR",
+        #     "class": "django.utils.log.AdminEmailHandler",
+        #     "filters": ["special"],
+        # },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "WARNING",
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": os.getenv("DJANGO_LOG_LEVEL", "INFO"),
+            "propagate": False,
+        },
+        "passport_ocr": {
+            "handlers": ["console", "file"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        # "django.request": {
+        #     "handlers": ["mail_admins"],
+        #     "level": "ERROR",
+        #     "propagate": False,
+        # },
+    },
+}
+
+CURRENCY = "IDR"
+CURRENCY_SYMBOL = "Rp"
+CURRENCY_DECIMAL_PLACES = 0

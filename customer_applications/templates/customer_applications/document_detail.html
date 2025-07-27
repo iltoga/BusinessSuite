@@ -1,0 +1,92 @@
+{% extends "base_template.html" %}
+{% load filters %}
+
+{% block title %}RevisCRM - View Required Document Details{% endblock %}
+
+{% block content %}
+<div>
+    <div class="container my-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h3>(#{{ document.pk }}) {{ document.doc_type.name }} Document - {{ document.doc_application.customer.full_name }}</h3>
+            </div>
+            <table class="table">
+                <tbody>
+                    {% if document.doc_type.name %}
+                    <tr>
+                        <th scope="row" class="text-start col-3">Document Type</th>
+                        <td class="text-start col-9">{{ document.doc_type.name }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if document.doc_number %}
+                    <tr>
+                        <th scope="row" class="text-start col-3">Document Number</th>
+                        <td class="text-start col-9">{{ document.doc_number }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if document.expiration_date %}
+                    <tr>
+                        <th scope="row" class="text-start col-3">Expiration Date</th>
+                        <td class="text-start col-9">{{ document.expiration_date }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if document.file and document.file.url %}
+                    <tr>
+                        <th scope="row" class="text-start col-3">File</th>
+                        <td class="text-start col-9">
+                            {% if document.file.url|lower|endswith:".pdf" %}
+                            <object data="{{ document.file.url }}" type="application/pdf" width="100%" height="800px">
+                                <!-- Fallback content if the PDF cannot be displayed -->
+                                <p>It appears you don't have a PDF plugin for this browser. You can <a href="{{ document.file.url }}" target="_blank">click here to download the PDF file.</a></p>
+                            </object>
+                            {% else %}
+                            <a href="{{ document.file.url }}" target="_blank">
+                                <img src="{{ document.file.url }}" alt="Document preview" width="600">
+                            </a>
+                            {% endif %}
+                            <br>
+                            <a href="{{ document.file.url }}" target="_blank" type="application/pdf">Open File in New Tab</a>
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% if document.doc_type.has_ocr_check %}
+                    <tr>
+                        <th scope="row" class="text-start col-3">OCR Checked</th>
+                        {% if document.ocr_check %}
+                            <td class="text-start col-9"><i class="bi bi-check-circle-fill"></i></td>
+                        {% else %}
+                            <td class="text-start col-9"><i class="bi bi-x-circle-fill"></i></td>
+                        {% endif %}
+                    </tr>
+                    {% endif %}
+                    {% if document.details %}
+                    <tr>
+                        <th scope="row" class="text-start col-3">Details</th>
+                        <td class="text-start col-9">{{ document.details }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if document.doc_type.has_ocr_check and document.metadata != "" and document.metadata != "{}" and document.metadata != "null" %}
+                    <tr>
+                        <th scope="row" class="text-start col-3">Metadata</th>
+                        <td class="text-start col-9">
+                            <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMetadata" aria-expanded="false" aria-controls="collapseMetadata">
+                                Show Metadata
+                            </button>
+                            <div class="collapse" id="collapseMetadata">
+                                <div class="card card-body">
+                                    <code>{{ document.metadata|pretty_json }}</code>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+            {% include "components/audit_card.html" with model=document perm='documents,document,can_audit' %}
+            <div class="card-footer text-muted">
+                <a href="javascript:history.back()" class="btn btn-outline-primary">Back</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

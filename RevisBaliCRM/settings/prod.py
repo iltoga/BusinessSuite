@@ -15,15 +15,79 @@ from .base import *
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['crm.revisbali.com', 'www.revisbali.com', 'revisbali.com']
+ALLOWED_HOSTS = ["crm.revisbali.com", "www.revisbali.com", "revisbali.com", "revisbali-cron", "revisbali-crm"]
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': '/db/revisbalicrm.sqlite3',
-    }
+MEDIA_ROOT = "/media/"
+
+STATIC_ROOT = "/staticfiles/"
+
+TESSERACT_CMD = "/usr/bin/tesseract"
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
+            "style": "{",
+        },
+        "simple": {
+            "format": "{levelname} {message}",
+            "style": "{",
+        },
+    },
+    "filters": {
+        "require_debug_true": {
+            "()": "django.utils.log.RequireDebugTrue",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+            # "filters": ["require_debug_true"],
+        },
+        "file": {
+            "class": "logging.FileHandler",
+            "filename": "/logs/django.log",
+            "formatter": "verbose",
+        },
+        # "mail_admins": {
+        #     "level": "ERROR",
+        #     "class": "django.utils.log.AdminEmailHandler",
+        #     "filters": ["special"],
+        # },
+    },
+    "root": {
+        "handlers": ["console", "file"],
+        "level": os.getenv("DJANGO_LOG_LEVEL", "INFO"),
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console", "file"],
+            "level": os.getenv("DJANGO_LOG_LEVEL", "INFO"),
+            "propagate": False,
+        },
+        # "django.request": {
+        #     "handlers": ["mail_admins"],
+        #     "level": "ERROR",
+        #     "propagate": False,
+        # },
+    },
 }
 
-MEDIA_ROOT = '/media/'
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.memcached.PyMemcacheCache",
+        "LOCATION": os.getenv("MEMCACHED_HOST", "memcached") + ":11211",
+        "TIMEOUT": 300,
+    },
+    "select2": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "TIMEOUT": 300,
+    },
+}
 
-STATIC_ROOT = '/staticfiles/'
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+# When the cookie expires the user will be required to log in again (after 20 minutes of inactivity)
+SESSION_COOKIE_AGE = 60 * 20  # 20 minutes

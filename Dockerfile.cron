@@ -1,0 +1,27 @@
+FROM debian:latest
+
+# Create /usr/src/app directory and change ownership to revisbali
+RUN mkdir -p /usr/src/app
+
+# Set work directory
+WORKDIR /usr/src/app
+
+# Install cron
+RUN apt-get update \
+    && apt-get install -y cron jq curl procps vim \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy start-cron.sh script into Docker image and add execute permissions
+COPY .env /usr/src/app/
+COPY scripts/exec_cron_api.sh /usr/src/app/
+RUN chmod +x /usr/src/app/exec_cron_api.sh
+
+# Add a test cron job
+RUN crontab -l | { cat; echo "*/5 * * * * bash /usr/src/app/exec_cron_api.sh"; } | crontab -
+
+# Create the log file, start cron and give write permissions
+# RUN touch /var/log/cron.log && chmod 0666 /var/log/cron.log
+
+# Start cron in foreground with verbose logging
+CMD cron -f -L 15

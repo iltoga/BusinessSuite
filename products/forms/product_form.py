@@ -1,0 +1,49 @@
+from django import forms
+
+from products.models import DocumentType, Product
+
+
+class ProductForm(forms.ModelForm):
+    description = forms.CharField(widget=forms.Textarea(attrs={"rows": 1}))
+    product_type = forms.ChoiceField(choices=Product.PRODUCT_TYPE_CHOICES, initial="visa")
+    validity = forms.IntegerField(label="Validity (days)", required=False)
+    documents_min_validity = forms.IntegerField(label="Documents min. validity (days)", required=False)
+
+    # Extra form fields
+    required_documents_multiselect = forms.ModelMultipleChoiceField(
+        queryset=DocumentType.objects.filter(is_in_required_documents=True),
+        widget=forms.SelectMultiple(attrs={"class": "select2"}),
+        required=False,
+        label="Required documents",
+    )
+    optional_documents_multiselect = forms.ModelMultipleChoiceField(
+        queryset=DocumentType.objects.filter(is_in_required_documents=False),
+        widget=forms.SelectMultiple(attrs={"class": "select2"}),
+        required=False,
+        label="Optional documents",
+    )
+
+    class Meta:
+        model = Product
+        fields = [
+            "name",
+            "code",
+            "description",
+            "immigration_id",
+            "base_price",
+            "product_type",
+            "validity",
+            "documents_min_validity",
+        ]
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop("user", None)
+        super(ProductForm, self).__init__(*args, **kwargs)
+        if "instance" in kwargs and kwargs["instance"]:
+            document_names = kwargs["instance"].required_documents.split(",")
+            document_objects = DocumentType.objects.filter(name__in=document_names)
+            self.fields["required_documents_multiselect"].initial = document_objects
+
+            document_names = kwargs["instance"].optional_documents.split(",")
+            document_objects = DocumentType.objects.filter(name__in=document_names)
+            self.fields["optional_documents_multiselect"].initial = document_objects

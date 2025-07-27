@@ -1,0 +1,136 @@
+{% load unicorn %}
+{% load check_perms %}
+
+<div>
+  <div class="centered-content">
+    <h2>Customer Applications</h2>
+
+    <div class="col mb-2 p-2">
+      <!-- Search form -->
+      {% include 'components/list_search_form.html' with placeholder='Search Customers...' extra_html='customer_applications/_list_search_form_extra.html' %}
+      {% if user|has_perm:'customer_applications,docapplication,add' %}
+      <a href="{% url 'customer-application-create' %}" class="btn btn-primary">New application</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="justify-content-center table-responsive pb-3">
+    {% if list_items %}
+    <table class="table table-bordered table-condensed">
+      <thead class="thead-light">
+        <tr>
+          {% include 'components/list_sorting_col.html' with col_field='pk' col_name='#ID' %}
+          {% include 'components/list_sorting_col.html' with col_field='customer' col_name='Customer' %}
+          {% include 'components/list_sorting_col.html' with col_field='application_type' col_name='Type' %}
+          {% include 'components/list_sorting_col.html' with col_field='product' col_name='Product' %}
+          {% include 'components/list_sorting_col.html' with col_field='doc_date' col_name='Doc Date' %}
+          {% include 'components/list_sorting_col.html' with col_field='due_date' col_name='Completed Date' %}
+          <th scope="col">Current Task</th>
+          <th scope="col">Status</th>
+          {% include 'components/list_sorting_col.html' with col_field='wf_due_date' col_name='Task Due' %}
+          <th scope="col">Application Actions</th>
+          {% if user|has_perm:'invoices,invoice,view' %}
+          <th scope="col">Invoice Actions</th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for docapplication in list_items %}
+          {% with current_workflow=docapplication.current_workflow %}
+            {% if not docapplication.is_application_completed %}
+              {% if current_workflow.is_overdue %}
+                <tr class="table-danger">
+              {% elif current_workflow.is_notification_date_reached %}
+                <tr class="table-warning">
+              {% else %}
+                <tr>
+              {% endif %}
+            {% else %}
+              <tr>
+            {% endif %}
+              <!-- ID -->
+              <td>{{ docapplication.pk }}</td>
+              <!-- Customer -->
+              <td>
+                <a href="{% url 'customer-detail' docapplication.customer.pk %}" class="text-primary font-weight-light">{{ docapplication.customer }}</a>
+              </td>
+              <!-- Application Type -->
+              <td>{{ docapplication.get_application_type_display }}</td>
+              <!-- Product -->
+              <td>
+                <a href="{% url 'product-detail' docapplication.product.pk %}" class="text-primary font-weight-light">{{ docapplication.product }}</a>
+              </td>
+              <!-- Doc Date -->
+              <td>{{ docapplication.doc_date }}</td>
+              <!-- Completed (Due) Date -->
+              <td>{{ docapplication.due_date }}</td>
+              {% if docapplication and current_workflow %}
+                <!-- Current Task -->
+                <td>{{ current_workflow.task }}</td>
+                <!-- Task Status -->
+                {% if docapplication.is_application_completed %}
+                  <td>{% include "components/model_status_badge.html" with status='closed' %}</td>
+                {% else %}
+                  <td>{% include "components/model_status_badge.html" with status=current_workflow.status %}</td>
+                {% endif %}
+              {% else %}
+                <td>None</td>
+                <td>None</td>
+                <td>{% include "components/model_status_badge.html" with status='notstarted' %}</td>
+              {% endif %}
+              <!-- Task Due Date -->
+              <td>{{ current_workflow.due_date }}</td>
+              <!-- Actions -->
+              <td>
+                <a href="{% url 'customer-application-detail' docapplication.pk %}" class="btn btn-primary btn-sm">{% if docapplication.is_application_completed %}View{% else %}Manage{% endif %}</a>
+                {% if user|has_perm:'customer_applications,docapplication,change' and not docapplication.is_application_completed %}
+                  <a href="{% url 'customer-application-update' docapplication.pk %}" class="btn btn-warning btn-sm">Edit</a>
+                {% endif %}
+                {% if user|has_perm:'customer_applications,docapplication,delete' %}
+                  <a href="{% url 'customer-application-delete' docapplication.pk %}" class="btn btn-danger btn-sm">Delete</a>
+                {% endif %}
+              </td>
+              <!-- Invoice -->
+              {% if user|has_perm:'invoices,invoice,view' %}
+                <td>
+                    <div>
+                        {% if docapplication.has_invoice %}
+                          <div class="col">
+                            <a href="{% url 'invoice-detail' docapplication.get_invoice.pk %}" class="btn btn-sm-fix-width btn-primary btn-sm">View</a>
+                            <a href="{% url 'invoice-update' docapplication.get_invoice.pk %}" class="btn btn-sm-fix-width btn-warning btn-sm" {% if not user|has_perm:'invoices,invoice,change' %}disabled{% endif %}>Edit</a>
+                          </div>
+                          <div class="col">
+                              <a href="{% url 'invoice-detail-by-doc-application' docapplication.pk %}">
+                                  <small>{{docapplication.get_invoice.invoice_no_display}}</small>
+                              </a>
+                          </div>
+                        {% elif docapplication.is_document_collection_completed and user|has_perm:'invoices,invoice,add' %}
+                          <div class="col">
+                            <a href="{% url 'invoice-create-by-doc-application' docapplication.pk %}" class="btn btn-sm-fix-width btn-success btn-sm">Create</a>
+                          </div>
+                          <div class="col">
+                            <!-- <div class="badge bg-secondary">Ready to Invoice</div> -->
+                          </div>
+                        {% else %}
+                          <div class="col">
+                            <div class="badge bg-secondary">Not Ready</div>
+                          </div>
+                          <div class="col">
+                          </div>
+                        {% endif %}
+                    </div>
+                </td>
+              {% endif %}
+            </tr>
+          {% endwith %}
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="d-flex justify-content-center my-3"></div>
+      {% include 'components/list_pagination_buttons.html' %}
+    </div>
+    {% else %}
+    <p>No applications found.</p>
+    {% endif %}
+  </div>
+</div>

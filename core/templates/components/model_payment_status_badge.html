@@ -1,0 +1,19 @@
+{% if status == 'pending' %}
+<span class="badge badge-primary">{{ status_display }}</span>
+{% elif status == 'partial_payment' %}
+<span class="badge badge-warning">{{ status_display }}</span>
+{% elif status == 'paid' %}
+<span class="badge badge-success">{{ status_display }}</span>
+{% elif status == 'overdue' %}
+<span class="badge badge-danger">{{ status_display }}</span>
+{% elif status == 'disputed' %}
+<span class="badge badge-danger">{{ status_display }}</span>
+{% elif status == 'cancelled' %}
+<span class="badge badge-danger">{{ status_display }}</span>
+{% elif status == 'refunded' %}
+<span class="badge badge-success">{{ status_display }}</span>
+{% elif status == 'write_off' %}
+<span class="badge badge-secondary">{{ status_display }}</span>
+{% else %}
+{{ status_display }}
+{% endif %}

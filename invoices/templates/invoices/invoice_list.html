@@ -1,0 +1,12 @@
+{% extends "base_template.html" %}
+{% load unicorn %}
+
+{% block title %}RevisCRM - List Invoices{% endblock %}
+
+{% block head-after-jquery %}
+  {% unicorn_scripts %}
+{% endblock %}
+
+{% block content %}
+  {% unicorn 'invoice_list' %}
+{% endblock %}

@@ -1,26 +1,9 @@
 {% extends "base_template.html" %}
 {% load static %}
-{% load crispy_forms_filters %}
 {% load crispy_forms_tags %}
 {% load widget_tweaks %}
 
 {% block title %}RevisCRM - products{% endblock %}
-
-{% block custom-css %}
-    {{ block.super }}
-    <style>
-        .form-group {
-            margin-bottom: 10px;
-        }
-        .task-form {
-            overflow-x: auto;
-        }
-        .task-form table {
-            width: 100%;
-            table-layout: fixed;
-        }
-    </style>
-{% endblock %}
 
 <!-- Add extra jquery components for this form -->
 {% block head-after-jquery-js %}
@@ -30,9 +13,9 @@
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid">
+<div>
     <h2 class="text-center my-4">{{ action_name }} a new product</h2>
-    <form method="post" class="p-3 rounded w-100" action="" id="product-form">
+    <form method="post" class="p-3 rounded w-100" action="" id="product-form" novalidate>
         {% csrf_token %}
         {{ form | crispy }}
         {{ tasks.management_form }}
@@ -53,8 +36,12 @@
             </div>
         </div>
 
-        <button type="button" class="btn btn-primary" id="add-task">Add Task</button>
-        <button type="submit" class="btn btn-primary">{{ action_name }}</button>
+        <div>
+            <hr />
+            <button type="button" class="btn btn-primary" id="add-task">Add Task</button>
+            <button type="submit" class="btn btn-primary">{{ action_name }}</button>
+            <a href="javascript:history.back()" class="btn btn-outline-primary">Back</a>
+        </div>
     </form>
 </div>
 {% endblock %}
@@ -92,6 +79,11 @@
                     i++;
                 }
             }
+        });
+
+        // Document min validity should be at least the same as product validity
+        $('#id_validity').on('change', function() {
+            $('#id_documents_min_validity').val($(this).val());
         });
     </script>
 {% endblock %}

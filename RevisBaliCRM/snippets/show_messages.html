@@ -1,0 +1,17 @@
+{% if messages %}
+{% for message in messages %}
+<div id="messages" class="alert
+    {% if message.level == DEFAULT_MESSAGE_LEVELS.ERROR %}
+    alert-danger alert-dismissible fade show" role="alert">&#9888;
+    {% elif message.level == DEFAULT_MESSAGE_LEVELS.WARNING %}
+    alert-warning alert-dismissible fade show" role="alert">&#9888;
+    {% elif message.level == DEFAULT_MESSAGE_LEVELS.SUCCESS %}
+    alert-success alert-dismissible fade show" role="alert">&#10004;
+    {% elif message.level == DEFAULT_MESSAGE_LEVELS.INFO %}
+    alert-info alert-dismissible fade show" role="alert">
+    {% endif %}
+    {{ message }}
+     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endfor %}
+{% endif %}

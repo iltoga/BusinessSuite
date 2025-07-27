@@ -1,0 +1,13 @@
+{% if status == 'completed' %}
+<span class="badge badge-success">{{ status }}</span>
+{% elif status == 'pending' %}
+<span class="badge badge-primary">{{ status }}</span>
+{% elif status == 'processing' %}
+<span class="badge badge-warning">{{ status }}</span>
+{% elif status == 'rejected' %}
+<span class="badge badge-danger">{{ status }}</span>
+{% elif status == 'notstarted' %}
+<span class="badge badge-secondary">Not Started</span>
+{% else %}
+{{ status }}
+{% endif %}

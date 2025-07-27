@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Product, Task
+from products.models import Product, Task, DocumentType
 from nested_admin import NestedModelAdmin, NestedStackedInline, NestedTabularInline
 
 class TaskTabularInline(NestedTabularInline):
@@ -10,3 +10,5 @@ class TaskTabularInline(NestedTabularInline):
 @admin.register(Product)
 class ProductAdmin(NestedModelAdmin):
     inlines = [TaskTabularInline, ]
+
+admin.site.register(DocumentType)

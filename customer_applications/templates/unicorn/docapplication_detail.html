@@ -1,0 +1,69 @@
+{% load filters %}
+
+<div>
+  <div>
+    <div class="card">
+      <div class="card-header bg-primary text-white">
+        <h3>(#{{ docapplication.pk }}) {{ docapplication.product.name }} Application - {{ docapplication.customer.full_name }}</h3>
+      </div>
+      <table class="table">
+        <tbody>
+          <tr>
+            <th scope="row" class="text-start">Application Type</th>
+            <td class="text-start">{{ docapplication.get_application_type_display }}</td>
+          </tr>
+          <tr>
+            <th scope="row" class="text-start">Customer</th>
+            <td class="text-start">{{ docapplication.customer.full_name }}</td>
+          </tr>
+          <tr>
+            <th scope="row" class="text-start">Product</th>
+            <td class="text-start">{{ docapplication.product.name }}</td>
+          </tr>
+          <tr>
+            <th scope="row" class="text-start">Document Date</th>
+            <td class="text-start">{{ docapplication.doc_date }}</td>
+          </tr>
+          <tr>
+            <th scope="row" class="text-start">Due Date</th>
+            <td class="text-start">{{ docapplication.due_date }}</td>
+          </tr>
+          <tr>
+            <th scope="row" class="text-start">Application Status</th>
+            <td class="text-start">{% include "components/model_status_badge.html" with status=docapplication.status %}</td>
+          </tr></tbody>
+      </table>
+
+      {% with docapplication.get_completed_documents as uploaded_documents %}
+        {% if uploaded_documents %}
+          <h3 class="text-center my-4">Uploaded Documents</h3>
+          {% include "customer_applications/_documents_table.html" with documents=uploaded_documents docapplication=docapplication btn_update_text="Update" %}
+        {% endif %}
+      {% endwith %}
+
+      {% get_incomplete_documents docapplication "required" as incomplete_required_docs %}
+      {% if incomplete_required_docs %}
+        <h3 class="text-center my-4">Required Documents</h3>
+        {% include "customer_applications/_documents_table.html" with documents=incomplete_required_docs docapplication=docapplication %}
+      {% endif %}
+
+      {% get_incomplete_documents docapplication "optional" as incomplete_optional_docs %}
+      {% if incomplete_optional_docs %}
+        <h3 class="text-center my-4">Other Documents to Upload</h3>
+        {% include "customer_applications/_documents_table.html" with documents=incomplete_optional_docs docapplication=docapplication upload_after_app_completed=True %}
+      {% endif %}
+
+      {% if docapplication.workflows.all|length > 0 %}
+        <h3 class="my-4">Application Workflow (Tasks)</h3>
+      {% endif %}
+      {% include "customer_applications/_doc_workflow_table.html" with docapplication=docapplication %}
+
+      {% include "components/audit_card.html" with model=docapplication perm='customer_applications,docapplication,can_audit' %}
+
+      <div class="card-footer text-muted">
+        <!-- <a href="{% url 'customer-application-list' %}" class="btn btn-outline-primary">Back</a> -->
+        <a href="javascript:history.back()" class="btn btn-outline-primary">Back</a>
+      </div>
+    </div>
+  </div>
+</div>

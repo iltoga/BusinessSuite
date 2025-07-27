@@ -1,0 +1,110 @@
+{% extends "base_template.html" %}
+
+{% block title %}RevisCRM - Create Invoice{% endblock %}
+
+{% block content %}
+<div>
+    <h2 class="text-center my-4">Create a new Invoice</h2>
+    <!-- NOTE that this form uses bootstrap5 classes whenever possible -->
+    <form method="post" class="p-3 rounded col-md-12">
+        {% csrf_token %}
+        <!-- Customer dropdown -->
+        <div class="col-md-6">
+            <label for="customer" class="form-label">Customer</label>
+            <select name="customer" id="customer_id" class="form-select select2">
+                {% for customer in customers %}
+                <option value="{{ customer.pk }}">{{ customer }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <!-- Parent column -->
+        <div class="col-md-6">
+            <!-- New row for two date fields -->
+            <div class="row">
+                <!-- Invoice Date -->
+                <div class="col-md-3">
+                    <label for="invoice_date" class="form-label">Invoice Date</label>
+                    <input value="{{invoice_date}}" type="date" class="form-control">
+                </div>
+                <!-- Due Date -->
+                <div class="col-md-3">
+                    <label for="due_date" class="form-label">Due Date</label>
+                    <input value="{{due_date}}" type="date" class="form-control">
+                </div>
+            </div>
+        </div>
+        <!-- Status Dropdown -->
+        <div class="col-md-3">
+            <label for="status" class="form-label">Status</label>
+            <select class="form-select">
+                {% for status in invoice_status_choices %}
+                <option value="{{ status.0 }}">{{ status.1 }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <!-- Notes -->
+        <div class="col-md-6">
+            <label for="notes" class="form-label">Notes</label>
+            <textarea class="form-control" id="notes" rows="3"></textarea>
+        </div>
+        <!-- Total Amount (calculated) -->
+        <div class="col-md-3">
+            <label for="total_amount" class="form-label">Total Amount</label>
+            <input value="{{total_amount}}" type="number" class="form-control" disabled>
+        </div>
+        <!-- Invoice Applications -->
+        <div>
+            <h3 class="text-start my-4">Invoice Applications</h3>
+        </div>
+        <div>
+            {% for invoice_application in invoice_applications %}
+            <div class="p-3 col-md-6 rounded bordered">
+                <!-- Customer Application dropdown -->
+                <div class="col">
+                    <label for="customer_application" class="form-label">Customer Application</label>
+                    <select class="form-select">
+                        <option>---------</option>
+                        {% for customer_application in customer_applications %}
+                        <option value="{{ customer_application.pk }}">{{ customer_application }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <!--    Invoice Date -->
+                <div class="col-md-3">
+                    <label for="payment_date" class="form-label">Payment Date</label>
+                    <input class="form-control" type="date" value="{{invoiceapplication.payment_date}}">
+                </div>
+                <!-- Amount -->
+                <div class="col-md-3">
+                    <label for="amount" class="form-label">Amount</label>
+                    <input class="form-control" type="number" value="{{invoiceapplication.amount}}">
+                </div>
+                <!-- Payment Status Dropdown -->
+                <div class="col-md-3">
+                    <label for="payment_status" class="form-label">Payment Status</label>
+                    <select class="form-select">
+                        <option>---------</option>
+                        {% for payment_status in payment_status_choices %}
+                        <option value="{{ payment_status.0 }}">{{ payment_status.1 }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <!-- Notes -->
+                <div class="col">
+                    <label for="notes" class="form-label">Notes</label>
+                    <textarea class="form-control" rows="3"></textarea>
+                </div>
+                <div class = "col-md-6 mt-3">
+                    <button class="btn btn-sm btn-danger" type="button">Remove</button>
+                </div>
+            </div>
+            {% endfor %}
+            <button class="btn btn-secondary" type="button">Add Application</button>
+        </div>
+        <div>
+            <hr \>
+            <button type="submit" class="btn btn-primary">Create</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

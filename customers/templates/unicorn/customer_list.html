@@ -1,0 +1,46 @@
+{% load unicorn %}
+{% load check_perms %}
+
+<div>
+    <div class="centered-content">
+        <h2>Customer List</h2>
+
+        <div class="col mb-2 p-2">
+            <!-- Search form -->
+            {% include 'components/list_search_form.html' with placeholder='Search Customers...' extra_html='customers/_list_search_form_extra.html' %}
+            {% if user|has_perm:'customers,customer,add' %}
+            <a href="{% url 'customer-create' %}" class="btn btn-primary">New customer</a>
+            {% endif %}
+            {% if user|has_perm:'customers,customer,view' %}
+                <a href="{% url 'customer-chart-analysis' 'nationality' %}" class="btn btn-secondary">Stats</a>
+            {% endif %}
+
+        </div>
+    </div>
+
+    <div class="justify-content-center table-responsive">
+        {% if list_items %}
+        <table class="table table-bordered table-condensed">
+            <thead class="thead-light">
+            <tr>
+                <th scope="col">Full Name</th>
+                <th scope="col">Email</th>
+                <th scope="col">Telephone</th>
+                <th scope="col">Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for customer in list_items %}
+                {% unicorn 'customer_list_row' %}
+            {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="d-flex justify-content-center my-3">
+            {% include 'components/list_pagination_buttons.html' %}
+        </div>
+        {% else %}
+            <p>No Customers found.</p>
+        {% endif %}
+    </div>
+</div>

@@ -1,0 +1,99 @@
+version: '3.8'
+services:
+  db:
+    container_name: postgres-srv
+    image: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_DB: revis_crm_db
+    networks:
+      - dockernet
+    volumes:
+      - type: bind
+        source: ${DB_PATH}
+        target: /var/lib/postgresql/data
+        bind:
+          propagation: rslave
+
+  pgadmin:
+    container_name: pgadmin
+    image: dpage/pgadmin4
+    depends_on:
+      - db
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASS}
+    networks:
+      - dockernet
+
+  revisbali-cron:
+    container_name: revisbali-cron
+    depends_on:
+      - revisbali-crm
+    image: 'revisbali-cron:custom'
+    build:
+      context: ./crm.revisbali.com
+      dockerfile: Dockerfile.cron
+    networks:
+      dockernet:
+        ipv4_address: 192.168.2.61
+    restart: unless-stopped
+
+  memcached:
+    image: 'bitnami/memcached:latest'
+    networks:
+      dockernet:
+        ipv4_address: 192.168.2.62
+
+  revisbali-crm:
+    container_name: revisbali-crm
+    depends_on:
+      - memcached
+      - db
+    image: 'revisbali-crm:custom'
+    build:
+      context: ./crm.revisbali.com
+      dockerfile: Dockerfile
+    networks:
+      dockernet:
+        ipv4_address: 192.168.2.60
+    volumes:
+      - type: bind
+        source: ./crm.revisbali.com
+        target: /usr/src/app
+        bind:
+          propagation: rslave
+      - type: bind
+        source: /home/iltoga/revisbali/crm/media
+        target: /media
+        bind:
+          propagation: rslave
+      - type: bind
+        source: /home/iltoga/revisbali/crm/db
+        target: /db
+        bind:
+          propagation: rslave
+      - type: bind
+        source: /home/iltoga/revisbali/crm/logs
+        target: /logs
+        bind:
+          propagation: rslave
+      - type: bind
+        source: /home/iltoga/revisbali/crm/staticfiles
+        target: /staticfiles
+        bind:
+          propagation: rslave
+      - le-certs:/etc/letsencrypt
+    restart: unless-stopped
+
+networks:
+  dockernet:
+    external: true
+
+volumes:
+  le-certs:
+    name: le-certs
+    external: true
