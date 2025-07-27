@@ -11,9 +11,10 @@ logger = logging.getLogger(__name__)
 
 class BaseCronJob:
     """Base class for cron jobs to replace django_cron.CronJobBase"""
+
     def __init__(self):
         pass
-    
+
     def do(self):
         """Override this method in subclasses"""
         raise NotImplementedError("Subclasses must implement the do() method")
@@ -21,6 +22,7 @@ class BaseCronJob:
 
 class FullBackupJob(BaseCronJob):
     """Full backup job - runs every day"""
+
     code = "core.full_backup_job"
 
     def do(self):
@@ -36,6 +38,7 @@ class FullBackupJob(BaseCronJob):
 
 class ClearCacheJob(BaseCronJob):
     """Clear cache job - runs at scheduled times"""
+
     code = "core.clear_cache_job"
 
     def do(self):
