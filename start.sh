@@ -20,11 +20,25 @@ fi
 # SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 # export PYTHONPATH="${PYTHONPATH}:${SCRIPT_DIR}"
 
+# Check if database should be reset
+if [[ "${RESET_DB_ON_STARTUP}" == "true" ]]; then
+  echo "RESET_DB_ON_STARTUP is set to true. Clearing database..."
+  python manage.py cleardb
+  echo "Database cleared successfully."
+fi
+
 # Run migrations
 python manage.py migrate
 
 # Create groups
 python manage.py creategroups
+
+# Populate database with essential data
+python manage.py populate_documenttypes
+python manage.py populate_products
+python manage.py populate_tasks
+python manage.py populatecountrycodes
+python manage.py populateholiday
 
 # Create superuser if none exists
 python manage.py createsuperuserifnotexists
