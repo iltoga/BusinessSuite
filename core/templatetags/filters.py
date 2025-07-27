@@ -46,3 +46,8 @@ def as_currency(value):
 @register.filter(is_safe=True)
 def as_date_str(value):
     return formatutils.as_date_str(value)
+
+
+@register.filter
+def split(value, key):
+    return [item.strip() for item in value.split(key)] if value else []

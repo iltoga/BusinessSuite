@@ -59,7 +59,6 @@ INSTALLED_APPS = [
     "invoices",
     "payments",
     "customer_applications",
-    "bootstrapsidebar",
     "corsheaders",
     "rest_framework",
     "rest_framework.authtoken",

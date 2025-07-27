@@ -53,7 +53,7 @@
 
         {% if request.user_agent.is_pc %}
         <button type="button" id="sidebarCollapse" class="btn btn-primary">
-            <img class="mdi-svg" src="{% static 'mdi/menu.svg' %}" type="image/svg+xml" />
+            <i class="bi bi-list fs-4"></i>
         </button>
         {% endif %}
 
@@ -63,7 +63,7 @@
                 data-bs-target="#navbarTop"
                 aria-controls="navbarTop"
                 aria-expanded="false" aria-label="Toggle navigation">
-            <img class="mdi-svg" src="{% static 'mdi/menu.svg' %}" type="image/svg+xml" />
+            <i class="bi bi-list fs-4"></i>
         </button>
 
         {% block navbar-links %}
@@ -114,10 +114,10 @@
                     {% endif %}
                     {% if user|has_any_perm:'docapplication' %}
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="appMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <a class="nav-link dropdown-toggle" href="#" id="customerApplicationMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             Customer Applications
                         </a>
-                        <ul class="dropdown-menu" aria-labelledby="appMenu">
+                        <ul class="dropdown-menu" aria-labelledby="customerApplicationMenu">
                             {% if user|has_perm:'customer_applications,docapplication,view' %}
                             <li><a class="dropdown-item" href="{% url 'customer-application-list' %}">List</a></li>
                             {% endif %}
@@ -129,10 +129,10 @@
                     {% endif %}
                     {% if user|has_any_perm:'invoice' %}
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="appMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <a class="nav-link dropdown-toggle" href="#" id="invoiceMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             Invoices
                         </a>
-                        <ul class="dropdown-menu" aria-labelledby="appMenu">
+                        <ul class="dropdown-menu" aria-labelledby="invoiceMenu">
                             {% if user|has_perm:'invoices,invoice,view' %}
                             <li><a class="dropdown-item" href="{% url 'invoice-list' %}">List</a></li>
                             {% endif %}
@@ -144,10 +144,10 @@
                     {% endif %}
                     {% if user|has_any_perm:'payments' %}
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="appMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <a class="nav-link dropdown-toggle" href="#" id="paymentMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             Payments
                         </a>
-                        <ul class="dropdown-menu" aria-labelledby="appMenu">
+                        <ul class="dropdown-menu" aria-labelledby="paymentMenu">
                             {% if user|has_perm:'payments,payment,view' %}
                             <li><a class="dropdown-item" href="{% url 'payment-list' %}">List</a></li>
                             {% endif %}
@@ -176,19 +176,22 @@
 {% block sidebar %}
     {% if request.user_agent.is_pc %}
     <nav id="sidebar">
-        <div class="text-center">
-                <div class="mb-4">
-                    <img id=logo
+        <div id="sidebar-header" class="text-center card-header bg-primary text-white">
+                <div class="mb-1">
+                    <img id="logo" class="rounded"
                         src="{% static 'logo_revis_bw_inverted_transparent.png' %}"
                         alt="Revis Bali Logo"
                         style="width: 90%;">
                     <!-- <h4>CMS/CRM Platform</h4> -->
                 </div>
-                <hr />
+                <!-- <h3 class="text-white">CMS/CRM</h3> -->
+                <!-- <p>{{ user.last_name|default:"Last Name" }}, {{ user.first_name|default:"First name" }} -->
+                    <!-- <br /> -->
+                <!-- &lt;{{user.username}}&gt;</p> -->
             </div>
         <ul class="list-unstyled components">
             {% if user.is_authenticated %}
-                <li><h4>CMS</h4></li>
+                 <li><h4 class="mb-3">CMS</h4></li>
                 {% if user|has_any_perm:'customer' %}
                 <li>
                     <a href="#customerSubmenu"
@@ -295,12 +298,10 @@
                 </li>
                 {% endif %}
             {% endif %}
-            <hr />
-            <li><h4>CRM</h4></li>
-            <li>
+            <li><h4 class="mb-3">CRM</h4></li>
+            <li class="mb-4">
                 <a href="#">Marketing Campaigns (TODO)</a>
             </li>
-            <hr />
         </ul>
 
         <ul class="list-unstyled " >
@@ -401,13 +402,27 @@
             }
         });
 
-        DROPDOWN_TOGGLE.click(function() {
+        // Handle dropdown toggle clicks in sidebar
+        DROPDOWN_TOGGLE.click(function(e) {
+            e.preventDefault(); // Prevent default link behavior
+
             let submenuId = $(this).attr("href").substring(1); // Get the submenu ID from the href attribute
-            // Save submenu state to local storage
-            localStorage.setItem('opened_submenu', submenuId);
-            // Set aria-expanded to true for the clicked dropdown toggle, and false for the others
-            DROPDOWN_TOGGLE.attr('aria-expanded', 'false');
-            $(this).attr('aria-expanded', 'true');
+            let submenu = $("#" + submenuId);
+
+            // Close all other submenus
+            $('.collapse').not(submenu).removeClass('show');
+            DROPDOWN_TOGGLE.not(this).attr('aria-expanded', 'false');
+
+            // Toggle current submenu
+            if (submenu.hasClass('show')) {
+                submenu.removeClass('show');
+                $(this).attr('aria-expanded', 'false');
+                localStorage.removeItem('opened_submenu');
+            } else {
+                submenu.addClass('show');
+                $(this).attr('aria-expanded', 'true');
+                localStorage.setItem('opened_submenu', submenuId);
+            }
         });
 
         // Only target anchors in submenus for the click handler

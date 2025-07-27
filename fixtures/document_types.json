@@ -1,1 +1,182 @@
-[{"model": "products.documenttype", "pk": 1, "fields": {"name": "Address", "description": "Indonesian address details", "has_ocr_check": false, "has_expiration_date": false, "has_doc_number": false, "has_file": false, "has_details": true, "validation_rule_regex": "", "is_in_required_documents": true}}, {"model": "products.documenttype", "pk": 2, "fields": {"name": "Bank Statement", "description": "Screenshot or PDF of a recent bank statement displaying bank name, account owner, account number, and balance", "has_ocr_check": false, "has_expiration_date": false, "has_doc_number": false, "has_file": true, "has_details": false, "validation_rule_regex": "", "is_in_required_documents": true}}, {"model": "products.documenttype", "pk": 6, "fields": {"name": "Covid-19 Certificate", "description": "Covid-19 vaccination certificate - minimal 2 doses", "has_ocr_check": false, "has_expiration_date": false, "has_doc_number": false, "has_file": true, "has_details": true, "validation_rule_regex": "", "is_in_required_documents": true}}, {"model": "products.documenttype", "pk": 3, "fields": {"name": "Flight Ticket", "description": "Copy of the flight ticket out of Indonesia displaying date, flight number, and booking code", "has_ocr_check": false, "has_expiration_date": false, "has_doc_number": false, "has_file": true, "has_details": true, "validation_rule_regex": "", "is_in_required_documents": true}}, {"model": "products.documenttype", "pk": 4, "fields": {"name": "Passport", "description": "Passport with a validity of at least six months", "has_ocr_check": true, "has_expiration_date": true, "has_doc_number": true, "has_file": true, "has_details": true, "validation_rule_regex": "", "is_in_required_documents": true}}, {"model": "products.documenttype", "pk": 7, "fields": {"name": "Processed Visa Stamp", "description": "Stamp of the visa on the passport processed by immigration", "has_ocr_check": false, "has_expiration_date": true, "has_doc_number": false, "has_file": true, "has_details": true, "validation_rule_regex": "", "is_in_required_documents": false}}, {"model": "products.documenttype", "pk": 5, "fields": {"name": "Selfie Photo", "description": "Selfie photo taken with a cell phone camera", "has_ocr_check": false, "has_expiration_date": false, "has_doc_number": false, "has_file": true, "has_details": false, "validation_rule_regex": "", "is_in_required_documents": true}}]
+[
+    {
+        "model": "products.documenttype",
+        "pk": 1,
+        "fields": {
+            "name": "Address",
+            "description": "Indonesian address details",
+            "has_ocr_check": false,
+            "has_expiration_date": false,
+            "has_doc_number": false,
+            "has_file": false,
+            "has_details": true,
+            "validation_rule_regex": "",
+            "is_in_required_documents": true
+        }
+    },
+    {
+        "model": "products.documenttype",
+        "pk": 2,
+        "fields": {
+            "name": "Bank Statement",
+            "description": "Screenshot or PDF of a recent bank statement displaying bank name, account owner, account number, and balance",
+            "has_ocr_check": false,
+            "has_expiration_date": false,
+            "has_doc_number": false,
+            "has_file": true,
+            "has_details": false,
+            "validation_rule_regex": "",
+            "is_in_required_documents": true
+        }
+    },
+    {
+        "model": "products.documenttype",
+        "pk": 3,
+        "fields": {
+            "name": "Flight Ticket",
+            "description": "Copy of the flight ticket out of Indonesia displaying date, flight number, and booking code",
+            "has_ocr_check": false,
+            "has_expiration_date": false,
+            "has_doc_number": false,
+            "has_file": true,
+            "has_details": true,
+            "validation_rule_regex": "",
+            "is_in_required_documents": true
+        }
+    },
+    {
+        "model": "products.documenttype",
+        "pk": 4,
+        "fields": {
+            "name": "Passport",
+            "description": "Passport biodata page with a validity of at least six months (twelve months for 180-day visas)",
+            "has_ocr_check": true,
+            "has_expiration_date": true,
+            "has_doc_number": true,
+            "has_file": true,
+            "has_details": true,
+            "validation_rule_regex": "",
+            "is_in_required_documents": true
+        }
+    },
+    {
+        "model": "products.documenttype",
+        "pk": 5,
+        "fields": {
+            "name": "Selfie Photo",
+            "description": "Selfie photo taken with a cell phone camera",
+            "has_ocr_check": false,
+            "has_expiration_date": false,
+            "has_doc_number": false,
+            "has_file": true,
+            "has_details": false,
+            "validation_rule_regex": "",
+            "is_in_required_documents": false
+        }
+    },
+    {
+        "model": "products.documenttype",
+        "pk": 6,
+        "fields": {
+            "name": "Covid-19 Certificate",
+            "description": "Covid-19 vaccination certificate - minimal 2 doses",
+            "has_ocr_check": false,
+            "has_expiration_date": false,
+            "has_doc_number": false,
+            "has_file": true,
+            "has_details": true,
+            "validation_rule_regex": "",
+            "is_in_required_documents": false
+        }
+    },
+    {
+        "model": "products.documenttype",
+        "pk": 7,
+        "fields": {
+            "name": "Processed Visa Stamp",
+            "description": "Stamp of the visa on the passport processed by immigration",
+            "has_ocr_check": false,
+            "has_expiration_date": true,
+            "has_doc_number": false,
+            "has_file": true,
+            "has_details": true,
+            "validation_rule_regex": "",
+            "is_in_required_documents": false
+        }
+    },
+    {
+        "model": "products.documenttype",
+        "pk": 8,
+        "fields": {
+            "name": "Passport Photo",
+            "description": "Passport-size photograph in JPG/PNG format",
+            "has_ocr_check": false,
+            "has_expiration_date": false,
+            "has_doc_number": false,
+            "has_file": true,
+            "has_details": false,
+            "validation_rule_regex": "",
+            "is_in_required_documents": true
+        }
+    },
+    {
+        "model": "products.documenttype",
+        "pk": 9,
+        "fields": {
+            "name": "Surat Permohonan dan Jaminan",
+            "description": "Official letter of application and guarantee from an Indonesian sponsor (template provided)",
+            "has_ocr_check": false,
+            "has_expiration_date": false,
+            "has_doc_number": false,
+            "has_file": true,
+            "has_details": true,
+            "validation_rule_regex": "",
+            "is_in_required_documents": true
+        }
+    },
+    {
+        "model": "products.documenttype",
+        "pk": 10,
+        "fields": {
+            "name": "Invitation Letter",
+            "description": "Invitation letter from event organizer or host for special-purpose visas",
+            "has_ocr_check": false,
+            "has_expiration_date": false,
+            "has_doc_number": false,
+            "has_file": true,
+            "has_details": true,
+            "validation_rule_regex": "",
+            "is_in_required_documents": false
+        }
+    },
+    {
+        "model": "products.documenttype",
+        "pk": 11,
+        "fields": {
+            "name": "Visa Application Form",
+            "description": "Completed e-Visa application form",
+            "has_ocr_check": false,
+            "has_expiration_date": false,
+            "has_doc_number": false,
+            "has_file": true,
+            "has_details": false,
+            "validation_rule_regex": "",
+            "is_in_required_documents": true
+        }
+    },
+    {
+        "model": "products.documenttype",
+        "pk": 12,
+        "fields": {
+            "name": "Proof of Payment",
+            "description": "Proof of payment for the visa application fee",
+            "has_ocr_check": false,
+            "has_expiration_date": false,
+            "has_doc_number": false,
+            "has_file": true,
+            "has_details": false,
+            "validation_rule_regex": "",
+            "is_in_required_documents": true
+        }
+    }
+]

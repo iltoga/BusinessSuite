@@ -128,14 +128,16 @@ class DocApplicationCreateView(PermissionRequiredMixin, SuccessMessageMixin, Cre
         return document_instances
 
     def create_workflow_doc_collection_step(self, form):
-        step1 = DocWorkflow()
-        step1.start_date = timezone.now()
-        step1.task = Task.objects.filter(product=self.object.product, step=1).first()
+        # First check if a task exists for step 1 of this product
+        task = Task.objects.filter(product=self.object.product, step=1).first()
 
-        if step1.task is None:
+        if task is None:
             form.add_error(None, "No task associated with this product for step 1")
             return super().form_invalid(form)
 
+        step1 = DocWorkflow()
+        step1.start_date = timezone.now()
+        step1.task = task
         step1.doc_application = self.object
         step1.created_by = self.request.user
         step1.status = DocWorkflow.STATUS_PENDING
