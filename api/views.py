@@ -152,6 +152,8 @@ class OCRCheckView(APIView):
         return Product.objects.none()
 
     def post(self, request):
+        from django.utils.text import get_valid_filename
+
         file = request.data.get("file")
         if not file or file == "undefined":
             return Response(data={"error": "No file provided!"}, status=status.HTTP_400_BAD_REQUEST)
@@ -172,7 +174,9 @@ class OCRCheckView(APIView):
             mrz_data = extract_mrz_data(file)
             save_session = request.data.get("save_session")
             if save_session:
-                tmp_file_path = os.path.join(settings.MEDIA_ROOT, settings.TMPFILES_FOLDER, file.name)
+                # Sanitize filename to prevent path traversal and use RELATIVE path for storage
+                safe_filename = get_valid_filename(os.path.basename(file.name))
+                tmp_file_path = os.path.join(settings.TMPFILES_FOLDER, safe_filename)
                 file_path = default_storage.save(tmp_file_path, file)
                 request.session["file_path"] = default_storage.path(file_path)
                 request.session["file_url"] = default_storage.url(file_path)
@@ -198,7 +202,7 @@ class OCRCheckView(APIView):
             )
             return Response(data={"b64_resized_image": img_str, "mrz_data": mrz_data}, status=status.HTTP_200_OK)
         except Exception as e:
-            errMsg = e.args[0]
+            errMsg = e.args[0] if e.args else str(e)
             return Response(data={"error": errMsg}, status=status.HTTP_400_BAD_REQUEST)
 
 

@@ -13,6 +13,6 @@ class CustomerListView(PermissionRequiredMixin, ListView):
         queryset = super().get_queryset()
         query = self.request.GET.get("q")
         if query and self.model is not None:
-            order_by = self.model._meta.ordering
+            order_by = self.model._meta.ordering or []
             queryset = self.model.objects.search_customers(query).order_by(*order_by)
         return queryset

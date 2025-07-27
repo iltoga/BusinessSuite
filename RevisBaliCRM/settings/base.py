@@ -10,7 +10,6 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
-
 import os
 from pathlib import Path
 
@@ -68,14 +67,13 @@ INSTALLED_APPS = [
     "nested_admin",
     "crispy_forms",
     "crispy_bootstrap5",
-    "models_logging",
     "django.contrib.humanize",
     "fontawesomefree",
     "django_unicorn",
     "debug_toolbar",
     "dbbackup",
     "storages",
-    "django_cron",
+    # "django_cron",  # Temporarily disabled due to index_together deprecation in Django 5.x
     "django_cleanup.apps.CleanupConfig",
     "django_user_agents",
 ]
@@ -94,7 +92,6 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     # it merge all changes of object per request
-    "models_logging.middleware.LoggingStackMiddleware",
     "django_user_agents.middleware.UserAgentMiddleware",
 ]
 

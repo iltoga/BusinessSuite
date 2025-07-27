@@ -3,11 +3,25 @@
 ----------------------------------------------------- */
 
 #sidebar a,
-#sidebar a:hover,
-#sidebar a:focus {
-    color: inherit;
+#sidebar a:visited {
+    color: #222;
     text-decoration: none;
-    /* transition: all 0.3s; */
+}
+
+#sidebar ul p,
+#sidebar h3 {
+    color: #222;
+    font-weight: bold;
+    font-size: 1.3em;
+    letter-spacing: 0.03em;
+}
+
+#sidebar .sidebar-header, #sidebar .sidebar-title, #sidebar .sidebar-heading {
+    color: #222;
+    font-weight: bold;
+    font-size: 1.4em;
+    letter-spacing: 0.05em;
+    margin-bottom: 1em;
 }
 
 #sidebar {
@@ -44,9 +58,11 @@
     display: block;
 }
 
+/* Sidebar menu hover for light theme */
+/* Sidebar menu hover for light theme */
 #sidebar ul li a:hover {
-    color: #7386D5;
-    background: #fff;
+    color: #111;
+    background: #e6e6e6;
 }
 
 #sidebar ul li.active>a,
@@ -68,6 +84,10 @@ a[aria-expanded="true"] {
     display: block;
     border-radius: 5px;
     margin-bottom: 5px;
+}
+
+#sidebar h4 {
+    color: #444;
 }
 
 #navbar-top {

@@ -8,7 +8,11 @@ def check_country_by_code(code) -> CountryCode:
     """Check if the country code exists in the database. If not, find the closest match."""
     country = CountryCode.objects.filter(alpha3_code=code)
     if country.exists():
-        return country.first()
+        country_instance = country.first()
+        if country_instance is not None:
+            return country_instance
+        else:
+            raise ValueError(f"Country code {code} does not exist in the database.")
 
     # Get all the alpha3_code from the database
     country_codes = [country.alpha3_code for country in CountryCode.objects.all()]

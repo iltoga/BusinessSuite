@@ -15,5 +15,8 @@ class DocApplicationListView(PermissionRequiredMixin, ListView):
         query = self.request.GET.get("q")
         if query and self.model is not None:
             order_by = self.model._meta.ordering
-            queryset = self.model.objects.search_doc_applications(query).order_by(*order_by)
+            if order_by:
+                queryset = self.model.objects.search_doc_applications(query).order_by(*order_by)
+            else:
+                queryset = self.model.objects.search_doc_applications(query)
         return queryset

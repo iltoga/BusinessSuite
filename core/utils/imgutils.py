@@ -35,7 +35,11 @@ def convert_and_resize_image(file, file_type, return_encoded=True, resize=False,
     if resize:
         w_percent = base_width / float(img.size[0])
         h_size = int((float(img.size[1]) * float(w_percent)))
-        img = img.resize((base_width, h_size), Image.ANTIALIAS)
+        try:
+            resample = Image.Resampling.LANCZOS
+        except AttributeError:
+            resample = Image.LANCZOS  # For Pillow < 10
+        img = img.resize((base_width, h_size), resample)
 
     # Encode the image to base64
     buffered = BytesIO()

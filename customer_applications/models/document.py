@@ -21,6 +21,7 @@ class DocumentManager(models.Manager):
 
 
 class Document(models.Model):
+    @staticmethod
     def get_upload_to(instance, filename):
         """
         Returns the upload_to path for the file field.

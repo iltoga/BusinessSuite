@@ -10,8 +10,8 @@ EXEMPT_URLS = [re.compile(url) for url in settings.LOGIN_EXEMPT_URLS]
 class AuthLoginRequiredMiddleware(MiddlewareMixin):
     """Middleware to require login for all views."""
 
-    def __init__(self, get_response):
-        self.get_response = get_response
+    def __init__(self, get_response=None):
+        super().__init__(get_response)
 
     def __call__(self, request):
         response = self.process_request(request)

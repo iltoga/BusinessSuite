@@ -54,16 +54,20 @@ class InvoiceCreateForm(forms.ModelForm):
         if invoice_no and self.instance.pk is None:
             invoice_applications = self.cleaned_data.get("invoice_applications")
 
-            for application_form in invoice_applications:
-                # clean() method is called on each form automatically
-                customer_application = application_form.cleaned_data.get("customer_application")
+            if invoice_applications:
+                if invoice_applications:
+                    if invoice_applications:
+                        for application_form in invoice_applications:
+                            # clean() method is called on each form automatically
+                            customer_application = application_form.cleaned_data.get("customer_application")
 
-                if InvoiceApplication.objects.filter(
-                    invoice__invoice_no=invoice_no, customer_application=customer_application
-                ).exists():
-                    raise forms.ValidationError(
-                        "This customer application has already been added.", code="invalid_customer_application"
-                    )
+                            if InvoiceApplication.objects.filter(
+                                invoice__invoice_no=invoice_no, customer_application=customer_application
+                            ).exists():
+                                raise forms.ValidationError(
+                                    "This customer application has already been added.",
+                                    code="invalid_customer_application",
+                                )
         return cleaned_data
 
 
@@ -96,16 +100,17 @@ class InvoiceUpdateForm(forms.ModelForm):
         if invoice_no and self.instance.pk is None:
             invoice_applications = self.cleaned_data.get("invoice_applications")
 
-            for application_form in invoice_applications:
-                # clean() method is called on each form automatically
-                customer_application = application_form.cleaned_data.get("customer_application")
+            if invoice_applications:
+                for application_form in invoice_applications:
+                    # clean() method is called on each form automatically
+                    customer_application = application_form.cleaned_data.get("customer_application")
 
-                if InvoiceApplication.objects.filter(
-                    invoice__invoice_no=invoice_no, customer_application=customer_application
-                ).exists():
-                    raise forms.ValidationError(
-                        "This customer application has already been added.", code="invalid_customer_application"
-                    )
+                    if InvoiceApplication.objects.filter(
+                        invoice__invoice_no=invoice_no, customer_application=customer_application
+                    ).exists():
+                        raise forms.ValidationError(
+                            "This customer application has already been added.", code="invalid_customer_application"
+                        )
         return cleaned_data
 
 
