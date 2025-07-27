@@ -1,21 +1,20 @@
-version: '3.8'
 services:
-  # db:
-  #   container_name: postgres-srv
-  #   image: postgres
-  #   restart: unless-stopped
-  #   environment:
-  #     POSTGRES_USER: ${DB_USER}
-  #     POSTGRES_PASSWORD: ${DB_PASS}
-  #     POSTGRES_DB: revis_crm_db
-  #   networks:
-  #     - dockernet
-  #   volumes:
-  #     - type: bind
-  #       source: ${DB_PATH}
-  #       target: /var/lib/postgresql/data
-  #       bind:
-  #         propagation: rslave
+  db:
+    container_name: postgres-srv
+    image: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_DB: revis_crm_db
+    networks:
+      - dockernet
+    volumes:
+      - type: bind
+        source: ${DB_PATH}
+        target: /var/lib/postgresql/data
+        bind:
+          propagation: rslave
 
   pgadmin:
     container_name: pgadmin
@@ -35,7 +34,7 @@ services:
       - revisbali-crm
     image: 'revisbali-cron:custom'
     build:
-      context: .
+      context: ./
       dockerfile: Dockerfile.cron
     networks:
       dockernet:
@@ -55,14 +54,14 @@ services:
       - db
     image: 'revisbali-crm:custom'
     build:
-      context: .
+      context: ./
       dockerfile: Dockerfile
     networks:
       dockernet:
         ipv4_address: 192.168.2.60
     volumes:
       - type: bind
-        source: .
+        source: ./
         target: /usr/src/app
         bind:
           propagation: rslave
