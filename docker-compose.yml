@@ -1,21 +1,21 @@
 version: '3.8'
 services:
-  db:
-    container_name: postgres-srv
-    image: postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASS}
-      POSTGRES_DB: revis_crm_db
-    networks:
-      - dockernet
-    volumes:
-      - type: bind
-        source: ${DB_PATH}
-        target: /var/lib/postgresql/data
-        bind:
-          propagation: rslave
+  # db:
+  #   container_name: postgres-srv
+  #   image: postgres
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_USER: ${DB_USER}
+  #     POSTGRES_PASSWORD: ${DB_PASS}
+  #     POSTGRES_DB: revis_crm_db
+  #   networks:
+  #     - dockernet
+  #   volumes:
+  #     - type: bind
+  #       source: ${DB_PATH}
+  #       target: /var/lib/postgresql/data
+  #       bind:
+  #         propagation: rslave
 
   pgadmin:
     container_name: pgadmin
