@@ -16,7 +16,7 @@ dependencies = [
     "django-widget-tweaks==1.5.0",
     "django-nested-admin==4.1.1",
     "crispy-bootstrap5==2025.6",
-    "PassportEye @ git+https://github.com/konstantint/PassportEye.git@master",
+    "PassportEye",
     "pdf2image==1.17.0",
     "fontawesomefree==6.6.0",
     "django-unicorn==0.62.0",

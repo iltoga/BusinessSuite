@@ -21,14 +21,20 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    background-color: #f8f9fa; /* Softer light gray */
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: #333;
 }
 
 form {
     display: inline-block;
     text-align: left;
     margin: 0 auto;
-    border: 1px solid;
-    padding: 10px;
+    border: 1px solid #dee2e6;
+    padding: 15px;
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
 }
 
 form.left-align {
@@ -36,12 +42,15 @@ form.left-align {
 }
 
 input[readonly] {
-    background-color: #ddd;
+    background-color: #e9ecef;
 }
 
 .bordered {
-    border: 1px solid;
+    border: 1px solid #dee2e6;
     margin-bottom: 2em;
+    background-color: #ffffff;
+    border-radius: 8px;
+    padding: 15px;
 }
 
 .centered-content {
@@ -53,14 +62,14 @@ input[readonly] {
 }
 
 th.sortable:hover {
-    background-color: #cce5ff;
+    background-color: #e9ecef;
 }
 
 .spinner-border {
     width: 3em;
     height: 3em;
     border-width: .25em;
-    opacity: 0.5;
+    opacity: 0.7;
 }
 
 .spinner-small {
@@ -74,4 +83,14 @@ th.sortable:hover {
 
 .font-sm {
     font-size: smaller;
+}
+
+/* Updated Bootstrap primary color */
+:root {
+    --primary: #3498db; /* Softer blue */
+    --primary-dark: #2980b9;
+    --light-bg: #f8f9fa;
+    --border-color: #dee2e6;
+    --text-color: #333;
+    --text-muted: #6c757d;
 }

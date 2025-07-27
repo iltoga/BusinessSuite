@@ -91,14 +91,49 @@ def extract_mrz_data(file, check_expiration=True, expiration_days=180) -> dict:
             os.unlink(file_to_delete)
         parsed_mrz = parse_mrz(mrz_data, MRZ_FORMAT)
 
-        # Check the country code
+        # Check the country code and nationality with fallback mechanism
+        import logging
+
+        logger = logging.getLogger("passport_ocr")
+
+        # Try to map nationality first, then fallback to country
+        nationality_code = parsed_mrz.get("nationality")
         country_code = parsed_mrz.get("country")
-        if country_code:
-            closest_code = check_country_by_code(country_code)
-            parsed_mrz["country"] = country_code
+
+        closest_code = None
+        final_country_code = None
+
+        # Try nationality first
+        if nationality_code:
+            try:
+                closest_code = check_country_by_code(nationality_code)
+                final_country_code = nationality_code
+                logger.debug(f"Successfully mapped nationality '{nationality_code}' to {closest_code.country}")
+            except ValueError as e:
+                logger.warning(f"Failed to map nationality '{nationality_code}': {e}")
+
+        # Fallback to country if nationality failed
+        if not closest_code and country_code:
+            try:
+                closest_code = check_country_by_code(country_code)
+                final_country_code = country_code
+                logger.debug(f"Successfully mapped country '{country_code}' to {closest_code.country}")
+            except ValueError as e:
+                logger.warning(f"Failed to map country '{country_code}': {e}")
+
+        # If we found a valid country mapping, update the parsed_mrz
+        if closest_code and final_country_code:
+            parsed_mrz["country"] = final_country_code
             parsed_mrz["country_name"] = closest_code.country
-            if closest_code.alpha3_code != country_code:
+            parsed_mrz["nationality"] = closest_code.alpha3_code  # Set nationality to the corrected code
+            parsed_mrz["nationality_raw"] = nationality_code  # Keep the original OCR value for reference
+            if closest_code.alpha3_code != final_country_code:
                 parsed_mrz["country_closest_code"] = closest_code.alpha3_code
+        else:
+            logger.error(
+                f"Cannot recognize nationality from uploaded file. Nationality: '{nationality_code}', Country: '{country_code}'"
+            )
+            # Don't raise an exception, just leave the fields as extracted
 
         # Check expiration date
         if check_expiration:
@@ -156,13 +191,22 @@ def unit_extraction(image_path, mrz_format):
     """
 
     # Process image
+    import logging
+
+    logger = logging.getLogger("passport_ocr")
     mrz = read_mrz(image_path)
+    logger.debug(f"read_mrz result: {mrz}")
     if mrz:
-        mrz_data = filter_mrz(mrz.to_dict(), mrz_format)
+        mrz_dict = mrz.to_dict()
+        logger.debug(f"Extracted MRZ dict: {mrz_dict}")
+        mrz_data = filter_mrz(mrz_dict, mrz_format)
+        logger.debug(f"Filtered MRZ data: {mrz_data}")
     else:
+        logger.warning(f"No MRZ found in image: {image_path}")
         mrz_data = {}
 
     if mrz_data is None:
+        logger.warning("MRZ data is None after filtering.")
         mrz_data = {}
 
     return mrz_data

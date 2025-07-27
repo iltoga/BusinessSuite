@@ -360,6 +360,11 @@ LOGGING = {
             "level": os.getenv("DJANGO_LOG_LEVEL", "INFO"),
             "propagate": False,
         },
+        "passport_ocr": {
+            "handlers": ["console", "file"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
         # "django.request": {
         #     "handlers": ["mail_admins"],
         #     "level": "ERROR",
