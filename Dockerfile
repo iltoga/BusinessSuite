@@ -19,22 +19,26 @@ WORKDIR /usr/src/app
 
 ENV PYHTONUNBUFFERED=1
 
-# Install Tesseract and its language packs
+# Install Tesseract and its language packs, and uv
 RUN apt-get update \
   && apt-get -y install \
   && apt-get -y install tesseract-ocr \
   && apt-get -y install poppler-utils \
   && apt-get -y install postgresql-client \
+  && apt-get -y install curl \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
+
+# Install uv as root before switching to non-root user
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Change to non-root privilege
 USER revisbali
 
-# Install dependencies
-COPY --chown=revisbali:revisbali requirements.txt ./
-RUN python3 -m pip install --upgrade pip
-RUN pip install --no-warn-script-location --no-cache-dir -r requirements.txt
+# Copy pyproject.toml and install dependencies
+COPY --chown=revisbali:revisbali pyproject.toml ./
+RUN /root/.cargo/bin/uv pip install --system --editable .
 
 # Copy project
 COPY --chown=revisbali:revisbali . /usr/src/app/

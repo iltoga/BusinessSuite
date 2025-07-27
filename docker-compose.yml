@@ -1,3 +1,4 @@
+version: '3.8'
 services:
   db:
     container_name: postgres-srv
@@ -34,7 +35,7 @@ services:
       - revisbali-crm
     image: 'revisbali-cron:custom'
     build:
-      context: ./
+      context: .
       dockerfile: Dockerfile.cron
     networks:
       dockernet:
@@ -54,14 +55,14 @@ services:
       - db
     image: 'revisbali-crm:custom'
     build:
-      context: ./
+      context: .
       dockerfile: Dockerfile
     networks:
       dockernet:
         ipv4_address: 192.168.2.60
     volumes:
       - type: bind
-        source: ./
+        source: .
         target: /usr/src/app
         bind:
           propagation: rslave
