@@ -72,7 +72,7 @@ INSTALLED_APPS = [
     "debug_toolbar",
     "dbbackup",
     "storages",
-    # "django_cron",  # Temporarily disabled due to index_together deprecation in Django 5.x
+    # "django_cron",  # Disabled due to Django 5.x compatibility issues
     "django_cleanup.apps.CleanupConfig",
     "django_user_agents",
 ]
