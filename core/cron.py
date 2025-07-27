@@ -5,13 +5,22 @@ import logging
 
 from django.conf import settings
 from django.core.management import call_command
-from django_cron import CronJobBase, Schedule
 
 logger = logging.getLogger(__name__)
 
 
-class FullBackupJob(CronJobBase):
-    schedule = Schedule(run_every_mins=settings.EVERY_ONE_DAY)
+class BaseCronJob:
+    """Base class for cron jobs to replace django_cron.CronJobBase"""
+    def __init__(self):
+        pass
+    
+    def do(self):
+        """Override this method in subclasses"""
+        raise NotImplementedError("Subclasses must implement the do() method")
+
+
+class FullBackupJob(BaseCronJob):
+    """Full backup job - runs every day"""
     code = "core.full_backup_job"
 
     def do(self):
@@ -25,8 +34,8 @@ class FullBackupJob(CronJobBase):
         logger.info("Media files uploaded successfully")
 
 
-class ClearCacheJob(CronJobBase):
-    schedule = Schedule(run_at_times=settings.CLEAR_CACHE_SCHEDULE)
+class ClearCacheJob(BaseCronJob):
+    """Clear cache job - runs at scheduled times"""
     code = "core.clear_cache_job"
 
     def do(self):

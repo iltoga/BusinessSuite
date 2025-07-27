@@ -28,13 +28,17 @@ RUN apt-get update \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 
+# Install uv using the installer script and add to PATH
+ADD https://astral.sh/uv/install.sh /uv-installer.sh
+RUN sh /uv-installer.sh && rm /uv-installer.sh
+ENV PATH="/root/.local/bin:$PATH"
+
+# Copy pyproject.toml and install dependencies as root before switching user
+COPY pyproject.toml ./
+RUN uv pip install --system --editable .
+
 # Change to non-root privilege
 USER revisbali
-
-# Install dependencies
-COPY --chown=revisbali:revisbali requirements.txt ./
-RUN python3 -m pip install --upgrade pip
-RUN pip install --no-warn-script-location --no-cache-dir -r requirements.txt
 
 # Copy project
 COPY --chown=revisbali:revisbali . /usr/src/app/
