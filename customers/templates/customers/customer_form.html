@@ -15,6 +15,7 @@
     {% endif %}
     <form method="post" class="p-3 rounded w-100" action="{{ action }}" novalidate>
         {% csrf_token %}
+
         {% for field in form %}
             {% if field.name == 'passport_file' %}
             {{ field | as_crispy_field }}
@@ -35,10 +36,18 @@
                 </div>
                 {% endif %}
             </div>
+            <!-- Clipboard image paste component -->
+            <div class="mb-3">
+              <label for="clipboard_paste_area">Paste image from clipboard:</label>
+              <div id="clipboard_paste_area" contenteditable="true" class="form-control" style="min-height:80px; border:2px dashed #ccc;">
+                Click here and press Ctrl+V / Cmd+V to paste an image
+              </div>
+              <img id="clipboard_image_preview" style="display:none; max-width:200px; margin-top:10px;">
+              <div id="clipboard_upload_status" class="mt-2"></div>
+            </div>
         {% else %}
             {{ field | as_crispy_field }}
         {% endif %}
-
         {% endfor %}
 
         <div>
@@ -52,65 +61,109 @@
 
 {% block after-bootstrap-js %}
   {{ block.super }}
-  <script>
-    $(document).ready(function() {
-      var passport_file_btn = document.getElementById('passport_file_btn_id');
-      var resizedImage = document.getElementById('resized_image_id');
-      var firstNameInput = document.getElementById('id_first_name');
-      var lastNameInput = document.getElementById('id_last_name');
+    <script>
+        $(document).ready(function() {
+            var passport_file_btn = document.getElementById('passport_file_btn_id');
+            var resizedImage = document.getElementById('resized_image_id');
+            var firstNameInput = document.getElementById('id_first_name');
+            var lastNameInput = document.getElementById('id_last_name');
 
-      firstNameInput.addEventListener('change', function(e) {
-        firstNameInput.value = capitalizeFirstLetter(firstNameInput.value);
-      });
+            firstNameInput.addEventListener('change', function(e) {
+                firstNameInput.value = capitalizeFirstLetter(firstNameInput.value);
+            });
 
-      lastNameInput.addEventListener('change', function(e) {
-        lastNameInput.value = capitalizeFirstLetter(lastNameInput.value);
-      });
+            lastNameInput.addEventListener('change', function(e) {
+                lastNameInput.value = capitalizeFirstLetter(lastNameInput.value);
+            });
 
-      passport_file_btn.addEventListener('click', function(e) {
-        var url = "{% url 'api-ocr-check' %}";
-        var formData = new FormData();
-        formData.append('file', document.querySelector('input[name="passport_file"]').files[0],);
-        formData.append('doc_type', "passport");
-        formData.append('save_session', true);
-        formData.append('img_preview', true);
-        formData.append('resize', true);
-        formData.append('width', 500);
-        toggleSpinnerDisplay(true, 'passport_file_btn_id', 'passport_file_spinner');
-        restApiCall('POST', url, formData,
-            data => {
-                mrz = data.mrz_data;
-                toggleMessageDisplay(true, 'Data successfully imported via OCR!', 'passport_file_error_id', 'passport_file_success_id');
-                setFormFieldValue('id_first_name', mrz.names);
-                setFormFieldValue('id_last_name', mrz.surname);
-                setFormFieldValue('id_gender', mrz.sex);
-                // set the title ('M' or 'F') to the title field depending on data.sex (remember that this is javascript)
-                title = '';
-                if (data.sex == 'M') {
-                    title = 'Mr';
-                } else {
-                    title = 'Ms';
+            passport_file_btn.addEventListener('click', function(e) {
+                var url = "{% url 'api-ocr-check' %}";
+                var formData = new FormData();
+                formData.append('file', document.querySelector('input[name="passport_file"]').files[0],);
+                formData.append('doc_type', "passport");
+                formData.append('save_session', true);
+                formData.append('img_preview', true);
+                formData.append('resize', true);
+                formData.append('width', 500);
+                toggleSpinnerDisplay(true, 'passport_file_btn_id', 'passport_file_spinner');
+                restApiCall('POST', url, formData,
+                        data => {
+                                mrz = data.mrz_data;
+                                toggleMessageDisplay(true, 'Data successfully imported via OCR!', 'passport_file_error_id', 'passport_file_success_id');
+                                setFormFieldValue('id_first_name', mrz.names);
+                                setFormFieldValue('id_last_name', mrz.surname);
+                                setFormFieldValue('id_gender', mrz.sex);
+                                // set the title ('M' or 'F') to the title field depending on data.sex (remember that this is javascript)
+                                title = '';
+                                if (data.sex == 'M') {
+                                        title = 'Mr';
+                                } else {
+                                        title = 'Ms';
 
+                                }
+                                setFormFieldValue('id_title', title);
+                                setFormFieldValue('id_nationality', mrz.nationality);
+                                setFormFieldValue('id_birthdate', mrz.date_of_birth_yyyy_mm_dd);
+                                // show dom with id_metadata_display
+                                // document.getElementById('id_metadata_display').parentElement.style.display = 'block';
+                                toggleSpinnerDisplay(false, 'passport_file_btn_id', 'passport_file_spinner');
+
+                                // Display the resized image if it's present in the response data
+                                if (data.b64_resized_image) {
+                                        resizedImage.src = "data:image/jpeg;base64," + data.b64_resized_image;
+                                        resizedImage.style.display = 'block';
+                                }
+                        },
+                        error => {
+                                toggleMessageDisplay(false, error.message, 'passport_file_error_id', 'passport_file_success_id');
+                                toggleSpinnerDisplay(false, 'passport_file_btn_id', 'passport_file_spinner');
+                        }
+                );
+            });
+
+            // Clipboard image paste logic
+            $('#clipboard_paste_area').on('paste', function(e) {
+                var items = (e.originalEvent || e).clipboardData.items;
+                for (var i = 0; i < items.length; i++) {
+                    if (items[i].type.indexOf('image') !== -1) {
+                        var file = items[i].getAsFile();
+                        var reader = new FileReader();
+                        reader.onload = function(event) {
+                            $('#clipboard_image_preview').attr('src', event.target.result).show();
+                            // Upload the image via AJAX
+                            var formData = new FormData();
+                            formData.append('file', file);
+                            formData.append('doc_type', 'passport');
+                            formData.append('save_session', true);
+                            formData.append('img_preview', true);
+                            formData.append('resize', true);
+                            formData.append('width', 500);
+                            $('#clipboard_upload_status').html('<span class="spinner-border spinner-border-sm"></span> Uploading...');
+                            restApiCall('POST', "{% url 'api-ocr-check' %}", formData,
+                                function(data) {
+                                    $('#clipboard_upload_status').html('<span class="text-success">Image uploaded and processed!</span>');
+                                    // Optionally fill form fields with OCR data
+                                    if (data.mrz_data) {
+                                        setFormFieldValue('id_first_name', data.mrz_data.names);
+                                        setFormFieldValue('id_last_name', data.mrz_data.surname);
+                                        setFormFieldValue('id_gender', data.mrz_data.sex);
+                                        var title = (data.mrz_data.sex == 'M') ? 'Mr' : 'Ms';
+                                        setFormFieldValue('id_title', title);
+                                        setFormFieldValue('id_nationality', data.mrz_data.nationality);
+                                        setFormFieldValue('id_birthdate', data.mrz_data.date_of_birth_yyyy_mm_dd);
+                                    }
+                                },
+                                function(error) {
+                                    $('#clipboard_upload_status').html('<span class="text-danger">Upload failed: ' + error.message + '</span>');
+                                }
+                            );
+                        };
+                        reader.readAsDataURL(file);
+                        e.preventDefault();
+                        break;
+                    }
                 }
-                setFormFieldValue('id_title', title);
-                setFormFieldValue('id_nationality', mrz.nationality);
-                setFormFieldValue('id_birthdate', mrz.date_of_birth_yyyy_mm_dd);
-                // show dom with id_metadata_display
-                // document.getElementById('id_metadata_display').parentElement.style.display = 'block';
-                toggleSpinnerDisplay(false, 'passport_file_btn_id', 'passport_file_spinner');
-
-                // Display the resized image if it's present in the response data
-                if (data.b64_resized_image) {
-                    resizedImage.src = "data:image/jpeg;base64," + data.b64_resized_image;
-                    resizedImage.style.display = 'block';
-                }
-            },
-            error => {
-                toggleMessageDisplay(false, error.message, 'passport_file_error_id', 'passport_file_success_id');
-                toggleSpinnerDisplay(false, 'passport_file_btn_id', 'passport_file_spinner');
-            }
-        );
-      });
-    });
-  </script>
+            });
+        });
+    </script>
 {% endblock %}
