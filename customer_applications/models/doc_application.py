@@ -265,6 +265,20 @@ class DocApplication(models.Model):
         """
         return self.invoice_applications.first().invoice if self.has_invoice() else None
 
+    def can_be_deleted(self):
+        # Block deletion if related invoices exist
+        if self.invoice_applications.exists():
+            return False, "Cannot delete application: related invoices exist."
+        return True, None
+
+    def delete(self, *args, **kwargs):
+        can_delete, msg = self.can_be_deleted()
+        if not can_delete:
+            from django.db.models import ProtectedError
+
+            raise ProtectedError(msg, self)
+        super().delete(*args, **kwargs)
+
 
 @receiver(pre_delete, sender=DocApplication)
 def pre_delete_doc_application_signal(sender, instance, **kwargs):

@@ -14,6 +14,21 @@ class DocumentTabularInline(NestedTabularInline):
     extra = 0
 
 
-@admin.register(DocApplication)
 class DocApplicationAdmin(NestedModelAdmin):
     inlines = [DocWorkflowTabularInline, DocumentTabularInline]
+
+    def delete_model(self, request, obj):
+        can_delete, msg = obj.can_be_deleted()
+        if not can_delete:
+            from django.contrib import messages
+
+            self.message_user(request, msg, messages.ERROR)
+            return
+        if msg:
+            from django.contrib import messages
+
+            self.message_user(request, msg, messages.WARNING)
+        super().delete_model(request, obj)
+
+
+admin.site.register(DocApplication, DocApplicationAdmin)
