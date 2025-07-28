@@ -189,8 +189,8 @@
                 <!-- <p>{{ user.last_name|default:"Last Name" }}, {{ user.first_name|default:"First name" }} -->
                     <!-- <br /> -->
                 <!-- &lt;{{user.username}}&gt;</p> -->
-            </div>
-        <ul class="list-unstyled components">
+        </div>
+        <ul class="list-unstyled components p-3">
             {% if user.is_authenticated %}
                  <li><h4 class="mb-3">CMS</h4></li>
                 {% if user|has_any_perm:'customer' %}
@@ -299,7 +299,7 @@
                 </li>
                 {% endif %}
             {% endif %}
-            <li><h4 class="mb-3">CRM</h4></li>
+            <li class="mt-4"><h4 class="mb-3">CRM</h4></li>
             <li class="mb-4">
                 <a href="#">Marketing Campaigns (TODO)</a>
             </li>
@@ -318,7 +318,7 @@
 {% block footer %}
     {% if request.path == '/' %}
         <footer class="text-end text-secondary fst-italic mt-5">
-            <p>&copy; 2023 Business Suite. All rights reserved.</p>
+            <p>&copy; 2025 Business Suite. All rights reserved.</p>
         </footer>
     {% endif %}
 {% endblock %}
