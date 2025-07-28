@@ -193,7 +193,7 @@ class DocApplicationCreateView(PermissionRequiredMixin, SuccessMessageMixin, Cre
             updated_at=timezone.now(),
         )
 
-        file_path = default_storage.save(doc_model.get_upload_to(file.name), file)
+        file_path = default_storage.save(Document.get_upload_to(doc_model, file.name), file)
         try:
             unlink(file_to_delete)
         except Exception as e:
