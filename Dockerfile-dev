@@ -4,7 +4,7 @@ FROM python:3
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
-ENV DJANGO_SETTINGS_MODULE RevisBaliCRM.settings.dev
+ENV DJANGO_SETTINGS_MODULE business_suite.settings.dev
 
 # Set work directory
 WORKDIR /usr/src/app

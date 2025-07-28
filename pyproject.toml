@@ -1,5 +1,5 @@
 [project]
-name = "RevisbaliCRM"
+name = "business_suite"
 version = "0.1.0"
 description = "A web-based ERP system for managing operations in a visa agency."
 authors = [
@@ -54,6 +54,6 @@ include = [
     "invoices",
     "fixtures",
     "customers",
-    "RevisBaliCRM",
+    "business_suite",
     "customer_applications"
 ]

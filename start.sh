@@ -50,4 +50,4 @@ python manage.py create_user system $SYSTEM_USER_PASSWORD --superuser --email=$S
 python manage.py collectstatic --noinput
 
 # Run Gunicorn
-gunicorn RevisBaliCRM.wsgi:application --bind 0.0.0.0:8000 --log-file -
+gunicorn business_suite.wsgi:application --bind 0.0.0.0:8000 --log-file -

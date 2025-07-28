@@ -1,8 +1,8 @@
-RevisBaliCRM/static/bootstrap/bootstrap.bundle.min.js.map
 .envrc
 *.DS_Store
-RevisBaliCRM/staticfiles
-RevisBaliCRM/files
+business_suite/static/bootstrap/bootstrap.bundle.min.js.map
+business_suite/staticfiles
+business_suite/files
 .vscode
 # Byte-compiled / optimized / DLL files
 __pycache__/

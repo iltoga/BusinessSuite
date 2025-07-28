@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASS}
-      POSTGRES_DB: revis_crm_db
+      POSTGRES_DB: ${DB_NAME}
     networks:
       - dockernet
     volumes:
@@ -28,11 +28,11 @@ services:
     networks:
       - dockernet
 
-  revisbali-cron:
-    container_name: revisbali-cron
+  bs-cron:
+    container_name: bs-cron
     depends_on:
-      - revisbali-crm
-    image: 'revisbali-cron:custom'
+      - bs-core
+    image: 'bs-cron:custom'
     build:
       context: ./
       dockerfile: Dockerfile.cron
@@ -47,12 +47,12 @@ services:
       dockernet:
         ipv4_address: 192.168.2.62
 
-  revisbali-crm:
-    container_name: revisbali-crm
+  bs-core:
+    container_name: bs-core
     depends_on:
       - memcached
       - db
-    image: 'revisbali-crm:custom'
+    image: 'bs-core:custom'
     build:
       context: ./
       dockerfile: Dockerfile
@@ -66,22 +66,22 @@ services:
         bind:
           propagation: rslave
       - type: bind
-        source: /home/iltoga/revisbali/crm/media
+        source: ${DATA_PATH}/media
         target: /media
         bind:
           propagation: rslave
       - type: bind
-        source: /home/iltoga/revisbali/crm/db
+        source: ${DATA_PATH}/db
         target: /db
         bind:
           propagation: rslave
       - type: bind
-        source: /home/iltoga/revisbali/crm/logs
+        source: ${DATA_PATH}/logs
         target: /logs
         bind:
           propagation: rslave
       - type: bind
-        source: /home/iltoga/revisbali/crm/staticfiles
+        source: ${DATA_PATH}/staticfiles
         target: /staticfiles
         bind:
           propagation: rslave

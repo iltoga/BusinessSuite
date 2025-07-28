@@ -4,15 +4,15 @@ FROM python:3
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
-ENV DJANGO_SETTINGS_MODULE RevisBaliCRM.settings.prod
-ENV PATH="/home/revisbali/.local/bin:${PATH}"
+ENV DJANGO_SETTINGS_MODULE business_suite.settings.prod
+ENV PATH="/home/appuser/.local/bin:${PATH}"
 
-# Create a new user 'revisbali' with UID 1000 and GID 1000
-RUN addgroup --gid 1000 revisbali && adduser --uid 1000 --ingroup revisbali --home /home/revisbali --shell /bin/sh --disabled-password --gecos "" revisbali
+# Create a new user 'appuser' with UID 1000 and GID 1000
+RUN addgroup --gid 1000 appuser && adduser --uid 1000 --ingroup appuser --home /home/appuser --shell /bin/sh --disabled-password --gecos "" appuser
 
-# Create /usr/src/app directory and change ownership to revisbali
+# Create /usr/src/app directory and change ownership to appuser
 # It will be shadowed by volume, but it's necessary to create the directory otherwise it will be created with root ownership
-RUN mkdir -p /usr/src/app && chown -R revisbali:revisbali /usr/src/app
+RUN mkdir -p /usr/src/app && chown -R appuser:appuser /usr/src/app
 
 # Set work directory
 WORKDIR /usr/src/app
@@ -38,13 +38,13 @@ COPY pyproject.toml ./
 RUN uv pip install --system --editable .
 
 # Change to non-root privilege
-USER revisbali
+USER appuser
 
 # Copy project
-COPY --chown=revisbali:revisbali . /usr/src/app/
+COPY --chown=appuser:appuser . /usr/src/app/
 
 # Copy start script into the Docker image and make it executable
-# COPY --chown=revisbali:revisbali scripts/start.sh /usr/src/app/
+# COPY --chown=appuser:appuser scripts/start.sh /usr/src/app/
 # RUN chmod +x /usr/src/app/start.sh
 
 CMD /bin/bash -c "chmod +x /usr/src/app/scripts/* && /usr/src/app/start.sh"

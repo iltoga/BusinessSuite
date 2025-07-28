@@ -1,6 +1,6 @@
 FROM debian:latest
 
-# Create /usr/src/app directory and change ownership to revisbali
+# Create /usr/src/app directory and change ownership to appuser
 RUN mkdir -p /usr/src/app
 
 # Set work directory
