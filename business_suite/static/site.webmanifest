@@ -1,6 +1,6 @@
 {
-    "name": "business_suite",
-    "short_name": "business_suite",
+    "name": "BusinessSuite",
+    "short_name": "BusinessSuite",
     "icons": [
         {
             "src": "android-chrome-192x192.png",
