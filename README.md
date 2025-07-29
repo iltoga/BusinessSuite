@@ -1,16 +1,3 @@
-
-## 🦄 Why Django Unicorn?
-
-Django Unicorn is a reactive component framework for Django that allows you to build modern, interactive web applications without leaving the Django ecosystem. We chose Django Unicorn for several reasons:
-
-- **Seamless Integration**: Unicorn is tightly integrated with Django and feels like a natural extension of the core Django experience.
-- **Reactive UI**: It enables highly-interactive user interfaces by making AJAX calls in the background and dynamically updating the HTML DOM, similar to frameworks like Vue or React, but with pure Django templates.
-- **Simplicity**: Unicorn installs just like any other Django package and is easy to implement. You only need to add a few magic attributes to your Django HTML templates to get started.
-- **No JavaScript Required**: You can build interactive components without writing custom JavaScript, reducing complexity and keeping your codebase clean.
-- **Modern UX**: It brings the power of reactive components to Django, allowing for a smoother and more engaging user experience.
-
-By using Django Unicorn, our application benefits from a modern, dynamic frontend while maintaining the simplicity and robustness of Django. This choice helps us deliver a better experience to users and developers alike. ✨
-
 # 🚀 Comprehensive Business Management Suite
 
 This is a powerful and flexible web-based ERP system designed to streamline the operations of a service-based agency. It provides a comprehensive suite of tools for managing customers, products, and applications, with a focus on document handling and workflow automation.
@@ -46,6 +33,19 @@ This is a powerful and flexible web-based ERP system designed to streamline the 
 - ⏲️ **Task Queue**: Django Cron
 - 🗂️ **File Storage**: Local storage, with support for Dropbox
 - 🚢 **Deployment**: Gunicorn, Whitenoise, Docker
+
+## 🦄 Why Django Unicorn?
+
+Django Unicorn is a reactive component framework for Django that allows you to build modern, interactive web applications without leaving the Django ecosystem. We chose Django Unicorn for several reasons:
+
+- **Seamless Integration**: Unicorn is tightly integrated with Django and feels like a natural extension of the core Django experience.
+- **Reactive UI**: It enables highly-interactive user interfaces by making AJAX calls in the background and dynamically updating the HTML DOM, similar to frameworks like Vue or React, but with pure Django templates.
+- **Simplicity**: Unicorn installs just like any other Django package and is easy to implement. You only need to add a few magic attributes to your Django HTML templates to get started.
+- **No JavaScript Required**: You can build interactive components without writing custom JavaScript, reducing complexity and keeping your codebase clean.
+- **Modern UX**: It brings the power of reactive components to Django, allowing for a smoother and more engaging user experience.
+
+By using Django Unicorn, our application benefits from a modern, dynamic frontend while maintaining the simplicity and robustness of Django. This choice helps us deliver a better experience to users and developers alike. ✨
+
 
 ## Getting Started
 
