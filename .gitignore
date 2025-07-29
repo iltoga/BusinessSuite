@@ -3,6 +3,8 @@
 business_suite/static/bootstrap/bootstrap.bundle.min.js.map
 business_suite/staticfiles
 business_suite/files
+business_suite/static/reporting/*.bkp
+business_suite/static/*.bkp
 .vscode
 # Byte-compiled / optimized / DLL files
 __pycache__/
