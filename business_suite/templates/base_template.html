@@ -40,10 +40,12 @@
 {% block body-csrf %}
 <!-- CSRF token for unicorn pages goes here -->
 {% endblock %}
-<div class="d-flex justify-content-center align-items-center flex-column">
-    <h1 class="mb-4 text-center">Welcome to {{ SITE_NAME }}</h1>
-    <p class="text-center">{{ SITE_DESCRIPTION }}</p>
-    <img class="mb-4" src="{% static 'logo_transparent.png' %}" alt="Business Suite Logo" style="width: 70%;">
+<div class="main-content">
+    <div class="d-flex justify-content-center align-items-center flex-column">
+        <h1 class="mb-4 text-center">Welcome to {{ SITE_NAME }}</h1>
+        <p class="text-center">{{ SITE_DESCRIPTION }}</p>
+        <img class="mb-4" src="{% static 'logo_transparent.png' %}" alt="Business Suite Logo" style="width: 70%;">
+    </div>
 </div>
 {% endblock %}
 
