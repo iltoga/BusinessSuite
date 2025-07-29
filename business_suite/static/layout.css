@@ -33,6 +33,7 @@
     z-index: 999;
     background: var(--bs-primary);
     color: #fff;
+    border-right: 1px solid #ddd;
     /* transition: all 0.3s; */
     overflow-y: auto;
 }

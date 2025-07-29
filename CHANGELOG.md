@@ -1,4 +1,4 @@
-# Changelog for RevisBaliCRM
+# Changelog for business_suite
 
 ## [1.0.0] - 2023-06-09
 ### Added

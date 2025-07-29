@@ -22,10 +22,10 @@ if [[ -z "${SYSTEM_USER_EMAIL}" ]]; then
   exit 1
 fi
 
-HOSTADDR="revisbali-crm"
+HOSTADDR="bs-core"
 BIN_DIR="/usr/bin"
 
-# Add Curl command to obtain the access token from revisbali-crm container
+# Add Curl command to obtain the access token from bs-core container
 # using a GET request
 TOKEN=$($BIN_DIR/curl -v -X POST -F "username=system" -F "password=${SYSTEM_USER_PASSWORD}" $HOSTADDR:8000/api/api-token-auth/ | $BIN_DIR/jq -r '.token')
 

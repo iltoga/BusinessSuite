@@ -3,7 +3,7 @@
 {% load view_filters %}
 {% load check_perms %}
 
-{% block title %}RevisCRM - List Customers{% endblock %}
+{% block title %}BusinessSuite - List Customers{% endblock %}
 
 {% block content %}
 <div class="centered-content">

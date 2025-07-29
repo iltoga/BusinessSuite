@@ -129,7 +129,7 @@ class Document(models.Model):
             # If a different file is being uploaded
             if orig.file and orig.file.name != self.file.name:
                 # Get the upload_to path
-                file_path = self.get_upload_to(self.file.name)
+                file_path = Document.get_upload_to(self, self.file.name)
                 # Check if the file with same path exists and delete it
                 if default_storage.exists(file_path):
                     default_storage.delete(file_path)

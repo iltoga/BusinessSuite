@@ -178,6 +178,23 @@ class Customer(models.Model):
 
         return doc_application_qs
 
+    def can_be_deleted(self):
+        # Block deletion if related invoices exist
+        if self.invoices.exists():
+            return False, "Cannot delete customer: related invoices exist."
+        # Alert if related applications/workflows exist
+        if self.doc_applications.exists():
+            return True, "Warning: related applications/workflows exist."
+        return True, None
+
+    def delete(self, *args, **kwargs):
+        can_delete, msg = self.can_be_deleted()
+        if not can_delete:
+            from django.db.models import ProtectedError
+
+            raise ProtectedError(msg, self)
+        super().delete(*args, **kwargs)
+
 
 @receiver(pre_delete, sender=Customer)
 def pre_delete_customer_signal(sender, instance, **kwargs):

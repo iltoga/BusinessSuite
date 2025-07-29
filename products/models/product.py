@@ -48,3 +48,23 @@ class Product(models.Model):
             "base_price": self.base_price,
             "product_type": self.product_type,
         }
+
+    def can_be_deleted(self):
+        # Block deletion if related invoices exist
+        if (
+            hasattr(self, "doc_applications")
+            and self.doc_applications.filter(invoice_applications__isnull=False).exists()
+        ):
+            return False, "Cannot delete product: related invoices exist."
+        # Alert if related applications/workflows exist
+        if hasattr(self, "doc_applications") and self.doc_applications.exists():
+            return True, "Warning: related applications/workflows exist."
+        return True, None
+
+    def delete(self, *args, **kwargs):
+        can_delete, msg = self.can_be_deleted()
+        if not can_delete:
+            from django.db.models import ProtectedError
+
+            raise ProtectedError(msg, self)
+        super().delete(*args, **kwargs)

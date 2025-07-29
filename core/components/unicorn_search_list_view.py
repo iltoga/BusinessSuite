@@ -42,9 +42,8 @@ class UnicornSearchListView(UnicornView):
         self.total_items = queryset.count()
         self.total_pages = ceil(self.total_items / self.items_per_page)
 
-    def search(self, clear_input=False):
-        if clear_input:
-            self.search_input = ""
+    def search(self):
+        # No arguments to avoid IndexError in django-unicorn
         if self.search_input and self.search_input != "" and len(self.search_input) >= self.start_search_at:
             self.query = self.search_input
             queryset = self.get_queryset()
@@ -52,12 +51,16 @@ class UnicornSearchListView(UnicornView):
             end = self.items_per_page * self.page
 
             self.list_items = list(queryset[start:end])
-            # self.list_items = queryset[start:end]
             self.total_items = queryset.count()
             self.total_pages = ceil(self.total_items / self.items_per_page)
         else:
             self.query = None  # Or whatever is appropriate to reset the query
             self.load_items()
+
+    def clear_search(self):
+        # Separate method for clearing search input
+        self.search_input = ""
+        self.search()
 
     def get_queryset(self):
         if self.query:
