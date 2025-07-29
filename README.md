@@ -46,6 +46,7 @@ Django Unicorn is a reactive component framework for Django that allows you to b
 
 By using Django Unicorn, our application benefits from a modern, dynamic frontend while maintaining the simplicity and robustness of Django. This choice helps us deliver a better experience to users and developers alike. ✨
 
+
 ## Getting Started
 
 ## 🚦 Getting Started
