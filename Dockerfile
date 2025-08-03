@@ -1,5 +1,5 @@
 # ----------- Builder Stage -----------
-FROM python:3.13 AS builder
+FROM python:3.13-slim AS builder
 
 # Set environment variables for build
 ENV PYTHONDONTWRITEBYTECODE 1
@@ -31,7 +31,7 @@ RUN uv pip install --system --editable . -vv --index-url https://pypi.org/simple
 COPY . /usr/src/app/
 
 # ----------- Final Stage -----------
-FROM python:3.13 AS final
+FROM python:3.13-slim AS final
 
 # Set environment variables for runtime
 ENV PYTHONDONTWRITEBYTECODE 1
