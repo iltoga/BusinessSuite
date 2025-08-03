@@ -68,7 +68,6 @@ INSTALLED_APPS = [
     "crispy_forms",
     "crispy_bootstrap5",
     "django.contrib.humanize",
-    "fontawesomefree",
     "django_unicorn",
     "debug_toolbar",
     "dbbackup",
