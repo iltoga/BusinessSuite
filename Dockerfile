@@ -26,7 +26,7 @@ ENV PATH="/root/.local/bin:$PATH"
 COPY pyproject.toml ./
 
 # Install Python dependencies in editable mode
-RUN uv pip install --system --editable .
+RUN uv pip install --system --editable . -vv
 
 # Copy the rest of the source code (as root, for speed)
 COPY . /usr/src/app/
