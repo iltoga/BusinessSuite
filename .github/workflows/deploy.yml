@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          REPO_DIR: ${{ secrets.REPO_DIR }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USERNAME }}
@@ -30,7 +32,6 @@ jobs:
             docker system prune -f
 
             echo "🚀  Starting deployment …"
-            REPO_DIR="$HOME/.docker/BusinessSuite"
             echo "📁  Repository directory: $REPO_DIR"
 
             if [ ! -d "$REPO_DIR" ]; then
