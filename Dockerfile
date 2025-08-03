@@ -1,6 +1,6 @@
 
 # ----------- Builder Stage -----------
-FROM python:3.13-slim AS builder
+FROM python:3.13 AS builder
 
 # Set environment variables for build
 ENV PYTHONDONTWRITEBYTECODE 1
@@ -14,20 +14,6 @@ RUN apt-get update \
   poppler-utils \
   postgresql-client \
   curl \
-  build-essential \
-  gcc \
-  g++ \
-  make \
-  libxml2-dev \
-  libxslt-dev \
-  libffi-dev \
-  libssl-dev \
-  libjpeg-dev \
-  zlib1g-dev \
-  libpng-dev \
-  libfreetype6-dev \
-  pkg-config \
-  git \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 
@@ -46,7 +32,7 @@ RUN uv pip install --system --editable .
 COPY . /usr/src/app/
 
 # ----------- Final Stage -----------
-FROM python:3.13-slim AS final
+FROM python:3.13 AS final
 
 # Set environment variables for runtime
 ENV PYTHONDONTWRITEBYTECODE 1
