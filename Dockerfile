@@ -21,6 +21,8 @@ ADD https://astral.sh/uv/install.sh /uv-installer.sh
 RUN sh /uv-installer.sh && rm /uv-installer.sh
 ENV PATH="/root/.local/bin:$PATH"
 
+# Set work directory for builder
+WORKDIR /usr/src/app
 
 # Copy only dependency files first for better cache
 COPY pyproject.toml ./
@@ -41,9 +43,6 @@ FROM python:3.13-slim AS final
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 ENV DJANGO_SETTINGS_MODULE business_suite.settings.prod
-ENV PATH="/home/appuser/.local/bin:${PATH}"
-# Ensure Python can find user site-packages
-ENV PYTHONPATH="/home/appuser/.local/lib/python3.13/site-packages:${PYTHONPATH}"
 
 # Install runtime dependencies only (no build tools)
 RUN apt-get update \
@@ -63,9 +62,13 @@ RUN mkdir -p /usr/src/app && chown -R appuser:appuser /usr/src/app
 # Set work directory
 WORKDIR /usr/src/app
 
-# Copy installed site-packages and app code from builder
+# Copy installed site-packages (system-wide) and app code from builder
+COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
 COPY --from=builder /usr/src/app /usr/src/app
-COPY --from=builder /root/.local /home/appuser/.local
+
+# Change ownership of the app directory to appuser
+RUN chown -R appuser:appuser /usr/src/app
 
 # Change to non-root privilege
 USER appuser
