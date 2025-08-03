@@ -21,11 +21,15 @@ ADD https://astral.sh/uv/install.sh /uv-installer.sh
 RUN sh /uv-installer.sh && rm /uv-installer.sh
 ENV PATH="/root/.local/bin:$PATH"
 
+
 # Copy only dependency files first for better cache
 COPY pyproject.toml ./
 
-# Install Python dependencies in editable mode
-RUN uv pip install --system --editable . -vv --index-url https://pypi.org/simple
+# Compile requirements.txt using uv
+RUN uv pip compile pyproject.toml > requirements.txt
+
+# Install dependencies from requirements.txt
+RUN uv pip install -r requirements.txt
 
 # Copy the rest of the source code (as root, for speed)
 COPY . /usr/src/app/
