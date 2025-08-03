@@ -17,8 +17,6 @@ jobs:
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
-        env:
-          REPO_DIR: ${{ secrets.REPO_DIR }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USERNAME }}
@@ -27,6 +25,7 @@ jobs:
           command_timeout: 30m
           script: |
             set -e
+            REPO_DIR="${{ secrets.REPO_DIR }}"
 
             # Making space for new deployment
             docker system prune -f
