@@ -28,8 +28,8 @@ COPY pyproject.toml ./
 # Compile requirements.txt using uv
 RUN uv pip compile pyproject.toml > requirements.txt
 
-# Install dependencies from requirements.txt
-RUN uv pip install -r requirements.txt
+# Install dependencies from requirements.txt (system-wide)
+RUN uv pip install --system -r requirements.txt
 
 # Copy the rest of the source code (as root, for speed)
 COPY . /usr/src/app/
