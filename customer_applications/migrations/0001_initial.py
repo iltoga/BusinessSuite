@@ -189,7 +189,7 @@ class Migration(migrations.Migration):
                     "file",
                     models.FileField(
                         blank=True,
-                        upload_to=customer_applications.models.document.Document.get_upload_to,
+                        upload_to=customer_applications.models.document.get_upload_to,
                     ),
                 ),
                 ("file_link", models.CharField(blank=True, max_length=1024)),

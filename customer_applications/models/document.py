@@ -20,18 +20,20 @@ class DocumentManager(models.Manager):
         )
 
 
+
+# Moved out of Document class to allow Django to serialize it for migrations
+def get_upload_to(instance, filename):
+    """
+    Returns the upload_to path for the file field.
+    """
+    _, extension = os.path.splitext(filename)
+    filename = f"{whitespaces_to_underscores(instance.doc_type.name)}{extension}"
+    # return the complete upload to path, which is:
+    # documents/<customer_name>_<customer_id>/<doc_application_id>/<doc_type>.<extension>
+    doc_application_folder = instance.doc_application.upload_folder
+    return f"{doc_application_folder}/{filename}"
+
 class Document(models.Model):
-    @staticmethod
-    def get_upload_to(instance, filename):
-        """
-        Returns the upload_to path for the file field.
-        """
-        _, extension = os.path.splitext(filename)
-        filename = f"{whitespaces_to_underscores(instance.doc_type.name)}{extension}"
-        # return the complete upload to path, which is:
-        # documents/<customer_name>_<customer_id>/<doc_application_id>/<doc_type>.<extension>
-        doc_application_folder = instance.doc_application.upload_folder
-        return f"{doc_application_folder}/{filename}"
 
     doc_application = models.ForeignKey(DocApplication, related_name="documents", on_delete=models.CASCADE)
     doc_type = models.ForeignKey(DocumentType, on_delete=models.PROTECT)
@@ -129,7 +131,7 @@ class Document(models.Model):
             # If a different file is being uploaded
             if orig.file and orig.file.name != self.file.name:
                 # Get the upload_to path
-                file_path = Document.get_upload_to(self, self.file.name)
+                file_path = get_upload_to(self, self.file.name)
                 # Check if the file with same path exists and delete it
                 if default_storage.exists(file_path):
                     default_storage.delete(file_path)
