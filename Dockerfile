@@ -13,6 +13,7 @@ RUN apt-get update \
   tesseract-ocr \
   poppler-utils \
   postgresql-client \
+  curl \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 
