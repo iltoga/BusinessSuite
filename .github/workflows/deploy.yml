@@ -42,7 +42,7 @@ jobs:
             echo "📂  Working directory: $(pwd)"
 
             echo "🔗  Ensuring correct Git remote …"
-            git remote set-url origin git@github.com-deploy-businesssuite:iltoga/BusinessSuite.git
+            git remote set-url origin git@github.com:iltoga/BusinessSuite.git
 
             OLD_COMMIT=$(git rev-parse HEAD 2>/dev/null || echo none)
             echo "📊  Current commit: $OLD_COMMIT"
