@@ -42,6 +42,8 @@ ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 ENV DJANGO_SETTINGS_MODULE business_suite.settings.prod
 ENV PATH="/home/appuser/.local/bin:${PATH}"
+# Ensure Python can find user site-packages
+ENV PYTHONPATH="/home/appuser/.local/lib/python3.13/site-packages:${PYTHONPATH}"
 
 # Install runtime dependencies only (no build tools)
 RUN apt-get update \
