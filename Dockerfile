@@ -14,6 +14,20 @@ RUN apt-get update \
   poppler-utils \
   postgresql-client \
   curl \
+  build-essential \
+  gcc \
+  g++ \
+  make \
+  libxml2-dev \
+  libxslt-dev \
+  libffi-dev \
+  libssl-dev \
+  libjpeg-dev \
+  zlib1g-dev \
+  libpng-dev \
+  libfreetype6-dev \
+  pkg-config \
+  git \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 
