@@ -18,7 +18,7 @@ dependencies = [
     "crispy-bootstrap5==2025.6",
     "PassportEye",
     "pdf2image==1.17.0",
-    "fontawesomefree==6.6.0",
+    "fontawesomefree",
     "django-unicorn==0.62.0",
     "django-debug-toolbar>=6.0.0",
     "rapidfuzz>=3.13.0",
