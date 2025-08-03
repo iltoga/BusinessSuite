@@ -20,7 +20,6 @@ class DocumentManager(models.Manager):
         )
 
 
-
 # Moved out of Document class to allow Django to serialize it for migrations
 def get_upload_to(instance, filename):
     """
@@ -32,6 +31,7 @@ def get_upload_to(instance, filename):
     # documents/<customer_name>_<customer_id>/<doc_application_id>/<doc_type>.<extension>
     doc_application_folder = instance.doc_application.upload_folder
     return f"{doc_application_folder}/{filename}"
+
 
 class Document(models.Model):
 
