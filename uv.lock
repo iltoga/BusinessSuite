@@ -69,7 +69,7 @@ requires-dist = [
     { name = "django-cleanup", specifier = "~=8.0.0" },
     { name = "django-cors-headers", specifier = "==4.7.0" },
     { name = "django-cron", specifier = "~=0.6.0" },
-    { name = "django-dbbackup", specifier = ">=4.1.0" },
+    { name = "django-dbbackup", specifier = ">=4.3.0" },
     { name = "django-debug-toolbar", specifier = ">=6.0.0" },
     { name = "django-nested-admin", specifier = "==4.1.1" },
     { name = "django-storages", specifier = "~=1.13.2" },
