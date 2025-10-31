@@ -53,8 +53,18 @@ jobs:
             echo "🔄  Switching to main branch …"
             git checkout main
 
-            echo "🐳  Ensuring no Docker containers are interfering..."
-            docker compose down --remove-orphans || echo "⚠️  No containers to stop"
+            echo "🐳  Stopping all existing containers..."
+            # Stop containers managed by compose
+            docker compose down --remove-orphans || echo "⚠️  No compose containers to stop"
+
+            # Force remove any containers that might be lingering
+            docker ps -a -q --filter "name=postgres-srv" | xargs -r docker rm -f || true
+            docker ps -a -q --filter "name=pgadmin" | xargs -r docker rm -f || true
+            docker ps -a -q --filter "name=bs-core" | xargs -r docker rm -f || true
+            docker ps -a -q --filter "name=bs-cron" | xargs -r docker rm -f || true
+            docker ps -a -q --filter "name=memcached" | xargs -r docker rm -f || true
+            docker ps -a -q --filter "name=crmrevisbalicom" | xargs -r docker rm -f || true
+            echo "✅  All containers removed"
 
             echo "🧹  Resetting local state …"
             git reset --hard origin/main
