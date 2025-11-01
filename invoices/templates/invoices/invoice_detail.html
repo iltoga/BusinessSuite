@@ -10,6 +10,9 @@
     <div class="card">
       <div class="card-header bg-primary text-white">
         <h3>Invoice No. {{ object }}</h3>
+        {% if object.imported %}
+        <span class="badge bg-info ms-2">Imported</span>
+        {% endif %}
       </div>
       <table class="table">
         <tbody>
@@ -22,9 +25,52 @@
           <tr><th scope="row" class="text-start">Total Amount</th><td class="text-start">{{ object.total_amount|as_currency }}</td></tr>
           <tr><th scope="row" class="text-start">Total Paid</th><td class="text-start">{{ object.total_paid_amount|as_currency }}</td></tr>
           <tr><th scope="row" class="text-start">Total Due</th><td class="text-start">{{ object.total_due_amount|as_currency }}</td></tr>
+          {% if object.imported %}
+          <tr><th scope="row" class="text-start">Imported From</th><td class="text-start">{{ object.imported_from_file }}</td></tr>
+          {% if object.mobile_phone %}
+          <tr><th scope="row" class="text-start">Mobile Phone (from invoice)</th><td class="text-start">{{ object.mobile_phone }}</td></tr>
+          {% endif %}
+          {% endif %}
         </tbody>
       </table>
 
+      {% if object.imported and object.line_items.exists %}
+      <div class="card-header bg-secondary text-white">
+        <h3>Invoice Line Items</h3>
+      </div>
+      <table class="table">
+        <thead>
+          <tr>
+            <th scope="col" class="text-start">Code</th>
+            <th scope="col" class="text-start">Description</th>
+            <th scope="col" class="text-start">Quantity</th>
+            <th scope="col" class="text-start">Unit Price</th>
+            <th scope="col" class="text-start">Amount</th>
+            <th scope="col" class="text-start">Product</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in object.line_items.all %}
+            <tr>
+              <td class="text-start">{{ item.code|default:"-" }}</td>
+              <td class="text-start">{{ item.description }}</td>
+              <td class="text-start">{{ item.quantity }}</td>
+              <td class="text-start">{{ item.unit_price|as_currency }}</td>
+              <td class="text-start">{{ item.amount|as_currency }}</td>
+              <td class="text-start">
+                {% if item.product %}
+                  <a href="{% url 'product-detail' item.product.pk %}">{{ item.product }}</a>
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+
+      {% if not object.imported and object.invoice_applications.exists %}
       <div class="card-header bg-secondary text-white">
         <h3>Customer Applications</h3>
       </div>
@@ -111,11 +157,12 @@
 
           {% empty %}
             <tr>
-              <td colspan="4">No applications found for this invoice</td>
+              <td colspan="6">No applications found for this invoice</td>
             </tr>
           {% endfor %}
         </tbody>
       </table>
+      {% endif %}
 
       <div class="card-body">
         <a href="javascript:history.back()" class="btn btn-primary">Back</a>
