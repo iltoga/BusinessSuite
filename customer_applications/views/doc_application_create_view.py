@@ -9,6 +9,7 @@ from django.contrib.messages.views import SuccessMessageMixin
 from django.core.files import File
 from django.core.files.storage import default_storage
 from django.db import transaction
+from django.http import HttpResponseRedirect
 from django.urls import reverse_lazy
 from django.utils import timezone
 from django.views.generic import CreateView
@@ -96,12 +97,16 @@ class DocApplicationCreateView(PermissionRequiredMixin, SuccessMessageMixin, Cre
             self.create_workflow_doc_collection_step(form)
 
             # Check if there is a passport file in the session and create a passport document if there is
-            if not self.create_passport_document_from_session(form):
-                # Try to create a passport document from the previous application if there is one
-                self.create_passport_document_from_previous_docapplication()
+            # Only process passport documents if the DocumentType exists and is required by the product
+            if self.should_process_passport_document():
+                if not self.create_passport_document_from_session(form):
+                    # Try to create a passport document from the previous application if there is one
+                    self.create_passport_document_from_previous_docapplication()
 
-        # Call the form_valid function of the parent class to finish processing
-        return super().form_valid(form)
+        # Add success message
+        messages.success(self.request, self.success_message)
+        # Redirect to the success URL
+        return HttpResponseRedirect(self.get_success_url())
 
     def prepare_document_instances(self, documents):
         document_instances = []
@@ -179,6 +184,14 @@ class DocApplicationCreateView(PermissionRequiredMixin, SuccessMessageMixin, Cre
             return
 
         file_to_delete = file_path
+
+        try:
+            passport_doc_type = DocumentType.objects.get(name="Passport")
+        except DocumentType.DoesNotExist:
+            logger.error("Passport DocumentType does not exist. Cannot import passport file.")
+            messages.error(self.request, "Passport DocumentType not configured in the system.")
+            return
+
         doc_model = Document(
             file_link=file_url,
             doc_number=session_mrz_data["number"],
@@ -187,7 +200,7 @@ class DocApplicationCreateView(PermissionRequiredMixin, SuccessMessageMixin, Cre
             metadata=session_mrz_data,
             completed=True,
             doc_application=self.object,
-            doc_type=DocumentType.objects.get(name="Passport"),
+            doc_type=passport_doc_type,
             created_by=self.request.user,
             created_at=timezone.now(),
             updated_at=timezone.now(),
@@ -216,11 +229,28 @@ class DocApplicationCreateView(PermissionRequiredMixin, SuccessMessageMixin, Cre
             "Passport file automatically imported from New Customer. Remember to always check that data are correct.",
         )
 
+    def should_process_passport_document(self) -> bool:
+        """
+        Check if passport document should be processed.
+        Returns True if Passport DocumentType exists and is required by the product.
+        """
+        try:
+            passport_doc_type = DocumentType.objects.get(name="Passport")
+            # Check if this document type is required by the product
+            return self.object.product.document_types.filter(pk=passport_doc_type.pk).exists()
+        except DocumentType.DoesNotExist:
+            return False
+
     def create_passport_document_from_previous_docapplication(self):
         """
         Create a passport document from the previous docapplication.
         """
-        doc_type = DocumentType.objects.get(name="Passport")
+        try:
+            doc_type = DocumentType.objects.get(name="Passport")
+        except DocumentType.DoesNotExist:
+            logger.warning("Passport DocumentType does not exist. Skipping passport document creation.")
+            return
+
         previous_passport_doc = self.get_previous_valid_passport_document()
         if previous_passport_doc:
             new_passport_doc = Document()
@@ -245,7 +275,11 @@ class DocApplicationCreateView(PermissionRequiredMixin, SuccessMessageMixin, Cre
 
     def get_previous_valid_passport_document(self, with_messages=True):
         customer = self.object.customer
-        passport_doc_type = DocumentType.objects.get(name="Passport")
+        try:
+            passport_doc_type = DocumentType.objects.get(name="Passport")
+        except DocumentType.DoesNotExist:
+            logger.warning("Passport DocumentType does not exist.")
+            return False
 
         try:
             previous_passport_doc = (
