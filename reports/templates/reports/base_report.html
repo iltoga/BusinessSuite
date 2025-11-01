@@ -1,0 +1,110 @@
+{% extends "base_template.html" %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}{% block report_title %}Report{% endblock %} - {{ block.super }}{% endblock %}
+
+{% block custom-css %}
+{{ block.super }}
+<style>
+    @media print {
+        #sidebar, #navbar-top, .no-print {
+            display: none !important;
+        }
+
+        #content {
+            margin-left: 0 !important;
+            width: 100% !important;
+        }
+
+        .card {
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+        .chart-container {
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+    }
+
+    .stat-card {
+        border-left: 4px solid #0d6efd;
+    }
+
+    .stat-card .stat-value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #0d6efd;
+    }
+
+    .stat-card .stat-label {
+        font-size: 0.9rem;
+        color: #6c757d;
+        text-transform: uppercase;
+    }
+
+    .trend-up {
+        color: #198754;
+    }
+
+    .trend-down {
+        color: #dc3545;
+    }
+
+    .trend-neutral {
+        color: #6c757d;
+    }
+
+    .chart-container {
+        position: relative;
+        height: 400px;
+        margin-bottom: 2rem;
+    }
+
+    .report-filters {
+        background: #f8f9fa;
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .table-responsive {
+        max-height: 500px;
+    }
+</style>
+{% endblock %}
+
+{% block head-scripts %}
+{{ block.super }}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>{% block report_heading %}Report{% endblock %}</h1>
+            <p class="text-muted">{% block report_description %}{% endblock %}</p>
+        </div>
+        <div class="no-print">
+            <button onclick="window.print()" class="btn btn-primary">
+                <i class="bi bi-printer"></i> Print Report
+            </button>
+            <a href="{% url 'reports-index' %}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> All Reports
+            </a>
+        </div>
+    </div>
+
+    {% block report_filters %}{% endblock %}
+
+    {% block report_content %}{% endblock %}
+</div>
+{% endblock %}
+
+{% block after-bootstrap-js %}
+{{ block.super }}
+{% block report_charts %}{% endblock %}
+{% endblock %}

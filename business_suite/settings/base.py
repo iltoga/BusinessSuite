@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     "invoices",
     "payments",
     "customer_applications",
+    "reports",
     "corsheaders",
     "rest_framework",
     "rest_framework.authtoken",

@@ -1,0 +1,159 @@
+{% extends "reports/base_report.html" %}
+{% load static %}
+{% load humanize %}
+{% load report_filters %}
+
+{% block report_title %}Product Demand Forecast{% endblock %}
+{% block report_heading %}Product Demand Forecast{% endblock %}
+{% block report_description %}Seasonal trends and demand predictions based on historical data{% endblock %}
+
+{% block report_content %}
+<!-- Top Products Trends -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Historical Demand (Last 12 Months)</h5>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="demandChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Growth Rates -->
+<div class="row mb-4">
+    <div class="col-lg-6 mb-3">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Month-over-Month Growth</h5>
+            </div>
+            <div class="card-body">
+                <div class="list-group">
+                    {% for product_code, rate in growth_rates.items %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><strong>{{ product_code }}</strong></span>
+                        <span class="{% if rate > 0 %}trend-up{% elif rate < 0 %}trend-down{% else %}trend-neutral{% endif %}">
+                            {{ rate }}%
+                        </span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6 mb-3">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">3-Month Forecast</h5>
+            </div>
+            <div class="card-body">
+                <div class="chart-container" style="height: 250px;">
+                    <canvas id="forecastChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quarterly Patterns -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Seasonal Patterns (Quarterly Averages)</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th class="text-end">Q1 (Jan-Mar)</th>
+                                <th class="text-end">Q2 (Apr-Jun)</th>
+                                <th class="text-end">Q3 (Jul-Sep)</th>
+                                <th class="text-end">Q4 (Oct-Dec)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for product_code, quarters in quarterly_data.items %}
+                            <tr>
+                                <td><strong>{{ product_code }}</strong></td>
+                                <td class="text-end">{{ quarters.Q1|floatformat:1 }}</td>
+                                <td class="text-end">{{ quarters.Q2|floatformat:1 }}</td>
+                                <td class="text-end">{{ quarters.Q3|floatformat:1 }}</td>
+                                <td class="text-end">{{ quarters.Q4|floatformat:1 }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block report_charts %}
+<script>
+    const productDemand = {{ product_demand|to_json }};
+    const forecastData = {{ forecast_data|to_json }};
+    const topProducts = {{ top_products|to_json }};
+
+    // Demand Chart
+    const demandCtx = document.getElementById('demandChart').getContext('2d');
+    const datasets = topProducts.map((productCode, index) => {
+        const colors = ['#0d6efd', '#198754', '#ffc107', '#dc3545', '#6c757d'];
+        return {
+            label: productCode,
+            data: productDemand[productCode].data.map(d => d.count),
+            borderColor: colors[index],
+            backgroundColor: colors[index] + '33',
+            tension: 0.4
+        };
+    });
+
+    new Chart(demandCtx, {
+        type: 'line',
+        data: {
+            labels: Object.values(productDemand)[0].data.map(d => d.label),
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false
+            }
+        }
+    });
+
+    // Forecast Chart
+    const forecastCtx = document.getElementById('forecastChart').getContext('2d');
+    const forecastDatasets = topProducts.map((productCode, index) => {
+        const colors = ['#0d6efd', '#198754', '#ffc107', '#dc3545', '#6c757d'];
+        return {
+            label: productCode,
+            data: forecastData[productCode].map(d => d.count),
+            backgroundColor: colors[index]
+        };
+    });
+
+    new Chart(forecastCtx, {
+        type: 'bar',
+        data: {
+            labels: Object.values(forecastData)[0].map(d => d.label),
+            datasets: forecastDatasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+</script>
+{% endblock %}

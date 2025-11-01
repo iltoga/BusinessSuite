@@ -1,0 +1,47 @@
+{% extends "base_template.html" %}
+{% load static %}
+
+{% block title %}Business Reports - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <h1 class="mb-4">Business Reports</h1>
+    <p class="text-muted mb-5">Comprehensive analysis and insights for your business</p>
+
+    {% regroup reports by category as report_groups %}
+
+    {% for group in report_groups %}
+    <h3 class="mb-3 mt-4">{{ group.grouper }}</h3>
+    <div class="row mb-4">
+        {% for report in group.list %}
+        <div class="col-md-6 col-lg-4 mb-3">
+            <div class="card h-100 shadow-sm hover-shadow">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="bi {{ report.icon }} fs-1 text-primary me-3"></i>
+                        <h5 class="card-title mb-0">{{ report.name }}</h5>
+                    </div>
+                    <p class="card-text text-muted">{{ report.description }}</p>
+                    <a href="{% url report.url %}" class="btn btn-primary">
+                        View Report <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endfor %}
+</div>
+
+<style>
+    .hover-shadow {
+        transition: box-shadow 0.3s ease-in-out;
+    }
+
+    .hover-shadow:hover {
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+        transform: translateY(-2px);
+        transition: all 0.3s ease;
+    }
+</style>
+{% endblock %}

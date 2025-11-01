@@ -1,0 +1,123 @@
+{% extends "reports/base_report.html" %}
+{% load static %}
+{% load humanize %}
+{% load report_filters %}
+
+{% block report_title %}Product Revenue Analysis{% endblock %}
+{% block report_heading %}Product Revenue Analysis{% endblock %}
+{% block report_description %}Product performance and revenue breakdown by product type{% endblock %}
+
+{% block report_content %}
+<!-- Summary Stats -->
+<div class="row mb-4">
+    <div class="col-md-4 mb-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="stat-label">Total Products</div>
+                <div class="stat-value">{{ total_products }}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4 mb-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="stat-label">Total Revenue</div>
+                <div class="stat-value">{{ total_revenue_formatted }}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4 mb-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="stat-label">Total Applications</div>
+                <div class="stat-value">{{ total_applications }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Product Type Comparison -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Revenue by Product Type</h5>
+            </div>
+            <div class="card-body">
+                <div class="chart-container" style="height: 300px;">
+                    <canvas id="typeChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Product Details Table -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Product Performance Details</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Product Code</th>
+                                <th>Product Name</th>
+                                <th>Type</th>
+                                <th class="text-end">Applications</th>
+                                <th class="text-end">Total Revenue</th>
+                                <th class="text-end">Avg Price</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for product in product_data %}
+                            <tr>
+                                <td><strong>{{ product.code }}</strong></td>
+                                <td>{{ product.name }}</td>
+                                <td><span class="badge bg-secondary">{{ product.type }}</span></td>
+                                <td class="text-end">{{ product.application_count }}</td>
+                                <td class="text-end">{{ product.total_revenue_formatted }}</td>
+                                <td class="text-end">{{ product.avg_price_formatted }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block report_charts %}
+<script>
+    const typeData = {{ type_data|to_json }};
+
+    const typeCtx = document.getElementById('typeChart').getContext('2d');
+    new Chart(typeCtx, {
+        type: 'bar',
+        data: {
+            labels: typeData.map(d => d.type),
+            datasets: [{
+                label: 'Revenue',
+                data: typeData.map(d => d.revenue),
+                backgroundColor: ['#0d6efd', '#6c757d']
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}
