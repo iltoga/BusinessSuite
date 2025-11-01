@@ -57,6 +57,7 @@
 
     .file-item.processing {
         background-color: #fff3cd;
+        border-color: #ffc107;
     }
 
     .file-item.success {
@@ -101,6 +102,25 @@
         width: 1rem;
         height: 1rem;
         border-width: 0.15em;
+    }
+
+    .progress-message {
+        margin-top: 20px;
+        padding: 15px;
+        background-color: #e7f3ff;
+        border-left: 4px solid #007bff;
+        border-radius: 4px;
+        display: none;
+    }
+
+    .progress-message.active {
+        display: block;
+    }
+
+    .file-detail {
+        margin-top: 5px;
+        font-size: 0.875rem;
+        color: #6c757d;
     }
 </style>
 {% endblock %}
@@ -149,6 +169,12 @@
         <!-- File List -->
         <div class="file-list" id="fileList" style="display: none;">
             <h4>Files to Import</h4>
+
+            <!-- Progress Message -->
+            <div class="progress-message" id="progressMessage">
+                <strong id="progressText">Preparing to import...</strong>
+            </div>
+
             <div id="fileItems"></div>
             <div class="mt-3">
                 <button id="importBtn" class="btn btn-primary btn-lg">
@@ -232,8 +258,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const resultsSummary = document.getElementById('resultsSummary');
     const resultsTable = document.getElementById('resultsTable');
     const resultsTableBody = document.getElementById('resultsTableBody');
+    const progressMessage = document.getElementById('progressMessage');
+    const progressText = document.getElementById('progressText');
 
     let selectedFiles = [];
+    let eventSource = null;
 
     // Drop zone click handler
     dropZone.addEventListener('click', () => fileInput.click());
@@ -290,14 +319,16 @@ document.addEventListener('DOMContentLoaded', function() {
         selectedFiles.forEach((file, index) => {
             const fileItem = document.createElement('div');
             fileItem.className = 'file-item';
+            fileItem.id = `file-item-${index}`;
             fileItem.innerHTML = `
                 <div>
                     <i class="bi bi-file-earmark"></i>
                     <strong>${file.name}</strong>
                     <small class="text-muted ms-2">(${formatFileSize(file.size)})</small>
+                    <div class="file-detail" id="file-detail-${index}"></div>
                 </div>
                 <div>
-                    <span class="badge bg-secondary status-badge">Pending</span>
+                    <span class="badge bg-secondary status-badge" id="status-${index}">Pending</span>
                     <button class="btn btn-sm btn-danger ms-2 remove-btn" data-index="${index}">
                         <i class="bi bi-trash"></i>
                     </button>
@@ -324,12 +355,17 @@ document.addEventListener('DOMContentLoaded', function() {
         return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
     }
 
-    // Import button handler
+    // Import button handler with SSE
     importBtn.addEventListener('click', async () => {
         if (selectedFiles.length === 0) return;
 
         importBtn.disabled = true;
         clearBtn.disabled = true;
+        progressMessage.classList.add('active');
+        progressText.textContent = 'Starting import...';
+
+        // Disable all remove buttons
+        document.querySelectorAll('.remove-btn').forEach(btn => btn.disabled = true);
 
         const formData = new FormData();
         selectedFiles.forEach(file => {
@@ -340,6 +376,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
         try {
+            // Use fetch to POST the files, then open EventSource for progress
             const response = await fetch('{% url "invoice-batch-import" %}', {
                 method: 'POST',
                 headers: {
@@ -348,21 +385,126 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: formData
             });
 
-            const data = await response.json();
-
-            if (data.success) {
-                displayResults(data);
-            } else {
-                alert('Error: ' + (data.error || 'Unknown error occurred'));
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
+
+            // Read the SSE stream
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+
+                // Process complete events (separated by \n\n)
+                const events = buffer.split('\n\n');
+                buffer = events.pop(); // Keep incomplete event in buffer
+
+                events.forEach(eventText => {
+                    if (!eventText.trim()) return;
+
+                    const lines = eventText.split('\n');
+                    let eventType = 'message';
+                    let eventData = '';
+
+                    lines.forEach(line => {
+                        if (line.startsWith('event: ')) {
+                            eventType = line.substring(7);
+                        } else if (line.startsWith('data: ')) {
+                            eventData = line.substring(6);
+                        }
+                    });
+
+                    if (eventData) {
+                        try {
+                            const data = JSON.parse(eventData);
+                            handleSSEEvent(eventType, data);
+                        } catch (e) {
+                            console.error('Error parsing event data:', e);
+                        }
+                    }
+                });
+            }
+
         } catch (error) {
             console.error('Error:', error);
+            progressText.textContent = '✗ Error: ' + error.message;
             alert('Error uploading files: ' + error.message);
         } finally {
             importBtn.disabled = false;
             clearBtn.disabled = false;
         }
     });
+
+    function handleSSEEvent(eventType, data) {
+        console.log('SSE Event:', eventType, data);
+
+        switch (eventType) {
+            case 'start':
+                progressText.textContent = data.message;
+                break;
+
+            case 'file_start':
+                progressText.textContent = data.message;
+                updateFileStatus(data.index - 1, 'processing', 'Processing...', 'bg-warning');
+                break;
+
+            case 'parsing':
+                progressText.textContent = data.message;
+                updateFileDetail(data.index - 1, '🤖 Parsing with AI...');
+                break;
+
+            case 'file_success':
+                updateFileStatus(data.index - 1, 'success', 'Imported', 'bg-success');
+                updateFileDetail(data.index - 1,
+                    `✓ Customer: ${data.result.customer?.name || 'N/A'}<br>` +
+                    `Invoice: ${data.result.invoice?.invoice_no || 'N/A'}`
+                );
+                break;
+
+            case 'file_duplicate':
+                updateFileStatus(data.index - 1, 'duplicate', 'Duplicate', 'bg-warning');
+                updateFileDetail(data.index - 1, '⚠ This invoice already exists');
+                break;
+
+            case 'file_error':
+                updateFileStatus(data.index - 1, 'error', 'Error', 'bg-danger');
+                updateFileDetail(data.index - 1, `✗ ${data.result.message || 'Unknown error'}`);
+                break;
+
+            case 'complete':
+                progressText.textContent = data.message;
+                progressMessage.classList.remove('active');
+                displayResults(data);
+                break;
+        }
+    }
+
+    function updateFileStatus(index, className, statusText, badgeClass) {
+        const fileItem = document.getElementById(`file-item-${index}`);
+        const statusBadge = document.getElementById(`status-${index}`);
+
+        if (fileItem) {
+            fileItem.className = `file-item ${className}`;
+        }
+
+        if (statusBadge) {
+            statusBadge.className = `badge ${badgeClass}`;
+            statusBadge.textContent = statusText;
+        }
+    }
+
+    function updateFileDetail(index, detailHTML) {
+        const detail = document.getElementById(`file-detail-${index}`);
+        if (detail) {
+            detail.innerHTML = detailHTML;
+        }
+    }
 
     // Clear button handler
     clearBtn.addEventListener('click', () => {
@@ -371,6 +513,7 @@ document.addEventListener('DOMContentLoaded', function() {
         displayFiles();
         resultsSummary.style.display = 'none';
         resultsTable.style.display = 'none';
+        progressMessage.classList.remove('active');
     });
 
     function displayResults(data) {
