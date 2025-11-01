@@ -12,7 +12,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 
 from customers.models import Customer
-from invoices.models import Invoice, InvoiceLineItem
+from invoices.models import Invoice
 from invoices.services.invoice_importer import ImportResult, InvoiceImporter
 from invoices.services.llm_invoice_parser import LLMInvoiceParser
 
@@ -174,9 +174,9 @@ class InvoiceImportMultimodalTestCase(TestCase):
         self.assertTrue(invoice.imported, "Invoice should be marked as imported")
         self.assertEqual(invoice.imported_from_file, self.pdf_path.name, "Should store original filename")
 
-        # Check line items
-        line_items = InvoiceLineItem.objects.filter(invoice=invoice)
-        self.assertGreater(line_items.count(), 0, "Should have line items")
+        # Check invoice applications were created
+        invoice_apps = invoice.invoice_applications.all()
+        self.assertGreater(invoice_apps.count(), 0, "Should have invoice applications")
 
         # Check customer
         customer = invoice.customer
@@ -184,12 +184,12 @@ class InvoiceImportMultimodalTestCase(TestCase):
         self.assertTrue(customer.active, "Customer should be active")
 
         # Check total calculation
-        line_items_total = sum(item.amount for item in line_items)
+        invoice_apps_total = sum(app.amount for app in invoice_apps)
         self.assertAlmostEqual(
             float(invoice.total_amount),
-            float(line_items_total),
+            float(invoice_apps_total),
             places=2,
-            msg="Invoice total should match sum of line items",
+            msg="Invoice total should match sum of invoice applications",
         )
 
         print(f"\n✓ Full Import Results:")
@@ -198,7 +198,7 @@ class InvoiceImportMultimodalTestCase(TestCase):
         print(f"  Date: {invoice.invoice_date}")
         print(f"  Status: {invoice.get_status_display()}")
         print(f"  Total: {invoice.total_amount}")
-        print(f"  Line Items: {line_items.count()}")
+        print(f"  Invoice Applications: {invoice_apps.count()}")
         print(f"  Message: {result.message}")
 
     def test_duplicate_detection(self):

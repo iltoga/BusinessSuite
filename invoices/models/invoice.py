@@ -203,13 +203,6 @@ class Invoice(models.Model):
             # Invoice hasn't been saved yet, so it can't have any InvoiceApplications
             pass
 
-        try:
-            if hasattr(self, "line_items") and self.line_items.exists():
-                total += self.line_items.aggregate(models.Sum("amount"))["amount__sum"] or 0
-        except ValueError:
-            # Invoice hasn't been saved yet, so it can't have any InvoiceLineItems
-            pass
-
         return total
 
     def get_next_invoice_no(self):
@@ -353,38 +346,4 @@ class InvoiceApplication(models.Model):
 
     def save(self, *args, **kwargs):
         self.status = self.calculate_payment_status()
-        super().save(*args, **kwargs)
-
-
-class InvoiceLineItem(models.Model):
-    """
-    Line items for imported invoices.
-    Used when importing external invoices that don't map to DocApplications.
-    """
-
-    invoice = models.ForeignKey(Invoice, related_name="line_items", on_delete=models.CASCADE)
-    code = models.CharField(max_length=50, blank=True)
-    description = models.TextField()
-    quantity = models.DecimalField(max_digits=10, decimal_places=2, default=1)
-    unit_price = models.DecimalField(max_digits=12, decimal_places=2)
-    amount = models.DecimalField(max_digits=12, decimal_places=2)
-    product = models.ForeignKey(
-        "products.Product",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="invoice_line_items",
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ("id",)
-
-    def __str__(self):
-        return f"{self.invoice.invoice_no_display} - {self.code or 'N/A'}: {self.description[:50]}"
-
-    def save(self, *args, **kwargs):
-        # Auto-calculate amount if not provided
-        if not self.amount:
-            self.amount = self.quantity * self.unit_price
         super().save(*args, **kwargs)

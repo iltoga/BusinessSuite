@@ -125,12 +125,6 @@
       </table>
       {% endif %}
 
-      {% if object.line_items.exists %}
-      <div class="alert alert-warning" role="alert">
-        <strong>Legacy Data:</strong> This invoice has old line items data. Please contact support to migrate.
-      </div>
-      {% endif %}
-
       <div class="card-body">
         <a href="javascript:history.back()" class="btn btn-primary">Back</a>
         {% if user|has_perm:'payments,payment,add' and object.total_due_amount > 0 %}
