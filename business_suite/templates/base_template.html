@@ -158,6 +158,22 @@
                         </ul>
                     </li>
                     {% endif %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="reportsMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Reports
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="reportsMenu">
+                            <li><a class="dropdown-item" href="{% url 'reports-index' %}">All Reports</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{% url 'report-kpi-dashboard' %}">KPI Dashboard</a></li>
+                            <li><a class="dropdown-item" href="{% url 'report-revenue' %}">Revenue Report</a></li>
+                            <li><a class="dropdown-item" href="{% url 'report-invoice-status' %}">Invoice Status</a></li>
+                            <li><a class="dropdown-item" href="{% url 'report-monthly-invoices' %}">Monthly Invoice Details</a></li>
+                            <li><a class="dropdown-item" href="{% url 'report-cash-flow' %}">Cash Flow</a></li>
+                            <li><a class="dropdown-item" href="{% url 'report-customer-ltv' %}">Customer LTV</a></li>
+                            <li><a class="dropdown-item" href="{% url 'report-product-revenue' %}">Product Revenue</a></li>
+                        </ul>
+                    </li>
                 {% endif %}
                 <li class="nav-item">
                     {% if user.is_authenticated %}
@@ -301,6 +317,46 @@
                     </ul>
                 </li>
                 {% endif %}
+                <li class="mt-4"><h4 class="mb-3">Reports</h4></li>
+                <li>
+                    <a href="#reportsSubmenu"
+                    data-bs-toggle="collapse"
+                    aria-expanded="{% if request.session.opened_submenu == 'reportsSubmenu' %}true{% else %}false{% endif %}"
+                    role="button"
+                    class="dropdown-toggle">Business Reports</a>
+                    <ul class="collapse list-unstyled" id="reportsSubmenu">
+                        <li>
+                            <a href="{% url 'reports-index' %}">All Reports</a>
+                        </li>
+                        <li>
+                            <a href="{% url 'report-kpi-dashboard' %}">KPI Dashboard</a>
+                        </li>
+                        <li>
+                            <a href="{% url 'report-revenue' %}">Revenue Report</a>
+                        </li>
+                        <li>
+                            <a href="{% url 'report-invoice-status' %}">Invoice Status</a>
+                        </li>
+                        <li>
+                            <a href="{% url 'report-monthly-invoices' %}">Monthly Invoice Details</a>
+                        </li>
+                        <li>
+                            <a href="{% url 'report-cash-flow' %}">Cash Flow Analysis</a>
+                        </li>
+                        <li>
+                            <a href="{% url 'report-customer-ltv' %}">Customer LTV</a>
+                        </li>
+                        <li>
+                            <a href="{% url 'report-application-pipeline' %}">Application Pipeline</a>
+                        </li>
+                        <li>
+                            <a href="{% url 'report-product-revenue' %}">Product Revenue</a>
+                        </li>
+                        <li>
+                            <a href="{% url 'report-product-demand' %}">Product Demand</a>
+                        </li>
+                    </ul>
+                </li>
             {% endif %}
             <li class="mt-4"><h4 class="mb-3">CRM</h4></li>
             <li class="mb-4">

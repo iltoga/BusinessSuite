@@ -1,0 +1,186 @@
+{% extends "reports/base_report.html" %}
+{% load static %}
+{% load humanize %}
+{% load report_filters %}
+
+{% block report_title %}Invoice Status Dashboard{% endblock %}
+{% block report_heading %}Invoice Status Dashboard{% endblock %}
+{% block report_description %}Track invoice status and aging analysis{% endblock %}
+
+{% block report_content %}
+<!-- Summary Stats -->
+<div class="row mb-4">
+    <div class="col-md-6 mb-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="stat-label">Average Days to Payment</div>
+                <div class="stat-value">{{ avg_days_to_payment }} days</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 mb-3">
+        <div class="card stat-card" style="border-left-color: #198754;">
+            <div class="card-body">
+                <div class="stat-label">Collection Rate</div>
+                <div class="stat-value" style="color: #198754;">{{ collection_rate }}%</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Status Distribution -->
+<div class="row mb-4">
+    <div class="col-lg-6 mb-3">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Invoice Status Distribution</h5>
+            </div>
+            <div class="card-body">
+                <div class="chart-container" style="height: 300px;">
+                    <canvas id="statusChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6 mb-3">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Aging Analysis</h5>
+            </div>
+            <div class="card-body">
+                <div class="chart-container" style="height: 300px;">
+                    <canvas id="agingChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Status Table -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Status Breakdown</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Status</th>
+                                <th class="text-end">Count</th>
+                                <th class="text-end">Total Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for status in status_data %}
+                            <tr>
+                                <td><span class="badge bg-secondary">{{ status.status }}</span></td>
+                                <td class="text-end">{{ status.count }}</td>
+                                <td class="text-end">{{ status.total_formatted }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Aging Table -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Aging Breakdown</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Age Bucket</th>
+                                <th class="text-end">Count</th>
+                                <th class="text-end">Total Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for bucket in aging_data %}
+                            <tr>
+                                <td>{{ bucket.label }}</td>
+                                <td class="text-end">{{ bucket.count }}</td>
+                                <td class="text-end">{{ bucket.total_formatted }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block report_charts %}
+<script>
+    const statusData = {{ status_data|to_json }};
+    const agingData = {{ aging_data|to_json }};
+
+    // Status Chart
+    const statusCtx = document.getElementById('statusChart').getContext('2d');
+    new Chart(statusCtx, {
+        type: 'doughnut',
+        data: {
+            labels: statusData.map(d => d.status),
+            datasets: [{
+                data: statusData.map(d => d.total),
+                backgroundColor: [
+                    '#0d6efd', '#198754', '#ffc107', '#dc3545',
+                    '#6c757d', '#0dcaf0', '#d63384', '#20c997'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right'
+                }
+            }
+        }
+    });
+
+    // Aging Chart
+    const agingCtx = document.getElementById('agingChart').getContext('2d');
+    new Chart(agingCtx, {
+        type: 'bar',
+        data: {
+            labels: agingData.map(d => d.label),
+            datasets: [{
+                label: 'Amount',
+                data: agingData.map(d => d.total),
+                backgroundColor: ['#198754', '#ffc107', '#fd7e14', '#dc3545']
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}
