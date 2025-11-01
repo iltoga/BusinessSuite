@@ -1,6 +1,7 @@
 from django.urls import path
 
 from . import views
+from .views import import_invoice_views
 
 urlpatterns = [
     path("list/", views.InvoiceListView.as_view(), name="invoice-list"),
@@ -20,6 +21,10 @@ urlpatterns = [
         name="invoice-detail-by-doc-application",
     ),
     path("download/<int:pk>", views.InvoiceDownloadView.as_view(), name="invoice-download"),
+    # Import invoice routes
+    path("import/", import_invoice_views.InvoiceImportView.as_view(), name="invoice-import"),
+    path("import/single/", import_invoice_views.InvoiceSingleImportView.as_view(), name="invoice-single-import"),
+    path("import/batch/", import_invoice_views.InvoiceBatchImportView.as_view(), name="invoice-batch-import"),
     # Add paths for InvoiceApplication and Payment views here
     path(
         "invoiceapplication/<int:pk>/update/",

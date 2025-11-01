@@ -1,0 +1,567 @@
+{% extends "base_template.html" %}
+{% load static %}
+
+{% block title %}Import Invoices - BusinessSuite{% endblock %}
+
+{% block head-extra %}
+<style>
+    .drop-zone {
+        border: 3px dashed #007bff;
+        border-radius: 10px;
+        padding: 50px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background-color: #f8f9fa;
+        min-height: 300px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .drop-zone:hover {
+        background-color: #e9ecef;
+        border-color: #0056b3;
+    }
+
+    .drop-zone.drag-over {
+        background-color: #cce5ff;
+        border-color: #004085;
+    }
+
+    .drop-zone-icon {
+        font-size: 4rem;
+        color: #007bff;
+        margin-bottom: 20px;
+    }
+
+    .file-input {
+        display: none;
+    }
+
+    .file-list {
+        margin-top: 20px;
+    }
+
+    .file-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px;
+        margin-bottom: 10px;
+        border: 1px solid #dee2e6;
+        border-radius: 5px;
+        background-color: white;
+    }
+
+    .file-item.processing {
+        background-color: #fff3cd;
+        border-color: #ffc107;
+    }
+
+    .file-item.success {
+        background-color: #d4edda;
+        border-color: #c3e6cb;
+    }
+
+    .file-item.duplicate {
+        background-color: #f8d7da;
+        border-color: #f5c6cb;
+    }
+
+    .file-item.error {
+        background-color: #f8d7da;
+        border-color: #f5c6cb;
+    }
+
+    .progress-bar-container {
+        width: 100%;
+        height: 4px;
+        background-color: #e9ecef;
+        border-radius: 2px;
+        overflow: hidden;
+        margin-top: 5px;
+    }
+
+    .progress-bar {
+        height: 100%;
+        background-color: #007bff;
+        width: 0%;
+        transition: width 0.3s ease;
+    }
+
+    .results-summary {
+        margin-top: 30px;
+        padding: 20px;
+        border-radius: 5px;
+        background-color: #f8f9fa;
+    }
+
+    .spinner-border-sm {
+        width: 1rem;
+        height: 1rem;
+        border-width: 0.15em;
+    }
+
+    .progress-message {
+        margin-top: 20px;
+        padding: 15px;
+        background-color: #e7f3ff;
+        border-left: 4px solid #007bff;
+        border-radius: 4px;
+        display: none;
+    }
+
+    .progress-message.active {
+        display: block;
+    }
+
+    .file-detail {
+        margin-top: 5px;
+        font-size: 0.875rem;
+        color: #6c757d;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="main-content">
+    <div class="container-fluid py-4">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-file-earmark-arrow-up"></i> Import Invoices</h2>
+            <a href="{% url 'invoice-list' %}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Back to Invoices
+            </a>
+        </div>
+
+        <!-- Instructions -->
+        <div class="alert alert-info mb-4">
+            <h5><i class="bi bi-info-circle"></i> Instructions</h5>
+            <ul class="mb-0">
+                <li>Upload invoice files in PDF, Excel (.xlsx, .xls), or Word (.docx, .doc) format</li>
+                <li>Drag and drop files into the zone below or click to browse</li>
+                <li>Multiple files can be uploaded at once</li>
+                <li>The system will automatically extract customer and invoice data using AI</li>
+                <li>Existing customers will be matched automatically, new ones will be created</li>
+                <li>Duplicate invoices will be detected and skipped</li>
+            </ul>
+        </div>
+
+        <!-- Drop Zone -->
+        <div class="drop-zone" id="dropZone">
+            <div class="drop-zone-icon">
+                <i class="bi bi-cloud-upload"></i>
+            </div>
+            <h4>Drag & Drop Invoice Files Here</h4>
+            <p class="text-muted">or click to browse</p>
+            <p class="text-muted small">
+                Supported formats: {{ supported_formats|join:", " }}
+            </p>
+            <input type="file"
+                   id="fileInput"
+                   class="file-input"
+                   multiple
+                   accept=".pdf,.xlsx,.xls,.docx,.doc">
+        </div>
+
+        <!-- File List -->
+        <div class="file-list" id="fileList" style="display: none;">
+            <h4>Files to Import</h4>
+
+            <!-- Progress Message -->
+            <div class="progress-message" id="progressMessage">
+                <strong id="progressText">Preparing to import...</strong>
+            </div>
+
+            <div id="fileItems"></div>
+            <div class="mt-3">
+                <button id="importBtn" class="btn btn-primary btn-lg">
+                    <i class="bi bi-upload"></i> Import All Files
+                </button>
+                <button id="clearBtn" class="btn btn-secondary btn-lg ms-2">
+                    <i class="bi bi-x-circle"></i> Clear All
+                </button>
+            </div>
+        </div>
+
+        <!-- Results Summary -->
+        <div class="results-summary" id="resultsSummary" style="display: none;">
+            <h4>Import Results</h4>
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h3 class="text-primary" id="totalCount">0</h3>
+                            <p class="mb-0">Total Files</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h3 class="text-success" id="importedCount">0</h3>
+                            <p class="mb-0">Imported</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h3 class="text-warning" id="duplicateCount">0</h3>
+                            <p class="mb-0">Duplicates</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <h3 class="text-danger" id="errorCount">0</h3>
+                            <p class="mb-0">Errors</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Table -->
+        <div id="resultsTable" style="display: none; margin-top: 30px;">
+            <h4>Detailed Results</h4>
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Filename</th>
+                            <th>Status</th>
+                            <th>Customer</th>
+                            <th>Invoice No.</th>
+                            <th>Amount</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const fileList = document.getElementById('fileList');
+    const fileItems = document.getElementById('fileItems');
+    const importBtn = document.getElementById('importBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const resultsSummary = document.getElementById('resultsSummary');
+    const resultsTable = document.getElementById('resultsTable');
+    const resultsTableBody = document.getElementById('resultsTableBody');
+    const progressMessage = document.getElementById('progressMessage');
+    const progressText = document.getElementById('progressText');
+
+    let selectedFiles = [];
+    let eventSource = null;
+
+    // Drop zone click handler
+    dropZone.addEventListener('click', () => fileInput.click());
+
+    // Prevent default drag behaviors
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, preventDefaults, false);
+        document.body.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    // Highlight drop zone when dragging over
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => dropZone.classList.add('drag-over'), false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => dropZone.classList.remove('drag-over'), false);
+    });
+
+    // Handle dropped files
+    dropZone.addEventListener('drop', handleDrop, false);
+
+    function handleDrop(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        handleFiles(files);
+    }
+
+    // Handle selected files from input
+    fileInput.addEventListener('change', (e) => {
+        handleFiles(e.target.files);
+    });
+
+    function handleFiles(files) {
+        selectedFiles = Array.from(files);
+        displayFiles();
+    }
+
+    function displayFiles() {
+        fileItems.innerHTML = '';
+
+        if (selectedFiles.length === 0) {
+            fileList.style.display = 'none';
+            return;
+        }
+
+        fileList.style.display = 'block';
+
+        selectedFiles.forEach((file, index) => {
+            const fileItem = document.createElement('div');
+            fileItem.className = 'file-item';
+            fileItem.id = `file-item-${index}`;
+            fileItem.innerHTML = `
+                <div>
+                    <i class="bi bi-file-earmark"></i>
+                    <strong>${file.name}</strong>
+                    <small class="text-muted ms-2">(${formatFileSize(file.size)})</small>
+                    <div class="file-detail" id="file-detail-${index}"></div>
+                </div>
+                <div>
+                    <span class="badge bg-secondary status-badge" id="status-${index}">Pending</span>
+                    <button class="btn btn-sm btn-danger ms-2 remove-btn" data-index="${index}">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            `;
+            fileItems.appendChild(fileItem);
+        });
+
+        // Add remove button handlers
+        document.querySelectorAll('.remove-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const index = parseInt(e.currentTarget.getAttribute('data-index'));
+                selectedFiles.splice(index, 1);
+                displayFiles();
+            });
+        });
+    }
+
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+    }
+
+    // Import button handler with SSE
+    importBtn.addEventListener('click', async () => {
+        if (selectedFiles.length === 0) return;
+
+        importBtn.disabled = true;
+        clearBtn.disabled = true;
+        progressMessage.classList.add('active');
+        progressText.textContent = 'Starting import...';
+
+        // Disable all remove buttons
+        document.querySelectorAll('.remove-btn').forEach(btn => btn.disabled = true);
+
+        const formData = new FormData();
+        selectedFiles.forEach(file => {
+            formData.append('files', file);
+        });
+
+        // Get CSRF token
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        try {
+            // Use fetch to POST the files, then open EventSource for progress
+            const response = await fetch('{% url "invoice-batch-import" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken
+                },
+                body: formData
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            // Read the SSE stream
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+
+                // Process complete events (separated by \n\n)
+                const events = buffer.split('\n\n');
+                buffer = events.pop(); // Keep incomplete event in buffer
+
+                events.forEach(eventText => {
+                    if (!eventText.trim()) return;
+
+                    const lines = eventText.split('\n');
+                    let eventType = 'message';
+                    let eventData = '';
+
+                    lines.forEach(line => {
+                        if (line.startsWith('event: ')) {
+                            eventType = line.substring(7);
+                        } else if (line.startsWith('data: ')) {
+                            eventData = line.substring(6);
+                        }
+                    });
+
+                    if (eventData) {
+                        try {
+                            const data = JSON.parse(eventData);
+                            handleSSEEvent(eventType, data);
+                        } catch (e) {
+                            console.error('Error parsing event data:', e);
+                        }
+                    }
+                });
+            }
+
+        } catch (error) {
+            console.error('Error:', error);
+            progressText.textContent = '✗ Error: ' + error.message;
+            alert('Error uploading files: ' + error.message);
+        } finally {
+            importBtn.disabled = false;
+            clearBtn.disabled = false;
+        }
+    });
+
+    function handleSSEEvent(eventType, data) {
+        console.log('SSE Event:', eventType, data);
+
+        switch (eventType) {
+            case 'start':
+                progressText.textContent = data.message;
+                break;
+
+            case 'file_start':
+                progressText.textContent = data.message;
+                updateFileStatus(data.index - 1, 'processing', 'Processing...', 'bg-warning');
+                break;
+
+            case 'parsing':
+                progressText.textContent = data.message;
+                updateFileDetail(data.index - 1, '🤖 Parsing with AI...');
+                break;
+
+            case 'file_success':
+                updateFileStatus(data.index - 1, 'success', 'Imported', 'bg-success');
+                updateFileDetail(data.index - 1,
+                    `✓ Customer: ${data.result.customer?.name || 'N/A'}<br>` +
+                    `Invoice: ${data.result.invoice?.invoice_no || 'N/A'}`
+                );
+                break;
+
+            case 'file_duplicate':
+                updateFileStatus(data.index - 1, 'duplicate', 'Duplicate', 'bg-warning');
+                updateFileDetail(data.index - 1, '⚠ This invoice already exists');
+                break;
+
+            case 'file_error':
+                updateFileStatus(data.index - 1, 'error', 'Error', 'bg-danger');
+                updateFileDetail(data.index - 1, `✗ ${data.result.message || 'Unknown error'}`);
+                break;
+
+            case 'complete':
+                progressText.textContent = data.message;
+                progressMessage.classList.remove('active');
+                displayResults(data);
+                break;
+        }
+    }
+
+    function updateFileStatus(index, className, statusText, badgeClass) {
+        const fileItem = document.getElementById(`file-item-${index}`);
+        const statusBadge = document.getElementById(`status-${index}`);
+
+        if (fileItem) {
+            fileItem.className = `file-item ${className}`;
+        }
+
+        if (statusBadge) {
+            statusBadge.className = `badge ${badgeClass}`;
+            statusBadge.textContent = statusText;
+        }
+    }
+
+    function updateFileDetail(index, detailHTML) {
+        const detail = document.getElementById(`file-detail-${index}`);
+        if (detail) {
+            detail.innerHTML = detailHTML;
+        }
+    }
+
+    // Clear button handler
+    clearBtn.addEventListener('click', () => {
+        selectedFiles = [];
+        fileInput.value = '';
+        displayFiles();
+        resultsSummary.style.display = 'none';
+        resultsTable.style.display = 'none';
+        progressMessage.classList.remove('active');
+    });
+
+    function displayResults(data) {
+        // Update summary
+        document.getElementById('totalCount').textContent = data.summary.total;
+        document.getElementById('importedCount').textContent = data.summary.imported;
+        document.getElementById('duplicateCount').textContent = data.summary.duplicates;
+        document.getElementById('errorCount').textContent = data.summary.errors;
+        resultsSummary.style.display = 'block';
+
+        // Update table
+        resultsTableBody.innerHTML = '';
+        data.results.forEach(result => {
+            const row = document.createElement('tr');
+
+            let statusBadge = '';
+            if (result.status === 'imported') {
+                statusBadge = '<span class="badge bg-success">Imported</span>';
+            } else if (result.status === 'duplicate') {
+                statusBadge = '<span class="badge bg-warning">Duplicate</span>';
+            } else {
+                statusBadge = '<span class="badge bg-danger">Error</span>';
+            }
+
+            const customerName = result.customer ? result.customer.name : 'N/A';
+            const invoiceNo = result.invoice ? result.invoice.invoice_no : 'N/A';
+            const amount = result.invoice ? result.invoice.total_amount : 'N/A';
+            const invoiceUrl = result.invoice ? result.invoice.url : '#';
+
+            const viewLink = result.invoice
+                ? `<a href="${invoiceUrl}" class="btn btn-sm btn-primary" target="_blank"><i class="bi bi-eye"></i> View</a>`
+                : '-';
+
+            row.innerHTML = `
+                <td>${result.filename}</td>
+                <td>${statusBadge}</td>
+                <td>${customerName}</td>
+                <td>${invoiceNo}</td>
+                <td>${amount}</td>
+                <td>${viewLink}</td>
+            `;
+            resultsTableBody.appendChild(row);
+        });
+
+        resultsTable.style.display = 'block';
+    }
+});
+</script>
+
+{% csrf_token %}
+{% endblock %}

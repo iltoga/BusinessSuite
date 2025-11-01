@@ -37,6 +37,9 @@ dependencies = [
     "django-user-agents",
     "seaborn",
     "pillow",
+    "openai>=1.0.0",
+    "openpyxl>=3.1.0",
+    "python-docx>=1.0.0",
 ]
 
 [build-system]
