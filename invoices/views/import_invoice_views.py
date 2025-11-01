@@ -11,10 +11,12 @@ from django.contrib import messages
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.http import JsonResponse, StreamingHttpResponse
 from django.urls import reverse_lazy
+from django.utils import timezone
 from django.views import View
 from django.views.generic import TemplateView
 
 from invoices.services.invoice_importer import InvoiceImporter
+from payments.models import Payment
 
 logger = logging.getLogger(__name__)
 
@@ -119,19 +121,20 @@ class InvoiceBatchImportView(PermissionRequiredMixin, View):
         Process multiple uploaded invoice files with real-time progress streaming.
         """
         files = request.FILES.getlist("files")
+        paid_status_list = request.POST.getlist("paid_status")  # List of 'true'/'false' strings
 
         if not files:
             return JsonResponse({"success": False, "error": "No files uploaded"}, status=400)
 
         # Return SSE stream
         response = StreamingHttpResponse(
-            self.process_files_stream(files, request.user), content_type="text/event-stream"
+            self.process_files_stream(files, paid_status_list, request.user), content_type="text/event-stream"
         )
         response["Cache-Control"] = "no-cache"
         response["X-Accel-Buffering"] = "no"
         return response
 
-    def process_files_stream(self, files, user):
+    def process_files_stream(self, files, paid_status_list, user):
         """
         Generator that yields SSE events for each step of the import process.
         """
@@ -146,6 +149,8 @@ class InvoiceBatchImportView(PermissionRequiredMixin, View):
 
         for index, uploaded_file in enumerate(files, 1):
             filename = uploaded_file.name
+            # Get paid status for this file (default to False if not provided)
+            is_paid = paid_status_list[index - 1].lower() == "true" if index - 1 < len(paid_status_list) else False
 
             # Send file start event
             yield self.send_event(
@@ -192,6 +197,32 @@ class InvoiceBatchImportView(PermissionRequiredMixin, View):
 
                 # Import the invoice (this will take a few seconds)
                 result = importer.import_from_file(uploaded_file, filename)
+
+                # If invoice was successfully imported and marked as paid, create payments
+                if result.success and result.status == "imported" and is_paid and result.invoice:
+                    try:
+                        # Create full payment for each invoice application
+                        payment_count = 0
+                        for invoice_app in result.invoice.invoice_applications.all():
+                            Payment.objects.create(
+                                invoice_application=invoice_app,
+                                from_customer=result.invoice.customer,
+                                payment_date=timezone.now().date(),
+                                amount=invoice_app.amount,
+                                payment_type=Payment.CASH,
+                                notes=f"Auto-created payment for imported invoice {result.invoice.invoice_no_display}",
+                                created_by=user,
+                                updated_by=user,
+                            )
+                            payment_count += 1
+
+                        logger.info(
+                            f"Created {payment_count} payment(s) for invoice {result.invoice.invoice_no_display}"
+                        )
+                        result.message += f" (Marked as paid with {payment_count} payment(s))"
+                    except Exception as e:
+                        logger.error(f"Error creating payments for {filename}: {str(e)}", exc_info=True)
+                        result.message += " (Warning: Failed to create payments)"
 
                 result_data = {
                     "success": result.success,

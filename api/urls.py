@@ -17,6 +17,11 @@ urlpatterns = [
         views.CustomerApplicationsView.as_view(),
         name="api-customer-applications",
     ),
+    path(
+        "invoices/get_invoice_application_due_amount/<int:invoice_application_id>/",
+        views.InvoiceApplicationDueAmountView.as_view(),
+        name="api-invoice-application-due-amount",
+    ),
     path("ocr/check/", views.OCRCheckView.as_view(), name="api-ocr-check"),
     path(
         "compute/doc_workflow_due_date/<int:task_id>/<slug:start_date>/",

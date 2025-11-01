@@ -22,6 +22,12 @@ class PaymentForm(forms.ModelForm):
         self.user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
 
+        # Set initial amount based on invoice application if not already set
+        if not self.is_bound and self.initial.get("invoice_application"):
+            invoice_app = self.initial.get("invoice_application")
+            if not self.initial.get("amount"):
+                self.initial["amount"] = invoice_app.due_amount
+
     def clean(self):
         cleaned_data = super().clean()
         amount = cleaned_data.get("amount")

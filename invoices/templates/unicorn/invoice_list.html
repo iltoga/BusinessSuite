@@ -37,7 +37,7 @@
             <tbody>
             {% for invoice in list_items %}
                 <div class="list_row">
-                    <tr>
+                    <tr class="{% if invoice.is_expired %}invoice-expired{% endif %}">
                         <!-- invoice no -->
                         <td>{{ invoice.invoice_no_display }}</td>
                         <!-- due date -->
@@ -88,9 +88,12 @@
                             <a href="{% url 'invoice-update' invoice.pk %}" class="btn btn-warning btn-sm me-1">Edit</a>
                             <a href="{% url 'invoice-download' invoice.pk %}" class="btn btn-secondary btn-sm me-1">Download</a>
                             {% endif %}
-                            <!-- {% if user|has_perm:'invoices,invoice,delete' %}
-                            <a href="{% url 'invoice-delete' invoice.pk %}" class="btn btn-danger btn-sm me-1">Delete</a>
-                            {% endif %} -->
+                            {% if user|has_perm:'payments,payment,add' and invoice.total_due_amount > 0 %}
+                            <button type="button" class="btn btn-success btn-sm me-1" data-bs-toggle="modal" data-bs-target="#markAsPaidModal{{ invoice.pk }}">Paid</button>
+                            {% endif %}
+                            {% if user.is_superuser %}
+                            <a href="{% url 'invoice-delete' invoice.pk %}" class="btn btn-danger btn-sm me-1" title="Force Delete (Superuser only)">Delete</a>
+                            {% endif %}
                         </div>
                         </td>
                     </tr>
@@ -106,4 +109,74 @@
         <p>No Invoices found.</p>
         {% endif %}
     </div>
+
+    <!-- Mark as Paid Modals (one for each invoice) -->
+    {% for invoice in list_items %}
+    <div class="modal fade" id="markAsPaidModal{{ invoice.pk }}" tabindex="-1" aria-labelledby="markAsPaidModalLabel{{ invoice.pk }}" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="markAsPaidModalLabel{{ invoice.pk }}">Mark Invoice {{ invoice.invoice_no_display }} as Paid</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <form method="post" action="{% url 'invoice-mark-as-paid' invoice.pk %}">
+            {% csrf_token %}
+            <div class="modal-body">
+              <p class="text-muted">This will create payments for all unpaid invoice applications.</p>
+
+              <div class="mb-3">
+                <label for="payment_type_{{ invoice.pk }}" class="form-label">Payment Method *</label>
+                <select name="payment_type" id="payment_type_{{ invoice.pk }}" class="form-select" required>
+                  <option value="cash">Cash</option>
+                  <option value="credit_card">Credit card</option>
+                  <option value="wire_transfer">Wire transfer</option>
+                  <option value="crypto">Crypto</option>
+                  <option value="paypal">PayPal</option>
+                </select>
+              </div>
+
+              <div class="mb-3">
+                <label for="payment_date_{{ invoice.pk }}" class="form-label">Payment Date *</label>
+                <input type="date" name="payment_date" id="payment_date_{{ invoice.pk }}" class="form-control" required value="{{ today|date:'Y-m-d' }}">
+              </div>
+
+              <h6 class="mt-4 mb-3">Items to be paid:</h6>
+              <div class="table-responsive">
+                <table class="table table-sm table-bordered">
+                  <thead>
+                    <tr>
+                      <th>Application</th>
+                      <th>Product</th>
+                      <th class="text-end">Due Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for app in invoice.invoice_applications.all %}
+                      {% if app.due_amount > 0 %}
+                      <tr>
+                        <td>{{ app.customer_application }}</td>
+                        <td>{{ app.customer_application.product }}</td>
+                        <td class="text-end">{{ app.due_amount|as_currency }}</td>
+                      </tr>
+                      {% endif %}
+                    {% endfor %}
+                  </tbody>
+                  <tfoot>
+                    <tr class="fw-bold">
+                      <td colspan="2" class="text-end">Total:</td>
+                      <td class="text-end">{{ invoice.total_due_amount|as_currency }}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="btn btn-success">Create Payments</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
 </div>

@@ -11,9 +11,11 @@ from typing import Optional, Tuple
 
 from django.db import transaction
 from django.db.models import Q
+from django.utils import timezone
 
+from customer_applications.models import DocApplication
 from customers.models import Customer
-from invoices.models import Invoice, InvoiceLineItem
+from invoices.models import Invoice, InvoiceApplication
 from invoices.services.llm_invoice_parser import LLMInvoiceParser, ParsedInvoiceResult
 from products.models import Product
 
@@ -249,7 +251,11 @@ class InvoiceImporter:
         self, parsed_result: ParsedInvoiceResult, customer: Customer, filename: str
     ) -> Optional[Invoice]:
         """
-        Create invoice with line items from parsed data.
+        Create invoice with DocApplications and InvoiceApplications from parsed data.
+        For each line item:
+        1. Create/get product from line item data
+        2. Create DocApplication for the product
+        3. Create InvoiceApplication linking DocApplication to invoice
         """
         try:
             invoice_data = parsed_result.invoice
@@ -284,25 +290,38 @@ class InvoiceImporter:
                 updated_by=self.user,
             )
 
-            # Don't call save() yet, let the model's save() calculate total_amount
-            # But we need to save first to get an ID for line items
+            # Save invoice to get an ID for applications
             invoice.save()
 
-            # Create line items
+            # Process each line item: create/get product, create DocApplication, link to invoice
             for item_data in parsed_result.line_items:
-                # Try to match product by code
-                product = None
-                if item_data.code:
-                    product = Product.objects.filter(code__iexact=item_data.code).first()
+                # Step 1: Create or get product from line item
+                product = self._get_or_create_product(item_data)
 
-                InvoiceLineItem.objects.create(
-                    invoice=invoice,
-                    code=item_data.code,
-                    description=item_data.description,
-                    quantity=Decimal(str(item_data.quantity)),
-                    unit_price=Decimal(str(item_data.unit_price)),
-                    amount=Decimal(str(item_data.amount)),
+                if not product:
+                    logger.warning(f"Could not create/get product for line item: {item_data.code}")
+                    continue
+
+                # Step 2: Create DocApplication with completed status
+                doc_application = DocApplication.objects.create(
+                    customer=customer,
                     product=product,
+                    doc_date=invoice_date,
+                    due_date=due_date,
+                    status=DocApplication.STATUS_COMPLETED,
+                    application_type="visa",  # Always visa as per requirements
+                    created_by=self.user,
+                    updated_by=self.user,
+                )
+
+                logger.info(f"Created DocApplication #{doc_application.pk} for product {product.code}")
+
+                # Step 3: Create InvoiceApplication linking DocApplication to invoice
+                InvoiceApplication.objects.create(
+                    invoice=invoice,
+                    customer_application=doc_application,
+                    amount=Decimal(str(item_data.amount)),
+                    status=InvoiceApplication.PENDING,
                 )
 
             # Recalculate and save total (this will trigger save() again)
@@ -310,11 +329,50 @@ class InvoiceImporter:
 
             logger.info(
                 f"Created invoice {invoice.invoice_no_display} with "
-                f"{len(parsed_result.line_items)} line items, total: {invoice.total_amount}"
+                f"{len(parsed_result.line_items)} applications, total: {invoice.total_amount}"
             )
 
             return invoice
 
         except Exception as e:
             logger.error(f"Error creating invoice: {str(e)}", exc_info=True)
+            return None
+
+    def _get_or_create_product(self, item_data) -> Optional[Product]:
+        """
+        Get or create a product from line item data.
+        Matches by code, creates new product if not found.
+
+        Args:
+            item_data: InvoiceLineItemData with code, description, unit_price
+
+        Returns:
+            Product instance or None if creation fails
+        """
+        try:
+            # Try to find existing product by code
+            if item_data.code:
+                product = Product.objects.filter(code__iexact=item_data.code).first()
+                if product:
+                    logger.info(f"Found existing product: {product.code}")
+                    return product
+
+            # Product doesn't exist, create new one
+            # Use code as both name and code if code exists, otherwise use description
+            product_code = item_data.code or item_data.description[:20].upper().replace(" ", "_")
+            product_name = item_data.code or item_data.description
+
+            product = Product.objects.create(
+                name=product_name,
+                code=product_code,
+                description=item_data.description,
+                base_price=Decimal(str(item_data.unit_price)),
+                product_type="visa",  # Always visa as per requirements
+            )
+
+            logger.info(f"Created new product: {product.code} - {product.name}")
+            return product
+
+        except Exception as e:
+            logger.error(f"Error getting/creating product: {str(e)}", exc_info=True)
             return None

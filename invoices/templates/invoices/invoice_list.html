@@ -5,6 +5,15 @@
 
 {% block head-after-jquery %}
   {% unicorn_scripts %}
+  <style>
+    .invoice-expired {
+      background-color: rgba(220, 53, 69, 0.1) !important;
+      border-left: 3px solid #dc3545 !important;
+    }
+    .invoice-expired:hover {
+      background-color: rgba(220, 53, 69, 0.15) !important;
+    }
+  </style>
 {% endblock %}
 
 {% block content %}

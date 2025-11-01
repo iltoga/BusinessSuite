@@ -84,6 +84,7 @@ class CreatePaymentView(PermissionRequiredMixin, SuccessMessageMixin, CreateView
             if invoice_application:
                 initial["invoice_application"] = invoice_application
                 initial["from_customer"] = invoice_application.invoice.customer
+                initial["amount"] = invoice_application.due_amount
 
         if customer_pk:
             customer = Customer.objects.filter(pk=customer_pk).first()
