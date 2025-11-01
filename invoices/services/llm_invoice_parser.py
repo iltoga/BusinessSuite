@@ -312,15 +312,33 @@ class LLMInvoiceParser:
         try:
             # Extract text using appropriate library
             if file_type in ["xlsx", "xls"]:
+                from datetime import datetime as dt
+
                 import openpyxl
 
-                workbook = openpyxl.load_workbook(BytesIO(file_bytes))
+                # Use data_only=True to get calculated values instead of formulas
+                workbook = openpyxl.load_workbook(BytesIO(file_bytes), data_only=True)
                 sheet = workbook.active
                 text_parts = []
+
                 for row in sheet.iter_rows(values_only=True):
-                    row_text = " | ".join([str(cell) if cell is not None else "" for cell in row])
+                    formatted_cells = []
+                    for cell in row:
+                        if cell is None:
+                            formatted_cells.append("")
+                        elif isinstance(cell, dt):
+                            # Format datetime objects as YYYY-MM-DD
+                            formatted_cells.append(cell.strftime("%Y-%m-%d"))
+                        elif isinstance(cell, (int, float)):
+                            # Keep numbers as is (no formatting to preserve precision)
+                            formatted_cells.append(str(cell))
+                        else:
+                            formatted_cells.append(str(cell))
+
+                    row_text = " | ".join(formatted_cells)
                     if row_text.strip():
                         text_parts.append(row_text)
+
                 text = "\n".join(text_parts)
 
             elif file_type in ["docx", "doc"]:
