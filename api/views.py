@@ -24,6 +24,7 @@ from core.utils.imgutils import convert_and_resize_image
 from core.utils.passport_ocr import extract_mrz_data
 from customer_applications.models import DocApplication
 from customers.models import Customer
+from invoices.models.invoice import InvoiceApplication
 from products.models import Product
 from products.models.document_type import DocumentType
 from products.models.task import Task
@@ -238,6 +239,31 @@ class ComputeDocworkflowDueDate(APIView):
                 return Response({"due_date": due_date})
             except Task.DoesNotExist:
                 return Response({"error": "Task does not exist"}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            return Response({"error": "Invalid request"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class InvoiceApplicationDueAmountView(APIView):
+    """
+    Returns the due amount for an invoice application
+    """
+
+    queryset = InvoiceApplication.objects.none()
+
+    def get(self, request, *args, **kwargs):
+        invoice_application_id = self.kwargs.get("invoice_application_id")
+        if invoice_application_id:
+            try:
+                invoice_application = InvoiceApplication.objects.get(pk=invoice_application_id)
+                return Response(
+                    {
+                        "due_amount": str(invoice_application.due_amount),
+                        "amount": str(invoice_application.amount),
+                        "paid_amount": str(invoice_application.paid_amount),
+                    }
+                )
+            except InvoiceApplication.DoesNotExist:
+                return Response({"error": "Invoice Application does not exist"}, status=status.HTTP_404_NOT_FOUND)
         else:
             return Response({"error": "Invalid request"}, status=status.HTTP_400_BAD_REQUEST)
 

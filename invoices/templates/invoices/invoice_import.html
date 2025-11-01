@@ -122,6 +122,21 @@
         font-size: 0.875rem;
         color: #6c757d;
     }
+
+    .mark-paid-checkbox {
+        cursor: pointer;
+    }
+
+    .form-check-label {
+        cursor: pointer;
+        font-size: 0.875rem;
+        color: #28a745;
+        font-weight: 500;
+    }
+
+    .form-check-label i {
+        color: #28a745;
+    }
 </style>
 {% endblock %}
 
@@ -329,6 +344,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 <div>
                     <span class="badge bg-secondary status-badge" id="status-${index}">Pending</span>
+                    <div class="form-check form-check-inline ms-2">
+                        <input class="form-check-input mark-paid-checkbox" type="checkbox" id="paid-${index}" data-index="${index}">
+                        <label class="form-check-label" for="paid-${index}" title="Mark this invoice as paid upon import">
+                            <i class="bi bi-cash-coin"></i> Paid
+                        </label>
+                    </div>
                     <button class="btn btn-sm btn-danger ms-2 remove-btn" data-index="${index}">
                         <i class="bi bi-trash"></i>
                     </button>
@@ -368,8 +389,13 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.remove-btn').forEach(btn => btn.disabled = true);
 
         const formData = new FormData();
-        selectedFiles.forEach(file => {
+        selectedFiles.forEach((file, index) => {
             formData.append('files', file);
+
+            // Check if this file is marked as paid
+            const paidCheckbox = document.getElementById(`paid-${index}`);
+            const isPaid = paidCheckbox && paidCheckbox.checked ? 'true' : 'false';
+            formData.append('paid_status', isPaid);
         });
 
         // Get CSRF token

@@ -28,7 +28,7 @@ class InvoiceManager(models.Manager):
 
     def search_invoices(self, query):
         """
-        Search Invoices by customer, invoice number, invoice date, due date, status, invoice date year (this one exact match).
+        Search Invoices by customer, invoice number (partial match), invoice date, due date, status, invoice date year (this one exact match).
         Use the SearchVector to search across multiple fields.
         """
         return self.annotate(
@@ -41,7 +41,12 @@ class InvoiceManager(models.Manager):
             ),
             first_name_similarity=TrigramSimilarity("customer__first_name", query),
             last_name_similarity=TrigramSimilarity("customer__last_name", query),
-        ).filter(Q(search=query) | Q(first_name_similarity__gt=0.3) | Q(last_name_similarity__gt=0.3))
+        ).filter(
+            Q(search=query)
+            | Q(first_name_similarity__gt=0.3)
+            | Q(last_name_similarity__gt=0.3)
+            | Q(invoice_no__icontains=query)
+        )
 
         # return self.filter(
         #     models.Q(customer__first_name__icontains=query)
@@ -142,8 +147,38 @@ class Invoice(models.Model):
     def is_fully_paid(self):
         return self.status == Invoice.PAID or self.status == Invoice.REFUNDED or self.status == Invoice.WRITE_OFF
 
-    def delete(self, *args, **kwargs):
-        raise Exception("You can't delete an invoice.")
+    @property
+    def is_expired(self):
+        """Check if invoice is expired (overdue)"""
+        from django.utils import timezone
+
+        return self.total_due_amount > 0 and self.due_date < timezone.now().date()
+
+    def delete(self, force=False, *args, **kwargs):
+        """
+        Delete an invoice. By default, invoices cannot be deleted.
+        Only superusers can force delete invoices, which will cascade delete
+        related InvoiceApplications, CustomerApplications, and Payments.
+        """
+        if not force:
+            raise Exception("You can't delete an invoice.")
+
+        # Collect customer applications before deleting invoice
+        customer_applications = set()
+        for inv_app in self.invoice_applications.all():
+            customer_applications.add(inv_app.customer_application)
+
+        # Delete the invoice (cascade will delete InvoiceApplications and Payments)
+        super().delete(*args, **kwargs)
+
+        # Delete the customer applications
+        for customer_app in customer_applications:
+            try:
+                customer_app.delete()
+            except Exception:
+                # Customer application might be linked to other invoices or protected
+                # Continue deleting others if one fails
+                pass
 
     def save(self, *args, **kwargs):
         if not self.invoice_no:

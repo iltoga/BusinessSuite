@@ -34,50 +34,15 @@
         </tbody>
       </table>
 
-      {% if object.imported and object.line_items.exists %}
+      {% if object.invoice_applications.exists %}
       <div class="card-header bg-secondary text-white">
-        <h3>Invoice Line Items</h3>
-      </div>
-      <table class="table">
-        <thead>
-          <tr>
-            <th scope="col" class="text-start">Code</th>
-            <th scope="col" class="text-start">Description</th>
-            <th scope="col" class="text-start">Quantity</th>
-            <th scope="col" class="text-start">Unit Price</th>
-            <th scope="col" class="text-start">Amount</th>
-            <th scope="col" class="text-start">Product</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for item in object.line_items.all %}
-            <tr>
-              <td class="text-start">{{ item.code|default:"-" }}</td>
-              <td class="text-start">{{ item.description }}</td>
-              <td class="text-start">{{ item.quantity }}</td>
-              <td class="text-start">{{ item.unit_price|as_currency }}</td>
-              <td class="text-start">{{ item.amount|as_currency }}</td>
-              <td class="text-start">
-                {% if item.product %}
-                  <a href="{% url 'product-detail' item.product.pk %}">{{ item.product }}</a>
-                {% else %}
-                  -
-                {% endif %}
-              </td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      {% endif %}
-
-      {% if not object.imported and object.invoice_applications.exists %}
-      <div class="card-header bg-secondary text-white">
-        <h3>Customer Applications</h3>
+        <h3>{% if object.imported %}Imported Invoice Items{% else %}Customer Applications{% endif %}</h3>
       </div>
       <table class="table">
         <thead>
           <tr>
             <th scope="col" class="text-start">Application</th>
+            <th scope="col" class="text-start">Product</th>
             <th scope="col" class="text-start">Amount</th>
             <th scope="col" class="text-start">Paid</th>
             <th scope="col" class="text-start">Due</th>
@@ -88,19 +53,16 @@
         <tbody>
           {% for app in object.invoice_applications.all %}
             <tr>
-              <!-- customer application -->
-              <td class="text-start"><a href="{% url 'customer-application-detail' app.customer_application.pk %}">{{ app.customer_application }}</a></td>
-              <!-- invoice application amount -->
+              <td class="text-start">
+                <a href="{% url 'customer-application-detail' app.customer_application.pk %}">{{ app.customer_application }}</a>
+              </td>
+              <td class="text-start">{{ app.customer_application.product }}</td>
               <td class="text-start">{{ app.amount|as_currency }}</td>
-              <!-- paid amount -->
               <td class="text-start">{{ app.paid_amount|as_currency }}</td>
-              <!-- due amount -->
               <td class="text-start">{{ app.due_amount|as_currency }}</td>
-              <!-- invoice application status (payment status)-->
               <td class="text-start">
                 {% include "components/model_payment_status_badge.html" with status=app.status status_display=app.get_status_display %}
               </td>
-              <!-- actions -->
               <td>
                 <div class="btn-group-sm" role="group">
                   {% if user|has_perm:'payments,payment,add' and not app.is_payment_complete %}
@@ -109,9 +71,9 @@
                 </div>
               </td>
             </tr>
-            <!-- payments breadkdown (accordion) -->
+            <!-- payments breakdown (accordion) -->
             <tr>
-              <td colspan="6">
+              <td colspan="7">
                 <div class="accordion" id="accordionPayments{{ app.pk }}">
                   <div class="accordion-item">
                     <h2 class="accordion-header" id="headingPayments{{ app.pk }}">
@@ -154,19 +116,97 @@
                 </div>
               </td>
             </tr>
-
           {% empty %}
             <tr>
-              <td colspan="6">No applications found for this invoice</td>
+              <td colspan="7">No applications found for this invoice</td>
             </tr>
           {% endfor %}
         </tbody>
       </table>
       {% endif %}
 
+      {% if object.line_items.exists %}
+      <div class="alert alert-warning" role="alert">
+        <strong>Legacy Data:</strong> This invoice has old line items data. Please contact support to migrate.
+      </div>
+      {% endif %}
+
       <div class="card-body">
         <a href="javascript:history.back()" class="btn btn-primary">Back</a>
+        {% if user|has_perm:'payments,payment,add' and object.total_due_amount > 0 %}
+        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#markAsPaidModal">
+          Mark as Paid
+        </button>
+        {% endif %}
       </div>
     </div>
   </div>
+
+<!-- Mark as Paid Modal -->
+<div class="modal fade" id="markAsPaidModal" tabindex="-1" aria-labelledby="markAsPaidModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="markAsPaidModalLabel">Mark Invoice as Paid</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="markAsPaidForm" method="post" action="{% url 'invoice-mark-as-paid' object.pk %}">
+        {% csrf_token %}
+        <div class="modal-body">
+          <p class="text-muted">This will create payments for all unpaid invoice applications.</p>
+
+          <div class="mb-3">
+            <label for="payment_type" class="form-label">Payment Method *</label>
+            <select name="payment_type" id="payment_type" class="form-select" required>
+              <option value="cash">Cash</option>
+              <option value="credit_card">Credit card</option>
+              <option value="wire_transfer">Wire transfer</option>
+              <option value="crypto">Crypto</option>
+              <option value="paypal">PayPal</option>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label for="payment_date" class="form-label">Payment Date *</label>
+            <input type="date" name="payment_date" id="payment_date" class="form-control" required value="{{ today|date:'Y-m-d' }}">
+          </div>
+
+          <h6 class="mt-4 mb-3">Items to be paid:</h6>
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered">
+              <thead>
+                <tr>
+                  <th>Application</th>
+                  <th>Product</th>
+                  <th class="text-end">Due Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for app in object.invoice_applications.all %}
+                  {% if app.due_amount > 0 %}
+                  <tr>
+                    <td>{{ app.customer_application }}</td>
+                    <td>{{ app.customer_application.product }}</td>
+                    <td class="text-end">{{ app.due_amount|as_currency }}</td>
+                  </tr>
+                  {% endif %}
+                {% endfor %}
+              </tbody>
+              <tfoot>
+                <tr class="fw-bold">
+                  <td colspan="2" class="text-end">Total:</td>
+                  <td class="text-end">{{ object.total_due_amount|as_currency }}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-success">Create Payments</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 {% endblock %}
