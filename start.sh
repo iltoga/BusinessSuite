@@ -49,5 +49,18 @@ python manage.py create_user system $SYSTEM_USER_PASSWORD --superuser --email=$S
 # Collect static files
 python manage.py collectstatic --noinput
 
-# Run Gunicorn
-gunicorn business_suite.wsgi:application --bind 0.0.0.0:8000 --log-file -
+# Run Gunicorn with increased timeout for long-running LLM API calls
+# --timeout: Worker timeout (default: 30s, increased to 180s for invoice import with LLM)
+# --workers: Number of worker processes (default: 1, increase for production)
+# --threads: Number of threads per worker (default: 1)
+# --worker-class: Worker type (default: sync)
+gunicorn business_suite.wsgi:application \
+  --bind 0.0.0.0:8000 \
+  --timeout 180 \
+  --workers 2 \
+  --threads 2 \
+  --worker-class sync \
+  --log-file - \
+  --access-logfile - \
+  --error-logfile - \
+  --log-level info

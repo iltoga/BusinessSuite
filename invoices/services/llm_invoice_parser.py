@@ -175,21 +175,31 @@ class LLMInvoiceParser:
             default_model = getattr(settings, "OPENROUTER_DEFAULT_MODEL", "openai/gpt-5-mini")
             self.model = model or default_model
 
-            # Initialize OpenAI client with OpenRouter base URL
+            # Initialize OpenAI client with OpenRouter base URL and timeout
             base_url = getattr(settings, "OPENROUTER_API_BASE_URL", "https://openrouter.ai/api/v1")
+            # Set a generous timeout for LLM API calls (vision models can take 60-120 seconds)
+            timeout = getattr(settings, "OPENROUTER_TIMEOUT", 120.0)
+
             self.client = OpenAI(
                 api_key=self.api_key,
                 base_url=base_url,
+                timeout=timeout,
             )
-            logger.info(f"Initialized LLM parser with OpenRouter (model: {self.model})")
+            logger.info(f"Initialized LLM parser with OpenRouter (model: {self.model}, timeout: {timeout}s)")
         else:
             self.api_key = api_key or getattr(settings, "OPENAI_API_KEY", None)
             if not self.api_key:
                 raise ValueError("OpenAI API key not configured. Set OPENAI_API_KEY in settings or .env file.")
 
             self.model = model or getattr(settings, "OPENAI_DEFAULT_MODEL", "gpt-5-mini")
-            self.client = OpenAI(api_key=self.api_key)
-            logger.info(f"Initialized LLM parser with OpenAI (model: {self.model})")
+            # Set a generous timeout for LLM API calls
+            timeout = getattr(settings, "OPENAI_TIMEOUT", 120.0)
+
+            self.client = OpenAI(
+                api_key=self.api_key,
+                timeout=timeout,
+            )
+            logger.info(f"Initialized LLM parser with OpenAI (model: {self.model}, timeout: {timeout}s)")
 
     def parse_invoice_file(
         self, file_content: Union[bytes, UploadedFile], filename: str = "", file_type: str = ""
