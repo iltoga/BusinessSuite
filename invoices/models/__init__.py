@@ -1,2 +1,2 @@
 # invoices/models/__init__.py
-from .invoice import Invoice, InvoiceApplication, InvoiceLineItem
+from .invoice import Invoice, InvoiceApplication
