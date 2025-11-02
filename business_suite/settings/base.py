@@ -139,6 +139,10 @@ DATABASES = {
         "PASSWORD": os.getenv("DB_PASS"),
         "HOST": os.getenv("DB_HOST"),
         "PORT": os.getenv("DB_PORT"),
+        # Connection pooling - keep connections alive for 600 seconds
+        "CONN_MAX_AGE": 600,
+        # Connection pool size per worker
+        "CONN_HEALTH_CHECKS": True,
     }
 }
 

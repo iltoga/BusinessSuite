@@ -51,15 +51,19 @@ python manage.py collectstatic --noinput
 
 # Run Gunicorn with increased timeout for long-running LLM API calls
 # --timeout: Worker timeout (default: 30s, increased to 180s for invoice import with LLM)
-# --workers: Number of worker processes (default: 1, increase for production)
-# --threads: Number of threads per worker (default: 1)
-# --worker-class: Worker type (default: sync)
+# --workers: Number of worker processes (2*CPU + 1 formula, or 4 minimum)
+# --threads: Number of threads per worker (2-4 recommended)
+# --worker-class: Worker type (sync for CPU-bound, gthread for I/O-bound)
+# --max-requests: Restart workers after N requests to prevent memory leaks
+# --max-requests-jitter: Add randomness to prevent all workers restarting simultaneously
 gunicorn business_suite.wsgi:application \
   --bind 0.0.0.0:8000 \
   --timeout 180 \
-  --workers 2 \
-  --threads 2 \
-  --worker-class sync \
+  --workers 4 \
+  --threads 4 \
+  --worker-class gthread \
+  --max-requests 1000 \
+  --max-requests-jitter 50 \
   --log-file - \
   --access-logfile - \
   --error-logfile - \
