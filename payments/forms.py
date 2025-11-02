@@ -34,9 +34,13 @@ class PaymentForm(forms.ModelForm):
         invoice_application = cleaned_data.get("invoice_application")
 
         if amount and invoice_application:
-            total_due_amount = invoice_application.invoice.total_due_amount
+            # Calculate the actual available amount to pay
+            # If updating an existing payment, add its current amount back to the due amount
+            available_amount = invoice_application.due_amount
+            if self.instance.pk:  # This is an update, not a create
+                available_amount += self.instance.amount
 
-            if amount > total_due_amount:
+            if amount > available_amount:
                 raise ValidationError("The payment amount exceeds the due amount.")
 
         return cleaned_data
