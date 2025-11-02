@@ -9,9 +9,10 @@ from products.models import Product
 class DocApplicationForm(forms.ModelForm):
     class Meta:
         model = DocApplication
-        fields = ["application_type", "customer", "product", "doc_date"]
+        fields = ["application_type", "customer", "product", "doc_date", "notes"]
         widgets = {
             "doc_date": forms.DateInput(attrs={"type": "date", "value": timezone.now().strftime("%Y-%m-%d")}),
+            "notes": forms.Textarea(attrs={"rows": 3, "placeholder": "Person-specific details (names, IDs, etc.)"}),
         }
 
     def __init__(self, *args, **kwargs):

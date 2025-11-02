@@ -29,6 +29,7 @@ class InvoiceLineItemData:
     quantity: float
     unit_price: float
     amount: float
+    notes: Optional[str] = None  # Person-specific details like names, numbers, etc.
 
 
 @dataclass
@@ -144,8 +145,9 @@ class LLMInvoiceParser:
                         "quantity": {"type": "number"},
                         "unit_price": {"type": "number"},
                         "amount": {"type": "number"},
+                        "notes": {"type": ["string", "null"]},
                     },
-                    "required": ["code", "description", "quantity", "unit_price", "amount"],
+                    "required": ["code", "description", "quantity", "unit_price", "amount", "notes"],
                     "additionalProperties": False,
                 },
             },
@@ -415,10 +417,45 @@ IMPORTANT EXTRACTION RULES:
 7. confidence_score: 0.9+ if clear, 0.5-0.8 if partially unclear, <0.5 if very uncertain
 8. For missing optional fields, use null
 
+9. **CRITICAL - LINE ITEMS WITH MULTIPLE PEOPLE:**
+   If a line item description mentions MULTIPLE people or has quantity > 1:
+   - CREATE SEPARATE LINE ITEMS for EACH person
+   - Set quantity=1 for each separate line item
+   - Put ONLY ONE person's name in the 'notes' field for each line item
+   - Use unit_price (not total) for amount
+
+   Example Input: "XVOA | Extension visa on arrival for Marco Polo, Ms. Beatrice Manzoni | QTY: 2 | Price: Rp 900,000 | Total: Rp 1,800,000"
+
+   Correct Output (2 separate line items):
+   Line Item 1: {{
+     "code": "XVOA",
+     "description": "Extension visa on arrival for",
+     "quantity": 1,
+     "unit_price": 900000.00,
+     "amount": 900000.00,
+     "notes": "Marco Polo"
+   }}
+   Line Item 2: {{
+     "code": "XVOA",
+     "description": "Extension visa on arrival for",
+     "quantity": 1,
+     "unit_price": 900000.00,
+     "amount": 900000.00,
+     "notes": "Beatrice Manzoni"
+   }}
+
+   WRONG (do NOT do this): One line item with quantity=2 and both names in notes
+
+10. For line items with only ONE person:
+    - Extract person name/details to 'notes' field
+    - Keep generic service description in 'description'
+    - Example: "Visa for John Smith" → description: "Visa for", notes: "John Smith"
+
 Look carefully at the document for:
 - Customer name and contact info
 - Invoice number and dates
 - Line items with codes, descriptions, quantities, prices
+- Multiple people mentioned in a single line item (split into separate items!)
 - Total amount
 - Bank details and payment info
 """
@@ -475,6 +512,7 @@ INVOICE TEXT:
                 quantity=float(item_dict.get("quantity", 1)),
                 unit_price=float(item_dict.get("unit_price", 0)),
                 amount=float(item_dict.get("amount", 0)),
+                notes=item_dict.get("notes"),  # Person-specific details
             )
             line_items.append(line_item)
 
@@ -547,3 +585,71 @@ INVOICE TEXT:
             errors.append(f"Low confidence score: {result.confidence_score:.2f}")
 
         return len(errors) == 0, errors
+
+    def generate_product_details(self, code: str, description: str) -> dict:
+        """
+        Use LLM to generate a meaningful product name and sanitize description.
+
+        Args:
+            code: Product code from invoice line item
+            description: Original description from invoice (may contain person-specific details)
+
+        Returns:
+            dict with 'name' and 'description' keys
+        """
+        try:
+            prompt = f"""You are analyzing a product from an invoice to create a generic product catalog entry.
+
+Product Code: {code or 'N/A'}
+Original Description: {description}
+
+Generate:
+1. A short, meaningful product name (3-7 words) that combines the code and describes what the product/service is
+2. A sanitized description by ONLY removing person-specific information (names, personal details, specific ID numbers) from the original description. DO NOT add extra information or rewrite it completely - just clean it up.
+
+The description should be a cleaned version of the original, reusable for any customer.
+
+Return ONLY a JSON object with this exact structure:
+{{
+    "name": "short meaningful product name",
+    "description": "sanitized description without personal info"
+}}"""
+
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a product catalog assistant. Generate concise, generic product information suitable for a catalog.",
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                response_format={"type": "json_object"},
+                temperature=0.3,
+            )
+
+            result = json.loads(response.choices[0].message.content)
+
+            # Ensure result is a dict, not a list
+            if isinstance(result, list):
+                logger.warning(f"LLM returned a list instead of dict: {result}")
+                # Try to use first item if it's a dict
+                if result and isinstance(result[0], dict):
+                    result = result[0]
+                else:
+                    raise ValueError("LLM returned invalid format (list)")
+
+            if not isinstance(result, dict) or "name" not in result or "description" not in result:
+                raise ValueError(f"LLM returned invalid structure: {result}")
+
+            logger.info(f"Generated product details: {result.get('name', 'N/A')}")
+            return result
+
+        except Exception as e:
+            logger.error(f"Error generating product details: {str(e)}", exc_info=True)
+            # Fallback to basic generation
+            fallback_name = f"{code} - {description.split()[0:3]}" if code else description[:50]
+            return {
+                "name": fallback_name,
+                "description": description,  # Use original if LLM fails
+            }

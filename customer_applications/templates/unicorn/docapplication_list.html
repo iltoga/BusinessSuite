@@ -28,6 +28,7 @@
           {% include 'components/list_sorting_col.html' with col_field='customer' col_name='Customer' %}
           {% include 'components/list_sorting_col.html' with col_field='application_type' col_name='Type' %}
           {% include 'components/list_sorting_col.html' with col_field='product' col_name='Product' %}
+          <th scope="col">Notes</th>
           {% include 'components/list_sorting_col.html' with col_field='doc_date' col_name='Doc Date' %}
           {% include 'components/list_sorting_col.html' with col_field='due_date' col_name='Completed Date' %}
           <th scope="col">Current Task</th>
@@ -65,6 +66,8 @@
               <td>
                 <a href="{% url 'product-detail' docapplication.product.pk %}" class="text-primary font-weight-light">{{ docapplication.product }}</a>
               </td>
+              <!-- Notes -->
+              <td>{{ docapplication.notes|default:"-" }}</td>
               <!-- Doc Date -->
               <td>{{ docapplication.doc_date }}</td>
               <!-- Completed (Due) Date -->

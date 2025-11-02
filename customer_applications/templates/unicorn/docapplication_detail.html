@@ -31,7 +31,13 @@
           <tr>
             <th scope="row" class="text-start">Application Status</th>
             <td class="text-start">{% include "components/model_status_badge.html" with status=docapplication.status %}</td>
-          </tr></tbody>
+          </tr>
+          {% if docapplication.notes %}
+          <tr>
+            <th scope="row" class="text-start">Notes</th>
+            <td class="text-start">{{ docapplication.notes }}</td>
+          </tr>
+          {% endif %}</tbody>
       </table>
 
       {% with docapplication.get_completed_documents as uploaded_documents %}

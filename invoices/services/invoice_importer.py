@@ -335,7 +335,7 @@ class InvoiceImporter:
             # Save invoice to get an ID for applications
             invoice.save()
 
-            # Process each line item: create/get product, create DocApplication, link to invoice
+            # Process each line item: create/get product, create DocApplication(s), link to invoice
             for item_data in parsed_result.line_items:
                 # Step 1: Create or get product from line item
                 product = self._get_or_create_product(item_data)
@@ -344,34 +344,43 @@ class InvoiceImporter:
                     logger.warning(f"Could not create/get product for line item: {item_data.code}")
                     continue
 
-                # Step 2: Create DocApplication with completed status
-                doc_application = DocApplication.objects.create(
-                    customer=customer,
-                    product=product,
-                    doc_date=invoice_date,
-                    due_date=due_date,
-                    status=DocApplication.STATUS_COMPLETED,
-                    application_type="visa",  # Always visa as per requirements
-                    created_by=self.user,
-                    updated_by=self.user,
-                )
+                # Step 2: Create separate DocApplications for each unit (quantity)
+                # This handles invoices with multiple people in the same line item
+                quantity = int(item_data.quantity) if item_data.quantity else 1
+                unit_amount = Decimal(str(item_data.unit_price))
 
-                logger.info(f"Created DocApplication #{doc_application.pk} for product {product.code}")
+                for i in range(quantity):
+                    # Create DocApplication with completed status
+                    doc_application = DocApplication.objects.create(
+                        customer=customer,
+                        product=product,
+                        doc_date=invoice_date,
+                        due_date=due_date,
+                        status=DocApplication.STATUS_COMPLETED,
+                        application_type="visa",  # Always visa as per requirements
+                        notes=item_data.notes,  # Person-specific details from invoice
+                        created_by=self.user,
+                        updated_by=self.user,
+                    )
 
-                # Step 3: Create InvoiceApplication linking DocApplication to invoice
-                InvoiceApplication.objects.create(
-                    invoice=invoice,
-                    customer_application=doc_application,
-                    amount=Decimal(str(item_data.amount)),
-                    status=InvoiceApplication.PENDING,
-                )
+                    logger.info(
+                        f"Created DocApplication #{doc_application.pk} for product {product.code} (item {i+1}/{quantity})"
+                    )
+
+                    # Step 3: Create InvoiceApplication linking DocApplication to invoice
+                    InvoiceApplication.objects.create(
+                        invoice=invoice,
+                        customer_application=doc_application,
+                        amount=unit_amount,  # Use unit price, not total amount
+                        status=InvoiceApplication.PENDING,
+                    )
 
             # Recalculate and save total (this will trigger save() again)
             invoice.save()
 
             logger.info(
                 f"Created invoice {invoice.invoice_no_display} with "
-                f"{len(parsed_result.line_items)} applications, total: {invoice.total_amount}"
+                f"{sum(int(item.quantity) for item in parsed_result.line_items)} applications, total: {invoice.total_amount}"
             )
 
             return invoice
@@ -394,7 +403,7 @@ class InvoiceImporter:
         """
         from django.db import IntegrityError
 
-        # Try to find existing product by code
+        # Try to find existing product by code (check BEFORE attempting create)
         if item_data.code:
             product = Product.objects.filter(code__iexact=item_data.code).first()
             if product:
@@ -402,15 +411,30 @@ class InvoiceImporter:
                 return product
 
         # Product doesn't exist, create new one
-        # Use code as both name and code if code exists, otherwise use description
+        # Generate product code and use it as product name
         product_code = item_data.code or item_data.description[:20].upper().replace(" ", "_")
         product_name = item_data.code or item_data.description
+
+        # Use LLM to sanitize description only (remove personal info)
+        logger.info(f"Sanitizing product description for: {item_data.code}")
+        product_details = self.llm_parser.generate_product_details(
+            code=item_data.code or "", description=item_data.description
+        )
+
+        sanitized_description = product_details.get("description", item_data.description)
+
+        # Double-check product doesn't exist (race condition protection)
+        if item_data.code:
+            existing = Product.objects.filter(code__iexact=item_data.code).first()
+            if existing:
+                logger.info(f"Product created by another process: {existing.code}")
+                return existing
 
         try:
             product = Product.objects.create(
                 name=product_name,
                 code=product_code,
-                description=item_data.description,
+                description=sanitized_description,
                 base_price=Decimal(str(item_data.unit_price)),
                 product_type="visa",  # Always visa as per requirements
             )
@@ -419,17 +443,14 @@ class InvoiceImporter:
             return product
 
         except IntegrityError as e:
-            # Another thread created this product - try to find it
-            logger.warning(f"Product creation conflict, retrying lookup: {str(e)}")
+            # Race condition: another process created this product between our checks
+            logger.warning(f"Product creation conflict (race condition): {str(e)}")
 
-            if item_data.code:
-                product = Product.objects.filter(code__iexact=item_data.code).first()
-                if product:
-                    logger.info(f"Found product after race condition: {product.code}")
-                    return product
-
-            logger.error(f"Could not find product after IntegrityError: {str(e)}")
-            return None
+            # Since we're in an atomic transaction that's now broken, we need to let it fail
+            # The transaction will rollback and the invoice creation will fail
+            # Return None to signal failure
+            logger.error(f"Cannot recover from IntegrityError within transaction for code: {product_code}")
+            raise  # Re-raise to trigger transaction rollback
 
         except Exception as e:
             logger.error(f"Error getting/creating product: {str(e)}", exc_info=True)

@@ -30,7 +30,6 @@
                 <th scope="col">Full Name</th>
                 <th scope="col">Items</th>
                 <th scope="col">Email</th>
-                <th scope="col">Telephone</th>
                 <th scope="col">Due Date</th>
                 <th scope="col">Status</th>
                 <th scope="col">Amount</th>
@@ -56,7 +55,9 @@
                             <ul>
                                 {% for item in invoice.invoice_applications.all %}
                                     <li>
-                                        <a href="{% url 'customer-application-detail' item.customer_application.pk %}" class="text-primary font-weight-light">{{ item.customer_application }}</a>
+                                        <a href="{% url 'customer-application-detail' item.customer_application.pk %}" class="text-primary font-weight-light">
+                                            {{ item.customer_application.product.code }} - {% if item.customer_application.notes %}{{ item.customer_application.notes }}{% else %}{{ item.customer_application.customer.full_name }}{% endif %}
+                                        </a>
                                     </li>
                                 {% endfor %}
                             </ul>
@@ -65,12 +66,6 @@
                         <td>
                         {% if invoice.customer.email %}
                             <a href="mailto:{{ invoice.customer.email }}" target="_blank">{{ invoice.customer.email }}</a>
-                        {% endif %}
-                        </td>
-                        <!-- customer telephone -->
-                        <td>
-                        {% if invoice.customer.telephone %}
-                            {{ invoice.customer.telephone }}
                         {% endif %}
                         </td>
                         <!-- invoice date -->
