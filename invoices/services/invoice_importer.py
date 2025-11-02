@@ -9,6 +9,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional, Tuple
 
+from django.conf import settings
 from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
@@ -43,15 +44,25 @@ class InvoiceImporter:
     Service to import invoices from uploaded files using multimodal AI.
     """
 
-    def __init__(self, user=None):
+    def __init__(self, user=None, llm_provider=None, llm_model=None):
         """
         Initialize importer.
 
         Args:
             user: Django user performing the import (for audit trail)
+            llm_provider: Optional override for LLM provider ("openrouter" or "openai")
+            llm_model: Optional override for LLM model
         """
         self.user = user
-        self.llm_parser = LLMInvoiceParser()
+
+        # Determine which provider to use
+        if llm_provider:
+            use_openrouter = llm_provider == "openrouter"
+        else:
+            use_openrouter = getattr(settings, "LLM_PROVIDER", "openrouter") == "openrouter"
+
+        # Initialize parser with optional model override
+        self.llm_parser = LLMInvoiceParser(use_openrouter=use_openrouter, model=llm_model)
 
     def import_from_file(self, uploaded_file, filename: str = None) -> ImportResult:
         """
@@ -174,6 +185,7 @@ class InvoiceImporter:
         """
         Find existing customer or create new one.
         Matching priority: phone > email > name (exact)
+        Race conditions handled by IntegrityError catch in _create_customer.
 
         Returns:
             (Customer instance, created_flag)
@@ -214,33 +226,63 @@ class InvoiceImporter:
     def _create_customer(self, customer_data) -> Optional[Customer]:
         """
         Create a new customer from parsed data.
+        Handles race conditions by catching IntegrityError and looking up existing.
         """
+        from django.db import IntegrityError
+
+        # Parse name
+        full_name = customer_data.full_name
+        name_parts = full_name.split()
+
+        first_name = customer_data.first_name or name_parts[0]
+        last_name = customer_data.last_name or (name_parts[-1] if len(name_parts) > 1 else name_parts[0])
+
+        # Use phone or mobile_phone
+        phone = customer_data.phone or customer_data.mobile_phone
+
+        # Try creating customer - if duplicate, catch and lookup
         try:
-            # Parse name
-            full_name = customer_data.full_name
-            name_parts = full_name.split()
-
-            first_name = customer_data.first_name or name_parts[0]
-            last_name = customer_data.last_name or (name_parts[-1] if len(name_parts) > 1 else name_parts[0])
-
-            # Use phone or mobile_phone
-            phone = customer_data.phone or customer_data.mobile_phone
-
-            # Create customer with minimal required fields
             customer = Customer.objects.create(
                 first_name=first_name,
                 last_name=last_name,
                 email=customer_data.email or None,
                 telephone=phone,
-                whatsapp=phone,  # Assume same as phone
-                title="",  # Empty string (required choice field)
-                birthdate="2000-01-01",  # Default birthdate (required field)
+                whatsapp=phone,
+                title="",
+                birthdate="2000-01-01",
                 notify_documents_expiration=False,
                 active=True,
             )
-
             logger.info(f"Created customer: {customer.full_name} (ID: {customer.pk})")
             return customer
+
+        except IntegrityError as e:
+            # Race condition: another thread created this customer
+            logger.warning(f"Customer creation conflict, looking up existing: {str(e)}")
+
+            # Try to find by email first (most likely unique constraint)
+            if customer_data.email:
+                customer = Customer.objects.filter(email__iexact=customer_data.email).first()
+                if customer:
+                    logger.info(f"Found existing customer by email: {customer.full_name}")
+                    return customer
+
+            # Try by phone
+            if phone:
+                customer = Customer.objects.filter(Q(telephone=phone) | Q(whatsapp=phone)).first()
+                if customer:
+                    logger.info(f"Found existing customer by phone: {customer.full_name}")
+                    return customer
+
+            # Try by name
+            if first_name and last_name:
+                customer = Customer.objects.filter(first_name__iexact=first_name, last_name__iexact=last_name).first()
+                if customer:
+                    logger.info(f"Found existing customer by name: {customer.full_name}")
+                    return customer
+
+            logger.error(f"Could not find customer after IntegrityError: {str(e)}")
+            return None
 
         except Exception as e:
             logger.error(f"Error creating customer: {str(e)}", exc_info=True)
@@ -342,6 +384,7 @@ class InvoiceImporter:
         """
         Get or create a product from line item data.
         Matches by code, creates new product if not found.
+        Handles race conditions by catching IntegrityError.
 
         Args:
             item_data: InvoiceLineItemData with code, description, unit_price
@@ -349,19 +392,21 @@ class InvoiceImporter:
         Returns:
             Product instance or None if creation fails
         """
+        from django.db import IntegrityError
+
+        # Try to find existing product by code
+        if item_data.code:
+            product = Product.objects.filter(code__iexact=item_data.code).first()
+            if product:
+                logger.info(f"Found existing product: {product.code}")
+                return product
+
+        # Product doesn't exist, create new one
+        # Use code as both name and code if code exists, otherwise use description
+        product_code = item_data.code or item_data.description[:20].upper().replace(" ", "_")
+        product_name = item_data.code or item_data.description
+
         try:
-            # Try to find existing product by code
-            if item_data.code:
-                product = Product.objects.filter(code__iexact=item_data.code).first()
-                if product:
-                    logger.info(f"Found existing product: {product.code}")
-                    return product
-
-            # Product doesn't exist, create new one
-            # Use code as both name and code if code exists, otherwise use description
-            product_code = item_data.code or item_data.description[:20].upper().replace(" ", "_")
-            product_name = item_data.code or item_data.description
-
             product = Product.objects.create(
                 name=product_name,
                 code=product_code,
@@ -372,6 +417,19 @@ class InvoiceImporter:
 
             logger.info(f"Created new product: {product.code} - {product.name}")
             return product
+
+        except IntegrityError as e:
+            # Another thread created this product - try to find it
+            logger.warning(f"Product creation conflict, retrying lookup: {str(e)}")
+
+            if item_data.code:
+                product = Product.objects.filter(code__iexact=item_data.code).first()
+                if product:
+                    logger.info(f"Found product after race condition: {product.code}")
+                    return product
+
+            logger.error(f"Could not find product after IntegrityError: {str(e)}")
+            return None
 
         except Exception as e:
             logger.error(f"Error getting/creating product: {str(e)}", exc_info=True)

@@ -130,7 +130,7 @@
                                     {% elif invoice.status_code == "partial_payment" %}
                                     <span class="badge bg-warning">{{ invoice.status }}</span>
                                     {% else %}
-                                    <span class="badge bg-secondary">{{ invoice.status }}</span>
+                                    <span class="badge bg-info text-dark">{{ invoice.status }}</span>
                                     {% endif %}
                                 </td>
                                 <td class="text-end">{{ invoice.total_amount_formatted }}</td>

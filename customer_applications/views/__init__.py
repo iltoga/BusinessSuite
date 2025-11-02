@@ -1,4 +1,5 @@
 from .doc_application_create_view import DocApplicationCreateView
+from .doc_application_delete_all_view import DocApplicationDeleteAllView
 from .doc_application_delete_view import DocApplicationDeleteView
 from .doc_application_detail_vew import DocApplicationDetailView
 from .doc_application_list_view import DocApplicationListView

@@ -388,3 +388,31 @@ class InvoiceMarkAsPaidView(PermissionRequiredMixin, View):
             request, f"Successfully created {payments_created} payment(s) for invoice {invoice.invoice_no_display}"
         )
         return redirect("invoice-detail", pk=invoice_id)
+
+
+class InvoiceDeleteAllView(PermissionRequiredMixin, View):
+    """
+    Superuser-only view to delete all invoices.
+    Requires confirmation via POST request.
+    """
+
+    permission_required = ("invoices.delete_invoice",)
+
+    def dispatch(self, request, *args, **kwargs):
+        # Only superusers can access this view
+        if not request.user.is_superuser:
+            messages.error(request, "You do not have permission to perform this action.")
+            return redirect("invoice-list")
+        return super().dispatch(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        """Delete all invoices."""
+        try:
+            count = Invoice.objects.count()
+            with transaction.atomic():
+                Invoice.objects.all().delete()
+            messages.success(request, f"Successfully deleted {count} invoice(s).")
+        except Exception as e:
+            messages.error(request, f"Error deleting invoices: {str(e)}")
+
+        return redirect("invoice-list")

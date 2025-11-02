@@ -5,6 +5,7 @@ from customer_applications.models.doc_workflow import DocWorkflow
 
 from .views import (
     DocApplicationCreateView,
+    DocApplicationDeleteAllView,
     DocApplicationDeleteView,
     DocApplicationDetailView,
     DocApplicationListView,
@@ -76,5 +77,10 @@ urlpatterns = [
         "delete/<int:pk>/",
         DocApplicationDeleteView.as_view(),
         name="customer-application-delete",
+    ),
+    path(
+        "delete-all/",
+        DocApplicationDeleteAllView.as_view(),
+        name="customer-application-delete-all",
     ),
 ]

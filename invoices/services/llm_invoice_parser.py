@@ -172,7 +172,7 @@ class LLMInvoiceParser:
                 raise ValueError("OpenRouter API key not configured. Set OPENROUTER_API_KEY in settings or .env file.")
 
             # OpenRouter uses 'provider/model' format
-            default_model = getattr(settings, "OPENROUTER_DEFAULT_MODEL", "openai/gpt-5-mini")
+            default_model = getattr(settings, "LLM_DEFAULT_MODEL", "google/gemini-2.0-flash-001")
             self.model = model or default_model
 
             # Initialize OpenAI client with OpenRouter base URL and timeout
@@ -191,7 +191,7 @@ class LLMInvoiceParser:
             if not self.api_key:
                 raise ValueError("OpenAI API key not configured. Set OPENAI_API_KEY in settings or .env file.")
 
-            self.model = model or getattr(settings, "OPENAI_DEFAULT_MODEL", "gpt-5-mini")
+            self.model = model or getattr(settings, "LLM_DEFAULT_MODEL", "gpt-4o-mini")
             # Set a generous timeout for LLM API calls
             timeout = getattr(settings, "OPENAI_TIMEOUT", 120.0)
 

@@ -1,4 +1,5 @@
 from .product_create_view import ProductCreateView
+from .product_delete_all_view import ProductDeleteAllView
 from .product_delete_view import ProductDeleteView
 from .product_detail_view import ProductDetailView
 from .product_list_view import ProductListView
