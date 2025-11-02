@@ -298,6 +298,11 @@ class InvoiceBatchImportView(PermissionRequiredMixin, View):
         from io import BytesIO
 
         from django.core.files.uploadedfile import InMemoryUploadedFile
+        from django.db import close_old_connections
+
+        # CRITICAL: Each thread needs its own database connection
+        # Close any stale connections inherited from parent thread
+        close_old_connections()
 
         filename = task["filename"]
         file_content = task["file_content"]

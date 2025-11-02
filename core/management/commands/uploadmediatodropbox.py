@@ -44,6 +44,10 @@ class Command(BaseCommand):
                 ds.delete(dropbox_destination_directory)
 
             exclude_folders = settings.DBBACKUP_EXCLUDE_MEDIA_FODERS
+
+            # Track upload progress
+            file_count = 0
+
             # Iterate over files in the local directory
             for root, dirs, files in os.walk(local_directory):
                 # Exclude directories in exclude_folders
@@ -62,7 +66,11 @@ class Command(BaseCommand):
 
                         # Save file to Dropbox
                         self.save_to_dropbox(ds, dropbox_file_path, django_file, access_token)
-                        logger.info(f"Directory has been successfully uploaded to Dropbox")
+                        file_count += 1
+
+            logger.info(
+                f"Successfully uploaded {file_count} files to Dropbox directory: {dropbox_destination_directory}"
+            )
         except Exception as e:
             logger.error(f"An error occurred while uploading the directory to Dropbox: {e}")
 
