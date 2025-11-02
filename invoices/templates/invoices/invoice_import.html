@@ -164,6 +164,41 @@
             </ul>
         </div>
 
+        <!-- LLM Configuration -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-robot"></i> AI Model Configuration</h5>
+            </div>
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-3">
+                        <label for="llmProvider" class="form-label fw-bold">Provider:</label>
+                        <select class="form-select" id="llmProvider">
+                            <option value="">Loading...</option>
+                        </select>
+                    </div>
+                    <div class="col-md-5">
+                        <label for="llmModel" class="form-label fw-bold">Model:</label>
+                        <select class="form-select" id="llmModel">
+                            <option value="">Select provider first...</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="alert alert-light mb-0 mt-2" role="alert">
+                            <small>
+                                <strong>Current:</strong><br>
+                                <span class="badge bg-info text-dark">{{ current_provider }}</span>
+                                <span class="badge bg-success">{{ current_model }}</span>
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-text mt-2">
+                    <i class="bi bi-info-circle"></i> Override the default AI model for this import session. Leave unchanged to use system defaults.
+                </div>
+            </div>
+        </div>
+
         <!-- Drop Zone -->
         <div class="drop-zone" id="dropZone">
             <div class="drop-zone-icon">
@@ -275,9 +310,79 @@ document.addEventListener('DOMContentLoaded', function() {
     const resultsTableBody = document.getElementById('resultsTableBody');
     const progressMessage = document.getElementById('progressMessage');
     const progressText = document.getElementById('progressText');
+    const llmProviderSelect = document.getElementById('llmProvider');
+    const llmModelSelect = document.getElementById('llmModel');
 
     let selectedFiles = [];
     let eventSource = null;
+    let llmModelsConfig = null;
+
+    // Load LLM models configuration
+    fetch('{% static "llm_models.json" %}')
+        .then(response => response.json())
+        .then(data => {
+            llmModelsConfig = data;
+            initializeLLMSelects();
+        })
+        .catch(error => {
+            console.error('Error loading LLM models:', error);
+            llmProviderSelect.innerHTML = '<option value="">Error loading providers</option>';
+        });
+
+    function initializeLLMSelects() {
+        // Populate provider dropdown
+        llmProviderSelect.innerHTML = '<option value="">Use system default</option>';
+        Object.keys(llmModelsConfig.providers).forEach(providerId => {
+            const provider = llmModelsConfig.providers[providerId];
+            const option = document.createElement('option');
+            option.value = providerId;
+            option.textContent = provider.name;
+
+            // Select current provider by default
+            if (providerId === '{{ current_provider }}') {
+                option.selected = true;
+            }
+
+            llmProviderSelect.appendChild(option);
+        });
+
+        // Trigger model population
+        updateModelDropdown();
+    }
+
+    // Handle provider selection change
+    llmProviderSelect.addEventListener('change', updateModelDropdown);
+
+    function updateModelDropdown() {
+        const selectedProvider = llmProviderSelect.value;
+
+        if (!selectedProvider || !llmModelsConfig) {
+            llmModelSelect.innerHTML = '<option value="">Use system default</option>';
+            return;
+        }
+
+        const provider = llmModelsConfig.providers[selectedProvider];
+        if (!provider) {
+            llmModelSelect.innerHTML = '<option value="">Invalid provider</option>';
+            return;
+        }
+
+        // Populate model dropdown
+        llmModelSelect.innerHTML = '<option value="">Use system default</option>';
+        provider.models.forEach(model => {
+            const option = document.createElement('option');
+            option.value = model.id;
+            option.textContent = model.name;
+            option.title = model.description;
+
+            // Select current model if it matches
+            if (selectedProvider === '{{ current_provider }}' && model.id === '{{ current_model }}') {
+                option.selected = true;
+            }
+
+            llmModelSelect.appendChild(option);
+        });
+    }
 
     // Drop zone click handler
     dropZone.addEventListener('click', () => fileInput.click());
@@ -343,7 +448,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="file-detail" id="file-detail-${index}"></div>
                 </div>
                 <div>
-                    <span class="badge bg-secondary status-badge" id="status-${index}">Pending</span>
+                    <span class="badge bg-warning text-dark status-badge" id="status-${index}">Pending</span>
                     <div class="form-check form-check-inline ms-2">
                         <input class="form-check-input mark-paid-checkbox" type="checkbox" id="paid-${index}" data-index="${index}">
                         <label class="form-check-label" for="paid-${index}" title="Mark this invoice as paid upon import">
@@ -383,7 +488,19 @@ document.addEventListener('DOMContentLoaded', function() {
         importBtn.disabled = true;
         clearBtn.disabled = true;
         progressMessage.classList.add('active');
-        progressText.textContent = 'Starting import...';
+
+        // Get selected LLM configuration
+        const selectedProvider = llmProviderSelect.value;
+        const selectedModel = llmModelSelect.value;
+
+        // Update progress message with LLM info
+        if (selectedProvider && selectedModel) {
+            const providerName = llmProviderSelect.options[llmProviderSelect.selectedIndex].text;
+            const modelName = llmModelSelect.options[llmModelSelect.selectedIndex].text;
+            progressText.textContent = `Starting import with ${providerName} - ${modelName}...`;
+        } else {
+            progressText.textContent = 'Starting import with default AI model...';
+        }
 
         // Disable all remove buttons
         document.querySelectorAll('.remove-btn').forEach(btn => btn.disabled = true);
@@ -397,6 +514,14 @@ document.addEventListener('DOMContentLoaded', function() {
             const isPaid = paidCheckbox && paidCheckbox.checked ? 'true' : 'false';
             formData.append('paid_status', isPaid);
         });
+
+        // Add LLM overrides if selected
+        if (selectedProvider) {
+            formData.append('llm_provider', selectedProvider);
+        }
+        if (selectedModel) {
+            formData.append('llm_model', selectedModel);
+        }
 
         // Get CSRF token
         const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;

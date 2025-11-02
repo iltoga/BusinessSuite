@@ -125,6 +125,8 @@ class MonthlyInvoiceDetailView(LoginRequiredMixin, TemplateView):
         # Create workbook
         wb = openpyxl.Workbook()
         ws = wb.active
+        if ws is None:
+            ws = wb.create_sheet()
         ws.title = f"{month_name} {year}"
 
         # Add title

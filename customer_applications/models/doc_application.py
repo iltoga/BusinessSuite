@@ -107,6 +107,7 @@ class DocApplication(models.Model):
     doc_date = models.DateField(db_index=True)
     due_date = models.DateField(blank=True, null=True, db_index=True)
     status = models.CharField(max_length=50, choices=STATUS_CHOICES, default=STATUS_PENDING, db_index=True)
+    notes = models.TextField(blank=True, null=True)  # Person-specific details from invoice import
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True, db_index=True)
     created_by = models.ForeignKey(

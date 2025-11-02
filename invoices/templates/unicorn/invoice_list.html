@@ -12,6 +12,11 @@
             {% if user|has_perm:'invoices,invoice,add' %}
             <a href="{% url 'invoice-create' %}" class="btn btn-primary">New invoice</a>
             {% endif %}
+            {% if user.is_superuser %}
+            <button type="button" class="btn btn-danger ms-2" data-bs-toggle="modal" data-bs-target="#deleteAllInvoicesModal">
+                <i class="bi bi-trash3"></i> Delete All Invoices
+            </button>
+            {% endif %}
         </div>
     </div>
 
@@ -25,7 +30,6 @@
                 <th scope="col">Full Name</th>
                 <th scope="col">Items</th>
                 <th scope="col">Email</th>
-                <th scope="col">Telephone</th>
                 <th scope="col">Due Date</th>
                 <th scope="col">Status</th>
                 <th scope="col">Amount</th>
@@ -51,7 +55,9 @@
                             <ul>
                                 {% for item in invoice.invoice_applications.all %}
                                     <li>
-                                        <a href="{% url 'customer-application-detail' item.customer_application.pk %}" class="text-primary font-weight-light">{{ item.customer_application }}</a>
+                                        <a href="{% url 'customer-application-detail' item.customer_application.pk %}" class="text-primary font-weight-light">
+                                            {{ item.customer_application.product.code }} - {% if item.customer_application.notes %}{{ item.customer_application.notes }}{% else %}{{ item.customer_application.customer.full_name }}{% endif %}
+                                        </a>
                                     </li>
                                 {% endfor %}
                             </ul>
@@ -60,12 +66,6 @@
                         <td>
                         {% if invoice.customer.email %}
                             <a href="mailto:{{ invoice.customer.email }}" target="_blank">{{ invoice.customer.email }}</a>
-                        {% endif %}
-                        </td>
-                        <!-- customer telephone -->
-                        <td>
-                        {% if invoice.customer.telephone %}
-                            {{ invoice.customer.telephone }}
                         {% endif %}
                         </td>
                         <!-- invoice date -->
@@ -179,4 +179,36 @@
       </div>
     </div>
     {% endfor %}
+
+    <!-- Delete All Invoices Modal (Superuser only) -->
+    {% if user.is_superuser %}
+    <div class="modal fade" id="deleteAllInvoicesModal" tabindex="-1" aria-labelledby="deleteAllInvoicesModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header bg-danger text-white">
+            <h5 class="modal-title" id="deleteAllInvoicesModalLabel">
+              <i class="bi bi-exclamation-triangle"></i> Delete All Invoices
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <form method="post" action="{% url 'invoice-delete-all' %}">
+            {% csrf_token %}
+            <div class="modal-body">
+              <div class="alert alert-danger">
+                <strong>Warning!</strong> This action cannot be undone.
+              </div>
+              <p>Are you sure you want to delete <strong>ALL</strong> invoices?</p>
+              <p class="text-muted">This will permanently remove all invoice records from the database.</p>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="btn btn-danger">
+                <i class="bi bi-trash3"></i> Yes, Delete All Invoices
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    {% endif %}
 </div>

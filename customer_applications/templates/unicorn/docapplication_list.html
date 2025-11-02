@@ -11,6 +11,11 @@
       {% if user|has_perm:'customer_applications,docapplication,add' %}
       <a href="{% url 'customer-application-create' %}" class="btn btn-primary">New application</a>
       {% endif %}
+      {% if user.is_superuser %}
+      <button type="button" class="btn btn-danger ms-2" data-bs-toggle="modal" data-bs-target="#deleteAllApplicationsModal">
+          <i class="bi bi-trash3"></i> Delete All Applications
+      </button>
+      {% endif %}
     </div>
   </div>
 
@@ -23,6 +28,7 @@
           {% include 'components/list_sorting_col.html' with col_field='customer' col_name='Customer' %}
           {% include 'components/list_sorting_col.html' with col_field='application_type' col_name='Type' %}
           {% include 'components/list_sorting_col.html' with col_field='product' col_name='Product' %}
+          <th scope="col">Notes</th>
           {% include 'components/list_sorting_col.html' with col_field='doc_date' col_name='Doc Date' %}
           {% include 'components/list_sorting_col.html' with col_field='due_date' col_name='Completed Date' %}
           <th scope="col">Current Task</th>
@@ -60,6 +66,8 @@
               <td>
                 <a href="{% url 'product-detail' docapplication.product.pk %}" class="text-primary font-weight-light">{{ docapplication.product }}</a>
               </td>
+              <!-- Notes -->
+              <td>{{ docapplication.notes|default:"-" }}</td>
               <!-- Doc Date -->
               <td>{{ docapplication.doc_date }}</td>
               <!-- Completed (Due) Date -->
@@ -113,7 +121,7 @@
                           </div>
                         {% else %}
                           <div class="col">
-                            <div class="badge bg-secondary">Not Ready</div>
+                            <div class="badge bg-warning text-dark">Not Ready</div>
                           </div>
                           <div class="col">
                           </div>
@@ -130,7 +138,39 @@
       {% include 'components/list_pagination_buttons.html' %}
     </div>
     {% else %}
-    <p>No applications found.</p>
+    <p>No Customer Applications found.</p>
     {% endif %}
   </div>
+
+  <!-- Delete All Customer Applications Modal (Superuser only) -->
+  {% if user.is_superuser %}
+  <div class="modal fade" id="deleteAllApplicationsModal" tabindex="-1" aria-labelledby="deleteAllApplicationsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header bg-danger text-white">
+          <h5 class="modal-title" id="deleteAllApplicationsModalLabel">
+            <i class="bi bi-exclamation-triangle"></i> Delete All Customer Applications
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form method="post" action="{% url 'customer-application-delete-all' %}">
+          {% csrf_token %}
+          <div class="modal-body">
+            <div class="alert alert-danger">
+              <strong>Warning!</strong> This action cannot be undone.
+            </div>
+            <p>Are you sure you want to delete <strong>ALL</strong> customer applications?</p>
+            <p class="text-muted">This will permanently remove all customer application records and their associated documents and workflows from the database.</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-danger">
+              <i class="bi bi-trash3"></i> Yes, Delete All Applications
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 </div>

@@ -1,11 +1,21 @@
 from django.urls import path
-from .views import ProductCreateView, ProductUpdateView, ProductDeleteView, ProductListView, ProductDetailView, TaskUpdateView
+
+from .views import (
+    ProductCreateView,
+    ProductDeleteAllView,
+    ProductDeleteView,
+    ProductDetailView,
+    ProductListView,
+    ProductUpdateView,
+    TaskUpdateView,
+)
 
 urlpatterns = [
-    path('list/', ProductListView.as_view(), name='product-list'),
-    path('create/', ProductCreateView.as_view(), name='product-create'),
-    path('detail/<int:pk>/', ProductDetailView.as_view(), name='product-detail'),
-    path('update/<int:pk>/', ProductUpdateView.as_view(), name='product-update'),
-    path('delete/<int:pk>/', ProductDeleteView.as_view(), name='product-delete'),
-    path('task_update/<int:pk>/', TaskUpdateView.as_view(), name='product-task-update'),
+    path("list/", ProductListView.as_view(), name="product-list"),
+    path("create/", ProductCreateView.as_view(), name="product-create"),
+    path("detail/<int:pk>/", ProductDetailView.as_view(), name="product-detail"),
+    path("update/<int:pk>/", ProductUpdateView.as_view(), name="product-update"),
+    path("delete/<int:pk>/", ProductDeleteView.as_view(), name="product-delete"),
+    path("delete-all/", ProductDeleteAllView.as_view(), name="product-delete-all"),
+    path("task_update/<int:pk>/", TaskUpdateView.as_view(), name="product-task-update"),
 ]

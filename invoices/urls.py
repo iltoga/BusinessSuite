@@ -21,6 +21,7 @@ urlpatterns = [
         name="invoice-detail-by-doc-application",
     ),
     path("mark-as-paid/<int:pk>/", views.InvoiceMarkAsPaidView.as_view(), name="invoice-mark-as-paid"),
+    path("delete-all/", views.InvoiceDeleteAllView.as_view(), name="invoice-delete-all"),
     path("download/<int:pk>", views.InvoiceDownloadView.as_view(), name="invoice-download"),
     # Import invoice routes
     path("import/", import_invoice_views.InvoiceImportView.as_view(), name="invoice-import"),

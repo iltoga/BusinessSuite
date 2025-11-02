@@ -91,3 +91,8 @@ CACHES = {
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 # When the cookie expires the user will be required to log in again (after 20 minutes of inactivity)
 SESSION_COOKIE_AGE = 60 * 20  # 20 minutes
+
+# OpenRouter / OpenAI API Configuration
+# Timeout settings for LLM API calls (vision models can take 60-120 seconds)
+OPENROUTER_TIMEOUT = float(os.getenv("OPENROUTER_TIMEOUT", "120.0"))  # seconds
+OPENAI_TIMEOUT = float(os.getenv("OPENAI_TIMEOUT", "120.0"))  # seconds

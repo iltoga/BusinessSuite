@@ -55,6 +55,9 @@
             <tr>
               <td class="text-start">
                 <a href="{% url 'customer-application-detail' app.customer_application.pk %}">{{ app.customer_application }}</a>
+                {% if app.customer_application.notes %}
+                  <br><small class="text-muted">{{ app.customer_application.notes }}</small>
+                {% endif %}
               </td>
               <td class="text-start">{{ app.customer_application.product }}</td>
               <td class="text-start">{{ app.amount|as_currency }}</td>

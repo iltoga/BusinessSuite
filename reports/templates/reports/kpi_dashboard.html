@@ -90,7 +90,7 @@
                             <strong>{{ customer.full_name }}</strong>
                             <br><small class="text-muted">{{ customer.invoices.count }} invoices</small>
                         </div>
-                        <span class="badge bg-primary rounded-pill">{{ CURRENCY_SYMBOL }} {{ customer.total_revenue|floatformat:0|intcomma }}</span>
+                        <span class="badge bg-success rounded-pill">{{ CURRENCY_SYMBOL }} {{ customer.total_revenue|floatformat:0|intcomma }}</span>
                     </div>
                     {% endfor %}
                 </div>
@@ -124,7 +124,7 @@
                                 <td>{{ payment.payment_date|date:"M d, Y" }}</td>
                                 <td>{{ payment.from_customer.full_name }}</td>
                                 <td>{{ payment.invoice_application.invoice.invoice_no_display }}</td>
-                                <td><span class="badge bg-secondary">{{ payment.get_payment_type_display }}</span></td>
+                                <td><span class="badge bg-info text-dark">{{ payment.get_payment_type_display }}</span></td>
                                 <td class="text-end">{{ CURRENCY_SYMBOL }} {{ payment.amount|floatformat:0|intcomma }}</td>
                             </tr>
                             {% empty %}

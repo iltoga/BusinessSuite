@@ -26,6 +26,9 @@ GLOBAL_SETTINGS = {
     "DOCUMENT_EXPIRATION_NOTIFICATION_DAYS": 180,
 }
 
+# Invoice Import Settings
+INVOICE_IMPORT_MAX_WORKERS = int(os.getenv("INVOICE_IMPORT_MAX_WORKERS", "3"))  # Max parallel imports
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -380,9 +383,10 @@ CURRENCY_DECIMAL_PLACES = 0
 
 # OpenAI API configuration for invoice import
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-OPENAI_DEFAULT_MODEL = os.getenv("OPENAI_DEFAULT_MODEL", "gpt-5-mini")
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-OPENROUTER_DEFAULT_PROVIDER = os.getenv("OPENROUTER_DEFAULT_PROVIDER", "openai")
-OPENROUTER_DEFAULT_MODEL = os.getenv("OPENROUTER_DEFAULT_MODEL", "gpt-5-mini")
 OPENROUTER_API_BASE_URL = os.getenv("OPENROUTER_API_BASE_URL", "https://openrouter.ai/api/v1")
+
+# LLM Provider: "openrouter" for multi-provider access, "openai" for direct OpenAI API
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openrouter")
+LLM_DEFAULT_MODEL = os.getenv("LLM_DEFAULT_MODEL", "google/gemini-2.0-flash-001")
