@@ -68,6 +68,23 @@ LOGGING = {
             "level": os.getenv("DJANGO_LOG_LEVEL", "INFO"),
             "propagate": False,
         },
+        # Suppress noisy Dropbox SDK logging
+        "dropbox": {
+            "handlers": ["file"],  # Only log to file, not console
+            "level": "WARNING",  # Only show warnings and errors
+            "propagate": False,
+        },
+        # Suppress httpx/httpcore logs from Dropbox SDK
+        "httpx": {
+            "handlers": ["file"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        "httpcore": {
+            "handlers": ["file"],
+            "level": "WARNING",
+            "propagate": False,
+        },
         # "django.request": {
         #     "handlers": ["mail_admins"],
         #     "level": "ERROR",
