@@ -221,8 +221,8 @@ CSRF_TRUSTED_ORIGINS = [
     "https://localhost",
     "http://localhost",
 ]
-SESSION_COOKIE_SAMESITE = "None"
-CSRF_COOKIE_SAMESITE = "None"
+SESSION_COOKIE_SAMESITE = "Lax"  # Changed from "None" - use Lax for same-site Django apps
+CSRF_COOKIE_SAMESITE = "Lax"  # Changed from "None"
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
