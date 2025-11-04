@@ -230,12 +230,8 @@
                         $modal.modal('hide');
                         $form[0].reset();
 
-                        // Show success message
-                        if (typeof showSuccessToast === 'function') {
-                            showSuccessToast('Customer application created successfully!');
-                        } else {
-                            alert('Customer application created successfully!');
-                        }
+                        // Intentionally do NOT show any confirmation (toast/alert)
+                        // for quick-creates — simply close the modal silently.
                     } else {
                         // Show errors
                         var errorHtml = '<ul class="mb-0">';
