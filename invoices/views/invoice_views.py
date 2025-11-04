@@ -11,7 +11,8 @@ from django.utils import timezone
 from django.views import View
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
 
-from customer_applications.models import DocApplication
+from core.models import CountryCode
+from customer_applications.models import DocApplication, Document, DocWorkflow
 from customers.models import Customer
 from invoices.forms import (
     BaseInvoiceApplicationFormSet,
@@ -22,6 +23,7 @@ from invoices.forms import (
 )
 from invoices.models import Invoice
 from invoices.models.invoice import InvoiceApplication
+from products.models import DocumentType, Task
 
 InvoiceApplicationCreateFormSet = inlineformset_factory(
     Invoice,
@@ -81,10 +83,9 @@ class InvoiceCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateView
             customer = selected_customer_application.customer
         else:
             customer = self.get_customer_from_kwargs()
-        if customer:
-            # TODO: not sure about this. double check it
-            data["customer"] = serializers.serialize("json", [])
 
+        if customer:
+            data["customer"] = customer
             data["customer_applications_json"] = customer.doc_applications_to_json()
             data["selected_customer_application_pk"] = (
                 selected_customer_application.pk if selected_customer_application else ""
@@ -92,13 +93,10 @@ class InvoiceCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateView
 
             # Avoid adding already invoiced applications when creating a new invoice
             customer_applications = customer.get_doc_applications_for_invoice()
-            # TODO: find a better place to put this message
-            if not customer_applications:
-                messages.error(
-                    self.request, "No applications found for this customer! Did you complete the document collection?"
-                )
+            data["has_pending_applications"] = customer_applications.exists()
         else:
             data["customer_applications_json"] = serializers.serialize("json", [])
+            data["has_pending_applications"] = False
 
         if self.request.POST:
             data["invoice_applications"] = InvoiceApplicationCreateFormSet(
@@ -118,6 +116,18 @@ class InvoiceCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateView
         data["currency"] = settings.CURRENCY
         data["currency_symbol"] = settings.CURRENCY_SYMBOL
         data["currency_decimal_places"] = settings.CURRENCY_DECIMAL_PLACES
+
+        # Add countries for customer modal
+        data["countries"] = CountryCode.objects.all().order_by("country")
+
+        # Add document types for product modal
+        data["document_types"] = DocumentType.objects.all().order_by("name")
+
+        # Add products for customer application modal
+        from products.models import Product
+
+        data["products"] = Product.objects.all().order_by("name")
+
         return data
 
     def get_initial(self):
@@ -137,15 +147,17 @@ class InvoiceCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateView
         context = self.get_context_data()
         invoice_applications = context["invoice_applications"]
 
+        # Validate invoice applications formset
+        if not invoice_applications.is_valid():
+            return self.form_invalid(form)
+
         form.instance.created_by = self.request.user
         self.object = form.save(commit=False)
-        self.object.save()  # Save the Invoice before checking InvoiceApplications
+        self.object.save()
 
-        if all(form.is_valid() for form in invoice_applications) and invoice_applications.is_valid():
-            invoice_applications.instance = self.object
-            invoice_applications.save()
-        else:
-            return self.form_invalid(form)
+        # Save invoice applications
+        invoice_applications.instance = self.object
+        invoice_applications.save()
 
         return super().form_valid(form)
 
@@ -172,6 +184,87 @@ class InvoiceCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateView
             except DocApplication.DoesNotExist:
                 messages.error(self.request, "Customer application not found!")
         return None
+
+    def _create_new_customer_application(self, form, customer):
+        """Helper method to create a new customer application with documents and workflow."""
+        from core.utils.dateutils import calculate_due_date
+
+        try:
+            # Create the DocApplication
+            doc_app = form.save(commit=False)
+            doc_app.customer = customer
+            doc_app.created_by = self.request.user
+            doc_app.save()
+
+            # Create documents based on product requirements
+            self._create_documents_for_application(doc_app)
+
+            # Create initial workflow step
+            self._create_initial_workflow(doc_app)
+
+            return doc_app
+        except Exception as e:
+            messages.error(self.request, f"Error creating customer application: {str(e)}")
+            return None
+
+    def _create_documents_for_application(self, doc_app):
+        """Create documents for a customer application based on product requirements."""
+        required_docs_str = doc_app.product.required_documents or ""
+        optional_docs_str = doc_app.product.optional_documents or ""
+
+        required_doc_names = [name.strip() for name in required_docs_str.split(",") if name.strip()]
+        optional_doc_names = [name.strip() for name in optional_docs_str.split(",") if name.strip()]
+
+        # Create required documents
+        for doc_name in required_doc_names:
+            try:
+                doc_type = DocumentType.objects.get(name=doc_name)
+                Document.objects.create(
+                    doc_application=doc_app,
+                    doc_type=doc_type,
+                    required=True,
+                    created_by=self.request.user,
+                    created_at=timezone.now(),
+                    updated_at=timezone.now(),
+                )
+            except DocumentType.DoesNotExist:
+                pass  # Skip if document type doesn't exist
+
+        # Create optional documents
+        for doc_name in optional_doc_names:
+            try:
+                doc_type = DocumentType.objects.get(name=doc_name)
+                Document.objects.create(
+                    doc_application=doc_app,
+                    doc_type=doc_type,
+                    required=False,
+                    created_by=self.request.user,
+                    created_at=timezone.now(),
+                    updated_at=timezone.now(),
+                )
+            except DocumentType.DoesNotExist:
+                pass  # Skip if document type doesn't exist
+
+    def _create_initial_workflow(self, doc_app):
+        """Create the initial workflow step (document collection) for a customer application."""
+        from core.utils.dateutils import calculate_due_date
+
+        # Get the first task for this product
+        first_task = Task.objects.filter(product=doc_app.product, step=1).first()
+        if first_task:
+            due_date = calculate_due_date(
+                start_date=timezone.now().date(),
+                days_to_complete=first_task.duration,
+                business_days_only=first_task.duration_is_business_days,
+            )
+            DocWorkflow.objects.create(
+                doc_application=doc_app,
+                task=first_task,
+                start_date=timezone.now().date(),
+                due_date=due_date,
+                status=DocWorkflow.STATUS_PENDING,
+                created_by=self.request.user,
+            )
 
 
 class InvoiceUpdateView(PermissionRequiredMixin, SuccessMessageMixin, UpdateView):
@@ -214,6 +307,18 @@ class InvoiceUpdateView(PermissionRequiredMixin, SuccessMessageMixin, UpdateView
         data["currency"] = settings.CURRENCY
         data["currency_symbol"] = settings.CURRENCY_SYMBOL
         data["currency_decimal_places"] = settings.CURRENCY_DECIMAL_PLACES
+
+        # Add countries for customer modal
+        data["countries"] = CountryCode.objects.all().order_by("country")
+
+        # Add document types for product modal
+        data["document_types"] = DocumentType.objects.all().order_by("name")
+
+        # Add products for customer application modal
+        from products.models import Product
+
+        data["products"] = Product.objects.all().order_by("name")
+
         return data
 
     @transaction.atomic
@@ -276,6 +381,7 @@ class InvoiceDeleteView(PermissionRequiredMixin, DeleteView):
 
         # Check if force delete is confirmed
         force_delete_confirmed = request.POST.get("force_delete_confirmed", "") == "yes"
+        delete_customer_apps = request.POST.get("delete_customer_applications") == "yes"
 
         if not force_delete_confirmed:
             messages.error(request, "Please confirm the force delete action.")
@@ -290,15 +396,29 @@ class InvoiceDeleteView(PermissionRequiredMixin, DeleteView):
             customer_apps_count = self.object.invoice_applications.values("customer_application").distinct().count()
             payments_count = sum(inv_app.payments.count() for inv_app in self.object.invoice_applications.all())
 
+            # Collect DocApplication ids if needed
+            doc_app_ids = set()
+            if delete_customer_apps:
+                for inv_app in self.object.invoice_applications.all():
+                    if inv_app.customer_application_id:
+                        doc_app_ids.add(inv_app.customer_application_id)
+
             # Force delete the invoice (cascade will delete related objects)
             self.object.delete(force=True)
 
-            messages.success(
-                request,
-                f"Invoice {invoice_no} for {customer_name} has been force deleted. "
-                f"Also deleted: {invoice_apps_count} invoice application(s), "
-                f"{customer_apps_count} customer application(s), and {payments_count} payment(s).",
-            )
+            # Delete the customer applications if requested
+            if delete_customer_apps and doc_app_ids:
+                from customer_applications.models.doc_application import DocApplication
+
+                DocApplication.objects.filter(id__in=doc_app_ids).delete()
+
+            msg = f"Invoice {invoice_no} for {customer_name} has been force deleted. "
+            msg += f"Also deleted: {invoice_apps_count} invoice application(s), "
+            msg += f"{customer_apps_count} customer application(s), and {payments_count} payment(s)."
+            if delete_customer_apps and doc_app_ids:
+                msg += f" Deleted {len(doc_app_ids)} corresponding customer application(s)."
+
+            messages.success(request, msg)
             return self.get_success_url()
         except Exception as e:
             messages.error(request, f"Error deleting invoice: {str(e)}")
@@ -406,12 +526,30 @@ class InvoiceDeleteAllView(PermissionRequiredMixin, View):
         return super().dispatch(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
-        """Delete all invoices."""
+        """Delete all invoices, and optionally all related customer applications (DocApplication)."""
+        from customer_applications.models.doc_application import DocApplication
+
+        delete_customer_apps = request.POST.get("delete_customer_applications") == "yes"
         try:
             count = Invoice.objects.count()
-            with transaction.atomic():
-                Invoice.objects.all().delete()
-            messages.success(request, f"Successfully deleted {count} invoice(s).")
+            if delete_customer_apps:
+                # Collect all DocApplications linked to any invoice
+                doc_app_ids = set()
+                for invoice in Invoice.objects.all():
+                    for inv_app in invoice.invoice_applications.all():
+                        if inv_app.customer_application_id:
+                            doc_app_ids.add(inv_app.customer_application_id)
+                with transaction.atomic():
+                    Invoice.objects.all().delete()
+                    # Delete all collected DocApplications
+                    DocApplication.objects.filter(id__in=doc_app_ids).delete()
+                messages.success(
+                    request, f"Successfully deleted {count} invoice(s) and all corresponding customer applications."
+                )
+            else:
+                with transaction.atomic():
+                    Invoice.objects.all().delete()
+                messages.success(request, f"Successfully deleted {count} invoice(s).")
         except Exception as e:
             messages.error(request, f"Error deleting invoices: {str(e)}")
 

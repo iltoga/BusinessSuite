@@ -390,7 +390,6 @@
         const CONTENT = $('#content');
         const SIDEBAR_COLLAPSE = $('#sidebarCollapse');
         const COLLAPSE_LINKS = $('#sidebar .collapse a');
-        const DROPDOWN_TOGGLE = $(".dropdown-toggle");
 
         // Check if sidebarCollapse is in localStorage
         if (!localStorage.getItem('sidebarCollapse')) {
@@ -462,16 +461,22 @@
             }
         });
 
-        // Handle dropdown toggle clicks in sidebar
-        DROPDOWN_TOGGLE.click(function(e) {
+        // Handle dropdown toggle clicks in sidebar (not navbar dropdowns)
+        $('#sidebar .dropdown-toggle').click(function(e) {
             e.preventDefault(); // Prevent default link behavior
 
-            let submenuId = $(this).attr("href").substring(1); // Get the submenu ID from the href attribute
+            let href = $(this).attr("href");
+            // Only handle sidebar collapsible submenus, not Bootstrap dropdowns
+            if (!href || href === '#' || !href.startsWith('#')) {
+                return;
+            }
+
+            let submenuId = href.substring(1); // Get the submenu ID from the href attribute
             let submenu = $("#" + submenuId);
 
             // Close all other submenus
-            $('.collapse').not(submenu).removeClass('show');
-            DROPDOWN_TOGGLE.not(this).attr('aria-expanded', 'false');
+            $('#sidebar .collapse').not(submenu).removeClass('show');
+            $('#sidebar .dropdown-toggle').not(this).attr('aria-expanded', 'false');
 
             // Toggle current submenu
             if (submenu.hasClass('show')) {

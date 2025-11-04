@@ -1,0 +1,2 @@
+document_date,invoice_no,customer_name,customer_telephone,invoice_date,total_amount,total_paid,total_due,invoice_item,description,quantity,unit_price,amount,paid_amount,due_amount
+"2025-11-04","INV-001","John Doe","+6281234567","2025-11-30","500.00","200.00","300.00","PRODUCT-CODE","Service Name","1","500.00","500.00","200.00","300.00"

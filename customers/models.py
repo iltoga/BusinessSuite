@@ -79,7 +79,7 @@ class Customer(models.Model):
         max_length=50, unique=True, blank=True, null=True, validators=[validate_email], db_index=True
     )
     telephone = models.CharField(
-        max_length=50, unique=True, blank=True, null=True, validators=[validate_phone_number], db_index=True
+        max_length=50, unique=True, blank=False, null=False, validators=[validate_phone_number], db_index=True
     )
     whatsapp = models.CharField(
         max_length=50, unique=True, blank=True, null=True, validators=[validate_phone_number], db_index=True
@@ -99,7 +99,7 @@ class Customer(models.Model):
         related_name="customers",
         to_field="alpha3_code",
     )
-    birthdate = models.DateField(validators=[validate_birthdate])
+    birthdate = models.DateField(validators=[validate_birthdate], blank=True, null=True)
     gender = models.CharField(choices=GENDERS, max_length=5, blank=True, null=True)
     address_bali = models.TextField(blank=True, null=True)
     address_abroad = models.TextField(blank=True, null=True)
@@ -112,7 +112,7 @@ class Customer(models.Model):
 
     class Meta:
         ordering = ["first_name", "last_name"]
-        unique_together = (("first_name", "last_name", "birthdate"),)
+        unique_together = (("first_name", "last_name"),)
 
     def __str__(self):
         return self.full_name

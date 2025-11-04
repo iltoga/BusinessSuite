@@ -1,0 +1,219 @@
+{% load crispy_forms_tags %}
+
+<style>
+    #productQuickCreateModal {
+        z-index: 1065;
+    }
+
+    #productQuickCreateModal + .modal-backdrop {
+        z-index: 1064;
+    }
+</style><!-- Product Quick Create Modal -->
+<div class="modal fade" id="productQuickCreateModal" tabindex="-1" aria-labelledby="productQuickCreateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="productQuickCreateModalLabel">
+                    <i class="fas fa-box"></i> Quick Create Product
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="productQuickCreateForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> Fill in the required fields to quickly create a new product.
+                    </div>
+                    <div id="productQuickCreateErrors" class="alert alert-danger d-none"></div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_quick_product_name" class="form-label">Product Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="id_quick_product_name" name="name" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="id_quick_product_code" class="form-label">Product Code <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="id_quick_product_code" name="code" required>
+                            <small class="form-text text-muted">Must be unique</small>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_quick_product_type" class="form-label">Product Type <span class="text-danger">*</span></label>
+                            <select class="form-select" id="id_quick_product_type" name="product_type" required>
+                                <option value="">---------</option>
+                                <option value="visa">Visa</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="id_quick_base_price" class="form-label">Base Price</label>
+                            <input type="number" step="0.01" class="form-control" id="id_quick_base_price" name="base_price" value="0.00">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="id_quick_description" class="form-label">Description</label>
+                        <textarea class="form-control" id="id_quick_description" name="description" rows="3"></textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_quick_validity" class="form-label">Validity (days)</label>
+                            <input type="number" class="form-control" id="id_quick_validity" name="validity" min="0">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="id_quick_documents_min_validity" class="form-label">Documents Min Validity (days)</label>
+                            <input type="number" class="form-control" id="id_quick_documents_min_validity" name="documents_min_validity" min="0">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="id_quick_required_documents" class="form-label">Required Documents</label>
+                        <select multiple class="form-select" id="id_quick_required_documents" name="required_documents">
+                            {% for doc_type in document_types %}
+                            <option value="{{ doc_type.name }}">{{ doc_type.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="form-text text-muted">Hold Ctrl/Cmd to select multiple</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="id_quick_optional_documents" class="form-label">Optional Documents</label>
+                        <select multiple class="form-select" id="id_quick_optional_documents" name="optional_documents">
+                            {% for doc_type in document_types %}
+                            <option value="{{ doc_type.name }}">{{ doc_type.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="form-text text-muted">Hold Ctrl/Cmd to select multiple</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                    <button type="submit" class="btn btn-success" id="productQuickCreateSubmitBtn">
+                        <i class="fas fa-save"></i> Create Product
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Product Quick Create Modal Handler
+    (function() {
+        var $modal = $('#productQuickCreateModal');
+        var $form = $('#productQuickCreateForm');
+        var $submitBtn = $('#productQuickCreateSubmitBtn');
+        var $errors = $('#productQuickCreateErrors');
+        var targetSelectId = null; // Will store the ID of the select element to update
+
+        // Initialize select2 for document types
+        $('#id_quick_required_documents, #id_quick_optional_documents').select2({
+            theme: 'bootstrap-5',
+            dropdownParent: $modal,
+            placeholder: 'Select documents',
+        });
+
+        // Store target select when modal is opened
+        window.openProductQuickCreateModal = function(selectElementId) {
+            targetSelectId = selectElementId;
+            $form[0].reset();
+            $errors.addClass('d-none').html('');
+            $('#id_quick_required_documents, #id_quick_optional_documents').val([]).trigger('change');
+            $modal.modal('show');
+
+            // Ensure this modal's backdrop is on top
+            setTimeout(function() {
+                var $backdrop = $('.modal-backdrop').last();
+                $backdrop.css('z-index', 1064);
+            }, 50);
+        };
+
+        // Handle form submission
+        $form.on('submit', function(e) {
+            e.preventDefault();
+            $errors.addClass('d-none').html('');
+            $submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Creating...');
+
+            // Prepare data - convert multi-select to comma-separated strings
+            var formData = new FormData($form[0]);
+            var requiredDocs = $('#id_quick_required_documents').val();
+            var optionalDocs = $('#id_quick_optional_documents').val();
+
+            // Remove the multiple entries and add as single comma-separated values
+            formData.delete('required_documents');
+            formData.delete('optional_documents');
+            formData.append('required_documents', requiredDocs ? requiredDocs.join(', ') : '');
+            formData.append('optional_documents', optionalDocs ? optionalDocs.join(', ') : '');
+
+            $.ajax({
+                url: '{% url "api-product-quick-create" %}',
+                method: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                headers: {
+                    'X-CSRFToken': $('input[name="csrfmiddlewaretoken"]', $form).val()
+                },
+                success: function(response) {
+                    if (response.success) {
+                        // Add new product to target select
+                        if (targetSelectId) {
+                            var $targetSelect = $('#' + targetSelectId);
+                            var newOption = new Option(
+                                response.product.code + ' - ' + response.product.name,
+                                response.product.id,
+                                true,
+                                true
+                            );
+                            $targetSelect.append(newOption).trigger('change');
+                        }
+
+                        // Close modal and reset form
+                        $modal.modal('hide');
+                        $form[0].reset();
+
+                        // Show success message
+                        if (typeof showSuccessToast === 'function') {
+                            showSuccessToast('Product created successfully!');
+                        } else {
+                            alert('Product created successfully!');
+                        }
+                    } else {
+                        // Show errors
+                        var errorHtml = '<ul class="mb-0">';
+                        $.each(response.errors, function(field, errors) {
+                            $.each(errors, function(i, error) {
+                                errorHtml += '<li><strong>' + field + ':</strong> ' + error + '</li>';
+                            });
+                        });
+                        errorHtml += '</ul>';
+                        $errors.html(errorHtml).removeClass('d-none');
+                    }
+                },
+                error: function(xhr) {
+                    var errorMsg = 'An error occurred while creating the product.';
+                    if (xhr.responseJSON && xhr.responseJSON.error) {
+                        errorMsg = xhr.responseJSON.error;
+                    }
+                    $errors.html(errorMsg).removeClass('d-none');
+                },
+                complete: function() {
+                    $submitBtn.prop('disabled', false).html('<i class="fas fa-save"></i> Create Product');
+                }
+            });
+        });
+
+        // Reset form when modal is hidden
+        $modal.on('hidden.bs.modal', function() {
+            $form[0].reset();
+            $errors.addClass('d-none').html('');
+            $('#id_quick_required_documents, #id_quick_optional_documents').val([]).trigger('change');
+            targetSelectId = null;
+        });
+    })();
+</script>

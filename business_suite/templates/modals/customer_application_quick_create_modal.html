@@ -1,0 +1,282 @@
+{% load crispy_forms_tags %}
+
+<!-- Customer Application Quick Create Modal -->
+<div class="modal fade" id="customerApplicationQuickCreateModal" tabindex="-1" aria-labelledby="customerApplicationQuickCreateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="customerApplicationQuickCreateModalLabel">
+                    <i class="fas fa-file-alt"></i> Create Customer Application
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="customerApplicationQuickCreateForm">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> Create a new customer application for <strong id="customer-name-display"></strong>.
+                    </div>
+                    <div id="customerApplicationQuickCreateErrors" class="alert alert-danger d-none"></div>
+
+                    <input type="hidden" id="id_quick_app_customer" name="customer" value="">
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_quick_app_product" class="form-label">Product <span class="text-danger">*</span></label>
+                            <div class="product-field-wrapper">
+                                <select class="form-select" id="id_quick_app_product" name="product" required>
+                                    <option value="">---------</option>
+                                </select>
+                                <button type="button" class="btn btn-outline-success btn-add-product-from-app" title="Create new product">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                            <!-- DEBUG: Products count = {{ products|length }} -->
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="id_quick_app_doc_date" class="form-label">Application Date <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="id_quick_app_doc_date" name="doc_date" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="id_quick_app_notes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="id_quick_app_notes" name="notes" rows="3" placeholder="Person-specific details (names, IDs, etc.)"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                    <button type="submit" class="btn btn-info" id="customerApplicationQuickCreateSubmitBtn">
+                        <i class="fas fa-save"></i> Create Application
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    #customerApplicationQuickCreateModal {
+        z-index: 1060;
+    }
+
+    #customerApplicationQuickCreateModal .modal-backdrop {
+        z-index: 1059;
+    }
+
+    #customerApplicationQuickCreateModal .product-field-wrapper {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    #customerApplicationQuickCreateModal .product-field-wrapper .form-select {
+        flex: 1;
+    }
+
+    #customerApplicationQuickCreateModal .product-field-wrapper .btn-add-product-from-app {
+        flex-shrink: 0;
+        width: 38px;
+        height: 38px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+</style>
+
+<script>
+    // Customer Application Quick Create Modal Handler
+    (function() {
+        var $modal = $('#customerApplicationQuickCreateModal');
+        var $form = $('#customerApplicationQuickCreateForm');
+        var $submitBtn = $('#customerApplicationQuickCreateSubmitBtn');
+        var $errors = $('#customerApplicationQuickCreateErrors');
+        var customerId = null;
+        var customerName = '';
+
+        // Helper function to get CSRF token from cookie
+        function getCookie(name) {
+            var cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                var cookies = document.cookie.split(';');
+                for (var i = 0; i < cookies.length; i++) {
+                    var cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // Initialize select2 for product
+        function initializeProductSelect2() {
+            var $productSelect = $('#id_quick_app_product');
+
+            // Destroy existing select2 if it exists
+            if ($productSelect.hasClass('select2-hidden-accessible')) {
+                $productSelect.select2('destroy');
+            }
+
+            // Initialize select2 with proper configuration
+            $productSelect.select2({
+                dropdownParent: $modal,
+                width: '100%',
+                theme: 'bootstrap-5',
+                placeholder: 'Select a product',
+            });
+        }
+
+        // Always load products via AJAX and only initialize select2 after loading
+        function loadProducts() {
+            var $productSelect = $('#id_quick_app_product');
+            $productSelect.empty();
+            $productSelect.append('<option value="">---------</option>');
+            $.ajax({
+                url: '/api/products/',
+                method: 'GET',
+                success: function(data) {
+                    $.each(data, function(i, product) {
+                        $productSelect.append(
+                            $('<option></option>').val(product.id).text(product.code + ' - ' + product.name)
+                        );
+                    });
+                    // Only initialize select2 after options are loaded
+                    initializeProductSelect2();
+                },
+                error: function(xhr, status, error) {
+                    console.error('Failed to load products:', error);
+                    // Still initialize select2 even if loading fails
+                    initializeProductSelect2();
+                }
+            });
+        }
+
+        // Wait for DOM to be ready before initializing
+        $(document).ready(function() {
+            // Load products on page load
+            loadProducts();
+        });
+
+        // Set today's date as default
+        var today = new Date().toISOString().split('T')[0];
+        $('#id_quick_app_doc_date').val(today);
+
+        // Open modal function
+        window.openCustomerApplicationQuickCreateModal = function(custId, custName) {
+            customerId = custId;
+            customerName = custName;
+            $('#id_quick_app_customer').val(customerId);
+            $('#customer-name-display').text(customerName);
+
+            // Reset form fields (but don't use form.reset() which can break select2)
+            $('#id_quick_app_product').val('');
+            $('#id_quick_app_notes').val('');
+            $('#id_quick_app_customer').val(customerId);
+            $('#id_quick_app_doc_date').val(today);
+            $errors.addClass('d-none').html('');
+
+            // Ensure products are loaded and select2 is initialized
+            loadProducts();
+
+            $modal.modal('show');
+
+            // Ensure this modal's backdrop is on top
+            setTimeout(function() {
+                var $backdrop = $('.modal-backdrop').last();
+                $backdrop.css('z-index', 1059);
+            }, 50);
+        };
+
+        // Handle product creation button
+        $('.btn-add-product-from-app').on('click', function() {
+            if (typeof openProductQuickCreateModal === 'function') {
+                openProductQuickCreateModal('id_quick_app_product');
+            }
+        });
+
+        // Handle form submission
+        $form.on('submit', function(e) {
+            e.preventDefault();
+            $errors.addClass('d-none').html('');
+            $submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Creating...');
+
+            // Get CSRF token
+            var csrftoken = $('input[name="csrfmiddlewaretoken"]', $form).val();
+            if (!csrftoken) {
+                // Fallback: try to get from cookie
+                csrftoken = getCookie('csrftoken');
+            }
+
+            $.ajax({
+                url: '{% url "api-customer-application-quick-create" %}',
+                type: 'POST',
+                data: $form.serialize(),
+                headers: {
+                    'X-CSRFToken': csrftoken
+                },
+                success: function(response) {
+                    if (response.success) {
+                        // Add new application to the invoice applications formset
+                        if (typeof addInvoiceApplicationRow === 'function') {
+                            addInvoiceApplicationRow(response.application);
+                        }
+
+                        // Close modal and reset form
+                        $modal.modal('hide');
+                        $form[0].reset();
+
+                        // Show success message
+                        if (typeof showSuccessToast === 'function') {
+                            showSuccessToast('Customer application created successfully!');
+                        } else {
+                            alert('Customer application created successfully!');
+                        }
+                    } else {
+                        // Show errors
+                        var errorHtml = '<ul class="mb-0">';
+                        if (response.errors) {
+                            $.each(response.errors, function(field, errors) {
+                                if (Array.isArray(errors)) {
+                                    $.each(errors, function(i, error) {
+                                        errorHtml += '<li><strong>' + field + ':</strong> ' + error + '</li>';
+                                    });
+                                } else {
+                                    errorHtml += '<li><strong>' + field + ':</strong> ' + errors + '</li>';
+                                }
+                            });
+                        } else if (response.error) {
+                            errorHtml += '<li>' + response.error + '</li>';
+                        }
+                        errorHtml += '</ul>';
+                        $errors.html(errorHtml).removeClass('d-none');
+                    }
+                },
+                error: function(xhr) {
+                    var errorMsg = 'An error occurred while creating the customer application.';
+                    if (xhr.responseJSON && xhr.responseJSON.error) {
+                        errorMsg = xhr.responseJSON.error;
+                    }
+                    $errors.html(errorMsg).removeClass('d-none');
+                },
+                complete: function() {
+                    $submitBtn.prop('disabled', false).html('<i class="fas fa-save"></i> Create Application');
+                }
+            });
+        });
+
+        // Reset form when modal is hidden
+        $modal.on('hidden.bs.modal', function() {
+            // Clear form fields without using form.reset() to preserve select2
+            $('#id_quick_app_product').val('').trigger('change');
+            $('#id_quick_app_notes').val('');
+            $('#id_quick_app_doc_date').val(today);
+            $('#id_quick_app_customer').val('');
+            $errors.addClass('d-none').html('');
+        });
+    })();
+</script>

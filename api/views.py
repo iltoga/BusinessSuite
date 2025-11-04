@@ -7,9 +7,12 @@ from django.conf import settings
 from django.core.files.storage import default_storage
 from django.core.management import call_command
 from django.db.models import Count, Q
+from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.authentication import SessionAuthentication
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -19,6 +22,7 @@ from api.serializers import (
     DocumentTypeSerializer,
     ProductSerializer,
 )
+from core.models import CountryCode
 from core.utils.dateutils import calculate_due_date
 from core.utils.imgutils import convert_and_resize_image
 from core.utils.passport_ocr import extract_mrz_data
@@ -46,7 +50,7 @@ class CustomersView(APIView):
     queryset = Customer.objects.all()
 
     def get(self, request):
-        serializer = CustomerSerializer(self.queryset, many=True)
+        serializer = CustomerSerializer(self.queryset.all(), many=True)
         return Response(serializer.data)
 
 
@@ -54,7 +58,7 @@ class ProductsView(APIView):
     queryset = Product.objects.all()
 
     def get(self, request):
-        serializer = ProductSerializer(self.queryset, many=True)
+        serializer = ProductSerializer(self.queryset.all(), many=True)
         return Response(serializer.data)
 
 
@@ -277,3 +281,284 @@ def exec_cron_jobs(request):
     # run all jobs
     call_command("runcrons")
     return Response({"status": "success"}, status=status.HTTP_200_OK)
+
+
+@csrf_exempt
+@api_view(["POST"])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def customer_quick_create(request):
+    """
+    Quick create a customer with minimal required fields
+    """
+    try:
+        # Extract data from request
+        data = {
+            "first_name": request.data.get("first_name"),
+            "last_name": request.data.get("last_name"),
+            "birthdate": request.data.get("birthdate"),
+            "email": request.data.get("email", None),
+            "telephone": request.data.get("telephone", None),
+            "whatsapp": request.data.get("whatsapp", None),
+            "title": request.data.get("title", ""),
+            "gender": request.data.get("gender", ""),
+        }
+
+        # Handle nationality
+        nationality_code = request.data.get("nationality")
+        if nationality_code:
+            try:
+                nationality = CountryCode.objects.get(alpha3_code=nationality_code)
+                data["nationality"] = nationality
+            except CountryCode.DoesNotExist:
+                pass
+
+        # Validate required fields
+        if not data["first_name"] or not data["last_name"] or not data["telephone"]:
+            return Response(
+                {"success": False, "errors": {"__all__": ["First name, last name, and telephone are required."]}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Handle empty birthdate
+        if not data["birthdate"]:
+            data.pop("birthdate")
+
+        # Create customer
+        customer = Customer.objects.create(**data)
+
+        return Response(
+            {
+                "success": True,
+                "customer": {
+                    "id": customer.id,
+                    "full_name": customer.full_name,
+                    "email": customer.email or "",
+                    "telephone": customer.telephone or "",
+                },
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    except Exception as e:
+        # Handle validation errors
+        error_msg = str(e)
+        if hasattr(e, "message_dict"):
+            # Django ValidationError
+            return Response({"success": False, "errors": e.message_dict}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({"success": False, "error": error_msg}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["POST"])
+@authentication_classes([SessionAuthentication])
+@permission_classes([IsAuthenticated])
+def customer_application_quick_create(request):
+    """
+    Quick create a customer application with documents and workflows
+    """
+    try:
+        from core.utils.dateutils import calculate_due_date
+        from customer_applications.models import Document, DocWorkflow
+        from products.models.document_type import DocumentType
+
+        # Extract data from request
+        customer_id = request.data.get("customer")
+        product_id = request.data.get("product")
+        doc_date = request.data.get("doc_date")
+        notes = request.data.get("notes", "")
+
+        # Validate required fields
+        if not customer_id or not product_id or not doc_date:
+            return Response(
+                {"success": False, "errors": {"__all__": ["Customer, product and application date are required."]}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Parse doc_date if it's a string
+        from datetime import datetime
+
+        if isinstance(doc_date, str):
+            try:
+                doc_date = datetime.strptime(doc_date, "%Y-%m-%d").date()
+            except ValueError:
+                try:
+                    doc_date = datetime.strptime(doc_date, "%d/%m/%Y").date()
+                except ValueError:
+                    return Response(
+                        {"success": False, "error": "Invalid date format. Use YYYY-MM-DD or DD/MM/YYYY."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+        # Get customer and product
+        try:
+            customer = Customer.objects.get(pk=customer_id)
+            product = Product.objects.get(pk=product_id)
+        except (Customer.DoesNotExist, Product.DoesNotExist) as e:
+            return Response(
+                {"success": False, "error": "Customer or product not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Create DocApplication
+        doc_app = DocApplication.objects.create(
+            customer=customer,
+            product=product,
+            doc_date=doc_date,
+            notes=notes,
+            created_by=request.user,
+        )
+
+        # Create documents based on product requirements
+        required_docs_str = product.required_documents or ""
+        optional_docs_str = product.optional_documents or ""
+
+        required_doc_names = [name.strip() for name in required_docs_str.split(",") if name.strip()]
+        optional_doc_names = [name.strip() for name in optional_docs_str.split(",") if name.strip()]
+
+        # Create required documents
+        for doc_name in required_doc_names:
+            try:
+                doc_type = DocumentType.objects.get(name=doc_name)
+                Document.objects.create(
+                    doc_application=doc_app,
+                    doc_type=doc_type,
+                    required=True,
+                    created_by=request.user,
+                )
+            except DocumentType.DoesNotExist:
+                pass
+
+        # Create optional documents
+        for doc_name in optional_doc_names:
+            try:
+                doc_type = DocumentType.objects.get(name=doc_name)
+                Document.objects.create(
+                    doc_application=doc_app,
+                    doc_type=doc_type,
+                    required=False,
+                    created_by=request.user,
+                )
+            except DocumentType.DoesNotExist:
+                pass
+
+        # Create initial workflow step
+        first_task = product.tasks.order_by("step").first()
+        if first_task:
+            due_date = calculate_due_date(
+                start_date=doc_app.doc_date,
+                days_to_complete=first_task.duration,
+                business_days_only=first_task.duration_is_business_days,
+            )
+            DocWorkflow.objects.create(
+                doc_application=doc_app,
+                task=first_task,
+                start_date=timezone.now().date(),  # REQUIRED: start_date must be set
+                due_date=due_date,
+                status=DocWorkflow.STATUS_PENDING,
+                created_by=request.user,
+            )
+
+        return Response(
+            {
+                "success": True,
+                "application": {
+                    "id": doc_app.id,
+                    "product_name": str(doc_app.product.name),
+                    "product_code": str(doc_app.product.code),
+                    "customer_name": str(doc_app.customer.full_name),
+                    "doc_date": str(doc_app.doc_date),
+                    "base_price": float(doc_app.product.base_price or 0),
+                    "display_name": f"{doc_app.product.code} - {doc_app.product.name} ({doc_app.customer.full_name})",
+                },
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    except Exception as e:
+        # Handle validation errors
+        import traceback
+
+        error_msg = str(e)
+        print(f"Error in customer_application_quick_create: {error_msg}")
+        print(traceback.format_exc())
+
+        if hasattr(e, "message_dict"):
+            # Django ValidationError
+            return Response({"success": False, "errors": e.message_dict}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({"success": False, "error": error_msg}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@csrf_exempt
+@api_view(["POST"])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def product_quick_create(request):
+    """
+    Quick create a product with minimal required fields
+    """
+    try:
+        # Extract and clean data from request
+        validity = request.data.get("validity")
+        documents_min_validity = request.data.get("documents_min_validity")
+        base_price = request.data.get("base_price")
+
+        # Convert empty strings to None for integer fields
+        if validity == "" or validity is None:
+            validity = None
+        if documents_min_validity == "" or documents_min_validity is None:
+            documents_min_validity = None
+        if base_price == "" or base_price is None:
+            base_price = 0.00
+
+        data = {
+            "name": request.data.get("name"),
+            "code": request.data.get("code"),
+            "product_type": request.data.get("product_type", "other"),
+            "description": request.data.get("description", ""),
+            "base_price": base_price,
+            "validity": validity,
+            "documents_min_validity": documents_min_validity,
+            "required_documents": request.data.get("required_documents", ""),
+            "optional_documents": request.data.get("optional_documents", ""),
+        }
+
+        # Validate required fields
+        if not data["name"] or not data["code"] or not data["product_type"]:
+            return Response(
+                {"success": False, "errors": {"__all__": ["Name, code and product type are required."]}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Check if code already exists
+        if Product.objects.filter(code=data["code"]).exists():
+            return Response(
+                {"success": False, "errors": {"code": ["A product with this code already exists."]}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Create product
+        product = Product.objects.create(**data)
+
+        return Response(
+            {
+                "success": True,
+                "product": {
+                    "id": product.id,
+                    "name": product.name,
+                    "code": product.code,
+                    "product_type": product.product_type,
+                },
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    except Exception as e:
+        # Handle validation errors
+        error_msg = str(e)
+        if hasattr(e, "message_dict"):
+            # Django ValidationError
+            return Response({"success": False, "errors": e.message_dict}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({"success": False, "error": error_msg}, status=status.HTTP_400_BAD_REQUEST)
