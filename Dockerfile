@@ -13,7 +13,6 @@ RUN apt-get update \
   poppler-utils \
   postgresql-client \
   libreoffice \
-  unoconv \
   curl \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
@@ -53,7 +52,6 @@ RUN apt-get update \
   poppler-utils \
   postgresql-client \
   libreoffice \
-  unoconv \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 
