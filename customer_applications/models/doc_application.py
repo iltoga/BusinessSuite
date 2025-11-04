@@ -96,12 +96,6 @@ class DocApplication(models.Model):
         (STATUS_REJECTED, "Rejected"),
     ]
 
-    application_type = models.CharField(
-        max_length=50,
-        choices=Product.PRODUCT_TYPE_CHOICES,
-        default="other",
-        db_index=True,
-    )
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name="doc_applications")
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="doc_applications")
     doc_date = models.DateField(db_index=True)
@@ -129,6 +123,15 @@ class DocApplication(models.Model):
 
     def __str__(self):
         return self.product.name + " - " + self.customer.full_name + f" #{self.pk}"
+
+    @property
+    def application_type(self):
+        """Returns the product type for backward compatibility."""
+        return self.product.product_type if self.product else None
+
+    def get_application_type_display(self):
+        """Returns the display name of the product type."""
+        return self.product.get_product_type_display() if self.product else ""
 
     @property
     def is_document_collection_completed(self):
@@ -194,14 +197,22 @@ class DocApplication(models.Model):
         customer_folder = self.customer.upload_folder
         return f"{customer_folder}/application_{self.pk}"
 
-    def save(self, *args, **kwargs):
+    def save(self, *args, skip_status_calculation=False, **kwargs):
         """
         Overrides the default save method.
         Updates the due date and status before saving.
+
+        Args:
+            skip_status_calculation: If True, skip automatic status calculation.
+                                   Useful when status is set explicitly (e.g., from invoice payment).
         """
         self.updated_at = timezone.now()
         self.due_date = self.calculate_application_due_date()
-        if self.pk:
+
+        # If product has no required documents, set status to completed
+        if self.product and (not self.product.required_documents or not self.product.required_documents.strip()):
+            self.status = self.STATUS_COMPLETED
+        elif self.pk and not skip_status_calculation:
             self.status = self._get_application_status()
         super().save(*args, **kwargs)
 

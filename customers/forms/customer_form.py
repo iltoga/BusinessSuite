@@ -23,6 +23,8 @@ class CustomerForm(forms.ModelForm):
         required=False,
         label="Import data from Passport",
     )
+    birthdate = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}), required=False)
+    telephone = forms.CharField(required=True)
 
     class Meta:
         model = Customer
@@ -47,7 +49,6 @@ class CustomerForm(forms.ModelForm):
         ]
 
         widgets = {
-            "birthdate": forms.DateInput(attrs={"type": "date"}),
             "address_bali": forms.Textarea(attrs={"rows": 5}),
             "address_abroad": forms.Textarea(attrs={"rows": 5}),
             "nationality": forms.Select(attrs={"class": "select2"}),

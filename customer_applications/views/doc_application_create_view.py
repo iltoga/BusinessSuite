@@ -237,7 +237,9 @@ class DocApplicationCreateView(PermissionRequiredMixin, SuccessMessageMixin, Cre
         try:
             passport_doc_type = DocumentType.objects.get(name="Passport")
             # Check if this document type is required by the product
-            return self.object.product.document_types.filter(pk=passport_doc_type.pk).exists()
+            required_docs = self.object.product.required_documents or ""
+            required_doc_names = [doc.strip() for doc in required_docs.split(",") if doc.strip()]
+            return passport_doc_type.name in required_doc_names
         except DocumentType.DoesNotExist:
             return False
 

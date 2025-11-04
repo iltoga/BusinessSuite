@@ -357,7 +357,6 @@ class InvoiceImporter:
                         doc_date=invoice_date,
                         due_date=due_date,
                         status=DocApplication.STATUS_COMPLETED,
-                        application_type="visa",  # Always visa as per requirements
                         notes=item_data.notes,  # Person-specific details from invoice
                         created_by=self.user,
                         updated_by=self.user,

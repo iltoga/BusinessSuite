@@ -41,25 +41,42 @@
     {{ block.super }}
     <script>
         $(document).ready(function() {
-            // set application type to 'visa' by default
-            $('#id_application_type').val('visa');
-        });
-        // Function to check if customer and application type are selected
-        function checkSelected() {
-            if ($('#id_customer').val() && $('#id_application_type').val()) {
-                $('#id_product').prop('disabled', false);
-                $('#add-document').prop('disabled', false);
-            } else {
-                $('#id_product').prop('disabled', true);
-                $('#add-document').prop('disabled', true);
-            }
-        }
-        checkSelected(); // check on page load
+            // Reinitialize select2 with proper theme for customer and product fields
+            $('#id_customer').select2('destroy').select2({
+                theme: 'bootstrap-5',
+                placeholder: 'Select a customer',
+                width: '100%'
+            });
 
-        // Enable fields when customer is selected
-        $('#id_customer').change(checkSelected);
-        // Enable fields when application type is selected
-        $('#id_application_type').change(checkSelected);
+            $('#id_product').select2('destroy').select2({
+                theme: 'bootstrap-5',
+                placeholder: 'Select a product',
+                width: '100%',
+                disabled: false  // Keep enabled so options are visible
+            });
+
+            // Function to check if customer is selected and enable/disable fields
+            function checkSelected() {
+                var hasCustomer = $('#id_customer').val();
+                if (hasCustomer) {
+                    // Enable product field
+                    $('#id_product').prop('disabled', false);
+                    $('#id_product').select2('enable');
+                    $('#add-document').prop('disabled', false);
+                } else {
+                    // Disable product field but keep it visible with options
+                    $('#id_product').prop('disabled', true);
+                    $('#id_product').select2('enable');  // Keep select2 enabled to show options
+                    $('#add-document').prop('disabled', true);
+                }
+            }
+
+            // Check selected state AFTER select2 is initialized
+            checkSelected();
+
+            // Enable fields when customer is selected
+            $('#id_customer').change(checkSelected);
+        });
 
         $('#id_product').change(function() {
             var selectedProduct = $(this).val();

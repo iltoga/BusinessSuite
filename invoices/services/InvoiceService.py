@@ -18,6 +18,7 @@ class InvoiceService:
             "document_date": cur_date,
             "invoice_no": self.invoice.invoice_no_display,
             "customer_name": str(self.invoice.customer),
+            "customer_telephone": self.invoice.customer.telephone,
             "invoice_date": formatutils.as_date_str(self.invoice.invoice_date),
             "total_amount": formatutils.as_currency(self.invoice.total_amount),
             "total_paid": formatutils.as_currency(self.invoice.total_paid_amount),
@@ -27,10 +28,18 @@ class InvoiceService:
         items = []
         qty = 1
         for item in self.invoice.invoice_applications.all():
+            # Match the 'Items' column from the Invoice List view:
+            # "<product.code> - <customer_application.notes or customer.full_name>"
+            prod_code = str(item.customer_application.product.code)
+            prod_description = str(item.customer_application.product.description)
+            notes = item.customer_application.notes
+            customer_name = str(item.customer_application.customer.full_name)
+            description = f"{prod_description} - {notes}" if notes else f"{prod_description} for {customer_name}"
+
             items.append(
                 {
-                    "invoice_item": str(item.customer_application.product.code),
-                    "description": item.customer_application.product.name,
+                    "invoice_item": prod_code,
+                    "description": description,
                     "quantity": str(qty),
                     "unit_price": formatutils.as_currency(item.amount),
                     "amount": formatutils.as_currency(item.amount * qty),
@@ -59,7 +68,7 @@ class InvoiceService:
         return data, items, payments
 
     def generate_invoice_document(self, data, items, payments=None):
-        template_name = "partial_invoice_template_with_footer.docx" if payments else "invoice_template_with_footer.docx"
+        template_name = settings.DOCX_PARTIAL_INVOICE_TEMPLATE_NAME if payments else settings.DOCX_INVOICE_TEMPLATE_NAME
         template_path = os.path.join(settings.STATIC_SOURCE_ROOT, "reporting", template_name)
         with open(template_path, "rb") as template:
             doc = MailMerge(template)

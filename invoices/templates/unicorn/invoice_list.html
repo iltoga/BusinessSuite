@@ -86,7 +86,15 @@
                             {% endif %}
                             {% if user|has_perm:'invoices,invoice,change' %}
                             <a href="{% url 'invoice-update' invoice.pk %}" class="btn btn-warning btn-sm me-1">Edit</a>
-                            <a href="{% url 'invoice-download' invoice.pk %}" class="btn btn-secondary btn-sm me-1">Download</a>
+                            <div class="btn-group me-1">
+                              <button type="button" class="btn btn-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                Download
+                              </button>
+                              <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="{% url 'invoice-download' invoice.pk %}?format=docx">Download DOCX</a></li>
+                                <li><a class="dropdown-item" href="{% url 'invoice-download' invoice.pk %}?format=pdf">Download PDF</a></li>
+                              </ul>
+                            </div>
                             {% endif %}
                             {% if user|has_perm:'payments,payment,add' and invoice.total_due_amount > 0 %}
                             <button type="button" class="btn btn-success btn-sm me-1" data-bs-toggle="modal" data-bs-target="#markAsPaidModal{{ invoice.pk }}">Paid</button>
@@ -199,6 +207,12 @@
               </div>
               <p>Are you sure you want to delete <strong>ALL</strong> invoices?</p>
               <p class="text-muted">This will permanently remove all invoice records from the database.</p>
+              <div class="form-check mt-3">
+                <input class="form-check-input" type="checkbox" value="yes" id="deleteCustomerApplications" name="delete_customer_applications">
+                <label class="form-check-label" for="deleteCustomerApplications">
+                  Also delete all corresponding customer applications (DocApplication) linked to the deleted invoices
+                </label>
+              </div>
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>

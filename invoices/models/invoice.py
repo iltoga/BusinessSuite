@@ -84,7 +84,9 @@ class Invoice(models.Model):
         (WRITE_OFF, "Write Off"),
     ]
 
-    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name="invoices")
+    customer: models.ForeignKey[Customer] = models.ForeignKey(
+        Customer, on_delete=models.CASCADE, related_name="invoices"
+    )
     invoice_no = models.PositiveIntegerField(unique=True, db_index=True)
     invoice_date = models.DateField(db_index=True)
     due_date = models.DateField(db_index=True)
@@ -185,7 +187,19 @@ class Invoice(models.Model):
             self.invoice_no = self.get_next_invoice_no()
         self.total_amount = self.calculate_total_amount()
         self.status = self.get_invoice_status()
+        # Save first to ensure status is up to date and pk is set
         super().save(*args, **kwargs)
+
+        # If invoice is paid, set all related DocApplications to completed
+        from customer_applications.models.doc_application import DocApplication
+
+        if self.status == Invoice.PAID:
+            invoice_apps = self.invoice_applications.select_related("customer_application").all()
+            for inv_app in invoice_apps:
+                doc_app = inv_app.customer_application
+                if doc_app.status != DocApplication.STATUS_COMPLETED:
+                    doc_app.status = DocApplication.STATUS_COMPLETED
+                    doc_app.save(skip_status_calculation=True)
 
     def __str__(self):
         inv_no = f"{self.invoice_no_display}" if self.invoice_no else "New"
@@ -206,8 +220,13 @@ class Invoice(models.Model):
         return total
 
     def get_next_invoice_no(self):
-        # get the highest invoice number
-        last_invoice = Invoice.objects.all().order_by("-invoice_no").first()
+        # get the highest invoice number for the invoice year (fall back to current year)
+        try:
+            year = self.invoice_date.year if self.invoice_date else timezone.now().year
+        except Exception:
+            year = timezone.now().year
+
+        last_invoice = Invoice.objects.filter(invoice_date__year=year).order_by("-invoice_no").first()
         if last_invoice:
             return last_invoice.invoice_no + 1
         return 1

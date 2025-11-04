@@ -30,4 +30,14 @@ urlpatterns = [
     ),
     # exec_cron_jobs
     path("cron/exec_cron_jobs/", views.exec_cron_jobs, name="api-exec-cron-jobs"),
+    # customer quick create
+    path("customers/quick-create/", views.customer_quick_create, name="api-customer-quick-create"),
+    # product quick create
+    path("products/quick-create/", views.product_quick_create, name="api-product-quick-create"),
+    # customer application quick create
+    path(
+        "customer-applications/quick-create/",
+        views.customer_application_quick_create,
+        name="api-customer-application-quick-create",
+    ),
 ]

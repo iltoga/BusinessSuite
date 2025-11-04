@@ -1,3 +1,4 @@
+from .customer_application_inline_form import CustomerApplicationInlineForm, CustomerApplicationInlineFormSet
 from .invoice_form import (
     BaseInvoiceApplicationFormSet,
     InvoiceApplicationCreateForm,

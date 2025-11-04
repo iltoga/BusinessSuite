@@ -1,9 +1,11 @@
 # forms.py
 import re
+from datetime import datetime
 from typing import Any
 
 from django import forms
 from django.core import serializers
+from django.db.models import Max
 from django.forms.fields import Field
 from django.utils import timezone
 from matplotlib import widgets
@@ -15,7 +17,8 @@ from invoices.models import Invoice, InvoiceApplication
 
 
 class InvoiceCreateForm(forms.ModelForm):
-    invoice_no = forms.CharField(required=False)
+    # invoice_no shown as integer so user can override; min value will be set in __init__
+    invoice_no = forms.IntegerField(required=False)
 
     class Meta:
         model = Invoice
@@ -34,10 +37,44 @@ class InvoiceCreateForm(forms.ModelForm):
         if self.instance and self.instance.pk:
             self.fields["customer"].disabled = True
         else:
-            # invoice_no is automatically generated when saving the invoice
-            self.fields["invoice_no"].widget = forms.HiddenInput()
+            # Show invoice_no so user can override it. We'll compute a suggested minimum
+            # based on the invoice_date year (max invoice_no for that year + 1).
             self.fields["status"].widget = forms.HiddenInput()
             self.fields["sent"].widget = forms.HiddenInput()
+            # determine year from data/initial or default to now
+            year = None
+            # If bound form, try to read provided invoice_date from data
+            if hasattr(self, "data") and self.data.get("invoice_date"):
+                try:
+                    year = datetime.strptime(self.data.get("invoice_date"), "%Y-%m-%d").year
+                except Exception:
+                    year = None
+            # fallback to initial or instance
+            if year is None:
+                invoice_date = self.initial.get("invoice_date") if self.initial else None
+                if not invoice_date and getattr(self.instance, "invoice_date", None):
+                    invoice_date = getattr(self.instance, "invoice_date")
+                if invoice_date:
+                    try:
+                        year = invoice_date.year
+                    except Exception:
+                        # invoice_date might be a string
+                        try:
+                            year = datetime.strptime(str(invoice_date), "%Y-%m-%d").year
+                        except Exception:
+                            year = None
+            if year is None:
+                year = timezone.now().year
+
+            # Compute suggested invoice number for the year
+            from invoices.models.invoice import Invoice
+
+            max_obj = Invoice.objects.filter(invoice_date__year=year).aggregate(max_no=Max("invoice_no"))
+            proposed = (max_obj.get("max_no") or 0) + 1
+
+            # configure invoice_no field widget with min and initial value
+            self.fields["invoice_no"].widget = forms.NumberInput(attrs={"min": proposed})
+            self.fields["invoice_no"].initial = proposed
             self.fields["customer"].widget = forms.Select(attrs={"class": "select2"})
             self.fields["customer"].queryset = Customer.objects.all().active()
 
@@ -69,6 +106,53 @@ class InvoiceCreateForm(forms.ModelForm):
                                     code="invalid_customer_application",
                                 )
         return cleaned_data
+
+    def clean_invoice_no(self):
+        """Ensure provided invoice_no is >= proposed first-available number for invoice year.
+
+        If empty, it's allowed (auto-generate on save).
+        """
+        invoice_no = self.cleaned_data.get("invoice_no")
+        # determine year similar to __init__ logic
+        year = None
+        if self.data.get("invoice_date"):
+            try:
+                year = datetime.strptime(self.data.get("invoice_date"), "%Y-%m-%d").year
+            except Exception:
+                year = None
+        if year is None:
+            invoice_date = self.initial.get("invoice_date") if self.initial else None
+            if not invoice_date and getattr(self.instance, "invoice_date", None):
+                invoice_date = getattr(self.instance, "invoice_date")
+            if invoice_date:
+                try:
+                    year = invoice_date.year
+                except Exception:
+                    try:
+                        year = datetime.strptime(str(invoice_date), "%Y-%m-%d").year
+                    except Exception:
+                        year = None
+        if year is None:
+            year = timezone.now().year
+
+        from invoices.models.invoice import Invoice
+
+        max_obj = Invoice.objects.filter(invoice_date__year=year).aggregate(max_no=Max("invoice_no"))
+        proposed = (max_obj.get("max_no") or 0) + 1
+
+        if invoice_no is None:
+            return invoice_no
+
+        if invoice_no < proposed:
+            raise forms.ValidationError(
+                f"Invoice number cannot be lower than the first available number for {year} ({proposed})."
+            )
+
+        # Also check uniqueness
+        if Invoice.objects.filter(invoice_no=invoice_no).exclude(pk=getattr(self.instance, "pk", None)).exists():
+            raise forms.ValidationError("This invoice number is already in use.")
+
+        return invoice_no
 
 
 class InvoiceUpdateForm(forms.ModelForm):
@@ -133,16 +217,32 @@ class InvoiceApplicationCreateForm(forms.ModelForm):
             self.fields["customer_application"].queryset = DocApplication.objects.filter(
                 pk=selected_customer_application.pk
             )
-        else:
+        elif customer_applications:
             self.fields["customer_application"].queryset = customer_applications
+        else:
+            # Allow any application - validation will be done in clean_customer_application
+            self.fields["customer_application"].queryset = DocApplication.objects.all()
+
+    def clean_customer_application(self):
+        """Validate that the customer application exists and hasn't been invoiced yet."""
+        customer_application = self.cleaned_data.get("customer_application")
+
+        if not customer_application:
+            raise forms.ValidationError("Customer application is required.")
+
+        # Check if this application is already invoiced
+        if customer_application.invoice_applications.exists():
+            raise forms.ValidationError(f"Application {customer_application} has already been invoiced.")
+
+        return customer_application
 
     def clean(self):
         """Checks that the paid amount is not greater than the due amount."""
         cleaned_data = super().clean()
-        amount = cleaned_data.get("amount", 0)
-        paid_amount = cleaned_data.get("paid_amount", 0)
+        amount = cleaned_data.get("amount")
+        paid_amount = cleaned_data.get("paid_amount")
 
-        if paid_amount > amount:
+        if amount and paid_amount and paid_amount > amount:
             raise forms.ValidationError("Paid amount cannot be greater than due amount.", code="invalid_amount")
 
 
@@ -161,7 +261,15 @@ class InvoiceApplicationUpdateForm(forms.ModelForm):
     def __init__(self, *args, customer_applications=None, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.fields["customer_application"].queryset = customer_applications
+        # Always use DocApplication.objects.all() to allow dynamically created applications
+        # Validation will be done in clean_customer_application method
+        if self.instance and self.instance.pk:
+            self.fields["customer_application"].queryset = DocApplication.objects.filter(
+                pk=self.instance.customer_application.pk
+            )
+        else:
+            self.fields["customer_application"].queryset = DocApplication.objects.all()
+
         self.fields["paid_amount"].disabled = True
         self.fields["payment_status"].disabled = True
 
@@ -170,13 +278,37 @@ class InvoiceApplicationUpdateForm(forms.ModelForm):
             self.initial["paid_amount"] = self.instance.paid_amount
             self.initial["payment_status"] = self.instance.get_status_display()
 
+    def clean_customer_application(self):
+        """Validate that the customer application exists and hasn't been invoiced yet (unless updating existing)."""
+        customer_application = self.cleaned_data.get("customer_application")
+
+        if not customer_application:
+            raise forms.ValidationError("Customer application is required.")
+
+        # For existing invoice applications being updated, skip the already-invoiced check
+        if self.instance and self.instance.pk:
+            return customer_application
+
+        # For new invoice applications being added, check if already invoiced by OTHER invoices
+        # Exclude the current invoice if it exists (self.instance.invoice_id)
+        existing_invoice_apps = customer_application.invoice_applications.all()
+
+        # If we're editing an invoice, exclude applications from this invoice
+        if hasattr(self, "instance") and self.instance and hasattr(self.instance, "invoice") and self.instance.invoice:
+            existing_invoice_apps = existing_invoice_apps.exclude(invoice=self.instance.invoice)
+
+        if existing_invoice_apps.exists():
+            raise forms.ValidationError(f"Application {customer_application} has already been invoiced.")
+
+        return customer_application
+
     def clean(self):
         """Checks that the paid amount is not greater than the due amount."""
         cleaned_data = super().clean()
-        amount = cleaned_data.get("amount", 0)
-        paid_amount = cleaned_data.get("paid_amount", 0)
+        amount = cleaned_data.get("amount")
+        paid_amount = cleaned_data.get("paid_amount")
 
-        if paid_amount > amount:
+        if amount and paid_amount and paid_amount > amount:
             raise forms.ValidationError("Paid amount cannot be greater than due amount.", code="invalid_amount")
 
 

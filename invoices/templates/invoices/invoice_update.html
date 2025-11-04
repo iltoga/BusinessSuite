@@ -44,12 +44,19 @@
             </div>
         </div>
         <div>
-            <button type="button" class="btn btn-secondary" id="add-invoiceapplication">Add Customer Application</button>
+            <button type="button" class="btn btn-success" id="create-new-application-btn">
+                <i class="fas fa-plus"></i> Create New Application
+            </button>
+            <button type="button" class="btn btn-secondary" id="add-invoiceapplication">Add Existing Application</button>
             <button type="submit" class="btn btn-primary">Save Invoice</button>
             <a href="javascript:history.back()" class="btn btn-outline-primary">Back</a>
         </div>
     </form>
 </div>
+
+{% include 'modals/customer_quick_create_modal.html' %}
+{% include 'modals/product_quick_create_modal.html' %}
+{% include 'modals/customer_application_quick_create_modal.html' %}
 {% endblock %}
 
 {% block after-bootstrap-js %}
@@ -60,7 +67,87 @@
         var selectedCustomerApplicationPk = "";
         var masked_url = "{% url 'invoice-create-by-customer' customer_id='123456' %}";
         var form_action_name = "update";
+        var currentCustomer = {{ object.customer.id }};
+        var currentCustomerName = "{{ object.customer.full_name }}";
     </script>
     <script src="{% static 'js/invoices/invoice_form.js' %}"></script>
+    <script>
+        // Handle Create New Application button
+        $(document).on('click', '#create-new-application-btn', function() {
+            if (currentCustomer) {
+                openCustomerApplicationQuickCreateModal(currentCustomer, currentCustomerName);
+            } else {
+                alert('No customer found for this invoice.');
+            }
+        });
+
+        // Function to add a new invoice application row with the created application
+        window.addInvoiceApplicationRow = function(application) {
+            // First, add the application to the customerApplications array
+            customerApplications.push({
+                pk: application.id,
+                fields: {
+                    product: {
+                        base_price: application.base_price,
+                        name: application.product_name,
+                        code: application.product_code
+                    },
+                    customer: {
+                        full_name: application.customer_name
+                    },
+                    doc_date: application.doc_date
+                }
+            });
+
+            // Add the new application as an option to ALL customer application dropdowns
+            $('select[name$="-customer_application"]').each(function() {
+                var $select = $(this);
+                // Check if option already exists
+                if ($select.find('option[value="' + application.id + '"]').length === 0) {
+                    var newOption = new Option(application.display_name, application.id, false, false);
+                    $select.append(newOption);
+                }
+            });
+
+            // Now create a new form row and select the new application
+            var $formList = $('#invoiceapplication-form-list');
+            var $emptyForm = $('#empty-form');
+            var totalForms = $('#id_invoice_applications-TOTAL_FORMS');
+            var formIdx = parseInt(totalForms.val());
+
+            // Clone the empty form
+            var newForm = $emptyForm.html().replace(/__prefix__/g, formIdx);
+            var $newFormDiv = $('<div class="invoiceapplication_form p-3 mb-4 border rounded"></div>');
+            $newFormDiv.html(newForm);
+
+            // Append to form list
+            $formList.append($newFormDiv);
+
+            // Initialize select2 for the new form
+            $newFormDiv.find('select[name$="-customer_application"]').select2({
+                theme: 'bootstrap-5',
+                width: '100%'
+            });
+
+            // Set the customer application
+            var $appSelect = $newFormDiv.find('select[name$="-customer_application"]');
+            $appSelect.val(application.id).trigger('change');
+
+            // Set the amount
+            var $amountInput = $newFormDiv.find('input[name$="-amount"]');
+            $amountInput.val(application.base_price.toFixed(decimals));
+
+            // Hide DELETE checkbox for new forms
+            $newFormDiv.find('input[name$="-DELETE"]').parent().hide();
+
+            // Increment form count
+            totalForms.val(formIdx + 1);
+
+            // Bind remove button
+            $newFormDiv.find('.remove-invoiceapplication-btn').on('click', function() {
+                $newFormDiv.remove();
+            });
+        };
+    </script>
 {% endblock %}
 

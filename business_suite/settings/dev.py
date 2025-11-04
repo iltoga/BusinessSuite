@@ -36,6 +36,7 @@ MIDDLEWARE = [
     "whitenoise.middleware.WhiteNoiseMiddleware",  # to serve static files
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",  # CSRF middleware - REQUIRED
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "business_suite.middlewares.AuthLoginRequiredMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",

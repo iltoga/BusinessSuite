@@ -75,17 +75,11 @@
               {% if docapplication and current_workflow %}
                 <!-- Current Task -->
                 <td>{{ current_workflow.task }}</td>
-                <!-- Task Status -->
-                {% if docapplication.is_application_completed %}
-                  <td>{% include "components/model_status_badge.html" with status='closed' %}</td>
-                {% else %}
-                  <td>{% include "components/model_status_badge.html" with status=current_workflow.status %}</td>
-                {% endif %}
               {% else %}
                 <td>None</td>
-                <td>None</td>
-                <td>{% include "components/model_status_badge.html" with status='notstarted' %}</td>
               {% endif %}
+              <!-- Application Status -->
+              <td>{% include "components/model_status_badge.html" with status=docapplication.status %}</td>
               <!-- Task Due Date -->
               <td>{{ current_workflow.due_date }}</td>
               <!-- Actions -->
