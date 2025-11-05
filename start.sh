@@ -58,13 +58,13 @@ python manage.py collectstatic --noinput
 # --max-requests-jitter: Add randomness to prevent all workers restarting simultaneously
 gunicorn business_suite.wsgi:application \
   --bind 0.0.0.0:8000 \
-  --timeout 180 \
+  --timeout 60 \
   --workers 4 \
-  --threads 4 \
+  --threads 2 \
   --worker-class gthread \
   --max-requests 1000 \
   --max-requests-jitter 50 \
-  --log-file - \
+  --log-file /var/log/gunicorn/app.log \
   --access-logfile - \
   --error-logfile - \
   --log-level info

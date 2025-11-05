@@ -76,6 +76,7 @@ INSTALLED_APPS = [
     "debug_toolbar",
     "dbbackup",
     "storages",
+    "admin_tools",
     # "django_cron",  # Disabled due to Django 5.x compatibility issues
     "django_cleanup.apps.CleanupConfig",
     "django_user_agents",
@@ -96,6 +97,7 @@ MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     # it merge all changes of object per request
     "django_user_agents.middleware.UserAgentMiddleware",
+    "core.middleware.performance_logger.PerformanceLoggingMiddleware",
 ]
 
 
@@ -378,6 +380,12 @@ LOGGING = {
         #     "level": "ERROR",
         #     "propagate": False,
         # },
+        # requires the PerformanceLoggingMiddleware to be added to MIDDLEWARE
+        "performance": {
+            "handlers": ["console", "file"],
+            "level": "INFO",
+            "propagate": False,
+        },
     },
 }
 
