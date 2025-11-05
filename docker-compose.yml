@@ -3,6 +3,16 @@ services:
     container_name: postgres-srv
     image: postgres
     restart: unless-stopped
+    command:
+      - "postgres"
+      - "-c"
+      - "tcp_keepalives_idle=300"
+      - "-c"
+      - "tcp_keepalives_interval=60"
+      - "-c"
+      - "tcp_keepalives_count=5"
+      - "-c"
+      - "idle_in_transaction_session_timeout=300000"
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASS}
