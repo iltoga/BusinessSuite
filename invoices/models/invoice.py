@@ -127,6 +127,10 @@ class Invoice(models.Model):
 
     @property
     def total_paid_amount(self):
+        # Use annotated field if available, otherwise calculate
+        if hasattr(self, "total_paid"):
+            return self.total_paid or 0
+
         if self.pk:  # Check if the Invoice instance has been saved
             return (
                 self.invoice_applications.annotate(total_payment=Sum("payments__amount")).aggregate(
@@ -138,6 +142,10 @@ class Invoice(models.Model):
 
     @property
     def total_due_amount(self):
+        # Use annotated field if available, otherwise calculate
+        if hasattr(self, "total_due"):
+            return self.total_due or 0
+
         tot = self.total_amount - self.total_paid_amount
         return tot
 
@@ -154,7 +162,12 @@ class Invoice(models.Model):
         """Check if invoice is expired (overdue)"""
         from django.utils import timezone
 
-        return self.total_due_amount > 0 and self.due_date < timezone.now().date()
+        # Use annotated field if available, otherwise fall back to property
+        due_amount = getattr(self, "total_due", None)
+        if due_amount is None:
+            due_amount = self.total_due_amount
+
+        return due_amount > 0 and self.due_date < timezone.now().date()
 
     def delete(self, force=False, *args, **kwargs):
         """
@@ -329,6 +342,11 @@ class InvoiceApplication(models.Model):
     @property
     def paid_amount(self):
         try:
+            # Check if payments are prefetched to avoid extra queries
+            if hasattr(self, "_prefetched_objects_cache") and "payments" in self._prefetched_objects_cache:
+                # Use prefetched payments
+                return sum(payment.amount for payment in self.payments.all()) or 0
+
             if self.payments.exists():
                 return self.payments.aggregate(models.Sum("amount"))["amount__sum"] or 0
         except ValueError:
