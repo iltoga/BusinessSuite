@@ -3,7 +3,10 @@
 # Load environment variables from .env file
 if [ -f .env ]
 then
-  export $(cat .env | sed 's/#.*//g' | xargs)
+  set -a
+  source .env
+  set +a
+  # export $(cat .env | sed 's/#.*//g' | xargs)
 fi
 
 # Check if SYSTEM_USER_PASSWORD and SYSTEM_USER_EMAIL are set and not empty
