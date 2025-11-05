@@ -67,4 +67,5 @@ gunicorn business_suite.wsgi:application \
   --log-file /var/log/gunicorn/app.log \
   --access-logfile - \
   --error-logfile - \
-  --log-level info
+  --log-level info \
+  --preload
