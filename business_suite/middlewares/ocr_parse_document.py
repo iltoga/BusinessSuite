@@ -5,9 +5,6 @@ from core.utils.passport_ocr import extract_mrz_data
 
 
 class OcrParseDocumentMiddleware(MiddlewareMixin):
-    def __init__(self, get_response):
-        self.get_response = get_response
-
     def __call__(self, request):
         if request.method == "POST" and request.FILES:
             file = request.FILES.get("file", False)
@@ -18,5 +15,5 @@ class OcrParseDocumentMiddleware(MiddlewareMixin):
             except Exception as e:
                 return JsonResponse({"error": "An unexpected error occurred: " + str(e)})
 
-        response = self.get_response(request)
+        response = super().__call__(request)
         return response

@@ -43,4 +43,5 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django_user_agents.middleware.UserAgentMiddleware",
+    "core.middleware.performance_logger.PerformanceLoggingMiddleware",
 ]

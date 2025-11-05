@@ -317,13 +317,12 @@
                     </ul>
                 </li>
                 {% endif %}
-                <li class="mt-4"><h4 class="mb-3">Reports</h4></li>
                 <li>
                     <a href="#reportsSubmenu"
                     data-bs-toggle="collapse"
                     aria-expanded="{% if request.session.opened_submenu == 'reportsSubmenu' %}true{% else %}false{% endif %}"
                     role="button"
-                    class="dropdown-toggle">Business Reports</a>
+                    class="dropdown-toggle">Reports</a>
                     <ul class="collapse list-unstyled" id="reportsSubmenu">
                         <li>
                             <a href="{% url 'reports-index' %}">All Reports</a>
@@ -357,6 +356,26 @@
                         </li>
                     </ul>
                 </li>
+                {% if user.is_superuser %}
+                <li>
+                    <a href="#adminToolsSubmenu"
+                    data-bs-toggle="collapse"
+                    aria-expanded="{% if request.session.opened_submenu == 'adminToolsSubmenu' %}true{% else %}false{% endif %}"
+                    role="button"
+                    class="dropdown-toggle">Admin Tools</a>
+                    <ul class="collapse list-unstyled" id="adminToolsSubmenu">
+                        <li>
+                            <a href="{% url 'admin_tools:backup_page' %}">Backups</a>
+                        </li>
+                        <li>
+                            <a href="{% url 'admin_tools:restore_page' %}">Restore</a>
+                        </li>
+                        <li>
+                            <a href="{% url 'admin_tools:manage_server' %}">Manage Server</a>
+                        </li>
+                    </ul>
+                </li>
+                {% endif %}
             {% endif %}
             <li class="mt-4"><h4 class="mb-3">CRM</h4></li>
             <li class="mb-4">
@@ -431,16 +450,41 @@
         // Dismiss alerts: set the alert to automatically fade out
         $('.alert-dismissible').delay(5000).fadeOut("slow");
 
-        // Restore submenu state from local storage
+        // Restore submenu state from local storage (and support admin tools route)
         let opened_submenu = localStorage.getItem('opened_submenu');
+        // If nothing saved but current path is under /admin-tools, default to adminToolsSubmenu
+        if (!opened_submenu) {
+            try {
+                const p = window.location.pathname || '';
+                if (p.startsWith('/admin-tools')) {
+                    opened_submenu = 'adminToolsSubmenu';
+                    localStorage.setItem('opened_submenu', opened_submenu);
+                }
+            } catch (e) {
+                // ignore
+            }
+        }
         if (opened_submenu) {
             $("#" + opened_submenu).addClass('show');
             // set aria-expanded to true for the dropdown toggle of the opened submenu
             $('a[href="#' + opened_submenu + '"]').attr('aria-expanded', 'true');
         }
 
-        // Restore active state of last selected item
+        // Restore active state of last selected item (or set based on current path)
         let activeLink = localStorage.getItem('active-link');
+        if (!activeLink) {
+            try {
+                const p = window.location.pathname || '';
+                // try to find a matching submenu link that equals the current path
+                const match = $(`#sidebar .collapse a[href="${p}"]`);
+                if (match.length) {
+                    activeLink = p;
+                    localStorage.setItem('active-link', activeLink);
+                }
+            } catch (e) {
+                // ignore
+            }
+        }
         if (activeLink) {
             // remove 'active' class from all other links
             COLLAPSE_LINKS.removeClass('active');

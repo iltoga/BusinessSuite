@@ -1,0 +1,29 @@
+{% extends "base_template.html" %}
+{% block content %}
+<h1>Restore Database</h1>
+
+<label for="backup-select">Choose backup:</label>
+<select id="backup-select">
+  {% for b in backups %}
+    <option value="{{ b }}">{{ b }}</option>
+  {% endfor %}
+</select>
+<button id="start-restore" class="btn btn-danger">Start Restore</button>
+
+<h3>Live log</h3>
+<pre id="log" style="background:#111;color:#eee;padding:1rem;max-height:300px;overflow:auto;"></pre>
+
+<script>
+document.getElementById('start-restore').addEventListener('click', function(){
+  const log = document.getElementById('log');
+  log.textContent = '';
+  const file = document.getElementById('backup-select').value;
+  const es = new EventSource('{% url "admin_tools:restore_start" %}?file=' + encodeURIComponent(file));
+  es.onmessage = function(e){
+    try{ const d = JSON.parse(e.data); log.textContent += d.message + '\n'; log.scrollTop = log.scrollHeight; }catch(err){ console.log(err); }
+  };
+  es.onerror = function(e){ log.textContent += 'Connection closed'; es.close(); };
+});
+</script>
+
+{% endblock %}

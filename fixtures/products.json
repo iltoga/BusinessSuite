@@ -1,129 +1,17 @@
 [
     {
         "model": "products.product",
-        "pk": 4,
+        "pk": 1,
         "fields": {
-            "name": "211A - Sport Visa",
-            "code": "211AS",
-            "description": "A person who plans to visit Indonesia for the purpose of participating in sports activities as a player, coach, instructor, or referee.",
-            "immigration_id": "fce03865-2bcf-4801-8725-a2813c874d8e",
-            "base_price": "0.00",
-            "product_type": "visa",
-            "validity": 60,
-            "required_documents": "Passport,Bank Statement,Passport Photo,Surat Permohonan dan Jaminan,Visa Application Form",
-            "optional_documents": "Processed Visa Stamp,Invitation Letter",
-            "documents_min_validity": 180
-        }
-    },
-    {
-        "model": "products.product",
-        "pk": 5,
-        "fields": {
-            "name": "Filming Multiple Re-Entry Visitor Visa 180 Days",
-            "code": "D212",
-            "description": "A person who plans to visit Indonesia to conduct filmmaking activities.",
-            "immigration_id": "e40c9cc2-cd1a-452c-a9ab-d15deafb9a3d",
-            "base_price": "0.00",
-            "product_type": "visa",
-            "validity": 180,
-            "required_documents": "Passport,Bank Statement,Passport Photo,Surat Permohonan dan Jaminan,Visa Application Form",
-            "optional_documents": "Processed Visa Stamp,Invitation Letter",
-            "documents_min_validity": 180
-        }
-    },
-    {
-        "model": "products.product",
-        "pk": 7,
-        "fields": {
-            "name": "Second Home",
-            "code": "C322",
-            "description": "A person who plans to stay in Indonesia for 5 years and not for employment.",
-            "immigration_id": "b6469147-09ae-44c0-878e-74e2c4c2c14e",
-            "base_price": "7000000.00",
-            "product_type": "visa",
-            "validity": 1825,
-            "required_documents": "Passport,Bank Statement,Passport Photo,Surat Permohonan dan Jaminan,Visa Application Form",
-            "optional_documents": "Processed Visa Stamp,Invitation Letter",
-            "documents_min_validity": 180
-        }
-    },
-    {
-        "model": "products.product",
-        "pk": 6,
-        "fields": {
-            "name": "Second Home for Family",
-            "code": "C322F",
-            "description": "A person who plans to visit Indonesia to stay up to 5 years.",
-            "immigration_id": "b6469147-09ae-44c0-878e-74e2c4c2c14e",
-            "base_price": "7000000.00",
-            "product_type": "visa",
-            "validity": 1825,
-            "required_documents": "Passport,Bank Statement,Passport Photo,Surat Permohonan dan Jaminan,Visa Application Form",
-            "optional_documents": "Processed Visa Stamp,Invitation Letter",
-            "documents_min_validity": 180
-        }
-    },
-    {
-        "model": "products.product",
-        "pk": 9,
-        "fields": {
-            "name": "Single-Entry Visitor Visa For Journalistic 60 Days",
-            "code": "211C",
-            "description": "A person who plans to visit Indonesia to conduct journalistic activities.",
-            "immigration_id": "da0017ae-9257-4f47-abbf-837beebb0da4",
-            "base_price": "3000000.00",
-            "product_type": "visa",
-            "validity": 60,
-            "required_documents": "Passport,Bank Statement,Passport Photo,Surat Permohonan dan Jaminan,Visa Application Form",
-            "optional_documents": "Processed Visa Stamp,Invitation Letter",
-            "documents_min_validity": 180
-        }
-    },
-    {
-        "model": "products.product",
-        "pk": 8,
-        "fields": {
-            "name": "Single-Entry Visitor Visa for Employment Trial 60 Days",
-            "code": "211B",
-            "description": "A person who plans to visit Indonesia for the purpose of Employment trial.",
-            "immigration_id": "9bb1b8dc-1f48-4b72-9e27-2c9f8231f402",
-            "base_price": "2000000.00",
-            "product_type": "visa",
-            "validity": 60,
-            "required_documents": "Passport,Bank Statement,Passport Photo,Surat Permohonan dan Jaminan,Visa Application Form",
-            "optional_documents": "Processed Visa Stamp,Invitation Letter",
-            "documents_min_validity": 180
-        }
-    },
-    {
-        "model": "products.product",
-        "pk": 10,
-        "fields": {
-            "name": "Two-Year Temporary Stay Visa for Foreign Investors",
-            "code": "C314",
-            "description": "This Temporary Stay Visa for two years (C314) is granted to foreign nationals who intend to invest or have already invested a certain amount of capital in Indonesia. Holders of this visa are not allowed to work in Indonesia.",
+            "name": "Tourist Visa",
+            "code": "VISA_TOUR",
+            "description": "A visa for tourists visiting Indonesia for leisure and sightseeing.",
             "immigration_id": null,
-            "base_price": "0.00",
+            "base_price": "500000.00",
             "product_type": "visa",
-            "validity": 730,
-            "required_documents": "Passport,Bank Statement,Passport Photo,Surat Permohonan dan Jaminan,Visa Application Form",
-            "optional_documents": "Processed Visa Stamp,Invitation Letter",
-            "documents_min_validity": 180
-        }
-    },
-    {
-        "model": "products.product",
-        "pk": 3,
-        "fields": {
-            "name": "Visa 211A - Pre-Investment",
-            "code": "211AP",
-            "description": "Single-Entry Visitor Visa 180 Days for Pre investment (a person who plans to conduct surveys, site visits, licensing, etc. before investing in Indonesia)",
-            "immigration_id": "ebac4c1c-10bf-4b0d-9ffd-05099a7cca96",
-            "base_price": "0.00",
-            "product_type": "visa",
-            "validity": 180,
-            "required_documents": "Passport,Bank Statement,Passport Photo,Surat Permohonan dan Jaminan,Visa Application Form",
-            "optional_documents": "Processed Visa Stamp,Invitation Letter",
+            "validity": 30,
+            "required_documents": "Passport,Visa Application Form",
+            "optional_documents": "",
             "documents_min_validity": 180
         }
     },
@@ -131,79 +19,15 @@
         "model": "products.product",
         "pk": 2,
         "fields": {
-            "name": "Visa 211A - Tourism",
-            "code": "211A",
-            "description": "A person who plans to visit Indonesia for the purpose of tourism",
-            "immigration_id": "dd5c2220-28a7-4024-9a10-82f30a09e0d2",
-            "base_price": "800000.00",
-            "product_type": "visa",
-            "validity": 60,
-            "required_documents": "Passport,Bank Statement,Passport Photo,Surat Permohonan dan Jaminan,Visa Application Form",
-            "optional_documents": "Processed Visa Stamp,Invitation Letter",
-            "documents_min_validity": 180
-        }
-    },
-    {
-        "model": "products.product",
-        "pk": 1,
-        "fields": {
-            "name": "Visa on Arrival 30 Days",
-            "code": "B213",
-            "description": "A person who plans to visit Indonesia for the purpose of tourism, business, government business, purchasing goods, meetings, or transit.",
-            "immigration_id": "dd5c2220-28a7-4024-9a10-82f30a09e0d2",
-            "base_price": "500000.00",
-            "product_type": "visa",
-            "validity": 30,
-            "required_documents": "Passport,Bank Statement,Passport Photo,Surat Permohonan dan Jaminan,Visa Application Form",
-            "optional_documents": "Processed Visa Stamp,Invitation Letter",
-            "documents_min_validity": 180
-        }
-    },
-    {
-        "model": "products.product",
-        "pk": 11,
-        "fields": {
-            "name": "Work Visa for Foreign Workers",
-            "code": "C312",
-            "description": "Visa Kerja C312 for prospective Foreign Workers (Calon Tenaga Kerja Asing), applied via TKA Online and convertible to KITAS.",
+            "name": "Work Permit",
+            "code": "WORK_PERMIT",
+            "description": "A permit for foreign workers to legally work in Indonesia.",
             "immigration_id": null,
-            "base_price": "0.00",
+            "base_price": "2000000.00",
             "product_type": "visa",
-            "validity": 90,
-            "required_documents": "Passport,Surat Permohonan dan Jaminan,Bank Statement,Passport Photo,Visa Application Form",
-            "optional_documents": "Processed Visa Stamp,Invitation Letter",
-            "documents_min_validity": 180
-        }
-    },
-    {
-        "model": "products.product",
-        "pk": 12,
-        "fields": {
-            "name": "Family Unification Visa",
-            "code": "E31A",
-            "description": "Limited Stay Visa for joining spouse or child of an Indonesian citizen (KITAS).",
-            "immigration_id": null,
-            "base_price": "0.00",
-            "product_type": "visa",
-            "validity": 90,
-            "required_documents": "Passport,Surat Permohonan dan Jaminan,Marriage Certificate/KTP Sponsor,Passport Photo,Visa Application Form",
-            "optional_documents": "Processed Visa Stamp",
-            "documents_min_validity": 180
-        }
-    },
-    {
-        "model": "products.product",
-        "pk": 13,
-        "fields": {
-            "name": "Permanent Stay Permit",
-            "code": "KITAP",
-            "description": "Permanent Stay Permit (Izin Tinggal Tetap) valid for 5 years.",
-            "immigration_id": null,
-            "base_price": "0.00",
-            "product_type": "visa",
-            "validity": 1825,
-            "required_documents": "Passport,Surat Permohonan dan Jaminan,Integration Statement,Passport Photo,Visa Application Form",
-            "optional_documents": "Processed Visa Stamp",
+            "validity": 365,
+            "required_documents": "Passport,Work Contract,Visa Application Form",
+            "optional_documents": "Invitation Letter",
             "documents_min_validity": 180
         }
     }

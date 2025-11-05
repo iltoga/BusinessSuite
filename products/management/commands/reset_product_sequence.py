@@ -17,7 +17,8 @@ class Command(BaseCommand):
         with connection.cursor() as cursor:
             # Get the current max ID from the products_product table
             cursor.execute("SELECT MAX(id) FROM products_product;")
-            max_id = cursor.fetchone()[0] or 0
+            row = cursor.fetchone()
+            max_id = row[0] if row and row[0] is not None else 0
 
             # Reset the sequence to max_id + 1
             next_id = max_id + 1
@@ -31,5 +32,6 @@ class Command(BaseCommand):
 
             # Verify the sequence
             cursor.execute("SELECT last_value FROM products_product_id_seq;")
-            last_value = cursor.fetchone()[0]
+            row = cursor.fetchone()
+            last_value = row[0] if row and row[0] is not None else None
             self.stdout.write(self.style.SUCCESS(f"✓ Sequence last_value is now: {last_value}"))
