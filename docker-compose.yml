@@ -23,7 +23,7 @@ services:
       # Preferred: bind to an absolute host path set in DB_PATH
       - type: bind
         source: ${DB_PATH}
-        target: /var/lib/postgresql/data
+        target: /var/lib/postgresql
         bind:
           propagation: rslave
     healthcheck:
