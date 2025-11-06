@@ -27,6 +27,7 @@
                 <th scope="col">Code</th>
                 <th scope="col">Type</th>
                 <th scope="col">Description</th>
+                <th scope="col">Applications</th>
                 <th scope="col">Actions</th>
             </tr>
             </thead>
@@ -37,6 +38,9 @@
                     <td>{{ product.code }}</td>
                     <td>{{ product.get_product_type_display }}</td>
                     <td>{{ product.description }}</td>
+                    <td class="text-center">
+                      {{ product.application_count }}
+                    </td>
                     <td>
                     <div class="btn-group" role="group" aria-label="Basic example">
                         <a href="{% url 'product-detail' product.id %}" class="btn btn-primary btn-sm me-1">View</a>
