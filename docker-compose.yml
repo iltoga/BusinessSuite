@@ -1,9 +1,7 @@
-version: "3.8"
-
 services:
   db:
     container_name: postgres-srv
-    image: postgres:15
+    image: postgres:18
     restart: unless-stopped
     command:
       - "postgres"
@@ -25,7 +23,7 @@ services:
       # Preferred: bind to an absolute host path set in DB_PATH
       - type: bind
         source: ${DB_PATH}
-        target: /var/lib/postgresql/data
+        target: /var/lib/postgresql
         bind:
           propagation: rslave
     healthcheck:
@@ -34,17 +32,17 @@ services:
       timeout: 5s
       retries: 5
 
-  pgadmin:
-    container_name: pgadmin
-    image: dpage/pgadmin4:7
-    depends_on:
-      - db
-    restart: unless-stopped
-    environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASS}
-    networks:
-      - dockernet
+  # pgadmin:
+  #   container_name: pgadmin
+  #   image: dpage/pgadmin4:7
+  #   depends_on:
+  #     - db
+  #   restart: unless-stopped
+  #   environment:
+  #     PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
+  #     PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASS}
+  #   networks:
+  #     - dockernet
 
   memcached:
     container_name: memcached
