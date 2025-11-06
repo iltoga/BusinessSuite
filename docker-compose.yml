@@ -1,7 +1,7 @@
 services:
   db:
     container_name: postgres-srv
-    image: postgres:17
+    image: postgres:18
     restart: unless-stopped
     command:
       - "postgres"
