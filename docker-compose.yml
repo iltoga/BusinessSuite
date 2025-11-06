@@ -1,7 +1,9 @@
+version: "3.8"
+
 services:
   db:
     container_name: postgres-srv
-    image: postgres
+    image: postgres:15
     restart: unless-stopped
     command:
       - "postgres"
@@ -20,15 +22,21 @@ services:
     networks:
       - dockernet
     volumes:
+      # Preferred: bind to an absolute host path set in DB_PATH
       - type: bind
         source: ${DB_PATH}
         target: /var/lib/postgresql/data
         bind:
           propagation: rslave
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME} || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   pgadmin:
     container_name: pgadmin
-    image: dpage/pgadmin4
+    image: dpage/pgadmin4:7
     depends_on:
       - db
     restart: unless-stopped
@@ -38,21 +46,10 @@ services:
     networks:
       - dockernet
 
-  bs-cron:
-    container_name: bs-cron
-    depends_on:
-      - bs-core
-    image: 'bs-cron:custom'
-    build:
-      context: ./
-      dockerfile: Dockerfile.cron
-    networks:
-      dockernet:
-        ipv4_address: 192.168.2.61
-    restart: unless-stopped
-
   memcached:
-    image: 'bitnami/memcached:latest'
+    container_name: memcached
+    image: bitnami/memcached:latest
+    restart: unless-stopped
     networks:
       dockernet:
         ipv4_address: 192.168.2.62
@@ -62,7 +59,7 @@ services:
     depends_on:
       - memcached
       - db
-    image: 'bs-core:custom'
+    image: bs-core:custom
     build:
       context: ./
       dockerfile: Dockerfile
@@ -96,6 +93,19 @@ services:
         bind:
           propagation: rslave
       - le-certs:/etc/letsencrypt
+    restart: unless-stopped
+
+  bs-cron:
+    container_name: bs-cron
+    depends_on:
+      - bs-core
+    image: bs-cron:custom
+    build:
+      context: ./
+      dockerfile: Dockerfile.cron
+    networks:
+      dockernet:
+        ipv4_address: 192.168.2.61
     restart: unless-stopped
 
 networks:

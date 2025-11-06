@@ -17,8 +17,8 @@ COPY .env /usr/src/app/
 COPY scripts/exec_cron_api.sh /usr/src/app/
 RUN chmod +x /usr/src/app/exec_cron_api.sh
 
-# Add a test cron job
-RUN crontab -l | { cat; echo "*/5 * * * * bash /usr/src/app/exec_cron_api.sh"; } | crontab -
+# Add a cron job: run once daily at 03:00
+RUN crontab -l | { cat; echo "0 3 * * * bash /usr/src/app/exec_cron_api.sh"; } | crontab -
 
 # Create the log file, start cron and give write permissions
 # RUN touch /var/log/cron.log && chmod 0666 /var/log/cron.log
