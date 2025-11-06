@@ -184,7 +184,7 @@ class InvoiceImporter:
     def _find_or_create_customer(self, parsed_result: ParsedInvoiceResult) -> Tuple[Optional[Customer], bool]:
         """
         Find existing customer or create new one.
-        Matching priority: phone > email > name (exact)
+        Matching priority: phone > email > company_name > name (exact)
         Race conditions handled by IntegrityError catch in _create_customer.
 
         Returns:
@@ -207,35 +207,60 @@ class InvoiceImporter:
                 logger.info(f"Matched customer by email: {customer.full_name}")
                 return customer, False
 
-        # Try to find by name (exact match)
-        first_name = customer_data.first_name or customer_data.full_name.split()[0]
-        last_name = customer_data.last_name or (
-            customer_data.full_name.split()[-1] if len(customer_data.full_name.split()) > 1 else ""
-        )
-
-        if first_name and last_name:
-            customer = Customer.objects.filter(first_name__iexact=first_name, last_name__iexact=last_name).first()
+        # Try to find by company name (for company customers)
+        if customer_data.customer_type == "company" and customer_data.company_name:
+            customer = Customer.objects.filter(
+                customer_type="company", company_name__iexact=customer_data.company_name
+            ).first()
             if customer:
-                logger.info(f"Matched customer by name: {customer.full_name}")
+                logger.info(f"Matched company customer by company name: {customer.company_name}")
                 return customer, False
 
+        # Try to find by person name (exact match) - only for person customers
+        if customer_data.customer_type == "person":
+            first_name = customer_data.first_name or customer_data.full_name.split()[0]
+            last_name = customer_data.last_name or (
+                customer_data.full_name.split()[-1] if len(customer_data.full_name.split()) > 1 else ""
+            )
+
+            if first_name and last_name:
+                customer = Customer.objects.filter(
+                    customer_type="person", first_name__iexact=first_name, last_name__iexact=last_name
+                ).first()
+                if customer:
+                    logger.info(f"Matched person customer by name: {customer.full_name}")
+                    return customer, False
+
         # No match found, create new customer
-        logger.info(f"Creating new customer: {customer_data.full_name}")
+        logger.info(f"Creating new customer: {customer_data.full_name} (type: {customer_data.customer_type})")
         return self._create_customer(customer_data), True
 
     def _create_customer(self, customer_data) -> Optional[Customer]:
         """
         Create a new customer from parsed data.
         Handles race conditions by catching IntegrityError and looking up existing.
+        Supports both person and company customers.
         """
         from django.db import IntegrityError
 
-        # Parse name
+        # Parse name based on customer type
         full_name = customer_data.full_name
         name_parts = full_name.split()
 
-        first_name = customer_data.first_name or name_parts[0]
-        last_name = customer_data.last_name or (name_parts[-1] if len(name_parts) > 1 else name_parts[0])
+        customer_type = customer_data.customer_type or "person"
+
+        # For person customers, extract first and last name
+        if customer_type == "person":
+            first_name = customer_data.first_name or (name_parts[0] if name_parts else "")
+            last_name = customer_data.last_name or (
+                name_parts[-1] if len(name_parts) > 1 else (name_parts[0] if name_parts else "")
+            )
+            company_name = customer_data.company_name or ""
+        else:  # company
+            # Company may have contact person name or just company name
+            first_name = customer_data.first_name or ""
+            last_name = customer_data.last_name or ""
+            company_name = customer_data.company_name or full_name
 
         # Use phone or mobile_phone
         phone = customer_data.phone or customer_data.mobile_phone
@@ -243,17 +268,21 @@ class InvoiceImporter:
         # Try creating customer - if duplicate, catch and lookup
         try:
             customer = Customer.objects.create(
-                first_name=first_name,
-                last_name=last_name,
+                customer_type=customer_type,
+                company_name=company_name or "",
+                first_name=first_name or "",
+                last_name=last_name or "",
                 email=customer_data.email or None,
                 telephone=phone,
                 whatsapp=phone,
+                npwp=customer_data.npwp or "",
+                address_bali=customer_data.address_bali or "",
                 title="",
-                birthdate="2000-01-01",
+                birthdate=None,
                 notify_documents_expiration=False,
                 active=True,
             )
-            logger.info(f"Created customer: {customer.full_name} (ID: {customer.pk})")
+            logger.info(f"Created {customer_type} customer: {customer.full_name} (ID: {customer.pk})")
             return customer
 
         except IntegrityError as e:
@@ -264,28 +293,38 @@ class InvoiceImporter:
             if customer_data.email:
                 customer = Customer.objects.filter(email__iexact=customer_data.email).first()
                 if customer:
-                    logger.info(f"Found existing customer by email: {customer.full_name}")
+                    logger.info(f"Found existing customer by email after conflict: {customer.full_name}")
                     return customer
 
             # Try by phone
             if phone:
-                customer = Customer.objects.filter(Q(telephone=phone) | Q(whatsapp=phone)).first()
+                customer = Customer.objects.filter(Q(telephone=phone) | Q(whatsapp=phone) | Q(telegram=phone)).first()
                 if customer:
-                    logger.info(f"Found existing customer by phone: {customer.full_name}")
+                    logger.info(f"Found existing customer by phone after conflict: {customer.full_name}")
                     return customer
 
-            # Try by name
-            if first_name and last_name:
-                customer = Customer.objects.filter(first_name__iexact=first_name, last_name__iexact=last_name).first()
+            # Try by company name for companies
+            if customer_type == "company" and company_name:
+                customer = Customer.objects.filter(customer_type="company", company_name__iexact=company_name).first()
                 if customer:
-                    logger.info(f"Found existing customer by name: {customer.full_name}")
+                    logger.info(f"Found existing company by name after conflict: {customer.company_name}")
                     return customer
 
-            logger.error(f"Could not find customer after IntegrityError: {str(e)}")
+            # Try by name for persons
+            if customer_type == "person" and first_name and last_name:
+                customer = Customer.objects.filter(
+                    customer_type="person", first_name__iexact=first_name, last_name__iexact=last_name
+                ).first()
+                if customer:
+                    logger.info(f"Found existing person by name after conflict: {customer.full_name}")
+                    return customer
+
+            # If still not found, log error
+            logger.error(f"Could not resolve customer conflict: {str(e)}")
             return None
 
         except Exception as e:
-            logger.error(f"Error creating customer: {str(e)}", exc_info=True)
+            logger.error(f"Error creating customer: {str(e)}")
             return None
 
     @transaction.atomic

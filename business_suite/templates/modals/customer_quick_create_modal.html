@@ -28,6 +28,20 @@
                     </div>
                     <div id="customerQuickCreateErrors" class="alert alert-danger d-none"></div>
 
+                    <div class="mb-3">
+                        <label for="id_quick_customer_type" class="form-label">Customer Type <span class="text-danger">*</span></label>
+                        <select class="form-select" id="id_quick_customer_type" name="customer_type" required>
+                            <option value="person" selected>Person</option>
+                            <option value="company">Company</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="id_quick_company_name" class="form-label">Company Name <span class="company-required text-danger" style="display:none;">*</span></label>
+                        <input type="text" class="form-control" id="id_quick_company_name" name="company_name">
+                    </div>
+
+                    <div class="person-only-field-quick">
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="id_quick_title" class="form-label">Title</label>
@@ -53,13 +67,35 @@
 
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="id_quick_first_name" class="form-label">First Name <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="id_quick_first_name" name="first_name" required pattern="[A-Z][a-zA-Z\s]*" title="First letter must be uppercase">
+                            <label for="id_quick_first_name" class="form-label">First Name <span class="person-required text-danger">*</span></label>
+                            <input type="text" class="form-control" id="id_quick_first_name" name="first_name" pattern="[A-Z][a-zA-Z\s]*" title="First letter must be uppercase">
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="id_quick_last_name" class="form-label">Last Name <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="id_quick_last_name" name="last_name" required>
+                            <label for="id_quick_last_name" class="form-label">Last Name <span class="person-required text-danger">*</span></label>
+                            <input type="text" class="form-control" id="id_quick_last_name" name="last_name">
                         </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_quick_birthdate" class="form-label">Birthdate</label>
+                            <input type="date" class="form-control" id="id_quick_birthdate" name="birthdate">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="id_quick_nationality" class="form-label">Nationality</label>
+                            <select class="form-select" id="id_quick_nationality" name="nationality">
+                                <option value="">---------</option>
+                                {% for country in countries %}
+                                <option value="{{ country.alpha3_code }}">{{ country.country }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="id_quick_npwp" class="form-label">NPWP (Tax ID)</label>
+                        <input type="text" class="form-control" id="id_quick_npwp" name="npwp">
                     </div>
 
 
@@ -81,20 +117,9 @@
                         </div>
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="id_quick_birthdate" class="form-label">Birthdate</label>
-                            <input type="date" class="form-control" id="id_quick_birthdate" name="birthdate">
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="id_quick_nationality" class="form-label">Nationality</label>
-                            <select class="form-select" id="id_quick_nationality" name="nationality">
-                                <option value="">---------</option>
-                                {% for country in countries %}
-                                <option value="{{ country.alpha3_code }}">{{ country.country }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
+                    <div class="mb-3">
+                        <label for="id_quick_address_bali" class="form-label">Address in Bali</label>
+                        <textarea class="form-control" id="id_quick_address_bali" name="address_bali" rows="3"></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -117,10 +142,41 @@
         var $form = $('#customerQuickCreateForm');
         var $submitBtn = $('#customerQuickCreateSubmitBtn');
         var $errors = $('#customerQuickCreateErrors');
+        var $customerType = $('#id_quick_customer_type');
         var targetSelectId = null; // Will store the ID of the select element to update
 
         // Initialize select2 for nationality - but only once
         var select2Initialized = false;
+
+        // Function to toggle person-only fields based on customer type
+        function togglePersonFields() {
+            var customerType = $customerType.val();
+            var $personFields = $('.person-only-field-quick');
+            var $personRequired = $('.person-required');
+            var $companyRequired = $('.company-required');
+            var $firstNameInput = $('#id_quick_first_name');
+            var $lastNameInput = $('#id_quick_last_name');
+            var $companyNameInput = $('#id_quick_company_name');
+
+            if (customerType === 'company') {
+                $personFields.hide();
+                $personRequired.hide();
+                $companyRequired.show();
+                $firstNameInput.prop('required', false);
+                $lastNameInput.prop('required', false);
+                $companyNameInput.prop('required', true);
+            } else {
+                $personFields.show();
+                $personRequired.show();
+                $companyRequired.hide();
+                $firstNameInput.prop('required', true);
+                $lastNameInput.prop('required', true);
+                $companyNameInput.prop('required', false);
+            }
+        }
+
+        // Add change event listener to customer type dropdown
+        $customerType.on('change', togglePersonFields);
 
         // Store target select when modal is opened
         window.openCustomerQuickCreateModal = function(selectElementId) {
@@ -143,6 +199,9 @@
             }
 
             $('#id_quick_nationality').val('').trigger('change');
+            // Set customer type to person by default and toggle fields
+            $customerType.val('person');
+            togglePersonFields();
             $modal.modal('show');
         };
 
@@ -164,8 +223,11 @@
                         // Add new customer to target select
                         if (targetSelectId) {
                             var $targetSelect = $('#' + targetSelectId);
+                            var displayName = response.customer.company_name ?
+                                response.customer.full_name + ' (' + response.customer.company_name + ')' :
+                                response.customer.full_name;
                             var newOption = new Option(
-                                response.customer.full_name,
+                                displayName,
                                 response.customer.id,
                                 true,
                                 true
@@ -213,6 +275,8 @@
             $form[0].reset();
             $errors.addClass('d-none').html('');
             $('#id_quick_nationality').val('').trigger('change');
+            $customerType.val('person');
+            togglePersonFields();
             targetSelectId = null;
         });
     })();

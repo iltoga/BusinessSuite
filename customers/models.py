@@ -44,6 +44,11 @@ GENDERS = [
     ),
 ]
 
+CUSTOMER_TYPE_CHOICES = [
+    ("person", "Person"),
+    ("company", "Company"),
+]
+
 
 class CustomerQuerySet(models.QuerySet):
     # Return a queryset of active customers
@@ -63,6 +68,7 @@ class CustomerManager(models.Manager):
         return self.filter(
             models.Q(first_name__icontains=query)
             | models.Q(last_name__icontains=query)
+            | models.Q(company_name__icontains=query)
             | models.Q(email__icontains=query)
             | models.Q(telephone__icontains=query)
             | models.Q(telegram__icontains=query)
@@ -73,13 +79,21 @@ class CustomerManager(models.Manager):
 class Customer(models.Model):
     # Fields are ordered: default fields, custom fields, and finally relationships
     id = models.AutoField(primary_key=True)
-    first_name = models.CharField(max_length=50, db_index=True)
-    last_name = models.CharField(max_length=50, db_index=True)
+    title = models.CharField(choices=TITLES_CHOICES, max_length=50, blank=True, null=True)
+    customer_type = models.CharField(
+        max_length=20,
+        choices=CUSTOMER_TYPE_CHOICES,
+        default="person",
+        db_index=True,
+    )
+    first_name = models.CharField(max_length=50, db_index=True, blank=True, null=True)
+    last_name = models.CharField(max_length=50, db_index=True, blank=True, null=True)
+    company_name = models.CharField(max_length=100, blank=True, null=True, db_index=True)
     email = models.EmailField(
         max_length=50, unique=True, blank=True, null=True, validators=[validate_email], db_index=True
     )
     telephone = models.CharField(
-        max_length=50, unique=True, blank=False, null=False, validators=[validate_phone_number], db_index=True
+        max_length=50, unique=True, blank=True, null=True, validators=[validate_phone_number], db_index=True
     )
     whatsapp = models.CharField(
         max_length=50, unique=True, blank=True, null=True, validators=[validate_phone_number], db_index=True
@@ -90,7 +104,7 @@ class Customer(models.Model):
     facebook = models.CharField(max_length=50, blank=True, null=True, db_index=True)
     instagram = models.CharField(max_length=50, blank=True, null=True, db_index=True)
     twitter = models.CharField(max_length=50, blank=True, null=True, db_index=True)
-    title = models.CharField(choices=TITLES_CHOICES, max_length=50)
+    npwp = models.CharField(max_length=30, blank=True, null=True, db_index=True, verbose_name="NPWP (Indonesia)")
     nationality = models.ForeignKey(
         CountryCode,
         on_delete=models.PROTECT,
@@ -112,7 +126,6 @@ class Customer(models.Model):
 
     class Meta:
         ordering = ["first_name", "last_name"]
-        unique_together = (("first_name", "last_name"),)
 
     def __str__(self):
         return self.full_name
@@ -130,11 +143,33 @@ class Customer(models.Model):
 
     @property
     def full_name(self):
-        return f"{self.first_name} {self.last_name}"
+        # For companies, return company name if person names are not populated
+        if self.customer_type == "company" and not (self.first_name and self.last_name):
+            return self.company_name or "Unknown Company"
+        # For persons or companies with person names
+        if self.first_name and self.last_name:
+            return f"{self.first_name} {self.last_name}"
+        # Fallback
+        return self.company_name or "Unknown"
+
+    @property
+    def full_name_with_company(self):
+        if self.company_name:
+            return f"{self.full_name} ({self.company_name})"
+        return self.full_name
 
     def clean(self):
         if self.notify_documents_expiration and not self.notify_by:
             raise ValidationError("If notify expiration is true, notify by is mandatory.")
+        # Custom validation: either first+last name, or company name, or all three must be populated
+        first_last_filled = bool(self.first_name and self.last_name)
+        company_filled = bool(self.company_name)
+        if not (
+            (first_last_filled and not company_filled)
+            or (company_filled and not first_last_filled)
+            or (first_last_filled and company_filled)
+        ):
+            raise ValidationError("Either both first and last name, or company name, or all three must be populated.")
 
     @property
     def upload_folder(self):

@@ -37,11 +37,15 @@ class CustomerData:
     """Structured data for customer information."""
 
     full_name: str
+    customer_type: str = "person"  # "person" or "company"
+    company_name: Optional[str] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     email: Optional[str] = None
     phone: Optional[str] = None
     mobile_phone: Optional[str] = None
+    npwp: Optional[str] = None
+    address_bali: Optional[str] = None
 
 
 @dataclass
@@ -83,13 +87,28 @@ class LLMInvoiceParser:
                 "type": "object",
                 "properties": {
                     "full_name": {"type": "string"},
+                    "customer_type": {"type": "string", "enum": ["person", "company"]},
+                    "company_name": {"type": ["string", "null"]},
                     "first_name": {"type": ["string", "null"]},
                     "last_name": {"type": ["string", "null"]},
                     "email": {"type": ["string", "null"]},
                     "phone": {"type": ["string", "null"]},
                     "mobile_phone": {"type": ["string", "null"]},
+                    "npwp": {"type": ["string", "null"]},
+                    "address_bali": {"type": ["string", "null"]},
                 },
-                "required": ["full_name", "first_name", "last_name", "email", "phone", "mobile_phone"],
+                "required": [
+                    "full_name",
+                    "customer_type",
+                    "company_name",
+                    "first_name",
+                    "last_name",
+                    "email",
+                    "phone",
+                    "mobile_phone",
+                    "npwp",
+                    "address_bali",
+                ],
                 "additionalProperties": False,
             },
             "invoice": {
@@ -232,12 +251,12 @@ class LLMInvoiceParser:
 
             logger.info(f"Parsing invoice file: {filename} (type: {file_type}, model: {self.model})")
 
-            # For PDF and images, use multimodal vision
-            if file_type in ["pdf", "png", "jpg", "jpeg", "gif", "webp"]:
+            # For PDF, images, and Word documents, use multimodal vision
+            if file_type in ["pdf", "png", "jpg", "jpeg", "gif", "webp", "docx", "doc"]:
                 return self._parse_with_vision(file_bytes, filename, file_type)
 
-            # For Excel and Word, extract text first then use vision on text
-            elif file_type in ["xlsx", "xls", "docx", "doc"]:
+            # For Excel, extract text first then use vision on text
+            elif file_type in ["xlsx", "xls"]:
                 return self._parse_structured_document(file_bytes, filename, file_type)
 
             else:
@@ -250,10 +269,10 @@ class LLMInvoiceParser:
 
     def _parse_with_vision(self, file_bytes: bytes, filename: str, file_type: str) -> Optional[ParsedInvoiceResult]:
         """
-        Parse PDF or image using GPT-5-mini vision capabilities.
+        Parse PDF, DOCX, or image using vision capabilities.
         """
         try:
-            # For PDF, we need to convert to images first (GPT vision accepts images, not raw PDFs)
+            # For PDF and DOCX, we need to convert to images first (GPT vision accepts images)
             if file_type == "pdf":
                 # Import here to avoid dependency issues if not needed
                 from pdf2image import convert_from_bytes
@@ -262,6 +281,72 @@ class LLMInvoiceParser:
                 # Use first page for now (could extend to multi-page)
                 img_byte_arr = BytesIO()
                 images[0].save(img_byte_arr, format="PNG")
+                image_bytes = img_byte_arr.getvalue()
+            elif file_type in ["docx", "doc"]:
+                # Convert DOCX to image by rendering text content
+                from docx import Document
+                from PIL import Image, ImageDraw, ImageFont
+
+                # Extract text and tables from DOCX
+                doc = Document(BytesIO(file_bytes))
+                lines = []
+
+                # Get paragraphs
+                for para in doc.paragraphs:
+                    if para.text.strip():
+                        lines.append(para.text)
+
+                # Get tables
+                for table in doc.tables:
+                    for row in table.rows:
+                        row_text = " | ".join([cell.text.strip() for cell in row.cells if cell.text.strip()])
+                        if row_text:
+                            lines.append(row_text)
+
+                # Create an image from the text
+                text_content = "\n".join(lines)
+
+                # Create a white image with text
+                img_width = 1200
+                font_size = 20
+                line_height = 30
+                padding = 40
+
+                try:
+                    font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", font_size)
+                except:
+                    font = ImageFont.load_default()
+
+                # Calculate image height based on content
+                img_height = max(800, len(lines) * line_height + padding * 2)
+
+                img = Image.new("RGB", (img_width, img_height), color="white")
+                draw = ImageDraw.Draw(img)
+
+                # Draw text line by line
+                y_position = padding
+                for line in lines:
+                    # Wrap long lines
+                    if len(line) > 80:
+                        words = line.split()
+                        current_line = ""
+                        for word in words:
+                            if len(current_line + " " + word) <= 80:
+                                current_line += " " + word if current_line else word
+                            else:
+                                draw.text((padding, y_position), current_line, fill="black", font=font)
+                                y_position += line_height
+                                current_line = word
+                        if current_line:
+                            draw.text((padding, y_position), current_line, fill="black", font=font)
+                            y_position += line_height
+                    else:
+                        draw.text((padding, y_position), line, fill="black", font=font)
+                        y_position += line_height
+
+                # Convert to bytes
+                img_byte_arr = BytesIO()
+                img.save(img_byte_arr, format="PNG")
                 image_bytes = img_byte_arr.getvalue()
             else:
                 image_bytes = file_bytes
@@ -417,7 +502,25 @@ IMPORTANT EXTRACTION RULES:
 7. confidence_score: 0.9+ if clear, 0.5-0.8 if partially unclear, <0.5 if very uncertain
 8. For missing optional fields, use null
 
-9. **CRITICAL - LINE ITEMS WITH MULTIPLE PEOPLE:**
+9. **CRITICAL - CUSTOMER TYPE DETECTION:**
+   Analyze the "Bill To:" section to determine customer_type:
+   - If it contains ONLY a person's first and last name → customer_type: "person"
+   - If it contains ONLY a company name (often starting with "PT.", "CV.", "Ltd.", "Inc.", etc.) → customer_type: "company"
+   - If BOTH company name AND person name are present → customer_type: "person" (populate both company_name and first_name/last_name)
+
+   For PERSON customers:
+   - Extract first_name and last_name
+   - Extract company_name (if present)
+
+   For COMPANY customers:
+   - Extract company_name (the business name)
+
+   Additional fields to try to extract from "Bill To:" section:
+   - phone or mobile_phone (telephone number)
+   - npwp (Indonesian tax ID, usually 15 digits with dots/dashes)
+   - address_bali (address)
+
+10. **CRITICAL - LINE ITEMS WITH MULTIPLE PEOPLE:**
    If a line item description mentions MULTIPLE people or has quantity > 1:
    - CREATE SEPARATE LINE ITEMS for EACH person
    - Set quantity=1 for each separate line item
@@ -446,13 +549,18 @@ IMPORTANT EXTRACTION RULES:
 
    WRONG (do NOT do this): One line item with quantity=2 and both names in notes
 
-10. For line items with only ONE person:
+11. For line items with only ONE person:
     - Extract person name/details to 'notes' field
     - Keep generic service description in 'description'
     - Example: "Visa for John Smith" → description: "Visa for", notes: "John Smith"
 
 Look carefully at the document for:
-- Customer name and contact info
+- Customer type (person vs company) in "Bill To:" section
+- Company name (if present, often starts with PT., CV., etc.)
+- Person name (first and last name)
+- Telephone number
+- NPWP (tax ID)
+- Address in Bali
 - Invoice number and dates
 - Line items with codes, descriptions, quantities, prices
 - Multiple people mentioned in a single line item (split into separate items!)
@@ -484,11 +592,15 @@ INVOICE TEXT:
         customer_dict = parsed_data.get("customer", {})
         customer = CustomerData(
             full_name=customer_dict.get("full_name", ""),
+            customer_type=customer_dict.get("customer_type", "person"),
+            company_name=customer_dict.get("company_name"),
             first_name=customer_dict.get("first_name"),
             last_name=customer_dict.get("last_name"),
             email=customer_dict.get("email"),
             phone=customer_dict.get("phone"),
             mobile_phone=customer_dict.get("mobile_phone"),
+            npwp=customer_dict.get("npwp"),
+            address_bali=customer_dict.get("address_bali"),
         )
 
         # Extract invoice data
@@ -536,8 +648,8 @@ INVOICE TEXT:
         errors = []
 
         # Validate customer
-        if not result.customer.full_name:
-            errors.append("Customer name is missing")
+        if not (result.customer.full_name or result.customer.company_name):
+            errors.append("Customer name or company name is missing")
 
         # Validate invoice
         if not result.invoice.invoice_no:
@@ -559,8 +671,9 @@ INVOICE TEXT:
             except ValueError:
                 errors.append(f"Invalid due date format: {result.invoice.due_date}")
 
-        if result.invoice.total_amount <= 0:
-            errors.append("Total amount must be greater than 0")
+        # Allow zero total amount for draft/incomplete invoices
+        # if result.invoice.total_amount <= 0:
+        #     errors.append("Total amount must be greater than 0")
 
         # Validate line items
         if not result.line_items:
@@ -569,8 +682,9 @@ INVOICE TEXT:
             for i, item in enumerate(result.line_items):
                 if not item.description:
                     errors.append(f"Line item {i+1}: description is missing")
-                if item.amount <= 0:
-                    errors.append(f"Line item {i+1}: amount must be greater than 0")
+                # Allow zero-amount line items; only negative amounts are invalid
+                if item.amount < 0:
+                    errors.append(f"Line item {i+1}: amount cannot be negative")
 
         # Validate total matches sum of line items
         if result.line_items:

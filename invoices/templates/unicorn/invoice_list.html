@@ -8,7 +8,7 @@
 
         <div class="col mb-2 p-2">
             <!-- Search form -->
-            {% include 'components/list_search_form.html' with placeholder='Search Invoices...' %}
+            {% include 'components/list_search_form.html' with placeholder='Search Invoices...' extra_html='invoices/_list_search_form_extra.html' %}
             {% if user|has_perm:'invoices,invoice,add' %}
             <a href="{% url 'invoice-create' %}" class="btn btn-primary">New invoice</a>
             {% endif %}

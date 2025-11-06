@@ -6,15 +6,36 @@ from django.shortcuts import get_object_or_404
 from matplotlib import widgets
 
 from core.models import CountryCode
-from customers.models import GENDERS, NOTIFY_BY_CHOICES, Customer
+from customers.models import CUSTOMER_TYPE_CHOICES, GENDERS, NOTIFY_BY_CHOICES, Customer
 
 
 class CustomerForm(forms.ModelForm):
+    customer_type = forms.ChoiceField(
+        choices=CUSTOMER_TYPE_CHOICES,
+        required=True,
+        initial="person",
+        widget=forms.RadioSelect,
+        label="Customer Type",
+    )
+    company_name = forms.CharField(
+        max_length=100,
+        required=False,
+        label="Company Name",
+    )
     # add first_name with validation: first letter must be uppercase
     first_name = forms.CharField(
         max_length=50,
-        required=True,
+        required=False,
         widget=forms.TextInput(attrs={"pattern": "[A-Z][a-z]*"}),
+    )
+    last_name = forms.CharField(
+        max_length=50,
+        required=False,
+    )
+    npwp = forms.CharField(
+        max_length=30,
+        required=False,
+        label="NPWP (Tax ID)",
     )
     gender = forms.ChoiceField(choices=GENDERS, required=False)
     notify_documents_expiration = forms.BooleanField(widget=forms.CheckboxInput, required=False)
@@ -24,17 +45,20 @@ class CustomerForm(forms.ModelForm):
         label="Import data from Passport",
     )
     birthdate = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}), required=False)
-    telephone = forms.CharField(required=True)
+    telephone = forms.CharField(required=False)
 
     class Meta:
         model = Customer
         fields = [
+            "customer_type",
+            "company_name",
             "first_name",
             "last_name",
             "title",
             "gender",
             "nationality",
             "birthdate",
+            "npwp",
             "email",
             "telephone",
             "whatsapp",
@@ -57,8 +81,27 @@ class CustomerForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
-        # Move 'passport_file' to the beginning of the form fields
-        self.fields = OrderedDict([("passport_file", self.fields["passport_file"])] + list(self.fields.items()))
+        # Move 'passport_file' after customer_type and company_name
+        fields_order = ["customer_type", "company_name", "passport_file"]
+        remaining_fields = [(k, v) for k, v in self.fields.items() if k not in fields_order]
+        self.fields = OrderedDict([(k, self.fields[k]) for k in fields_order if k in self.fields] + remaining_fields)
+
+    def clean(self):
+        cleaned_data = super().clean()
+        customer_type = cleaned_data.get("customer_type")
+        first_name = cleaned_data.get("first_name")
+        last_name = cleaned_data.get("last_name")
+        company_name = cleaned_data.get("company_name")
+
+        # Validation: person must have first and last name, company must have company name
+        if customer_type == "person":
+            if not first_name or not last_name:
+                raise forms.ValidationError("First name and last name are required for person customers.")
+        elif customer_type == "company":
+            if not company_name:
+                raise forms.ValidationError("Company name is required for company customers.")
+
+        return cleaned_data
 
     # def save(self, commit=True):
     #     instance = super().save(commit=False)

@@ -101,9 +101,13 @@ class InvoiceSingleImportView(PermissionRequiredMixin, View):
             if result.customer:
                 response_data["customer"] = {
                     "id": result.customer.pk,
+                    "title": result.customer.title or "N/A",
                     "name": result.customer.full_name,
                     "email": result.customer.email or "N/A",
                     "phone": result.customer.telephone or "N/A",
+                    "address": result.customer.address_bali or "N/A",
+                    "company": result.customer.company_name or "N/A",
+                    "npwp": result.customer.npwp or "N/A",
                 }
 
             if result.errors:

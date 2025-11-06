@@ -101,6 +101,49 @@ def restore_stream(request):
 
 
 @superuser_required
+@require_POST
+def upload_backup(request):
+    """Handle backup file upload"""
+    if "backup_file" not in request.FILES:
+        return JsonResponse({"ok": False, "error": "No file provided"}, status=400)
+
+    uploaded_file = request.FILES["backup_file"]
+
+    # Validate file extension
+    if not (
+        uploaded_file.name.endswith(".json")
+        or uploaded_file.name.endswith(".json.gz")
+        or uploaded_file.name.endswith(".gz")
+    ):
+        return JsonResponse(
+            {"ok": False, "error": "Invalid file type. Only .json or .json.gz files are allowed."}, status=400
+        )
+
+    # Save to backups directory
+    backups_dir = os.path.join(settings.BASE_DIR, "backups")
+    os.makedirs(backups_dir, exist_ok=True)
+
+    # Generate unique filename with timestamp if needed
+    import datetime
+
+    timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    base_name = os.path.splitext(uploaded_file.name)[0]
+    ext = uploaded_file.name[len(base_name) :]
+    filename = f"uploaded-{timestamp}-{base_name}{ext}"
+
+    file_path = os.path.join(backups_dir, filename)
+
+    # Write the uploaded file
+    try:
+        with open(file_path, "wb+") as destination:
+            for chunk in uploaded_file.chunks():
+                destination.write(chunk)
+        return JsonResponse({"ok": True, "filename": filename})
+    except Exception as e:
+        return JsonResponse({"ok": False, "error": str(e)}, status=500)
+
+
+@superuser_required
 def manage_server_page(request):
     return render(request, "admin_tools/manage_server.html", {})
 

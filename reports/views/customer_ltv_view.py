@@ -17,10 +17,11 @@ class CustomerLifetimeValueView(LoginRequiredMixin, TemplateView):
         context = super().get_context_data(**kwargs)
 
         # Get all customers with their revenue stats
+        # Use distinct=True to avoid duplication when customer has multiple related records
         customers = Customer.objects.annotate(
-            total_revenue=Sum("invoices__total_amount"),
-            invoice_count=Count("invoices"),
-            application_count=Count("doc_applications"),
+            total_revenue=Sum("invoices__total_amount", distinct=True),
+            invoice_count=Count("invoices", distinct=True),
+            application_count=Count("doc_applications", distinct=True),
         ).order_by("-total_revenue")
 
         # Filter out customers with no revenue

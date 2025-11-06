@@ -2,27 +2,101 @@
 {% block content %}
 <h1>Restore Database</h1>
 
-<label for="backup-select">Choose backup:</label>
-<select id="backup-select">
-  {% for b in backups %}
-    <option value="{{ b }}">{{ b }}</option>
-  {% endfor %}
-</select>
-<button id="start-restore" class="btn btn-danger">Start Restore</button>
+<div class="mb-4">
+  <h3>Option 1: Restore from Existing Backup</h3>
+  <div class="mb-3">
+    <label for="backup-select" class="form-label">Choose backup:</label>
+    <select id="backup-select" class="form-select" {% if not backups %}disabled{% endif %}>
+      {% for b in backups %}
+        <option value="{{ b }}">{{ b }}</option>
+      {% empty %}
+        <option value="">No backups available</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button id="start-restore" class="btn btn-danger" {% if not backups %}disabled{% endif %}>Start Restore from Existing Backup</button>
+</div>
+
+<hr class="my-4">
+
+<div class="mb-4">
+  <h3>Option 2: Upload and Restore from File</h3>
+  <form id="upload-form" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label for="backup-file" class="form-label">Choose backup file (.json or .json.gz):</label>
+      <input type="file" class="form-control" id="backup-file" name="backup_file" accept=".json,.gz" required>
+    </div>
+    <button type="submit" class="btn btn-warning" id="upload-restore-btn">Upload and Restore</button>
+  </form>
+</div>
 
 <h3>Live log</h3>
 <pre id="log" style="background:#111;color:#eee;padding:1rem;max-height:300px;overflow:auto;"></pre>
 
 <script>
-document.getElementById('start-restore').addEventListener('click', function(){
-  const log = document.getElementById('log');
+const log = document.getElementById('log');
+
+function startRestore(filename) {
   log.textContent = '';
-  const file = document.getElementById('backup-select').value;
-  const es = new EventSource('{% url "admin_tools:restore_start" %}?file=' + encodeURIComponent(file));
+  const es = new EventSource('{% url "admin_tools:restore_start" %}?file=' + encodeURIComponent(filename));
   es.onmessage = function(e){
     try{ const d = JSON.parse(e.data); log.textContent += d.message + '\n'; log.scrollTop = log.scrollHeight; }catch(err){ console.log(err); }
   };
-  es.onerror = function(e){ log.textContent += 'Connection closed'; es.close(); };
+  es.onerror = function(e){ log.textContent += 'Connection closed\n'; es.close(); };
+}
+
+// Restore from existing backup
+document.getElementById('start-restore').addEventListener('click', function(){
+  const file = document.getElementById('backup-select').value;
+  if (!file) {
+    alert('Please select a backup file');
+    return;
+  }
+  startRestore(file);
+});
+
+// Upload and restore
+document.getElementById('upload-form').addEventListener('submit', async function(e){
+  e.preventDefault();
+  const fileInput = document.getElementById('backup-file');
+  const file = fileInput.files[0];
+  if (!file) {
+    alert('Please select a file');
+    return;
+  }
+
+  const uploadBtn = document.getElementById('upload-restore-btn');
+  uploadBtn.disabled = true;
+  uploadBtn.textContent = 'Uploading...';
+  log.textContent = 'Uploading backup file...\n';
+
+  const formData = new FormData();
+  formData.append('backup_file', file);
+
+  try {
+    const response = await fetch('{% url "admin_tools:upload_backup" %}', {
+      method: 'POST',
+      body: formData,
+      headers: {
+        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+      }
+    });
+
+    const result = await response.json();
+    if (result.ok) {
+      log.textContent += 'Upload complete: ' + result.filename + '\n';
+      log.textContent += 'Starting restore...\n';
+      startRestore(result.filename);
+    } else {
+      log.textContent += 'Upload failed: ' + result.error + '\n';
+    }
+  } catch (err) {
+    log.textContent += 'Upload error: ' + err + '\n';
+  } finally {
+    uploadBtn.disabled = false;
+    uploadBtn.textContent = 'Upload and Restore';
+  }
 });
 </script>
 
