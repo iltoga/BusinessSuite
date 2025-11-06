@@ -11,10 +11,15 @@ from invoices.models.invoice import InvoiceApplication
 class InvoiceListView(UnicornSearchListView):
     model = Invoice
     model_search_method = "search_invoices"
+    hide_paid = True
 
     def mount(self):
         super().mount()
         self.today = timezone.now().date()
+
+    def handle_hide_paid(self):
+        # Trigger a refresh when the hide_paid checkbox changes state
+        self.search()
 
     def get_queryset(self):
         """Override to add optimized prefetching and annotations."""
@@ -40,4 +45,13 @@ class InvoiceListView(UnicornSearchListView):
             .annotate(total_paid=paid_sum, total_due=F("total_amount") - paid_sum)
         )
 
+        return queryset
+
+    def apply_filters(self, queryset):
+        queryset = super().apply_filters(queryset)
+        return self.apply_status_filters(queryset)
+
+    def apply_status_filters(self, queryset):
+        if self.hide_paid:
+            queryset = queryset.exclude(status=Invoice.PAID)
         return queryset

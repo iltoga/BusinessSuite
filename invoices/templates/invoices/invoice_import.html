@@ -633,6 +633,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 progressMessage.classList.remove('active');
                 displayResults(data);
                 break;
+
+            default:
+                console.warn('Unknown SSE event:', eventType);
         }
     }
 
@@ -650,10 +653,22 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    function updateFileDetail(index, detailHTML) {
+    function updateFileDetail(index, detailHTML, errors = null) {
         const detail = document.getElementById(`file-detail-${index}`);
         if (detail) {
             detail.innerHTML = detailHTML;
+            // Add detailed errors if present
+            if (errors && errors.length > 0) {
+                const errorList = document.createElement('ul');
+                errorList.className = 'text-danger mt-2 mb-0 small';
+                errorList.style.paddingLeft = '20px';
+                errors.forEach(err => {
+                    const li = document.createElement('li');
+                    li.textContent = err;
+                    errorList.appendChild(li);
+                });
+                detail.appendChild(errorList);
+            }
         }
     }
 
@@ -680,32 +695,57 @@ document.addEventListener('DOMContentLoaded', function() {
         data.results.forEach(result => {
             const row = document.createElement('tr');
 
-            let statusBadge = '';
+            // Status badge
+            let badgeClass = 'bg-secondary';
+            let badgeText = result.status;
             if (result.status === 'imported') {
-                statusBadge = '<span class="badge bg-success">Imported</span>';
+                badgeClass = 'bg-success';
+                badgeText = 'Imported';
             } else if (result.status === 'duplicate') {
-                statusBadge = '<span class="badge bg-warning">Duplicate</span>';
-            } else {
-                statusBadge = '<span class="badge bg-danger">Error</span>';
+                badgeClass = 'bg-warning';
+                badgeText = 'Duplicate';
+            } else if (result.status === 'error') {
+                badgeClass = 'bg-danger';
+                badgeText = 'Error';
             }
 
-            const customerName = result.customer ? result.customer.name : 'N/A';
-            const invoiceNo = result.invoice ? result.invoice.invoice_no : 'N/A';
-            const amount = result.invoice ? result.invoice.total_amount : 'N/A';
-            const invoiceUrl = result.invoice ? result.invoice.url : '#';
+            // Filename column
+            const filenameCell = document.createElement('td');
+            filenameCell.textContent = result.filename;
+            row.appendChild(filenameCell);
 
-            const viewLink = result.invoice
-                ? `<a href="${invoiceUrl}" class="btn btn-sm btn-primary" target="_blank"><i class="bi bi-eye"></i> View</a>`
-                : '-';
+            // Status column
+            const statusCell = document.createElement('td');
+            statusCell.innerHTML = `<span class="badge ${badgeClass}">${badgeText}</span>`;
+            row.appendChild(statusCell);
 
-            row.innerHTML = `
-                <td>${result.filename}</td>
-                <td>${statusBadge}</td>
-                <td>${customerName}</td>
-                <td>${invoiceNo}</td>
-                <td>${amount}</td>
-                <td>${viewLink}</td>
-            `;
+            // Details column
+            const detailsCell = document.createElement('td');
+            if (result.status === 'imported' && result.invoice) {
+                detailsCell.innerHTML = `
+                    <strong>${result.invoice.invoice_no}</strong><br>
+                    Customer: ${result.invoice.customer_name}<br>
+                    Amount: ${result.invoice.total_amount}<br>
+                    <a href="${result.invoice.url}" target="_blank" class="btn btn-sm btn-primary mt-1">
+                        <i class="bi bi-eye"></i> View Invoice
+                    </a>
+                `;
+            } else {
+                detailsCell.innerHTML = result.message;
+                // Add detailed errors if present
+                if (result.errors && result.errors.length > 0) {
+                    const errorList = document.createElement('ul');
+                    errorList.className = 'text-danger mt-2 mb-0 small';
+                    errorList.style.paddingLeft = '20px';
+                    result.errors.forEach(err => {
+                        const li = document.createElement('li');
+                        li.textContent = err;
+                        errorList.appendChild(li);
+                    });
+                    detailsCell.appendChild(errorList);
+                }
+            }
+            row.appendChild(detailsCell);
             resultsTableBody.appendChild(row);
         });
 

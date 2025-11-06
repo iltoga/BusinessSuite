@@ -13,15 +13,35 @@
       </div>
       <table class="table">
         <tbody>
+          <tr><th scope="row" class="text-start">Customer Type</th><td class="text-start">{{ customer.get_customer_type_display }}</td></tr>
+          {% if customer.customer_type == 'company' %}
+          <tr><th scope="row" class="text-start">Company Name</th><td class="text-start">{{ customer.company_name }}</td></tr>
+          {% endif %}
+          {% if customer.first_name %}
           <tr><th scope="row" class="text-start">First Name</th><td class="text-start">{{ customer.first_name }}</td></tr>
+          {% endif %}
+          {% if customer.last_name %}
           <tr><th scope="row" class="text-start">Last Name</th><td class="text-start">{{ customer.last_name }}</td></tr>
+          {% endif %}
+          {% if customer.title %}
+          <tr><th scope="row" class="text-start">Title</th><td class="text-start">{{ customer.title }}</td></tr>
+          {% endif %}
+          {% if customer.gender %}
+          <tr><th scope="row" class="text-start">Gender</th><td class="text-start">{{ customer.get_gender_display }}</td></tr>
+          {% endif %}
           <tr><th scope="row" class="text-start">Email</th><td class="text-start">{{ customer.email }}</td></tr>
           <tr><th scope="row" class="text-start">Telephone</th><td class="text-start">{{ customer.telephone }}</td></tr>
           <tr><th scope="row" class="text-start">Whatsapp</th><td class="text-start">{{ customer.whatsapp }}</td></tr>
           <tr><th scope="row" class="text-start">Telegram</th><td class="text-start">{{ customer.telegram }}</td></tr>
-          <tr><th scope="row" class="text-start">Title</th><td class="text-start">{{ customer.title }}</td></tr>
+          {% if customer.npwp %}
+          <tr><th scope="row" class="text-start">NPWP</th><td class="text-start">{{ customer.npwp }}</td></tr>
+          {% endif %}
+          {% if customer.nationality %}
           <tr><th scope="row" class="text-start">Nationality</th><td class="text-start">{{ customer.nationality }}</td></tr>
+          {% endif %}
+          {% if customer.birthdate %}
           <tr><th scope="row" class="text-start">Birthdate</th><td class="text-start">{{ customer.birthdate }}</td></tr>
+          {% endif %}
           <tr><th scope="row" class="text-start">Address in Bali</th><td class="text-start">{{ customer.address_bali }}</td></tr>
           <tr><th scope="row" class="text-start">Address Abroad</th><td class="text-start">{{ customer.address_abroad }}</td></tr>
           <tr><th scope="row" class="text-start">Notify Documents Expiration</th><td class="text-start">{{ customer.notify_documents_expiration|boolean_to_yes_no }}</td></tr>

@@ -17,7 +17,16 @@
         {% csrf_token %}
 
         {% for field in form %}
-            {% if field.name == 'passport_file' %}
+            {% if field.name == 'customer_type' %}
+            <div class="mb-3">
+                <label class="form-label">{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}
+                <div class="invalid-feedback d-block">{{ field.errors }}</div>
+                {% endif %}
+            </div>
+            {% elif field.name == 'passport_file' %}
+            <div id="person_fields_container">
             {{ field | as_crispy_field }}
             <!-- button to check the file via ocr using restApiCall -->
             <div class="mb-3">
@@ -45,9 +54,14 @@
               <img id="clipboard_image_preview" style="display:none; max-width:200px; margin-top:10px;">
               <div id="clipboard_upload_status" class="mt-2"></div>
             </div>
-        {% else %}
+            </div>
+            {% elif field.name in 'first_name,last_name,title,gender,birthdate' %}
+            <div class="person-only-field">
             {{ field | as_crispy_field }}
-        {% endif %}
+            </div>
+            {% else %}
+                {{ field | as_crispy_field }}
+            {% endif %}
         {% endfor %}
 
         <div>
@@ -67,6 +81,38 @@
             var resizedImage = document.getElementById('resized_image_id');
             var firstNameInput = document.getElementById('id_first_name');
             var lastNameInput = document.getElementById('id_last_name');
+            var customerTypeInputs = document.querySelectorAll('input[name="customer_type"]');
+
+            // Function to toggle person-only fields
+            function togglePersonFields() {
+                var customerType = document.querySelector('input[name="customer_type"]:checked').value;
+                var personFields = document.querySelectorAll('.person-only-field');
+                var personFieldsContainer = document.getElementById('person_fields_container');
+
+                if (customerType === 'company') {
+                    personFields.forEach(function(field) {
+                        field.style.display = 'none';
+                    });
+                    if (personFieldsContainer) {
+                        personFieldsContainer.style.display = 'none';
+                    }
+                } else {
+                    personFields.forEach(function(field) {
+                        field.style.display = 'block';
+                    });
+                    if (personFieldsContainer) {
+                        personFieldsContainer.style.display = 'block';
+                    }
+                }
+            }
+
+            // Add event listeners to customer type radio buttons
+            customerTypeInputs.forEach(function(input) {
+                input.addEventListener('change', togglePersonFields);
+            });
+
+            // Initialize on page load
+            togglePersonFields();
 
             firstNameInput.addEventListener('change', function(e) {
                 firstNameInput.value = capitalizeFirstLetter(firstNameInput.value);
@@ -77,6 +123,12 @@
             });
 
             passport_file_btn.addEventListener('click', function(e) {
+                var customerType = document.querySelector('input[name="customer_type"]:checked').value;
+                if (customerType === 'company') {
+                    alert('Passport import is only available for person customers.');
+                    return;
+                }
+
                 var url = "{% url 'api-ocr-check' %}";
                 var formData = new FormData();
                 formData.append('file', document.querySelector('input[name="passport_file"]').files[0],);
@@ -123,6 +175,13 @@
 
             // Clipboard image paste logic
             $('#clipboard_paste_area').on('paste', function(e) {
+                var customerType = document.querySelector('input[name="customer_type"]:checked').value;
+                if (customerType === 'company') {
+                    alert('Passport import is only available for person customers.');
+                    e.preventDefault();
+                    return;
+                }
+
                 var items = (e.originalEvent || e).clipboardData.items;
                 for (var i = 0; i < items.length; i++) {
                     if (items[i].type.indexOf('image') !== -1) {

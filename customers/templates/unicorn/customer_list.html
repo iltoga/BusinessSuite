@@ -28,7 +28,8 @@
         <table class="table table-bordered table-condensed">
             <thead class="thead-light">
             <tr>
-                <th scope="col">Full Name</th>
+                <th scope="col">Customer</th>
+                <th scope="col">Type</th>
                 <th scope="col">Email</th>
                 <th scope="col">Telephone</th>
                 <th scope="col">Actions</th>
@@ -37,7 +38,14 @@
             <tbody>
             {% for customer in list_items %}
                 <tr>
-                    <td>{{ customer.full_name }}</td>
+                    <td>{{ customer.full_name_with_company }}</td>
+                    <td>
+                        {% if customer.customer_type == 'company' %}
+                            <span class="badge bg-info">Company</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Person</span>
+                        {% endif %}
+                    </td>
                     <td>{{ customer.email }}</td>
                     <td>{{ customer.telephone }}</td>
                     <td>

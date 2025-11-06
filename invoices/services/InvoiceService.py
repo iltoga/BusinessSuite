@@ -17,8 +17,17 @@ class InvoiceService:
         data = {
             "document_date": cur_date,
             "invoice_no": self.invoice.invoice_no_display,
-            "customer_name": str(self.invoice.customer),
-            "customer_telephone": self.invoice.customer.telephone,
+            "customer_name": (
+                str(self.invoice.customer.company_name)
+                if self.invoice.customer.customer_type == "company"
+                else str(self.invoice.customer.full_name)
+            ),
+            "customer_company_name": (
+                str(self.invoice.customer.company_name) if self.invoice.customer.customer_type == "person" else ""
+            ),
+            "customer_address_bali": self.invoice.customer.address_bali or "",
+            "customer_telephone": f"Mobile Ph:     {self.invoice.customer.telephone}",
+            "customer_npwp": f"NPWP:     {self.invoice.customer.npwp}" if self.invoice.customer.npwp else "",
             "invoice_date": formatutils.as_date_str(self.invoice.invoice_date),
             "total_amount": formatutils.as_currency(self.invoice.total_amount),
             "total_paid": formatutils.as_currency(self.invoice.total_paid_amount),

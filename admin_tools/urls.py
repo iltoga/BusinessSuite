@@ -11,6 +11,7 @@ urlpatterns = [
     path("backups/<path:filename>", views.download_backup, name="download_backup"),
     path("restore/", views.restore_page, name="restore_page"),
     path("restore/start/", views.restore_stream, name="restore_start"),
+    path("restore/upload/", views.upload_backup, name="upload_backup"),
     path("manage-server/", views.manage_server_page, name="manage_server"),
     path("manage-server/action/", views.manage_server_action, name="manage_server_action"),
 ]

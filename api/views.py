@@ -294,13 +294,17 @@ def customer_quick_create(request):
     try:
         # Extract data from request
         data = {
+            "title": request.data.get("title", ""),
+            "customer_type": request.data.get("customer_type", "person"),
             "first_name": request.data.get("first_name"),
             "last_name": request.data.get("last_name"),
+            "company_name": request.data.get("company_name", ""),
+            "npwp": request.data.get("npwp", ""),
             "birthdate": request.data.get("birthdate"),
             "email": request.data.get("email", None),
             "telephone": request.data.get("telephone", None),
             "whatsapp": request.data.get("whatsapp", None),
-            "title": request.data.get("title", ""),
+            "address_bali": request.data.get("address_bali", ""),
             "gender": request.data.get("gender", ""),
         }
 
@@ -313,10 +317,27 @@ def customer_quick_create(request):
             except CountryCode.DoesNotExist:
                 pass
 
-        # Validate required fields
-        if not data["first_name"] or not data["last_name"] or not data["telephone"]:
+        # Validate required fields based on customer type
+        customer_type = data.get("customer_type", "person")
+        if customer_type == "person":
+            if not data["first_name"] or not data["last_name"]:
+                return Response(
+                    {
+                        "success": False,
+                        "errors": {"__all__": ["First name and last name are required for person customers."]},
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        elif customer_type == "company":
+            if not data["company_name"]:
+                return Response(
+                    {"success": False, "errors": {"__all__": ["Company name is required for company customers."]}},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        if not data.get("telephone"):
             return Response(
-                {"success": False, "errors": {"__all__": ["First name, last name, and telephone are required."]}},
+                {"success": False, "errors": {"__all__": ["Telephone is required."]}},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -332,9 +353,11 @@ def customer_quick_create(request):
                 "success": True,
                 "customer": {
                     "id": customer.id,
-                    "full_name": customer.full_name,
+                    "full_name": customer.full_name_with_company,
                     "email": customer.email or "",
                     "telephone": customer.telephone or "",
+                    "company_name": customer.company_name or "",
+                    "npwp": customer.npwp or "",
                 },
             },
             status=status.HTTP_201_CREATED,
