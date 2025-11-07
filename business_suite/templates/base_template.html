@@ -41,7 +41,7 @@
     <div class="d-flex justify-content-center align-items-center flex-column">
         <h1 class="mb-4 text-center">Welcome to {{ SITE_NAME }}</h1>
         <p class="text-center">{{ SITE_DESCRIPTION }}</p>
-        <img class="mb-4" src="{% static 'logo_transparent.png' %}" alt="Business Suite Logo" style="width: 70%;">
+        <img class="mb-4" src="{% static LOGO_FILENAME %}" alt="Business Suite Logo" style="width: 70%;">
     </div>
 </div>
 {% endblock %}
@@ -195,10 +195,7 @@
     <nav id="sidebar">
         <div id="sidebar-header" class="text-center card-header bg-primary text-white">
                 <div class="mb-1">
-                    <img id="logo" class="rounded"
-                        src="{% static 'logo_inverted_transparent.png' %}"
-                        alt="Business Suite Logo"
-                        style="width: 90%;">
+                    <img id="logo" class="rounded" src="{% static LOGO_INVERTED_FILENAME %}" alt="Business Suite Logo" style="width: 90%;">
                     <!-- <h4>CMS/CRM Platform</h4> -->
                 </div>
                 <!-- <h3 class="text-white">CMS/CRM</h3> -->
@@ -377,10 +374,11 @@
                 </li>
                 {% endif %}
             {% endif %}
-            <li class="mt-4"><h4 class="mb-3">CRM</h4></li>
+            <!-- CRM not implemented yet -->
+            <!-- <li class="mt-4"><h4 class="mb-3">CRM</h4></li>
             <li class="mb-4">
                 <a href="#">Marketing Campaigns (TODO)</a>
-            </li>
+            </li> -->
         </ul>
 
         <ul class="list-unstyled " >

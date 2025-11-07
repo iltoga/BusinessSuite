@@ -21,9 +21,14 @@ from core.utils.dropbox_refresh_token import refresh_dropbox_token
 load_dotenv()
 
 GLOBAL_SETTINGS = {
-    "SITE_NAME": "Business Suite",
-    "SITE_DESCRIPTION": "Comprehensive ERP for service agencies: CRM, catalog, applications, invoicing, payments, document management.",
+    "SITE_NAME": os.getenv("SITE_NAME", "Business Suite"),
+    "SITE_DESCRIPTION": os.getenv(
+        "SITE_DESCRIPTION",
+        "Comprehensive ERP for service agencies: CRM, catalog, applications, invoicing, payments, document management."
+    ),
     "DOCUMENT_EXPIRATION_NOTIFICATION_DAYS": 180,
+    "LOGO_FILENAME": os.getenv("LOGO_FILENAME", "logo_transparent.png"),
+    "LOGO_INVERTED_FILENAME": os.getenv("LOGO_INVERTED_FILENAME", "logo_inverted_transparent.png"),
 }
 
 # Invoice Import Settings
