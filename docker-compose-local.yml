@@ -1,8 +1,18 @@
 services:
   db:
     container_name: postgres-srv
-    image: postgres
+    image: postgres:18
     restart: unless-stopped
+    command:
+      - "postgres"
+      - "-c"
+      - "tcp_keepalives_idle=300"
+      - "-c"
+      - "tcp_keepalives_interval=60"
+      - "-c"
+      - "tcp_keepalives_count=5"
+      - "-c"
+      - "idle_in_transaction_session_timeout=300000"
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASS}
@@ -10,11 +20,15 @@ services:
     networks:
       - dockernet
     volumes:
+      # Preferred: bind to an absolute host path set in DB_PATH
       - type: bind
         source: ${DB_PATH}
-        target: /var/lib/postgresql/data
-        bind:
-          propagation: rslave
+        target: /usr/local/var/postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME} || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     ports:
       - 5432:5432
 

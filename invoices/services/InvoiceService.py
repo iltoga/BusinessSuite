@@ -6,10 +6,11 @@ from django.utils.timezone import now as datetime_now
 from mailmerge import MailMerge
 
 import core.utils.formatutils as formatutils
+from invoices.models.invoice import Invoice
 
 
 class InvoiceService:
-    def __init__(self, invoice):
+    def __init__(self, invoice: Invoice):
         self.invoice = invoice
 
     def generate_invoice_data(self):
@@ -26,9 +27,12 @@ class InvoiceService:
                 str(self.invoice.customer.company_name) if self.invoice.customer.customer_type == "person" else ""
             ),
             "customer_address_bali": self.invoice.customer.address_bali or "",
-            "customer_telephone": f"Mobile Ph:     {self.invoice.customer.telephone}",
+            "customer_telephone": (
+                f"Mobile Ph:     {self.invoice.customer.telephone}" if self.invoice.customer.telephone else ""
+            ),
             "customer_npwp": f"NPWP:     {self.invoice.customer.npwp}" if self.invoice.customer.npwp else "",
             "invoice_date": formatutils.as_date_str(self.invoice.invoice_date),
+            "invoice_due_date": formatutils.as_date_str(self.invoice.due_date),
             "total_amount": formatutils.as_currency(self.invoice.total_amount),
             "total_paid": formatutils.as_currency(self.invoice.total_paid_amount),
             "total_due": formatutils.as_currency(self.invoice.total_due_amount),

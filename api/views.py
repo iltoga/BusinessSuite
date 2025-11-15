@@ -335,12 +335,6 @@ def customer_quick_create(request):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-        if not data.get("telephone"):
-            return Response(
-                {"success": False, "errors": {"__all__": ["Telephone is required."]}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
         # Handle empty birthdate
         if not data["birthdate"]:
             data.pop("birthdate")

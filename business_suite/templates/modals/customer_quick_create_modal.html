@@ -101,8 +101,8 @@
 
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="id_quick_telephone" class="form-label">Telephone <span class="text-danger">*</span></label>
-                            <input type="tel" class="form-control" id="id_quick_telephone" name="telephone" required>
+                            <label for="id_quick_telephone" class="form-label">Telephone</label>
+                            <input type="tel" class="form-control" id="id_quick_telephone" name="telephone">
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="id_quick_whatsapp" class="form-label">WhatsApp</label>
@@ -238,13 +238,6 @@
                         // Close modal and reset form
                         $modal.modal('hide');
                         $form[0].reset();
-
-                        // Show success message
-                        if (typeof showSuccessToast === 'function') {
-                            showSuccessToast('Customer created successfully!');
-                        } else {
-                            alert('Customer created successfully!');
-                        }
                     } else {
                         // Show errors
                         var errorHtml = '<ul class="mb-0">';

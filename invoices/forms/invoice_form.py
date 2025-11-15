@@ -76,7 +76,13 @@ class InvoiceCreateForm(forms.ModelForm):
             self.fields["invoice_no"].widget = forms.NumberInput(attrs={"min": proposed})
             self.fields["invoice_no"].initial = proposed
             self.fields["customer"].widget = forms.Select(attrs={"class": "select2"})
-            self.fields["customer"].queryset = Customer.objects.all().active()
+            # Only load minimal fields needed for display - prevents loading all related data
+            # Using only() dramatically reduces query count and data transfer
+            self.fields["customer"].queryset = (
+                Customer.objects.filter(active=True)
+                .only("id", "first_name", "last_name", "company_name", "customer_type")
+                .order_by("first_name", "last_name")
+            )
 
         if self.initial:
             customer = self.initial.get("customer", None)
@@ -162,8 +168,8 @@ class InvoiceUpdateForm(forms.ModelForm):
         model = Invoice
         fields = ["customer", "invoice_no", "invoice_date", "due_date", "total_amount", "status", "notes", "sent"]
         widgets = {
-            "invoice_date": forms.DateInput(attrs={"type": "date", "value": timezone.now().strftime("%Y-%m-%d")}),
-            "due_date": forms.DateInput(attrs={"type": "date", "value": timezone.now().strftime("%Y-%m-%d")}),
+            "invoice_date": forms.DateInput(attrs={"type": "date"}),
+            "due_date": forms.DateInput(attrs={"type": "date"}),
             "total_amount": forms.NumberInput(attrs={"readonly": True}),
             "notes": forms.Textarea(),
             "sent": forms.CheckboxInput(),
@@ -173,8 +179,16 @@ class InvoiceUpdateForm(forms.ModelForm):
         self.user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
         self.fields["customer"].disabled = True
-        self.fields["invoice_no"].disabled = True
-        self.fields["invoice_date"].disabled = True
+        # invoice_no is CharField (not disabled) so it can be edited
+        # invoice_date is NOT disabled so it can be edited
+
+    def clean_invoice_no(self):
+        """Validate invoice number hasn't changed (read-only for updates)."""
+        invoice_no = self.cleaned_data.get("invoice_no")
+        # Keep the original invoice_no - don't allow changes
+        if self.instance and self.instance.pk:
+            return str(self.instance.invoice_no)
+        return invoice_no
 
     def clean(self):
         cleaned_data = super().clean()
@@ -217,11 +231,25 @@ class InvoiceApplicationCreateForm(forms.ModelForm):
             self.fields["customer_application"].queryset = DocApplication.objects.filter(
                 pk=selected_customer_application.pk
             )
-        elif customer_applications:
+        elif customer_applications is not None:
+            # Use the provided queryset (could be empty .none() queryset)
             self.fields["customer_application"].queryset = customer_applications
         else:
-            # Allow any application - validation will be done in clean_customer_application
-            self.fields["customer_application"].queryset = DocApplication.objects.all()
+            # No customer selected - use empty queryset to avoid loading all applications
+            self.fields["customer_application"].queryset = DocApplication.objects.none()
+
+        # If data is provided (form submission), check if there's a selected customer_application
+        # and expand the queryset to include it (for dynamically added applications)
+        if self.data:
+            app_id = self.data.get(self.add_prefix("customer_application"))
+            if app_id:
+                try:
+                    # Add the submitted application to the queryset if it's not already there
+                    self.fields["customer_application"].queryset = self.fields[
+                        "customer_application"
+                    ].queryset | DocApplication.objects.filter(pk=app_id)
+                except (ValueError, TypeError):
+                    pass  # Invalid ID, let normal validation handle it
 
     def clean_customer_application(self):
         """Validate that the customer application exists and hasn't been invoiced yet."""
@@ -229,6 +257,17 @@ class InvoiceApplicationCreateForm(forms.ModelForm):
 
         if not customer_application:
             raise forms.ValidationError("Customer application is required.")
+
+        # If the application is not in the initial queryset (e.g., dynamically added via JavaScript),
+        # we need to fetch it from the database to validate it
+        if (
+            customer_application.pk
+            and not self.fields["customer_application"].queryset.filter(pk=customer_application.pk).exists()
+        ):
+            try:
+                customer_application = DocApplication.objects.get(pk=customer_application.pk)
+            except DocApplication.DoesNotExist:
+                raise forms.ValidationError("Customer application does not exist.")
 
         # Check if this application is already invoiced
         if customer_application.invoice_applications.exists():
@@ -261,14 +300,30 @@ class InvoiceApplicationUpdateForm(forms.ModelForm):
     def __init__(self, *args, customer_applications=None, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Always use DocApplication.objects.all() to allow dynamically created applications
-        # Validation will be done in clean_customer_application method
+        # Use provided queryset or limit to instance only
         if self.instance and self.instance.pk:
             self.fields["customer_application"].queryset = DocApplication.objects.filter(
                 pk=self.instance.customer_application.pk
             )
+        elif customer_applications is not None:
+            # Use the provided queryset (could be empty .none() queryset)
+            self.fields["customer_application"].queryset = customer_applications
         else:
-            self.fields["customer_application"].queryset = DocApplication.objects.all()
+            # No customer - use empty queryset to avoid loading all applications
+            self.fields["customer_application"].queryset = DocApplication.objects.none()
+
+        # If data is provided (form submission), check if there's a selected customer_application
+        # and expand the queryset to include it (for dynamically added applications)
+        if self.data:
+            app_id = self.data.get(self.add_prefix("customer_application"))
+            if app_id:
+                try:
+                    # Add the submitted application to the queryset if it's not already there
+                    self.fields["customer_application"].queryset = self.fields[
+                        "customer_application"
+                    ].queryset | DocApplication.objects.filter(pk=app_id)
+                except (ValueError, TypeError):
+                    pass  # Invalid ID, let normal validation handle it
 
         self.fields["paid_amount"].disabled = True
         self.fields["payment_status"].disabled = True
@@ -284,6 +339,17 @@ class InvoiceApplicationUpdateForm(forms.ModelForm):
 
         if not customer_application:
             raise forms.ValidationError("Customer application is required.")
+
+        # If the application is not in the initial queryset (e.g., dynamically added via JavaScript),
+        # we need to fetch it from the database to validate it
+        if (
+            customer_application.pk
+            and not self.fields["customer_application"].queryset.filter(pk=customer_application.pk).exists()
+        ):
+            try:
+                customer_application = DocApplication.objects.get(pk=customer_application.pk)
+            except DocApplication.DoesNotExist:
+                raise forms.ValidationError("Customer application does not exist.")
 
         # For existing invoice applications being updated, skip the already-invoiced check
         if self.instance and self.instance.pk:

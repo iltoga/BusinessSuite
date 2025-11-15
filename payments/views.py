@@ -59,19 +59,36 @@ class CreatePaymentView(PermissionRequiredMixin, SuccessMessageMixin, CreateView
         customer_pk = self.kwargs.get("customer_pk", None)
         invoice_application_pk = self.kwargs.get("invoice_application_pk", None)
         if customer_pk:
-            invoice_applications = InvoiceApplication.objects.filter(invoice__customer=customer_pk).not_fully_paid()
+            # Optimize: select_related to avoid N+1 queries
+            invoice_applications = (
+                InvoiceApplication.objects.filter(invoice__customer=customer_pk)
+                .not_fully_paid()
+                .select_related("customer_application__product", "customer_application__customer", "invoice")
+            )
             if not invoice_applications.exists():
                 raise ValidationError("Invoice Application does not exist or is fully paid.")
             form.fields["invoice_application"].queryset = invoice_applications
         elif invoice_application_pk:
-            invoice_application = InvoiceApplication.objects.filter(pk=invoice_application_pk).not_fully_paid().first()
+            invoice_application = (
+                InvoiceApplication.objects.filter(pk=invoice_application_pk)
+                .not_fully_paid()
+                .select_related("customer_application__product", "customer_application__customer", "invoice__customer")
+                .first()
+            )
             if not invoice_application:
                 raise ValidationError("Invoice Application does not exist or is fully paid.")
             form.fields["invoice_application"].queryset = InvoiceApplication.objects.filter(pk=invoice_application_pk)
             form.fields["from_customer"].queryset = Customer.objects.filter(pk=invoice_application.invoice.customer.pk)
         else:
-            form.fields["invoice_application"].queryset = InvoiceApplication.objects.not_fully_paid()
-            form.fields["from_customer"].queryset = Customer.objects.all().active()
+            # Optimize: use only() to load minimal fields, preventing loading all customer data
+            form.fields["invoice_application"].queryset = InvoiceApplication.objects.not_fully_paid().select_related(
+                "customer_application__product", "customer_application__customer", "invoice"
+            )
+            form.fields["from_customer"].queryset = (
+                Customer.objects.filter(active=True)
+                .only("id", "first_name", "last_name", "company_name", "customer_type")
+                .order_by("first_name", "last_name")
+            )
         return form
 
     def get_initial(self):
@@ -113,6 +130,25 @@ class UpdatePaymentView(PermissionRequiredMixin, SuccessMessageMixin, UpdateView
         kwargs = super().get_form_kwargs()
         kwargs.update({"user": self.request.user})
         return kwargs
+
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        # Optimize: limit querysets to only necessary data
+        if self.object and self.object.pk:
+            # When updating, limit to current payment's invoice application and customer
+            form.fields["invoice_application"].queryset = InvoiceApplication.objects.filter(
+                pk=self.object.invoice_application.pk
+            ).select_related("customer_application__product", "customer_application__customer", "invoice")
+            form.fields["from_customer"].queryset = Customer.objects.filter(pk=self.object.from_customer.pk)
+        else:
+            # Fallback: optimize with select_related and only()
+            form.fields["invoice_application"].queryset = InvoiceApplication.objects.not_fully_paid().select_related(
+                "customer_application__product", "customer_application__customer", "invoice"
+            )
+            form.fields["from_customer"].queryset = Customer.objects.filter(active=True).only(
+                "id", "first_name", "last_name", "company_name", "customer_type"
+            )
+        return form
 
     def get_success_url(self):
         return reverse_lazy("payment-detail", kwargs={"pk": self.object.pk})

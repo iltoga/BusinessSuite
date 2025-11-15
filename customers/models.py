@@ -171,6 +171,23 @@ class Customer(models.Model):
         ):
             raise ValidationError("Either both first and last name, or company name, or all three must be populated.")
 
+    def save(self, *args, **kwargs):
+        """
+        Override save to convert empty strings to None for unique fields.
+        This prevents duplicate empty values in unique fields (email, telephone, etc.)
+        """
+        # Convert empty strings to None for unique fields to avoid duplicate constraint violations
+        if self.email == "":
+            self.email = None
+        if self.telephone == "":
+            self.telephone = None
+        if self.whatsapp == "":
+            self.whatsapp = None
+        if self.telegram == "":
+            self.telegram = None
+
+        super().save(*args, **kwargs)
+
     @property
     def upload_folder(self):
         base_doc_path = settings.DOCUMENTS_FOLDER
@@ -205,7 +222,10 @@ class Customer(models.Model):
         If exclude_already_invoiced is True, exclude DocApplications that have already been invoiced.
         Note: by providing current_invoice_to_include, we can include DocApplications that are part of the current invoice (for updating an invoice).
         """
-        doc_application_qs = self.doc_applications.all()
+        # Optimize with select_related to prevent N+1 queries
+        doc_application_qs = self.doc_applications.select_related("customer", "product").prefetch_related(
+            "invoice_applications", "documents", "documents__doc_type"
+        )
         if exclude_already_invoiced:
             doc_application_qs = doc_application_qs.exclude_already_invoiced(current_invoice_to_include)
         if filter_by_doc_collection_completed:

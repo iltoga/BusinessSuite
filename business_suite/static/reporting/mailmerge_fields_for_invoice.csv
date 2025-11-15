@@ -1,2 +1,2 @@
-document_date,invoice_no,customer_name,customer_telephone,invoice_date,total_amount,total_paid,total_due,invoice_item,description,quantity,unit_price,amount,paid_amount,due_amount,customer_company_name,customer_npwp,customer_address_bali
-2025-11-04,INV-001,John Doe,6281234567,2025-11-30,500.0,200.0,300.0,PRODUCT-CODE,Service Name,1,500.0,500.0,200.0,300.0,Bali Innovations Ltd,12.345.678.9-012.345,"Jl. Sunset Road No. 88, Kuta, Bali"
+document_date,invoice_no,customer_name,customer_telephone,invoice_date,invoice_due_date,total_amount,total_paid,total_due,invoice_item,description,quantity,unit_price,amount,paid_amount,due_amount,customer_company_name,customer_npwp,customer_address_bali
+2025-11-04,INV-001,John Doe,6281234567,2025-11-30,2025-11-30,500.0,200.0,300.0,PRODUCT-CODE,Service Name,1,500.0,500.0,200.0,300.0,Bali Innovations Ltd,12.345.678.9-012.345,"Jl. Sunset Road No. 88, Kuta, Bali"

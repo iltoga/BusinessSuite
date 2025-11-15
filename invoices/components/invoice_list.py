@@ -11,7 +11,7 @@ from invoices.models.invoice import InvoiceApplication
 class InvoiceListView(UnicornSearchListView):
     model = Invoice
     model_search_method = "search_invoices"
-    hide_paid = True
+    hide_paid = False
 
     def mount(self):
         super().mount()

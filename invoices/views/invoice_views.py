@@ -117,16 +117,8 @@ class InvoiceCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateView
         data["currency_symbol"] = settings.CURRENCY_SYMBOL
         data["currency_decimal_places"] = settings.CURRENCY_DECIMAL_PLACES
 
-        # Add countries for customer modal
-        data["countries"] = CountryCode.objects.all().order_by("country")
-
-        # Add document types for product modal
-        data["document_types"] = DocumentType.objects.all().order_by("name")
-
-        # Add products for customer application modal
-        from products.models import Product
-
-        data["products"] = Product.objects.all().order_by("name")
+        # Countries for customer modal - only load id and country name to minimize data
+        data["countries"] = CountryCode.objects.only("alpha3_code", "country").order_by("country")
 
         return data
 
@@ -308,33 +300,42 @@ class InvoiceUpdateView(PermissionRequiredMixin, SuccessMessageMixin, UpdateView
         data["currency_symbol"] = settings.CURRENCY_SYMBOL
         data["currency_decimal_places"] = settings.CURRENCY_DECIMAL_PLACES
 
-        # Add countries for customer modal
+        # Countries and products are loaded via AJAX in modals - no need to load them here
+        # This saves hundreds of unnecessary queries
         data["countries"] = CountryCode.objects.all().order_by("country")
-
-        # Add document types for product modal
-        data["document_types"] = DocumentType.objects.all().order_by("name")
-
-        # Add products for customer application modal
-        from products.models import Product
-
-        data["products"] = Product.objects.all().order_by("name")
 
         return data
 
     @transaction.atomic
     def form_valid(self, form):
+        # Get the original object before form changes it
+        original_customer = self.object.customer
+
+        # Update self.object with form data FIRST
+        self.object = form.save(commit=False)
+
+        # Restore disabled field (customer)
+        self.object.customer = original_customer
+        self.object.updated_by = self.request.user
+
+        # Now get context with updated self.object
         context = self.get_context_data()
         invoice_applications = context["invoice_applications"]
-        form.instance.updated_by = self.request.user
 
         if all(form.is_valid() for form in invoice_applications) and invoice_applications.is_valid():
-            self.object = form.save()  # Save the Invoice after checking InvoiceApplications
+            # Save the invoice with the updated invoice_date from the form
+            self.object.save()
+
             invoice_applications.instance = self.object
             invoice_applications.save()
+
+            # Add success message manually
+            messages.success(self.request, self.success_message)
+
+            # Return redirect directly to avoid super().form_valid() calling save again
+            return redirect(self.success_url)
         else:
             return self.form_invalid(form)
-
-        return super().form_valid(form)
 
     def form_invalid(self, form):
         messages.error(self.request, "Please correct the errors below and resubmit.")

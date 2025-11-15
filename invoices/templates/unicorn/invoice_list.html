@@ -44,8 +44,8 @@
                     <tr class="{% if invoice.is_expired %}invoice-expired{% endif %}">
                         <!-- invoice no -->
                         <td>{{ invoice.invoice_no_display }}</td>
-                        <!-- due date -->
-                        <td>{{ invoice.due_date }}</td>
+                        <!-- invoice date -->
+                        <td>{{ invoice.invoice_date }}</td>
                         <!-- customer full name -->
                         <td>
                             <a href="{% url 'customer-detail' invoice.customer.pk %}" class="text-primary font-weight-light">{{ invoice.customer }}</a>
@@ -68,8 +68,8 @@
                             <a href="mailto:{{ invoice.customer.email }}" target="_blank">{{ invoice.customer.email }}</a>
                         {% endif %}
                         </td>
-                        <!-- invoice date -->
-                        <td>{{ invoice.invoice_date }}</td>
+                        <!-- due date -->
+                        <td>{{ invoice.due_date }}</td>
                         <!-- invoice status -->
                         <td>{% include "components/model_invoice_status_badge.html" with status=invoice.status status_display=invoice.get_status_display %}</td>
                         <!-- invoice amount -->
@@ -226,3 +226,21 @@
     </div>
     {% endif %}
 </div>
+
+<script>
+  // Ensure payment date is set to today when any mark-as-paid modal opens
+  document.addEventListener('DOMContentLoaded', function() {
+    // Find all mark-as-paid modals
+    var modals = document.querySelectorAll('[id^="markAsPaidModal"]');
+    modals.forEach(function(modal) {
+      modal.addEventListener('shown.bs.modal', function() {
+        var modalId = modal.id.replace('markAsPaidModal', '');
+        var paymentDateInput = document.getElementById('payment_date_' + modalId);
+        if (paymentDateInput && !paymentDateInput.value) {
+          var today = new Date().toISOString().split('T')[0];
+          paymentDateInput.value = today;
+        }
+      });
+    });
+  });
+</script>

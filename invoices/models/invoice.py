@@ -123,7 +123,7 @@ class Invoice(models.Model):
 
     @property
     def invoice_no_display(self):
-        return f"{self.invoice_date.strftime('%Y-%m-%d')}/{self.invoice_no:08d}"
+        return f"{self.invoice_no:08d}"
 
     @property
     def total_paid_amount(self):
