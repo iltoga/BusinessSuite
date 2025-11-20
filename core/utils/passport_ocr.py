@@ -1,12 +1,18 @@
+import logging
 import os
+import re
 import tempfile
 from datetime import datetime
+from typing import List, Tuple
 
+import numpy as np
 import pytesseract
 from django.conf import settings
 from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUploadedFile
 from django.utils import timezone
 from passporteye import read_mrz
+from PIL import Image, ImageFilter, ImageOps, ImageStat
+from skimage import filters
 
 from core.utils.check_country import check_country_by_code
 from core.utils.imgutils import convert_and_resize_image
@@ -31,6 +37,7 @@ MRZ_FORMAT = {
 
 
 def extract_mrz_data(file, check_expiration=True, expiration_days=180) -> dict:
+    logger = logging.getLogger("passport_ocr")
     converted_file_name = ""
     file_to_delete = ""
     file_name, file_ext = os.path.splitext(file.name)
@@ -77,6 +84,18 @@ def extract_mrz_data(file, check_expiration=True, expiration_days=180) -> dict:
     # image_path: if converted_file_name exists, use it, otherwise use file_path
     image_path = converted_file_name if converted_file_name != "" and os.path.exists(converted_file_name) else file_path
 
+    quality_info = _assess_image_quality(image_path)
+    if quality_info:
+        logger.debug(
+            "Passport image quality - width: %s height: %s contrast: %.2f brightness: %.2f",
+            quality_info["width"],
+            quality_info["height"],
+            quality_info["contrast"],
+            quality_info["brightness"],
+        )
+        if quality_info["width"] < 600 or quality_info["height"] < 600:
+            logger.warning("Uploaded passport image is quite small; OCR accuracy may degrade.")
+
     def extract_and_format_dates(parsed_mrz):
         for key in ["date_of_birth", "expiration_date"]:
             if key in parsed_mrz:
@@ -85,17 +104,20 @@ def extract_mrz_data(file, check_expiration=True, expiration_days=180) -> dict:
         return parsed_mrz
 
     try:
-        mrz_data = unit_extraction(image_path, MRZ_FORMAT)
+        preprocessed_variants, temp_variants = _build_preprocessed_variants(image_path)
+        try:
+            parsed_mrz = _run_mrz_pipeline(preprocessed_variants, logger)
+        finally:
+            for variant in temp_variants:
+                try:
+                    os.unlink(variant)
+                except OSError:
+                    logger.debug("Failed to remove temporary preprocessing file %s", variant)
         # delete temporary file
         if file_to_delete:
             os.unlink(file_to_delete)
-        parsed_mrz = parse_mrz(mrz_data, MRZ_FORMAT)
 
         # Check the country code and nationality with fallback mechanism
-        import logging
-
-        logger = logging.getLogger("passport_ocr")
-
         # Try to map nationality first, then fallback to country
         nationality_code = parsed_mrz.get("nationality")
         country_code = parsed_mrz.get("country")
@@ -176,7 +198,7 @@ def extract_mrz_data(file, check_expiration=True, expiration_days=180) -> dict:
         raise Exception(str(e))
 
 
-def unit_extraction(image_path, mrz_format):
+def unit_extraction(image_path, mrz_format, attempt_label="original"):
     """
     This function implements Passporteye read_mrz() function to extract identity information
     from the MRZ of an identity document.
@@ -191,18 +213,16 @@ def unit_extraction(image_path, mrz_format):
     """
 
     # Process image
-    import logging
-
     logger = logging.getLogger("passport_ocr")
     mrz = read_mrz(image_path)
-    logger.debug(f"read_mrz result: {mrz}")
+    logger.debug("[%s] read_mrz result: %s", attempt_label, mrz)
     if mrz:
         mrz_dict = mrz.to_dict()
-        logger.debug(f"Extracted MRZ dict: {mrz_dict}")
+        logger.debug("[%s] Extracted MRZ dict: %s", attempt_label, mrz_dict)
         mrz_data = filter_mrz(mrz_dict, mrz_format)
-        logger.debug(f"Filtered MRZ data: {mrz_data}")
+        logger.debug("[%s] Filtered MRZ data: %s", attempt_label, mrz_data)
     else:
-        logger.warning(f"No MRZ found in image: {image_path}")
+        logger.warning("No MRZ found in image using %s", attempt_label)
         mrz_data = {}
 
     if mrz_data is None:
@@ -424,3 +444,163 @@ def filter_mrz(extracted_mrz, actual_mrz):
     for key in actual_mrz.keys():
         mrz[key] = extracted_mrz[key]
     return mrz
+
+
+def _run_mrz_pipeline(candidate_images: List[Tuple[str, str]], logger: logging.Logger) -> dict:
+    """Try multiple preprocessed images until a valid MRZ passes validation."""
+
+    best_candidate = None
+    best_score = -1
+    attempt_log = []
+
+    for attempt_label, candidate_path in candidate_images:
+        try:
+            mrz_data = unit_extraction(candidate_path, MRZ_FORMAT, attempt_label=attempt_label)
+        except Exception as extraction_error:  # pragma: no cover - defensive log
+            logger.warning("%s attempt failed with error: %s", attempt_label, extraction_error)
+            continue
+
+        if not mrz_data:
+            attempt_log.append(f"{attempt_label}: empty result")
+            continue
+
+        try:
+            parsed_candidate = parse_mrz(mrz_data, MRZ_FORMAT)
+        except KeyError as key_error:
+            logger.debug("%s attempt missing field: %s", attempt_label, key_error)
+            attempt_log.append(f"{attempt_label}: missing {key_error}")
+            continue
+
+        try:
+            if check_mrz_all_info(parsed_candidate):
+                logger.info("Passport MRZ successfully extracted via %s preprocessing", attempt_label)
+                return parsed_candidate
+            else:
+                attempt_log.append(f"{attempt_label}: checksum mismatch")
+        except KeyError as key_error:
+            logger.debug("%s attempt raised KeyError during validation: %s", attempt_label, key_error)
+            attempt_log.append(f"{attempt_label}: validation key {key_error}")
+            continue
+
+        candidate_score = dataset_size(parsed_candidate, MRZ_FORMAT)
+        if candidate_score > best_score:
+            best_candidate = parsed_candidate
+            best_score = candidate_score
+
+    if best_candidate:
+        logger.warning(
+            "Returning best-effort MRZ despite validation failure. Attempts: %s",
+            "; ".join(attempt_log),
+        )
+        return best_candidate
+
+    raise Exception(
+        "Failed to scan document. Ensure that the document is a valid passport and the quality of the image or PDF is good"
+    )
+
+
+def _build_preprocessed_variants(image_path: str) -> Tuple[List[Tuple[str, str]], List[str]]:
+    """Create additional preprocessed images to increase OCR robustness."""
+
+    candidate_images: List[Tuple[str, str]] = [("original", image_path)]
+    temp_files: List[str] = []
+
+    try:
+        with Image.open(image_path) as original_image:
+            working_image = original_image.convert("RGB")
+            working_image.load()
+    except Exception:
+        return candidate_images, temp_files
+
+    variant_specs = [
+        ("deskewed", _deskew_image(working_image)),
+        (
+            "contrast_boost",
+            _apply_threshold(_ensure_min_width(working_image, target_width=1500), use_sauvola=False, autocontrast=True),
+        ),
+        (
+            "binary_sauvola",
+            _apply_threshold(_ensure_min_width(working_image, target_width=1800), use_sauvola=True, autocontrast=True),
+        ),
+        (
+            "sharpened",
+            _apply_sharpen(_ensure_min_width(working_image, target_width=1400)),
+        ),
+    ]
+
+    for label, pil_image in variant_specs:
+        if pil_image is None:
+            continue
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+        pil_image.save(temp_file.name, format="PNG")
+        temp_file.close()
+        temp_files.append(temp_file.name)
+        candidate_images.append((label, temp_file.name))
+
+    return candidate_images, temp_files
+
+
+def _ensure_min_width(image: Image.Image, target_width: int) -> Image.Image:
+    if image.width >= target_width:
+        return image.copy()
+    ratio = target_width / float(image.width)
+    new_height = int(image.height * ratio)
+    try:
+        resample = Image.Resampling.LANCZOS
+    except AttributeError:  # Pillow < 10
+        resample = Image.LANCZOS
+    return image.resize((target_width, new_height), resample)
+
+
+def _deskew_image(image: Image.Image) -> Image.Image:
+    try:
+        osd = pytesseract.image_to_osd(image)
+        rotation_match = re.search(r"Rotate: (\d+)", osd)
+        if rotation_match:
+            angle = int(rotation_match.group(1))
+            if angle != 0:
+                return image.rotate(-angle, expand=True)
+    except pytesseract.TesseractError:
+        pass
+    return image.copy()
+
+
+def _apply_threshold(
+    image: Image.Image,
+    *,
+    use_sauvola: bool,
+    autocontrast: bool,
+) -> Image.Image:
+    gray = image.convert("L")
+    if autocontrast:
+        gray = ImageOps.autocontrast(gray)
+    np_image = np.array(gray)
+    try:
+        if use_sauvola:
+            thresh = filters.threshold_sauvola(np_image, window_size=25)
+        else:
+            thresh = filters.threshold_otsu(np_image)
+        binary = (np_image > thresh).astype(np.uint8) * 255
+    except ValueError:
+        binary = np_image
+    pil_img = Image.fromarray(binary)
+    return pil_img
+
+
+def _apply_sharpen(image: Image.Image) -> Image.Image:
+    return image.convert("L").filter(ImageFilter.UnsharpMask(radius=2, percent=175, threshold=3))
+
+
+def _assess_image_quality(image_path: str):
+    try:
+        with Image.open(image_path) as img:
+            gray = img.convert("L")
+            stat = ImageStat.Stat(gray)
+            return {
+                "width": img.width,
+                "height": img.height,
+                "brightness": stat.mean[0],
+                "contrast": stat.stddev[0],
+            }
+    except Exception:
+        return None

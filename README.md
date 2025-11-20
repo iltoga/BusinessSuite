@@ -4,8 +4,6 @@ This is a powerful and flexible web-based ERP system designed to streamline the 
 
 ## Key Features
 
-## Key Features
-
 - 🧑‍💼 **Customer Relationship Management (CRM)**: Maintain a centralized database of all your customers, including their personal information, contact details, and a history of their interactions with your agency.
 - 📦 **Product Catalog**: Define and manage the services you offer, including their pricing, descriptions, and any associated documents or requirements.
 - 📝 **Application Processing**: A sophisticated module for handling customer applications from start to finish. This includes:
@@ -18,12 +16,11 @@ This is a powerful and flexible web-based ERP system designed to streamline the 
 - 🧠 **Advanced Document Processing**:
   - 🛂 **Passport OCR**: Automatically extract information from passport scans, reducing manual data entry and errors.
   - 📑 **PDF Handling**: Generate and process PDF documents as part of the application workflow.
+  - 🔍 **MRZ Accuracy Boosters**: Deskewing, adaptive thresholding, and multi-pass OCR retries are applied automatically to squeeze more signal out of low-quality passport scans.
 - 🗄️ **Backup and Storage**:
   - 🔒 **Automated Backups**: The system is configured to perform regular backups of the database to a secure cloud storage provider.
   - ☁️ **Cloud Storage Integration**: Store and manage your documents and other files in the cloud for easy access and scalability.
 - 👥 **User and Permissions Management**: A granular permissions system allows you to control access to different parts of the application, ensuring that each user only has access to the information and features they need.
-
-## Technical Stack
 
 ## 🛠️ Technical Stack
 
@@ -45,9 +42,6 @@ Django Unicorn is a reactive component framework for Django that allows you to b
 - **Modern UX**: It brings the power of reactive components to Django, allowing for a smoother and more engaging user experience.
 
 By using Django Unicorn, our application benefits from a modern, dynamic frontend while maintaining the simplicity and robustness of Django. This choice helps us deliver a better experience to users and developers alike. ✨
-
-
-## Getting Started
 
 ## 🚦 Getting Started
 

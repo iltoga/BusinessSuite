@@ -8,6 +8,63 @@
     #customerQuickCreateModal + .modal-backdrop {
         z-index: 1049;
     }
+    #customerQuickCreateModal .person-only-field-quick .form-label {
+        font-weight: 600;
+    }
+    #customerQuickCreateModal .passport-import-section img.img-thumbnail {
+        max-width: 100%;
+        height: auto;
+        border-radius: 4px;
+    }
+    #customerQuickCreateModal .passport-import-section .btn {
+        min-width: 80px;
+    }
+    #customerQuickCreateModal .passport-import-section .alert {
+        margin-bottom: 0.5rem;
+    }
+
+    /*
+       FIX: Passport Import Section Layout
+       Using Flexbox to force the layout:
+       Row 1: Label (100% width)
+       Row 2: Input (Flexible width) + Button (Auto width) aligned at the bottom
+    */
+    #customerQuickCreateModal #passport-import-quick {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-end; /* Aligns the button with the input field */
+        gap: 10px;
+    }
+
+    /* Force the label to take the full top row */
+    #customerQuickCreateModal #passport-import-quick label {
+        width: 100%;
+        flex-basis: 100%;
+        margin-bottom: 0.5rem;
+    }
+
+    /* The file input (or its wrapper) takes available space */
+    #customerQuickCreateModal #passport-import-quick input[type="file"],
+    #customerQuickCreateModal #passport-import-quick .form-control-file {
+        flex-grow: 1;
+        width: auto;
+        margin-bottom: 0;
+    }
+
+    /* The import button sits next to the input, aligned at bottom */
+    #customerQuickCreateModal #passport-import-quick .btn {
+        flex-shrink: 0;
+        margin-bottom: 0;
+        height: fit-content;
+    }
+
+    /* Ensure alerts and previews take full width below */
+    #customerQuickCreateModal #passport-import-quick .alert,
+    #customerQuickCreateModal #passport-import-quick img,
+    #customerQuickCreateModal #passport-import-quick .d-none {
+        width: 100%;
+        flex-basis: 100%;
+    }
 </style>
 
 <!-- Customer Quick Create Modal -->
@@ -26,6 +83,8 @@
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle"></i> Fill in the required fields to quickly create a new customer.
                     </div>
+
+
                     <div id="customerQuickCreateErrors" class="alert alert-danger d-none"></div>
 
                     <div class="mb-3">
@@ -41,100 +100,121 @@
                         <input type="text" class="form-control" id="id_quick_company_name" name="company_name">
                     </div>
 
-                    <div class="person-only-field-quick">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="id_quick_title" class="form-label">Title</label>
-                            <select class="form-select" id="id_quick_title" name="title">
-                                <option value="">---------</option>
-                                <option value="Mr">Mr</option>
-                                <option value="Mrs">Mrs</option>
-                                <option value="Ms">Ms</option>
-                                <option value="Miss">Miss</option>
-                                <option value="Dr">Dr</option>
-                                <option value="Prof">Prof</option>
-                            </select>
+                    <!-- Person Only Fields -->
+                    <div class="person-only-field-quick px-3">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="id_quick_title" class="form-label">Title</label>
+                                <select class="form-select" id="id_quick_title" name="title">
+                                    <option value="">---------</option>
+                                    <option value="Mr">Mr</option>
+                                    <option value="Mrs">Mrs</option>
+                                    <option value="Ms">Ms</option>
+                                    <option value="Miss">Miss</option>
+                                    <option value="Dr">Dr</option>
+                                    <option value="Prof">Prof</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="id_quick_gender" class="form-label">Gender</label>
+                                <select class="form-select" id="id_quick_gender" name="gender">
+                                    <option value="">---------</option>
+                                    <option value="M">Male</option>
+                                    <option value="F">Female</option>
+                                </select>
+                            </div>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="id_quick_gender" class="form-label">Gender</label>
-                            <select class="form-select" id="id_quick_gender" name="gender">
-                                <option value="">---------</option>
-                                <option value="M">Male</option>
-                                <option value="F">Female</option>
-                            </select>
+
+                        <div class="row g-3">
+                            <div class="col-md-6 mb-3">
+                                <label for="id_quick_first_name" class="form-label">First Name <span class="person-required text-danger">*</span></label>
+                                <input type="text" class="form-control" id="id_quick_first_name" name="first_name" pattern="[A-Z][a-zA-Z\s]*" title="First letter must be uppercase">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="id_quick_last_name" class="form-label">Last Name <span class="person-required text-danger">*</span></label>
+                                <input type="text" class="form-control" id="id_quick_last_name" name="last_name">
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="id_quick_birthdate" class="form-label">Birthdate</label>
+                                <input type="date" class="form-control" id="id_quick_birthdate" name="birthdate">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="id_quick_nationality" class="form-label">Nationality</label>
+                                <select class="form-select" id="id_quick_nationality" name="nationality">
+                                    <option value="">---------</option>
+                                    {% for country in countries %}
+                                    <option value="{{ country.alpha3_code }}">{{ country.country }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Passport Number Row -->
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="id_quick_passport_number" class="form-label">Passport Number</label>
+                                <input type="text" class="form-control" id="id_quick_passport_number" name="passport_number">
+                            </div>
+                        </div>
+
+                        <!-- Import Section Row -->
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                {% include 'customers/partials/passport_import_section.html' with passport_field=None prefix='quick_' container_id='passport-import-quick' customer_type_selector='#id_quick_customer_type' first_name_id='id_quick_first_name' last_name_id='id_quick_last_name' gender_id='id_quick_gender' title_id='id_quick_title' nationality_id='id_quick_nationality' birthdate_id='id_quick_birthdate' passport_number_id='id_quick_passport_number' passport_issue_id='id_quick_passport_issue_date' passport_expiration_id='id_quick_passport_expiration_date' %}
+                            </div>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-md-6 mb-3">
+                                <label for="id_quick_passport_issue_date" class="form-label">Passport Issue Date</label>
+                                <input type="date" class="form-control" id="id_quick_passport_issue_date" name="passport_issue_date">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="id_quick_passport_expiration_date" class="form-label">Passport Expiration Date</label>
+                                <input type="date" class="form-control" id="id_quick_passport_expiration_date" name="passport_expiration_date">
+                            </div>
                         </div>
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="id_quick_first_name" class="form-label">First Name <span class="person-required text-danger">*</span></label>
-                            <input type="text" class="form-control" id="id_quick_first_name" name="first_name" pattern="[A-Z][a-zA-Z\s]*" title="First letter must be uppercase">
+                    <!-- Common Fields (Always Visible) -->
+                    <div class="px-3">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="id_quick_npwp" class="form-label">NPWP (Tax ID)</label>
+                                <input type="text" class="form-control" id="id_quick_npwp" name="npwp">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="id_quick_email" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="id_quick_email" name="email">
+                            </div>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="id_quick_last_name" class="form-label">Last Name <span class="person-required text-danger">*</span></label>
-                            <input type="text" class="form-control" id="id_quick_last_name" name="last_name">
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="id_quick_telephone" class="form-label">Telephone</label>
+                                <input type="tel" class="form-control" id="id_quick_telephone" name="telephone">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="id_quick_whatsapp" class="form-label">WhatsApp</label>
+                                <input type="tel" class="form-control" id="id_quick_whatsapp" name="whatsapp">
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="id_quick_address_bali" class="form-label">Address in Bali</label>
+                                <textarea class="form-control" id="id_quick_address_bali" name="address_bali" rows="3"></textarea>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="id_quick_address_abroad" class="form-label">Address Abroad</label>
+                                <textarea class="form-control" id="id_quick_address_abroad" name="address_abroad" rows="3"></textarea>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="id_quick_birthdate" class="form-label">Birthdate</label>
-                            <input type="date" class="form-control" id="id_quick_birthdate" name="birthdate">
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="id_quick_nationality" class="form-label">Nationality</label>
-                            <select class="form-select" id="id_quick_nationality" name="nationality">
-                                <option value="">---------</option>
-                                {% for country in countries %}
-                                <option value="{{ country.alpha3_code }}">{{ country.country }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="id_quick_npwp" class="form-label">NPWP (Tax ID)</label>
-                        <input type="text" class="form-control" id="id_quick_npwp" name="npwp">
-                    </div>
-
-
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="id_quick_telephone" class="form-label">Telephone</label>
-                            <input type="tel" class="form-control" id="id_quick_telephone" name="telephone">
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="id_quick_whatsapp" class="form-label">WhatsApp</label>
-                            <input type="tel" class="form-control" id="id_quick_whatsapp" name="whatsapp">
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-12 mb-3">
-                            <label for="id_quick_email" class="form-label">Email</label>
-                            <input type="email" class="form-control" id="id_quick_email" name="email">
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="id_quick_passport_number" class="form-label">Passport Number</label>
-                            <input type="text" class="form-control" id="id_quick_passport_number" name="passport_number">
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="id_quick_passport_issue_date" class="form-label">Passport Issue Date</label>
-                            <input type="date" class="form-control" id="id_quick_passport_issue_date" name="passport_issue_date">
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="id_quick_passport_expiration_date" class="form-label">Passport Expiration Date</label>
-                            <input type="date" class="form-control" id="id_quick_passport_expiration_date" name="passport_expiration_date">
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="id_quick_address_bali" class="form-label">Address in Bali</label>
-                        <textarea class="form-control" id="id_quick_address_bali" name="address_bali" rows="3"></textarea>
-                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
@@ -217,6 +297,16 @@
             $customerType.val('person');
             togglePersonFields();
             $modal.modal('show');
+            // Reset passport import quick section
+            var $passportImportQuick = $('#passport-import-quick');
+            if ($passportImportQuick.length) {
+                $passportImportQuick.find('input[type=file]').val('');
+                $passportImportQuick.find('[data-role="passport-import-preview"]').addClass('d-none').attr('src', '');
+                $passportImportQuick.find('[data-role="passport-clipboard-preview"]').addClass('d-none').attr('src', '');
+                $passportImportQuick.find('[data-role="passport-import-success"]').addClass('d-none');
+                $passportImportQuick.find('[data-role="passport-import-error"]').addClass('d-none');
+                $passportImportQuick.find('[data-role="passport-clipboard-status"]').html('');
+            }
         };
 
         // Handle form submission
@@ -285,6 +375,13 @@
             $customerType.val('person');
             togglePersonFields();
             targetSelectId = null;
+            var $passportImportQuick = $('#passport-import-quick');
+            if ($passportImportQuick.length) {
+                $passportImportQuick.find('[data-role="passport-import-preview"]').addClass('d-none').attr('src', '');
+                $passportImportQuick.find('[data-role="passport-clipboard-preview"]').addClass('d-none').attr('src', '');
+                $passportImportQuick.find('[data-role="passport-import-success"]').addClass('d-none');
+                $passportImportQuick.find('[data-role="passport-import-error"]').addClass('d-none');
+            }
         });
     })();
 </script>

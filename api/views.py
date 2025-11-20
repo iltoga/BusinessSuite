@@ -305,6 +305,7 @@ def customer_quick_create(request):
             "telephone": request.data.get("telephone", None),
             "whatsapp": request.data.get("whatsapp", None),
             "address_bali": request.data.get("address_bali", ""),
+            "address_abroad": request.data.get("address_abroad", ""),
             "passport_number": request.data.get("passport_number", ""),
             "passport_issue_date": request.data.get("passport_issue_date", None),
             "passport_expiration_date": request.data.get("passport_expiration_date", None),
@@ -383,6 +384,7 @@ def customer_quick_create(request):
                     "passport_expiration_date": (
                         str(customer.passport_expiration_date) if customer.passport_expiration_date else ""
                     ),
+                    "address_abroad": customer.address_abroad or "",
                 },
             },
             status=status.HTTP_201_CREATED,
