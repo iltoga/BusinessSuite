@@ -77,6 +77,12 @@ class MonthlyInvoiceDetailView(LoginRequiredMixin, TemplateView):
                     "total_paid": float(invoice.total_paid_amount),
                     "total_paid_formatted": format_currency(invoice.total_paid_amount),
                     "total_due": float(invoice.total_due_amount),
+                    "customer_passport_number": invoice.customer.passport_number if invoice.customer else "",
+                    "customer_passport_expiration_date": (
+                        invoice.customer.passport_expiration_date
+                        if invoice.customer and invoice.customer.passport_expiration_date
+                        else None
+                    ),
                     "total_due_formatted": format_currency(invoice.total_due_amount),
                 }
             )
@@ -130,7 +136,7 @@ class MonthlyInvoiceDetailView(LoginRequiredMixin, TemplateView):
         ws.title = f"{month_name} {year}"
 
         # Add title
-        ws.merge_cells("A1:I1")
+        ws.merge_cells("A1:J1")
         title_cell = ws["A1"]
         title_cell.value = f"Invoice Report - {month_name} {year}"
         title_cell.font = Font(size=16, bold=True)
@@ -143,6 +149,8 @@ class MonthlyInvoiceDetailView(LoginRequiredMixin, TemplateView):
             "Invoice Date",
             "Due Date",
             "Customer",
+            "Passport Number",
+            "Passport Expiration",
             "Status",
             "Total Amount",
             "Total Paid",
@@ -167,28 +175,38 @@ class MonthlyInvoiceDetailView(LoginRequiredMixin, TemplateView):
                 row=row_num, column=3, value=invoice["due_date"].strftime("%Y-%m-%d") if invoice["due_date"] else ""
             )
             ws.cell(row=row_num, column=4, value=invoice["customer_name"])
-            ws.cell(row=row_num, column=5, value=invoice["status"])
-            ws.cell(row=row_num, column=6, value=invoice["total_amount"])
-            ws.cell(row=row_num, column=7, value=invoice["total_paid"])
-            ws.cell(row=row_num, column=8, value=invoice["total_due"])
+            ws.cell(row=row_num, column=5, value=invoice.get("customer_passport_number", ""))
+            ws.cell(
+                row=row_num,
+                column=6,
+                value=(
+                    invoice["customer_passport_expiration_date"].strftime("%Y-%m-%d")
+                    if invoice.get("customer_passport_expiration_date")
+                    else ""
+                ),
+            )
+            ws.cell(row=row_num, column=7, value=invoice["status"])
+            ws.cell(row=row_num, column=8, value=invoice["total_amount"])
+            ws.cell(row=row_num, column=9, value=invoice["total_paid"])
+            ws.cell(row=row_num, column=10, value=invoice["total_due"])
 
             # Format currency columns
-            for col in [6, 7, 8]:
+            for col in [8, 9, 10]:
                 ws.cell(row=row_num, column=col).number_format = "#,##0"
 
         # Add totals row
         total_row = len(invoices) + 4
-        ws.cell(row=total_row, column=5, value="TOTAL").font = Font(bold=True)
-        ws.cell(row=total_row, column=6, value=context["total_amount"]).font = Font(bold=True)
-        ws.cell(row=total_row, column=7, value=context["total_paid"]).font = Font(bold=True)
-        ws.cell(row=total_row, column=8, value=context["total_due"]).font = Font(bold=True)
+        ws.cell(row=total_row, column=7, value="TOTAL").font = Font(bold=True)
+        ws.cell(row=total_row, column=8, value=context["total_amount"]).font = Font(bold=True)
+        ws.cell(row=total_row, column=9, value=context["total_paid"]).font = Font(bold=True)
+        ws.cell(row=total_row, column=10, value=context["total_due"]).font = Font(bold=True)
 
         # Format total currency columns
-        for col in [6, 7, 8]:
+        for col in [8, 9, 10]:
             ws.cell(row=total_row, column=col).number_format = "#,##0"
 
         # Auto-adjust column widths
-        for col_num in range(1, 9):
+        for col_num in range(1, 11):
             column_letter = get_column_letter(col_num)
             max_length = 0
             for cell in ws[column_letter]:

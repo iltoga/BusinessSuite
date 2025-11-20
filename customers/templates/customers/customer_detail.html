@@ -42,6 +42,15 @@
           {% if customer.birthdate %}
           <tr><th scope="row" class="text-start">Birthdate</th><td class="text-start">{{ customer.birthdate }}</td></tr>
           {% endif %}
+          {% if customer.passport_number %}
+          <tr><th scope="row" class="text-start">Passport Number</th><td class="text-start">{{ customer.passport_number }}</td></tr>
+          {% endif %}
+          {% if customer.passport_issue_date %}
+          <tr><th scope="row" class="text-start">Passport Issue Date</th><td class="text-start">{{ customer.passport_issue_date|date:"Y-m-d" }}</td></tr>
+          {% endif %}
+          {% if customer.passport_expiration_date %}
+          <tr><th scope="row" class="text-start">Passport Expiration Date</th><td class="text-start">{{ customer.passport_expiration_date|date:"Y-m-d" }}</td></tr>
+          {% endif %}
           <tr><th scope="row" class="text-start">Address in Bali</th><td class="text-start">{{ customer.address_bali }}</td></tr>
           <tr><th scope="row" class="text-start">Address Abroad</th><td class="text-start">{{ customer.address_abroad }}</td></tr>
           <tr><th scope="row" class="text-start">Notify Documents Expiration</th><td class="text-start">{{ customer.notify_documents_expiration|boolean_to_yes_no }}</td></tr>

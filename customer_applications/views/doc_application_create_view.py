@@ -228,6 +228,38 @@ class DocApplicationCreateView(PermissionRequiredMixin, SuccessMessageMixin, Cre
             self.request,
             "Passport file automatically imported from New Customer. Remember to always check that data are correct.",
         )
+        # Also set passport fields on the related customer if available
+        try:
+            customer = self.object.customer
+            updated = False
+            if session_mrz_data.get("number"):
+                customer.passport_number = session_mrz_data.get("number")
+                updated = True
+            if session_mrz_data.get("expiration_date_yyyy_mm_dd"):
+                from datetime import datetime
+
+                try:
+                    customer.passport_expiration_date = datetime.strptime(
+                        session_mrz_data.get("expiration_date_yyyy_mm_dd"), "%Y-%m-%d"
+                    ).date()
+                    updated = True
+                except Exception:
+                    pass
+            if session_mrz_data.get("issue_date_yyyy_mm_dd"):
+                from datetime import datetime
+
+                try:
+                    customer.passport_issue_date = datetime.strptime(
+                        session_mrz_data.get("issue_date_yyyy_mm_dd"), "%Y-%m-%d"
+                    ).date()
+                    updated = True
+                except Exception:
+                    pass
+            if updated:
+                customer.save()
+                messages.success(self.request, "Customer information updated with passport data.")
+        except Exception:
+            pass
 
     def should_process_passport_document(self) -> bool:
         """

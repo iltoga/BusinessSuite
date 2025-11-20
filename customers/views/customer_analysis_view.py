@@ -67,19 +67,23 @@ class CustomerAnalysisView(TemplateView):
 
         return context
 
-    def _prepare_nationality_data(self):
+    def _prepare_nationality_data(self, customers):
         from collections import defaultdict
 
-        # Query to count the customers by nationality
-        count_data = Customer.objects.values("nationality__country").annotate(num_customers=Count("id"))
+        # Query to count the customers by nationality from the provided queryset
+        count_data = customers.values("nationality__country").annotate(num_customers=Count("id"))
 
         # Create a dictionary to store the data
         data = defaultdict(int)
         for entry in count_data:
-            data[entry["nationality__country"]] = entry["num_customers"]
+            country = entry["nationality__country"] or "Unknown"
+            data[country] = entry["num_customers"]
 
-        return data
+        # Ensure we return a plain dict (sorted by count desc) for plotting consistency
+        return dict(sorted(data.items(), key=lambda kv: kv[1], reverse=True))
 
     def _prepare_age_data(self, customers):
-        ages = [(date.today().year - customer.birthdate.year) for customer in customers]
+        # Ignore customers without a birthdate to avoid AttributeError
+        customers_with_bd = customers.filter(birthdate__isnull=False)
+        ages = [date.today().year - customer.birthdate.year for customer in customers_with_bd]
         return ages

@@ -1,3 +1,4 @@
+import datetime
 import warnings
 from datetime import date
 
@@ -48,11 +49,11 @@ class DocApplicationTestWorkflows(TestCase):
         ]
 
         # chose a fixed date for doc_date to avoid timezone issues
-        doc_date = timezone.datetime(2023, 1, 10, tzinfo=timezone.utc)
+        doc_date = datetime.datetime(2023, 1, 10, tzinfo=datetime.timezone.utc)
         doc_application = DocApplication.objects.create(
             product=self.product, doc_date=doc_date, created_by=self.user, customer=self.customer
         )
-        self.assertEqual(doc_application.calculate_application_due_date(), doc_date + timezone.timedelta(days=7))
+        self.assertEqual(doc_application.calculate_application_due_date(), doc_date + datetime.timedelta(days=7))
 
     def test_due_date_no_workflow_with_holidays(self):
         self.tasks_21_days = [
@@ -71,7 +72,7 @@ class DocApplicationTestWorkflows(TestCase):
         ]
 
         # chose a fixed date for doc_date to avoid timezone issues
-        doc_date = timezone.datetime(2023, 1, 1, tzinfo=timezone.utc)
+        doc_date = datetime.datetime(2023, 1, 1, tzinfo=datetime.timezone.utc)
         doc_application = DocApplication.objects.create(
             product=self.product, doc_date=doc_date, created_by=self.user, customer=self.customer
         )
@@ -80,7 +81,7 @@ class DocApplicationTestWorkflows(TestCase):
         weekend_count = 6
         tot_duration = 21 + tanggal_merah_count + weekend_count
         self.assertEqual(
-            doc_application.calculate_application_due_date(), doc_date + timezone.timedelta(days=tot_duration)
+            doc_application.calculate_application_due_date(), doc_date + datetime.timedelta(days=tot_duration)
         )
 
     def test_due_date_with_workflow_no_holidays(self):
@@ -97,7 +98,7 @@ class DocApplicationTestWorkflows(TestCase):
             ),
         ]
 
-        doc_date = timezone.datetime(2023, 1, 1, tzinfo=timezone.utc)
+        doc_date = datetime.datetime(2023, 1, 1, tzinfo=datetime.timezone.utc)
         doc_application = DocApplication.objects.create(
             product=self.product, doc_date=doc_date, created_by=self.user, customer=self.customer
         )
@@ -127,7 +128,7 @@ class DocApplicationTestWorkflows(TestCase):
         weekend_count = 0
         tot_duration = 7 + tanggal_merah_count + weekend_count
         self.assertEqual(
-            doc_application.calculate_application_due_date(), doc_date.date() + timezone.timedelta(days=tot_duration)
+            doc_application.calculate_application_due_date(), doc_date.date() + datetime.timedelta(days=tot_duration)
         )
 
         # add 1 day to the second docworkflow and check if the due date is updated
