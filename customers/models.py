@@ -73,6 +73,7 @@ class CustomerManager(models.Manager):
             | models.Q(telephone__icontains=query)
             | models.Q(telegram__icontains=query)
             | models.Q(whatsapp__icontains=query)
+            | models.Q(passport_number__icontains=query)
         )
 
 
@@ -114,6 +115,10 @@ class Customer(models.Model):
         to_field="alpha3_code",
     )
     birthdate = models.DateField(validators=[validate_birthdate], blank=True, null=True)
+    # Passport-related fields
+    passport_number = models.CharField(max_length=50, blank=True, null=True, db_index=True)
+    passport_issue_date = models.DateField(blank=True, null=True)
+    passport_expiration_date = models.DateField(blank=True, null=True)
     gender = models.CharField(choices=GENDERS, max_length=5, blank=True, null=True)
     address_bali = models.TextField(blank=True, null=True)
     address_abroad = models.TextField(blank=True, null=True)

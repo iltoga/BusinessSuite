@@ -305,6 +305,9 @@ def customer_quick_create(request):
             "telephone": request.data.get("telephone", None),
             "whatsapp": request.data.get("whatsapp", None),
             "address_bali": request.data.get("address_bali", ""),
+            "passport_number": request.data.get("passport_number", ""),
+            "passport_issue_date": request.data.get("passport_issue_date", None),
+            "passport_expiration_date": request.data.get("passport_expiration_date", None),
             "gender": request.data.get("gender", ""),
         }
 
@@ -340,6 +343,30 @@ def customer_quick_create(request):
             data.pop("birthdate")
 
         # Create customer
+        # parse passport dates if provided
+        from datetime import datetime
+
+        if data.get("passport_issue_date") and isinstance(data["passport_issue_date"], str):
+            try:
+                data["passport_issue_date"] = datetime.strptime(data["passport_issue_date"], "%Y-%m-%d").date()
+            except ValueError:
+                try:
+                    data["passport_issue_date"] = datetime.strptime(data["passport_issue_date"], "%d/%m/%Y").date()
+                except ValueError:
+                    data["passport_issue_date"] = None
+        if data.get("passport_expiration_date") and isinstance(data["passport_expiration_date"], str):
+            try:
+                data["passport_expiration_date"] = datetime.strptime(
+                    data["passport_expiration_date"], "%Y-%m-%d"
+                ).date()
+            except ValueError:
+                try:
+                    data["passport_expiration_date"] = datetime.strptime(
+                        data["passport_expiration_date"], "%d/%m/%Y"
+                    ).date()
+                except ValueError:
+                    data["passport_expiration_date"] = None
+
         customer = Customer.objects.create(**data)
 
         return Response(
@@ -352,6 +379,10 @@ def customer_quick_create(request):
                     "telephone": customer.telephone or "",
                     "company_name": customer.company_name or "",
                     "npwp": customer.npwp or "",
+                    "passport_number": customer.passport_number or "",
+                    "passport_expiration_date": (
+                        str(customer.passport_expiration_date) if customer.passport_expiration_date else ""
+                    ),
                 },
             },
             status=status.HTTP_201_CREATED,

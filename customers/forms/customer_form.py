@@ -44,6 +44,13 @@ class CustomerForm(forms.ModelForm):
         required=False,
         label="Import data from Passport",
     )
+    passport_number = forms.CharField(
+        max_length=50,
+        required=False,
+        label="Passport Number",
+    )
+    passport_issue_date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}), required=False)
+    passport_expiration_date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}), required=False)
     birthdate = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}), required=False)
     telephone = forms.CharField(required=False)
 
@@ -54,6 +61,9 @@ class CustomerForm(forms.ModelForm):
             "company_name",
             "first_name",
             "last_name",
+            "passport_number",
+            "passport_issue_date",
+            "passport_expiration_date",
             "title",
             "gender",
             "nationality",
@@ -82,7 +92,14 @@ class CustomerForm(forms.ModelForm):
         self.user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
         # Move 'passport_file' after customer_type and company_name
-        fields_order = ["customer_type", "company_name", "passport_file"]
+        fields_order = [
+            "customer_type",
+            "company_name",
+            "passport_file",
+            "passport_number",
+            "passport_issue_date",
+            "passport_expiration_date",
+        ]
         remaining_fields = [(k, v) for k, v in self.fields.items() if k not in fields_order]
         self.fields = OrderedDict([(k, self.fields[k]) for k in fields_order if k in self.fields] + remaining_fields)
 

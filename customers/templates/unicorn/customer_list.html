@@ -28,23 +28,37 @@
         <table class="table table-bordered table-condensed">
             <thead class="thead-light">
             <tr>
-                <th scope="col">Customer</th>
-                <th scope="col">Type</th>
-                <th scope="col">Email</th>
-                <th scope="col">Telephone</th>
-                <th scope="col">Actions</th>
+              <th scope="col">Customer</th>
+              <th scope="col">
+                <div class="d-flex flex-column align-items-center">
+                  <span>Passport</span>
+                  <small class="text-muted">Valid till</small>
+                </div>
+              </th>
+              <th scope="col">Email</th>
+              <th scope="col">Telephone</th>
+              <th scope="col">Actions</th>
             </tr>
             </thead>
             <tbody>
             {% for customer in list_items %}
-                <tr>
+              <tr>
                     <td>{{ customer.full_name_with_company }}</td>
                     <td>
-                        {% if customer.customer_type == 'company' %}
-                            <span class="badge bg-info">Company</span>
+                      <div class="d-flex flex-column">
+                        <div>{% if customer.passport_number %}{{ customer.passport_number }}{% else %}&mdash;{% endif %}</div>
+                        {% if customer.passport_expiration_date %}
+                          {% if customer.passport_expired %}
+                            <span class="badge bg-danger text-white">{{ customer.passport_expiration_date|date:"Y-m-d" }}</span>
+                          {% elif customer.passport_expiring_soon %}
+                            <span class="badge bg-warning text-dark">{{ customer.passport_expiration_date|date:"Y-m-d" }}</span>
+                          {% else %}
+                            <small class="text-muted">{{ customer.passport_expiration_date|date:"Y-m-d" }}</small>
+                          {% endif %}
                         {% else %}
-                            <span class="badge bg-secondary">Person</span>
+                          &mdash;
                         {% endif %}
+                      </div>
                     </td>
                     <td>{{ customer.email }}</td>
                     <td>{{ customer.telephone }}</td>

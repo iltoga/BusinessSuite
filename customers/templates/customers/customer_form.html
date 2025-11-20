@@ -156,6 +156,11 @@
                                 setFormFieldValue('id_title', title);
                                 setFormFieldValue('id_nationality', mrz.nationality);
                                 setFormFieldValue('id_birthdate', mrz.date_of_birth_yyyy_mm_dd);
+                                setFormFieldValue('id_passport_number', mrz.number);
+                                setFormFieldValue('id_passport_expiration_date', mrz.expiration_date_yyyy_mm_dd, 'date');
+                                if (mrz.issue_date_yyyy_mm_dd) {
+                                    setFormFieldValue('id_passport_issue_date', mrz.issue_date_yyyy_mm_dd, 'date');
+                                }
                                 // show dom with id_metadata_display
                                 // document.getElementById('id_metadata_display').parentElement.style.display = 'block';
                                 toggleSpinnerDisplay(false, 'passport_file_btn_id', 'passport_file_spinner');
@@ -206,6 +211,11 @@
                                         setFormFieldValue('id_first_name', data.mrz_data.names);
                                         setFormFieldValue('id_last_name', data.mrz_data.surname);
                                         setFormFieldValue('id_gender', data.mrz_data.sex);
+                                        setFormFieldValue('id_passport_number', data.mrz_data.number);
+                                        setFormFieldValue('id_passport_expiration_date', data.mrz_data.expiration_date_yyyy_mm_dd, 'date');
+                                        if (data.mrz_data.issue_date_yyyy_mm_dd) {
+                                            setFormFieldValue('id_passport_issue_date', data.mrz_data.issue_date_yyyy_mm_dd, 'date');
+                                        }
                                         var title = (data.mrz_data.sex == 'M') ? 'Mr' : 'Ms';
                                         setFormFieldValue('id_title', title);
                                         setFormFieldValue('id_nationality', data.mrz_data.nationality);

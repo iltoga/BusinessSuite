@@ -7,6 +7,7 @@ import json
 from decimal import Decimal
 from pathlib import Path
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
@@ -34,6 +35,9 @@ class InvoiceImportMultimodalTestCase(TestCase):
 
     def setUp(self):
         """Set up test user."""
+        Invoice.objects.filter(invoice_no=202634).delete()
+        Customer.objects.filter(telephone="+1234567890").delete()
+        Customer.objects.filter(whatsapp="+1234567890").delete()
         self.user = User.objects.create_user(username="testuser", password="testpass123")
 
     def tearDown(self):
@@ -414,7 +418,11 @@ class LLMParserUnitTests(TestCase):
 
         self.assertIsNotNone(parser.api_key, "API key should be set")
         self.assertIsNotNone(parser.client, "OpenAI client should be initialized")
-        self.assertEqual(parser.model, "gpt-5-mini", "Default model should be gpt-5-mini")
+        self.assertEqual(
+            parser.model,
+            getattr(settings, "LLM_DEFAULT_MODEL", "google/gemini-2.0-flash-lite-001"),
+            f"Default model should be {getattr(settings, 'LLM_DEFAULT_MODEL', 'google/gemini-2.0-flash-lite-001')}",
+        )
 
         print(f"\n✓ Parser Initialization:")
         print(f"  Model: {parser.model}")

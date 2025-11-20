@@ -49,6 +49,25 @@ class CustomerCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateVie
             expiry_time = timezone.now() + timezone.timedelta(seconds=300)
             mrz_data["expiry_time"] = expiry_time.timestamp()
             self.request.session["mrz_data"] = mrz_data  # Update session data
+            # populate passport fields on the customer instance if present
+            try:
+                if mrz_data.get("number"):
+                    form.instance.passport_number = mrz_data.get("number")
+                if mrz_data.get("expiration_date_yyyy_mm_dd"):
+                    from datetime import datetime
+
+                    form.instance.passport_expiration_date = datetime.strptime(
+                        mrz_data.get("expiration_date_yyyy_mm_dd"), "%Y-%m-%d"
+                    ).date()
+                if mrz_data.get("issue_date_yyyy_mm_dd"):
+                    from datetime import datetime
+
+                    form.instance.passport_issue_date = datetime.strptime(
+                        mrz_data.get("issue_date_yyyy_mm_dd"), "%Y-%m-%d"
+                    ).date()
+            except Exception:
+                # If for some reason dates can't be parsed, ignore and continue
+                pass
         return super().form_valid(form)
 
     def form_invalid(self, form: BaseModelForm) -> HttpResponse:
