@@ -24,7 +24,7 @@ GLOBAL_SETTINGS = {
     "SITE_NAME": os.getenv("SITE_NAME", "Business Suite"),
     "SITE_DESCRIPTION": os.getenv(
         "SITE_DESCRIPTION",
-        "Comprehensive ERP for service agencies: CRM, catalog, applications, invoicing, payments, document management."
+        "Comprehensive ERP for service agencies: CRM, catalog, applications, invoicing, payments, document management.",
     ),
     "DOCUMENT_EXPIRATION_NOTIFICATION_DAYS": 180,
     "LOGO_FILENAME": os.getenv("LOGO_FILENAME", "logo_transparent.png"),
@@ -68,6 +68,7 @@ INSTALLED_APPS = [
     "invoices",
     "payments",
     "customer_applications",
+    "letters",
     "reports",
     "corsheaders",
     "rest_framework",
@@ -411,4 +412,7 @@ LLM_DEFAULT_MODEL = os.getenv("LLM_DEFAULT_MODEL", "google/gemini-2.0-flash-001"
 DOCX_INVOICE_TEMPLATE_NAME = os.getenv("DOCX_INVOICE_TEMPLATE_NAME", "invoice_template_with_footer.docx")
 DOCX_PARTIAL_INVOICE_TEMPLATE_NAME = os.getenv(
     "DOCX_PARTIAL_INVOICE_TEMPLATE_NAME", "partial_invoice_template_with_footer.docx"
+)
+DOCX_SURAT_PERMOHONAN_PERPANJANGAN_TEMPLATE_NAME = os.getenv(
+    "DOCX_SURAT_PERMOHONAN_PERPANJANGAN_TEMPLATE_NAME", "surat_permohonan_perpanjangan.docx"
 )

@@ -1,0 +1,245 @@
+{% extends "base_template.html" %}
+{% load crispy_forms_tags %}
+{% load static %}
+
+{% block title %}BusinessSuite - Surat Permohonan{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <h2 class="text-center my-4">Surat Permohonan Perpanjangan</h2>
+
+    <form id="surat-permohonan-form" method="post" action="{% url 'letters:download_surat_permohonan' %}" class="p-3 rounded w-100">
+        {% csrf_token %}
+
+        <div class="card mb-4 shadow-sm">
+            <div class="card-header">
+                <i class="fas fa-user-check"></i> Customer Selection
+            </div>
+            <div class="card-body">
+                <div class="row g-3 align-items-end">
+                    <div class="col-lg-9">
+                        <label for="id_customer" class="form-label">Customer <span class="text-danger">*</span></label>
+                        {{ form.customer }}
+                        <input type="hidden" id="id_customer_selected" name="customer_id" value="">
+                    </div>
+                    <div class="col-lg-3 d-grid">
+                        <button type="button" class="btn btn-success" id="add-customer-btn">
+                            <i class="fas fa-user-plus"></i> New Customer
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <i class="fas fa-file-signature"></i> Letter Details
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label for="id_visa_type" class="form-label">Visa Type <span class="text-danger">*</span></label>
+                        {{ form.visa_type }}
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label for="id_doc_date" class="form-label">Document Date <span class="text-danger">*</span></label>
+                        {{ form.doc_date }}
+                    </div>
+                    <div class="col-md-8">
+                        <label for="id_name" class="form-label">Customer Name <span class="text-danger">*</span></label>
+                        {{ form.name }}
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label for="id_gender" class="form-label">Gender</label>
+                        {{ form.gender }}
+                    </div>
+                    <div class="col-md-4">
+                        <label for="id_country" class="form-label">Nationality</label>
+                        {{ form.country }}
+                    </div>
+                    <div class="col-md-4">
+                        <label for="id_birth_place" class="form-label">Birth Place</label>
+                        {{ form.birth_place }}
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label for="id_birthdate" class="form-label">Birth Date</label>
+                        {{ form.birthdate }}
+                    </div>
+                    <div class="col-md-4">
+                        <label for="id_passport_no" class="form-label">Passport Number</label>
+                        {{ form.passport_no }}
+                    </div>
+                    <div class="col-md-4">
+                        <label for="id_passport_exp_date" class="form-label">Passport Expiration Date</label>
+                        {{ form.passport_exp_date }}
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="id_address_bali" class="form-label">Address in Bali</label>
+                    {{ form.address_bali }}
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mt-4">
+                    <div class="text-muted small">
+                        <i class="fas fa-info-circle"></i> Review all fields before generating the letter.
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="submit-btn">
+                        <i class="fas fa-file-download"></i> Generate & Download
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+{% include 'modals/customer_quick_create_modal.html' %}
+{% endblock %}
+
+{% block after-bootstrap-js %}
+{{ block.super }}
+<script>
+    $(document).ready(function() {
+    // Initialize Select2 for customer dropdown - NO clear button
+    $('#id_customer').select2({
+        theme: 'bootstrap-5',
+        width: '100%',
+        placeholder: 'Select a customer...',
+        allowClear: false
+    });
+
+    // Add form-control class to all form inputs
+    $('input, textarea').addClass('form-control');
+
+    // Initialize hidden customer field if pre-selected and trigger change to populate fields
+    var _initCustomer = $('#id_customer').val();
+    if (_initCustomer) {
+        $('#id_customer_selected').val(_initCustomer);
+        // Trigger change to populate the other fields
+        $('#id_customer').trigger('change');
+    }
+
+    // Handle customer selection change - populate form fields and hidden field
+    $('#id_customer').on('change', function() {
+        var customerId = $(this).val();
+        if (customerId) {
+            // Keep hidden field updated so the server gets the selected customer id
+            $('#id_customer_selected').val(customerId);
+            // Fetch customer data via API
+            $.ajax({
+                url: '/api/customers/' + customerId + '/',
+                method: 'GET',
+                success: function(customer) {
+                    console.log('Customer data:', customer);
+                    // Populate form fields
+                    $('#id_name').val(customer.full_name || '');
+                    $('#id_gender').val(customer.gender_display || '');
+                    $('#id_country').val(customer.nationality_name || '');
+                    $('#id_birthdate').val(customer.birthdate || '');
+                    $('#id_passport_no').val(customer.passport_number || '');
+                    $('#id_passport_exp_date').val(customer.passport_expiration_date || '');
+                    $('#id_address_bali').val(customer.address_bali || '');
+                },
+                error: function(xhr, status, error) {
+                    console.log('Could not fetch customer details:', error);
+                    showToast('Could not fetch customer details. Please try again.', 'danger');
+                }
+            });
+        } else {
+            // Clear fields
+            $('#id_name, #id_gender, #id_country, #id_birthdate, #id_passport_no, #id_passport_exp_date, #id_address_bali').val('');
+            $('#id_customer_selected').val('');
+        }
+    });
+
+    // Handle add customer button
+    $('#add-customer-btn').on('click', function() {
+        openCustomerQuickCreateModal('id_customer');
+    });
+
+    // Handle form submit via AJAX so we can show errors as toast and download file on success
+    $('#surat-permohonan-form').on('submit', function(e) {
+        e.preventDefault();
+        var $form = $(this);
+        var url = $form.attr('action');
+        var formData = new FormData(this);
+
+        $.ajax({
+            url: url,
+            method: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            xhrFields: { responseType: 'blob' },
+            success: function(data, status, xhr) {
+                // Try to extract a filename from Content-Disposition header
+                var filename = 'surat_permohonan.docx';
+                var disposition = xhr.getResponseHeader('Content-Disposition');
+                if (disposition && disposition.indexOf('filename=') !== -1) {
+                    var match = disposition.match(/filename\*=UTF-8''([^;]+)|filename="?([^;"']+)"?/i);
+                    if (match) {
+                        filename = decodeURIComponent(match[1] || match[2]);
+                    }
+                }
+                var blob = new Blob([data], { type: xhr.getResponseHeader('Content-Type') || 'application/octet-stream' });
+                var link = document.createElement('a');
+                link.href = window.URL.createObjectURL(blob);
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                setTimeout(function() {
+                    window.URL.revokeObjectURL(link.href);
+                    link.remove();
+                }, 1000);
+            },
+            error: function(xhr) {
+                var msg = 'An error occurred';
+                try {
+                    var txt = xhr.responseText;
+                    try {
+                        var json = JSON.parse(txt);
+                        if (json && json.error) msg = json.error;
+                        else if (json && json.errors) msg = JSON.stringify(json.errors);
+                    } catch (e) {
+                        msg = txt || msg;
+                    }
+                } catch (e) {
+                    msg = xhr.statusText || msg;
+                }
+                showToast(msg, 'danger');
+            }
+        });
+    });
+});
+
+// Toast helper using Bootstrap 5
+function showToast(message, type) {
+    // Create toast container if not existing
+    var $container = $('#toast-container');
+    if (!$container.length) {
+        $container = $('<div id="toast-container" aria-live="polite" aria-atomic="true" class="position-fixed top-0 end-0 p-3" style="z-index: 1080;"></div>');
+        $('body').append($container);
+    }
+    var toastId = 'toast-' + Date.now();
+    var toastHtml = `
+        <div id="${toastId}" class="toast align-items-center text-bg-${type} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">${message}</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>`;
+    var $toast = $(toastHtml);
+    $container.append($toast);
+    var bsToast = new bootstrap.Toast(document.getElementById(toastId), { delay: 5000 });
+    bsToast.show();
+}
+</script>
+{% endblock %}

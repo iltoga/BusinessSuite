@@ -18,3 +18,13 @@ def as_currency(value):
 
 def as_date_str(value):
     return value.strftime("%d/%m/%Y")
+
+
+def as_long_date_str(value):
+    """Return date like '25 November 2025' (day month-name year)."""
+    return value.strftime("%d %B %Y")
+
+
+def as_date_dash_str(value):
+    """Return date like '25-11-2025' (day-month-year with dashes)."""
+    return value.strftime("%d-%m-%Y")

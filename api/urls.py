@@ -7,6 +7,7 @@ urlpatterns = [
     path("api-token-auth/", auth_views.obtain_auth_token),
     path("session-auth/", include("rest_framework.urls", namespace="rest_framework")),
     path("customers/", views.CustomersView.as_view()),
+    path("customers/<int:pk>/", views.CustomerDetailView.as_view(), name="api-customer-detail"),
     # the view requires a 'q' parameter with the query string
     path("customers/search/", views.SearchCustomers.as_view(), name="api-customer-search"),
     path("products/", views.ProductsView.as_view()),

@@ -30,6 +30,7 @@ base_urlpatterns = [
     path("customer_applications/", include("customer_applications.urls")),
     path("invoices/", include("invoices.urls")),
     path("payments/", include("payments.urls")),
+    path("letters/", include("letters.urls")),
     path("reports/", include("reports.urls")),
     path("", TemplateView.as_view(template_name="base_template.html"), name="home"),
     path("api/", include("api.urls")),
