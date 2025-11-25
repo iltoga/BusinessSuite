@@ -170,5 +170,6 @@ cython_debug/
 
 business_suite/static/reporting/invoice_template_with_footer_revisbali.docx
 business_suite/static/reporting/partial_invoice_template_with_footer_revisbali.docx
+business_suite/static/reporting/*permohonan_perpanjangan*
 business_suite/backups/*
 business_suite/static/logo_revis*.png

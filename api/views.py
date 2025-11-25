@@ -54,6 +54,32 @@ class CustomersView(APIView):
         return Response(serializer.data)
 
 
+class CustomerDetailView(APIView):
+    queryset = Customer.objects.all()
+
+    def get(self, request, pk):
+        try:
+            customer = Customer.objects.select_related("nationality").get(pk=pk)
+            data = {
+                "id": customer.id,
+                "first_name": customer.first_name or "",
+                "last_name": customer.last_name or "",
+                "company_name": customer.company_name or "",
+                "full_name": customer.full_name,
+                "gender_display": customer.get_gender_display() if customer.gender else "",
+                "nationality_name": customer.nationality.country if customer.nationality else "",
+                "birthdate": customer.birthdate.isoformat() if customer.birthdate else "",
+                "passport_number": customer.passport_number or "",
+                "passport_expiration_date": (
+                    customer.passport_expiration_date.isoformat() if customer.passport_expiration_date else ""
+                ),
+                "address_bali": customer.address_bali or "",
+            }
+            return Response(data)
+        except Customer.DoesNotExist:
+            return Response({"error": "Customer not found"}, status=status.HTTP_404_NOT_FOUND)
+
+
 class ProductsView(APIView):
     queryset = Product.objects.all()
 
