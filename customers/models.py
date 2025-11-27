@@ -94,14 +94,10 @@ class Customer(models.Model):
         max_length=50, unique=True, blank=True, null=True, validators=[validate_email], db_index=True
     )
     telephone = models.CharField(
-        max_length=50, unique=True, blank=True, null=True, validators=[validate_phone_number], db_index=True
+        max_length=50, blank=True, null=True, validators=[validate_phone_number], db_index=True
     )
-    whatsapp = models.CharField(
-        max_length=50, unique=True, blank=True, null=True, validators=[validate_phone_number], db_index=True
-    )
-    telegram = models.CharField(
-        max_length=50, unique=True, blank=True, null=True, validators=[validate_phone_number], db_index=True
-    )
+    whatsapp = models.CharField(max_length=50, blank=True, null=True, validators=[validate_phone_number], db_index=True)
+    telegram = models.CharField(max_length=50, blank=True, null=True, validators=[validate_phone_number], db_index=True)
     facebook = models.CharField(max_length=50, blank=True, null=True, db_index=True)
     instagram = models.CharField(max_length=50, blank=True, null=True, db_index=True)
     twitter = models.CharField(max_length=50, blank=True, null=True, db_index=True)
@@ -185,12 +181,6 @@ class Customer(models.Model):
         # Convert empty strings to None for unique fields to avoid duplicate constraint violations
         if self.email == "":
             self.email = None
-        if self.telephone == "":
-            self.telephone = None
-        if self.whatsapp == "":
-            self.whatsapp = None
-        if self.telegram == "":
-            self.telegram = None
 
         super().save(*args, **kwargs)
 

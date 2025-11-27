@@ -6,6 +6,7 @@ from django.shortcuts import get_object_or_404
 from matplotlib import widgets
 
 from core.models import CountryCode
+from core.utils.form_validators import normalize_phone_number
 from customers.models import CUSTOMER_TYPE_CHOICES, GENDERS, NOTIFY_BY_CHOICES, Customer
 
 
@@ -121,6 +122,23 @@ class CustomerForm(forms.ModelForm):
                 raise forms.ValidationError("Company name is required for company customers.")
 
         return cleaned_data
+
+    def _clean_phone_field(self, field_name):
+        value = self.cleaned_data.get(field_name)
+        if not value:
+            return value
+        normalized = normalize_phone_number(value)
+        self.cleaned_data[field_name] = normalized
+        return normalized
+
+    def clean_telephone(self):
+        return self._clean_phone_field("telephone")
+
+    def clean_whatsapp(self):
+        return self._clean_phone_field("whatsapp")
+
+    def clean_telegram(self):
+        return self._clean_phone_field("telegram")
 
     # def save(self, commit=True):
     #     instance = super().save(commit=False)

@@ -143,6 +143,7 @@
                     $('#id_name').val(customer.full_name || '');
                     $('#id_gender').val(customer.gender_display || '');
                     $('#id_country').val(customer.nationality_name || '');
+                    $('#id_birth_place').val(customer.birth_place || '');
                     $('#id_birthdate').val(customer.birthdate || '');
                     $('#id_passport_no').val(customer.passport_number || '');
                     $('#id_passport_exp_date').val(customer.passport_expiration_date || '');
@@ -155,7 +156,7 @@
             });
         } else {
             // Clear fields
-            $('#id_name, #id_gender, #id_country, #id_birthdate, #id_passport_no, #id_passport_exp_date, #id_address_bali').val('');
+            $('#id_name, #id_gender, #id_country, #id_birth_place, #id_birthdate, #id_passport_no, #id_passport_exp_date, #id_address_bali').val('');
             $('#id_customer_selected').val('');
         }
     });

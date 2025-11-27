@@ -24,6 +24,7 @@ from api.serializers import (
 )
 from core.models import CountryCode
 from core.utils.dateutils import calculate_due_date, parse_date_field
+from core.utils.form_validators import normalize_phone_number
 from core.utils.imgutils import convert_and_resize_image
 from core.utils.passport_ocr import extract_mrz_data, extract_passport_with_ai
 from customer_applications.models import DocApplication
@@ -347,6 +348,12 @@ def customer_quick_create(request):
     """
     try:
         # Extract data from request
+        def sanitize_phone(value):
+            if not value:
+                return None
+            normalized = normalize_phone_number(value)
+            return normalized or None
+
         data = {
             "title": request.data.get("title", ""),
             "customer_type": request.data.get("customer_type", "person"),
@@ -356,8 +363,8 @@ def customer_quick_create(request):
             "npwp": request.data.get("npwp", ""),
             "birth_place": request.data.get("birth_place"),
             "email": request.data.get("email") or None,
-            "telephone": request.data.get("telephone") or None,
-            "whatsapp": request.data.get("whatsapp") or None,
+            "telephone": sanitize_phone(request.data.get("telephone")),
+            "whatsapp": sanitize_phone(request.data.get("whatsapp")),
             "address_bali": request.data.get("address_bali", ""),
             "address_abroad": request.data.get("address_abroad", ""),
             "passport_number": request.data.get("passport_number", ""),

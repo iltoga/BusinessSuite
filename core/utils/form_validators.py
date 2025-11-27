@@ -9,6 +9,21 @@ def validate_phone_number(value):
         raise ValidationError("Invalid phone number.")
 
 
+def normalize_phone_number(value):
+    """Normalize phone numbers by trimming spaces and removing separators."""
+    if value is None:
+        return None
+    value = value.strip()
+    if not value:
+        return ""
+
+    has_plus = value.startswith("+")
+    digits_only = re.sub(r"\D", "", value)
+    if has_plus:
+        return f"+{digits_only}"
+    return digits_only
+
+
 def validate_birthdate(value):
     if value > datetime.date.today():
         raise ValidationError("Birthdate cannot be in the future.")

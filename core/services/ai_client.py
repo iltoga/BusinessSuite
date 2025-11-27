@@ -143,6 +143,9 @@ class AIClient:
         """
         Send a chat completion request with structured JSON output.
 
+        Both OpenRouter and OpenAI support json_schema with strict mode.
+        See: https://openrouter.ai/docs/guides/features/structured-outputs
+
         Args:
             messages: List of message dicts
             json_schema: JSON schema for the response
@@ -154,14 +157,18 @@ class AIClient:
         Returns:
             Parsed JSON response as dict
         """
+        # Both OpenRouter and OpenAI use the same json_schema format
+        # OpenRouter docs: https://openrouter.ai/docs/guides/features/structured-outputs
         response_format = {
             "type": "json_schema",
             "json_schema": {
                 "name": schema_name,
-                "schema": json_schema,
                 "strict": strict,
+                "schema": json_schema,
             },
         }
+
+        logger.debug(f"Using json_schema mode for model: {self.model} (strict={strict})")
 
         response_text = self.chat_completion(
             messages=messages,
