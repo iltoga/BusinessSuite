@@ -3,7 +3,7 @@ import os
 import re
 import tempfile
 from datetime import datetime
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 import pytesseract
@@ -604,3 +604,206 @@ def _assess_image_quality(image_path: str):
             }
     except Exception:
         return None
+
+
+def extract_passport_with_ai(file, use_ai: bool = True) -> dict:
+    """
+    Extract passport data using hybrid MRZ + AI vision approach.
+
+    This function:
+    1. Runs MRZ extraction using PassportEye/Tesseract (current logic)
+    2. If use_ai is True, runs AI vision extraction to get additional fields
+    3. Merges the results, with AI providing additional data and comparison logic
+
+    Args:
+        file: Uploaded file (InMemoryUploadedFile, TemporaryUploadedFile, or file-like object)
+        use_ai: Whether to use AI extraction (default: True)
+
+    Returns:
+        dict: Combined passport data with fields from both MRZ and AI extraction
+    """
+    logger = logging.getLogger("passport_ocr")
+
+    # Step 1: Run MRZ extraction first (this validates the document)
+    # We call the original extract_mrz_data but with check_expiration=False
+    # to get the MRZ data regardless of expiration status
+    mrz_data = extract_mrz_data(file, check_expiration=False)
+
+    if not use_ai:
+        return mrz_data
+
+    # Step 2: Run AI extraction
+    try:
+        ai_data = _extract_with_ai(file)
+    except Exception as e:
+        logger.warning(f"AI extraction failed, using MRZ data only: {e}")
+        ai_data = None
+
+    if not ai_data:
+        logger.info("No AI data extracted, returning MRZ data only")
+        return mrz_data
+
+    # Step 3: Merge results with comparison logic
+    merged_data = _merge_passport_data(mrz_data, ai_data, logger)
+
+    return merged_data
+
+
+def _extract_with_ai(file) -> Optional[dict]:
+    """
+    Extract passport data using AI vision.
+
+    Args:
+        file: Uploaded file
+
+    Returns:
+        dict with AI-extracted passport data or None if extraction fails
+    """
+    logger = logging.getLogger("passport_ocr")
+
+    try:
+        # Import here to avoid circular imports
+        from core.services.ai_passport_parser import AIPassportParser
+
+        parser = AIPassportParser()
+
+        # Reset file position if needed
+        if hasattr(file, "seek"):
+            file.seek(0)
+
+        result = parser.parse_passport_image(file, filename=getattr(file, "name", "passport"))
+
+        if not result.success:
+            logger.warning(f"AI passport parsing failed: {result.error_message}")
+            return None
+
+        # Convert PassportData to dict
+        passport_data = result.passport_data
+        ai_dict = {
+            "ai_first_name": passport_data.first_name,
+            "ai_last_name": passport_data.last_name,
+            "ai_full_name": passport_data.full_name,
+            "ai_nationality": passport_data.nationality,
+            "ai_nationality_code": passport_data.nationality_code,
+            "ai_gender": passport_data.gender,
+            "ai_date_of_birth": passport_data.date_of_birth,
+            "ai_birth_place": passport_data.birth_place,
+            "ai_passport_number": passport_data.passport_number,
+            "ai_passport_issue_date": passport_data.passport_issue_date,
+            "ai_passport_expiration_date": passport_data.passport_expiration_date,
+            "ai_issuing_country": passport_data.issuing_country,
+            "ai_issuing_country_code": passport_data.issuing_country_code,
+            "ai_issuing_authority": passport_data.issuing_authority,
+            "ai_height_cm": passport_data.height_cm,
+            "ai_eye_color": passport_data.eye_color,
+            "ai_address_abroad": passport_data.address_abroad,
+            "ai_document_type": passport_data.document_type,
+            "ai_confidence_score": passport_data.confidence_score,
+        }
+
+        logger.info(f"AI extraction successful with confidence: {passport_data.confidence_score:.2f}")
+        return ai_dict
+
+    except Exception as e:
+        logger.error(f"Error in AI passport extraction: {e}")
+        return None
+
+
+def _merge_passport_data(mrz_data: dict, ai_data: dict, logger: logging.Logger) -> dict:
+    """
+    Merge MRZ and AI extracted passport data.
+
+    PRIORITY: AI data is preferred over MRZ when AI has high confidence,
+    because MRZ OCR often has errors (e.g., Y→7, I→1, O→0).
+
+    Args:
+        mrz_data: Data from MRZ extraction
+        ai_data: Data from AI extraction
+        logger: Logger instance
+
+    Returns:
+        dict: Merged passport data with AI data prioritized
+    """
+    merged = mrz_data.copy()
+    ai_confidence = ai_data.get("ai_confidence_score", 0.0)
+
+    # Add AI-only fields (not available in MRZ)
+    ai_only_fields = [
+        ("birth_place", "ai_birth_place"),
+        ("passport_issue_date", "ai_passport_issue_date"),
+        ("issuing_authority", "ai_issuing_authority"),
+        ("height_cm", "ai_height_cm"),
+        ("eye_color", "ai_eye_color"),
+        ("address_abroad", "ai_address_abroad"),
+        ("issuing_country", "ai_issuing_country"),
+    ]
+
+    for target_key, ai_key in ai_only_fields:
+        if ai_data.get(ai_key):
+            merged[target_key] = ai_data[ai_key]
+            logger.debug(f"Added AI field {target_key}: {ai_data[ai_key]}")
+
+    # PRIORITIZE AI for names - MRZ OCR often has errors
+    ai_first_name = ai_data.get("ai_first_name", "")
+    ai_last_name = ai_data.get("ai_last_name", "")
+    mrz_names = mrz_data.get("names", "")
+    mrz_surname = mrz_data.get("surname", "")
+
+    # Store MRZ versions for reference
+    merged["mrz_names"] = mrz_names
+    merged["mrz_surname"] = mrz_surname
+
+    # Use AI names if available (AI reads from visual zone, more accurate)
+    if ai_first_name:
+        merged["names"] = ai_first_name
+        merged["names_source"] = "ai"
+        logger.debug(f"Using AI first name: {ai_first_name} (MRZ was: {mrz_names})")
+    else:
+        merged["names_source"] = "mrz"
+
+    if ai_last_name:
+        merged["surname"] = ai_last_name
+        merged["surname_source"] = "ai"
+        logger.debug(f"Using AI last name: {ai_last_name} (MRZ was: {mrz_surname})")
+    else:
+        merged["surname_source"] = "mrz"
+
+    # PRIORITIZE AI for passport number - MRZ often confuses Y/7, I/1, O/0
+    ai_number = ai_data.get("ai_passport_number", "")
+    mrz_number = mrz_data.get("number", "")
+
+    if ai_number:
+        merged["mrz_number"] = mrz_number  # Keep MRZ for reference
+        merged["number"] = ai_number
+        merged["number_source"] = "ai"
+        if mrz_number != ai_number:
+            logger.debug(f"Passport number: using AI '{ai_number}' over MRZ '{mrz_number}'")
+    else:
+        merged["number_source"] = "mrz"
+
+    # For nationality, use 3-letter code (AI should provide this)
+    # MRZ nationality is already 3-letter code, AI should match
+    ai_nationality_code = ai_data.get("ai_nationality_code", "") or ai_data.get("ai_nationality", "")
+    mrz_nationality = mrz_data.get("nationality", "")
+
+    # If AI nationality looks like a 3-letter code, use it
+    if ai_nationality_code and len(ai_nationality_code) == 3 and ai_nationality_code.isalpha():
+        merged["nationality"] = ai_nationality_code.upper()
+    # Keep MRZ nationality as fallback (already 3-letter code)
+
+    # Store full country name from AI if available
+    ai_nationality_name = ai_data.get("ai_nationality", "")
+    if ai_nationality_name and len(ai_nationality_name) > 3:
+        merged["nationality_name"] = ai_nationality_name
+
+    # For dates, keep MRZ as primary (has check digits) but store AI for reference
+    if ai_data.get("ai_date_of_birth"):
+        merged["ai_date_of_birth"] = ai_data["ai_date_of_birth"]
+    if ai_data.get("ai_passport_expiration_date"):
+        merged["ai_expiration_date"] = ai_data["ai_passport_expiration_date"]
+
+    # Add AI confidence score and extraction method
+    merged["ai_confidence_score"] = ai_confidence
+    merged["extraction_method"] = "hybrid_mrz_ai"
+
+    return merged

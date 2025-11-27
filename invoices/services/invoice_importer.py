@@ -14,10 +14,10 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
+from core.services import AIInvoiceParser, ParsedInvoiceResult
 from customer_applications.models import DocApplication
 from customers.models import Customer
 from invoices.models import Invoice, InvoiceApplication
-from invoices.services.llm_invoice_parser import LLMInvoiceParser, ParsedInvoiceResult
 from products.models import Product
 
 logger = logging.getLogger(__name__)
@@ -62,7 +62,7 @@ class InvoiceImporter:
             use_openrouter = getattr(settings, "LLM_PROVIDER", "openrouter") == "openrouter"
 
         # Initialize parser with optional model override
-        self.llm_parser = LLMInvoiceParser(use_openrouter=use_openrouter, model=llm_model)
+        self.llm_parser = AIInvoiceParser(use_openrouter=use_openrouter, model=llm_model)
 
     def import_from_file(self, uploaded_file, filename: str = None) -> ImportResult:
         """

@@ -22,7 +22,7 @@ This document lists the main API endpoints exposed by the application in this re
 
 - **GET `/api/customers/`**
   - **Input:** None
-  - **Description:** Retrieve a list of all customers.
+  - **Description:** Retrieve a list of all customers. Returns a list of customer objects including fields such as `first_name`, `last_name`, `company_name`, `email`, `telephone`, `passport_number`, `passport_expiration_date`, `birthdate`, and `birth_place`.
 
 - **GET `/api/customers/search/?q=<query>`**
   - **Input:** Query parameter `q` (string to search by first name, last name, or email)

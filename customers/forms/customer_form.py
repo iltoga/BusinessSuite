@@ -52,6 +52,7 @@ class CustomerForm(forms.ModelForm):
     passport_issue_date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}), required=False)
     passport_expiration_date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}), required=False)
     birthdate = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}), required=False)
+    birth_place = forms.CharField(max_length=100, required=False)
     telephone = forms.CharField(required=False)
 
     class Meta:
@@ -67,6 +68,7 @@ class CustomerForm(forms.ModelForm):
             "title",
             "gender",
             "nationality",
+            "birth_place",
             "birthdate",
             "npwp",
             "email",

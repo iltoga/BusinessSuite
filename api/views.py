@@ -23,9 +23,9 @@ from api.serializers import (
     ProductSerializer,
 )
 from core.models import CountryCode
-from core.utils.dateutils import calculate_due_date
+from core.utils.dateutils import calculate_due_date, parse_date_field
 from core.utils.imgutils import convert_and_resize_image
-from core.utils.passport_ocr import extract_mrz_data
+from core.utils.passport_ocr import extract_mrz_data, extract_passport_with_ai
 from customer_applications.models import DocApplication
 from customers.models import Customer
 from invoices.models.invoice import InvoiceApplication
@@ -68,6 +68,7 @@ class CustomerDetailView(APIView):
                 "full_name": customer.full_name,
                 "gender_display": customer.get_gender_display() if customer.gender else "",
                 "nationality_name": customer.nationality.country if customer.nationality else "",
+                "birth_place": customer.birth_place or "",
                 "birthdate": customer.birthdate.isoformat() if customer.birthdate else "",
                 "passport_number": customer.passport_number or "",
                 "passport_expiration_date": (
@@ -179,6 +180,25 @@ class ProductsByTypeView(APIView):
 
 
 class OCRCheckView(APIView):
+    """
+    API endpoint for passport OCR extraction.
+
+    Supports hybrid extraction mode with AI vision for enhanced data extraction.
+
+    POST Parameters:
+        - file: The passport image or PDF file
+        - doc_type: Document type (e.g., 'passport')
+        - use_ai: (optional) Set to 'true' to enable AI-enhanced extraction (default: false)
+        - save_session: (optional) Save file and data to session
+        - img_preview: (optional) Return base64 preview image
+        - resize: (optional) Resize the image
+        - width: (optional) Target width for resize
+
+    Returns:
+        - mrz_data: Extracted passport data (enhanced with AI data if use_ai=true)
+        - b64_resized_image: Base64 encoded preview (if img_preview=true)
+    """
+
     def get_queryset(self):
         return Product.objects.none()
 
@@ -201,8 +221,16 @@ class OCRCheckView(APIView):
         if not doc_type or doc_type == "undefined":
             return Response(data={"error": "No doc_type provided!"}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Check if AI extraction is requested
+        use_ai = request.data.get("use_ai", "false").lower() == "true"
+
         try:
-            mrz_data = extract_mrz_data(file)
+            # Use hybrid extraction if AI is enabled, otherwise use MRZ only
+            if use_ai:
+                mrz_data = extract_passport_with_ai(file, use_ai=True)
+            else:
+                mrz_data = extract_mrz_data(file)
+
             save_session = request.data.get("save_session")
             if save_session:
                 # Sanitize filename to prevent path traversal and use RELATIVE path for storage
@@ -326,17 +354,28 @@ def customer_quick_create(request):
             "last_name": request.data.get("last_name"),
             "company_name": request.data.get("company_name", ""),
             "npwp": request.data.get("npwp", ""),
-            "birthdate": request.data.get("birthdate"),
-            "email": request.data.get("email", None),
-            "telephone": request.data.get("telephone", None),
-            "whatsapp": request.data.get("whatsapp", None),
+            "birth_place": request.data.get("birth_place"),
+            "email": request.data.get("email") or None,
+            "telephone": request.data.get("telephone") or None,
+            "whatsapp": request.data.get("whatsapp") or None,
             "address_bali": request.data.get("address_bali", ""),
             "address_abroad": request.data.get("address_abroad", ""),
             "passport_number": request.data.get("passport_number", ""),
-            "passport_issue_date": request.data.get("passport_issue_date", None),
-            "passport_expiration_date": request.data.get("passport_expiration_date", None),
             "gender": request.data.get("gender", ""),
         }
+
+        # Parse all date fields - convert empty strings to None
+        birthdate = parse_date_field(request.data.get("birthdate"))
+        if birthdate:
+            data["birthdate"] = birthdate
+
+        passport_issue_date = parse_date_field(request.data.get("passport_issue_date"))
+        if passport_issue_date:
+            data["passport_issue_date"] = passport_issue_date
+
+        passport_expiration_date = parse_date_field(request.data.get("passport_expiration_date"))
+        if passport_expiration_date:
+            data["passport_expiration_date"] = passport_expiration_date
 
         # Handle nationality
         nationality_code = request.data.get("nationality")
@@ -365,35 +404,7 @@ def customer_quick_create(request):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-        # Handle empty birthdate
-        if not data["birthdate"]:
-            data.pop("birthdate")
-
         # Create customer
-        # parse passport dates if provided
-        from datetime import datetime
-
-        if data.get("passport_issue_date") and isinstance(data["passport_issue_date"], str):
-            try:
-                data["passport_issue_date"] = datetime.strptime(data["passport_issue_date"], "%Y-%m-%d").date()
-            except ValueError:
-                try:
-                    data["passport_issue_date"] = datetime.strptime(data["passport_issue_date"], "%d/%m/%Y").date()
-                except ValueError:
-                    data["passport_issue_date"] = None
-        if data.get("passport_expiration_date") and isinstance(data["passport_expiration_date"], str):
-            try:
-                data["passport_expiration_date"] = datetime.strptime(
-                    data["passport_expiration_date"], "%Y-%m-%d"
-                ).date()
-            except ValueError:
-                try:
-                    data["passport_expiration_date"] = datetime.strptime(
-                        data["passport_expiration_date"], "%d/%m/%Y"
-                    ).date()
-                except ValueError:
-                    data["passport_expiration_date"] = None
-
         customer = Customer.objects.create(**data)
 
         return Response(
@@ -410,6 +421,7 @@ def customer_quick_create(request):
                     "passport_expiration_date": (
                         str(customer.passport_expiration_date) if customer.passport_expiration_date else ""
                     ),
+                    "birth_place": customer.birth_place or "",
                     "address_abroad": customer.address_abroad or "",
                 },
             },
@@ -434,7 +446,6 @@ def customer_application_quick_create(request):
     Quick create a customer application with documents and workflows
     """
     try:
-        from core.utils.dateutils import calculate_due_date
         from customer_applications.models import Document, DocWorkflow
         from products.models.document_type import DocumentType
 
@@ -451,20 +462,13 @@ def customer_application_quick_create(request):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Parse doc_date if it's a string
-        from datetime import datetime
-
-        if isinstance(doc_date, str):
-            try:
-                doc_date = datetime.strptime(doc_date, "%Y-%m-%d").date()
-            except ValueError:
-                try:
-                    doc_date = datetime.strptime(doc_date, "%d/%m/%Y").date()
-                except ValueError:
-                    return Response(
-                        {"success": False, "error": "Invalid date format. Use YYYY-MM-DD or DD/MM/YYYY."},
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
+        # Parse doc_date using the shared utility
+        doc_date = parse_date_field(doc_date)
+        if not doc_date:
+            return Response(
+                {"success": False, "error": "Invalid date format. Use YYYY-MM-DD or DD/MM/YYYY."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         # Get customer and product
         try:

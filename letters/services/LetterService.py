@@ -88,6 +88,7 @@ class LetterService:
         cur_date = formatutils.as_long_date_str(datetime_now())
 
         nationality = self.customer.nationality.country if self.customer.nationality else ""
+        birth_place_value = self.customer.birth_place or nationality
 
         data = {
             "doc_date": cur_date,
@@ -95,7 +96,7 @@ class LetterService:
             "name": self.customer.full_name,
             "gender": self._translate_gender(self.customer.gender or self.customer.get_gender_display()),
             "country": nationality,
-            "birth_place": nationality,  # Default to country if not provided
+            "birth_place": birth_place_value,  # Default to customer.birth_place or country
             "birthdate": self._format_date_value(self.customer.birthdate, format_type="dash"),
             "passport_n": self.customer.passport_number or "",
             "passport_exp_date": self._format_date_value(self.customer.passport_expiration_date, format_type="dash"),

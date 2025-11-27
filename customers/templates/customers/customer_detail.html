@@ -39,6 +39,9 @@
           {% if customer.nationality %}
           <tr><th scope="row" class="text-start">Nationality</th><td class="text-start">{{ customer.nationality }}</td></tr>
           {% endif %}
+          {% if customer.birth_place %}
+          <tr><th scope="row" class="text-start">Birth Place</th><td class="text-start">{{ customer.birth_place }}</td></tr>
+          {% endif %}
           {% if customer.birthdate %}
           <tr><th scope="row" class="text-start">Birthdate</th><td class="text-start">{{ customer.birthdate }}</td></tr>
           {% endif %}

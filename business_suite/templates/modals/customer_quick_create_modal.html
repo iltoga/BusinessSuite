@@ -138,6 +138,10 @@
 
                         <div class="row">
                             <div class="col-md-6 mb-3">
+                                <label for="id_quick_birth_place" class="form-label">Birth Place</label>
+                                <input type="text" class="form-control" id="id_quick_birth_place" name="birth_place">
+                            </div>
+                            <div class="col-md-6 mb-3">
                                 <label for="id_quick_birthdate" class="form-label">Birthdate</label>
                                 <input type="date" class="form-control" id="id_quick_birthdate" name="birthdate">
                             </div>
@@ -163,7 +167,7 @@
                         <!-- Import Section Row -->
                         <div class="row">
                             <div class="col-12 mb-3">
-                                {% include 'customers/partials/passport_import_section.html' with passport_field=None prefix='quick_' container_id='passport-import-quick' customer_type_selector='#id_quick_customer_type' first_name_id='id_quick_first_name' last_name_id='id_quick_last_name' gender_id='id_quick_gender' title_id='id_quick_title' nationality_id='id_quick_nationality' birthdate_id='id_quick_birthdate' passport_number_id='id_quick_passport_number' passport_issue_id='id_quick_passport_issue_date' passport_expiration_id='id_quick_passport_expiration_date' %}
+                                {% include 'customers/partials/passport_import_section.html' with passport_field=None prefix='quick_' container_id='passport-import-quick' customer_type_selector='#id_quick_customer_type' first_name_id='id_quick_first_name' last_name_id='id_quick_last_name' gender_id='id_quick_gender' title_id='id_quick_title' nationality_id='id_quick_nationality' birthdate_id='id_quick_birthdate' birth_place_id='id_quick_birth_place' passport_number_id='id_quick_passport_number' passport_issue_id='id_quick_passport_issue_date' passport_expiration_id='id_quick_passport_expiration_date' address_abroad_id='id_quick_address_abroad' %}
                             </div>
                         </div>
 
@@ -306,6 +310,8 @@
                 $passportImportQuick.find('[data-role="passport-import-success"]').addClass('d-none');
                 $passportImportQuick.find('[data-role="passport-import-error"]').addClass('d-none');
                 $passportImportQuick.find('[data-role="passport-clipboard-status"]').html('');
+                // Reset AI toggle to unchecked
+                $passportImportQuick.find('[data-role="use-ai-toggle"]').prop('checked', false);
             }
         };
 
@@ -381,6 +387,8 @@
                 $passportImportQuick.find('[data-role="passport-clipboard-preview"]').addClass('d-none').attr('src', '');
                 $passportImportQuick.find('[data-role="passport-import-success"]').addClass('d-none');
                 $passportImportQuick.find('[data-role="passport-import-error"]').addClass('d-none');
+                // Reset AI toggle to unchecked
+                $passportImportQuick.find('[data-role="use-ai-toggle"]').prop('checked', false);
             }
         });
     })();

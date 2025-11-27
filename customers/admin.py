@@ -27,11 +27,19 @@ class CustomerAdmin(admin.ModelAdmin):
     list_filter = ("active", "nationality")
 
     def export_as_csv(self, request, queryset):
-        """Admin action: export selected customers to CSV including passport fields."""
+        """Admin action: export selected customers to CSV including passport and birth place fields."""
         response = HttpResponse(content_type="text/csv")
         response["Content-Disposition"] = "attachment; filename=customers_export.csv"
         writer = csv.writer(response)
-        headers = ["Full Name", "Email", "Telephone", "Passport Number", "Passport Expiration Date", "Active"]
+        headers = [
+            "Full Name",
+            "Email",
+            "Telephone",
+            "Passport Number",
+            "Passport Expiration Date",
+            "Birth Place",
+            "Active",
+        ]
         writer.writerow(headers)
         for c in queryset:
             writer.writerow(
@@ -41,18 +49,27 @@ class CustomerAdmin(admin.ModelAdmin):
                     c.telephone or "",
                     c.passport_number or "",
                     str(c.passport_expiration_date) if c.passport_expiration_date else "",
+                    c.birth_place or "",
                     c.active,
                 ]
             )
         return response
 
-    export_as_csv.short_description = "Export selected customers as CSV (includes passports)"
+    export_as_csv.short_description = "Export selected customers as CSV (includes passports and birth place)"
 
     def export_as_excel(self, request, queryset):
-        """Admin action: export selected customers to Excel including passport fields."""
+        """Admin action: export selected customers to Excel including passport and birth place fields."""
         wb = openpyxl.Workbook()
         ws = wb.active
-        headers = ["Full Name", "Email", "Telephone", "Passport Number", "Passport Expiration Date", "Active"]
+        headers = [
+            "Full Name",
+            "Email",
+            "Telephone",
+            "Passport Number",
+            "Passport Expiration Date",
+            "Birth Place",
+            "Active",
+        ]
         for col_num, header in enumerate(headers, 1):
             ws.cell(row=1, column=col_num, value=header)
         for row_num, c in enumerate(queryset, start=2):
@@ -61,7 +78,8 @@ class CustomerAdmin(admin.ModelAdmin):
             ws.cell(row=row_num, column=3, value=c.telephone or "")
             ws.cell(row=row_num, column=4, value=c.passport_number or "")
             ws.cell(row=row_num, column=5, value=str(c.passport_expiration_date) if c.passport_expiration_date else "")
-            ws.cell(row=row_num, column=6, value=c.active)
+            ws.cell(row=row_num, column=6, value=c.birth_place or "")
+            ws.cell(row=row_num, column=7, value=c.active)
         for col_num in range(1, len(headers) + 1):
             ws.column_dimensions[get_column_letter(col_num)].width = 25
         response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
@@ -69,7 +87,7 @@ class CustomerAdmin(admin.ModelAdmin):
         wb.save(response)
         return response
 
-    export_as_excel.short_description = "Export selected customers as Excel (includes passports)"
+    export_as_excel.short_description = "Export selected customers as Excel (includes passports and birth place)"
 
     actions = ["export_as_csv", "export_as_excel"]
 
