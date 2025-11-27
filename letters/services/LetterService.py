@@ -19,6 +19,15 @@ class LetterService:
         "C1": "C1",
     }
 
+    GENDER_TRANSLATIONS = {
+        "m": "Laki-laki",
+        "male": "Laki-laki",
+        "f": "Perempuan",
+        "female": "Perempuan",
+        "laki-laki": "Laki-laki",
+        "perempuan": "Perempuan",
+    }
+
     def __init__(self, customer: Customer, template_name: str):
         self.customer = customer
         self.template_name = template_name
@@ -65,6 +74,15 @@ class LetterService:
             return formatutils.as_date_dash_str(value)
         return formatutils.as_date_str(value)
 
+    def _translate_gender(self, value):
+        if not value:
+            return ""
+        normalized = str(value).strip()
+        if not normalized:
+            return ""
+        translated = self.GENDER_TRANSLATIONS.get(normalized.lower())
+        return translated if translated else normalized
+
     def generate_letter_data(self, extra_data=None):
         # Use shared formatting utility to ensure dates are formatted as '17 November 2025'
         cur_date = formatutils.as_long_date_str(datetime_now())
@@ -75,7 +93,7 @@ class LetterService:
             "doc_date": cur_date,
             "visa_type": self.VISA_TYPES_SURAT_PERMOHONAN.get("voa"),
             "name": self.customer.full_name,
-            "gender": self.customer.get_gender_display() if self.customer.gender else "",
+            "gender": self._translate_gender(self.customer.gender or self.customer.get_gender_display()),
             "country": nationality,
             "birth_place": nationality,  # Default to country if not provided
             "birthdate": self._format_date_value(self.customer.birthdate, format_type="dash"),
@@ -110,6 +128,8 @@ class LetterService:
                     data[f"address_bali_line_{i+1}"] = addr_lines[i].strip() if i < len(addr_lines) else ""
                 # replace address_bali with normalized newline-separated string
                 data["address_bali"] = "\n".join([ln.strip() for ln in addr_lines if ln.strip()])
+
+        data["gender"] = self._translate_gender(data.get("gender"))
 
         # If birth_place is empty, use country as fallback
         if not data.get("birth_place"):
