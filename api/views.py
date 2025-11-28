@@ -260,7 +260,13 @@ class OCRCheckView(APIView):
                 resize=resize,
                 base_width=width,
             )
-            return Response(data={"b64_resized_image": img_str, "mrz_data": mrz_data}, status=status.HTTP_200_OK)
+
+            # Build response with optional AI error warning
+            response_data = {"b64_resized_image": img_str, "mrz_data": mrz_data}
+            if "ai_error" in mrz_data:
+                response_data["ai_warning"] = mrz_data.pop("ai_error")
+
+            return Response(data=response_data, status=status.HTTP_200_OK)
         except Exception as e:
             errMsg = e.args[0] if e.args else str(e)
             return Response(data={"error": errMsg}, status=status.HTTP_400_BAD_REQUEST)

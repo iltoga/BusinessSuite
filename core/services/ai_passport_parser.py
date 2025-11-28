@@ -11,6 +11,7 @@ from typing import Optional, Union
 from django.core.files.uploadedfile import UploadedFile
 
 from core.services.ai_client import AIClient
+from core.utils.icao_validation import validate_passport_number_icao
 
 logger = logging.getLogger(__name__)
 
@@ -129,6 +130,9 @@ class AIPassportParser:
         "Be precise with dates, names, and codes."
     )
 
+    # Maximum retry attempts for passport number validation
+    MAX_PASSPORT_VALIDATION_RETRIES = 2
+
     def __init__(
         self,
         api_key: Optional[str] = None,
@@ -206,29 +210,59 @@ class AIPassportParser:
             )
 
     def _parse_with_vision(self, image_bytes: bytes, filename: str) -> AIPassportResult:
-        """Parse passport image using vision capabilities."""
+        """Parse passport image using vision capabilities with validation and retry."""
         try:
-            # Build vision messages
+            # Initial attempt
             prompt = self._build_vision_prompt()
-            messages = self.ai_client.build_vision_message(
-                prompt=prompt,
-                image_bytes=image_bytes,
-                filename=filename,
-                system_prompt=self.SYSTEM_PROMPT,
+            result = self._call_vision_api(image_bytes, filename, prompt)
+
+            if not result.success:
+                return result
+
+            # Validate passport number
+            passport_number = result.passport_data.passport_number
+            is_valid, validation_msg = validate_passport_number_icao(passport_number)
+
+            if is_valid:
+                logger.info(f"Passport number validated: {passport_number}")
+                return result
+
+            # Passport number validation failed - retry with focused prompt
+            logger.warning(f"Passport number validation failed: {validation_msg}. Retrying...")
+
+            last_validation_msg = validation_msg
+            for attempt in range(1, self.MAX_PASSPORT_VALIDATION_RETRIES + 1):
+                logger.info(f"Retry attempt {attempt}/{self.MAX_PASSPORT_VALIDATION_RETRIES}")
+
+                # Build focused retry prompt
+                retry_prompt = self._build_retry_prompt(passport_number, validation_msg)
+                retry_result = self._call_vision_api(image_bytes, filename, retry_prompt)
+
+                if not retry_result.success:
+                    continue
+
+                # Validate the new passport number
+                new_passport_number = retry_result.passport_data.passport_number
+                is_valid, last_validation_msg = validate_passport_number_icao(new_passport_number)
+
+                if is_valid:
+                    logger.info(f"Passport number validated on retry: {new_passport_number}")
+                    return retry_result
+
+                logger.warning(f"Retry {attempt} failed validation: {last_validation_msg}")
+                passport_number = new_passport_number  # Use latest for next retry prompt
+
+            # All retries exhausted - return failure with error message
+            error_message = (
+                f"Passport number validation failed after {self.MAX_PASSPORT_VALIDATION_RETRIES} retries. "
+                f"Last extracted value '{passport_number}' is invalid: {last_validation_msg}"
             )
-
-            logger.info(f"Sending passport image to {self.ai_client.provider_name} vision API")
-
-            # Call API with structured output
-            parsed_data = self.ai_client.chat_completion_json(
-                messages=messages,
-                json_schema=self.PASSPORT_SCHEMA,
-                schema_name="passport_data",
+            logger.error(error_message)
+            return AIPassportResult(
+                passport_data=PassportData(),
+                success=False,
+                error_message=error_message,
             )
-
-            logger.info("Successfully parsed passport data from vision API")
-
-            return self._convert_to_result(parsed_data)
 
         except Exception as e:
             logger.error(f"Error in passport vision parsing: {str(e)}")
@@ -238,6 +272,53 @@ class AIPassportParser:
                 error_message=str(e),
             )
 
+    def _call_vision_api(self, image_bytes: bytes, filename: str, prompt: str) -> AIPassportResult:
+        """Make a single vision API call and return the result."""
+        try:
+            messages = self.ai_client.build_vision_message(
+                prompt=prompt,
+                image_bytes=image_bytes,
+                filename=filename,
+                system_prompt=self.SYSTEM_PROMPT,
+            )
+
+            logger.info(f"Sending passport image to {self.ai_client.provider_name} vision API")
+
+            parsed_data = self.ai_client.chat_completion_json(
+                messages=messages,
+                json_schema=self.PASSPORT_SCHEMA,
+                schema_name="passport_data",
+            )
+
+            logger.info("Successfully parsed passport data from vision API")
+            return self._convert_to_result(parsed_data)
+
+        except Exception as e:
+            logger.error(f"Error calling vision API: {str(e)}")
+            return AIPassportResult(
+                passport_data=PassportData(),
+                success=False,
+                error_message=str(e),
+            )
+
+    def _build_retry_prompt(self, invalid_passport_number: str, validation_error: str) -> str:
+        """Build a focused retry prompt when passport number validation fails."""
+        base_prompt = self._build_vision_prompt()
+
+        retry_addition = f"""
+IMPORTANT: Previous extraction returned an INVALID passport number: "{invalid_passport_number}"
+Error: {validation_error}
+
+Please carefully re-read the passport number from the document.
+- Look at the "Passport No." or "Document No." field on the passport
+- The passport number is typically 8-9 alphanumeric characters
+- Do NOT include MRZ (machine readable zone) data at the bottom of the passport
+- Do NOT concatenate multiple fields together
+- Copy ONLY the passport number exactly as shown in the visual zone
+
+"""
+        return retry_addition + base_prompt
+
     def _build_vision_prompt(self) -> str:
         """
         Build prompt for vision API passport analysis.
@@ -246,7 +327,7 @@ class AIPassportParser:
         return """Extract passport data from this image. Return JSON.
 
 RULES:
-1. NAMES: Copy exactly as shown. Do NOT translate names (only format with first letter capitalized)
+1. NAMES: Format as title case - first letter of each word capital, rest lowercase. Names can be multiple words (e.g., "John Paul", "Stefano Giulio Mario"). Capitalize each word in the name.
 2. DATES: Always use YYYY-MM-DD format (example: 1986-12-19)
 3. NATIONALITY: Use 3-letter code like ITA, USA, DEU, FRA, GBR
 4. GENDER: Use M or F
@@ -255,9 +336,9 @@ RULES:
 7. If field not visible: use null
 
 FIELDS TO EXTRACT:
-- first_name: given name (copy exactly, no translation)
-- last_name: family name (copy exactly, no translation)
-- full_name: complete name (copy exactly)
+- first_name: given name(s) (title case, can be multiple words)
+- last_name: family name(s) (title case, can be multiple words)
+- full_name: complete name (title case, first + last)
 - nationality: 3-letter country code (ITA, USA, etc)
 - nationality_code: same 3-letter code
 - gender: M or F
@@ -277,9 +358,9 @@ FIELDS TO EXTRACT:
 
 EXAMPLE OUTPUT:
 {
-  "first_name": "Mario",
-  "last_name": "Rossi",
-  "full_name": "Mario Rossi",
+  "first_name": "Mario Luigi",
+  "last_name": "Rossi Bianchi",
+  "full_name": "Mario Luigi Rossi Bianchi",
   "nationality": "ITA",
   "nationality_code": "ITA",
   "gender": "M",

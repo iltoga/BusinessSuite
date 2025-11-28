@@ -57,7 +57,14 @@
         restApiCall('POST', url, formData,
             data => {
               mrz = data.mrz_data;
-              toggleMessageDisplay(true, 'File successfully checked via OCR!', 'ocr_check_error_id', 'ocr_check_success_id');
+
+              // Check for AI warning (validation failed after retries)
+              var successMessage = 'File successfully checked via OCR!';
+              if (data.ai_warning) {
+                successMessage = 'OCR completed with AI warning: ' + data.ai_warning;
+              }
+              toggleMessageDisplay(true, successMessage, 'ocr_check_error_id', 'ocr_check_success_id');
+
               setFormFieldValue('id_doc_number', mrz.number);
               setFormFieldValue('id_expiration_date', mrz.expiration_date_yyyy_mm_dd);
               setFormFieldValue('id_ocr_check', true, 'checkbox');

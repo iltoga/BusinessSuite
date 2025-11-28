@@ -407,7 +407,7 @@ OPENROUTER_API_BASE_URL = os.getenv("OPENROUTER_API_BASE_URL", "https://openrout
 
 # LLM Provider: "openrouter" for multi-provider access, "openai" for direct OpenAI API
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openrouter")
-LLM_DEFAULT_MODEL = os.getenv("LLM_DEFAULT_MODEL", "google/gemini-2.0-flash-001")
+LLM_DEFAULT_MODEL = os.getenv("LLM_DEFAULT_MODEL", "google/gemini-2.5-flash-lite")
 
 DOCX_INVOICE_TEMPLATE_NAME = os.getenv("DOCX_INVOICE_TEMPLATE_NAME", "invoice_template_with_footer.docx")
 DOCX_PARTIAL_INVOICE_TEMPLATE_NAME = os.getenv(

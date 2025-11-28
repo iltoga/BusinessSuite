@@ -620,7 +620,8 @@ def extract_passport_with_ai(file, use_ai: bool = True) -> dict:
         use_ai: Whether to use AI extraction (default: True)
 
     Returns:
-        dict: Combined passport data with fields from both MRZ and AI extraction
+        dict: Combined passport data with fields from both MRZ and AI extraction.
+              If AI extraction fails, includes 'ai_error' field with error message.
     """
     logger = logging.getLogger("passport_ocr")
 
@@ -633,14 +634,19 @@ def extract_passport_with_ai(file, use_ai: bool = True) -> dict:
         return mrz_data
 
     # Step 2: Run AI extraction
+    ai_data = None
+    ai_error = None
     try:
-        ai_data = _extract_with_ai(file)
+        ai_data, ai_error = _extract_with_ai(file)
     except Exception as e:
         logger.warning(f"AI extraction failed, using MRZ data only: {e}")
-        ai_data = None
+        ai_error = str(e)
 
     if not ai_data:
         logger.info("No AI data extracted, returning MRZ data only")
+        # Add AI error to MRZ data if there was an error
+        if ai_error:
+            mrz_data["ai_error"] = ai_error
         return mrz_data
 
     # Step 3: Merge results with comparison logic
@@ -649,7 +655,7 @@ def extract_passport_with_ai(file, use_ai: bool = True) -> dict:
     return merged_data
 
 
-def _extract_with_ai(file) -> Optional[dict]:
+def _extract_with_ai(file) -> tuple[Optional[dict], Optional[str]]:
     """
     Extract passport data using AI vision.
 
@@ -657,7 +663,9 @@ def _extract_with_ai(file) -> Optional[dict]:
         file: Uploaded file
 
     Returns:
-        dict with AI-extracted passport data or None if extraction fails
+        Tuple of (ai_data_dict, error_message):
+            - ai_data_dict: dict with AI-extracted passport data or None if extraction fails
+            - error_message: error message if extraction failed, None otherwise
     """
     logger = logging.getLogger("passport_ocr")
 
@@ -675,7 +683,7 @@ def _extract_with_ai(file) -> Optional[dict]:
 
         if not result.success:
             logger.warning(f"AI passport parsing failed: {result.error_message}")
-            return None
+            return None, result.error_message
 
         # Convert PassportData to dict
         passport_data = result.passport_data
@@ -702,11 +710,11 @@ def _extract_with_ai(file) -> Optional[dict]:
         }
 
         logger.info(f"AI extraction successful with confidence: {passport_data.confidence_score:.2f}")
-        return ai_dict
+        return ai_dict, None
 
     except Exception as e:
         logger.error(f"Error in AI passport extraction: {e}")
-        return None
+        return None, str(e)
 
 
 def _merge_passport_data(mrz_data: dict, ai_data: dict, logger: logging.Logger) -> dict:

@@ -229,8 +229,22 @@
                         var confidence = data.mrz_data.ai_confidence_score || 0;
                         successText = 'Data imported via OCR + AI (confidence: ' + (confidence * 100).toFixed(0) + '%)';
                     }
-                    if (successMsg) successMsg.textContent = successText;
-                    toggleElement(successEl, true);
+
+                    // Check for AI warning (validation failed after retries)
+                    if (data && data.ai_warning) {
+                        successText = 'Data imported via OCR (AI validation failed: ' + data.ai_warning + ')';
+                        // Show as warning instead of success
+                        if (successMsg) successMsg.textContent = successText;
+                        if (successEl) successEl.classList.remove('alert-success');
+                        if (successEl) successEl.classList.add('alert-warning');
+                        toggleElement(successEl, true);
+                    } else {
+                        if (successMsg) successMsg.textContent = successText;
+                        if (successEl) successEl.classList.remove('alert-warning');
+                        if (successEl) successEl.classList.add('alert-success');
+                        toggleElement(successEl, true);
+                    }
+
                     handleResponse(config, data);
                     if (data && data.b64_resized_image && previewEl) {
                         previewEl.src = 'data:image/jpeg;base64,' + data.b64_resized_image;
