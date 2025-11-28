@@ -60,6 +60,13 @@ To get started with the application, you will need to have Python, Django, and a
 
 For a production environment, it is recommended to use the provided Docker setup.
 
+## Development Utilities
+
+- **Detect inline <script> tags**: To help centralize JavaScript and avoid inline scripts in templates, run:
+  - `scripts/check_inline_script_tags.py` — scans `templates/` for inline `<script>` tags and exits with non-zero code if any are found.
+  - You can add this to CI or as a git pre-commit hook to prevent regressions.
+
+
 ## API Usage
 
 ## 📡 API Usage
