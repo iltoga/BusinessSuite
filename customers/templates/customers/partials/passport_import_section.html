@@ -1,7 +1,26 @@
 {% load crispy_forms_tags %}
+{% load static %}
 {% with prefix=prefix|default:"" %}
 {% with container_id=container_id|default:"passport-import" %}
-<div id="{{ container_id }}" class="passport-import-section" data-passport-import="true" data-prefix="{{ prefix }}" data-customer-type-selector="{{ customer_type_selector|default:'' }}" data-first-name-id="{{ first_name_id|default:'id_first_name' }}" data-last-name-id="{{ last_name_id|default:'id_last_name' }}" data-gender-id="{{ gender_id|default:'id_gender' }}" data-title-id="{{ title_id|default:'id_title' }}" data-nationality-id="{{ nationality_id|default:'id_nationality' }}" data-birthdate-id="{{ birthdate_id|default:'id_birthdate' }}" data-birth-place-id="{{ birth_place_id|default:'id_birth_place' }}" data-passport-number-id="{{ passport_number_id|default:'id_passport_number' }}" data-passport-issue-id="{{ passport_issue_id|default:'id_passport_issue_date' }}" data-passport-expiration-id="{{ passport_expiration_id|default:'id_passport_expiration_date' }}" data-address-abroad-id="{{ address_abroad_id|default:'id_address_abroad' }}">
+<div
+    id="{{ container_id }}"
+    class="passport-import-section"
+    data-passport-import="true"
+    data-prefix="{{ prefix }}"
+    data-customer-type-selector='{{ customer_type_selector|default:"" }}'
+    data-first-name-id="{{ first_name_id|default:'id_first_name' }}"
+    data-last-name-id="{{ last_name_id|default:'id_last_name' }}"
+    data-gender-id="{{ gender_id|default:'id_gender' }}"
+    data-title-id="{{ title_id|default:'id_title' }}"
+    data-nationality-id="{{ nationality_id|default:'id_nationality' }}"
+    data-birthdate-id="{{ birthdate_id|default:'id_birthdate' }}"
+    data-birth-place-id="{{ birth_place_id|default:'id_birth_place' }}"
+    data-passport-number-id="{{ passport_number_id|default:'id_passport_number' }}"
+    data-passport-issue-id="{{ passport_issue_id|default:'id_passport_issue_date' }}"
+    data-passport-expiration-id="{{ passport_expiration_id|default:'id_passport_expiration_date' }}"
+    data-address-abroad-id="{{ address_abroad_id|default:'id_address_abroad' }}"
+    data-ocr-url="{% url 'api-ocr-check' %}"
+>
     {% if passport_field %}
         {{ passport_field|as_crispy_field }}
     {% else %}
@@ -21,9 +40,7 @@
         <button type="button" class="btn btn-primary btn-sm" data-role="passport-import-button">
             <i class="bi bi-file-earmark-text me-1"></i>
             <span data-role="button-text">Import</span>
-            <span class="spinner-border spinner-border-sm ms-1 d-none" role="status" data-role="passport-import-spinner">
-                <span class="visually-hidden">Loading...</span>
-            </span>
+            <span class="spinner-border spinner-border-sm ms-1 d-none" role="status" data-role="passport-import-spinner" aria-label="Loading"></span>
         </button>
         <div class="alert alert-danger alert-dismissible fade show mt-2 d-none" role="alert" data-role="passport-import-error">
             <i class="bi bi-exclamation-triangle-fill me-2"></i>
@@ -36,7 +53,7 @@
             <button type="button" class="btn-close" onclick="this.parentElement.classList.add('d-none')"></button>
         </div>
         <div class="mt-2">
-            <img data-role="passport-import-preview" class="img-thumbnail d-none" style="max-width:400px;" alt="Passport preview" />
+            <img data-role="passport-import-preview" class="img-thumbnail d-none" style="max-width:600px;" alt="Passport preview" />
         </div>
     </div>
     <div class="mb-3">
@@ -44,291 +61,20 @@
         <div id="clipboard_{{ prefix }}area" contenteditable="true" class="form-control" data-role="passport-clipboard-area" style="min-height:80px; border:2px dashed #ccc;">
             Click here and press Ctrl+V / Cmd+V to paste an image
         </div>
-        <img data-role="passport-clipboard-preview" style="display:none; max-width:400px; margin-top:10px;" alt="Clipboard preview" />
+        <img data-role="passport-clipboard-preview" style="display:none; max-width:600px; margin-top:10px;" alt="Clipboard preview" />
         <div data-role="passport-clipboard-status" class="mt-2"></div>
     </div>
 </div>
 <script>
+/* Load passport import script safely when the template is included multiple times */
 (function(){
-    function assignFieldValue(fieldId, value, inputType){
-        if (!value || !fieldId) { return; }
-        if (typeof window.setFormFieldValue === 'function') {
-            window.setFormFieldValue(fieldId, value, inputType);
-            return;
-        }
-        var field = document.getElementById(fieldId);
-        if (field) {
-            field.value = value;
-            field.dispatchEvent(new Event('change', { bubbles: true }));
-        }
+    var scriptUrl = '{% static "js/passport_import.js" %}';
+    if (!document.querySelector('script[src="' + scriptUrl + '"]')) {
+        var s = document.createElement('script');
+        s.src = scriptUrl;
+        s.defer = true;
+        document.head.appendChild(s);
     }
-
-    function toggleElement(el, show, className){
-        if (!el) { return; }
-        if (className === 'hidden') {
-            el.style.display = show ? '' : 'none';
-            return;
-        }
-        el.classList[show ? 'remove' : 'add']('d-none');
-    }
-
-    function handleResponse(config, data){
-        if (!data || !data.mrz_data) { return; }
-        var mrz = data.mrz_data;
-
-        // Standard MRZ fields
-        assignFieldValue(config.firstNameId, mrz.names);
-        assignFieldValue(config.lastNameId, mrz.surname);
-        assignFieldValue(config.genderId, mrz.sex);
-        var titleVal = mrz.sex === 'M' ? 'Mr' : (mrz.sex === 'F' ? 'Ms' : '');
-        if (titleVal) {
-            assignFieldValue(config.titleId, titleVal);
-        }
-        assignFieldValue(config.nationalityId, mrz.nationality);
-        assignFieldValue(config.birthdateId, mrz.date_of_birth_yyyy_mm_dd, 'date');
-        assignFieldValue(config.passportNumberId, mrz.number);
-        assignFieldValue(config.passportExpirationId, mrz.expiration_date_yyyy_mm_dd, 'date');
-
-        // AI-enhanced fields (may be present if AI extraction was used)
-        // Passport issue date from AI or MRZ
-        if (mrz.passport_issue_date) {
-            assignFieldValue(config.passportIssueId, mrz.passport_issue_date, 'date');
-        } else if (mrz.issue_date_yyyy_mm_dd) {
-            assignFieldValue(config.passportIssueId, mrz.issue_date_yyyy_mm_dd, 'date');
-        }
-
-        // Birth place (AI-only field)
-        if (mrz.birth_place) {
-            assignFieldValue(config.birthPlaceId, mrz.birth_place);
-        }
-
-        // Address abroad (AI-only field)
-        if (mrz.address_abroad) {
-            assignFieldValue(config.addressAbroadId, mrz.address_abroad);
-        }
-
-        // Log AI extraction info if available
-        if (mrz.extraction_method === 'hybrid_mrz_ai') {
-            console.log('AI-enhanced extraction completed. Confidence:', mrz.ai_confidence_score);
-        }
-    }
-
-    function initPassportImport(container){
-        if (!container || container.dataset.passportInitialized === 'true') { return; }
-        container.dataset.passportInitialized = 'true';
-        var config = {
-            firstNameId: container.dataset.firstNameId,
-            lastNameId: container.dataset.lastNameId,
-            genderId: container.dataset.genderId,
-            titleId: container.dataset.titleId,
-            nationalityId: container.dataset.nationalityId,
-            birthdateId: container.dataset.birthdateId,
-            birthPlaceId: container.dataset.birthPlaceId,
-            passportNumberId: container.dataset.passportNumberId,
-            passportIssueId: container.dataset.passportIssueId,
-            passportExpirationId: container.dataset.passportExpirationId,
-            addressAbroadId: container.dataset.addressAbroadId,
-            customerTypeSelector: container.dataset.customerTypeSelector
-        };
-        var button = container.querySelector('[data-role="passport-import-button"]');
-        var buttonText = button ? button.querySelector('[data-role="button-text"]') : null;
-        var spinner = container.querySelector('[data-role="passport-import-spinner"]');
-        var errorEl = container.querySelector('[data-role="passport-import-error"]');
-        var errorMsg = errorEl ? errorEl.querySelector('[data-role="error-message"]') : null;
-        var successEl = container.querySelector('[data-role="passport-import-success"]');
-        var successMsg = successEl ? successEl.querySelector('[data-role="success-message"]') : null;
-        var previewEl = container.querySelector('[data-role="passport-import-preview"]');
-        var fileInput = container.querySelector('input[type="file"]');
-        var clipboardArea = container.querySelector('[data-role="passport-clipboard-area"]');
-        var clipboardPreview = container.querySelector('[data-role="passport-clipboard-preview"]');
-        var clipboardStatus = container.querySelector('[data-role="passport-clipboard-status"]');
-        var useAiToggle = container.querySelector('[data-role="use-ai-toggle"]');
-
-        function isPersonCustomer(){
-            if (!config.customerTypeSelector || config.customerTypeSelector === '') {
-                return true;
-            }
-            try {
-                var el = document.querySelector(config.customerTypeSelector);
-                if (!el) { return true; }
-                if (el.tagName === 'SELECT') {
-                    return el.value !== 'company';
-                }
-                if (el.type === 'radio') {
-                    var checked = document.querySelector(config.customerTypeSelector + ':checked');
-                    return !checked || checked.value !== 'company';
-                }
-            } catch(e) {
-                console.warn('Invalid customerTypeSelector:', config.customerTypeSelector, e);
-            }
-            return true;
-        }
-
-        function isAiEnabled(){
-            return useAiToggle && useAiToggle.checked;
-        }
-
-        function apiCall(method, url, formData, onSuccess, onError){
-            if (typeof restApiCall === 'function') {
-                restApiCall(method, url, formData, onSuccess, onError);
-                return;
-            }
-            // Fallback implementation
-            fetch(url, {
-                method: method,
-                body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-            .then(function(response){
-                if (!response.ok) {
-                    return response.json().then(function(err){ throw err; });
-                }
-                return response.json();
-            })
-            .then(onSuccess)
-            .catch(function(err){
-                onError(err || {message: 'Request failed'});
-            });
-        }
-
-        function startUpload(file){
-            if (!file) {
-                if (errorMsg) errorMsg.textContent = 'No file selected!';
-                toggleElement(errorEl, true);
-                return;
-            }
-            toggleElement(errorEl, false);
-            toggleElement(successEl, false);
-            toggleElement(spinner, true, 'class');
-            if (button) button.disabled = true;
-
-            var useAi = isAiEnabled();
-            var processingText = useAi ? 'Processing with AI...' : 'Processing...';
-            if (buttonText) buttonText.textContent = processingText;
-
-            var formData = new FormData();
-            formData.append('file', file);
-            formData.append('doc_type', 'passport');
-            formData.append('img_preview', true);
-            formData.append('resize', true);
-            formData.append('width', 500);
-            if (useAi) {
-                formData.append('use_ai', 'true');
-            }
-
-            apiCall('POST', '{% url "api-ocr-check" %}', formData,
-                function(data){
-                    toggleElement(spinner, false, 'class');
-                    if (button) button.disabled = false;
-                    if (buttonText) buttonText.textContent = 'Import';
-
-                    var successText = 'Data successfully imported via OCR!';
-                    if (data && data.mrz_data && data.mrz_data.extraction_method === 'hybrid_mrz_ai') {
-                        var confidence = data.mrz_data.ai_confidence_score || 0;
-                        successText = 'Data imported via OCR + AI (confidence: ' + (confidence * 100).toFixed(0) + '%)';
-                    }
-
-                    // Check for AI warning (validation failed after retries)
-                    if (data && data.ai_warning) {
-                        successText = 'Data imported via OCR (AI validation failed: ' + data.ai_warning + ')';
-                        // Show as warning instead of success
-                        if (successMsg) successMsg.textContent = successText;
-                        if (successEl) successEl.classList.remove('alert-success');
-                        if (successEl) successEl.classList.add('alert-warning');
-                        toggleElement(successEl, true);
-                    } else {
-                        if (successMsg) successMsg.textContent = successText;
-                        if (successEl) successEl.classList.remove('alert-warning');
-                        if (successEl) successEl.classList.add('alert-success');
-                        toggleElement(successEl, true);
-                    }
-
-                    handleResponse(config, data);
-                    if (data && data.b64_resized_image && previewEl) {
-                        previewEl.src = 'data:image/jpeg;base64,' + data.b64_resized_image;
-                        previewEl.classList.remove('d-none');
-                    }
-                },
-                function(error){
-                    toggleElement(spinner, false, 'class');
-                    if (button) button.disabled = false;
-                    if (buttonText) buttonText.textContent = 'Import';
-                    if (errorMsg) errorMsg.textContent = (error && error.message) || (error && error.error) || 'Upload failed';
-                    toggleElement(errorEl, true);
-                }
-            );
-        }
-
-        if (button) {
-            button.addEventListener('click', function(){
-                if (!isPersonCustomer()) {
-                    alert('Passport import is only available for person customers.');
-                    return;
-                }
-                if (!fileInput || !fileInput.files || !fileInput.files[0]) {
-                    if (errorMsg) errorMsg.textContent = 'No file selected!';
-                    toggleElement(errorEl, true);
-                    return;
-                }
-                startUpload(fileInput.files[0]);
-            });
-        }
-
-        if (clipboardArea) {
-            clipboardArea.addEventListener('paste', function(e){
-                if (!isPersonCustomer()) {
-                    alert('Passport import is only available for person customers.');
-                    e.preventDefault();
-                    return;
-                }
-                var items = (e.clipboardData || e.originalEvent && e.originalEvent.clipboardData).items;
-                if (!items) { return; }
-                for (var i = 0; i < items.length; i++) {
-                    if (items[i].type && items[i].type.indexOf('image') !== -1) {
-                        var file = items[i].getAsFile();
-                        var reader = new FileReader();
-                        reader.onload = function(evt){
-                            if (clipboardPreview) {
-                                clipboardPreview.src = evt.target.result;
-                                clipboardPreview.style.display = 'block';
-                            }
-                        };
-                        reader.readAsDataURL(file);
-                        if (clipboardStatus) {
-                            clipboardStatus.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Uploading...';
-                        }
-                        startUpload(file);
-                        if (clipboardStatus) {
-                            clipboardStatus.innerHTML = '<span class="text-success">Image uploaded and processed!</span>';
-                        }
-                        e.preventDefault();
-                        break;
-                    }
-                }
-            });
-        }
-    }
-
-    function ready(fn){
-        if (document.readyState !== 'loading') {
-            fn();
-        } else if (document.addEventListener) {
-            document.addEventListener('DOMContentLoaded', fn);
-        } else {
-            document.attachEvent('onreadystatechange', function(){
-                if (document.readyState === 'complete') fn();
-            });
-        }
-    }
-
-    ready(function(){
-        var containers = document.querySelectorAll('[data-passport-import="true"]');
-        for (var i = 0; i < containers.length; i++) {
-            initPassportImport(containers[i]);
-        }
-    });
 })();
 </script>
 {% endwith %}

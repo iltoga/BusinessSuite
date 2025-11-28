@@ -1,70 +1,19 @@
 {% load crispy_forms_tags %}
+{% load static %}
 
 <style>
-    #customerQuickCreateModal {
-        z-index: 1050;
-    }
+    #customerQuickCreateModal { z-index: 1050; }
+    #customerQuickCreateModal + .modal-backdrop { z-index: 1049; }
+    #customerQuickCreateModal .person-only-field-quick .form-label { font-weight: 600; }
+    #customerQuickCreateModal .passport-import-section img.img-thumbnail { max-width: 100%; height: auto; border-radius: 4px; }
+    #customerQuickCreateModal .passport-import-section .btn { min-width: 80px; }
+    #customerQuickCreateModal .passport-import-section .alert { margin-bottom: 0.5rem; }
 
-    #customerQuickCreateModal + .modal-backdrop {
-        z-index: 1049;
-    }
-    #customerQuickCreateModal .person-only-field-quick .form-label {
-        font-weight: 600;
-    }
-    #customerQuickCreateModal .passport-import-section img.img-thumbnail {
-        max-width: 100%;
-        height: auto;
-        border-radius: 4px;
-    }
-    #customerQuickCreateModal .passport-import-section .btn {
-        min-width: 80px;
-    }
-    #customerQuickCreateModal .passport-import-section .alert {
-        margin-bottom: 0.5rem;
-    }
-
-    /*
-       FIX: Passport Import Section Layout
-       Using Flexbox to force the layout:
-       Row 1: Label (100% width)
-       Row 2: Input (Flexible width) + Button (Auto width) aligned at the bottom
-    */
-    #customerQuickCreateModal #passport-import-quick {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: flex-end; /* Aligns the button with the input field */
-        gap: 10px;
-    }
-
-    /* Force the label to take the full top row */
-    #customerQuickCreateModal #passport-import-quick label {
-        width: 100%;
-        flex-basis: 100%;
-        margin-bottom: 0.5rem;
-    }
-
-    /* The file input (or its wrapper) takes available space */
-    #customerQuickCreateModal #passport-import-quick input[type="file"],
-    #customerQuickCreateModal #passport-import-quick .form-control-file {
-        flex-grow: 1;
-        width: auto;
-        margin-bottom: 0;
-    }
-
-    /* The import button sits next to the input, aligned at bottom */
-    #customerQuickCreateModal #passport-import-quick .btn {
-        flex-shrink: 0;
-        margin-bottom: 0;
-        height: fit-content;
-    }
-
-    /* Ensure alerts and previews take full width below */
-    #customerQuickCreateModal #passport-import-quick .alert,
-    #customerQuickCreateModal #passport-import-quick img,
-    #customerQuickCreateModal #passport-import-quick .d-none {
-        width: 100%;
-        flex-basis: 100%;
-    }
+    #customerQuickCreateModal #passport-import-quick { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; }
+    #customerQuickCreateModal #passport-import-quick label { width: 100%; flex-basis: 100%; margin-bottom: 0.5rem; }
+    #customerQuickCreateModal #passport-import-quick input[type="file"], #customerQuickCreateModal #passport-import-quick .form-control-file { flex-grow: 1; width: auto; margin-bottom: 0; }
+    #customerQuickCreateModal #passport-import-quick .btn { flex-shrink: 0; margin-bottom: 0; height: fit-content; }
+    #customerQuickCreateModal #passport-import-quick .alert, #customerQuickCreateModal #passport-import-quick img, #customerQuickCreateModal #passport-import-quick .d-none { width: 100%; flex-basis: 100%; }
 </style>
 
 <!-- Customer Quick Create Modal -->
@@ -77,16 +26,13 @@
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="customerQuickCreateForm">
+            <form id="customerQuickCreateForm" data-api-url="{% url 'api-customer-quick-create' %}">
                 {% csrf_token %}
                 <div class="modal-body">
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle"></i> Fill in the required fields to quickly create a new customer.
                     </div>
-
-
                     <div id="customerQuickCreateErrors" class="alert alert-danger d-none"></div>
-
                     <div class="mb-3">
                         <label for="id_quick_customer_type" class="form-label">Customer Type <span class="text-danger">*</span></label>
                         <select class="form-select" id="id_quick_customer_type" name="customer_type" required>
@@ -233,163 +179,4 @@
     </div>
 </div>
 
-<script>
-    // Customer Quick Create Modal Handler
-    (function() {
-        var $modal = $('#customerQuickCreateModal');
-        var $form = $('#customerQuickCreateForm');
-        var $submitBtn = $('#customerQuickCreateSubmitBtn');
-        var $errors = $('#customerQuickCreateErrors');
-        var $customerType = $('#id_quick_customer_type');
-        var targetSelectId = null; // Will store the ID of the select element to update
-
-        // Initialize select2 for nationality - but only once
-        var select2Initialized = false;
-
-        // Function to toggle person-only fields based on customer type
-        function togglePersonFields() {
-            var customerType = $customerType.val();
-            var $personFields = $('.person-only-field-quick');
-            var $personRequired = $('.person-required');
-            var $companyRequired = $('.company-required');
-            var $firstNameInput = $('#id_quick_first_name');
-            var $lastNameInput = $('#id_quick_last_name');
-            var $companyNameInput = $('#id_quick_company_name');
-
-            if (customerType === 'company') {
-                $personFields.hide();
-                $personRequired.hide();
-                $companyRequired.show();
-                $firstNameInput.prop('required', false);
-                $lastNameInput.prop('required', false);
-                $companyNameInput.prop('required', true);
-            } else {
-                $personFields.show();
-                $personRequired.show();
-                $companyRequired.hide();
-                $firstNameInput.prop('required', true);
-                $lastNameInput.prop('required', true);
-                $companyNameInput.prop('required', false);
-            }
-        }
-
-        // Add change event listener to customer type dropdown
-        $customerType.on('change', togglePersonFields);
-
-        // Store target select when modal is opened
-        window.openCustomerQuickCreateModal = function(selectElementId) {
-            targetSelectId = selectElementId;
-            $form[0].reset();
-            $errors.addClass('d-none').html('');
-
-            // Initialize select2 only on first open
-            if (!select2Initialized) {
-                console.log('Initializing select2 on modal open, options count:', $('#id_quick_nationality option').length);
-                $('#id_quick_nationality').select2({
-                    theme: 'bootstrap-5',
-                    dropdownParent: $modal,
-                    placeholder: 'Select nationality',
-                    allowClear: false,
-                    width: '100%',
-                });
-                select2Initialized = true;
-                console.log('After select2 init, select2 data:', $('#id_quick_nationality').select2('data'));
-            }
-
-            $('#id_quick_nationality').val('').trigger('change');
-            // Set customer type to person by default and toggle fields
-            $customerType.val('person');
-            togglePersonFields();
-            $modal.modal('show');
-            // Reset passport import quick section
-            var $passportImportQuick = $('#passport-import-quick');
-            if ($passportImportQuick.length) {
-                $passportImportQuick.find('input[type=file]').val('');
-                $passportImportQuick.find('[data-role="passport-import-preview"]').addClass('d-none').attr('src', '');
-                $passportImportQuick.find('[data-role="passport-clipboard-preview"]').addClass('d-none').attr('src', '');
-                $passportImportQuick.find('[data-role="passport-import-success"]').addClass('d-none');
-                $passportImportQuick.find('[data-role="passport-import-error"]').addClass('d-none');
-                $passportImportQuick.find('[data-role="passport-clipboard-status"]').html('');
-                // Reset AI toggle to unchecked
-                $passportImportQuick.find('[data-role="use-ai-toggle"]').prop('checked', false);
-            }
-        };
-
-        // Handle form submission
-        $form.on('submit', function(e) {
-            e.preventDefault();
-            $errors.addClass('d-none').html('');
-            $submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Creating...');
-
-            $.ajax({
-                url: '{% url "api-customer-quick-create" %}',
-                method: 'POST',
-                data: $form.serialize(),
-                headers: {
-                    'X-CSRFToken': $('input[name="csrfmiddlewaretoken"]', $form).val()
-                },
-                success: function(response) {
-                    if (response.success) {
-                        // Add new customer to target select
-                        if (targetSelectId) {
-                            var $targetSelect = $('#' + targetSelectId);
-                            var displayName = response.customer.company_name ?
-                                response.customer.full_name + ' (' + response.customer.company_name + ')' :
-                                response.customer.full_name;
-                            var newOption = new Option(
-                                displayName,
-                                response.customer.id,
-                                true,
-                                true
-                            );
-                            $targetSelect.append(newOption).trigger('change');
-                        }
-
-                        // Close modal and reset form
-                        $modal.modal('hide');
-                        $form[0].reset();
-                    } else {
-                        // Show errors
-                        var errorHtml = '<ul class="mb-0">';
-                        $.each(response.errors, function(field, errors) {
-                            $.each(errors, function(i, error) {
-                                errorHtml += '<li>' + error + '</li>';
-                            });
-                        });
-                        errorHtml += '</ul>';
-                        $errors.html('<strong>An error occurred while creating the customer:</strong> ' + errorHtml).removeClass('d-none');
-                    }
-                },
-                error: function(xhr) {
-                    var errorMsg = 'An error occurred while creating the customer.';
-                    if (xhr.responseJSON && xhr.responseJSON.error) {
-                        errorMsg = xhr.responseJSON.error;
-                    }
-                    $errors.html(errorMsg).removeClass('d-none');
-                },
-                complete: function() {
-                    $submitBtn.prop('disabled', false).html('<i class="fas fa-save"></i> Create Customer');
-                }
-            });
-        });
-
-        // Reset form when modal is hidden
-        $modal.on('hidden.bs.modal', function() {
-            $form[0].reset();
-            $errors.addClass('d-none').html('');
-            $('#id_quick_nationality').val('').trigger('change');
-            $customerType.val('person');
-            togglePersonFields();
-            targetSelectId = null;
-            var $passportImportQuick = $('#passport-import-quick');
-            if ($passportImportQuick.length) {
-                $passportImportQuick.find('[data-role="passport-import-preview"]').addClass('d-none').attr('src', '');
-                $passportImportQuick.find('[data-role="passport-clipboard-preview"]').addClass('d-none').attr('src', '');
-                $passportImportQuick.find('[data-role="passport-import-success"]').addClass('d-none');
-                $passportImportQuick.find('[data-role="passport-import-error"]').addClass('d-none');
-                // Reset AI toggle to unchecked
-                $passportImportQuick.find('[data-role="use-ai-toggle"]').prop('checked', false);
-            }
-        });
-    })();
-</script>
+<script src="{% static 'js/customer_quick_create.js' %}" defer></script>
