@@ -513,7 +513,8 @@ class InvoiceMarkAsPaidView(PermissionRequiredMixin, View):
 
 class InvoiceDeleteAllView(PermissionRequiredMixin, View):
     """
-    Superuser-only view to delete all invoices.
+    Superuser-only view to delete selected invoices based on search query.
+    If no query is provided, deletes all invoices.
     Requires confirmation via POST request.
     """
 
@@ -526,31 +527,65 @@ class InvoiceDeleteAllView(PermissionRequiredMixin, View):
             return redirect("invoice-list")
         return super().dispatch(request, *args, **kwargs)
 
+    def get_queryset(self, query=None, hide_paid=False):
+        """
+        Get the queryset of invoices to delete based on search query.
+        Applies the same filters as the InvoiceListView component.
+        """
+        if query:
+            queryset = Invoice.objects.search_invoices(query)
+        else:
+            queryset = Invoice.objects.all()
+
+        # Apply the hide_paid filter if enabled
+        if hide_paid:
+            queryset = queryset.exclude(status=Invoice.PAID)
+
+        return queryset
+
     def post(self, request, *args, **kwargs):
-        """Delete all invoices, and optionally all related customer applications (DocApplication)."""
+        """Delete selected invoices, and optionally all related customer applications (DocApplication)."""
         from customer_applications.models.doc_application import DocApplication
 
+        query = request.POST.get("search_query", "").strip()
+        hide_paid = request.POST.get("hide_paid", "false") == "true"
         delete_customer_apps = request.POST.get("delete_customer_applications") == "yes"
+
         try:
-            count = Invoice.objects.count()
+            queryset = self.get_queryset(query=query, hide_paid=hide_paid)
+            count = queryset.count()
+
+            if count == 0:
+                messages.warning(request, "No invoices found matching the criteria.")
+                return redirect("invoice-list")
+
             if delete_customer_apps:
-                # Collect all DocApplications linked to any invoice
+                # Collect all DocApplications linked to any invoice in the queryset
                 doc_app_ids = set()
-                for invoice in Invoice.objects.all():
+                for invoice in queryset:
                     for inv_app in invoice.invoice_applications.all():
                         if inv_app.customer_application_id:
                             doc_app_ids.add(inv_app.customer_application_id)
                 with transaction.atomic():
-                    Invoice.objects.all().delete()
+                    queryset.delete()
                     # Delete all collected DocApplications
                     DocApplication.objects.filter(id__in=doc_app_ids).delete()
-                messages.success(
-                    request, f"Successfully deleted {count} invoice(s) and all corresponding customer applications."
-                )
+                if query:
+                    messages.success(
+                        request,
+                        f"Successfully deleted {count} invoice(s) matching '{query}' and their customer applications.",
+                    )
+                else:
+                    messages.success(
+                        request, f"Successfully deleted {count} invoice(s) and all corresponding customer applications."
+                    )
             else:
                 with transaction.atomic():
-                    Invoice.objects.all().delete()
-                messages.success(request, f"Successfully deleted {count} invoice(s).")
+                    queryset.delete()
+                if query:
+                    messages.success(request, f"Successfully deleted {count} invoice(s) matching '{query}'.")
+                else:
+                    messages.success(request, f"Successfully deleted {count} invoice(s).")
         except Exception as e:
             messages.error(request, f"Error deleting invoices: {str(e)}")
 

@@ -229,21 +229,44 @@ class Customer(models.Model):
 
         return doc_application_qs
 
-    def can_be_deleted(self):
-        # Block deletion if related invoices exist
+    def can_be_deleted(self, user=None):
+        """
+        Check if customer can be deleted.
+
+        Args:
+            user: Optional user object. Superusers can delete customers
+                  with related invoices and applications (cascade delete).
+
+        Returns:
+            Tuple of (can_delete: bool, message: str or None)
+        """
+        is_superuser = user and user.is_superuser
+
+        # Check for related invoices
         if self.invoices.exists():
+            if is_superuser:
+                return True, "Warning: related invoices exist and will be deleted."
             return False, "Cannot delete customer: related invoices exist."
-        # Alert if related applications/workflows exist
+
+        # Check for related applications/workflows
         if self.doc_applications.exists():
-            return True, "Warning: related applications/workflows exist."
+            return True, "Warning: related applications/workflows exist and will be deleted."
+
         return True, None
 
-    def delete(self, *args, **kwargs):
-        can_delete, msg = self.can_be_deleted()
-        if not can_delete:
-            from django.db.models import ProtectedError
+    def delete(self, force=False, *args, **kwargs):
+        """
+        Delete a customer.
 
-            raise ProtectedError(msg, self)
+        Args:
+            force: If True, bypass can_be_deleted check (for superuser cascade delete).
+        """
+        if not force:
+            can_delete, msg = self.can_be_deleted()
+            if not can_delete:
+                from django.db.models import ProtectedError
+
+                raise ProtectedError(msg, self)
         super().delete(*args, **kwargs)
 
 

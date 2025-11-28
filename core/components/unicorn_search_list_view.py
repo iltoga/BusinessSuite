@@ -57,6 +57,12 @@ class UnicornSearchListView(UnicornView):
             self.query = None  # Or whatever is appropriate to reset the query
             self.load_items()
 
+    def set_search(self, value):
+        """Set search input and trigger search - called from JavaScript."""
+        self.search_input = value if value else ""
+        self.page = 1  # Reset to first page on new search
+        self.search()
+
     def clear_search(self):
         # Separate method for clearing search input
         self.search_input = ""

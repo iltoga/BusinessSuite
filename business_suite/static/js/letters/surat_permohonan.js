@@ -47,8 +47,12 @@
         }
 
         // Customer selection change (namespaced to avoid duplicate bindings)
+        // Add a short debounce to avoid multiple rapid calls
+        var _changeTimeout = null;
         $customerSelect.off('change.surat').on('change.surat', function() {
             var customerId = $(this).val();
+            if (_changeTimeout) clearTimeout(_changeTimeout);
+            _changeTimeout = setTimeout(function() {
             if (customerId) {
                 if ($hiddenCustomer.length) $hiddenCustomer.val(customerId);
                 $.ajax({
@@ -72,6 +76,8 @@
                 $form.find('#id_name, #id_gender, #id_country, #id_birth_place, #id_birthdate, #id_passport_no, #id_passport_exp_date, #id_address_bali').val('');
                 if ($hiddenCustomer.length) $hiddenCustomer.val('');
             }
+            _changeTimeout = null;
+            }, 150);
         });
 
         // Handle add customer button

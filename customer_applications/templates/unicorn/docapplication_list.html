@@ -11,9 +11,9 @@
       {% if user|has_perm:'customer_applications,docapplication,add' %}
       <a href="{% url 'customer-application-create' %}" class="btn btn-primary">New application</a>
       {% endif %}
-      {% if user.is_superuser %}
-      <button type="button" class="btn btn-danger ms-2" data-bs-toggle="modal" data-bs-target="#deleteAllApplicationsModal">
-          <i class="bi bi-trash3"></i> Delete All Applications
+      {% if user.is_superuser and list_items %}
+      <button type="button" class="btn btn-danger ms-2" data-bs-toggle="modal" data-bs-target="#deleteSelectedApplicationsModal">
+          <i class="bi bi-trash3"></i> Delete {% if query %}Selected{% else %}All{% endif %} Applications
       </button>
       {% endif %}
     </div>
@@ -136,30 +136,38 @@
     {% endif %}
   </div>
 
-  <!-- Delete All Customer Applications Modal (Superuser only) -->
+  <!-- Delete Selected Customer Applications Modal (Superuser only) -->
   {% if user.is_superuser %}
-  <div class="modal fade" id="deleteAllApplicationsModal" tabindex="-1" aria-labelledby="deleteAllApplicationsModalLabel" aria-hidden="true">
+  <div class="modal fade" id="deleteSelectedApplicationsModal" tabindex="-1" aria-labelledby="deleteSelectedApplicationsModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header bg-danger text-white">
-          <h5 class="modal-title" id="deleteAllApplicationsModalLabel">
-            <i class="bi bi-exclamation-triangle"></i> Delete All Customer Applications
+          <h5 class="modal-title" id="deleteSelectedApplicationsModalLabel">
+            <i class="bi bi-exclamation-triangle"></i> Delete {% if query %}Selected{% else %}All{% endif %} Customer Applications
           </h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <form method="post" action="{% url 'customer-application-delete-all' %}">
           {% csrf_token %}
+          <input type="hidden" name="search_query" value="{{ query|default:'' }}">
+          <input type="hidden" name="hide_finished" value="{{ hide_finished|yesno:'true,false' }}">
+          <input type="hidden" name="hide_not_started" value="{{ hide_not_started|yesno:'true,false' }}">
           <div class="modal-body">
             <div class="alert alert-danger">
               <strong>Warning!</strong> This action cannot be undone.
             </div>
-            <p>Are you sure you want to delete <strong>ALL</strong> customer applications?</p>
+            {% if query %}
+            <p>Are you sure you want to delete <strong>{{ total_items }}</strong> customer application(s) matching "<strong>{{ query }}</strong>"?</p>
+            <p class="text-muted">This will permanently remove all matching customer application records and their associated documents and workflows from the database.</p>
+            {% else %}
+            <p>Are you sure you want to delete <strong>ALL {{ total_items }}</strong> customer applications?</p>
             <p class="text-muted">This will permanently remove all customer application records and their associated documents and workflows from the database.</p>
+            {% endif %}
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
             <button type="submit" class="btn btn-danger">
-              <i class="bi bi-trash3"></i> Yes, Delete All Applications
+              <i class="bi bi-trash3"></i> Yes, Delete {% if query %}Selected{% else %}All{% endif %} Applications
             </button>
           </div>
         </form>
