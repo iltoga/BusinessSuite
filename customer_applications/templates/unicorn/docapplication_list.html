@@ -42,8 +42,9 @@
       </thead>
       <tbody>
         {% for docapplication in list_items %}
-          {% with current_workflow=docapplication.current_workflow %}
-            {% if not docapplication.is_application_completed %}
+          {% with current_workflow=docapplication.prefetched_workflows.0 %}
+            {% with is_app_completed=current_workflow.is_workflow_completed %}
+            {% if not is_app_completed %}
               {% if current_workflow.is_overdue %}
                 <tr class="table-danger">
               {% elif current_workflow.is_notification_date_reached %}
@@ -61,7 +62,7 @@
                 <a href="{% url 'customer-detail' docapplication.customer.pk %}" class="text-primary font-weight-light">{{ docapplication.customer }}</a>
               </td>
               <!-- Application Type -->
-              <td>{{ docapplication.get_application_type_display }}</td>
+              <td>{{ docapplication.product.get_product_type_display }}</td>
               <!-- Product -->
               <td>
                 <a href="{% url 'product-detail' docapplication.product.pk %}" class="text-primary font-weight-light">{{ docapplication.product }}</a>
@@ -84,8 +85,8 @@
               <td>{{ current_workflow.due_date }}</td>
               <!-- Actions -->
               <td>
-                <a href="{% url 'customer-application-detail' docapplication.pk %}" class="btn btn-primary btn-sm">{% if docapplication.is_application_completed %}View{% else %}Manage{% endif %}</a>
-                {% if user|has_perm:'customer_applications,docapplication,change' and not docapplication.is_application_completed %}
+                <a href="{% url 'customer-application-detail' docapplication.pk %}" class="btn btn-primary btn-sm">{% if is_app_completed %}View{% else %}Manage{% endif %}</a>
+                {% if user|has_perm:'customer_applications,docapplication,change' and not is_app_completed %}
                   <a href="{% url 'customer-application-update' docapplication.pk %}" class="btn btn-warning btn-sm">Edit</a>
                 {% endif %}
                 {% if user|has_perm:'customer_applications,docapplication,delete' %}
@@ -96,17 +97,18 @@
               {% if user|has_perm:'invoices,invoice,view' %}
                 <td>
                     <div>
-                        {% if docapplication.has_invoice %}
+                        {% with first_invoice_app=docapplication.prefetched_invoice_applications.0 %}
+                        {% if first_invoice_app %}
                           <div class="col">
-                            <a href="{% url 'invoice-detail' docapplication.get_invoice.pk %}" class="btn btn-sm-fix-width btn-primary btn-sm">View</a>
-                            <a href="{% url 'invoice-update' docapplication.get_invoice.pk %}" class="btn btn-sm-fix-width btn-warning btn-sm" {% if not user|has_perm:'invoices,invoice,change' %}disabled{% endif %}>Edit</a>
+                            <a href="{% url 'invoice-detail' first_invoice_app.invoice.pk %}" class="btn btn-sm-fix-width btn-primary btn-sm">View</a>
+                            <a href="{% url 'invoice-update' first_invoice_app.invoice.pk %}" class="btn btn-sm-fix-width btn-warning btn-sm" {% if not user|has_perm:'invoices,invoice,change' %}disabled{% endif %}>Edit</a>
                           </div>
                           <div class="col">
                               <a href="{% url 'invoice-detail-by-doc-application' docapplication.pk %}">
-                                  <small>{{docapplication.get_invoice.invoice_no_display}}</small>
+                                  <small>{{ first_invoice_app.invoice.invoice_no_display }}</small>
                               </a>
                           </div>
-                        {% elif docapplication.is_document_collection_completed and user|has_perm:'invoices,invoice,add' %}
+                        {% elif docapplication.total_required_documents == docapplication.completed_required_documents and user|has_perm:'invoices,invoice,add' %}
                           <div class="col">
                             <a href="{% url 'invoice-create-by-doc-application' docapplication.pk %}" class="btn btn-sm-fix-width btn-success btn-sm">Create</a>
                           </div>
@@ -120,10 +122,12 @@
                           <div class="col">
                           </div>
                         {% endif %}
+                        {% endwith %}
                     </div>
                 </td>
               {% endif %}
             </tr>
+          {% endwith %}
           {% endwith %}
         {% endfor %}
       </tbody>

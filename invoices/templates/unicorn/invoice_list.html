@@ -40,7 +40,6 @@
             </thead>
             <tbody>
             {% for invoice in list_items %}
-                <div class="list_row">
                     <tr class="{% if invoice.is_expired %}invoice-expired{% endif %}">
                         <!-- invoice no -->
                         <td>{{ invoice.invoice_no_display }}</td>
@@ -105,7 +104,6 @@
                         </div>
                         </td>
                     </tr>
-                </div>
             {% endfor %}
             </tbody>
         </table>
@@ -160,11 +158,11 @@
                   </thead>
                   <tbody>
                     {% for app in invoice.prefetched_invoice_applications %}
-                      {% if app.due_amount > 0 %}
+                      {% if app.annotated_due_amount > 0 %}
                       <tr>
-                        <td>{{ app.customer_application }}</td>
+                        <td>{{ app.customer_application.product.code }} - {{ app.customer_application.customer.full_name }}</td>
                         <td>{{ app.customer_application.product }}</td>
-                        <td class="text-end">{{ app.due_amount|as_currency }}</td>
+                        <td class="text-end">{{ app.annotated_due_amount|as_currency }}</td>
                       </tr>
                       {% endif %}
                     {% endfor %}
@@ -232,22 +230,22 @@
       </div>
     </div>
     {% endif %}
-</div>
 
-<script>
-  // Ensure payment date is set to today when any mark-as-paid modal opens
-  document.addEventListener('DOMContentLoaded', function() {
-    // Find all mark-as-paid modals
-    var modals = document.querySelectorAll('[id^="markAsPaidModal"]');
-    modals.forEach(function(modal) {
-      modal.addEventListener('shown.bs.modal', function() {
-        var modalId = modal.id.replace('markAsPaidModal', '');
-        var paymentDateInput = document.getElementById('payment_date_' + modalId);
-        if (paymentDateInput && !paymentDateInput.value) {
-          var today = new Date().toISOString().split('T')[0];
-          paymentDateInput.value = today;
-        }
+    <script>
+      // Ensure payment date is set to today when any mark-as-paid modal opens
+      document.addEventListener('DOMContentLoaded', function() {
+        // Find all mark-as-paid modals
+        var modals = document.querySelectorAll('[id^="markAsPaidModal"]');
+        modals.forEach(function(modal) {
+          modal.addEventListener('shown.bs.modal', function() {
+            var modalId = modal.id.replace('markAsPaidModal', '');
+            var paymentDateInput = document.getElementById('payment_date_' + modalId);
+            if (paymentDateInput && !paymentDateInput.value) {
+              var today = new Date().toISOString().split('T')[0];
+              paymentDateInput.value = today;
+            }
+          });
+        });
       });
-    });
-  });
-</script>
+    </script>
+</div>

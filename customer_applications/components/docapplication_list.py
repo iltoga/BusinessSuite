@@ -1,8 +1,9 @@
-from django.db.models import Exists, Max, OuterRef
+from django.db.models import Count, Exists, Max, OuterRef, Prefetch, Q
 
 from core.components.unicorn_search_list_view import UnicornSearchListView
 from customer_applications.models import DocApplication
 from customer_applications.models.doc_workflow import DocWorkflow
+from invoices.models.invoice import InvoiceApplication
 
 
 class DocapplicationListView(UnicornSearchListView):
@@ -34,6 +35,32 @@ class DocapplicationListView(UnicornSearchListView):
         queryset = self.apply_filters(queryset)
         # Unpack the list when calling order_by
         queryset = queryset.order_by(*self.get_order())
+
+        # Optimize with select_related and prefetch_related to reduce N+1 queries
+        # Apply optimizations BEFORE slicing happens in load_items
+        queryset = (
+            queryset.select_related("customer", "product")
+            .prefetch_related(
+                Prefetch(
+                    "workflows",
+                    queryset=DocWorkflow.objects.select_related("task").order_by("-task__step"),
+                    to_attr="prefetched_workflows",
+                ),
+                Prefetch(
+                    "invoice_applications",
+                    queryset=InvoiceApplication.objects.select_related("invoice"),
+                    to_attr="prefetched_invoice_applications",
+                ),
+            )
+            .annotate(
+                # Annotate document collection completion status to avoid per-row queries
+                total_required_documents=Count("documents", filter=Q(documents__required=True), distinct=True),
+                completed_required_documents=Count(
+                    "documents", filter=Q(documents__required=True, documents__completed=True), distinct=True
+                ),
+            )
+        )
+
         return queryset
 
     # Custom methods
