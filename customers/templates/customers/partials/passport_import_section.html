@@ -65,17 +65,5 @@
         <div data-role="passport-clipboard-status" class="mt-2"></div>
     </div>
 </div>
-<script>
-/* Load passport import script safely when the template is included multiple times */
-(function(){
-    var scriptUrl = '{% static "js/passport_import.js" %}';
-    if (!document.querySelector('script[src="' + scriptUrl + '"]')) {
-        var s = document.createElement('script');
-        s.src = scriptUrl;
-        s.defer = true;
-        document.head.appendChild(s);
-    }
-})();
-</script>
 {% endwith %}
 {% endwith %}

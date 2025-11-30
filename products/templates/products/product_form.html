@@ -48,42 +48,5 @@
 
 {% block after-bootstrap-js %}
     {{ block.super }}
-    <script>
-        document.getElementById('add-task').addEventListener('click', function() {
-            var formIdx = $('#id_tasks-TOTAL_FORMS').val();
-            var newTaskForm = $('#empty-form').html().replace(/__prefix__/g, formIdx);
-            $('#task-form-list').append(newTaskForm);
-            $('#id_tasks-TOTAL_FORMS').val(parseInt(formIdx) + 1);
-            $('#id_tasks-' + formIdx + '-step').val(parseInt(formIdx) + 1);
-
-            // If product type is 'visa', set default values for the first task form
-            var productType = $('#id_product_type').val();
-            if (productType === 'visa' && formIdx === '0') {
-                $('#id_tasks-' + formIdx + '-name').val('Document Collection');
-                $('#id_tasks-' + formIdx + '-description').val('Collecting documents from Customer');
-            }
-        }, false);
-
-        $(document).on('click', '.remove-task-btn', function(){
-            if ($('.task-form').length > 1) {
-                $(this).parent().remove();
-                var forms = $('#task-form-list .task-form'); // Get all the forms
-                $('#id_tasks-TOTAL_FORMS').val(forms.length); // Update the total number of forms
-                var i = 0;
-                // Go through the forms and set their indices, names and IDs
-                for (form of forms.toArray()) {
-                    $(form).find('input,select,checkbox').each(function() {
-                        $(this).attr('name', $(this).attr('name').replace(/-\d+-/, '-' + i + '-'));
-                        $(this).attr('id', $(this).attr('id').replace(/-\d+-/, '-' + i + '-'));
-                    });
-                    i++;
-                }
-            }
-        });
-
-        // Document min validity should be at least the same as product validity
-        $('#id_validity').on('change', function() {
-            $('#id_documents_min_validity').val($(this).val());
-        });
-    </script>
+    <script src="{% static 'js/products/product_form.js' %}"></script>
 {% endblock %}

@@ -57,11 +57,25 @@
             assignFieldValue(config.addressAbroadId, mrz.address_abroad);
         }
 
+        // Log extracted data for debugging
         if (mrz.extraction_method === 'hybrid_mrz_ai') {
             if (mrz.ai_confidence_score !== undefined) {
                 console.log('AI-enhanced extraction completed. Confidence:', mrz.ai_confidence_score);
             }
+            // Log all extracted MRZ data as JSON
+            try {
+                console.log('Extracted MRZ data:', JSON.stringify(mrz, null, 2));
+            } catch (e) {
+                console.warn('Failed to stringify MRZ data:', e);
+            }
         }
+
+        // Return mismatch info for UI handling
+        return {
+            hasMismatches: mrz.has_mismatches || false,
+            fieldMismatches: mrz.field_mismatches || [],
+            mismatchSummary: mrz.mismatch_summary || ''
+        };
     }
 
     function initPassportImport(container){
@@ -196,13 +210,36 @@
                     if (buttonText) buttonText.textContent = 'Import';
 
                     var successText = 'Data successfully imported via OCR!';
+                    var hasMismatches = false;
+                    var mismatchDetails = '';
+
                     if (data && data.mrz_data && data.mrz_data.extraction_method === 'hybrid_mrz_ai') {
                         var confidence = data.mrz_data.ai_confidence_score || 0;
                         successText = 'Data imported via OCR + AI (confidence: ' + (confidence * 100).toFixed(0) + '%)';
+
+                        // Check for field mismatches
+                        if (data.mrz_data.has_mismatches && data.mrz_data.field_mismatches) {
+                            hasMismatches = true;
+                            var mismatches = data.mrz_data.field_mismatches;
+                            var mismatchLines = [];
+                            for (var i = 0; i < mismatches.length; i++) {
+                                var m = mismatches[i];
+                                mismatchLines.push(m.field + ': AI="' + m.ai_value + '" vs MRZ="' + m.mrz_value + '"');
+                            }
+                            mismatchDetails = mismatchLines.join('; ');
+                            console.warn('Field mismatches detected:', mismatchDetails);
+                        }
                     }
 
                     if (data && data.ai_warning) {
                         successText = 'Data imported via OCR (AI validation failed: ' + data.ai_warning + ')';
+                        if (successMsg) successMsg.textContent = successText;
+                        if (successEl) successEl.classList.remove('alert-success');
+                        if (successEl) successEl.classList.add('alert-warning');
+                        toggleElement(successEl, true);
+                    } else if (hasMismatches) {
+                        // Show warning with mismatch details
+                        successText += '. ⚠️ Field mismatches (AI values used): ' + mismatchDetails;
                         if (successMsg) successMsg.textContent = successText;
                         if (successEl) successEl.classList.remove('alert-success');
                         if (successEl) successEl.classList.add('alert-warning');

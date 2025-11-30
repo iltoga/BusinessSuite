@@ -1,4 +1,5 @@
 {% load crispy_forms_tags %}
+{% load static %}
 
 <style>
     #productQuickCreateModal {
@@ -18,7 +19,7 @@
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="productQuickCreateForm">
+            <form id="productQuickCreateForm" data-url="{% url 'api-product-quick-create' %}">
                 {% csrf_token %}
                 <div class="modal-body">
                     <div class="alert alert-info">
@@ -102,118 +103,4 @@
     </div>
 </div>
 
-<script>
-    // Product Quick Create Modal Handler
-    (function() {
-        var $modal = $('#productQuickCreateModal');
-        var $form = $('#productQuickCreateForm');
-        var $submitBtn = $('#productQuickCreateSubmitBtn');
-        var $errors = $('#productQuickCreateErrors');
-        var targetSelectId = null; // Will store the ID of the select element to update
-
-        // Initialize select2 for document types
-        $('#id_quick_required_documents, #id_quick_optional_documents').select2({
-            theme: 'bootstrap-5',
-            dropdownParent: $modal,
-            placeholder: 'Select documents',
-        });
-
-        // Store target select when modal is opened
-        window.openProductQuickCreateModal = function(selectElementId) {
-            targetSelectId = selectElementId;
-            $form[0].reset();
-            $errors.addClass('d-none').html('');
-            $('#id_quick_required_documents, #id_quick_optional_documents').val([]).trigger('change');
-            $modal.modal('show');
-
-            // Ensure this modal's backdrop is on top
-            setTimeout(function() {
-                var $backdrop = $('.modal-backdrop').last();
-                $backdrop.css('z-index', 1064);
-            }, 50);
-        };
-
-        // Handle form submission
-        $form.on('submit', function(e) {
-            e.preventDefault();
-            $errors.addClass('d-none').html('');
-            $submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Creating...');
-
-            // Prepare data - convert multi-select to comma-separated strings
-            var formData = new FormData($form[0]);
-            var requiredDocs = $('#id_quick_required_documents').val();
-            var optionalDocs = $('#id_quick_optional_documents').val();
-
-            // Remove the multiple entries and add as single comma-separated values
-            formData.delete('required_documents');
-            formData.delete('optional_documents');
-            formData.append('required_documents', requiredDocs ? requiredDocs.join(', ') : '');
-            formData.append('optional_documents', optionalDocs ? optionalDocs.join(', ') : '');
-
-            $.ajax({
-                url: '{% url "api-product-quick-create" %}',
-                method: 'POST',
-                data: formData,
-                processData: false,
-                contentType: false,
-                headers: {
-                    'X-CSRFToken': $('input[name="csrfmiddlewaretoken"]', $form).val()
-                },
-                success: function(response) {
-                    if (response.success) {
-                        // Add new product to target select
-                        if (targetSelectId) {
-                            var $targetSelect = $('#' + targetSelectId);
-                            var newOption = new Option(
-                                response.product.code + ' - ' + response.product.name,
-                                response.product.id,
-                                true,
-                                true
-                            );
-                            $targetSelect.append(newOption).trigger('change');
-                        }
-
-                        // Close modal and reset form
-                        $modal.modal('hide');
-                        $form[0].reset();
-
-                        // Show success message
-                        if (typeof showSuccessToast === 'function') {
-                            showSuccessToast('Product created successfully!');
-                        } else {
-                            alert('Product created successfully!');
-                        }
-                    } else {
-                        // Show errors
-                        var errorHtml = '<ul class="mb-0">';
-                        $.each(response.errors, function(field, errors) {
-                            $.each(errors, function(i, error) {
-                                errorHtml += '<li><strong>' + field + ':</strong> ' + error + '</li>';
-                            });
-                        });
-                        errorHtml += '</ul>';
-                        $errors.html(errorHtml).removeClass('d-none');
-                    }
-                },
-                error: function(xhr) {
-                    var errorMsg = 'An error occurred while creating the product.';
-                    if (xhr.responseJSON && xhr.responseJSON.error) {
-                        errorMsg = xhr.responseJSON.error;
-                    }
-                    $errors.html(errorMsg).removeClass('d-none');
-                },
-                complete: function() {
-                    $submitBtn.prop('disabled', false).html('<i class="fas fa-save"></i> Create Product');
-                }
-            });
-        });
-
-        // Reset form when modal is hidden
-        $modal.on('hidden.bs.modal', function() {
-            $form[0].reset();
-            $errors.addClass('d-none').html('');
-            $('#id_quick_required_documents, #id_quick_optional_documents').val([]).trigger('change');
-            targetSelectId = null;
-        });
-    })();
-</script>
+<script src="{% static 'js/modals/product_quick_create.js' %}"></script>

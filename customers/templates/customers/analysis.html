@@ -11,7 +11,7 @@
     <h1 class="mt-4 mb-4">Customer Analysis</h1>
     <div class="form-group">
         <label for="plot_type">Choose a chart:</label>
-        <select class="form-control" id="plot_type" name="plot_type">
+        <select class="form-control" id="plot_type" name="plot_type" data-url-template="{% url 'customer-chart-analysis' 'placeholder' %}">
             {% for chart, chart_info in charts %}
                 <option value="{{ chart }}" {% if chart == plot_type %}selected{% endif %}>{{ chart_info.display_name }}</option>
             {% endfor %}
@@ -25,13 +25,5 @@
 
 {% block after-bootstrap-js %}
 {{ block.super }}
-<script>
-    $(document).ready(function(){
-        $('#plot_type').change(function(){
-            var plotType = $(this).val();
-            var url = "{% url 'customer-chart-analysis' 'placeholder' %}".replace('placeholder', plotType);
-            window.location.href = url;
-        });
-    });
-</script>
+<script src="{% static 'js/customers/analysis.js' %}"></script>
 {% endblock %}

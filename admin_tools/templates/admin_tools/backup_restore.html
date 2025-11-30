@@ -1,4 +1,5 @@
 {% extends "base_template.html" %}
+{% load static %}
 {% block content %}
 <h1>Database Backup</h1>
 
@@ -7,7 +8,7 @@
   <input type="checkbox" id="include-users" name="include-users">
   <label for="include-users">Include users/groups/permissions (full backup)</label>
 </div>
-<button id="start-backup" class="btn btn-primary">Start Backup</button>
+<button id="start-backup" class="btn btn-primary" data-backup-url="{% url 'admin_tools:backup_start' %}">Start Backup</button>
 
 <h3>Live log</h3>
 <pre id="log" style="background:#111;color:#eee;padding:1rem;max-height:300px;overflow:auto;"></pre>
@@ -21,17 +22,9 @@
   {% endfor %}
 <ul>
 
-<script>
-document.getElementById('start-backup').addEventListener('click', function(){
-  const log = document.getElementById('log');
-  log.textContent = '';
-  const includeUsers = document.getElementById('include-users').checked ? '1' : '0';
-  const es = new EventSource('{% url "admin_tools:backup_start" %}?include_users=' + includeUsers);
-  es.onmessage = function(e){
-    try{ const d = JSON.parse(e.data); log.textContent += d.message + '\n'; log.scrollTop = log.scrollHeight; }catch(err){ console.log(err); }
-  };
-  es.onerror = function(e){ log.textContent += 'Connection closed'; es.close(); };
-});
-</script>
+{% endblock %}
 
+{% block after-bootstrap-js %}
+    {{ block.super }}
+    <script src="{% static 'js/admin_tools/backup_restore.js' %}"></script>
 {% endblock %}

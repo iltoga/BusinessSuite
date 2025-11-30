@@ -1,4 +1,5 @@
 {% extends "base_template.html" %}
+{% load static %}
 {% load crispy_forms_tags %}
 {% load widget_tweaks %}
 {% load filters %}
@@ -39,110 +40,10 @@
 
 {% block after-bootstrap-js %}
     {{ block.super }}
+    <script src="{% static 'js/utils.js' %}"></script>
     <script>
-        $(document).ready(function() {
-            // Reinitialize select2 with proper theme for customer and product fields
-            $('#id_customer').select2('destroy').select2({
-                theme: 'bootstrap-5',
-                placeholder: 'Select a customer',
-                width: '100%'
-            });
-
-            $('#id_product').select2('destroy').select2({
-                theme: 'bootstrap-5',
-                placeholder: 'Select a product',
-                width: '100%',
-                disabled: false  // Keep enabled so options are visible
-            });
-
-            // Function to check if customer is selected and enable/disable fields
-            function checkSelected() {
-                var hasCustomer = $('#id_customer').val();
-                if (hasCustomer) {
-                    // Enable product field
-                    $('#id_product').prop('disabled', false);
-                    $('#id_product').select2('enable');
-                    $('#add-document').prop('disabled', false);
-                } else {
-                    // Disable product field but keep it visible with options
-                    $('#id_product').prop('disabled', true);
-                    $('#id_product').select2('enable');  // Keep select2 enabled to show options
-                    $('#add-document').prop('disabled', true);
-                }
-            }
-
-            // Check selected state AFTER select2 is initialized
-            checkSelected();
-
-            // Enable fields when customer is selected
-            $('#id_customer').change(checkSelected);
-        });
-
-        $('#id_product').change(function() {
-            var selectedProduct = $(this).val();
-            $('#document-form-list').empty(); // remove all existing required document forms
-            if (selectedProduct) {
-                var url = "{% url 'api-product-by-id' product_id='123456' %}";
-                url = url.replace('123456', selectedProduct);
-                restApiCall('GET', url, null,
-                    data => {
-                        // get required documents from product
-                        if (data.product.required_documents == null) {
-                            data.product.required_documents = '';
-                        }
-                        required_documents = data.required_documents;
-                        if (data.product.optional_documents == null) {
-                            data.product.optional_documents = '';
-                        }
-                        optional_documents = data.optional_documents;
-
-                        // create new required document forms
-                        for (var i = 0; i < required_documents.length; i++) {
-                            var newFormHtml = $('#empty-form').html().replace(/__prefix__/g, i);
-                            var newForm = $(newFormHtml);
-                            newForm.find('select[name=documents-' + i + '-doc_type]').val(required_documents[i].id);
-                            $('#document-form-list').append(newForm);
-                        }
-                        // create new optional document forms
-                        // note: the optional document form fields are the same as the required document form fields, with the exception of the 'required' checkbox, which must be set as false
-                        for (var i = 0; i < optional_documents.length; i++) {
-                            var newFormHtml = $('#empty-form').html().replace(/__prefix__/g, i + required_documents.length);
-                            var newForm = $(newFormHtml);
-                            newForm.find('select[name=documents-' + (i + required_documents.length) + '-doc_type]').val(optional_documents[i].id);
-                            newForm.find('input[name=documents-' + (i + required_documents.length) + '-required]').prop('checked', false);
-                            $('#document-form-list').append(newForm);
-                        }
-                        // update total forms
-                        $('#id_documents-TOTAL_FORMS').val(required_documents.length + optional_documents.length);
-                    },
-                    error => console.error('Error:', error)
-                );
-            }
-        });
-
-        document.getElementById('add-document').addEventListener('click', function() {
-            var formIdx = $('#id_documents-TOTAL_FORMS').val();
-            var newForm = $('#empty-form').clone().html().replace(/__prefix__/g, formIdx);
-            $('#document-form-list').append(newForm);
-            $('#id_documents-TOTAL_FORMS').val(parseInt(formIdx) + 1);
-            $('#id_documents-' + formIdx + '-step').val(parseInt(formIdx) + 1);
-        }, false);
-
-        $(document).on('click', '.remove-document-btn', function(){
-            if ($('.document_form').length > 1) {
-                $(this).parent().remove();
-                var forms = $('#document-form-list .document_form'); // Get all the forms
-                $('#id_documents-TOTAL_FORMS').val(forms.length); // Update the total number of forms
-                var i = 0;
-                // Go through the forms and set their indices, names and IDs
-                for (form of forms.toArray()) {
-                    $(form).find('input,select,checkbox').each(function() {
-                        $(this).attr('name', $(this).attr('name').replace(/-\d+-/, '-' + i + '-'));
-                        $(this).attr('id', $(this).attr('id').replace(/-\d+-/, '-' + i + '-'));
-                    });
-                    i++;
-                }
-            }
-        });
+        // Pass Django URL pattern to JavaScript
+        window.productApiUrlPattern = "{% url 'api-product-by-id' product_id='123456' %}";
     </script>
+    <script src="{% static 'js/customer_applications/docapplication_create.js' %}"></script>
 {% endblock %}

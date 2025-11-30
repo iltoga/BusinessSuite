@@ -218,19 +218,9 @@
   </div>
 </div>
 
-<script>
-  // Ensure payment date is set to today when modal opens
-  document.addEventListener('DOMContentLoaded', function() {
-    var markAsPaidModal = document.getElementById('markAsPaidModal');
-    if (markAsPaidModal) {
-      markAsPaidModal.addEventListener('shown.bs.modal', function() {
-        var paymentDateInput = document.getElementById('payment_date');
-        if (paymentDateInput && !paymentDateInput.value) {
-          var today = new Date().toISOString().split('T')[0];
-          paymentDateInput.value = today;
-        }
-      });
-    }
-  });
-</script>
+{% endblock %}
+
+{% block after-bootstrap-js %}
+  {{ block.super }}
+  <script src="{% static 'js/invoices/invoice_detail.js' %}"></script>
 {% endblock %}

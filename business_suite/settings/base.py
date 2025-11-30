@@ -358,7 +358,7 @@ LOGGING = {
         "file": {
             "level": "DEBUG",
             "class": "logging.FileHandler",
-            "filename": os.path.join(BASE_DIR, "files/logs/") + "debug.log",
+            "filename": os.path.join(BASE_DIR, "logs") + "debug.log",
         },
         # "mail_admins": {
         #     "level": "ERROR",
