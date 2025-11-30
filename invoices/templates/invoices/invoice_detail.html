@@ -146,6 +146,11 @@
           Mark as Paid
         </button>
         {% endif %}
+        {% if user.is_superuser %}
+        <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteInvoiceModal">
+          Delete
+        </button>
+        {% endif %}
       </div>
     </div>
   </div>
@@ -212,6 +217,62 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
           <button type="submit" class="btn btn-success">Create Payments</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Invoice Modal -->
+<div class="modal fade" id="deleteInvoiceModal" tabindex="-1" aria-labelledby="deleteInvoiceModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title" id="deleteInvoiceModalLabel">Delete Invoice</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="deleteInvoiceForm" method="post" action="{% url 'invoice-delete' object.pk %}">
+        {% csrf_token %}
+        <div class="modal-body">
+          <div class="alert alert-danger" role="alert">
+            <h6 class="alert-heading"><i class="bi bi-exclamation-triangle-fill"></i> Warning: Force Delete</h6>
+            <p><strong>You are about to permanently delete this invoice and all related data!</strong></p>
+            
+            <h6 class="mt-3">Invoice Details:</h6>
+            <ul>
+              <li><strong>Invoice Number:</strong> {{ object.invoice_no_display }}</li>
+              <li><strong>Customer:</strong> {{ object.customer.full_name }}</li>
+              <li><strong>Total Amount:</strong> {{ object.total_amount|as_currency }}</li>
+            </ul>
+
+            <h6 class="mt-3">The following will be CASCADE DELETED:</h6>
+            <ul>
+              <li><strong>{{ invoice_applications_count }}</strong> Invoice Application(s)</li>
+              <li><strong>{{ customer_applications_count }}</strong> linked Customer Application(s)</li>
+              <li><strong>{{ payments_count }}</strong> Payment(s)</li>
+            </ul>
+            
+            <hr>
+            <p class="mb-0"><strong>This action cannot be undone!</strong></p>
+          </div>
+
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" name="force_delete_confirmed" value="yes" id="force_delete_confirmed" required>
+            <label class="form-check-label text-danger" for="force_delete_confirmed">
+              <strong>I understand this will permanently delete the invoice and all related data</strong>
+            </label>
+          </div>
+
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" name="delete_customer_applications" value="yes" id="delete_customer_applications">
+            <label class="form-check-label text-danger" for="delete_customer_applications">
+              <strong>Also delete all corresponding customer applications (DocApplication) linked to this invoice</strong>
+            </label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-danger" id="confirmDeleteBtn">Force Delete Invoice</button>
         </div>
       </form>
     </div>

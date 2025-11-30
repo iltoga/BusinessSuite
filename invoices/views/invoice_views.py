@@ -452,6 +452,17 @@ class InvoiceDetailView(PermissionRequiredMixin, DetailView):
         data = super().get_context_data(**kwargs)
         data["invoice_applications"] = self.object.invoice_applications.all()
         data["today"] = timezone.now().date()
+        
+        # Add data for delete modal
+        if self.request.user.is_superuser:
+            data["invoice_applications_count"] = self.object.invoice_applications.count()
+            data["customer_applications_count"] = (
+                self.object.invoice_applications.values("customer_application").distinct().count()
+            )
+            # Count payments across all invoice applications
+            total_payments = sum(inv_app.payments.count() for inv_app in self.object.invoice_applications.all())
+            data["payments_count"] = total_payments
+        
         return data
 
 
