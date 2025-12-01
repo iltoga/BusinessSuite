@@ -49,7 +49,7 @@ LOGGING = {
         },
         "file": {
             "class": "logging.FileHandler",
-            "filename": "/logs/django.log",
+            "filename": "/logs/django.log",  # Do not change this path; it's set in the docker-compose.yml
             "formatter": "verbose",
         },
         # "mail_admins": {

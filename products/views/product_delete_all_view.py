@@ -9,7 +9,8 @@ from products.models import Product
 
 class ProductDeleteAllView(PermissionRequiredMixin, View):
     """
-    Superuser-only view to delete all products.
+    Superuser-only view to delete selected products based on search query.
+    If no query is provided, deletes all products.
     Requires confirmation via POST request.
     """
 
@@ -22,13 +23,39 @@ class ProductDeleteAllView(PermissionRequiredMixin, View):
             return redirect("product-list")
         return super().dispatch(request, *args, **kwargs)
 
+    def get_queryset(self, query=None):
+        """
+        Get the queryset of products to delete based on search query.
+        Applies the same filters as the ProductListView component.
+        """
+        if query:
+            queryset = Product.objects.search_products(query)
+        else:
+            queryset = Product.objects.all()
+
+        return queryset
+
     def post(self, request, *args, **kwargs):
-        """Delete all products."""
+        """Delete selected products based on search query."""
+        query = request.POST.get("search_query", "").strip()
+
         try:
-            count = Product.objects.count()
+            queryset = self.get_queryset(query=query)
+            count = queryset.count()
+
+            if count == 0:
+                messages.warning(request, "No products found matching the criteria.")
+                return redirect("product-list")
+
             with transaction.atomic():
-                Product.objects.all().delete()
-            messages.success(request, f"Successfully deleted {count} product(s).")
+                # Delete one by one to trigger signals
+                for product in queryset.iterator():
+                    product.delete()
+
+            if query:
+                messages.success(request, f"Successfully deleted {count} product(s) matching '{query}'.")
+            else:
+                messages.success(request, f"Successfully deleted {count} product(s).")
         except Exception as e:
             messages.error(request, f"Error deleting products: {str(e)}")
 

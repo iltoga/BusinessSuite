@@ -10,9 +10,9 @@
             {% if user|has_perm:'list_items,product,add' %}
             <a href="{% url 'product-create' %}" class="btn btn-primary">New product</a>
             {% endif %}
-            {% if user.is_superuser %}
-            <button type="button" class="btn btn-danger ms-2" data-bs-toggle="modal" data-bs-target="#deleteAllProductsModal">
-                <i class="bi bi-trash3"></i> Delete All Products
+            {% if user.is_superuser and list_items %}
+            <button type="button" class="btn btn-danger ms-2" data-bs-toggle="modal" data-bs-target="#deleteSelectedProductsModal">
+                <i class="bi bi-trash3"></i> Delete {% if query %}Selected{% else %}All{% endif %} Products
             </button>
             {% endif %}
         </div>
@@ -65,30 +65,36 @@
         {% endif %}
     </div>
 
-    <!-- Delete All Products Modal (Superuser only) -->
+    <!-- Delete Selected Products Modal (Superuser only) -->
     {% if user.is_superuser %}
-    <div class="modal fade" id="deleteAllProductsModal" tabindex="-1" aria-labelledby="deleteAllProductsModalLabel" aria-hidden="true">
+    <div class="modal fade" id="deleteSelectedProductsModal" tabindex="-1" aria-labelledby="deleteSelectedProductsModalLabel" aria-hidden="true">
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header bg-danger text-white">
-            <h5 class="modal-title" id="deleteAllProductsModalLabel">
-              <i class="bi bi-exclamation-triangle"></i> Delete All Products
+            <h5 class="modal-title" id="deleteSelectedProductsModalLabel">
+              <i class="bi bi-exclamation-triangle"></i> Delete {% if query %}Selected{% else %}All{% endif %} Products
             </h5>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <form method="post" action="{% url 'product-delete-all' %}">
             {% csrf_token %}
+            <input type="hidden" name="search_query" value="{{ query|default:'' }}">
             <div class="modal-body">
               <div class="alert alert-danger">
                 <strong>Warning!</strong> This action cannot be undone.
               </div>
-              <p>Are you sure you want to delete <strong>ALL</strong> products?</p>
+              {% if query %}
+              <p>Are you sure you want to delete <strong>{{ total_items }}</strong> product(s) matching "<strong>{{ query }}</strong>"?</p>
+              <p class="text-muted">This will permanently remove all matching product records and their associated tasks from the database.</p>
+              {% else %}
+              <p>Are you sure you want to delete <strong>ALL {{ total_items }}</strong> products?</p>
               <p class="text-muted">This will permanently remove all product records and their associated tasks from the database.</p>
+              {% endif %}
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
               <button type="submit" class="btn btn-danger">
-                <i class="bi bi-trash3"></i> Yes, Delete All Products
+                <i class="bi bi-trash3"></i> Yes, Delete {% if query %}Selected{% else %}All{% endif %} Products
               </button>
             </div>
           </form>

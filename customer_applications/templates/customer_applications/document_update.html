@@ -18,7 +18,7 @@
               {% if field.name == 'file' and  product_doc_type.has_ocr_check %}
                   <!-- button to check the file via ocr using restApiCall -->
                   <div class="mb-3">
-                      <button id="ocr_check_btn_id" type="button" class="btn btn-primary btn-sm">
+                      <button id="ocr_check_btn_id" type="button" class="btn btn-primary btn-sm" data-ocr-url="{% url 'api-ocr-check' %}" data-ocr-doc-type="{{ product_doc_type.name }}">
                           Check File with OCR
                           <div id="ocr_check_spinner" class="spinner-border spinner-small text-secondary" style="display: none;"></div>
                       </button>
@@ -42,52 +42,6 @@
 {% block after-bootstrap-js %}
   {{ block.super }}
 {% if product_doc_type.has_ocr_check %}
-  <script>
-
-    $(document).ready(function() {
-      var ocr_check_btn = document.getElementById('ocr_check_btn_id');
-      var resizedImage = document.getElementById('resized_image_id');
-
-      ocr_check_btn.addEventListener('click', function(e) {
-        var url = "{% url 'api-ocr-check' %}";
-        var formData = new FormData();
-        formData.append('file', document.querySelector('input[name="file"]').files[0],);
-        formData.append('doc_type', "{{ product_doc_type.name }}");
-        toggleSpinnerDisplay(true, 'ocr_check_btn_id', 'ocr_check_spinner');
-        restApiCall('POST', url, formData,
-            data => {
-              mrz = data.mrz_data;
-
-              // Check for AI warning (validation failed after retries)
-              var successMessage = 'File successfully checked via OCR!';
-              if (data.ai_warning) {
-                successMessage = 'OCR completed with AI warning: ' + data.ai_warning;
-              }
-              toggleMessageDisplay(true, successMessage, 'ocr_check_error_id', 'ocr_check_success_id');
-
-              setFormFieldValue('id_doc_number', mrz.number);
-              setFormFieldValue('id_expiration_date', mrz.expiration_date_yyyy_mm_dd);
-              setFormFieldValue('id_ocr_check', true, 'checkbox');
-              setFormFieldValue('id_metadata', JSON.stringify(mrz))
-              setFormFieldValue('id_metadata_display', JSON.stringify(mrz))
-              // show dom with id_metadata_display
-              // document.getElementById('id_metadata_display').parentElement.style.display = 'block';
-              toggleSpinnerDisplay(false, 'ocr_check_btn_id', 'ocr_check_spinner');
-
-              // Display the resized image if it's present in the response data
-              if (data.b64_resized_image) {
-                resizedImage.src = "data:image/jpeg;base64," + data.b64_resized_image;
-                resizedImage.style.display = 'block';
-              }
-            },
-            error => {
-              toggleMessageDisplay(false, error.message, 'ocr_check_error_id', 'ocr_check_success_id');
-              toggleSpinnerDisplay(false, 'ocr_check_btn_id', 'ocr_check_spinner');
-            }
-        );
-      });
-    });
-
-  </script>
+  <script src="{% static 'js/document_update.js' %}" defer></script>
 {% endif %}
 {% endblock %}

@@ -20,7 +20,7 @@
     {% endif %}
 
     <h2 class="text-center my-4">Create a new Invoice</h2>
-    <form method="post" class="p-3 rounded w-100" action="" id="invoice-application-form">
+    <form method="post" class="p-3 rounded w-100" action="" id="invoice-application-form" data-decimals="{{ currency_decimal_places }}" data-customer-id="{{ customer.id|default:'' }}" data-customer-name="{{ customer.full_name|escapejs|default:'' }}">
         {% csrf_token %}
         {{ form | crispy }}
 
@@ -84,163 +84,15 @@
 
 {% block after-bootstrap-js %}
     {{ block.super }}
+    <script src="{% static 'js/invoices/invoice_create.js' %}" defer></script>
     <script>
         var decimals = parseInt("{{ currency_decimal_places }}");
-        var customerId = {{ customer.id|default:'null' }};
-        var customerName = "{{ customer.full_name|escapejs }}";
-
-        // Show/hide application buttons based on customer selection
-        function updateApplicationButtons() {
-            var $customerSelect = $('#id_customer');
-            var selectedCustomerId = $customerSelect.val();
-
-            if (selectedCustomerId) {
-                customerId = selectedCustomerId;
-                var selectedText = $customerSelect.find('option:selected').text();
-                customerName = selectedText;
-
-                // Show the buttons section
-                $('#invoice-applications-section').show();
-                $('#no-customer-message').hide();
-            } else {
-                customerId = null;
-                customerName = '';
-                $('#invoice-applications-section').hide();
-                $('#no-customer-message').show();
-            }
-        }        // Handle customer change
-
-        // Helper to update all customer_application selects
-        function updateCustomerApplicationDropdowns(applications) {
-            // For each formset row
-            $("select[name$='-customer_application']").each(function() {
-                var $select = $(this);
-                var currentVal = $select.val();
-                $select.empty();
-                $select.append($('<option>', {value: '', text: '---------'}));
-                if (applications && applications.length > 0) {
-                    applications.forEach(function(app) {
-                        $select.append($('<option>', {
-                            value: app.id,
-                            text: app.str_field
-                        }));
-                    });
-                    $('#invoiceapplication-form-list').show();
-                } else {
-                    $('#invoiceapplication-form-list').hide();
-                }
-                // Try to restore previous value if still present
-                if (currentVal) $select.val(currentVal);
-                $select.trigger('change');
-            });
-            // Also hide the form list if there are no forms at all
-            if (!applications || applications.length === 0) {
-                $('#invoiceapplication-form-list').hide();
-            } else {
-                $('#invoiceapplication-form-list').show();
-            }
-        }
-
-        $(document).ready(function() {
-            updateApplicationButtons();
-
-            $('#id_customer').on('change', function() {
-                updateApplicationButtons();
-                var selectedCustomerId = $(this).val();
-                if (selectedCustomerId) {
-                    // Fetch filtered applications for this customer
-                    $.ajax({
-                        url: '/api/invoices/get_customer_applications/' + selectedCustomerId + '/',
-                        method: 'GET',
-                        success: function(data) {
-                            updateCustomerApplicationDropdowns(data);
-                        },
-                        error: function() {
-                            updateCustomerApplicationDropdowns([]);
-                        }
-                    });
-                } else {
-                    updateCustomerApplicationDropdowns([]);
-                }
-            });
-
-            // Initial load: if customer is pre-selected, fetch applications
-            var initialCustomerId = $('#id_customer').val();
-            if (initialCustomerId) {
-                $.ajax({
-                    url: '/api/invoices/get_customer_applications/' + initialCustomerId + '/',
-                    method: 'GET',
-                    success: function(data) {
-                        updateCustomerApplicationDropdowns(data);
-                    },
-                    error: function() {
-                        updateCustomerApplicationDropdowns([]);
-                    }
-                });
-            }
-        });
-
-        // Handle Create New Application button
-        $(document).on('click', '#create-new-application-btn', function() {
-            if (customerId) {
-                openCustomerApplicationQuickCreateModal(customerId, customerName);
-            } else {
-                alert('Please select a customer first.');
-            }
-        });
-
-        // Function to add a new invoice application row with the created application
-        window.addInvoiceApplicationRow = function(application) {
-            var $formList = $('#invoiceapplication-form-list');
-            // Always show the form list when adding a new application
-            $formList.show();
-            var $emptyForm = $('#empty-form');
-            var totalForms = $('#id_invoice_applications-TOTAL_FORMS');
-            var formIdx = parseInt(totalForms.val());
-
-            // Clone the empty form
-            var newForm = $emptyForm.html().replace(/__prefix__/g, formIdx);
-            var $newFormDiv = $('<div class="invoiceapplication_form p-3 mb-4 border rounded"></div>');
-            $newFormDiv.html(newForm);
-
-            // Append to form list
-            $formList.append($newFormDiv);
-
-            // Initialize select2
-            $newFormDiv.find('select').select2({
-                theme: 'bootstrap-5',
-                width: '100%',
-            });
-
-            // Set the customer application
-            var $appSelect = $newFormDiv.find('select[name$="-customer_application"]');
-            var newOption = new Option(application.display_name, application.id, true, true);
-            $appSelect.append(newOption).trigger('change');
-
-            // Set the amount
-            var $amountInput = $newFormDiv.find('input[name$="-amount"]');
-            $amountInput.val(application.base_price.toFixed(decimals));
-
-            // Increment form count
-            totalForms.val(formIdx + 1);
-
-            // Bind remove button
-            $newFormDiv.find('.remove-invoiceapplication-btn').on('click', function() {
-                $newFormDiv.remove();
-            });
-
-            // Hide only truly empty invoice application forms (no value selected and only the placeholder option)
-            $("select[name$='-customer_application']").each(function() {
-                var $select = $(this);
-                if ($select.val() === "" && $select.find("option").length === 1) {
-                    $select.closest('.invoiceapplication_form').hide();
-                } else {
-                    $select.closest('.invoiceapplication_form').show();
-                }
-            });
-        };
+        var customerApplications = JSON.parse('{{ customer_applications_json|escapejs }}');
+        var selectedCustomerApplicationPk = "{{ selected_customer_application_pk|default:'' }}";
+        var masked_url = "{% url 'invoice-create-by-customer' customer_id='123456' %}";
+        var form_action_name = "create";
     </script>
-
+    <script src="{% static 'js/invoices/invoice_form.js' %}"></script>
     <script>
         // Add "+" button next to customer select field
         $(document).ready(function() {

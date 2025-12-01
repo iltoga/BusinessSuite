@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import re
@@ -100,6 +101,18 @@ def extract_mrz_data(file, check_expiration=True, expiration_days=180) -> dict:
         for key in ["date_of_birth", "expiration_date"]:
             if key in parsed_mrz:
                 dt = datetime.strptime(parsed_mrz[key], "%y%m%d").date()
+                # MRZ uses 2-digit years. Apply century correction:
+                # - For date_of_birth: if parsed year > current year, assume 1900s
+                # - For expiration_date: if parsed year < current year - 10, assume 2000s
+                current_year = datetime.now().year
+                if key == "date_of_birth":
+                    # Birth dates in the future are invalid - assume 1900s
+                    if dt.year > current_year:
+                        dt = dt.replace(year=dt.year - 100)
+                elif key == "expiration_date":
+                    # Expiration dates more than 10 years in the past are likely 2000s
+                    if dt.year < current_year - 10:
+                        dt = dt.replace(year=dt.year + 100)
                 parsed_mrz[f"{key}_yyyy_mm_dd"] = dt.strftime("%Y-%m-%d")
         return parsed_mrz
 
@@ -629,6 +642,10 @@ def extract_passport_with_ai(file, use_ai: bool = True) -> dict:
     # We call the original extract_mrz_data but with check_expiration=False
     # to get the MRZ data regardless of expiration status
     mrz_data = extract_mrz_data(file, check_expiration=False)
+    try:
+        logger.info("MRZ data extracted: %s", json.dumps(mrz_data, ensure_ascii=False, default=str))
+    except Exception:
+        logger.debug("Failed to stringify MRZ data for logging.")
 
     if not use_ai:
         return mrz_data
@@ -651,6 +668,10 @@ def extract_passport_with_ai(file, use_ai: bool = True) -> dict:
 
     # Step 3: Merge results with comparison logic
     merged_data = _merge_passport_data(mrz_data, ai_data, logger)
+    try:
+        logger.info("Merged MRZ+AI data: %s", json.dumps(merged_data, ensure_ascii=False, default=str))
+    except Exception:
+        logger.debug("Failed to stringify merged passport data for logging.")
 
     return merged_data
 
@@ -709,7 +730,11 @@ def _extract_with_ai(file) -> tuple[Optional[dict], Optional[str]]:
             "ai_confidence_score": passport_data.confidence_score,
         }
 
-        logger.info(f"AI extraction successful with confidence: {passport_data.confidence_score:.2f}")
+        logger.info("AI extraction successful with confidence: %.2f", passport_data.confidence_score or 0.0)
+        try:
+            logger.info("AI extracted data: %s", json.dumps(ai_dict, ensure_ascii=False, default=str))
+        except Exception:
+            logger.debug("Failed to stringify AI extracted data for logging.")
         return ai_dict, None
 
     except Exception as e:
@@ -721,8 +746,8 @@ def _merge_passport_data(mrz_data: dict, ai_data: dict, logger: logging.Logger) 
     """
     Merge MRZ and AI extracted passport data.
 
-    PRIORITY: AI data is preferred over MRZ when AI has high confidence,
-    because MRZ OCR often has errors (e.g., Y→7, I→1, O→0).
+    PRIORITY: AI data is preferred over MRZ because AI reads from the visual zone
+    which is more accurate than MRZ OCR (which often has errors like Y→7, I→1, O→0).
 
     Args:
         mrz_data: Data from MRZ extraction
@@ -730,88 +755,152 @@ def _merge_passport_data(mrz_data: dict, ai_data: dict, logger: logging.Logger) 
         logger: Logger instance
 
     Returns:
-        dict: Merged passport data with AI data prioritized
+        dict: Merged passport data with AI data prioritized and mismatch reporting
     """
-    merged = mrz_data.copy()
+    merged = {}
     ai_confidence = ai_data.get("ai_confidence_score", 0.0)
+    field_mismatches = []  # Track mismatches to report to UI
 
-    # Add AI-only fields (not available in MRZ)
-    ai_only_fields = [
+    def normalize_for_compare(val):
+        """Normalize value for comparison (strip, lowercase, handle None)."""
+        if val is None:
+            return ""
+        return str(val).strip().lower()
+
+    def add_field(key, ai_value, mrz_value, prefer_ai=True):
+        """Add a field with source tracking and mismatch detection."""
+        ai_val = ai_value if ai_value else None
+        mrz_val = mrz_value if mrz_value else None
+
+        # Determine which value to use
+        if prefer_ai and ai_val:
+            merged[key] = ai_val
+            merged[f"{key}_source"] = "ai"
+        elif mrz_val:
+            merged[key] = mrz_val
+            merged[f"{key}_source"] = "mrz"
+        elif ai_val:
+            merged[key] = ai_val
+            merged[f"{key}_source"] = "ai"
+
+        # Store both values for reference if they exist
+        if ai_val:
+            merged[f"ai_{key}"] = ai_val
+        if mrz_val:
+            merged[f"mrz_{key}"] = mrz_val
+
+        # Check for mismatch
+        if ai_val and mrz_val:
+            if normalize_for_compare(ai_val) != normalize_for_compare(mrz_val):
+                field_mismatches.append(
+                    {
+                        "field": key,
+                        "ai_value": ai_val,
+                        "mrz_value": mrz_val,
+                        "used": "ai" if (prefer_ai and ai_val) else "mrz",
+                    }
+                )
+                logger.warning(
+                    f"Field mismatch for '{key}': AI='{ai_val}' vs MRZ='{mrz_val}' (using {'AI' if prefer_ai else 'MRZ'})"
+                )
+
+    # === NAMES (AI preferred) ===
+    add_field("names", ai_data.get("ai_first_name"), mrz_data.get("names"), prefer_ai=True)
+    add_field("surname", ai_data.get("ai_last_name"), mrz_data.get("surname"), prefer_ai=True)
+
+    # Full name from AI
+    if ai_data.get("ai_full_name"):
+        merged["full_name"] = ai_data["ai_full_name"]
+
+    # === PASSPORT NUMBER (AI preferred - MRZ often has OCR errors) ===
+    add_field("number", ai_data.get("ai_passport_number"), mrz_data.get("number"), prefer_ai=True)
+
+    # === DATES (AI preferred - provides full YYYY-MM-DD) ===
+    # Date of birth
+    ai_dob = ai_data.get("ai_date_of_birth")
+    mrz_dob = mrz_data.get("date_of_birth_yyyy_mm_dd")
+    add_field("date_of_birth_yyyy_mm_dd", ai_dob, mrz_dob, prefer_ai=True)
+
+    # Keep raw MRZ date for reference
+    if mrz_data.get("date_of_birth"):
+        merged["date_of_birth"] = mrz_data["date_of_birth"]
+        merged["check_date_of_birth"] = mrz_data.get("check_date_of_birth")
+
+    # Expiration date
+    ai_exp = ai_data.get("ai_passport_expiration_date")
+    mrz_exp = mrz_data.get("expiration_date_yyyy_mm_dd")
+    add_field("expiration_date_yyyy_mm_dd", ai_exp, mrz_exp, prefer_ai=True)
+
+    # Keep raw MRZ expiration for reference
+    if mrz_data.get("expiration_date"):
+        merged["expiration_date"] = mrz_data["expiration_date"]
+        merged["check_expiration_date"] = mrz_data.get("check_expiration_date")
+
+    # Issue date (AI only - not in MRZ)
+    if ai_data.get("ai_passport_issue_date"):
+        merged["passport_issue_date"] = ai_data["ai_passport_issue_date"]
+        # Also store as issue_date_yyyy_mm_dd for frontend compatibility
+        merged["issue_date_yyyy_mm_dd"] = ai_data["ai_passport_issue_date"]
+
+    # === GENDER (AI preferred) ===
+    add_field("sex", ai_data.get("ai_gender"), mrz_data.get("sex"), prefer_ai=True)
+
+    # === NATIONALITY (AI preferred) ===
+    ai_nationality = ai_data.get("ai_nationality_code") or ai_data.get("ai_nationality")
+    mrz_nationality = mrz_data.get("nationality")
+
+    # Normalize to 3-letter code
+    if ai_nationality and len(ai_nationality) == 3 and ai_nationality.isalpha():
+        ai_nationality = ai_nationality.upper()
+    else:
+        ai_nationality = None
+
+    add_field("nationality", ai_nationality, mrz_nationality, prefer_ai=True)
+
+    # Keep country name
+    if mrz_data.get("country_name"):
+        merged["country_name"] = mrz_data["country_name"]
+    if ai_data.get("ai_issuing_country"):
+        merged["country_name"] = ai_data["ai_issuing_country"]
+
+    # === MRZ-SPECIFIC FIELDS (keep from MRZ) ===
+    mrz_only_fields = ["mrz_type", "type", "country", "check_number"]
+    for field in mrz_only_fields:
+        if mrz_data.get(field):
+            merged[field] = mrz_data[field]
+
+    # === AI-ONLY FIELDS (not available in MRZ) ===
+    ai_only_mappings = [
         ("birth_place", "ai_birth_place"),
-        ("passport_issue_date", "ai_passport_issue_date"),
         ("issuing_authority", "ai_issuing_authority"),
+        ("issuing_country", "ai_issuing_country"),
+        ("issuing_country_code", "ai_issuing_country_code"),
         ("height_cm", "ai_height_cm"),
         ("eye_color", "ai_eye_color"),
         ("address_abroad", "ai_address_abroad"),
-        ("issuing_country", "ai_issuing_country"),
+        ("document_type", "ai_document_type"),
     ]
 
-    for target_key, ai_key in ai_only_fields:
+    for target_key, ai_key in ai_only_mappings:
         if ai_data.get(ai_key):
             merged[target_key] = ai_data[ai_key]
-            logger.debug(f"Added AI field {target_key}: {ai_data[ai_key]}")
+            logger.debug(f"Added AI-only field {target_key}: {ai_data[ai_key]}")
 
-    # PRIORITIZE AI for names - MRZ OCR often has errors
-    ai_first_name = ai_data.get("ai_first_name", "")
-    ai_last_name = ai_data.get("ai_last_name", "")
-    mrz_names = mrz_data.get("names", "")
-    mrz_surname = mrz_data.get("surname", "")
-
-    # Store MRZ versions for reference
-    merged["mrz_names"] = mrz_names
-    merged["mrz_surname"] = mrz_surname
-
-    # Use AI names if available (AI reads from visual zone, more accurate)
-    if ai_first_name:
-        merged["names"] = ai_first_name
-        merged["names_source"] = "ai"
-        logger.debug(f"Using AI first name: {ai_first_name} (MRZ was: {mrz_names})")
-    else:
-        merged["names_source"] = "mrz"
-
-    if ai_last_name:
-        merged["surname"] = ai_last_name
-        merged["surname_source"] = "ai"
-        logger.debug(f"Using AI last name: {ai_last_name} (MRZ was: {mrz_surname})")
-    else:
-        merged["surname_source"] = "mrz"
-
-    # PRIORITIZE AI for passport number - MRZ often confuses Y/7, I/1, O/0
-    ai_number = ai_data.get("ai_passport_number", "")
-    mrz_number = mrz_data.get("number", "")
-
-    if ai_number:
-        merged["mrz_number"] = mrz_number  # Keep MRZ for reference
-        merged["number"] = ai_number
-        merged["number_source"] = "ai"
-        if mrz_number != ai_number:
-            logger.debug(f"Passport number: using AI '{ai_number}' over MRZ '{mrz_number}'")
-    else:
-        merged["number_source"] = "mrz"
-
-    # For nationality, use 3-letter code (AI should provide this)
-    # MRZ nationality is already 3-letter code, AI should match
-    ai_nationality_code = ai_data.get("ai_nationality_code", "") or ai_data.get("ai_nationality", "")
-    mrz_nationality = mrz_data.get("nationality", "")
-
-    # If AI nationality looks like a 3-letter code, use it
-    if ai_nationality_code and len(ai_nationality_code) == 3 and ai_nationality_code.isalpha():
-        merged["nationality"] = ai_nationality_code.upper()
-    # Keep MRZ nationality as fallback (already 3-letter code)
-
-    # Store full country name from AI if available
-    ai_nationality_name = ai_data.get("ai_nationality", "")
-    if ai_nationality_name and len(ai_nationality_name) > 3:
-        merged["nationality_name"] = ai_nationality_name
-
-    # For dates, keep MRZ as primary (has check digits) but store AI for reference
-    if ai_data.get("ai_date_of_birth"):
-        merged["ai_date_of_birth"] = ai_data["ai_date_of_birth"]
-    if ai_data.get("ai_passport_expiration_date"):
-        merged["ai_expiration_date"] = ai_data["ai_passport_expiration_date"]
-
-    # Add AI confidence score and extraction method
+    # === METADATA ===
     merged["ai_confidence_score"] = ai_confidence
     merged["extraction_method"] = "hybrid_mrz_ai"
+
+    # Add mismatch report for UI
+    if field_mismatches:
+        merged["field_mismatches"] = field_mismatches
+        merged["has_mismatches"] = True
+        # Build human-readable mismatch summary
+        mismatch_summary = "; ".join(
+            [f"{m['field']}: AI='{m['ai_value']}' vs MRZ='{m['mrz_value']}'" for m in field_mismatches]
+        )
+        merged["mismatch_summary"] = mismatch_summary
+        logger.info(f"Field mismatches detected: {mismatch_summary}")
+    else:
+        merged["has_mismatches"] = False
 
     return merged

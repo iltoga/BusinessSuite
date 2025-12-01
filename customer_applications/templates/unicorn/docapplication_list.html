@@ -11,9 +11,9 @@
       {% if user|has_perm:'customer_applications,docapplication,add' %}
       <a href="{% url 'customer-application-create' %}" class="btn btn-primary">New application</a>
       {% endif %}
-      {% if user.is_superuser %}
-      <button type="button" class="btn btn-danger ms-2" data-bs-toggle="modal" data-bs-target="#deleteAllApplicationsModal">
-          <i class="bi bi-trash3"></i> Delete All Applications
+      {% if user.is_superuser and list_items %}
+      <button type="button" class="btn btn-danger ms-2" data-bs-toggle="modal" data-bs-target="#deleteSelectedApplicationsModal">
+          <i class="bi bi-trash3"></i> Delete {% if query %}Selected{% else %}All{% endif %} Applications
       </button>
       {% endif %}
     </div>
@@ -42,26 +42,27 @@
       </thead>
       <tbody>
         {% for docapplication in list_items %}
-          {% with current_workflow=docapplication.current_workflow %}
-            {% if not docapplication.is_application_completed %}
+          {% with current_workflow=docapplication.prefetched_workflows.0 %}
+            {% with is_app_completed=current_workflow.is_workflow_completed %}
+            {% if not is_app_completed %}
               {% if current_workflow.is_overdue %}
-                <tr class="table-danger">
+                <tr class="table-danger align-middle">
               {% elif current_workflow.is_notification_date_reached %}
-                <tr class="table-warning">
+                <tr class="table-warning align-middle">
               {% else %}
-                <tr>
+                <tr class="align-middle">
               {% endif %}
             {% else %}
-              <tr>
+              <tr class="align-middle">
             {% endif %}
               <!-- ID -->
               <td>{{ docapplication.pk }}</td>
               <!-- Customer -->
-              <td>
+                <td class="align-middle">
                 <a href="{% url 'customer-detail' docapplication.customer.pk %}" class="text-primary font-weight-light">{{ docapplication.customer }}</a>
               </td>
               <!-- Application Type -->
-              <td>{{ docapplication.get_application_type_display }}</td>
+              <td>{{ docapplication.product.get_product_type_display }}</td>
               <!-- Product -->
               <td>
                 <a href="{% url 'product-detail' docapplication.product.pk %}" class="text-primary font-weight-light">{{ docapplication.product }}</a>
@@ -84,46 +85,53 @@
               <td>{{ current_workflow.due_date }}</td>
               <!-- Actions -->
               <td>
-                <a href="{% url 'customer-application-detail' docapplication.pk %}" class="btn btn-primary btn-sm">{% if docapplication.is_application_completed %}View{% else %}Manage{% endif %}</a>
-                {% if user|has_perm:'customer_applications,docapplication,change' and not docapplication.is_application_completed %}
-                  <a href="{% url 'customer-application-update' docapplication.pk %}" class="btn btn-warning btn-sm">Edit</a>
+                <div class="btn-group" role="group" aria-label="Application actions">
+                {% if user|has_perm:'customer_applications,docapplication,change' %}
+                  <a href="{% url 'customer-application-detail' docapplication.pk %}" class="btn btn-secondary btn-sm me-1">Manage</a>
+                {% endif %}
+                {% if user|has_perm:'customer_applications,docapplication,change' and not is_app_completed %}
+                  <a href="{% url 'customer-application-update' docapplication.pk %}" class="btn btn-warning btn-sm me-1">Edit</a>
                 {% endif %}
                 {% if user|has_perm:'customer_applications,docapplication,delete' %}
-                  <a href="{% url 'customer-application-delete' docapplication.pk %}" class="btn btn-danger btn-sm">Delete</a>
+                  <a href="{% url 'customer-application-delete' docapplication.pk %}" class="btn btn-danger btn-sm me-1">Delete</a>
                 {% endif %}
+                </div>
               </td>
               <!-- Invoice -->
               {% if user|has_perm:'invoices,invoice,view' %}
                 <td>
-                    <div>
-                        {% if docapplication.has_invoice %}
-                          <div class="col">
-                            <a href="{% url 'invoice-detail' docapplication.get_invoice.pk %}" class="btn btn-sm-fix-width btn-primary btn-sm">View</a>
-                            <a href="{% url 'invoice-update' docapplication.get_invoice.pk %}" class="btn btn-sm-fix-width btn-warning btn-sm" {% if not user|has_perm:'invoices,invoice,change' %}disabled{% endif %}>Edit</a>
-                          </div>
-                          <div class="col">
+                    {% with first_invoice_app=docapplication.prefetched_invoice_applications.0 %}
+                        {% if first_invoice_app %}
+                          <div class="d-flex flex-column align-items-start">
+                            <div class="btn-group" role="group" aria-label="Invoice actions">
+                              <a href="{% url 'invoice-detail' first_invoice_app.invoice.pk %}" class="btn btn-primary btn-sm me-1">View</a>
+                              <a href="{% url 'invoice-update' first_invoice_app.invoice.pk %}" class="btn btn-warning btn-sm me-1" {% if not user|has_perm:'invoices,invoice,change' %}disabled{% endif %}>Edit</a>
+                            </div>
+                            <div class="mt-1">
                               <a href="{% url 'invoice-detail-by-doc-application' docapplication.pk %}">
-                                  <small>{{docapplication.get_invoice.invoice_no_display}}</small>
+                                  <small>{{ first_invoice_app.invoice.invoice_no_display }}</small>
                               </a>
+                            </div>
                           </div>
-                        {% elif docapplication.is_document_collection_completed and user|has_perm:'invoices,invoice,add' %}
-                          <div class="col">
-                            <a href="{% url 'invoice-create-by-doc-application' docapplication.pk %}" class="btn btn-sm-fix-width btn-success btn-sm">Create</a>
-                          </div>
-                          <div class="col">
-                            <!-- <div class="badge bg-secondary">Ready to Invoice</div> -->
+                        {% elif docapplication.total_required_documents == docapplication.completed_required_documents and user|has_perm:'invoices,invoice,add' %}
+                          <div class="d-flex flex-column align-items-start">
+                            <div class="btn-group" role="group" aria-label="Invoice actions">
+                              <a href="{% url 'invoice-create-by-doc-application' docapplication.pk %}" class="btn btn-success btn-sm me-1">Create</a>
+                            </div>
+                            <div class="mt-1">
+                              <!-- <div class="badge bg-secondary">Ready to Invoice</div> -->
+                            </div>
                           </div>
                         {% else %}
-                          <div class="col">
+                          <div>
                             <div class="badge bg-warning text-dark">Not Ready</div>
                           </div>
-                          <div class="col">
-                          </div>
                         {% endif %}
-                    </div>
+                    {% endwith %}
                 </td>
               {% endif %}
             </tr>
+          {% endwith %}
           {% endwith %}
         {% endfor %}
       </tbody>
@@ -136,30 +144,38 @@
     {% endif %}
   </div>
 
-  <!-- Delete All Customer Applications Modal (Superuser only) -->
+  <!-- Delete Selected Customer Applications Modal (Superuser only) -->
   {% if user.is_superuser %}
-  <div class="modal fade" id="deleteAllApplicationsModal" tabindex="-1" aria-labelledby="deleteAllApplicationsModalLabel" aria-hidden="true">
+  <div class="modal fade" id="deleteSelectedApplicationsModal" tabindex="-1" aria-labelledby="deleteSelectedApplicationsModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header bg-danger text-white">
-          <h5 class="modal-title" id="deleteAllApplicationsModalLabel">
-            <i class="bi bi-exclamation-triangle"></i> Delete All Customer Applications
+          <h5 class="modal-title" id="deleteSelectedApplicationsModalLabel">
+            <i class="bi bi-exclamation-triangle"></i> Delete {% if query %}Selected{% else %}All{% endif %} Customer Applications
           </h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <form method="post" action="{% url 'customer-application-delete-all' %}">
           {% csrf_token %}
+          <input type="hidden" name="search_query" value="{{ query|default:'' }}">
+          <input type="hidden" name="hide_finished" value="{{ hide_finished|yesno:'true,false' }}">
+          <input type="hidden" name="hide_not_started" value="{{ hide_not_started|yesno:'true,false' }}">
           <div class="modal-body">
             <div class="alert alert-danger">
               <strong>Warning!</strong> This action cannot be undone.
             </div>
-            <p>Are you sure you want to delete <strong>ALL</strong> customer applications?</p>
+            {% if query %}
+            <p>Are you sure you want to delete <strong>{{ total_items }}</strong> customer application(s) matching "<strong>{{ query }}</strong>"?</p>
+            <p class="text-muted">This will permanently remove all matching customer application records and their associated documents and workflows from the database.</p>
+            {% else %}
+            <p>Are you sure you want to delete <strong>ALL {{ total_items }}</strong> customer applications?</p>
             <p class="text-muted">This will permanently remove all customer application records and their associated documents and workflows from the database.</p>
+            {% endif %}
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
             <button type="submit" class="btn btn-danger">
-              <i class="bi bi-trash3"></i> Yes, Delete All Applications
+              <i class="bi bi-trash3"></i> Yes, Delete {% if query %}Selected{% else %}All{% endif %} Applications
             </button>
           </div>
         </form>

@@ -4,6 +4,7 @@ Uses AI vision to extract structured passport data from images.
 Supports multimodal vision for passport images, complementing MRZ extraction.
 """
 
+import json
 import logging
 from dataclasses import dataclass, field
 from typing import Optional, Union
@@ -382,6 +383,11 @@ EXAMPLE OUTPUT:
 
     def _convert_to_result(self, parsed_data: dict) -> AIPassportResult:
         """Convert parsed JSON data to structured result objects."""
+        # Log the raw parsed JSON returned by the vision API for debugging
+        try:
+            logger.info("AI parsed passport data: %s", json.dumps(parsed_data, ensure_ascii=False, default=str))
+        except Exception:
+            logger.debug("Failed to stringify AI parsed passport data for logging.")
         passport_data = PassportData(
             first_name=parsed_data.get("first_name"),
             last_name=parsed_data.get("last_name"),

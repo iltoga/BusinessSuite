@@ -10,7 +10,7 @@ from .models import Customer
 
 class CustomerAdmin(admin.ModelAdmin):
     def delete_model(self, request, obj):
-        can_delete, msg = obj.can_be_deleted()
+        can_delete, msg = obj.can_be_deleted(user=request.user)
         if not can_delete:
             from django.contrib import messages
 
@@ -20,7 +20,10 @@ class CustomerAdmin(admin.ModelAdmin):
             from django.contrib import messages
 
             self.message_user(request, msg, messages.WARNING)
-        super().delete_model(request, obj)
+
+        # Use force=True for superuser cascade delete
+        force = request.user.is_superuser and obj.invoices.exists()
+        obj.delete(force=force)
 
     list_display = ("full_name", "email", "telephone", "passport_number", "passport_expiration_date", "active")
     search_fields = ("first_name", "last_name", "email", "telephone", "passport_number")

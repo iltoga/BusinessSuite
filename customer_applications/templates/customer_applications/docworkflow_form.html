@@ -7,7 +7,9 @@
 {% block content %}
 <div class="container-fluid">
     <h2 class="text-center my-4">{{ docapplication.product.name }} {{ docapplication.get_application_type_display }} application for {{ docapplication.customer.full_name }}<br><small>Step {{ task.step }} - {{ task.name }}</small> </h2>
-    <form method="post" class="p-3 rounded w-100" action="" id="doc-workflow-step-form">
+    <form method="post" class="p-3 rounded w-100" action="" id="doc-workflow-step-form" 
+          data-task-id="{{ task.pk }}" 
+          data-due-date-url="{% url 'api-compute-docworkflow-due-date' task_id='12345' start_date='67890' %}">
         {% csrf_token %}
         {{ form | crispy }}
         <div id="due_date_spinner_id" class="spinner-border spinner-small text-secondary" style="display: none;"></div>
@@ -18,29 +20,7 @@
 </div>
 {% endblock %}
 {% block after-bootstrap-js %}
-  {{ block.super }}
-  <script>
-    $(document).ready(function() {
-        var start_date = document.getElementById('id_start_date');
-
-        start_date.addEventListener('change', function(e) {
-        start_date_dt = new Date(e.target.value);
-        start_date_str = start_date_dt.toISOString().split('T')[0];
-        var task_id = '{{ task.pk }}';
-        var url = "{% url 'api-compute-docworkflow-due-date' task_id='12345' start_date='67890'  %}";
-        url = url.replace('12345', task_id);
-        url = url.replace('67890', start_date_str);
-        restApiCall('GET', url, null,
-            data => {
-                data.due_date = new Date(data.due_date);
-                data.due_date = data.due_date.toISOString().split('T')[0];
-                setFormFieldValue('id_due_date', data.due_date);
-            },
-            error => {
-              toggleMessageDisplay(false, error.message, 'due_date_error_id', '');
-            }
-        );
-      });
-    });
-  </script>
+    {{ block.super }}
+    <script src="{% static 'js/utils.js' %}"></script>
+    <script src="{% static 'js/customer_applications/docworkflow_form.js' %}"></script>
 {% endblock %}

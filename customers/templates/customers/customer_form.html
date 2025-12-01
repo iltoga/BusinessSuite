@@ -54,50 +54,7 @@
 
 {% block after-bootstrap-js %}
   {{ block.super }}
-    <script>
-        $(document).ready(function() {
-            var firstNameInput = document.getElementById('id_first_name');
-            var lastNameInput = document.getElementById('id_last_name');
-            var customerTypeInputs = document.querySelectorAll('input[name="customer_type"]');
-
-            // Function to toggle person-only fields
-            function togglePersonFields() {
-                var customerType = document.querySelector('input[name="customer_type"]:checked').value;
-                var personFields = document.querySelectorAll('.person-only-field');
-                var personFieldsContainer = document.getElementById('person_fields_container');
-
-                if (customerType === 'company') {
-                    personFields.forEach(function(field) {
-                        field.style.display = 'none';
-                    });
-                    if (personFieldsContainer) {
-                        personFieldsContainer.style.display = 'none';
-                    }
-                } else {
-                    personFields.forEach(function(field) {
-                        field.style.display = 'block';
-                    });
-                    if (personFieldsContainer) {
-                        personFieldsContainer.style.display = 'block';
-                    }
-                }
-            }
-
-            // Add event listeners to customer type radio buttons
-            customerTypeInputs.forEach(function(input) {
-                input.addEventListener('change', togglePersonFields);
-            });
-
-            // Initialize on page load
-            togglePersonFields();
-
-            firstNameInput.addEventListener('change', function(e) {
-                firstNameInput.value = capitalizeFirstLetter(firstNameInput.value);
-            });
-
-            lastNameInput.addEventListener('change', function(e) {
-                lastNameInput.value = capitalizeFirstLetter(lastNameInput.value);
-            });
-        });
-    </script>
+    <script src="{% static 'js/utils.js' %}"></script>
+    <script src="{% static 'js/passport_import.js' %}"></script>
+    <script src="{% static 'js/customers/customer_form.js' %}"></script>
 {% endblock %}

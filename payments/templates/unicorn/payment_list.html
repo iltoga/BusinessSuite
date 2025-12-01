@@ -30,7 +30,6 @@
             </thead>
             <tbody>
             {% for payment in list_items %}
-                <div class="list_row">
                     <tr>
                         <td>
                             <a href="{% url 'invoice-detail' payment.invoice_application.invoice.pk %}" class="text-primary font-weight-light">{{ payment.invoice_application }}</a>
@@ -53,7 +52,6 @@
                             </div>
                         </td>
                     </tr>
-                </div>
             {% endfor %}
             </tbody>
         </table>

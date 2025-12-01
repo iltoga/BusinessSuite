@@ -20,8 +20,7 @@ class UnicornSearchListView(UnicornView):
     qry_filter_args = None
 
     def mount(self):
-        self.total_items = self.model.objects.count()
-        self.total_pages = ceil(self.total_items / self.items_per_page)
+        # Only load items once - this will set total_items and total_pages
         self.load_items()
 
     def apply_filters(self, queryset):
@@ -56,6 +55,12 @@ class UnicornSearchListView(UnicornView):
         else:
             self.query = None  # Or whatever is appropriate to reset the query
             self.load_items()
+
+    def set_search(self, value):
+        """Set search input and trigger search - called from JavaScript."""
+        self.search_input = value if value else ""
+        self.page = 1  # Reset to first page on new search
+        self.search()
 
     def clear_search(self):
         # Separate method for clearing search input

@@ -9,7 +9,8 @@
 
 {% block report_content %}
 <!-- Summary Stats -->
-<div class="row mb-4">
+<div id="report-status-dashboard" data-status-data='{{ status_data|to_json|escapejs }}' data-aging-data='{{ aging_data|to_json|escapejs }}'>
+    <div class="row mb-4">
     <div class="col-md-6 mb-3">
         <div class="card stat-card">
             <div class="card-body">
@@ -123,64 +124,10 @@
         </div>
     </div>
 </div>
+    </div>
+</div>
 {% endblock %}
-
 {% block report_charts %}
-<script>
-    const statusData = {{ status_data|to_json }};
-    const agingData = {{ aging_data|to_json }};
-
-    // Status Chart
-    const statusCtx = document.getElementById('statusChart').getContext('2d');
-    new Chart(statusCtx, {
-        type: 'doughnut',
-        data: {
-            labels: statusData.map(d => d.status),
-            datasets: [{
-                data: statusData.map(d => d.total),
-                backgroundColor: [
-                    '#0d6efd', '#198754', '#ffc107', '#dc3545',
-                    '#6c757d', '#0dcaf0', '#d63384', '#20c997'
-                ]
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'right'
-                }
-            }
-        }
-    });
-
-    // Aging Chart
-    const agingCtx = document.getElementById('agingChart').getContext('2d');
-    new Chart(agingCtx, {
-        type: 'bar',
-        data: {
-            labels: agingData.map(d => d.label),
-            datasets: [{
-                label: 'Amount',
-                data: agingData.map(d => d.total),
-                backgroundColor: ['#198754', '#ffc107', '#fd7e14', '#dc3545']
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true
-                }
-            }
-        }
-    });
-</script>
+    {{ block.super }}
+    <script src="{% static 'js/reports/invoice_status_dashboard.js' %}" defer></script>
 {% endblock %}

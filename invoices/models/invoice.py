@@ -341,6 +341,10 @@ class InvoiceApplication(models.Model):
 
     @property
     def paid_amount(self):
+        # Use annotated field if available (from optimized querysets)
+        if hasattr(self, "annotated_paid_amount"):
+            return self.annotated_paid_amount or 0
+
         try:
             # Check if payments are prefetched to avoid extra queries
             if hasattr(self, "_prefetched_objects_cache") and "payments" in self._prefetched_objects_cache:
@@ -356,6 +360,10 @@ class InvoiceApplication(models.Model):
 
     @property
     def due_amount(self):
+        # Use annotated field if available (from optimized querysets)
+        if hasattr(self, "annotated_due_amount"):
+            return self.annotated_due_amount or 0
+
         return self.amount - self.paid_amount
 
     @property

@@ -1,10 +1,17 @@
 # Vanilla Django backup/restore using only dumpdata/loaddata/flush
 import datetime
 import gzip
+import io
 import os
+import shutil
+import tarfile
+import tempfile
 
+from django.apps import apps
 from django.conf import settings
+from django.core.files.storage import default_storage
 from django.core.management import call_command
+from django.db.models.fields.files import FileField
 
 BACKUPS_DIR = os.path.join(settings.BASE_DIR, "backups")
 
@@ -20,7 +27,8 @@ def backup_all(progress_callback=None, include_users=False):
     ensure_backups_dir()
     ts = datetime.datetime.utcnow().strftime("%Y%m%d-%H%M%S")
     suffix = "_with_users" if include_users else ""
-    filename = f"backup-{ts}{suffix}.json.gz"
+    # Use tar.gz archive to store JSON dump + media files
+    filename = f"backup-{ts}{suffix}.tar.gz"
     out_path = os.path.join(BACKUPS_DIR, filename)
 
     if progress_callback:
@@ -36,9 +44,99 @@ def backup_all(progress_callback=None, include_users=False):
     with open(tmp_path, "w+") as tmpf:
         call_command(*dump_args, stdout=tmpf)
 
-    # Compress the temp file to gz
-    with open(tmp_path, "rb") as f_in, gzip.open(out_path, "wb") as f_out:
-        f_out.writelines(f_in)
+    # Build a temporary directory to assemble our tar
+    temp_dir = tempfile.mkdtemp(prefix=f"backup-{ts}-")
+    try:
+        # Copy JSON dump into temp dir
+        temp_json = os.path.join(temp_dir, "data.json")
+        shutil.copy(tmp_path, temp_json)
+
+        # Collect all FileField paths referenced in DB (e.g., Document.file, Customer.passport_file)
+        filepaths = set()
+        try:
+            from django.apps import apps
+
+            for model in apps.get_models():
+                for field in model._meta.get_fields():
+                    if isinstance(field, FileField):
+                        field_name = field.name
+                        # Query for non-null/non-empty values
+                        try:
+                            qs = model.objects.exclude(**{f"{field_name}": ""}).values_list(field_name, flat=True)
+                        except Exception:
+                            # If model has no data or queryset fails, skip
+                            continue
+                        for rel_path in qs:
+                            if not rel_path:
+                                continue
+                            # some storage backends may not implement path
+                            try:
+                                storage_path = default_storage.path(rel_path)
+                            except Exception:
+                                # Fallback: we can't get filesystem path; we'll include via default_storage.open during tar creation
+                                storage_path = None
+                            # Keep entries even if storage_path is None (to include via open)
+                            filepaths.add((rel_path, storage_path))
+        except Exception:
+            filepaths = set()
+
+        if progress_callback:
+            progress_callback(f"Found {len(filepaths)} media files referenced in DB to include in backup")
+
+        # Create tar.gz with JSON, manifest and files under 'media/' prefix
+        with tarfile.open(out_path, "w:gz") as tar:
+            tar.add(temp_json, arcname="data.json")
+            for rel_path, storage_path in sorted(filepaths):
+                # store under media/relative_path so we can restore to MEDIA_ROOT
+                arcname = os.path.join("media", rel_path)
+                if storage_path and os.path.exists(storage_path):
+                    tar.add(storage_path, arcname=arcname)
+                else:
+                    # open via default_storage and add as fileobj
+                    try:
+                        f = default_storage.open(rel_path, "rb")
+                        info = tarfile.TarInfo(name=arcname)
+                        # Get size from fileobj if possible
+                        try:
+                            f.seek(0, os.SEEK_END)
+                            size = f.tell()
+                            f.seek(0)
+                        except Exception:
+                            size = None
+                        if size is None:
+                            # read to memory
+                            data = f.read()
+                            info.size = len(data)
+                            tar.addfile(info, io.BytesIO(data))
+                        else:
+                            info.size = size
+                            tar.addfile(info, f)
+                        f.close()
+                    except Exception:
+                        if progress_callback:
+                            progress_callback(f"Warning: could not include file: {rel_path}")
+                if progress_callback:
+                    progress_callback(f"Included file in backup: {rel_path}")
+            # write a manifest.json with included files metadata
+            manifest_files = []
+            for rel_path, storage_path in sorted(filepaths):
+                try:
+                    if storage_path:
+                        size = os.path.getsize(storage_path)
+                    else:
+                        size = default_storage.size(rel_path)
+                except Exception:
+                    size = None
+                manifest_files.append({"path": rel_path, "size": size})
+            manifest = {"timestamp": ts, "included_files_count": len(filepaths), "files": manifest_files}
+            import json as _json
+
+            manifest_bytes = _json.dumps(manifest).encode("utf-8")
+            manifest_info = tarfile.TarInfo(name="manifest.json")
+            manifest_info.size = len(manifest_bytes)
+            tar.addfile(manifest_info, fileobj=io.BytesIO(manifest_bytes))
+    finally:
+        shutil.rmtree(temp_dir)
 
     # List all models included in the backup
     from django.apps import apps
@@ -74,9 +172,20 @@ def restore_from_file(path, progress_callback=None, include_users=False):
     from django.db import connection
 
     tmp_path = None
+    extracted_tmp = None
+    # temp dir for extracted files
+    extracted_media_tmpdir = None
     try:
-        # Decompress if needed
-        if path.endswith(".gz"):
+        # Handle tar.gz backed up archives that include files
+        if path.endswith(".tar.gz"):
+            # Extract tar to a temp dir and set fixture_path to extracted data.json
+            extracted_tmp = tempfile.mkdtemp(prefix="restore-")
+            extracted_media_tmpdir = os.path.join(extracted_tmp, "media")
+            os.makedirs(extracted_media_tmpdir, exist_ok=True)
+            with tarfile.open(path, "r:gz") as tar:
+                tar.extractall(path=extracted_tmp)
+            fixture_path = os.path.join(extracted_tmp, "data.json")
+        elif path.endswith(".gz"):
             import gzip
 
             tmp_path = path + ".decompressed.json"
@@ -142,6 +251,31 @@ def restore_from_file(path, progress_callback=None, include_users=False):
 
         if progress_callback:
             progress_callback("Restore completed successfully.")
+
+        # If archive included media files, use default_storage to restore them (overwrite existing)
+        if extracted_media_tmpdir and os.path.exists(extracted_media_tmpdir):
+            from django.core.files import File
+
+            for root, dirs, files in os.walk(extracted_media_tmpdir):
+                for fname in files:
+                    src = os.path.join(root, fname)
+                    # relative path under extracted_media_tmpdir
+                    rel = os.path.relpath(src, extracted_media_tmpdir)
+                    try:
+                        with open(src, "rb") as fsrc:
+                            django_file = File(fsrc)
+                            # Ensure existing file is removed to allow overwrite
+                            if default_storage.exists(rel):
+                                try:
+                                    default_storage.delete(rel)
+                                except Exception:
+                                    pass
+                            default_storage.save(rel, django_file)
+                        if progress_callback:
+                            progress_callback(f"Restored media file: {rel}")
+                    except Exception as e:
+                        if progress_callback:
+                            progress_callback(f"Warning: could not restore media file {rel}: {e}")
         return True
     finally:
         # Re-enable foreign key checks
@@ -160,5 +294,10 @@ def restore_from_file(path, progress_callback=None, include_users=False):
         if tmp_path and os.path.exists(tmp_path):
             try:
                 os.unlink(tmp_path)
+            except Exception:
+                pass
+        if extracted_tmp and os.path.exists(extracted_tmp):
+            try:
+                shutil.rmtree(extracted_tmp)
             except Exception:
                 pass
