@@ -1,5 +1,10 @@
+import logging
+import os
+
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
+from django.core.files import File
+from django.core.files.storage import default_storage
 from django.forms.models import BaseModelForm
 from django.http import HttpResponse
 from django.urls import reverse_lazy
@@ -8,7 +13,9 @@ from django.views.generic.edit import CreateView
 
 from core.models.country_code import CountryCode
 from customers.forms import CustomerForm
-from customers.models import Customer
+from customers.models import Customer, get_passport_upload_to
+
+logger = logging.getLogger(__name__)
 
 
 class CustomerCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateView):
@@ -40,6 +47,8 @@ class CustomerCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateVie
     def form_valid(self, form):
         form.instance.created_by = self.request.user
         mrz_data = self.request.session.get("mrz_data", None)
+        file_path = self.request.session.get("file_path", None)
+
         if mrz_data and form.is_valid():
             form.instance.names = form.cleaned_data.get("first_name")
             form.instance.surname = form.cleaned_data.get("last_name")
@@ -66,10 +75,59 @@ class CustomerCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateVie
                     form.instance.passport_issue_date = datetime.strptime(
                         mrz_data.get("issue_date_yyyy_mm_dd"), "%Y-%m-%d"
                     ).date()
-            except Exception:
-                # If for some reason dates can't be parsed, ignore and continue
-                pass
-        return super().form_valid(form)
+
+                # Store passport metadata from MRZ/AI extraction
+                form.instance.passport_metadata = mrz_data
+                logger.info(f"Set passport_metadata on customer: {mrz_data.get('number')}")
+            except Exception as e:
+                # If for some reason dates can't be parsed, log and continue
+                logger.error(f"Error parsing passport data: {e}")
+
+        # Call parent's form_valid to save the customer instance first
+        response = super().form_valid(form)
+
+        # After saving customer, copy passport file from session temp location to customer folder
+        # Only if passport number is populated (at least passport number requirement)
+        # Use self.object which is the saved instance
+        if self.object.passport_number and file_path and os.path.isfile(file_path):
+            try:
+                self._save_passport_file_to_customer(self.object, file_path)
+                # Clear session data after successful save
+                for key in ["mrz_data", "file_path", "file_url"]:
+                    self.request.session.pop(key, None)
+            except Exception as e:
+                logger.error(f"Error saving passport file to customer: {e}")
+        else:
+            logger.warning(
+                f"Passport file not saved. passport_number={self.object.passport_number}, "
+                f"file_path={file_path}, exists={os.path.isfile(file_path) if file_path else False}"
+            )
+
+        return response
+
+    def _save_passport_file_to_customer(self, customer, source_file_path):
+        """
+        Copy the passport file from session temp location to the customer's folder.
+        """
+        try:
+            with open(source_file_path, "rb") as f:
+                file = File(f)
+                # Generate the upload path
+                filename = os.path.basename(source_file_path)
+                upload_path = get_passport_upload_to(customer, filename)
+
+                # Save the file to default storage
+                saved_path = default_storage.save(upload_path, file)
+
+                # Update the customer's passport_file field
+                customer.passport_file = saved_path
+                customer.save(update_fields=["passport_file"])
+
+                logger.info(f"Passport file saved to customer {customer.pk}: {saved_path}")
+        except FileNotFoundError:
+            logger.error(f"Passport file not found at: {source_file_path}")
+        except Exception as e:
+            logger.error(f"Error saving passport file: {e}")
 
     def form_invalid(self, form: BaseModelForm) -> HttpResponse:
         print(form.errors)

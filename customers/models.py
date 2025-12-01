@@ -4,6 +4,7 @@ import shutil
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.files.storage import default_storage
 from django.core.serializers import serialize
 from django.db import models
 from django.db.models.signals import post_delete, pre_delete
@@ -15,6 +16,19 @@ from core.utils.form_validators import validate_birthdate, validate_email, valid
 from core.utils.helpers import whitespaces_to_underscores
 
 logger = logging.getLogger(__name__)
+
+
+# Moved out of Customer class to allow Django to serialize it for migrations
+def get_passport_upload_to(instance, filename):
+    """
+    Returns the upload_to path for the passport file field.
+    """
+    _, extension = os.path.splitext(filename)
+    filename = f"passport{extension}"
+    # return the complete upload to path, which is:
+    # documents/<customer_name>_<customer_id>/passport.<extension>
+    return f"{instance.upload_folder}/{filename}"
+
 
 TITLES_CHOICES = [
     ("", "---------"),
@@ -116,6 +130,8 @@ class Customer(models.Model):
     passport_number = models.CharField(max_length=50, blank=True, null=True, db_index=True)
     passport_issue_date = models.DateField(blank=True, null=True)
     passport_expiration_date = models.DateField(blank=True, null=True)
+    passport_file = models.FileField(upload_to=get_passport_upload_to, blank=True, null=True)
+    passport_metadata = models.JSONField(blank=True, null=True)
     gender = models.CharField(choices=GENDERS, max_length=5, blank=True, null=True)
     address_bali = models.TextField(blank=True, null=True)
     address_abroad = models.TextField(blank=True, null=True)

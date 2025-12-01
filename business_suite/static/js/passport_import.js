@@ -199,6 +199,7 @@
             formData.append('img_preview', true);
             formData.append('resize', true);
             formData.append('width', 500);
+            formData.append('save_session', true);  // Save file and MRZ data to session for customer creation
             if (useAi) {
                 formData.append('use_ai', 'true');
             }

@@ -367,10 +367,6 @@ class InvoiceApplication(models.Model):
         return self.amount - self.paid_amount
 
     @property
-    def due_amount(self):
-        return self.amount - self.paid_amount
-
-    @property
     def is_payment_complete(self):
         completed_statuses = [
             InvoiceApplication.PAID,
