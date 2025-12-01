@@ -30,8 +30,9 @@
         function startRestore(filename) {
             log.textContent = '';
             const restoreUrl = startRestoreBtn.dataset.restoreUrl;
-            const es = new EventSource(restoreUrl + '?file=' + encodeURIComponent(filename));
-            
+            const includeUsers = document.getElementById('include-users') && document.getElementById('include-users').checked ? '1' : '0';
+            const es = new EventSource(restoreUrl + '?file=' + encodeURIComponent(filename) + '&include_users=' + includeUsers);
+
             es.onmessage = function(e) {
                 try {
                     const data = JSON.parse(e.data);
@@ -41,7 +42,7 @@
                     console.error('Error parsing message:', err);
                 }
             };
-            
+
             es.onerror = function(e) {
                 log.textContent += 'Connection closed\n';
                 es.close();
@@ -53,12 +54,12 @@
             startRestoreBtn.addEventListener('click', function() {
                 const backupSelect = document.getElementById('backup-select');
                 const file = backupSelect ? backupSelect.value : '';
-                
+
                 if (!file) {
                     alert('Please select a backup file');
                     return;
                 }
-                
+
                 startRestore(file);
             });
         }
@@ -67,10 +68,10 @@
         if (uploadForm) {
             uploadForm.addEventListener('submit', async function(e) {
                 e.preventDefault();
-                
+
                 const fileInput = document.getElementById('backup-file');
                 const file = fileInput ? fileInput.files[0] : null;
-                
+
                 if (!file) {
                     alert('Please select a file');
                     return;
@@ -79,7 +80,7 @@
                 const uploadBtn = document.getElementById('upload-restore-btn');
                 const uploadUrl = uploadForm.dataset.uploadUrl;
                 const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
-                
+
                 if (!uploadBtn || !uploadUrl || !csrfToken) {
                     console.error('Required elements not found');
                     return;
@@ -102,7 +103,7 @@
                     });
 
                     const result = await response.json();
-                    
+
                     if (result.ok) {
                         log.textContent += 'Upload complete: ' + result.filename + '\n';
                         log.textContent += 'Starting restore...\n';

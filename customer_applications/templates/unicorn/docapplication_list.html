@@ -46,19 +46,19 @@
             {% with is_app_completed=current_workflow.is_workflow_completed %}
             {% if not is_app_completed %}
               {% if current_workflow.is_overdue %}
-                <tr class="table-danger">
+                <tr class="table-danger align-middle">
               {% elif current_workflow.is_notification_date_reached %}
-                <tr class="table-warning">
+                <tr class="table-warning align-middle">
               {% else %}
-                <tr>
+                <tr class="align-middle">
               {% endif %}
             {% else %}
-              <tr>
+              <tr class="align-middle">
             {% endif %}
               <!-- ID -->
               <td>{{ docapplication.pk }}</td>
               <!-- Customer -->
-              <td>
+                <td class="align-middle">
                 <a href="{% url 'customer-detail' docapplication.customer.pk %}" class="text-primary font-weight-light">{{ docapplication.customer }}</a>
               </td>
               <!-- Application Type -->
@@ -85,45 +85,49 @@
               <td>{{ current_workflow.due_date }}</td>
               <!-- Actions -->
               <td>
-                <a href="{% url 'customer-application-detail' docapplication.pk %}" class="btn btn-primary btn-sm">{% if is_app_completed %}View{% else %}Manage{% endif %}</a>
+                <div class="btn-group" role="group" aria-label="Application actions">
+                {% if user|has_perm:'customer_applications,docapplication,change' %}
+                  <a href="{% url 'customer-application-detail' docapplication.pk %}" class="btn btn-secondary btn-sm me-1">Manage</a>
+                {% endif %}
                 {% if user|has_perm:'customer_applications,docapplication,change' and not is_app_completed %}
-                  <a href="{% url 'customer-application-update' docapplication.pk %}" class="btn btn-warning btn-sm">Edit</a>
+                  <a href="{% url 'customer-application-update' docapplication.pk %}" class="btn btn-warning btn-sm me-1">Edit</a>
                 {% endif %}
                 {% if user|has_perm:'customer_applications,docapplication,delete' %}
-                  <a href="{% url 'customer-application-delete' docapplication.pk %}" class="btn btn-danger btn-sm">Delete</a>
+                  <a href="{% url 'customer-application-delete' docapplication.pk %}" class="btn btn-danger btn-sm me-1">Delete</a>
                 {% endif %}
+                </div>
               </td>
               <!-- Invoice -->
               {% if user|has_perm:'invoices,invoice,view' %}
                 <td>
-                    <div>
-                        {% with first_invoice_app=docapplication.prefetched_invoice_applications.0 %}
+                    {% with first_invoice_app=docapplication.prefetched_invoice_applications.0 %}
                         {% if first_invoice_app %}
-                          <div class="col">
-                            <a href="{% url 'invoice-detail' first_invoice_app.invoice.pk %}" class="btn btn-sm-fix-width btn-primary btn-sm">View</a>
-                            <a href="{% url 'invoice-update' first_invoice_app.invoice.pk %}" class="btn btn-sm-fix-width btn-warning btn-sm" {% if not user|has_perm:'invoices,invoice,change' %}disabled{% endif %}>Edit</a>
-                          </div>
-                          <div class="col">
+                          <div class="d-flex flex-column align-items-start">
+                            <div class="btn-group" role="group" aria-label="Invoice actions">
+                              <a href="{% url 'invoice-detail' first_invoice_app.invoice.pk %}" class="btn btn-primary btn-sm me-1">View</a>
+                              <a href="{% url 'invoice-update' first_invoice_app.invoice.pk %}" class="btn btn-warning btn-sm me-1" {% if not user|has_perm:'invoices,invoice,change' %}disabled{% endif %}>Edit</a>
+                            </div>
+                            <div class="mt-1">
                               <a href="{% url 'invoice-detail-by-doc-application' docapplication.pk %}">
                                   <small>{{ first_invoice_app.invoice.invoice_no_display }}</small>
                               </a>
+                            </div>
                           </div>
                         {% elif docapplication.total_required_documents == docapplication.completed_required_documents and user|has_perm:'invoices,invoice,add' %}
-                          <div class="col">
-                            <a href="{% url 'invoice-create-by-doc-application' docapplication.pk %}" class="btn btn-sm-fix-width btn-success btn-sm">Create</a>
-                          </div>
-                          <div class="col">
-                            <!-- <div class="badge bg-secondary">Ready to Invoice</div> -->
+                          <div class="d-flex flex-column align-items-start">
+                            <div class="btn-group" role="group" aria-label="Invoice actions">
+                              <a href="{% url 'invoice-create-by-doc-application' docapplication.pk %}" class="btn btn-success btn-sm me-1">Create</a>
+                            </div>
+                            <div class="mt-1">
+                              <!-- <div class="badge bg-secondary">Ready to Invoice</div> -->
+                            </div>
                           </div>
                         {% else %}
-                          <div class="col">
+                          <div>
                             <div class="badge bg-warning text-dark">Not Ready</div>
                           </div>
-                          <div class="col">
-                          </div>
                         {% endif %}
-                        {% endwith %}
-                    </div>
+                    {% endwith %}
                 </td>
               {% endif %}
             </tr>

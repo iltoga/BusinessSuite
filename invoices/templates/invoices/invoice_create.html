@@ -50,8 +50,78 @@
                     {{ invoiceapplication_form | crispy }}
                 </div>
                 {% endfor %}
-                {% block after-bootstrap-js %}
-                {{ block.super }}
-                <script src="{% static 'js/invoices/invoice_create.js' %}" defer></script>
-            {% endblock %}
+            </div>
+        </div>
+
+        <div id="no-customer-message" {% if customer %}style="display:none;"{% endif %}>
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> Please select a customer first to add invoice applications.
+            </div>
+        </div>
+
+        <div id="empty-form" style="display:none;">
+            <div class="invoiceapplication_form p-3 mb-4 border rounded">
+                {{ invoice_applications.empty_form | crispy | slice_after:'<ul class="errorlist nonfield">' | safe }}
+                <button type="button" class="btn btn-danger remove-invoiceapplication-btn mt-2">Remove Application</button>
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save"></i> Save Invoice
+            </button>
+            <a href="javascript:history.back()" class="btn btn-outline-primary">Back</a>
+        </div>
+    </form>
+</div>
+
+<!-- Include modals -->
+{% include 'modals/customer_quick_create_modal.html' %}
+{% include 'modals/product_quick_create_modal.html' %}
+{% include 'modals/customer_application_quick_create_modal.html' %}
+
+{% endblock %}
+
+{% block after-bootstrap-js %}
+    {{ block.super }}
+    <script src="{% static 'js/invoices/invoice_create.js' %}" defer></script>
+    <script>
+        var decimals = parseInt("{{ currency_decimal_places }}");
+        var customerApplications = JSON.parse('{{ customer_applications_json|escapejs }}');
+        var selectedCustomerApplicationPk = "{{ selected_customer_application_pk|default:'' }}";
+        var masked_url = "{% url 'invoice-create-by-customer' customer_id='123456' %}";
+        var form_action_name = "create";
+    </script>
+    <script src="{% static 'js/invoices/invoice_form.js' %}"></script>
+    <script>
+        // Add "+" button next to customer select field
+        $(document).ready(function() {
+            var $customerField = $('#id_customer');
+            if ($customerField.length) {
+                var $formGroup = $customerField.closest('.mb-3, .form-group');
+                if ($formGroup.length) {
+                    // Create "+" button
+                    var $addBtn = $('<button type="button" class="btn btn-sm btn-primary ms-2">' +
+                        '<i class="fas fa-plus"></i></button>');
+
+                    // Insert button next to the customer field
+                    $customerField.after($addBtn);
+
+                    // Handle button click
+                    $addBtn.on('click', function() {
+                        openCustomerQuickCreateModal('id_customer');
+                    });
+                }
+            }
+        });
+    </script>
+
+    <script>
+        $(document).ready(function() {
+            $('#id_customer').select2({
+                theme: 'bootstrap-5',
+                width: '90%'
+            });
+        });
+    </script>
 {% endblock %}

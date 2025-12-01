@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 
 from django.conf import settings
 from django.contrib.auth.decorators import user_passes_test
@@ -23,7 +24,7 @@ def dashboard(request):
 
 @superuser_required
 def download_backup(request, filename):
-    backups_dir = os.path.join(settings.BASE_DIR, "backups")
+    backups_dir = services.BACKUPS_DIR
     path = os.path.join(backups_dir, filename)
     if not os.path.exists(path):
         return HttpResponse("Not found", status=404)
@@ -33,10 +34,37 @@ def download_backup(request, filename):
 @superuser_required
 def backup_page(request):
     backups = []
-    backups_dir = os.path.join(settings.BASE_DIR, "backups")
+    backups_dir = services.BACKUPS_DIR
     if os.path.exists(backups_dir):
         for fn in sorted(os.listdir(backups_dir), reverse=True):
-            backups.append(fn)
+            path = os.path.join(backups_dir, fn)
+            try:
+                size = os.path.getsize(path)
+            except Exception:
+                size = None
+            btype = (
+                "tar.gz"
+                if fn.endswith(".tar.gz") or fn.endswith(".tgz")
+                else ("json.gz" if fn.endswith(".gz") else "json")
+            )
+            included_files = None
+            if btype == "tar.gz":
+                try:
+                    import json as _json
+                    import tarfile
+
+                    with tarfile.open(path, "r:gz") as tar:
+                        try:
+                            member = tar.getmember("manifest.json")
+                            f = tar.extractfile(member)
+                            if f:
+                                manifest = _json.load(f)
+                                included_files = manifest.get("included_files_count")
+                        except KeyError:
+                            included_files = None
+                except Exception:
+                    included_files = None
+            backups.append({"filename": fn, "size": size, "type": btype, "included_files": included_files})
     return render(request, "admin_tools/backup_restore.html", {"backups": backups})
 
 
@@ -69,13 +97,104 @@ def backup_stream(request):
 
 
 @superuser_required
+@require_POST
+def delete_backups(request):
+    """Delete all files in the backups directory and return a JSON summary."""
+    backups_dir = services.BACKUPS_DIR
+    deleted = 0
+    try:
+        if os.path.exists(backups_dir):
+            for fn in os.listdir(backups_dir):
+                path = os.path.join(backups_dir, fn)
+                try:
+                    if os.path.isfile(path):
+                        os.unlink(path)
+                        deleted += 1
+                    elif os.path.isdir(path):
+                        # remove directories
+                        shutil.rmtree(path)
+                        deleted += 1
+                except Exception:
+                    # ignore removal errors, continue
+                    pass
+        return JsonResponse({"ok": True, "deleted": deleted})
+    except Exception as e:
+        return JsonResponse({"ok": False, "error": str(e)}, status=500)
+
+
+@superuser_required
 def restore_page(request):
-    backups_dir = os.path.join(settings.BASE_DIR, "backups")
+    backups_dir = services.BACKUPS_DIR
     backups = []
     if os.path.exists(backups_dir):
         for fn in sorted(os.listdir(backups_dir), reverse=True):
-            backups.append(fn)
+            path = os.path.join(backups_dir, fn)
+            try:
+                size = os.path.getsize(path)
+            except Exception:
+                size = None
+            btype = (
+                "tar.gz"
+                if fn.endswith(".tar.gz") or fn.endswith(".tgz")
+                else ("json.gz" if fn.endswith(".gz") else "json")
+            )
+            included_files = None
+            if btype == "tar.gz":
+                try:
+                    import json as _json
+                    import tarfile
+
+                    with tarfile.open(path, "r:gz") as tar:
+                        try:
+                            member = tar.getmember("manifest.json")
+                            f = tar.extractfile(member)
+                            if f:
+                                manifest = _json.load(f)
+                                included_files = manifest.get("included_files_count")
+                        except KeyError:
+                            included_files = None
+                except Exception:
+                    included_files = None
+            backups.append({"filename": fn, "size": size, "type": btype, "included_files": included_files})
     return render(request, "admin_tools/restore.html", {"backups": backups})
+
+
+@superuser_required
+def backups_json(request):
+    """Return a JSON list of available backups (name/size/type/included_files)."""
+    backups = []
+    backups_dir = services.BACKUPS_DIR
+    if os.path.exists(backups_dir):
+        for fn in sorted(os.listdir(backups_dir), reverse=True):
+            path = os.path.join(backups_dir, fn)
+            try:
+                size = os.path.getsize(path)
+            except Exception:
+                size = None
+            btype = (
+                "tar.gz"
+                if fn.endswith(".tar.gz") or fn.endswith(".tgz")
+                else ("json.gz" if fn.endswith(".gz") else "json")
+            )
+            included_files = None
+            if btype == "tar.gz":
+                try:
+                    import json as _json
+                    import tarfile
+
+                    with tarfile.open(path, "r:gz") as tar:
+                        try:
+                            member = tar.getmember("manifest.json")
+                            f = tar.extractfile(member)
+                            if f:
+                                manifest = _json.load(f)
+                                included_files = manifest.get("included_files_count")
+                        except KeyError:
+                            included_files = None
+                except Exception:
+                    included_files = None
+            backups.append({"filename": fn, "size": size, "type": btype, "included_files": included_files})
+    return JsonResponse({"backups": backups})
 
 
 @superuser_required
@@ -90,7 +209,10 @@ def restore_stream(request):
         events = []
         yield _sse_event("Restore started")
         try:
-            services.restore_from_file(gz_path, progress_callback=lambda m: events.append(_sse_event(m)))
+            include_users = request.GET.get("include_users", "0") == "1"
+            services.restore_from_file(
+                gz_path, progress_callback=lambda m: events.append(_sse_event(m)), include_users=include_users
+            )
             for e in events:
                 yield e
             yield _sse_event("Restore finished")
@@ -114,13 +236,15 @@ def upload_backup(request):
         uploaded_file.name.endswith(".json")
         or uploaded_file.name.endswith(".json.gz")
         or uploaded_file.name.endswith(".gz")
+        or uploaded_file.name.endswith(".tar.gz")
+        or uploaded_file.name.endswith(".tgz")
     ):
         return JsonResponse(
             {"ok": False, "error": "Invalid file type. Only .json or .json.gz files are allowed."}, status=400
         )
 
     # Save to backups directory
-    backups_dir = os.path.join(settings.BASE_DIR, "backups")
+    backups_dir = services.BACKUPS_DIR
     os.makedirs(backups_dir, exist_ok=True)
 
     # Generate unique filename with timestamp if needed

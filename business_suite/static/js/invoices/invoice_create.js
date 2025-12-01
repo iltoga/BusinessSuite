@@ -2,6 +2,11 @@
 (function(){
     'use strict';
 
+    // Module-level variables for customer tracking
+    var customerId = null;
+    var customerName = '';
+    var decimals = 0;
+
     function parseIntOrDefault(v, def){
         var n = parseInt(v);
         return isNaN(n) ? def : n;
@@ -24,9 +29,14 @@
         var $customerSelect = $('#id_customer');
         var selectedCustomerId = $customerSelect.val();
         if (selectedCustomerId) {
+            // Update customerId and customerName when customer changes
+            customerId = selectedCustomerId;
+            customerName = $customerSelect.find('option:selected').text();
             $('#invoice-applications-section').show();
             $('#no-customer-message').hide();
         } else {
+            customerId = null;
+            customerName = '';
             $('#invoice-applications-section').hide();
             $('#no-customer-message').show();
         }
@@ -40,7 +50,26 @@
             $select.append($('<option>', {value: '', text: '---------'}));
             if (applications && applications.length > 0) {
                 applications.forEach(function(app){
-                    $select.append($('<option>', { value: app.id, text: app.str_field }));
+                    var appId = app.id || app.pk || (app.fields && app.fields.pk) || '';
+                    var appText = '';
+                    if (app.str_field) {
+                        appText = app.str_field;
+                    } else if (app.fields && app.fields.product) {
+                        var prod = app.fields.product;
+                        var cust = app.fields.customer;
+                        if (prod && prod.code && prod.name && cust && cust.full_name) {
+                            appText = prod.code + ' - ' + prod.name + ' (' + cust.full_name + ')';
+                        } else if (prod && prod.code && prod.name) {
+                            appText = prod.code + ' - ' + prod.name;
+                        } else if (app.fields && app.fields.doc_date) {
+                            appText = 'Application ' + appId + ' (' + app.fields.doc_date + ')';
+                        } else {
+                            appText = 'Application ' + appId;
+                        }
+                    } else {
+                        appText = app.display_name || appText || 'Application ' + appId;
+                    }
+                    $select.append($('<option>', { value: appId, text: appText }));
                 });
                 $('#invoiceapplication-form-list').show();
             } else {
@@ -56,11 +85,31 @@
         }
     }
 
+    function setCustomerApplicationsFromApi(applications) {
+        // Convert API serializer format to Django serialized format expected by invoice_form.js
+        if (typeof applications === 'undefined' || applications === null) {
+            window.customerApplications = [];
+            return;
+        }
+        window.customerApplications = applications.map(function(app) {
+            return {
+                pk: app.id,
+                fields: {
+                    product: app.product || {},
+                    customer: app.customer || {},
+                    doc_date: app.doc_date || null
+                }
+            };
+        });
+    }
+
     function init(container){
         var $container = $(container || document);
         var dataElem = $container.find('#invoice-application-form').first();
-        var decimals = parseIntOrDefault(dataElem.data('decimals'), 0);
-        var customerId = dataElem.data('customer-id') || null;
+        // Initialize module-level variables (no var - use module scope)
+        decimals = parseIntOrDefault(dataElem.data('decimals'), 0);
+        customerId = dataElem.data('customer-id') || null;
+        customerName = dataElem.data('customer-name') || '';
 
         updateApplicationButtons();
 
@@ -71,10 +120,11 @@
                 $.ajax({
                     url: '/api/invoices/get_customer_applications/' + selectedCustomerId + '/',
                     method: 'GET',
-                    success: function(data){ updateCustomerApplicationDropdowns(data); },
-                    error: function(){ updateCustomerApplicationDropdowns([]); }
+                        success: function(data){ setCustomerApplicationsFromApi(data); if (typeof window.setInvoiceFormCustomerApplications === 'function') { window.setInvoiceFormCustomerApplications(window.customerApplications); } updateCustomerApplicationDropdowns(data); },
+                    error: function(){ setCustomerApplicationsFromApi([]); updateCustomerApplicationDropdowns([]); }
                 });
             } else {
+                setCustomerApplicationsFromApi([]);
                 updateCustomerApplicationDropdowns([]);
             }
         });
@@ -84,8 +134,8 @@
             $.ajax({
                 url: '/api/invoices/get_customer_applications/' + initialCustomerId + '/',
                 method: 'GET',
-                success: function(data){ updateCustomerApplicationDropdowns(data); },
-                error: function(){ updateCustomerApplicationDropdowns([]); }
+                    success: function(data){ setCustomerApplicationsFromApi(data); if (typeof window.setInvoiceFormCustomerApplications === 'function') { window.setInvoiceFormCustomerApplications(window.customerApplications); } updateCustomerApplicationDropdowns(data); },
+                error: function(){ setCustomerApplicationsFromApi([]); updateCustomerApplicationDropdowns([]); }
             });
         }
 
@@ -93,9 +143,9 @@
         $(document).on('click', '#create-new-application-btn', function(){
             if (customerId) {
                 if (typeof openCustomerApplicationQuickCreateModal === 'function') {
-                    openCustomerApplicationQuickCreateModal(customerId, dataElem.data('customer-name'));
+                    openCustomerApplicationQuickCreateModal(customerId, customerName);
                 } else {
-                    alert('Please select a customer first.');
+                    alert('Quick create modal not available.');
                 }
             } else {
                 alert('Please select a customer first.');
@@ -104,6 +154,22 @@
 
         // Expose helper for adding a new row
         window.addInvoiceApplicationRow = function(application){
+            // Add the application to the global customerApplications array used by invoice_form.js
+            if (typeof window.customerApplications === 'undefined') {
+                window.customerApplications = [];
+            }
+            window.customerApplications.push({
+                pk: application.id,
+                fields: {
+                    product: {
+                        base_price: application.base_price,
+                        name: application.product_name || application.product_name || '',
+                        code: application.product_code || ''
+                    },
+                    customer: { full_name: application.customer_name || (dataElem ? dataElem.data('customer-name') : '') },
+                    doc_date: application.doc_date || null
+                }
+            });
             var $formList = $('#invoiceapplication-form-list');
             $formList.show();
             var $emptyForm = $('#empty-form');

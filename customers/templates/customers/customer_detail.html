@@ -11,57 +11,109 @@
       <div class="card-header bg-primary text-white">
         <h3>Customer ID #{{ customer.pk }}</h3>
       </div>
-      <table class="table">
-        <tbody>
-          <tr><th scope="row" class="text-start">Customer Type</th><td class="text-start">{{ customer.get_customer_type_display }}</td></tr>
-          {% if customer.customer_type == 'company' %}
-          <tr><th scope="row" class="text-start">Company Name</th><td class="text-start">{{ customer.company_name }}</td></tr>
-          {% endif %}
-          {% if customer.first_name %}
-          <tr><th scope="row" class="text-start">First Name</th><td class="text-start">{{ customer.first_name }}</td></tr>
-          {% endif %}
-          {% if customer.last_name %}
-          <tr><th scope="row" class="text-start">Last Name</th><td class="text-start">{{ customer.last_name }}</td></tr>
-          {% endif %}
-          {% if customer.title %}
-          <tr><th scope="row" class="text-start">Title</th><td class="text-start">{{ customer.title }}</td></tr>
-          {% endif %}
-          {% if customer.gender %}
-          <tr><th scope="row" class="text-start">Gender</th><td class="text-start">{{ customer.get_gender_display }}</td></tr>
-          {% endif %}
-          <tr><th scope="row" class="text-start">Email</th><td class="text-start">{{ customer.email }}</td></tr>
-          <tr><th scope="row" class="text-start">Telephone</th><td class="text-start">{{ customer.telephone }}</td></tr>
-          <tr><th scope="row" class="text-start">Whatsapp</th><td class="text-start">{{ customer.whatsapp }}</td></tr>
-          <tr><th scope="row" class="text-start">Telegram</th><td class="text-start">{{ customer.telegram }}</td></tr>
-          {% if customer.npwp %}
-          <tr><th scope="row" class="text-start">NPWP</th><td class="text-start">{{ customer.npwp }}</td></tr>
-          {% endif %}
-          {% if customer.nationality %}
-          <tr><th scope="row" class="text-start">Nationality</th><td class="text-start">{{ customer.nationality }}</td></tr>
-          {% endif %}
-          {% if customer.birth_place %}
-          <tr><th scope="row" class="text-start">Birth Place</th><td class="text-start">{{ customer.birth_place }}</td></tr>
-          {% endif %}
-          {% if customer.birthdate %}
-          <tr><th scope="row" class="text-start">Birthdate</th><td class="text-start">{{ customer.birthdate }}</td></tr>
-          {% endif %}
-          {% if customer.passport_number %}
-          <tr><th scope="row" class="text-start">Passport Number</th><td class="text-start">{{ customer.passport_number }}</td></tr>
-          {% endif %}
-          {% if customer.passport_issue_date %}
-          <tr><th scope="row" class="text-start">Passport Issue Date</th><td class="text-start">{{ customer.passport_issue_date|date:"Y-m-d" }}</td></tr>
-          {% endif %}
-          {% if customer.passport_expiration_date %}
-          <tr><th scope="row" class="text-start">Passport Expiration Date</th><td class="text-start">{{ customer.passport_expiration_date|date:"Y-m-d" }}</td></tr>
-          {% endif %}
-          <tr><th scope="row" class="text-start">Address in Bali</th><td class="text-start">{{ customer.address_bali }}</td></tr>
-          <tr><th scope="row" class="text-start">Address Abroad</th><td class="text-start">{{ customer.address_abroad }}</td></tr>
-          <tr><th scope="row" class="text-start">Notify Documents Expiration</th><td class="text-start">{{ customer.notify_documents_expiration|boolean_to_yes_no }}</td></tr>
-          <tr><th scope="row" class="text-start">Notify By</th><td class="text-start">{{ customer.notify_by }}</td></tr>
-          <tr><th scope="row" class="text-start">Notification Sent</th><td class="text-start">{{ customer.notification_sent|boolean_to_yes_no }}</td></tr>
-        </tbody>
-      </table>
       <div class="card-body">
+        <div class="row">
+          {# Identity Column #}
+          <div class="col-lg-6 mb-4 mb-lg-0">
+            <h5 class="mb-3 border-bottom pb-2">Identity</h5>
+            <p class="lead mb-2">
+              {% if customer.title %}{{ customer.title }}. {% endif %}{{ customer.full_name }}
+            </p>
+            {% if customer.customer_type == 'company' and customer.company_name %}
+              <div class="small text-muted mb-3">Company: {{ customer.company_name }}</div>
+            {% endif %}
+            <dl class="row mb-0">
+              <dt class="col-5 col-sm-4">Customer Type</dt>
+              <dd class="col-7 col-sm-8">{{ customer.get_customer_type_display }}</dd>
+              {% if customer.nationality %}
+              <dt class="col-5 col-sm-4">Nationality</dt>
+              <dd class="col-7 col-sm-8">{{ customer.nationality }}</dd>
+              {% endif %}
+              {% if customer.birth_place %}
+              <dt class="col-5 col-sm-4">Birth Place</dt>
+              <dd class="col-7 col-sm-8">{{ customer.birth_place }}</dd>
+              {% endif %}
+              {% if customer.birthdate %}
+              <dt class="col-5 col-sm-4">Birthdate</dt>
+              <dd class="col-7 col-sm-8">{{ customer.birthdate }}</dd>
+              {% endif %}
+            </dl>
+          </div>
+          {# Contact & Payment Column #}
+          <div class="col-lg-6">
+            <h5 class="mb-3 border-bottom pb-2">Contact & Payment</h5>
+            <dl class="row mb-3">
+              <dt class="col-5 col-sm-4">Email</dt>
+              <dd class="col-7 col-sm-8">{{ customer.email }}</dd>
+              <dt class="col-5 col-sm-4">Telephone</dt>
+              <dd class="col-7 col-sm-8">{{ customer.telephone }}</dd>
+              <dt class="col-5 col-sm-4">Whatsapp</dt>
+              <dd class="col-7 col-sm-8">{{ customer.whatsapp }}</dd>
+              <dt class="col-5 col-sm-4">Telegram</dt>
+              <dd class="col-7 col-sm-8">{{ customer.telegram }}</dd>
+              {% if customer.npwp %}
+              <dt class="col-5 col-sm-4">NPWP</dt>
+              <dd class="col-7 col-sm-8">{{ customer.npwp }}</dd>
+              {% endif %}
+            </dl>
+            <h6 class="mb-2 border-bottom pb-2">Address</h6>
+            <div class="row mb-3">
+              <div class="col-sm-6 mb-2 mb-sm-0">
+                <strong>Address in Bali</strong>
+                <div class="text-muted">{{ customer.address_bali|default:"—" }}</div>
+              </div>
+              <div class="col-sm-6">
+                <strong>Address Abroad</strong>
+                <div class="text-muted">{{ customer.address_abroad|default:"—" }}</div>
+              </div>
+            </div>
+            <h6 class="mb-2 border-bottom pb-2">Notifications</h6>
+            <dl class="row mb-0">
+              <dt class="col-7 col-sm-6">Notify Expiration</dt>
+              <dd class="col-5 col-sm-6">{{ customer.notify_documents_expiration|boolean_to_yes_no }}</dd>
+              <dt class="col-7 col-sm-6">Notify By</dt>
+              <dd class="col-5 col-sm-6">{{ customer.notify_by|default:"—" }}</dd>
+              <dt class="col-7 col-sm-6">Notification Sent</dt>
+              <dd class="col-5 col-sm-6">{{ customer.notification_sent|boolean_to_yes_no }}</dd>
+            </dl>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card mt-3">
+          <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0">Passport Details</h5>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-4">
+                {% if customer.passport_file %}
+                  <a href="{{ customer.passport_file.url }}" target="_blank" rel="noopener noreferrer">
+                    <img src="{{ customer.passport_file.url }}" alt="Passport Image" class="img-fluid img-thumbnail" style="max-height: 280px; width: auto;"/>
+                  </a>
+                  <div class="small text-muted mt-2">File: <a href="{{ customer.passport_file.url }}" target="_blank" rel="noopener noreferrer">{{ customer.passport_file.name|slice:'-40' }}</a></div>
+                {% else %}
+                  <div class="text-muted">No passport file uploaded.</div>
+                {% endif %}
+              </div>
+              <div class="col-md-8">
+                <table class="table mb-0">
+                  <tbody>
+                    {% if customer.passport_number %}
+                    <tr><th scope="row" class="text-start">Passport Number</th><td class="text-start">{{ customer.passport_number }}</td></tr>
+                    {% endif %}
+                    {% if customer.passport_issue_date %}
+                    <tr><th scope="row" class="text-start">Passport Issue Date</th><td class="text-start">{{ customer.passport_issue_date|date:"Y-m-d" }}</td></tr>
+                    {% endif %}
+                    {% if customer.passport_expiration_date %}
+                    <tr><th scope="row" class="text-start">Passport Expiration Date</th><td class="text-start">{{ customer.passport_expiration_date|date:"Y-m-d" }}</td></tr>
+                    {% endif %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
         {% if perms.customers.change_customer %}
         <a href="{% url 'customer-update' customer.id %}" class="btn btn-warning">Edit</a>
         {% endif %}

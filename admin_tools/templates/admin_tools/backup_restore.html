@@ -8,19 +8,32 @@
   <input type="checkbox" id="include-users" name="include-users">
   <label for="include-users">Include users/groups/permissions (full backup)</label>
 </div>
-<button id="start-backup" class="btn btn-primary" data-backup-url="{% url 'admin_tools:backup_start' %}">Start Backup</button>
+<div class="d-flex gap-2">
+  <button id="start-backup" class="btn btn-primary" data-backup-url="{% url 'admin_tools:backup_start' %}">Start Backup</button>
+  <button id="delete-backups" class="btn btn-danger" data-delete-url="{% url 'admin_tools:delete_backups' %}">Delete All Backups</button>
+</div>
 
 <h3>Live log</h3>
 <pre id="log" style="background:#111;color:#eee;padding:1rem;max-height:300px;overflow:auto;"></pre>
 
 <h3>Available backups</h3>
-<ul>
+<ul id="backups-list" class="list-unstyled" data-list-url="{% url 'admin_tools:backups_json' %}">
   {% for b in backups %}
-    <li>{{ b }} - <a href="{% url 'admin_tools:download_backup' b %}">download</a></li>
+    <li class="mb-2">
+      <strong>{{ b.filename }}</strong>
+      <small class="text-muted">&ndash; {% if b.size %}{{ b.size|filesizeformat }}{% else %}unknown size{% endif %} &ndash; {{ b.type }}</small>
+      {% if '_with_users' in b.filename %}
+        <span class="badge bg-primary ms-2">Full</span>
+      {% endif %}
+      {% if b.included_files %}
+        <span class="badge bg-success ms-2">Files: {{ b.included_files }}</span>
+      {% endif %}
+      - <a href="{% url 'admin_tools:download_backup' b.filename %}">download</a>
+    </li>
   {% empty %}
     <li>No backups yet</li>
   {% endfor %}
-<ul>
+</ul>
 
 {% endblock %}
 

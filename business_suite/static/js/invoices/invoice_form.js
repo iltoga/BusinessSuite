@@ -35,6 +35,11 @@
         updateCustomerApplicationSelections();
     });
 
+    // Allow updating of the internal customerApplications variable from other modules
+    window.setInvoiceFormCustomerApplications = function(newApplications) {
+        customerApplications = newApplications || [];
+    };
+
 
     $(document).on('submit', '#invoice-application-form', function (event) {
         event.preventDefault();

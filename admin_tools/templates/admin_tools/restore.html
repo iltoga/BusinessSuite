@@ -10,11 +10,15 @@
     <label for="backup-select" class="form-label">Choose backup:</label>
     <select id="backup-select" class="form-select" {% if not backups %}disabled{% endif %}>
       {% for b in backups %}
-        <option value="{{ b }}">{{ b }}</option>
+        <option value="{{ b.filename }}">{{ b.filename }} - {% if b.size %}{{ b.size|filesizeformat }}{% else %}unknown{% endif %} - {{ b.type }}{% if b.included_files %} - {{ b.included_files }} files{% endif %}</option>
       {% empty %}
         <option value="">No backups available</option>
       {% endfor %}
     </select>
+  </div>
+  <div class="mb-2">
+    <input type="checkbox" id="include-users" name="include-users">
+    <label for="include-users">Include users/groups/permissions (full restore)</label>
   </div>
   <button id="start-restore" class="btn btn-danger" {% if not backups %}disabled{% endif %} data-restore-url="{% url 'admin_tools:restore_start' %}">Start Restore from Existing Backup</button>
 </div>
@@ -26,8 +30,8 @@
   <form id="upload-form" enctype="multipart/form-data" data-upload-url="{% url 'admin_tools:upload_backup' %}">
     {% csrf_token %}
     <div class="mb-3">
-      <label for="backup-file" class="form-label">Choose backup file (.json or .json.gz):</label>
-      <input type="file" class="form-control" id="backup-file" name="backup_file" accept=".json,.gz" required>
+      <label for="backup-file" class="form-label">Choose backup file (.json, .json.gz, .tar.gz, or .tgz):</label>
+      <input type="file" class="form-control" id="backup-file" name="backup_file" accept=".json,.gz,.tar.gz,.tgz" required>
     </div>
     <button type="submit" class="btn btn-warning" id="upload-restore-btn">Upload and Restore</button>
   </form>
