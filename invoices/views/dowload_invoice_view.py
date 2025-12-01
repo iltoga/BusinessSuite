@@ -1,15 +1,14 @@
-import os
-import shutil
-import subprocess
-import tempfile
-from pathlib import Path
+import logging
 
 from django.http import FileResponse, HttpResponse
 from django.utils.text import slugify
 from django.views.generic import View
 
+from core.utils.pdf_converter import PDFConverter, PDFConverterError
 from invoices.models import Invoice
 from invoices.services.InvoiceService import InvoiceService
+
+logger = logging.getLogger(__name__)
 
 
 class InvoiceDownloadView(View):
@@ -47,77 +46,16 @@ class InvoiceDownloadView(View):
         if format_type == "docx":
             return FileResponse(buf, as_attachment=True, filename=f"{safe_name}.docx")
 
-        # Convert to PDF if requested
-        temp_dir = None
+        # Convert to PDF using LibreOffice (via PDFConverter utility)
         try:
-            # Create a temporary directory for the conversion process
-            temp_dir = tempfile.mkdtemp()
-            temp_docx_path = Path(temp_dir) / f"{safe_name}.docx"
-            temp_pdf_path = Path(temp_dir) / f"{safe_name}.pdf"
+            pdf_bytes = PDFConverter.docx_buffer_to_pdf(buf)
+            response = HttpResponse(pdf_bytes, content_type="application/pdf")
+            response["Content-Disposition"] = f'attachment; filename="{safe_name}.pdf"'
+            return response
 
-            # Write the DOCX buffer to a temporary file
-            with open(temp_docx_path, "wb") as f:
-                f.write(buf.getvalue())
-
-            # Convert DOCX to PDF using LibreOffice soffice in headless mode
-            # Optimized for Linux (Debian/Ubuntu) in Docker containers
-            soffice = shutil.which("soffice")
-
-            if not soffice:
-                return HttpResponse(
-                    "PDF conversion failed: LibreOffice 'soffice' not found. "
-                    "Ensure LibreOffice is installed in the container.",
-                    status=500,
-                )
-
-            # Call soffice to convert docx to pdf
-            # --headless: run without GUI
-            # --invisible: no splash screen
-            # --nodefault: don't start with an empty document
-            # --nofirststartwizard: skip first-run wizard
-            # --nolockcheck: don't check for lock files (safe in containers)
-            # --nologo: no logo on startup
-            # --norestore: don't restore previous session
-            # --convert-to pdf: output format
-            # --outdir: output directory (must come before input file)
-            cmd = [
-                soffice,
-                "--headless",
-                "--invisible",
-                "--nodefault",
-                "--nofirststartwizard",
-                "--nolockcheck",
-                "--nologo",
-                "--norestore",
-                "--convert-to",
-                "pdf",
-                "--outdir",
-                str(temp_dir),
-                str(temp_docx_path),
-            ]
-
-            try:
-                result = subprocess.run(
-                    cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=30
-                )
-            except subprocess.TimeoutExpired:
-                return HttpResponse("PDF conversion timed out after 30 seconds.", status=500)
-            except subprocess.CalledProcessError as e:
-                error_msg = f"LibreOffice conversion failed: {e.stderr if e.stderr else str(e)}"
-                return HttpResponse(error_msg, status=500)
-
-            # Ensure PDF was created
-            if not temp_pdf_path.exists():
-                return HttpResponse("PDF conversion failed: output file not found.", status=500)
-
-            # Read the PDF and return it (load into memory so we can safely delete temp files afterwards)
-            with open(temp_pdf_path, "rb") as pdf_file:
-                pdf_bytes = pdf_file.read()
-                response = FileResponse(pdf_bytes, as_attachment=True, filename=f"{safe_name}.pdf")
-                response["Content-Type"] = "application/pdf"
-                return response
-
-        finally:
-            # Cleanup: remove temporary directory and all its contents
-            if temp_dir and os.path.exists(temp_dir):
-                shutil.rmtree(temp_dir, ignore_errors=True)
+        except PDFConverterError as e:
+            logger.error(f"PDF conversion failed for invoice {pk}: {e}")
+            return HttpResponse(
+                f"PDF conversion failed: {str(e)}. " "Please ensure LibreOffice is installed in the container.",
+                status=500,
+            )

@@ -7,12 +7,13 @@ ENV PYTHONUNBUFFERED 1
 ENV DJANGO_SETTINGS_MODULE business_suite.settings.prod
 
 # Install build dependencies
+# Note: libreoffice-writer-nogui is a minimal LibreOffice installation for DOCX to PDF conversion
 RUN apt-get update \
   && apt-get -y install --no-install-recommends \
   tesseract-ocr \
   poppler-utils \
   postgresql-client \
-  libreoffice \
+  libreoffice-writer-nogui \
   curl \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
@@ -46,12 +47,13 @@ ENV PYTHONUNBUFFERED 1
 ENV DJANGO_SETTINGS_MODULE business_suite.settings.prod
 
 # Install runtime dependencies only (no build tools)
+# Note: libreoffice-writer-nogui is a minimal LibreOffice installation for DOCX to PDF conversion
 RUN apt-get update \
   && apt-get -y install --no-install-recommends \
   tesseract-ocr \
   poppler-utils \
   postgresql-client \
-  libreoffice \
+  libreoffice-writer-nogui \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 
