@@ -9,4 +9,5 @@ from .doc_workflow_detail_view import DocWorkflowDetailView
 from .doc_workflow_update_view import DocWorkflowUpdateView
 from .document_detail_view import DocumentDetailView
 from .document_detail_view_print import DocumentDetailViewPrint
+from .document_merge_view import ApplicationDocumentMergeView, DocumentMergeDownloadView
 from .document_update_view import DocumentUpdateView
