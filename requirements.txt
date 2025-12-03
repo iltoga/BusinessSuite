@@ -2,19 +2,19 @@
 #    uv pip compile pyproject.toml --output-file requirements.txt
 annotated-types==0.7.0
     # via pydantic
-anyio==4.11.0
+anyio==4.12.0
     # via
     #   httpx
     #   openai
-asgiref==3.10.0
+asgiref==3.11.0
     # via
     #   django
     #   django-cors-headers
-beautifulsoup4==4.14.2
+beautifulsoup4==4.14.3
     # via django-unicorn
-cachetools==6.2.1
+cachetools==6.2.2
     # via django-unicorn
-certifi==2025.10.5
+certifi==2025.11.12
     # via
     #   httpcore
     #   httpx
@@ -31,7 +31,7 @@ decorator==5.2.1
     # via django-unicorn
 distro==1.9.0
     # via openai
-django==5.2.4
+django==5.2.9
     # via
     #   business-suite (pyproject.toml)
     #   crispy-bootstrap5
@@ -46,21 +46,21 @@ django==5.2.4
     #   djangorestframework
 django-bootstrap-sidebar==1.2.7
     # via business-suite (pyproject.toml)
-django-cleanup==8.0.0
+django-cleanup==9.0.0
     # via business-suite (pyproject.toml)
-django-cors-headers==4.7.0
+django-cors-headers==4.9.0
     # via business-suite (pyproject.toml)
-django-crispy-forms==2.4
+django-crispy-forms==2.5
     # via crispy-bootstrap5
 django-cron==0.6.0
     # via business-suite (pyproject.toml)
-django-dbbackup==5.0.0
+django-dbbackup==5.0.1
     # via business-suite (pyproject.toml)
 django-debug-toolbar==6.1.0
     # via business-suite (pyproject.toml)
-django-nested-admin==4.1.1
+django-nested-admin==4.1.6
     # via business-suite (pyproject.toml)
-django-storages==1.13.2
+django-storages==1.14.6
     # via business-suite (pyproject.toml)
 django-unicorn==0.62.0
     # via business-suite (pyproject.toml)
@@ -68,7 +68,7 @@ django-user-agents==0.4.0
     # via business-suite (pyproject.toml)
 django-widget-tweaks==1.5.0
     # via business-suite (pyproject.toml)
-djangorestframework==3.16.0
+djangorestframework==3.16.1
     # via business-suite (pyproject.toml)
 docx-mailmerge==0.5.0
     # via business-suite (pyproject.toml)
@@ -76,7 +76,7 @@ dropbox==12.0.2
     # via business-suite (pyproject.toml)
 et-xmlfile==2.0.0
     # via openpyxl
-fonttools==4.60.1
+fonttools==4.61.0
     # via matplotlib
 gunicorn==23.0.0
     # via business-suite (pyproject.toml)
@@ -95,7 +95,7 @@ imageio==2.37.2
     # via
     #   passporteye
     #   scikit-image
-jiter==0.11.1
+jiter==0.12.0
     # via openai
 joblib==1.5.2
     # via scikit-learn
@@ -111,9 +111,9 @@ matplotlib==3.10.7
     # via
     #   passporteye
     #   seaborn
-networkx==3.5
+networkx==3.6
     # via scikit-image
-numpy==2.3.4
+numpy==2.3.5
     # via
     #   contourpy
     #   imageio
@@ -125,7 +125,7 @@ numpy==2.3.4
     #   scipy
     #   seaborn
     #   tifffile
-openai==2.7.1
+openai==2.8.1
     # via business-suite (pyproject.toml)
 openpyxl==3.1.5
     # via business-suite (pyproject.toml)
@@ -160,14 +160,16 @@ psycopg2-binary==2.9.11
     # via business-suite (pyproject.toml)
 pycryptodome==3.23.0
     # via pdfminer
-pydantic==2.12.3
+pydantic==2.12.5
     # via openai
-pydantic-core==2.41.4
+pydantic-core==2.41.5
     # via pydantic
 pymemcache==4.0.0
     # via business-suite (pyproject.toml)
 pyparsing==3.2.5
     # via matplotlib
+pypdf2==3.0.1
+    # via business-suite (pyproject.toml)
 pytesseract==0.3.13
     # via passporteye
 python-dateutil==2.9.0.post0
@@ -176,7 +178,7 @@ python-dateutil==2.9.0.post0
     #   pandas
 python-docx==1.2.0
     # via business-suite (pyproject.toml)
-python-dotenv==1.1.1
+python-dotenv==1.2.1
     # via business-suite (pyproject.toml)
 python-monkey-business==1.1.0
     # via django-nested-admin
@@ -186,7 +188,7 @@ pyyaml==6.0.3
     # via business-suite (pyproject.toml)
 rapidfuzz==3.14.3
     # via business-suite (pyproject.toml)
-requests==2.31.0
+requests==2.32.5
     # via
     #   business-suite (pyproject.toml)
     #   dropbox
@@ -211,12 +213,10 @@ six==1.17.0
     #   python-dateutil
     #   stone
 sniffio==1.3.1
-    # via
-    #   anyio
-    #   openai
+    # via openai
 soupsieve==2.8
     # via beautifulsoup4
-sqlparse==0.5.3
+sqlparse==0.5.4
     # via
     #   django
     #   django-debug-toolbar
@@ -252,5 +252,5 @@ user-agents==2.2.0
     # via
     #   business-suite (pyproject.toml)
     #   django-user-agents
-whitenoise==6.9.0
+whitenoise==6.11.0
     # via business-suite (pyproject.toml)
