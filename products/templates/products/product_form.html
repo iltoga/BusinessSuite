@@ -10,6 +10,20 @@
     {{ block.super }}
     <link rel="stylesheet" type="text/css" href="{% static 'plugins/tags-input/tagsinput.css' %}" />
     <script src="{% static 'plugins/tags-input/tagsinput.js' %}"></script>
+    <style>
+        .sortable-item.drag-over {
+            border-top: 2px solid #0d6efd;
+        }
+        .sortable-item.selected-item:hover {
+            background-color: rgba(13, 110, 253, 0.2) !important;
+        }
+        .sortable-item.available-item:hover {
+            background-color: rgba(0, 0, 0, 0.1) !important;
+        }
+        .sortable-selected {
+            background-color: rgba(13, 110, 253, 0.05);
+        }
+    </style>
 {% endblock %}
 
 {% block content %}
