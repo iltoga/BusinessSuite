@@ -38,23 +38,27 @@ class ProductCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateView
         # Check if tasks formset and required_documents formset are valid
         if tasks.is_valid():
             with transaction.atomic():
-                required_documents = form.cleaned_data["required_documents_multiselect"]
-                if len(required_documents) == 0:
+                # Get ordered document PKs from POST data (preserves drag-drop order)
+                required_pks = self.request.POST.getlist("required_documents_multiselect")
+                if not required_pks:
                     form.instance.required_documents = ""
                 else:
-                    required_documents_str = ""
-                    for document in required_documents:
-                        required_documents_str += document.name + ","
-                    form.instance.required_documents = required_documents_str[:-1]
+                    # Fetch documents and build ordered string
+                    from products.models import DocumentType
 
-                optional_documents = form.cleaned_data["optional_documents_multiselect"]
-                if len(optional_documents) == 0:
+                    docs_by_pk = {str(d.pk): d for d in DocumentType.objects.filter(pk__in=required_pks)}
+                    ordered_names = [docs_by_pk[pk].name for pk in required_pks if pk in docs_by_pk]
+                    form.instance.required_documents = ",".join(ordered_names)
+
+                optional_pks = self.request.POST.getlist("optional_documents_multiselect")
+                if not optional_pks:
                     form.instance.optional_documents = ""
                 else:
-                    optional_documents_str = ""
-                    for document in optional_documents:
-                        optional_documents_str += document.name + ","
-                    form.instance.optional_documents = optional_documents_str[:-1]
+                    from products.models import DocumentType
+
+                    docs_by_pk = {str(d.pk): d for d in DocumentType.objects.filter(pk__in=optional_pks)}
+                    ordered_names = [docs_by_pk[pk].name for pk in optional_pks if pk in docs_by_pk]
+                    form.instance.optional_documents = ",".join(ordered_names)
 
                 self.object = form.save()
                 tasks.instance = self.object

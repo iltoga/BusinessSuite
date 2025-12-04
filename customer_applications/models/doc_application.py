@@ -247,23 +247,60 @@ class DocApplication(models.Model):
             )
         return due_date
 
+    def _get_document_order_list(self, required=None):
+        """
+        Get ordered list of document type names from product configuration.
+        Returns list of document type names in the order they should appear.
+        """
+        order_list = []
+        if required is None or required is True:
+            required_docs = self.product.required_documents or ""
+            order_list.extend([name.strip() for name in required_docs.split(",") if name.strip()])
+        if required is None or required is False:
+            optional_docs = self.product.optional_documents or ""
+            order_list.extend([name.strip() for name in optional_docs.split(",") if name.strip()])
+        return order_list
+
+    def _order_documents_by_product(self, documents, required=None):
+        """
+        Order documents based on the product's document list order.
+        Documents not in the order list will appear at the end.
+        """
+        order_list = self._get_document_order_list(required)
+        if not order_list:
+            return documents
+
+        # Create order mapping: doc_type_name -> position
+        order_map = {name: idx for idx, name in enumerate(order_list)}
+
+        # Sort documents: first by order_map position, then by doc_type name for any not in list
+        docs_list = list(documents)
+        docs_list.sort(key=lambda d: (order_map.get(d.doc_type.name, 9999), d.doc_type.name))
+        return docs_list
+
     def get_completed_documents(self, type="all"):
         """
-        Gets completed documents by type.
+        Gets completed documents by type, ordered by product's document list.
         """
         filters = {"completed": True}
+        required = None
         if type != "all":
-            filters["required"] = True if type == "required" else False
-        return self.documents.filter(**filters)
+            required = True if type == "required" else False
+            filters["required"] = required
+        documents = self.documents.filter(**filters).select_related("doc_type")
+        return self._order_documents_by_product(documents, required)
 
     def get_incomplete_documents(self, type="all"):
         """
-        Gets incomplete documents by type.
+        Gets incomplete documents by type, ordered by product's document list.
         """
         filters = {"completed": False}
+        required = None
         if type != "all":
-            filters["required"] = True if type == "required" else False
-        return self.documents.filter(**filters)
+            required = True if type == "required" else False
+            filters["required"] = required
+        documents = self.documents.filter(**filters).select_related("doc_type")
+        return self._order_documents_by_product(documents, required)
 
     def has_invoice(self):
         """

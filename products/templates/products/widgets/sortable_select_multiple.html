@@ -1,0 +1,45 @@
+{% load widget_tweaks %}
+<div class="sortable-select-container" data-field-name="{{ widget.name }}" data-ordered-initial="{{ widget.ordered_initial|join:',' }}">
+    <!-- Two column layout -->
+    <div class="row">
+        <div class="col-md-6">
+            <label class="form-label text-muted small">Available:</label>
+            <div class="sortable-available border rounded p-2" style="min-height: 150px; max-height: 300px; overflow-y: auto;">
+                {% for group, options, index in widget.optgroups %}
+                    {% for option in options %}
+                        {% if not option.selected %}
+                        <div class="sortable-item available-item d-flex align-items-center p-2 mb-1 bg-light rounded"
+                             data-value="{{ option.value }}"
+                             data-label="{{ option.label }}"
+                             style="cursor: pointer;">
+                            <span class="flex-grow-1">{{ option.label }}</span>
+                            <button type="button" class="btn btn-sm btn-outline-primary add-item-btn" title="Add">
+                                <i class="bi bi-plus"></i>
+                            </button>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                {% endfor %}
+            </div>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label text-muted small">Selected (drag to reorder):</label>
+            <div class="sortable-selected border rounded p-2 border-primary" style="min-height: 150px; max-height: 300px; overflow-y: auto;">
+                <!-- JS will populate this based on hidden select's selected options -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden select element for form submission -->
+    <select name="{{ widget.name }}"
+            id="{{ widget.attrs.id }}"
+            multiple
+            class="d-none sortable-hidden-select"
+            {% for name, value in widget.attrs.items %}{% if name != 'class' and name != 'id' %} {{ name }}="{{ value }}"{% endif %}{% endfor %}>
+        {% for group, options, index in widget.optgroups %}
+            {% for option in options %}
+                <option value="{{ option.value }}"{% if option.selected %} selected{% endif %} data-label="{{ option.label }}">{{ option.label }}</option>
+            {% endfor %}
+        {% endfor %}
+    </select>
+</div>

@@ -36,23 +36,27 @@ class ProductUpdateView(PermissionRequiredMixin, SuccessMessageMixin, UpdateView
 
         if tasks_formset.is_valid():
             with transaction.atomic():
-                required_documents_multiselect = form.cleaned_data.get("required_documents_multiselect")
-                if not required_documents_multiselect:
+                # Get ordered document PKs from POST data (preserves drag-drop order)
+                required_pks = self.request.POST.getlist("required_documents_multiselect")
+                if not required_pks:
                     self.object.required_documents = ""
                 else:
-                    required_documents_str = ""
-                    for document in required_documents_multiselect:
-                        required_documents_str += document.name + ","
-                    self.object.required_documents = required_documents_str[:-1]
+                    # Fetch documents and build ordered string
+                    from products.models import DocumentType
 
-                optional_documents_multiselect = form.cleaned_data.get("optional_documents_multiselect")
-                if not optional_documents_multiselect:
+                    docs_by_pk = {str(d.pk): d for d in DocumentType.objects.filter(pk__in=required_pks)}
+                    ordered_names = [docs_by_pk[pk].name for pk in required_pks if pk in docs_by_pk]
+                    self.object.required_documents = ",".join(ordered_names)
+
+                optional_pks = self.request.POST.getlist("optional_documents_multiselect")
+                if not optional_pks:
                     self.object.optional_documents = ""
                 else:
-                    optional_documents_str = ""
-                    for document in optional_documents_multiselect:
-                        optional_documents_str += document.name + ","
-                    self.object.optional_documents = optional_documents_str[:-1]
+                    from products.models import DocumentType
+
+                    docs_by_pk = {str(d.pk): d for d in DocumentType.objects.filter(pk__in=optional_pks)}
+                    ordered_names = [docs_by_pk[pk].name for pk in optional_pks if pk in docs_by_pk]
+                    self.object.optional_documents = ",".join(ordered_names)
 
                 self.object = form.save()
 
