@@ -423,8 +423,8 @@ DOCX_SURAT_PERMOHONAN_PERPANJANGAN_TEMPLATE_NAME = os.getenv(
 
 # Document Type Hooks Settings
 # Path to the default sponsor passport file (relative to MEDIA_ROOT)
-DEFAULT_SPONSOR_PASSPORT_FILE = os.getenv(
-    "DEFAULT_SPONSOR_PASSPORT_FILE", "default_documents/default_sponsor_document.pdf"
+DEFAULT_SPONSOR_PASSPORT_FILE_PATH = os.getenv(
+    "DEFAULT_SPONSOR_PASSPORT_FILE_PATH", "default_documents/default_sponsor_document.pdf"
 )
 
 # default language for generated documents

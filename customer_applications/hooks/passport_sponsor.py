@@ -33,13 +33,13 @@ class PassportSponsorHook(BaseDocumentTypeHook):
 
     def get_extra_actions(self) -> List[DocumentAction]:
         """Returns the upload default action if a default file is configured."""
-        default_path = getattr(settings, "DEFAULT_SPONSOR_PASSPORT_FILE", None)
+        default_path = getattr(settings, "DEFAULT_SPONSOR_PASSPORT_FILE_PATH", None)
         if not default_path:
             return []
 
         if not default_storage.exists(default_path):
             logger.warning(
-                "DEFAULT_SPONSOR_PASSPORT_FILE configured but file not found: %s",
+                "DEFAULT_SPONSOR_PASSPORT_FILE_PATH configured but file not found: %s",
                 default_path,
             )
             return []
@@ -77,7 +77,7 @@ class PassportSponsorHook(BaseDocumentTypeHook):
         Returns:
             A dict with 'success' boolean and either 'message' or 'error'.
         """
-        default_path = getattr(settings, "DEFAULT_SPONSOR_PASSPORT_FILE", None)
+        default_path = getattr(settings, "DEFAULT_SPONSOR_PASSPORT_FILE_PATH", None)
         if not default_path:
             return {"success": False, "error": "No default sponsor file configured"}
 
