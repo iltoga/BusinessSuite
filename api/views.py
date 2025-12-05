@@ -60,6 +60,7 @@ class CustomerDetailView(APIView):
 
     def get(self, request, pk):
         try:
+            language = request.GET.get("document_lang", settings.DEFAULT_DOCUMENT_LANGUAGE_CODE)
             customer = Customer.objects.select_related("nationality").get(pk=pk)
             data = {
                 "id": customer.id,
@@ -67,8 +68,17 @@ class CustomerDetailView(APIView):
                 "last_name": customer.last_name or "",
                 "company_name": customer.company_name or "",
                 "full_name": customer.full_name,
-                "gender_display": customer.get_gender_display() if customer.gender else "",
-                "nationality_name": customer.nationality.country if customer.nationality else "",
+                "gender_display": customer.get_gender_display(language) if customer.gender else "",
+                "nationality_name": (
+                    (
+                        customer.nationality.country_idn
+                        if getattr(customer.nationality, "country_idn", None)
+                        else customer.nationality.country
+                    )
+                    if customer.nationality
+                    else ""
+                ),
+                "nationality_code": customer.nationality.alpha3_code if customer.nationality else "",
                 "birth_place": customer.birth_place or "",
                 "birthdate": customer.birthdate.isoformat() if customer.birthdate else "",
                 "passport_number": customer.passport_number or "",

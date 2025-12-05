@@ -1,7 +1,14 @@
 from django import forms
 from django.utils import timezone
 
+from core.models import CountryCode
 from customers.models import Customer
+
+
+class CountryIdnModelChoiceField(forms.ModelChoiceField):
+    def label_from_instance(self, obj):
+        # Prefer country_idn when available, fallback to country
+        return getattr(obj, "country_idn", None) or getattr(obj, "country", "")
 
 
 class SuratPermohonanForm(forms.Form):
@@ -30,7 +37,12 @@ class SuratPermohonanForm(forms.Form):
         widget=forms.Select(attrs={"class": "form-select"}),
     )
     gender = forms.CharField(max_length=50, required=False, label="Gender")
-    country = forms.CharField(max_length=100, required=False, label="Nationality")
+    country = CountryIdnModelChoiceField(
+        queryset=CountryCode.objects.all().order_by("country"),
+        required=False,
+        label="Nationality",
+        widget=forms.Select(attrs={"class": "form-select select2"}),
+    )
     birth_place = forms.CharField(max_length=100, required=False, label="Birth Place")
     birthdate = forms.DateField(
         widget=forms.DateInput(attrs={"type": "date"}),

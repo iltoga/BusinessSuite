@@ -104,12 +104,19 @@ class InvoiceCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateView
                 form_kwargs={"customer_applications": customer_applications},
             )
         else:
-            formset = InvoiceApplicationCreateFormSet(
-                form_kwargs={
-                    "customer_applications": customer_applications,
-                    "selected_customer_application": selected_customer_application,
-                }
-            )
+            form_kwargs = {
+                "customer_applications": customer_applications,
+                "selected_customer_application": selected_customer_application,
+            }
+            initial = []
+            if selected_customer_application:
+                initial.append(
+                    {
+                        "customer_application": selected_customer_application.pk,
+                        "amount": selected_customer_application.product.base_price,
+                    }
+                )
+            formset = InvoiceApplicationCreateFormSet(initial=initial, form_kwargs=form_kwargs)
             data["invoice_applications"] = formset
 
         # get currency settings
@@ -452,7 +459,7 @@ class InvoiceDetailView(PermissionRequiredMixin, DetailView):
         data = super().get_context_data(**kwargs)
         data["invoice_applications"] = self.object.invoice_applications.all()
         data["today"] = timezone.now().date()
-        
+
         # Add data for delete modal
         if self.request.user.is_superuser:
             data["invoice_applications_count"] = self.object.invoice_applications.count()
@@ -462,7 +469,7 @@ class InvoiceDetailView(PermissionRequiredMixin, DetailView):
             # Count payments across all invoice applications
             total_payments = sum(inv_app.payments.count() for inv_app in self.object.invoice_applications.all())
             data["payments_count"] = total_payments
-        
+
         return data
 
 

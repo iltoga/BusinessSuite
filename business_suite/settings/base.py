@@ -185,6 +185,9 @@ USE_I18N = True
 
 USE_TZ = True
 
+# Configure project locale path for translations (locale is at project root, one level up from BASE_DIR)
+LOCALE_PATHS = [os.path.join(BASE_DIR, "..", "locale")]
+
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
@@ -304,6 +307,7 @@ STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 STATIC_SOURCE_ROOT = os.path.join(BASE_DIR, "static")
 
 DOCUMENTS_FOLDER = "documents"
+APPLICATION_DEFAULT_FILES_FOLDER = "application_default_files"
 TMPFILES_FOLDER = "tmpfiles"
 
 # Settings for django-dbbackup
@@ -416,3 +420,12 @@ DOCX_PARTIAL_INVOICE_TEMPLATE_NAME = os.getenv(
 DOCX_SURAT_PERMOHONAN_PERPANJANGAN_TEMPLATE_NAME = os.getenv(
     "DOCX_SURAT_PERMOHONAN_PERPANJANGAN_TEMPLATE_NAME", "surat_permohonan_perpanjangan.docx"
 )
+
+# Document Type Hooks Settings
+# Path to the default sponsor passport file (relative to MEDIA_ROOT)
+DEFAULT_SPONSOR_PASSPORT_FILE = os.getenv(
+    "DEFAULT_SPONSOR_PASSPORT_FILE", "default_documents/default_sponsor_document.pdf"
+)
+
+# default language for generated documents
+DEFAULT_DOCUMENT_LANGUAGE_CODE = os.getenv("DEFAULT_DOCUMENT_LANGUAGE_CODE", "id")

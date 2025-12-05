@@ -11,6 +11,7 @@ from .views import (
     DocApplicationDetailView,
     DocApplicationListView,
     DocApplicationUpdateView,
+    DocumentActionView,
     DocumentDetailView,
     DocumentDetailViewPrint,
     DocumentMergeDownloadView,
@@ -94,5 +95,10 @@ urlpatterns = [
         "delete-all/",
         DocApplicationDeleteAllView.as_view(),
         name="customer-application-delete-all",
+    ),
+    path(
+        "api/documents/<int:document_id>/actions/<str:action_name>/",
+        DocumentActionView.as_view(),
+        name="document-action",
     ),
 ]

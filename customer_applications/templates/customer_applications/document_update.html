@@ -15,7 +15,12 @@
           {% csrf_token %}
           {% for field in form %}
               {{ field | as_crispy_field }}
-              {% if field.name == 'file' and  product_doc_type.has_ocr_check %}
+              {% if field.name == 'file' %}
+                  {% if extra_actions %}
+                  <!-- Document type hook action buttons -->
+                  {% include "customer_applications/partials/document_actions.html" with document=form.instance actions=extra_actions %}
+                  {% endif %}
+                  {% if product_doc_type.has_ocr_check %}
                   <!-- button to check the file via ocr using restApiCall -->
                   <div class="mb-3">
                       <button id="ocr_check_btn_id" type="button" class="btn btn-primary btn-sm" data-ocr-url="{% url 'api-ocr-check' %}" data-ocr-doc-type="{{ product_doc_type.name }}">
@@ -28,6 +33,7 @@
                           <img id="resized_image_id" style="display: none;">
                       </div>
                   </div>
+                  {% endif %}
               {% endif %}
           {% endfor %}
           <hr>
@@ -41,6 +47,9 @@
 
 {% block after-bootstrap-js %}
   {{ block.super }}
+{% if extra_actions %}
+  <script src="{% static 'js/document_actions.js' %}" defer></script>
+{% endif %}
 {% if product_doc_type.has_ocr_check %}
   <script src="{% static 'js/document_update.js' %}" defer></script>
 {% endif %}

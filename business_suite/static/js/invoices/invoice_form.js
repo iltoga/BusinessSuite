@@ -17,10 +17,8 @@
             });
             // if selectedCustomerApplicationPk is set, select the dropdown with name invoice_applications-0-customer_application
             if (selectedCustomerApplicationPk != "") {
-                // FIXME: since 'customer' dropdown is a select2 dropdown, if we disable it, the value is not sent when the form is submitted
-                // even if we add a hidden input with the same name and value. For now we just leave it enabled.
-                // setDropdownReadonly('customer');
-                setDropdownReadonly('invoice_applications-0-customer_application');
+                // Preselect the first form's customer application and keep it enabled so it remains visible
+                setDropdownValue('invoice_applications-0-customer_application', selectedCustomerApplicationPk);
                 // update the price field
                 var dueAmount = customerApplications.find(function (application) {
                     return application.pk == selectedCustomerApplicationPk;
@@ -141,24 +139,15 @@
         $('#id_total_amount').val(total);
     }
 
-    // Set the dropdown to readonly
-    // This is used when the invoice is created from a customer application
-    // The dropdown must be disabled but still send the value when the form is submitted
-    function setDropdownReadonly(field_name) {
+    // Set dropdown value without disabling it so the selection stays visible
+    function setDropdownValue(field_name, value) {
         if (field_name == undefined) {
             return;
         }
         var $select = $('[name="' + field_name + '"]');
-        $select.val(selectedCustomerApplicationPk);
-        $select.prop('disabled', true);
-
-        // Add a corresponding hidden input (this is to make sure the value is sent when the form is submitted)
-        var $hiddenInput = $('<input>').attr({
-            type: 'hidden',
-            name: $select.attr('name'),
-            value: $select.val()
-        });
-        $select.after($hiddenInput);
+        if ($select.length && value !== undefined && value !== "") {
+            $select.val(value);
+        }
     }
 
     // Update the customer application dropdowns
@@ -191,14 +180,25 @@
         var availableOptions = new Set();
         $selects.each(function () {
             var $select = $(this);
+            var currentVal = $select.val();
             $select.find('option').each(function () {
                 var optionVal = $(this).val();
+
+                // Never disable the option that is currently selected in this select
+                if (optionVal === currentVal) {
+                    $(this).prop('disabled', false);
+                    return;
+                }
+
                 if (selectedOptions.has(optionVal)) {
                     // This option is selected in another select box, disable it
                     $(this).prop('disabled', true);
                 } else if (optionVal != "") {
                     // This option is available, add it to the set of available options
+                    $(this).prop('disabled', false);
                     availableOptions.add(optionVal);
+                } else {
+                    $(this).prop('disabled', false);
                 }
             });
         });

@@ -49,6 +49,9 @@ python manage.py createsuperuserifnotexists
 # Create system user
 python manage.py create_user system $SYSTEM_USER_PASSWORD --superuser --email=$SYSTEM_USER_EMAIL
 
+# Compile translation files (if gettext/msgfmt is available)
+python manage.py compilemessages || echo "compilemessages failed - msgfmt may be missing"
+
 # Collect static files
 python manage.py collectstatic --noinput
 

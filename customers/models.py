@@ -50,11 +50,11 @@ NOTIFY_BY_CHOICES = [
 ]
 
 GENDERS = [
-    ("", "---------"),
-    ("M", "Male"),
+    ("", _("---------")),
+    ("M", _("Male")),
     (
         "F",
-        "Female",
+        _("Female"),
     ),
 ]
 
@@ -158,6 +158,39 @@ class Customer(models.Model):
             "birthdate": self.birthdate,
             "active": self.active,
         }
+
+    def get_gender_display(self, lang=None):
+        """
+        Returns the display value for the gender (M, F) field.
+
+        :param lang: Optional language code for localization.
+
+        :return: str - Display value of the gender field.
+        """
+        """
+        Hard-code mapping from gender codes to English labels, then
+        return a translated string for the requested `lang` when available.
+
+        We avoid relying on Django's dynamic get_FOO_display to keep behavior
+        deterministic and to allow explicit language activation before translation.
+        """
+        from django.utils.translation import activate, get_language
+        from django.utils.translation import gettext as gettext_fn
+
+        # Default to configured document language if none provided
+        lang = lang or settings.DEFAULT_DOCUMENT_LANGUAGE_CODE or "en"
+        current_lang = get_language()
+        activate(lang)
+        try:
+            if not self.gender:
+                return ""
+            # Immediate mapping to English labels then translate via gettext catalog
+            label = "Male" if self.gender == "M" else "Female" if self.gender == "F" else ""
+            if not label:
+                return ""
+            return gettext_fn(label)
+        finally:
+            activate(current_lang)
 
     @property
     def full_name(self):

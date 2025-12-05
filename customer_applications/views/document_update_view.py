@@ -21,6 +21,7 @@ class DocumentUpdateView(PermissionRequiredMixin, SuccessMessageMixin, UpdateVie
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["product_doc_type"] = context["form"].instance.doc_type
+        context["extra_actions"] = context["form"].get_extra_actions()
         return context
 
     def get_initial(self):

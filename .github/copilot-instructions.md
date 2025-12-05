@@ -54,3 +54,4 @@ RevisBaliCRM is a Django-based ERP/CRM system for service agencies, managing cus
 - **External APIs**: REST endpoints for third-party integrations
 
 Focus on maintaining data integrity, especially around document completion and workflow states. Use existing patterns for new features to ensure consistency.
+When possible use context7 mcp server to get updated information about the python packages and libraries used in the project.

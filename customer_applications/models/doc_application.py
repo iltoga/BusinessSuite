@@ -222,12 +222,17 @@ class DocApplication(models.Model):
         """
         if self.is_application_completed:
             return self.STATUS_COMPLETED
-        elif self.is_document_collection_completed:
+
+        if self.is_document_collection_completed:
+            # If there are no workflows configured, treat a fully collected document set as completed.
+            if not self.workflows.exists():
+                return self.STATUS_COMPLETED
             return self.STATUS_PROCESSING
-        elif self.workflows.filter(status=self.STATUS_REJECTED).exists():
+
+        if self.workflows.filter(status=self.STATUS_REJECTED).exists():
             return self.STATUS_REJECTED
-        else:
-            return self.status
+
+        return self.status
 
     def calculate_application_due_date(self):
         """

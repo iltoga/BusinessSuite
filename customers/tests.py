@@ -110,3 +110,26 @@ class CustomerAnalysisViewTestCase(TestCase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "data:image/png;base64,")
+
+
+class CustomerModelTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_superuser(username="testadmin", email="admin@example.com", password="password")
+        self.client.force_login(self.user)
+
+    def test_get_gender_display_returns_choice_label(self):
+        # Create a customer with gender set
+        cust = Customer.objects.create(customer_type="person", first_name="G", last_name="T", gender="M")
+        # Default language should return the English label defined in GENDERS
+        self.assertEqual(cust.get_gender_display(), "Male")
+        # Explicit language should return the expected string when coerced
+        self.assertEqual(str(cust.get_gender_display(lang="en")), "Male")
+        # If Indonesian translations exist and messages are compiled, expect the correct translation.
+        id_display = str(cust.get_gender_display(lang="id"))
+        # Always ensure it's a string and not empty
+        self.assertIsInstance(id_display, str)
+        self.assertNotEqual(id_display, "")
+        # If the PO/MO files are compiled, we expect the official Indonesian translations.
+        if id_display != "Male":
+            self.assertEqual(id_display, "Laki-laki")

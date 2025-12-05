@@ -8,6 +8,7 @@ from django.utils.text import slugify
 from django.views import View
 from django.views.generic import FormView
 
+from core.models import CountryCode
 from customers.models import Customer
 from letters.forms import SuratPermohonanForm
 from letters.services.LetterService import LetterService
@@ -53,6 +54,15 @@ class DownloadSuratPermohonanView(LoginRequiredMixin, View):
             return HttpResponseBadRequest(msg)
 
         extra_data = {field: (request.POST.get(field, "") or "") for field in self.form_fields}
+        # If the posted country is an alpha3 code, map it to the Indonesian name from CountryCode
+        posted_country = extra_data.get("country")
+        if posted_country:
+            try:
+                cc = CountryCode.objects.filter(alpha3_code=posted_country).first()
+                if cc:
+                    extra_data["country"] = cc.country_idn or cc.country
+            except Exception:
+                pass
 
         service = LetterService(customer, settings.DOCX_SURAT_PERMOHONAN_PERPANJANGAN_TEMPLATE_NAME)
 
