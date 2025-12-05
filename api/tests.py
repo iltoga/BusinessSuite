@@ -35,3 +35,27 @@ class CustomerQuickCreateAPITestCase(TestCase):
         self.assertEqual(cust.passport_number, "P12345678")
         self.assertEqual(str(cust.passport_issue_date), "2018-05-10")
         self.assertEqual(str(cust.passport_expiration_date), "2028-05-10")
+
+    def test_customer_detail_returns_gender_display(self):
+        from django.urls import reverse
+
+        # Create a customer with a gender and fetch the detail view
+        cust = Customer.objects.create(customer_type="person", first_name="Jane", last_name="Roe", gender="F")
+        url = reverse("api-customer-detail", args=[cust.pk])
+        # Default language
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn("gender_display", data)
+        self.assertIsInstance(data["gender_display"], str)
+
+        # Indonesian (document_lang) - if translations compiled, expect Indonesian translation
+        url_id = f"{url}?document_lang=id"
+        response_id = self.client.get(url_id)
+        self.assertEqual(response_id.status_code, 200)
+        data_id = response_id.json()
+        self.assertIn("gender_display", data_id)
+        gender_display = data_id["gender_display"]
+        self.assertIsInstance(gender_display, str)
+        if gender_display != "Female":
+            self.assertEqual(gender_display, "Perempuan")

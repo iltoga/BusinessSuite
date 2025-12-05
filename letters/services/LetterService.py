@@ -5,9 +5,11 @@ from uuid import uuid4
 
 from django.conf import settings
 from django.utils.timezone import now as datetime_now
+from django.utils.translation import activate, get_language, gettext
 from mailmerge import MailMerge
 
 import core.utils.formatutils as formatutils
+from core.models import CountryCode
 from customers.models import Customer
 
 
@@ -17,15 +19,6 @@ class LetterService:
     VISA_TYPES_SURAT_PERMOHONAN = {
         "voa": "VOA",
         "C1": "C1",
-    }
-
-    GENDER_TRANSLATIONS = {
-        "m": "Laki-laki",
-        "male": "Laki-laki",
-        "f": "Perempuan",
-        "female": "Perempuan",
-        "laki-laki": "Laki-laki",
-        "perempuan": "Perempuan",
     }
 
     def __init__(self, customer: Customer, template_name: str):
@@ -75,19 +68,38 @@ class LetterService:
         return formatutils.as_date_str(value)
 
     def _translate_gender(self, value):
+        """Translate gender using Django's i18n with configured document language."""
         if not value:
             return ""
-        normalized = str(value).strip()
+        normalized = str(value).strip().upper()
         if not normalized:
             return ""
-        translated = self.GENDER_TRANSLATIONS.get(normalized.lower())
-        return translated if translated else normalized
+
+        # Map codes to English labels for translation lookup
+        label_map = {"M": "Male", "F": "Female"}
+        label = label_map.get(normalized)
+        if not label:
+            # Already a label like "Male", "Female", or translated
+            label = value.strip()
+
+        # Activate document language, translate, then restore
+        lang = getattr(settings, "DEFAULT_DOCUMENT_LANGUAGE_CODE", "en")
+        current_lang = get_language()
+        activate(lang)
+        try:
+            return gettext(label)
+        finally:
+            activate(current_lang)
 
     def generate_letter_data(self, extra_data=None):
         # Use shared formatting utility to ensure dates are formatted as '17 November 2025'
         cur_date = formatutils.as_long_date_str(datetime_now())
 
-        nationality = self.customer.nationality.country if self.customer.nationality else ""
+        nationality = (
+            self.customer.nationality.country_idn
+            if (self.customer.nationality and getattr(self.customer.nationality, "country_idn", None))
+            else (self.customer.nationality.country if self.customer.nationality else "")
+        )
         birth_place_value = self.customer.birth_place or nationality
 
         data = {
@@ -135,6 +147,16 @@ class LetterService:
         # If birth_place is empty, use country as fallback
         if not data.get("birth_place"):
             data["birth_place"] = data.get("country", "")
+
+        # If `country` was posted as an alpha3 code, convert to Indonesian country name
+        posted_country = data.get("country")
+        if posted_country and isinstance(posted_country, str) and len(posted_country) == 3:
+            try:
+                cc = CountryCode.objects.filter(alpha3_code=posted_country).first()
+                if cc:
+                    data["country"] = cc.country_idn or cc.country
+            except Exception:
+                pass
 
         # Split address lines into explicit merge fields so the template can render them on separate lines
         address_lines = (self.customer.address_bali or "").splitlines()

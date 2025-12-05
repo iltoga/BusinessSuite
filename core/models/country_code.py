@@ -17,6 +17,8 @@ class CountryCodeManager(models.Manager):
 
 class CountryCode(models.Model):
     country = models.CharField(max_length=100, unique=True, blank=False, null=False, db_index=True)
+    # Indonesian/official government country name label
+    country_idn = models.CharField(max_length=128, blank=True, null=True, db_index=True)
     alpha2_code = models.CharField(max_length=2, unique=True, blank=False, null=False, db_index=True)
     alpha3_code = models.CharField(primary_key=True, max_length=3, unique=True, blank=False, null=False)
     numeric_code = models.CharField(max_length=3, unique=True, blank=False, null=False, db_index=True)

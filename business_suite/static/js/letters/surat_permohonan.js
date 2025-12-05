@@ -35,6 +35,12 @@
             $customerSelect.select2({ theme: 'bootstrap-5', width: '100%', placeholder: 'Select a customer...', allowClear: false });
         }
 
+        // Initialize select2 for country dropdown (shows names from CountryCode.country_idn)
+        var $countrySelect = $form.find('#id_country');
+        if ($countrySelect.length && $.fn.select2) {
+            $countrySelect.select2({ theme: 'bootstrap-5', width: '100%', placeholder: 'Select nationality...' });
+        }
+
         // Add form-control class to clamped inputs within the form only
         $form.find('input, textarea').addClass('form-control');
 
@@ -60,8 +66,14 @@
                     method: 'GET',
                     success: function(customer) {
                         $form.find('#id_name').val(customer.full_name || '');
+                        // gender comes pre-formatted from API using Customer.get_gender_display with default language
                         $form.find('#id_gender').val(customer.gender_display || '');
-                        $form.find('#id_country').val(customer.nationality_name || '');
+                        $form.find('#id_country').val(customer.nationality_code || customer.nationality_name || '');
+                        // If select2 is used, trigger change to update display
+                        var $countrySelect = $form.find('#id_country');
+                        if ($countrySelect.length && $countrySelect.data('select2')) {
+                            $countrySelect.trigger('change');
+                        }
                         $form.find('#id_birth_place').val(customer.birth_place || '');
                         $form.find('#id_birthdate').val(customer.birthdate || '');
                         $form.find('#id_passport_no').val(customer.passport_number || '');

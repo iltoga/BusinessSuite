@@ -3,6 +3,8 @@ import os
 from django.conf import settings
 from django.core.files.storage import default_storage
 from django.db import models
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from django.utils import timezone
 
 from core.utils.helpers import whitespaces_to_underscores
@@ -145,3 +147,11 @@ class Document(models.Model):
             self.ocr_check = False
 
         super().save(*args, **kwargs)
+
+
+@receiver(post_save, sender=Document)
+def update_doc_application_status_on_document_save(sender, instance, **kwargs):
+    doc_application = instance.doc_application
+    if doc_application and doc_application.status != DocApplication.STATUS_COMPLETED:
+        # Recalculate status when documents change so the application leaves pending once requirements are met.
+        doc_application.save()

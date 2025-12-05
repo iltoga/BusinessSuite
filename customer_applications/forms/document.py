@@ -1,5 +1,6 @@
 from django import forms
 
+from customer_applications.hooks.registry import hook_registry
 from customer_applications.models import Document
 
 
@@ -35,6 +36,19 @@ class DocumentUpdateForm(forms.ModelForm):
         self.user = kwargs.pop("user", None)
         super(DocumentUpdateForm, self).__init__(*args, **kwargs)
         self.set_initial_fields()
+        self._extra_actions = self._load_extra_actions()
+
+    def _load_extra_actions(self):
+        """Load extra actions from the document type hook if registered."""
+        if self.instance and self.instance.doc_type:
+            hook = hook_registry.get_hook(self.instance.doc_type.name)
+            if hook:
+                return hook.get_extra_actions()
+        return []
+
+    def get_extra_actions(self):
+        """Return the list of extra actions for this document type."""
+        return self._extra_actions
 
     def clean(self):
         cleaned_data = super().clean()

@@ -41,6 +41,7 @@ dependencies = [
     "openpyxl>=3.1.0",
     "python-docx>=1.0.0",
     "pypdf2>=3.0.0",
+    "hypothesis>=6.0.0",
 ]
 
 [build-system]

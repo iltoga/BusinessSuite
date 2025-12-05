@@ -7,6 +7,7 @@ from .doc_application_update_view import DocApplicationUpdateView
 from .doc_workflow_create_view import DocWorkflowCreateView
 from .doc_workflow_detail_view import DocWorkflowDetailView
 from .doc_workflow_update_view import DocWorkflowUpdateView
+from .document_action_view import DocumentActionView
 from .document_detail_view import DocumentDetailView
 from .document_detail_view_print import DocumentDetailViewPrint
 from .document_merge_view import ApplicationDocumentMergeView, DocumentMergeDownloadView

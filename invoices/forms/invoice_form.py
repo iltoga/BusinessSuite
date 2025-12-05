@@ -227,16 +227,16 @@ class InvoiceApplicationCreateForm(forms.ModelForm):
             self.fields["customer_application"].queryset = DocApplication.objects.filter(
                 pk=self.instance.customer_application.pk
             )
-        elif selected_customer_application:
-            self.fields["customer_application"].queryset = DocApplication.objects.filter(
-                pk=selected_customer_application.pk
-            )
         elif customer_applications is not None:
             # Use the provided queryset (could be empty .none() queryset)
             self.fields["customer_application"].queryset = customer_applications
         else:
             # No customer selected - use empty queryset to avoid loading all applications
             self.fields["customer_application"].queryset = DocApplication.objects.none()
+
+        # Pre-select the customer application if one was provided
+        if selected_customer_application and not self.initial.get("customer_application"):
+            self.initial["customer_application"] = selected_customer_application.pk
 
         # If data is provided (form submission), check if there's a selected customer_application
         # and expand the queryset to include it (for dynamically added applications)

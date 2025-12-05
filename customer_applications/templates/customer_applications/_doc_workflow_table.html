@@ -88,8 +88,23 @@
 {% endif %}
 <div id="doc_workflow_next_btn" class="col mb-2 p-2">
   <div class="text-center">
-    {% if docapplication.is_application_completed %}
+    {% if docapplication.status == docapplication.STATUS_COMPLETED or docapplication.is_application_completed %}
       <h1><span class="badge badge-success">Application Completed</span></h1>
+      {% comment %}If app is completed and no invoice exists, offer the create button (same as list view){% endcomment %}
+      {% if not docapplication.has_invoice and user|has_perm:'invoices,invoice,add' %}
+        <div class="my-3">
+          <a href="{% url 'invoice-create-by-doc-application' docapplication.pk %}" class="btn btn-success">Create Invoice</a>
+        </div>
+      {% elif docapplication.has_invoice %}
+        <div class="my-3">
+          {% if user|has_perm:'invoices,invoice,view' %}
+            <a href="{% url 'invoice-detail' docapplication.get_invoice.pk %}" class="btn btn-primary me-1">View Invoice</a>
+          {% endif %}
+          {% if user|has_perm:'invoices,invoice,change' %}
+            <a href="{% url 'invoice-update' docapplication.get_invoice.pk %}" class="btn btn-warning">Edit Invoice</a>
+          {% endif %}
+        </div>
+      {% endif %}
     {% else %}
       {% if user|has_perm:'customer_applications,docworkflow,change' and docapplication.has_next_task %}
       <div>

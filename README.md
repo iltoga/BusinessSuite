@@ -66,6 +66,21 @@ For a production environment, it is recommended to use the provided Docker setup
   - `scripts/check_inline_script_tags.py` — scans `templates/` for inline `<script>` tags and exits with non-zero code if any are found.
   - You can add this to CI or as a git pre-commit hook to prevent regressions.
 
+  ## Internationalization (i18n)
+
+  To enable translations and generate compiled message files used by Django, follow these steps:
+
+  1. Create or edit translation files under `locale/<lang>/LC_MESSAGES/django.po`.
+  2. Compile translations to binary `.mo` files with:
+
+  ```sh
+  python manage.py compilemessages
+  ```
+
+  After compiling, make sure `LOCALE_PATHS` in `business_suite/settings/base.py` points to the `locale/` folder (it already does).
+
+  We include a minimal Indonesian translation for the `Male` and `Female` labels in `locale/id/LC_MESSAGES/django.po`. Run `compilemessages` to generate `django.mo` and have Django display the translated labels during runtime and tests.
+
 
 ## API Usage
 

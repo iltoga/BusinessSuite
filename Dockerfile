@@ -14,6 +14,7 @@ RUN apt-get update \
   poppler-utils \
   postgresql-client \
   libreoffice-writer-nogui \
+  gettext \
   curl \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
@@ -54,6 +55,7 @@ RUN apt-get update \
   poppler-utils \
   postgresql-client \
   libreoffice-writer-nogui \
+  gettext \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 
