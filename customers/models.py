@@ -94,6 +94,8 @@ class CustomerManager(models.Manager):
 class Customer(models.Model):
     # Fields are ordered: default fields, custom fields, and finally relationships
     id = models.AutoField(primary_key=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     title = models.CharField(choices=TITLES_CHOICES, max_length=50, blank=True, null=True)
     customer_type = models.CharField(
         max_length=20,
@@ -143,7 +145,7 @@ class Customer(models.Model):
     objects = CustomerManager()
 
     class Meta:
-        ordering = ["first_name", "last_name"]
+        ordering = ["-created_at"]
 
     def __str__(self):
         return self.full_name

@@ -6,6 +6,7 @@ import json
 from unittest.mock import MagicMock, patch
 
 from django.test import TestCase, override_settings
+from PIL import Image
 
 from core.services.ai_passport_parser import AIPassportParser, AIPassportResult, PassportData
 
@@ -90,12 +91,66 @@ class AIPassportParserTestCase(TestCase):
 
         # Create a mock file with unsupported extension
         mock_file = MagicMock()
-        mock_file.name = "test.pdf"  # PDF not supported for images
+        mock_file.name = "test.txt"  # Unsupported
 
-        result = parser.parse_passport_image(mock_file, filename="test.pdf")
+        result = parser.parse_passport_image(mock_file, filename="test.txt")
 
         self.assertFalse(result.success)
         self.assertIn("Unsupported file type", result.error_message)
+
+    @override_settings(
+        OPENROUTER_API_KEY="test-key",
+        LLM_PROVIDER="openrouter",
+    )
+    @patch(OPENAI_PATCH_TARGET)
+    def test_parse_passport_pdf_is_converted_and_parsed(self, mock_openai):
+        """Test that PDF input is accepted and converted to PNG before vision parsing."""
+
+        # Mock the LLM response
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message.content = json.dumps(
+            {
+                "first_name": "Mario",
+                "last_name": "Rossi",
+                "full_name": "Mario Rossi",
+                "nationality": "Italy",
+                "nationality_code": "ITA",
+                "gender": "M",
+                "date_of_birth": "1985-03-15",
+                "birth_place": "Rome",
+                "passport_number": "YA1234567",
+                "passport_issue_date": "2020-01-10",
+                "passport_expiration_date": "2030-01-09",
+                "issuing_country": "Italy",
+                "issuing_country_code": "ITA",
+                "issuing_authority": "Ministry of Interior",
+                "height_cm": 175,
+                "eye_color": "Brown",
+                "address_abroad": None,
+                "document_type": "P",
+                "confidence_score": 0.92,
+            }
+        )
+
+        mock_client = MagicMock()
+        mock_client.chat.completions.create.return_value = mock_response
+        mock_openai.return_value = mock_client
+
+        parser = AIPassportParser()
+
+        # Fake PDF bytes; we patch conversion so we don't depend on poppler in unit tests.
+        fake_pdf_bytes = b"%PDF-1.4\n%fake\n"
+
+        with patch(
+            "core.services.ai_passport_parser.convert_and_resize_image",
+            return_value=(Image.new("RGB", (10, 10), color="white"), ""),
+        ) as mock_convert:
+            result = parser.parse_passport_image(fake_pdf_bytes, filename="passport.pdf")
+
+        mock_convert.assert_called()
+        self.assertTrue(result.success)
+        self.assertEqual(result.passport_data.passport_number, "YA1234567")
 
     @override_settings(
         OPENROUTER_API_KEY="test-key",

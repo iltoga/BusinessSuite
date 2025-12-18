@@ -5,13 +5,14 @@ from pdf2image.pdf2image import convert_from_bytes, convert_from_path
 from PIL import Image
 
 
-def convert_and_resize_image(file, file_type, return_encoded=True, resize=False, base_width=400):
+def convert_and_resize_image(file, file_type, return_encoded=True, resize=False, base_width=400, dpi=300):
     """
     Convert the file to an image and resize it
     :param file: the file to convert
     :param file_type: the file type
     :param resize: whether to resize the image or not
     :param base_width: the base width to resize the image to
+    :param dpi: DPI for PDF conversion (default 300 for high quality)
     :return: the image and the base64 encoded image string
     """
     if file_type not in ["image/jpeg", "image/png", "application/pdf"]:
@@ -21,9 +22,10 @@ def convert_and_resize_image(file, file_type, return_encoded=True, resize=False,
         img = None
         try:
             file.seek(0)  # Ensure cursor is at start of file
-            images = convert_from_bytes(file.read())
+            # Use high DPI for better OCR quality
+            images = convert_from_bytes(file.read(), dpi=dpi)
         except Exception as e:
-            images = convert_from_path(file)
+            images = convert_from_path(file, dpi=dpi)
 
         if len(images) == 0:
             raise ValueError("Could not convert the pdf to an image!")
@@ -43,7 +45,8 @@ def convert_and_resize_image(file, file_type, return_encoded=True, resize=False,
 
     # Encode the image to base64
     buffered = BytesIO()
-    img.save(buffered, format="PNG")
+    # Save PNG with maximum quality (compress_level=0 means no compression, fastest and lossless)
+    img.save(buffered, format="PNG", compress_level=1, optimize=False)
     if return_encoded:
         img_str = base64.b64encode(buffered.getvalue())
     else:

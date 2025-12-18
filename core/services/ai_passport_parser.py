@@ -7,12 +7,15 @@ Supports multimodal vision for passport images, complementing MRZ extraction.
 import json
 import logging
 from dataclasses import dataclass, field
+from io import BytesIO
+from pathlib import Path
 from typing import Optional, Union
 
 from django.core.files.uploadedfile import UploadedFile
 
 from core.services.ai_client import AIClient
 from core.utils.icao_validation import validate_passport_number_icao
+from core.utils.imgutils import convert_and_resize_image
 
 logger = logging.getLogger(__name__)
 
@@ -121,8 +124,11 @@ class AIPassportParser:
         "additionalProperties": False,
     }
 
-    # Supported image types
-    SUPPORTED_TYPES = ["png", "jpg", "jpeg", "gif", "webp"]
+    # Supported input types. PDFs are accepted and converted to PNG before vision parsing.
+    SUPPORTED_TYPES = ["png", "jpg", "jpeg", "gif", "webp", "pdf"]
+
+    # Actual image types accepted by the vision API payload.
+    VISION_IMAGE_TYPES = ["png", "jpg", "jpeg", "gif", "webp"]
 
     # System prompt for passport analysis
     SYSTEM_PROMPT = (
@@ -189,7 +195,45 @@ class AIPassportParser:
 
             # Detect and validate file type
             file_type = AIClient.get_file_extension(filename)
-            if file_type not in self.SUPPORTED_TYPES:
+
+            if file_type and file_type not in self.SUPPORTED_TYPES:
+                return AIPassportResult(
+                    passport_data=PassportData(),
+                    success=False,
+                    error_message=(
+                        f"Unsupported file type: {file_type}. " f"Supported: {', '.join(self.SUPPORTED_TYPES)}"
+                    ),
+                )
+
+            # If a PDF is provided, convert the first page to PNG bytes for the vision model.
+            # This keeps downstream logic (mime type, image_url payload) strictly image-based.
+            if file_type == "pdf":
+                try:
+                    # Use high DPI (300) for maximum quality OCR/vision parsing
+                    pil_img, _ = convert_and_resize_image(
+                        BytesIO(file_bytes),
+                        "application/pdf",
+                        return_encoded=False,
+                        resize=False,
+                        dpi=300,
+                    )
+                    png_buffer = BytesIO()
+                    # Save with lossless compression to preserve quality
+                    pil_img.save(png_buffer, format="PNG", compress_level=1, optimize=False)
+                    file_bytes = png_buffer.getvalue()
+
+                    # Replace extension so mime type becomes image/png.
+                    original_path = Path(filename) if filename else Path("passport.pdf")
+                    filename = str(original_path.with_suffix(".png"))
+                    file_type = "png"
+                except Exception as e:
+                    return AIPassportResult(
+                        passport_data=PassportData(),
+                        success=False,
+                        error_message=f"Failed to convert PDF to image for AI parsing: {e}",
+                    )
+
+            if file_type and file_type not in self.VISION_IMAGE_TYPES:
                 return AIPassportResult(
                     passport_data=PassportData(),
                     success=False,

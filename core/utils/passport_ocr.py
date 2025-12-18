@@ -70,8 +70,10 @@ def extract_mrz_data(file, check_expiration=True, expiration_days=180) -> dict:
         file_name, _ = os.path.splitext(file_path)
         converted_file_name = f"{file_name}.png"
         try:
-            img, _ = convert_and_resize_image(file_path, content_type, return_encoded=False, resize=False)
-            img.save(converted_file_name)
+            # Use high DPI (300) for maximum quality MRZ extraction
+            img, _ = convert_and_resize_image(file_path, content_type, return_encoded=False, resize=False, dpi=300)
+            # Save with lossless compression to preserve quality for PassportEye/Tesseract
+            img.save(converted_file_name, format="PNG", compress_level=1, optimize=False)
         except Exception as e:
             # delete temporary file
             try:
@@ -126,9 +128,13 @@ def extract_mrz_data(file, check_expiration=True, expiration_days=180) -> dict:
                     os.unlink(variant)
                 except OSError:
                     logger.debug("Failed to remove temporary preprocessing file %s", variant)
-        # delete temporary file
-        if file_to_delete:
-            os.unlink(file_to_delete)
+        # delete temporary files created during processing
+        for tmp_path in (file_to_delete, converted_file_name):
+            if tmp_path and os.path.exists(tmp_path):
+                try:
+                    os.unlink(tmp_path)
+                except OSError:
+                    logger.debug("Failed to remove temporary file %s", tmp_path)
 
         # Check the country code and nationality with fallback mechanism
         # Try to map nationality first, then fallback to country
@@ -193,16 +199,18 @@ def extract_mrz_data(file, check_expiration=True, expiration_days=180) -> dict:
         return parsed_mrz
     except FileNotFoundError:
         try:
-            if file_to_delete:
-                os.unlink(file_to_delete)
+            for tmp_path in (file_to_delete, converted_file_name):
+                if tmp_path and os.path.exists(tmp_path):
+                    os.unlink(tmp_path)
         except Exception:
             pass
         raise Exception("The specified file could not be found")
     except Exception as e:
         # delete temporary file
         try:
-            if file_to_delete:
-                os.unlink(file_to_delete)
+            for tmp_path in (file_to_delete, converted_file_name):
+                if tmp_path and os.path.exists(tmp_path):
+                    os.unlink(tmp_path)
         except Exception:
             pass
         # if e is "mrz_type" or e is "mrz_format" translate the error to a more user friendly message
@@ -459,6 +467,31 @@ def filter_mrz(extracted_mrz, actual_mrz):
     return mrz
 
 
+def _is_mrz_obviously_corrupted(parsed_mrz: dict) -> bool:
+    """Check if MRZ data is obviously corrupted (garbage OCR)."""
+    # Check for excessive repeated characters (KKKKKK, EEEEEE, etc.)
+    for key in ["names", "surname"]:
+        value = str(parsed_mrz.get(key, ""))
+        if len(value) > 5:
+            # Check for 4+ consecutive identical characters
+            for i in range(len(value) - 3):
+                if value[i] == value[i + 1] == value[i + 2] == value[i + 3]:
+                    return True
+
+    # Check sex field (must be M or F, not A or other garbage)
+    sex = parsed_mrz.get("sex", "")
+    if sex and sex not in ["M", "F"]:
+        return True
+
+    # Check if country/nationality codes look like garbage (not 3 letters)
+    for key in ["country", "nationality"]:
+        code = str(parsed_mrz.get(key, ""))
+        if code and (len(code) != 3 or not code.isalpha()):
+            return True
+
+    return False
+
+
 def _run_mrz_pipeline(candidate_images: List[Tuple[str, str]], logger: logging.Logger) -> dict:
     """Try multiple preprocessed images until a valid MRZ passes validation."""
 
@@ -501,6 +534,16 @@ def _run_mrz_pipeline(candidate_images: List[Tuple[str, str]], logger: logging.L
             best_score = candidate_score
 
     if best_candidate:
+        # Final sanity check: reject obviously corrupted MRZ data
+        if _is_mrz_obviously_corrupted(best_candidate):
+            logger.error(
+                "Best-effort MRZ data is obviously corrupted (garbage characters, invalid codes). " "Attempts: %s",
+                "; ".join(attempt_log),
+            )
+            raise Exception(
+                "Failed to scan document. Ensure that the document is a valid passport and the quality of the image or PDF is good"
+            )
+
         logger.warning(
             "Returning best-effort MRZ despite validation failure. Attempts: %s",
             "; ".join(attempt_log),
@@ -641,13 +684,24 @@ def extract_passport_with_ai(file, use_ai: bool = True) -> dict:
     # Step 1: Run MRZ extraction first (this validates the document)
     # We call the original extract_mrz_data but with check_expiration=False
     # to get the MRZ data regardless of expiration status
-    mrz_data = extract_mrz_data(file, check_expiration=False)
+    mrz_data = None
+    mrz_extraction_error = None
     try:
-        logger.info("MRZ data extracted: %s", json.dumps(mrz_data, ensure_ascii=False, default=str))
-    except Exception:
-        logger.debug("Failed to stringify MRZ data for logging.")
+        mrz_data = extract_mrz_data(file, check_expiration=False)
+        try:
+            logger.info("MRZ data extracted: %s", json.dumps(mrz_data, ensure_ascii=False, default=str))
+        except Exception:
+            logger.debug("Failed to stringify MRZ data for logging.")
+    except Exception as e:
+        logger.warning(f"MRZ extraction failed: {e}")
+        mrz_extraction_error = str(e)
+        if not use_ai:
+            # If AI is disabled and MRZ failed, re-raise the error
+            raise
 
     if not use_ai:
+        if not mrz_data:
+            raise Exception("MRZ extraction failed and AI is disabled")
         return mrz_data
 
     # Step 2: Run AI extraction
@@ -660,11 +714,21 @@ def extract_passport_with_ai(file, use_ai: bool = True) -> dict:
         ai_error = str(e)
 
     if not ai_data:
+        if not mrz_data:
+            # Both MRZ and AI failed
+            raise Exception(f"Failed to extract passport data. MRZ error: {mrz_extraction_error}. AI error: {ai_error}")
         logger.info("No AI data extracted, returning MRZ data only")
         # Add AI error to MRZ data if there was an error
         if ai_error:
             mrz_data["ai_error"] = ai_error
         return mrz_data
+
+    # If MRZ failed but AI succeeded, return AI data only
+    if not mrz_data:
+        logger.info("MRZ extraction failed but AI succeeded, returning AI-only data")
+        ai_data["extraction_method"] = "ai_only"
+        ai_data["mrz_error"] = mrz_extraction_error
+        return ai_data
 
     # Step 3: Merge results with comparison logic
     merged_data = _merge_passport_data(mrz_data, ai_data, logger)
