@@ -19,9 +19,20 @@ DocumentUpdateFormSet = forms.inlineformset_factory(
     DocApplication,  # parent model
     Document,  # child model
     form=DocumentUpdateForm,  # form to use
-    extra=0,  # minimum number of forms to show
+    extra=0,  # no extra forms - existing documents only
     max_num=20,  # maximum number of forms to show
-    can_delete=False,  # enable deletion
+    can_delete=False,  # disable deletion for existing documents
+)
+
+
+# Formset for adding new documents to an existing application
+NewDocumentFormSet = forms.inlineformset_factory(
+    DocApplication,  # parent model
+    Document,  # child model
+    form=DocumentCreateForm,  # simple form with just doc_type + required
+    extra=0,  # start with no extra forms
+    max_num=20,  # maximum number of forms to show
+    can_delete=True,  # allow removing newly added forms
 )
 
 

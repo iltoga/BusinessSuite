@@ -1,6 +1,7 @@
 import logging
 import os
 
+from django.conf import settings
 from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
 from django.core.files import File
@@ -43,6 +44,13 @@ class CustomerCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateVie
         context = super().get_context_data(**kwargs)
         context["action_name"] = "Create"
         return context
+
+    def get_initial(self):
+        initial = super().get_initial()
+        # Set default email if not provided
+        if not initial.get("email"):
+            initial["email"] = getattr(settings, "DEFFAULT_CUSTOMER_EMAIL", None)
+        return initial
 
     def form_valid(self, form):
         form.instance.created_by = self.request.user

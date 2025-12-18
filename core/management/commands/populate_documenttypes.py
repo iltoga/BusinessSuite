@@ -76,7 +76,7 @@ class Command(BaseCommand):
                 "has_expiration_date": True,
                 "has_doc_number": True,
                 "has_file": True,
-                "has_details": True,
+                "has_details": False,
                 "is_in_required_documents": True,
             },
             {
@@ -106,10 +106,9 @@ class Command(BaseCommand):
                 "has_expiration_date": False,
                 "has_doc_number": False,
                 "has_file": True,
-                "has_details": True,
+                "has_details": False,
                 "is_in_required_documents": True,
             },
-            # Optional documents
             {
                 "name": "Invitation Letter",
                 "description": "Invitation letter from event organizer or host for special-purpose visas",
@@ -118,7 +117,7 @@ class Command(BaseCommand):
                 "has_doc_number": False,
                 "has_file": True,
                 "has_details": True,
-                "is_in_required_documents": False,
+                "is_in_required_documents": True,
             },
             {
                 "name": "Processed Visa Stamp",
@@ -128,15 +127,26 @@ class Command(BaseCommand):
                 "has_doc_number": False,
                 "has_file": True,
                 "has_details": True,
-                "is_in_required_documents": False,
+                "is_in_required_documents": True,
             },
         ]
 
         for doc_type in document_types:
-            if not DocumentType.objects.filter(name=doc_type["name"]).exists():
-                DocumentType.objects.create(**doc_type)
+            obj, created = DocumentType.objects.get_or_create(name=doc_type["name"], defaults=doc_type)
+            if created:
                 self.stdout.write(self.style.SUCCESS(f"Created document type: {doc_type['name']}"))
             else:
-                self.stdout.write(self.style.WARNING(f"Document type '{doc_type['name']}' already exists. Skipping."))
+                updated = False
+                for key, value in doc_type.items():
+                    if key != "name" and getattr(obj, key) != value:
+                        setattr(obj, key, value)
+                        updated = True
+                if updated:
+                    obj.save()
+                    self.stdout.write(self.style.SUCCESS(f"Updated document type: {doc_type['name']}"))
+                else:
+                    self.stdout.write(
+                        self.style.WARNING(f"Document type '{doc_type['name']}' already exists and is up to date.")
+                    )
 
         self.stdout.write(self.style.SUCCESS("Finished populating DocumentType table"))

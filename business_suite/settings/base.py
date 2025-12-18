@@ -429,3 +429,5 @@ DEFAULT_SPONSOR_PASSPORT_FILE_PATH = os.getenv(
 
 # default language for generated documents
 DEFAULT_DOCUMENT_LANGUAGE_CODE = os.getenv("DEFAULT_DOCUMENT_LANGUAGE_CODE", "id")
+
+DEFFAULT_CUSTOMER_EMAIL = os.getenv("DEFFAULT_CUSTOMER_EMAIL", "sample_email@gmail.com")

@@ -23,6 +23,7 @@
         setupProductChangeHandler();
         setupAddDocumentHandler();
         setupRemoveDocumentHandler();
+        setupDocTypeChangeHandler();
     }
 
     /**
@@ -80,7 +81,7 @@
         $('#id_product').change(function() {
             var selectedProduct = $(this).val();
             $('#document-form-list').empty(); // Remove all existing required document forms
-            
+
             if (selectedProduct) {
                 loadProductDocuments(selectedProduct);
             }
@@ -108,10 +109,10 @@
 
                 // Create new required document forms
                 createDocumentForms(requiredDocuments, 0, true);
-                
+
                 // Create new optional document forms
                 createDocumentForms(optionalDocuments, requiredDocuments.length, false);
-                
+
                 // Update total forms count
                 var totalForms = requiredDocuments.length + optionalDocuments.length;
                 $('#id_documents-TOTAL_FORMS').val(totalForms);
@@ -133,17 +134,22 @@
             var formIndex = startIndex + i;
             var newFormHtml = $('#empty-form').html().replace(/__prefix__/g, formIndex);
             var newForm = $(newFormHtml);
-            
+
             // Set the document type
             newForm.find('select[name=documents-' + formIndex + '-doc_type]').val(documents[i].id);
-            
+
             // Set required checkbox for optional documents
             if (!isRequired) {
                 newForm.find('input[name=documents-' + formIndex + '-required]').prop('checked', false);
             }
-            
+
             $('#document-form-list').append(newForm);
         }
+
+        // Filter options for all forms after creation
+        $('#document-form-list .document_form').each(function(index) {
+            filterDocTypeOptions(index);
+        });
     }
 
     /**
@@ -156,7 +162,45 @@
             $('#document-form-list').append(newForm);
             $('#id_documents-TOTAL_FORMS').val(parseInt(formIdx) + 1);
             $('#id_documents-' + formIdx + '-step').val(parseInt(formIdx) + 1);
+
+            // Filter the doc_type options to show only remaining documents
+            filterDocTypeOptions(formIdx);
         }, false);
+    }
+
+    /**
+     * Filter doc_type options in the specified form to exclude already selected document types
+     * @param {number} formIdx - The index of the form to filter
+     */
+    function filterDocTypeOptions(formIdx) {
+        var selectElement = $('#id_documents-' + formIdx + '-doc_type');
+        var selectedDocTypes = getSelectedDocTypes();
+        var currentSelected = selectElement.val();
+
+        // Show all options first
+        selectElement.find('option').show();
+
+        // Hide options that are already selected in other forms
+        selectedDocTypes.forEach(function(docTypeId) {
+            if (docTypeId !== currentSelected) {
+                selectElement.find('option[value="' + docTypeId + '"]').hide();
+            }
+        });
+    }
+
+    /**
+     * Get all currently selected document type IDs from existing forms
+     * @returns {Array} Array of selected document type IDs
+     */
+    function getSelectedDocTypes() {
+        var selectedDocTypes = [];
+        $('#document-form-list .document_form select[name*="-doc_type"]').each(function() {
+            var value = $(this).val();
+            if (value && value !== '') {
+                selectedDocTypes.push(value);
+            }
+        });
+        return selectedDocTypes;
     }
 
     /**
@@ -172,18 +216,30 @@
     }
 
     /**
+     * Setup doc_type change handler to update available options in other forms
+     */
+    function setupDocTypeChangeHandler() {
+        $(document).on('change', 'select[name*="-doc_type"]', function() {
+            // Re-filter options for all doc_type selects
+            $('#document-form-list .document_form').each(function(index) {
+                filterDocTypeOptions(index);
+            });
+        });
+    }
+
+    /**
      * Reindex all document forms after removal
      */
     function reindexDocumentForms() {
         var forms = $('#document-form-list .document_form');
         $('#id_documents-TOTAL_FORMS').val(forms.length);
-        
+
         var i = 0;
         for (var form of forms.toArray()) {
             $(form).find('input,select,checkbox').each(function() {
                 var name = $(this).attr('name');
                 var id = $(this).attr('id');
-                
+
                 if (name) {
                     $(this).attr('name', name.replace(/-\d+-/, '-' + i + '-'));
                 }
@@ -193,6 +249,11 @@
             });
             i++;
         }
+
+        // Re-filter doc_type options for all forms after reindexing
+        forms.each(function(index) {
+            filterDocTypeOptions(index);
+        });
     }
 
     // Auto-initialize on DOM ready

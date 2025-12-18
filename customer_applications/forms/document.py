@@ -19,6 +19,7 @@ class DocumentUpdateForm(forms.ModelForm):
         model = Document
         fields = [
             "doc_type",
+            "required",
             "file",
             "doc_number",
             "expiration_date",
@@ -40,7 +41,7 @@ class DocumentUpdateForm(forms.ModelForm):
 
     def _load_extra_actions(self):
         """Load extra actions from the document type hook if registered."""
-        if self.instance and self.instance.doc_type:
+        if self.instance and self.instance.pk and self.instance.doc_type_id:
             hook = hook_registry.get_hook(self.instance.doc_type.name)
             if hook:
                 return hook.get_extra_actions()
@@ -69,11 +70,18 @@ class DocumentUpdateForm(forms.ModelForm):
 
     # Custom methods
     def set_initial_fields(self):
-        self.fields["doc_type"].disabled = True
+        # Only disable doc_type field for existing documents
+        if self.instance.pk:
+            self.fields["doc_type"].disabled = True
         self.initial["metadata_display"] = self.instance.metadata or None
         self.set_widget_fields()
 
     def set_widget_fields(self):
+        # Only customize widgets for existing documents with a doc_type
+        # New documents (extra forms) don't have a doc_type yet
+        if not self.instance.pk or not hasattr(self.instance, "doc_type_id") or not self.instance.doc_type_id:
+            return
+
         doc_type = self.instance.doc_type
         if not doc_type.has_expiration_date:
             self.fields["expiration_date"].widget = forms.HiddenInput()
@@ -89,6 +97,10 @@ class DocumentUpdateForm(forms.ModelForm):
             self.fields["details"].required = True
 
     def validate_doc_type_conditions(self, cleaned_data):
+        # Skip validation for new documents without a doc_type yet
+        if not self.instance.pk or not self.instance.doc_type_id:
+            return
+
         if self.instance.doc_type.name == "Passport":
             self.validate_passport_fields(cleaned_data)
         if self.instance.doc_type.has_file and self.instance.doc_type.has_details:
