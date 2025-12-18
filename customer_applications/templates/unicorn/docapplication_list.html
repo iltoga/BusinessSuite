@@ -41,7 +41,7 @@
         </tr>
       </thead>
       <tbody>
-        {% for docapplication in list_items %}
+        {% for docapplication in get_items %}
           {% with current_workflow=docapplication.prefetched_workflows.0 %}
             {% with is_app_completed=current_workflow.is_workflow_completed %}
             {% if not is_app_completed %}

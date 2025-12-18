@@ -37,12 +37,16 @@ class CustomerListView(UnicornSearchListView):
         return redirect(reverse_lazy("customer-list"))
 
     def load_items(self):
-        # Use parent method to populate list_items
+        # Use parent method to populate list_items with PKs
         super().load_items()
+
+    def get_items(self):
+        """Return actual Customer instances with passport expiration flags."""
+        customers = super().get_items()
         # Add a flag to each customer indicating if passport expiration is within next 6 months
         now = timezone.now().date()
         threshold = now + timedelta(days=183)  # approx 6 months
-        for cust in self.list_items:
+        for cust in customers:
             cust.passport_expiring_soon = False
             cust.passport_expired = False
             if hasattr(cust, "passport_expiration_date") and cust.passport_expiration_date:
@@ -55,3 +59,4 @@ class CustomerListView(UnicornSearchListView):
                 except Exception:
                     cust.passport_expiring_soon = False
                     cust.passport_expired = False
+        return customers

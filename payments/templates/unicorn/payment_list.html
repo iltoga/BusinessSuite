@@ -29,7 +29,7 @@
             </tr>
             </thead>
             <tbody>
-            {% for payment in list_items %}
+            {% for payment in get_items %}
                     <tr>
                         <td>
                             <a href="{% url 'invoice-detail' payment.invoice_application.invoice.pk %}" class="text-primary font-weight-light">{{ payment.invoice_application }}</a>

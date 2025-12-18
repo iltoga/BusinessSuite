@@ -39,7 +39,7 @@
             </tr>
             </thead>
             <tbody>
-            {% for invoice in list_items %}
+            {% for invoice in get_items %}
                     <tr class="{% if invoice.is_expired %}invoice-expired{% endif %}">
                         <!-- invoice no -->
                         <td>{{ invoice.invoice_no_display }}</td>
@@ -117,7 +117,7 @@
     </div>
 
     <!-- Mark as Paid Modals (one for each invoice) -->
-    {% for invoice in list_items %}
+    {% for invoice in get_items %}
     <div class="modal fade" id="markAsPaidModal{{ invoice.pk }}" tabindex="-1" aria-labelledby="markAsPaidModalLabel{{ invoice.pk }}" aria-hidden="true">
       <div class="modal-dialog modal-lg">
         <div class="modal-content">

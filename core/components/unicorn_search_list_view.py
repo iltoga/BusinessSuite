@@ -36,8 +36,7 @@ class UnicornSearchListView(UnicornView):
         start = self.items_per_page * (self.page - 1)
         end = self.items_per_page * self.page
 
-        self.list_items = list(queryset[start:end])
-        # self.list_items = queryset[start:end]
+        self.list_items = list(queryset[start:end].values_list("pk", flat=True))
         self.total_items = queryset.count()
         self.total_pages = ceil(self.total_items / self.items_per_page)
 
@@ -49,7 +48,7 @@ class UnicornSearchListView(UnicornView):
             start = self.items_per_page * (self.page - 1)
             end = self.items_per_page * self.page
 
-            self.list_items = list(queryset[start:end])
+            self.list_items = list(queryset[start:end].values_list("pk", flat=True))
             self.total_items = queryset.count()
             self.total_pages = ceil(self.total_items / self.items_per_page)
         else:
@@ -110,3 +109,9 @@ class UnicornSearchListView(UnicornView):
 
     def has_next(self):
         return self.page * self.items_per_page < self.total_items
+
+    def get_items(self):
+        """Return actual model instances from the stored PKs."""
+        if not self.list_items:
+            return []
+        return list(self.model.objects.filter(pk__in=self.list_items))
