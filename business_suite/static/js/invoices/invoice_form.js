@@ -76,6 +76,10 @@
         updateTotalAmount();
     });
 
+    $(document).on('change', "input[name$='-DELETE']", function () {
+        updateTotalAmount();
+    });
+
     // On customer's drowpdown change, reload the page posting the customer id as query parameter
     $('#id_customer').change(function () {
         var selection = $(this).val();
@@ -132,11 +136,24 @@
 
     function updateTotalAmount() {
         var total = 0.0;
-        $('[id$=-amount]').each(function () {
-            // unmaks the value and parse it as a float
-            total += parseFloat($(this).val().replace(/,/g, '')) || 0;
+        $('#invoiceapplication-form-list .invoiceapplication_form').each(function () {
+            var $form = $(this);
+            // Skip if form is marked for deletion
+            var $deleteCheckbox = $form.find('input[name$="-DELETE"]');
+            if ($deleteCheckbox.length && $deleteCheckbox.is(':checked')) {
+                return;
+            }
+
+            // Find the amount field (but not paid_amount)
+            var $amountInput = $form.find('input[name$="-amount"]').not('[name$="-paid_amount"]');
+            if ($amountInput.length) {
+                var val = $amountInput.val().replace(/,/g, '');
+                total += parseFloat(val) || 0;
+            }
         });
-        $('#id_total_amount').val(total);
+        var d = parseInt(currencyDecimalPlaces);
+        if (isNaN(d)) d = 0;
+        $('#id_total_amount').val(total.toFixed(d));
     }
 
     // Set dropdown value without disabling it so the selection stays visible

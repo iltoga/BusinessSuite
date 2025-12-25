@@ -336,6 +336,9 @@ class InvoiceUpdateView(PermissionRequiredMixin, SuccessMessageMixin, UpdateView
             invoice_applications.instance = self.object
             invoice_applications.save()
 
+            # Recalculate total amount after applications are saved
+            self.object.save()
+
             # Add success message manually
             messages.success(self.request, self.success_message)
 

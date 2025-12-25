@@ -127,16 +127,14 @@ class Document(models.Model):
             ]
         )
 
-        # In case of an update operation, if a new file is being uploaded
-        if self.pk is not None and self.file and self.file.name:
+        # In case of an update operation, handle file replacement or removal
+        if self.pk is not None:
             orig = Document.objects.get(pk=self.pk)
-            # If a different file is being uploaded
-            if orig.file and orig.file.name != self.file.name:
-                # Get the upload_to path
-                file_path = get_upload_to(self, self.file.name)
-                # Check if the file with same path exists and delete it
-                if default_storage.exists(file_path):
-                    default_storage.delete(file_path)
+            if orig.file and (not self.file or orig.file.name != self.file.name):
+                if default_storage.exists(orig.file.name):
+                    default_storage.delete(orig.file.name)
+
+        if self.file:
             self.file_link = self.file.url
         else:
             self.file_link = ""
