@@ -106,9 +106,7 @@ class Customer(models.Model):
     first_name = models.CharField(max_length=50, db_index=True, blank=True, null=True)
     last_name = models.CharField(max_length=50, db_index=True, blank=True, null=True)
     company_name = models.CharField(max_length=100, blank=True, null=True, db_index=True)
-    email = models.EmailField(
-        max_length=50, unique=True, blank=True, null=True, validators=[validate_email], db_index=True
-    )
+    email = models.EmailField(max_length=50, blank=True, null=True, validators=[validate_email], db_index=True)
     telephone = models.CharField(
         max_length=50, blank=True, null=True, validators=[validate_phone_number], db_index=True
     )
@@ -226,10 +224,10 @@ class Customer(models.Model):
 
     def save(self, *args, **kwargs):
         """
-        Override save to convert empty strings to None for unique fields.
-        This prevents duplicate empty values in unique fields (email, telephone, etc.)
+        Override save to convert empty strings to None for certain fields.
+        This prevents duplicate empty values and keeps data clean.
         """
-        # Convert empty strings to None for unique fields to avoid duplicate constraint violations
+        # Convert empty strings to None for fields to avoid duplicate constraint violations if any
         if self.email == "":
             self.email = None
 
