@@ -6,7 +6,10 @@ set -e
 # 1. Load environment variables from .env if it exists (fallback for local/non-compose runs)
 if [ -f .env ]; then
   echo "Loading variables from .env file..."
-  export $(grep -v '^#' .env | xargs)
+  set -a
+  # shellcheck disable=SC1091
+  source .env
+  set +a
 fi
 
 # 2. Safety Check for Required Variables

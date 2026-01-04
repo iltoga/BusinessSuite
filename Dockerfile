@@ -6,6 +6,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_LINK_MODE=copy
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv
 
 # Install uv using the official binary
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
@@ -21,6 +22,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Copy only dependency files for caching
 COPY pyproject.toml uv.lock ./
+
+# Create the virtual environment outside /usr/src/app so it won't be masked by
+# the bind-mount in docker-compose.yml.
+RUN uv venv /opt/venv
 
 # Install dependencies into a virtual environment
 # We use --no-dev to exclude testing tools and --frozen to respect the lockfile
@@ -45,7 +50,8 @@ FROM python:3.14-slim AS final
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV DJANGO_SETTINGS_MODULE=business_suite.settings.prod
-ENV PATH="/usr/src/app/.venv/bin:$PATH"
+ENV VIRTUAL_ENV=/opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
 # Install runtime dependencies
 RUN apt-get update \
@@ -65,8 +71,10 @@ RUN addgroup --gid 1000 appuser && \
 # Set work directory
 WORKDIR /usr/src/app
 
-# Copy the virtual environment and application code from builder
-# Copying the .venv is cleaner than hardcoding python3.14/site-packages paths
+# Copy the virtual environment (kept outside the bind mount)
+COPY --from=builder /opt/venv /opt/venv
+
+# Copy the application code (will be overridden by bind mount in compose)
 COPY --from=builder --chown=appuser:appuser /usr/src/app /usr/src/app
 
 # Change to non-root privilege
