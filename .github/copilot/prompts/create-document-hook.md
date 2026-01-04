@@ -18,7 +18,7 @@ Project Context
 
   - `customer_applications/hooks/signals.py` (signal dispatch to hooks)
 
-  - Example hooks: `passport_sponsor.py` and `surat_permohonan.py` in customer_applications/hooks/
+  - Example hooks: `ktp_sponsor.py` and `surat_permohonan.py` in customer_applications/hooks/
 
   - `customer_applications/views/document_action_view.py` (backend execute_action endpoint)
 
@@ -201,4 +201,4 @@ Deliverable
 
 - One markdown prompt file including the above instructions, code snippets, and checklists.
 
-When generating code, ensure it fits the project's style and use existing patterns from `passport_sponsor.py` and `surat_permohonan.py`. The prompt should produce minimal, well-scoped classes with thorough testing and documentation.
+When generating code, ensure it fits the project's style and use existing patterns from `ktp_sponsor.py` and `surat_permohonan.py`. The prompt should produce minimal, well-scoped classes with thorough testing and documentation.

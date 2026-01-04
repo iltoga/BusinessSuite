@@ -70,8 +70,8 @@ class Command(BaseCommand):
                 "is_in_required_documents": True,
             },
             {
-                "name": "Passport Sponsor",
-                "description": "Passport of the Indonesian sponsor",
+                "name": "KTP Sponsor",
+                "description": "Sponsor KTP / ID card of the Indonesian sponsor",
                 "has_ocr_check": True,
                 "has_expiration_date": True,
                 "has_doc_number": True,

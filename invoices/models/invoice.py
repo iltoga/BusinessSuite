@@ -119,7 +119,7 @@ class Invoice(models.Model):
     objects = InvoiceManager()
 
     class Meta:
-        ordering = ("-invoice_no",)
+        ordering = ("-invoice_date", "-invoice_no")
 
     @property
     def invoice_no_display(self):

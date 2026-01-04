@@ -55,9 +55,9 @@ class InvoiceListView(PermissionRequiredMixin, ListView):
         if query and self.model is not None:
             order_by = self.model._meta.ordering
             if order_by:
-                queryset = self.model.objects.search_customers(query).order_by(*order_by)
+                queryset = self.model.objects.search_invoices(query).order_by(*order_by)
             else:
-                queryset = self.model.objects.search_customers(query)
+                queryset = self.model.objects.search_invoices(query)
         return queryset
 
 

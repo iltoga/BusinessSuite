@@ -1,0 +1,12 @@
+{% extends "base_template.html" %}
+{% load unicorn %}
+
+{% block title %}BusinessSuite - Manage Document Types{% endblock %}
+
+{% block head-after-jquery %}
+  {% unicorn_scripts %}
+{% endblock %}
+
+{% block content %}
+  {% unicorn 'document_type_list' %}
+{% endblock %}

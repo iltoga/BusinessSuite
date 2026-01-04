@@ -273,6 +273,11 @@ def manage_server_page(request):
 
 
 @superuser_required
+def document_types_page(request):
+    return render(request, "admin_tools/document_types.html", {})
+
+
+@superuser_required
 @require_POST
 @csrf_exempt
 def manage_server_action(request):

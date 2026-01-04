@@ -2,6 +2,11 @@ from django.core.exceptions import ValidationError
 from django.db import models
 
 
+class DocumentTypeManager(models.Manager):
+    def search_document_types(self, query):
+        return self.filter(models.Q(name__icontains=query) | models.Q(description__icontains=query))
+
+
 class DocumentType(models.Model):
     name = models.CharField(max_length=50, unique=True, db_index=True)
     description = models.CharField(max_length=500, blank=True)
@@ -12,6 +17,8 @@ class DocumentType(models.Model):
     has_details = models.BooleanField(default=False)
     validation_rule_regex = models.CharField(max_length=500, blank=True)
     is_in_required_documents = models.BooleanField(default=False)
+
+    objects = DocumentTypeManager()
 
     class Meta:
         ordering = ["name"]

@@ -35,10 +35,7 @@
                         <th scope="row" class="text-start col-3">File</th>
                         <td class="text-start col-9">
                             {% if document.file.url|lower|endswith:".pdf" %}
-                            <object data="{{ document.file.url }}" type="application/pdf" width="100%" height="800px">
-                                <!-- Fallback content if the PDF cannot be displayed -->
-                                <p>It appears you don't have a PDF plugin for this browser. You can <a href="{{ document.file.url }}" target="_blank">click here to download the PDF file.</a></p>
-                            </object>
+                                {% include "components/pdf_viewer.html" with pdf_url=document.file.url id=document.pk %}
                             {% else %}
                             <a href="{{ document.file.url }}" target="_blank">
                                 <img src="{{ document.file.url }}" alt="Document preview" width="600">

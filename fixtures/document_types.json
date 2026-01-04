@@ -93,8 +93,8 @@
         "model": "products.documenttype",
         "pk": 7,
         "fields": {
-            "name": "Passport Sponsor",
-            "description": "Passport of the Indonesian sponsor",
+            "name": "KTP Sponsor",
+            "description": "Sponsor KTP / ID card of the Indonesian sponsor",
             "has_ocr_check": true,
             "has_expiration_date": true,
             "has_doc_number": true,

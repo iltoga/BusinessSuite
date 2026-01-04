@@ -5,8 +5,8 @@ behaviors to the Document model lifecycle.
 """
 
 from .base import BaseDocumentTypeHook, DocumentAction
+from .ktp_sponsor import PassportSponsorHook
 from .registry import HookRegistry, hook_registry
-from .passport_sponsor import PassportSponsorHook
 from .surat_permohonan import SuratPermohonanHook
 
 __all__ = [

@@ -1,7 +1,7 @@
-"""Passport Sponsor document type hook.
+"""KTP Sponsor document type hook.
 
-This hook provides a custom action to upload a default sponsor passport file
-to Passport Sponsor documents.
+This hook provides a custom action to upload a default sponsor sponsor file
+to KTP Sponsor documents.
 """
 
 import logging
@@ -22,14 +22,14 @@ logger = logging.getLogger(__name__)
 
 
 class PassportSponsorHook(BaseDocumentTypeHook):
-    """Hook for Passport Sponsor document type.
+    """Hook for KTP Sponsor document type.
 
-    Provides a custom action button to upload the default sponsor passport file
+    Provides a custom action button to upload the default sponsor file
     from Django settings. Users can either click the button to use the default
     file or upload their own custom file.
     """
 
-    document_type_name = "Passport Sponsor"
+    document_type_name = "KTP Sponsor"
 
     def get_extra_actions(self) -> List[DocumentAction]:
         """Returns the upload default action if a default file is configured."""

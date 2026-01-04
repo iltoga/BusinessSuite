@@ -191,6 +191,7 @@
                                 <li><a class="dropdown-item" href="{% url 'admin_tools:backup_page' %}">Backups</a></li>
                                 <li><a class="dropdown-item" href="{% url 'admin_tools:restore_page' %}">Restore</a></li>
                                 <li><a class="dropdown-item" href="{% url 'admin_tools:manage_server' %}">Manage Server</a></li>
+                                <li><a class="dropdown-item" href="{% url 'admin_tools:document_types' %}">Document Types</a></li>
                             </ul>
                         </li>
                         {% endif %}
@@ -401,6 +402,9 @@
                         </li>
                         <li>
                             <a href="{% url 'admin_tools:manage_server' %}">Manage Server</a>
+                        </li>
+                        <li>
+                            <a href="{% url 'admin_tools:document_types' %}">Document Types</a>
                         </li>
                     </ul>
                 </li>
