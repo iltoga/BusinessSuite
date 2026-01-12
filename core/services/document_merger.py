@@ -225,7 +225,7 @@ class DocumentMerger:
         Returns:
             Merged PDF content as bytes.
         """
-        from PyPDF2 import PdfReader, PdfWriter
+        from pypdf import PdfReader, PdfWriter
 
         if len(pdf_bytes_list) == 1:
             # Only one PDF, no need to merge

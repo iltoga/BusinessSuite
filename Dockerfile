@@ -1,85 +1,86 @@
 # ----------- Builder Stage -----------
-FROM python:3.13-slim AS builder
+FROM python:3.14-slim AS builder
 
 # Set environment variables for build
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
-ENV DJANGO_SETTINGS_MODULE business_suite.settings.prod
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV UV_COMPILE_BYTECODE=1
+ENV UV_LINK_MODE=copy
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv
 
-# Install build dependencies
-# Note: libreoffice-writer-nogui is a minimal LibreOffice installation for DOCX to PDF conversion
-RUN apt-get update \
-  && apt-get -y install --no-install-recommends \
-  tesseract-ocr \
-  poppler-utils \
-  postgresql-client \
-  libreoffice-writer-nogui \
-  gettext \
-  curl \
-  && apt-get clean \
-  && rm -rf /var/lib/apt/lists/*
-
-# Install uv using the installer script
-ADD https://astral.sh/uv/install.sh /uv-installer.sh
-RUN sh /uv-installer.sh && rm /uv-installer.sh
-ENV PATH="/root/.local/bin:$PATH"
-
-# Set work directory for builder
-WORKDIR /usr/src/app
-
-# Copy only dependency files first for better cache
-COPY pyproject.toml ./
-
-# Compile requirements.txt using uv
-RUN uv pip compile pyproject.toml > requirements.txt
-
-# Install dependencies from requirements.txt (system-wide)
-RUN uv pip install --system -r requirements.txt
-
-# Copy the rest of the source code (as root, for speed)
-COPY . /usr/src/app/
-
-# ----------- Final Stage -----------
-FROM python:3.13-slim AS final
-
-# Set environment variables for runtime
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
-ENV DJANGO_SETTINGS_MODULE business_suite.settings.prod
-
-# Install runtime dependencies only (no build tools)
-# Note: libreoffice-writer-nogui is a minimal LibreOffice installation for DOCX to PDF conversion
-RUN apt-get update \
-  && apt-get -y install --no-install-recommends \
-  tesseract-ocr \
-  poppler-utils \
-  postgresql-client \
-  libreoffice-writer-nogui \
-  gettext \
-  && apt-get clean \
-  && rm -rf /var/lib/apt/lists/*
-
-# Create a new user 'appuser' with UID 1000 and GID 1000
-RUN addgroup --gid 1000 appuser && adduser --uid 1000 --ingroup appuser --home /home/appuser --shell /bin/sh --disabled-password --gecos "" appuser
-
-# Create /usr/src/app directory and set permissions
-RUN mkdir -p /usr/src/app && chown -R appuser:appuser /usr/src/app
+# Install uv using the official binary
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 # Set work directory
 WORKDIR /usr/src/app
 
-# Copy installed site-packages (system-wide) and app code from builder
-COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
-COPY --from=builder /usr/local/bin /usr/local/bin
-COPY --from=builder /usr/src/app /usr/src/app
+# Install build dependencies for C-extensions (if needed by psycopg2, etc.)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+  build-essential \
+  libpq-dev \
+  && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Change ownership of the app directory to appuser
-RUN chown -R appuser:appuser /usr/src/app
+# Copy only dependency files for caching
+COPY pyproject.toml uv.lock ./
+
+# Create the virtual environment outside /usr/src/app so it won't be masked by
+# the bind-mount in docker-compose.yml.
+RUN uv venv /opt/venv
+
+# Install dependencies into a virtual environment
+# We use --no-dev to exclude testing tools and --frozen to respect the lockfile
+RUN uv sync --frozen --no-dev --no-install-project
+
+# Compile requirements.txt using uv (for compatibility with other tools that still use requirements.txt)
+RUN uv pip compile pyproject.toml > requirements.txt
+
+# Install dependencies from requirements.txt (system-wide): leave commented for reference
+# RUN uv pip install --system -r requirements.txt
+
+# Copy the source code
+COPY . .
+
+# Install the project itself
+RUN uv sync --frozen --no-dev
+
+# ----------- Final Stage -----------
+FROM python:3.14-slim AS final
+
+# Set environment variables for runtime
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV DJANGO_SETTINGS_MODULE=business_suite.settings.prod
+ENV VIRTUAL_ENV=/opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Install runtime dependencies
+RUN apt-get update \
+  && apt-get -y install --no-install-recommends \
+  tesseract-ocr \
+  poppler-utils \
+  postgresql-client \
+  libreoffice-writer-nogui \
+  gettext \
+  && apt-get clean \
+  && rm -rf /var/lib/apt/lists/*
+
+# Create a non-root user
+RUN addgroup --gid 1000 appuser && \
+  adduser --uid 1000 --ingroup appuser --home /home/appuser --shell /bin/sh --disabled-password --gecos "" appuser
+
+# Set work directory
+WORKDIR /usr/src/app
+
+# Copy the virtual environment (kept outside the bind mount)
+COPY --from=builder /opt/venv /opt/venv
+
+# Copy the application code (will be overridden by bind mount in compose)
+COPY --from=builder --chown=appuser:appuser /usr/src/app /usr/src/app
 
 # Change to non-root privilege
 USER appuser
 
-# Ensure scripts are executable at runtime
+# Ensure scripts are executable and start the application
 CMD /bin/bash -c "chmod +x /usr/src/app/scripts/* && /usr/src/app/start.sh"
 
 EXPOSE 8000

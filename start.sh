@@ -1,76 +1,76 @@
 #!/bin/bash
 
-# Load environment variables from .env file
-if [ -f .env ]
-then
+# Exit immediately if a command exits with a non-zero status
+set -e
+
+# 1. Load environment variables from .env if it exists (fallback for local/non-compose runs)
+if [ -f .env ]; then
+  echo "Loading variables from .env file..."
   set -a
+  # shellcheck disable=SC1091
   source .env
   set +a
-  # export $(cat .env | sed 's/#.*//g' | xargs)
 fi
 
-# Check if SYSTEM_USER_PASSWORD and SYSTEM_USER_EMAIL are set and not empty
-if [[ -z "${SYSTEM_USER_PASSWORD}" ]]; then
-  echo "Error: SYSTEM_USER_PASSWORD is not set or empty. Please set the SYSTEM_USER_PASSWORD environment variable."
-  exit 1
-fi
-if [[ -z "${SYSTEM_USER_EMAIL}" ]]; then
-  echo "Error: SYSTEM_USER_EMAIL is not set or empty. Please set the SYSTEM_USER_EMAIL environment variable."
+# 2. Safety Check for Required Variables
+if [[ -z "${SYSTEM_USER_PASSWORD}" || -z "${SYSTEM_USER_EMAIL}" ]]; then
+  echo "Error: SYSTEM_USER_PASSWORD or SYSTEM_USER_EMAIL is not set."
   exit 1
 fi
 
-# Dynamically set the PYTHONPATH to include the project root
-# SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-# export PYTHONPATH="${PYTHONPATH}:${SCRIPT_DIR}"
+# 3. Wait for Database (Optional but highly recommended for Docker)
+# This prevents the app from crashing if the DB container isn't ready yet
+if [ -n "$DB_HOST" ]; then
+  echo "Waiting for database at $DB_HOST..."
+  until printf "" 2>>/dev/null >>/dev/tcp/$DB_HOST/${DB_PORT:-5432}; do
+    echo "Database unavailable - sleeping..."
+    sleep 1
+  done
+  echo "Database is up!"
+fi
 
-# Check if database should be reset
+# 4. Database Initialization
 if [[ "${RESET_DB_ON_STARTUP}" == "true" ]]; then
-  echo "RESET_DB_ON_STARTUP is set to true. Clearing database..."
-  python manage.py cleardb
-  echo "Database cleared successfully."
+  echo "Clearing database as requested..."
+  python manage.py flush --no-input
 fi
 
-# Run migrations
-python manage.py migrate
+# 5. Core Django Operations
+echo "Running migrations..."
+python manage.py migrate --no-input
 
-# Create groups
+echo "Collecting static files..."
+python manage.py collectstatic --no-input --clear
+
+echo "Compiling translations..."
+python manage.py compilemessages || echo "Warning: compilemessages skipped (msgfmt might be missing)"
+
+# 6. Data Seeding & User Setup
+echo "Populating initial data..."
 python manage.py creategroups
-
-# Populate database with essential data
 python manage.py populate_documenttypes
 python manage.py populate_products
 python manage.py populate_tasks
 python manage.py populatecountrycodes
 python manage.py populateholiday
 
-# Create superuser if none exists
+echo "Setting up users..."
 python manage.py createsuperuserifnotexists
+python manage.py create_user system "$SYSTEM_USER_PASSWORD" --superuser --email="$SYSTEM_USER_EMAIL" || echo "System user already exists."
 
-# Create system user
-python manage.py create_user system $SYSTEM_USER_PASSWORD --superuser --email=$SYSTEM_USER_EMAIL
-
-# Compile translation files (if gettext/msgfmt is available)
-python manage.py compilemessages || echo "compilemessages failed - msgfmt may be missing"
-
-# Collect static files
-python manage.py collectstatic --noinput
-
-# Run Gunicorn with increased timeout for long-running LLM API calls
-# --timeout: Worker timeout (default: 30s, increased to 180s for invoice import with LLM)
-# --workers: Number of worker processes (2*CPU + 1 formula, or 4 minimum)
-# --threads: Number of threads per worker (2-4 recommended)
-# --worker-class: Worker type (sync for CPU-bound, gthread for I/O-bound)
-# --max-requests: Restart workers after N requests to prevent memory leaks
-# --max-requests-jitter: Add randomness to prevent all workers restarting simultaneously
-gunicorn business_suite.wsgi:application \
+# 7. Start Gunicorn
+# Optimization: --worker-tmp-dir /dev/shm prevents heartbeat blocking on disk I/O
+# Optimization: gthread is best for the mixed I/O (Database) and API (LLM/OpenAI) profile
+echo "Starting Gunicorn..."
+exec gunicorn business_suite.wsgi:application \
   --bind 0.0.0.0:8000 \
-  --timeout 60 \
   --workers 4 \
   --threads 2 \
   --worker-class gthread \
-  --max-requests 1000 \
+  --timeout 120 \
+  --max-requests 1200 \
   --max-requests-jitter 50 \
-  --log-file /var/log/gunicorn/app.log \
+  --worker-tmp-dir /dev/shm \
   --access-logfile - \
   --error-logfile - \
   --log-level info
