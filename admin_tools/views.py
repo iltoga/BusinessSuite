@@ -77,23 +77,25 @@ def backup_stream(request):
     """Start backup and stream progress via SSE."""
 
     def event_stream():
-        events = []
         yield _sse_event("Backup started")
 
         include_users = request.GET.get("include_users", "0") == "1"
         try:
-            # pass a callback that appends messages to events
-            gz = services.backup_all(
-                progress_callback=lambda m: events.append(_sse_event(m)), include_users=include_users
-            )
-            # send queued events
-            for e in events:
-                yield e
-            yield _sse_event(f"Backup finished: {gz}")
+            for msg in services.backup_all(include_users=include_users):
+                # Send comment as keepalive to prevent timeout
+                yield ": keepalive\n\n"
+                if msg.startswith("RESULT_PATH:"):
+                    path = msg.split(":", 1)[1]
+                    yield _sse_event(f"Backup finished: {path}")
+                else:
+                    yield _sse_event(msg)
         except Exception as ex:
             yield _sse_event(f"Error: {str(ex)}")
 
-    return StreamingHttpResponse(event_stream(), content_type="text/event-stream")
+    response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
+    response["Cache-Control"] = "no-cache"
+    response["X-Accel-Buffering"] = "no"  # Disable buffering in Nginx
+    return response
 
 
 @superuser_required
@@ -206,20 +208,24 @@ def restore_stream(request):
     gz_path = os.path.join(settings.BASE_DIR, "backups", fn)
 
     def event_stream():
-        events = []
         yield _sse_event("Restore started")
+        include_users = request.GET.get("include_users", "0") == "1"
         try:
-            include_users = request.GET.get("include_users", "0") == "1"
-            services.restore_from_file(
-                gz_path, progress_callback=lambda m: events.append(_sse_event(m)), include_users=include_users
-            )
-            for e in events:
-                yield e
+            for msg in services.restore_from_file(gz_path, include_users=include_users):
+                # Send comment as keepalive to prevent timeout
+                yield ": keepalive\n\n"
+                if msg.startswith("PROGRESS:"):
+                    yield f"data: {json.dumps({'progress': msg.split(':')[1]})}\n\n"
+                else:
+                    yield _sse_event(msg)
             yield _sse_event("Restore finished")
         except Exception as ex:
             yield _sse_event(f"Error: {str(ex)}")
 
-    return StreamingHttpResponse(event_stream(), content_type="text/event-stream")
+    response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
+    response["Cache-Control"] = "no-cache"
+    response["X-Accel-Buffering"] = "no"  # Disable buffering in Nginx
+    return response
 
 
 @superuser_required

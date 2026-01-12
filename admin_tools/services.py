@@ -20,9 +20,10 @@ def ensure_backups_dir():
     os.makedirs(BACKUPS_DIR, exist_ok=True)
 
 
-def backup_all(progress_callback=None, include_users=False):
+def backup_all(include_users=False):
     """Backup all Django model data using dumpdata, compress to gzipped JSON.
     If include_users is False, exclude system/user tables.
+    Returns a generator of progress messages. Final yielding is the path.
     """
     ensure_backups_dir()
     ts = datetime.datetime.utcnow().strftime("%Y%m%d-%H%M%S")
@@ -31,8 +32,7 @@ def backup_all(progress_callback=None, include_users=False):
     filename = f"backup-{ts}{suffix}.tar.gz"
     out_path = os.path.join(BACKUPS_DIR, filename)
 
-    if progress_callback:
-        progress_callback("Starting Django dumpdata backup...")
+    yield "Starting Django dumpdata backup..."
 
     # Build dumpdata args
     tmp_path = os.path.join(BACKUPS_DIR, f"tmp-{ts}.json")
@@ -80,13 +80,12 @@ def backup_all(progress_callback=None, include_users=False):
         except Exception:
             filepaths = set()
 
-        if progress_callback:
-            progress_callback(f"Found {len(filepaths)} media files referenced in DB to include in backup")
+        yield f"Found {len(filepaths)} media files referenced in DB to include in backup"
 
         # Create tar.gz with JSON, manifest and files under 'media/' prefix
         with tarfile.open(out_path, "w:gz") as tar:
             tar.add(temp_json, arcname="data.json")
-            for rel_path, storage_path in sorted(filepaths):
+            for i, (rel_path, storage_path) in enumerate(sorted(filepaths)):
                 # store under media/relative_path so we can restore to MEDIA_ROOT
                 arcname = os.path.join("media", rel_path)
                 if storage_path and os.path.exists(storage_path):
@@ -113,10 +112,11 @@ def backup_all(progress_callback=None, include_users=False):
                             tar.addfile(info, f)
                         f.close()
                     except Exception:
-                        if progress_callback:
-                            progress_callback(f"Warning: could not include file: {rel_path}")
-                if progress_callback:
-                    progress_callback(f"Included file in backup: {rel_path}")
+                        yield f"Warning: could not include file: {rel_path}"
+
+                if (i + 1) % 10 == 0 or (i + 1) == len(filepaths):
+                    yield f"Included {i + 1}/{len(filepaths)} media files in backup"
+
             # write a manifest.json with included files metadata
             manifest_files = []
             for rel_path, storage_path in sorted(filepaths):
@@ -153,16 +153,15 @@ def backup_all(progress_callback=None, include_users=False):
     except Exception:
         pass
 
-    if progress_callback:
-        progress_callback(f"Backup written to: {out_path}")
-        progress_callback("Models included in backup:")
-        for m in included_models:
-            progress_callback(f"- {m}")
-    return out_path
+    yield f"Backup written to: {out_path}"
+    # Yield the path marked as a special message
+    yield f"RESULT_PATH:{out_path}"
 
 
-def restore_from_file(path, progress_callback=None, include_users=False):
-    """Restore DB from a gzipped dumpdata file (Django JSON). If include_users is False, do not flush system/user tables."""
+def restore_from_file(path, include_users=False):
+    """Restore DB from a gzipped dumpdata file (Django JSON). If include_users is False, do not flush system/user tables.
+    Returns a generator of progress messages.
+    """
     if not os.path.exists(path):
         raise FileNotFoundError(path)
 
@@ -178,6 +177,7 @@ def restore_from_file(path, progress_callback=None, include_users=False):
     try:
         # Handle tar.gz backed up archives that include files
         if path.endswith(".tar.gz"):
+            yield "Extracting archive..."
             # Extract tar to a temp dir and set fixture_path to extracted data.json
             extracted_tmp = tempfile.mkdtemp(prefix="restore-")
             extracted_media_tmpdir = os.path.join(extracted_tmp, "media")
@@ -188,6 +188,7 @@ def restore_from_file(path, progress_callback=None, include_users=False):
         elif path.endswith(".gz"):
             import gzip
 
+            yield "Decompressing JSON..."
             tmp_path = path + ".decompressed.json"
             with gzip.open(path, "rb") as f_in, open(tmp_path, "wb") as f_out:
                 f_out.write(f_in.read())
@@ -208,13 +209,11 @@ def restore_from_file(path, progress_callback=None, include_users=False):
                         includes_users = True
                         break
         except Exception as e:
-            if progress_callback:
-                progress_callback(f"Warning: Could not inspect backup for user tables: {e}")
+            yield f"Warning: Could not inspect backup for user tables: {e}"
 
         # Disable foreign key checks
         engine = connection.vendor
-        if progress_callback:
-            progress_callback("Disabling foreign key checks...")
+        yield "Disabling foreign key checks..."
         with connection.cursor() as cursor:
             if engine == "sqlite":
                 cursor.execute("PRAGMA foreign_keys = OFF;")
@@ -224,11 +223,11 @@ def restore_from_file(path, progress_callback=None, include_users=False):
                 cursor.execute("SET session_replication_role = replica;")
 
         # Only flush the right tables
-        if progress_callback:
-            if includes_users:
-                progress_callback("Flushing database (all tables, including users/groups/permissions)...")
-            else:
-                progress_callback("Flushing database (only data tables, users/groups/permissions will be preserved)...")
+        if includes_users:
+            yield "Flushing database (all tables, including users/groups/permissions)..."
+        else:
+            yield "Flushing database (only data tables, users/groups/permissions preserved)..."
+
         excluded_prefixes = ("auth", "admin", "sessions", "contenttypes", "debug_toolbar")
         if includes_users:
             call_command("flush", "--noinput")
@@ -244,38 +243,44 @@ def restore_from_file(path, progress_callback=None, include_users=False):
                     for table in tables_to_flush:
                         cursor.execute(f'TRUNCATE TABLE "{table}" RESTART IDENTITY CASCADE;')
 
-        if progress_callback:
-            progress_callback("Loading data via loaddata...")
-
+        yield "Loading data via loaddata (this may take a few minutes)..."
         call_command("loaddata", fixture_path)
-
-        if progress_callback:
-            progress_callback("Restore completed successfully.")
+        yield "Data loading complete."
 
         # If archive included media files, use default_storage to restore them (overwrite existing)
         if extracted_media_tmpdir and os.path.exists(extracted_media_tmpdir):
             from django.core.files import File
 
+            all_files = []
             for root, dirs, files in os.walk(extracted_media_tmpdir):
                 for fname in files:
-                    src = os.path.join(root, fname)
-                    # relative path under extracted_media_tmpdir
-                    rel = os.path.relpath(src, extracted_media_tmpdir)
-                    try:
-                        with open(src, "rb") as fsrc:
-                            django_file = File(fsrc)
-                            # Ensure existing file is removed to allow overwrite
-                            if default_storage.exists(rel):
-                                try:
-                                    default_storage.delete(rel)
-                                except Exception:
-                                    pass
-                            default_storage.save(rel, django_file)
-                        if progress_callback:
-                            progress_callback(f"Restored media file: {rel}")
-                    except Exception as e:
-                        if progress_callback:
-                            progress_callback(f"Warning: could not restore media file {rel}: {e}")
+                    all_files.append(os.path.join(root, fname))
+
+            total_files = len(all_files)
+            yield f"Restoring {total_files} media files..."
+
+            for i, src in enumerate(all_files):
+                # relative path under extracted_media_tmpdir
+                rel = os.path.relpath(src, extracted_media_tmpdir)
+                try:
+                    with open(src, "rb") as fsrc:
+                        django_file = File(fsrc)
+                        # Ensure existing file is removed to allow overwrite
+                        if default_storage.exists(rel):
+                            try:
+                                default_storage.delete(rel)
+                            except Exception:
+                                pass
+                        default_storage.save(rel, django_file)
+
+                    if (i + 1) % 10 == 0 or (i + 1) == total_files:
+                        progress = int(((i + 1) / total_files) * 100)
+                        yield f"PROGRESS:{progress}"
+                        yield f"Restored {i + 1}/{total_files} files..."
+                except Exception as e:
+                    yield f"Warning: could not restore media file {rel}: {e}"
+
+        yield "Restore completed successfully."
         return True
     finally:
         # Re-enable foreign key checks
@@ -289,8 +294,7 @@ def restore_from_file(path, progress_callback=None, include_users=False):
                 elif engine == "postgresql":
                     cursor.execute("SET session_replication_role = DEFAULT;")
         except Exception:
-            if progress_callback:
-                progress_callback("Warning: Could not re-enable foreign key checks.")
+            yield "Warning: Could not re-enable foreign key checks."
         if tmp_path and os.path.exists(tmp_path):
             try:
                 os.unlink(tmp_path)

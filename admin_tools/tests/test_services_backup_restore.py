@@ -41,7 +41,8 @@ class AdminToolsBackupRestoreTest(TransactionTestCase):
         customer.save()
 
         # Run backup
-        backup_path = services.backup_all(progress_callback=lambda m: None, include_users=False)
+        messages = list(services.backup_all(include_users=False))
+        backup_path = next(m.split(":", 1)[1] for m in messages if m.startswith("RESULT_PATH:"))
         self.assertTrue(os.path.exists(backup_path))
 
         # Inspect tar contents
@@ -70,7 +71,8 @@ class AdminToolsBackupRestoreTest(TransactionTestCase):
         customer.save()
 
         # Run backup
-        backup_path = services.backup_all(progress_callback=lambda m: None, include_users=False)
+        messages = list(services.backup_all(include_users=False))
+        backup_path = next(m.split(":", 1)[1] for m in messages if m.startswith("RESULT_PATH:"))
         self.assertTrue(os.path.exists(backup_path))
 
         # Delete media and DB to simulate a loss
@@ -82,7 +84,7 @@ class AdminToolsBackupRestoreTest(TransactionTestCase):
         self.assertEqual(Customer.objects.count(), 0)
 
         # Run restore
-        services.restore_from_file(backup_path, progress_callback=lambda m: None, include_users=False)
+        list(services.restore_from_file(backup_path, include_users=False))
 
         # Check that the file was restored
         self.assertTrue(default_storage.exists(rel_path))
@@ -106,7 +108,8 @@ class AdminToolsBackupRestoreTest(TransactionTestCase):
         customer.passport_number = "UI123"
         customer.save()
         # Force a 'full' backup by setting include_users=True
-        backup_path = services.backup_all(progress_callback=lambda m: None, include_users=True)
+        messages = list(services.backup_all(include_users=True))
+        backup_path = next(m.split(":", 1)[1] for m in messages if m.startswith("RESULT_PATH:"))
         # Backup created in services.BACKUPS_DIR (same folder used by view)
 
         url = reverse("admin_tools:backup_page")
@@ -125,7 +128,8 @@ class AdminToolsBackupRestoreTest(TransactionTestCase):
         customer.passport_number = "DEL123"
         customer.save()
 
-        backup_path = services.backup_all(progress_callback=lambda m: None, include_users=False)
+        messages = list(services.backup_all(include_users=False))
+        backup_path = next(m.split(":", 1)[1] for m in messages if m.startswith("RESULT_PATH:"))
         # Backup created in services.BACKUPS_DIR (same folder used by view)
 
         # Login as superuser and call delete endpoint
@@ -156,7 +160,8 @@ class AdminToolsBackupRestoreTest(TransactionTestCase):
         customer.passport_number = "UI777"
         customer.save()
 
-        backup_path = services.backup_all(progress_callback=lambda m: None, include_users=False)
+        messages = list(services.backup_all(include_users=False))
+        backup_path = next(m.split(":", 1)[1] for m in messages if m.startswith("RESULT_PATH:"))
         # Backup created in services.BACKUPS_DIR (same folder used by view)
 
         # Login as superuser and fetch restore page
@@ -179,7 +184,8 @@ class AdminToolsBackupRestoreTest(TransactionTestCase):
         customer.passport_file = rel_path
         customer.passport_number = "JSON1"
         customer.save()
-        backup_path = services.backup_all(progress_callback=lambda m: None, include_users=False)
+        messages = list(services.backup_all(include_users=False))
+        backup_path = next(m.split(":", 1)[1] for m in messages if m.startswith("RESULT_PATH:"))
 
         from django.contrib.auth import get_user_model
 
