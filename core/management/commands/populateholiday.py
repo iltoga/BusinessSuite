@@ -1,79 +1,115 @@
-from django.core.management.base import BaseCommand
-from datetime import date
-from core.models import Holiday
 from datetime import date
 
+from django.core.management.base import BaseCommand
+
+from core.models import Holiday
+
+
 class Command(BaseCommand):
-    help = 'Populate holiday table for the next 10 years in Indonesia'
+    help = "Populate holiday table for the next 10 years in Indonesia"
 
     HOLIDAYS_DATA = {
         2023: {
-            'New Year': date(2023, 1, 1),
-            'Chinese New Year': date(2023, 1, 22),
-            'Isra Mi\'raj': date(2023, 2, 18),
-            'Nyepi': date(2023, 3, 22),
-            'Good Friday': date(2023, 4, 7),
-            'Idul Fitri': date(2023, 4, 22),
-            'Ascension of Jesus Christ': date(2023, 5, 18),
-            'Pancasila Day': date(2023, 6, 1),
-            'Waisak Day': date(2023, 6, 4),
-            'Idul Adha': date(2023, 6, 29),
-            'Islamic New Year': date(2023, 7, 19),
-            'Independence Day': date(2023, 8, 17),
-            'Maulid Nabi Muhammad SAW': date(2023, 9, 28),
-            'Christmas': date(2023, 12, 25)
+            "New Year": date(2023, 1, 1),
+            "Chinese New Year": date(2023, 1, 22),
+            "Isra Mi'raj": date(2023, 2, 18),
+            "Nyepi": date(2023, 3, 22),
+            "Good Friday": date(2023, 4, 7),
+            "Idul Fitri": date(2023, 4, 22),
+            "Ascension of Jesus Christ": date(2023, 5, 18),
+            "Pancasila Day": date(2023, 6, 1),
+            "Waisak Day": date(2023, 6, 4),
+            "Idul Adha": date(2023, 6, 29),
+            "Islamic New Year": date(2023, 7, 19),
+            "Independence Day": date(2023, 8, 17),
+            "Maulid Nabi Muhammad SAW": date(2023, 9, 28),
+            "Christmas": date(2023, 12, 25),
         },
         2024: {
-            'New Year': date(2024, 1, 1),
-            'Isra Mi\'raj': date(2024, 2, 8),
-            'Chinese New Year': date(2024, 2, 10),
-            'Nyepi': date(2024, 3, 11),
-            'Good Friday': date(2024, 3, 29),
-            'Idul Fitri': date(2024, 4, 10),
-            'Labor Day': date(2024, 5, 1),
-            'Ascension of Jesus Christ': date(2024, 5, 9),
-            'Waisak Day': date(2024, 5, 23),
-            'Pancasila Day': date(2024, 6, 1),
-            'Idul Adha': date(2024, 6, 17),
-            'Islamic New Year': date(2024, 7, 7),
-            'Independence Day': date(2024, 8, 17),
-            'Maulid Nabi Muhammad SAW': date(2024, 9, 15),
-            'Christmas': date(2024, 12, 25)
+            "New Year": date(2024, 1, 1),
+            "Isra Mi'raj": date(2024, 2, 8),
+            "Chinese New Year": date(2024, 2, 10),
+            "Nyepi": date(2024, 3, 11),
+            "Good Friday": date(2024, 3, 29),
+            "Idul Fitri": date(2024, 4, 10),
+            "Labor Day": date(2024, 5, 1),
+            "Ascension of Jesus Christ": date(2024, 5, 9),
+            "Waisak Day": date(2024, 5, 23),
+            "Pancasila Day": date(2024, 6, 1),
+            "Idul Adha": date(2024, 6, 17),
+            "Islamic New Year": date(2024, 7, 7),
+            "Independence Day": date(2024, 8, 17),
+            "Maulid Nabi Muhammad SAW": date(2024, 9, 15),
+            "Christmas": date(2024, 12, 25),
         },
         2025: {
-            'New Year': date(2025, 1, 1),
-            'Isra Mi\'raj': date(2025, 1, 27),
-            'Chinese New Year': date(2025, 1, 29),
-            'Nyepi': date(2025, 3, 29),
-            'Idul Fitri': date(2025, 3, 31),
-            'Good Friday': date(2025, 4, 18),
-            'Labor Day': date(2025, 5, 1),
-            'Waisak Day': date(2025, 5, 12),
-            'Ascension of Jesus Christ': date(2025, 5, 29),
-            'Pancasila Day': date(2025, 6, 1),
-            'Idul Adha': date(2025, 6, 7),
-            'Islamic New Year': date(2025, 6, 27),
-            'Independence Day': date(2025, 8, 17),
-            'Maulid Nabi Muhammad SAW': date(2025, 9, 5),
-            'Christmas': date(2025, 12, 25)
+            "New Year": date(2025, 1, 1),
+            "Isra Mi'raj": date(2025, 1, 27),
+            "Chinese New Year": date(2025, 1, 29),
+            "Nyepi": date(2025, 3, 29),
+            "Idul Fitri": date(2025, 3, 31),
+            "Good Friday": date(2025, 4, 18),
+            "Labor Day": date(2025, 5, 1),
+            "Waisak Day": date(2025, 5, 12),
+            "Ascension of Jesus Christ": date(2025, 5, 29),
+            "Pancasila Day": date(2025, 6, 1),
+            "Idul Adha": date(2025, 6, 7),
+            "Islamic New Year": date(2025, 6, 27),
+            "Independence Day": date(2025, 8, 17),
+            "Maulid Nabi Muhammad SAW": date(2025, 9, 5),
+            "Christmas": date(2025, 12, 25),
         },
         2026: {
-            'New Year': date(2026, 1, 1),
-            'Isra Mi\'raj': date(2026, 1, 16),
-            'Chinese New Year': date(2026, 2, 17),
-            'Nyepi': date(2026, 3, 19),
-            'Idul Fitri': date(2026, 3, 20),
-            'Good Friday': date(2026, 4, 3),
-            'Labor Day': date(2026, 5, 1),
-            'Ascension of Jesus Christ': date(2026, 5, 14),
-            'Idul Adha': date(2026, 5, 27),
-            'Waisak Day': date(2026, 5, 31),
-            'Pancasila Day': date(2026, 6, 1),
-            'Islamic New Year': date(2026, 6, 17),
-            'Independence Day': date(2026, 8, 17),
-            'Maulid Nabi Muhammad SAW': date(2026, 8, 25),
-            'Christmas': date(2026, 12, 25)
-        }
+            "New Year": date(2026, 1, 1),
+            "Isra Mi'raj": date(2026, 1, 16),
+            "Chinese New Year": date(2026, 2, 17),
+            "Nyepi": date(2026, 3, 19),
+            "Idul Fitri": date(2026, 3, 20),
+            "Good Friday": date(2026, 4, 3),
+            "Labor Day": date(2026, 5, 1),
+            "Ascension of Jesus Christ": date(2026, 5, 14),
+            "Idul Adha": date(2026, 5, 27),
+            "Waisak Day": date(2026, 5, 31),
+            "Pancasila Day": date(2026, 6, 1),
+            "Islamic New Year": date(2026, 6, 17),
+            "Independence Day": date(2026, 8, 17),
+            "Maulid Nabi Muhammad SAW": date(2026, 8, 25),
+            "Christmas": date(2026, 12, 25),
+        },
+        2027: {
+            "New Year": date(2027, 1, 1),
+            "Isra Mi'raj": date(2027, 1, 6),
+            "Chinese New Year": date(2027, 2, 17),
+            "Nyepi": date(2027, 3, 14),
+            "Idul Fitri": date(2027, 3, 10),
+            "Good Friday": date(2027, 3, 26),
+            "Ascension of Jesus Christ": date(2027, 5, 6),
+            "Labor Day": date(2027, 5, 1),
+            "Waisak Day": date(2027, 5, 5),
+            "Idul Adha": date(2027, 5, 17),
+            "Pancasila Day": date(2027, 6, 1),
+            "Islamic New Year": date(2027, 6, 6),
+            "Independence Day": date(2027, 8, 17),
+            "Maulid Nabi Muhammad SAW": date(2027, 8, 15),
+            "Christmas": date(2027, 12, 25),
+        },
+        2028: {
+            "New Year": date(2028, 1, 1),
+            "Isra Mi'raj": date(2028, 12, 14),
+            "Chinese New Year": date(2028, 2, 5),
+            "Nyepi": date(2028, 3, 2),
+            "Idul Fitri": date(2028, 2, 27),
+            "Good Friday": date(2028, 4, 14),
+            "Ascension of Jesus Christ": date(2028, 5, 25),
+            "Labor Day": date(2028, 5, 1),
+            "Waisak Day": date(2028, 4, 24),
+            "Idul Adha": date(2028, 5, 5),
+            "Pancasila Day": date(2028, 6, 1),
+            "Islamic New Year": date(2028, 5, 25),
+            "Independence Day": date(2028, 8, 17),
+            "Maulid Nabi Muhammad SAW": date(2028, 8, 3),
+            "Christmas": date(2028, 12, 25),
+        },
     }
 
     def handle(self, *args, **options):
@@ -83,10 +119,10 @@ class Command(BaseCommand):
         self.generate_holiday()
 
     def generate_holiday(self, silent=False):
-        for year in range(2023, 2026):
+        for year in range(2023, 2029):
             self.generate_holiday_for_year(year)
 
-    def generate_holiday_for_year(self, year, country='ID', silent=False):
+    def generate_holiday_for_year(self, year, country="ID", silent=False):
         holiday_data = self.HOLIDAYS_DATA.get(year)
 
         if not holiday_data:
@@ -96,9 +132,9 @@ class Command(BaseCommand):
 
         for holiday_name, holiday_date in holiday_data.items():
             # chack if holiday already exists
-            if Holiday.objects.filter(name=holiday_name, date=holiday_date, country=country).exists():
+            if Holiday.objects.filter(date=holiday_date, country=country).exists():
                 if not silent:
-                    print(f"Holiday {holiday_name} for the date {holiday_date} already exists")
+                    print(f"Holiday for the date {holiday_date} already exists")
                 continue
 
             holiday, created = Holiday.objects.get_or_create(
@@ -133,4 +169,3 @@ class Command(BaseCommand):
                             country=country,
                             is_weekend=True,
                         )
-
