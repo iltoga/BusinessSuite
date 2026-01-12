@@ -59,4 +59,202 @@
 {% block after-bootstrap-js %}
   {{ block.super }}
   <script src="{% static 'js/admin_tools/restore.js' %}"></script>
+  <script>
+    // Fallback/hotfix: ensure upload progress + cancel + SSE progress work even if
+    // the externally-served restore.js is stale (e.g. deploy without collectstatic).
+    (function() {
+      'use strict';
+
+      const log = document.getElementById('log');
+      const startRestoreBtn = document.getElementById('start-restore');
+      const uploadForm = document.getElementById('upload-form');
+      const uploadProgressContainer = document.getElementById('upload-progress-container');
+      const uploadProgressBar = document.getElementById('upload-progress-bar');
+      const uploadStatus = document.getElementById('upload-status');
+      const cancelUploadBtn = document.getElementById('cancel-upload');
+      const restoreProgressContainer = document.getElementById('restore-progress-container');
+      const restoreProgressBar = document.getElementById('restore-progress-bar');
+
+      if (!log || !startRestoreBtn) return;
+
+      function formatBytes(bytes) {
+        if (!bytes) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        const val = bytes / Math.pow(k, i);
+        return val.toFixed(i === 0 ? 0 : 2) + ' ' + sizes[i];
+      }
+
+      function appendLog(line) {
+        if (!line) return;
+        log.textContent += line + '\n';
+        log.scrollTop = log.scrollHeight;
+      }
+
+      function setRestoreProgress(pct) {
+        if (!restoreProgressContainer || !restoreProgressBar) return;
+        restoreProgressContainer.classList.remove('d-none');
+        const p = Math.max(0, Math.min(100, parseInt(pct, 10) || 0));
+        restoreProgressBar.style.width = p + '%';
+        restoreProgressBar.textContent = p + '%';
+        restoreProgressBar.setAttribute('aria-valuenow', String(p));
+      }
+
+      function startRestore(filename) {
+        if (!filename) return;
+        log.textContent = '';
+        setRestoreProgress(0);
+
+        const restoreUrl = startRestoreBtn.dataset.restoreUrl;
+        const includeUsers = document.getElementById('include-users') && document.getElementById('include-users').checked ? '1' : '0';
+        const es = new EventSource(restoreUrl + '?file=' + encodeURIComponent(filename) + '&include_users=' + includeUsers);
+
+        es.onmessage = function(e) {
+          try {
+            const data = JSON.parse(e.data);
+            if (data && typeof data.progress !== 'undefined') {
+              setRestoreProgress(data.progress);
+              return;
+            }
+            if (data && data.message) {
+              appendLog(data.message);
+            }
+          } catch (_) {
+            // ignore
+          }
+        };
+
+        es.onerror = function() {
+          appendLog('Connection closed');
+          es.close();
+        };
+      }
+
+      // Intercept restore-from-existing click (capture) to avoid stale JS handler.
+      startRestoreBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+
+        const backupSelect = document.getElementById('backup-select');
+        const file = backupSelect ? backupSelect.value : '';
+        if (!file) {
+          alert('Please select a backup file');
+          return;
+        }
+        startRestore(file);
+      }, true);
+
+      // Upload progress + cancel (capture) to avoid stale JS handler.
+      if (uploadForm) {
+        let currentXhr = null;
+
+        function resetUploadUi() {
+          const uploadBtn = document.getElementById('upload-restore-btn');
+          if (uploadBtn) {
+            uploadBtn.disabled = false;
+            uploadBtn.textContent = 'Upload and Restore';
+          }
+          if (uploadProgressBar) {
+            uploadProgressBar.style.width = '0%';
+            uploadProgressBar.textContent = '0%';
+            uploadProgressBar.setAttribute('aria-valuenow', '0');
+          }
+          if (uploadStatus) {
+            uploadStatus.textContent = '';
+          }
+        }
+
+        if (cancelUploadBtn) {
+          cancelUploadBtn.addEventListener('click', function() {
+            if (currentXhr) {
+              currentXhr.abort();
+              currentXhr = null;
+              appendLog('Upload cancelled by user.');
+              resetUploadUi();
+            }
+          });
+        }
+
+        uploadForm.addEventListener('submit', function(e) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+
+          const fileInput = document.getElementById('backup-file');
+          const file = fileInput && fileInput.files ? fileInput.files[0] : null;
+          if (!file) {
+            alert('Please select a file');
+            return;
+          }
+
+          const uploadBtn = document.getElementById('upload-restore-btn');
+          const uploadUrl = uploadForm.dataset.uploadUrl;
+          const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+
+          if (!uploadBtn || !uploadUrl || !csrfToken) {
+            appendLog('Upload error: missing required elements');
+            return;
+          }
+
+          uploadBtn.disabled = true;
+          uploadBtn.textContent = 'Uploading...';
+          if (uploadProgressContainer) uploadProgressContainer.classList.remove('d-none');
+          if (uploadStatus) uploadStatus.textContent = 'Starting upload...';
+
+          const formData = new FormData();
+          formData.append('backup_file', file);
+
+          const xhr = new XMLHttpRequest();
+          currentXhr = xhr;
+
+          xhr.upload.addEventListener('progress', function(ev) {
+            if (!ev.lengthComputable) return;
+            const percent = Math.round((ev.loaded / ev.total) * 100);
+            if (uploadProgressBar) {
+              uploadProgressBar.style.width = percent + '%';
+              uploadProgressBar.textContent = percent + '%';
+              uploadProgressBar.setAttribute('aria-valuenow', String(percent));
+            }
+            if (uploadStatus) {
+              uploadStatus.textContent = 'Uploaded ' + formatBytes(ev.loaded) + ' of ' + formatBytes(ev.total);
+            }
+          });
+
+          xhr.addEventListener('load', function() {
+            currentXhr = null;
+            let result = null;
+            try {
+              result = JSON.parse(xhr.responseText);
+            } catch (_) {}
+
+            if (xhr.status === 200 && result && result.ok) {
+              appendLog('Upload complete: ' + result.filename);
+              appendLog('Starting restore...');
+              resetUploadUi();
+              startRestore(result.filename);
+              return;
+            }
+
+            appendLog('Upload failed: ' + ((result && result.error) ? result.error : ('HTTP ' + xhr.status)));
+            resetUploadUi();
+          });
+
+          xhr.addEventListener('error', function() {
+            currentXhr = null;
+            appendLog('Upload failed due to a network error.');
+            resetUploadUi();
+          });
+
+          xhr.addEventListener('abort', function() {
+            currentXhr = null;
+            // UI reset is handled by Cancel button
+          });
+
+          xhr.open('POST', uploadUrl);
+          xhr.setRequestHeader('X-CSRFToken', csrfToken.value);
+          xhr.send(formData);
+        }, true);
+      }
+    })();
+  </script>
 {% endblock %}
