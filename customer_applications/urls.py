@@ -9,6 +9,7 @@ from .views import (
     DocApplicationDeleteAllView,
     DocApplicationDeleteView,
     DocApplicationDetailView,
+    DocApplicationForceCloseView,
     DocApplicationListView,
     DocApplicationUpdateView,
     DocumentActionView,
@@ -45,6 +46,11 @@ urlpatterns = [
         "update/<int:pk>/",
         DocApplicationUpdateView.as_view(),
         name="customer-application-update",
+    ),
+    path(
+        "force-close/<int:pk>/",
+        DocApplicationForceCloseView.as_view(),
+        name="customer-application-force-close",
     ),
     path(
         "update_document/<int:pk>/",

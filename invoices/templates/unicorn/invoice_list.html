@@ -74,9 +74,9 @@
                         <!-- invoice amount -->
                         <td>{{ invoice.total_amount|as_currency }}</td>
                         <!-- invoice paid amount -->
-                        <td>{{ invoice.total_paid|as_currency }}</td>
+                        <td>{{ invoice.total_paid_annotated|as_currency }}</td>
                         <!-- invoice due amount -->
-                        <td>{{ invoice.total_due|as_currency }}</td>
+                        <td>{{ invoice.total_due_annotated|as_currency }}</td>
                         <!-- actions -->
                         <td>
                         <div class="btn-group" role="group" aria-label="Basic example">
@@ -95,7 +95,7 @@
                               </ul>
                             </div>
                             {% endif %}
-                            {% if user|has_perm:'payments,payment,add' and invoice.total_due > 0 %}
+                            {% if user|has_perm:'payments,payment,add' and invoice.total_due_amount > 0 %}
                             <button type="button" class="btn btn-success btn-sm me-1" data-bs-toggle="modal" data-bs-target="#markAsPaidModal{{ invoice.pk }}">Paid</button>
                             {% endif %}
                             {% if user.is_superuser %}
@@ -127,6 +127,7 @@
           </div>
           <form method="post" action="{% url 'invoice-mark-as-paid' invoice.pk %}">
             {% csrf_token %}
+            <input type="hidden" name="next" value="{% url 'invoice-list' %}">
             <div class="modal-body">
               <p class="text-muted">This will create payments for all unpaid invoice applications.</p>
 
@@ -170,7 +171,7 @@
                   <tfoot>
                     <tr class="fw-bold">
                       <td colspan="2" class="text-end">Total:</td>
-                      <td class="text-end">{{ invoice.total_due|as_currency }}</td>
+                      <td class="text-end">{{ invoice.total_due_amount|as_currency }}</td>
                     </tr>
                   </tfoot>
                 </table>

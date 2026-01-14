@@ -163,6 +163,24 @@ class InvoiceCreateForm(forms.ModelForm):
 
 class InvoiceUpdateForm(forms.ModelForm):
     invoice_no = forms.CharField(required=False)
+    # Mark as Paid fields
+    mark_as_paid = forms.BooleanField(required=False, label="Mark as Paid")
+    payment_type = forms.ChoiceField(
+        required=False,
+        choices=[
+            ("cash", "Cash"),
+            ("credit_card", "Credit card"),
+            ("wire_transfer", "Wire transfer"),
+            ("crypto", "Crypto"),
+            ("paypal", "PayPal"),
+        ],
+        label="Payment Method",
+    )
+    payment_date = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={"type": "date"}),
+        label="Payment Date",
+    )
 
     class Meta:
         model = Invoice
@@ -182,19 +200,25 @@ class InvoiceUpdateForm(forms.ModelForm):
         # invoice_no is CharField (not disabled) so it can be edited
         # invoice_date is NOT disabled so it can be edited
 
-    def clean_invoice_no(self):
-        """Validate invoice number hasn't changed (read-only for updates)."""
-        invoice_no = self.cleaned_data.get("invoice_no")
-        # Keep the original invoice_no - don't allow changes
-        if self.instance and self.instance.pk:
-            return str(self.instance.invoice_no)
-        return invoice_no
+        # Set default payment date to today
+        from django.utils import timezone
+
+        self.fields["payment_date"].initial = timezone.now().date()
 
     def clean(self):
         cleaned_data = super().clean()
-        invoice_no = cleaned_data.get("invoice_no")
+        mark_as_paid = cleaned_data.get("mark_as_paid")
+        payment_type = cleaned_data.get("payment_type")
+        payment_date = cleaned_data.get("payment_date")
 
-        # invoice_no is the unique field we're using for duplicate checks
+        if mark_as_paid:
+            if not payment_type:
+                self.add_error("payment_type", "Payment method is required when marking as paid.")
+            if not payment_date:
+                self.add_error("payment_date", "Payment date is required when marking as paid.")
+
+        # Check for duplicate invoice applications (only for new invoices)
+        invoice_no = cleaned_data.get("invoice_no")
         if invoice_no and self.instance.pk is None:
             invoice_applications = self.cleaned_data.get("invoice_applications")
 
@@ -209,7 +233,16 @@ class InvoiceUpdateForm(forms.ModelForm):
                         raise forms.ValidationError(
                             "This customer application has already been added.", code="invalid_customer_application"
                         )
+
         return cleaned_data
+
+    def clean_invoice_no(self):
+        """Validate invoice number hasn't changed (read-only for updates)."""
+        invoice_no = self.cleaned_data.get("invoice_no")
+        # Keep the original invoice_no - don't allow changes
+        if self.instance and self.instance.pk:
+            return str(self.instance.invoice_no)
+        return invoice_no
 
 
 class InvoiceApplicationCreateForm(forms.ModelForm):

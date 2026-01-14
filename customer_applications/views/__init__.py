@@ -2,6 +2,7 @@ from .doc_application_create_view import DocApplicationCreateView
 from .doc_application_delete_all_view import DocApplicationDeleteAllView
 from .doc_application_delete_view import DocApplicationDeleteView
 from .doc_application_detail_vew import DocApplicationDetailView
+from .doc_application_force_close_view import DocApplicationForceCloseView
 from .doc_application_list_view import DocApplicationListView
 from .doc_application_update_view import DocApplicationUpdateView
 from .doc_workflow_create_view import DocWorkflowCreateView

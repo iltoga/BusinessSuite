@@ -92,6 +92,11 @@
                 {% if user|has_perm:'customer_applications,docapplication,change' and not is_app_completed %}
                   <a href="{% url 'customer-application-update' docapplication.pk %}" class="btn btn-warning btn-sm me-1">Edit</a>
                 {% endif %}
+                {% if user|has_perm:'customer_applications,docapplication,change' and docapplication.status != 'completed' %}
+                  <button type="button" class="btn btn-info btn-sm me-1" data-bs-toggle="modal" data-bs-target="#forceCloseModal{{ docapplication.pk }}" title="Force close this application">
+                    <i class="bi bi-check-circle"></i> Force Close
+                  </button>
+                {% endif %}
                 {% if user|has_perm:'customer_applications,docapplication,delete' %}
                   <a href="{% url 'customer-application-delete' docapplication.pk %}" class="btn btn-danger btn-sm me-1">Delete</a>
                 {% endif %}
@@ -183,4 +188,54 @@
     </div>
   </div>
   {% endif %}
+
+  <!-- Force Close Modals (one for each application) -->
+  {% for docapplication in get_items %}
+    {% if docapplication.status != 'completed' %}
+    <div class="modal fade" id="forceCloseModal{{ docapplication.pk }}" tabindex="-1" aria-labelledby="forceCloseModalLabel{{ docapplication.pk }}" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header bg-info text-white">
+            <h5 class="modal-title" id="forceCloseModalLabel{{ docapplication.pk }}">
+              <i class="bi bi-check-circle"></i> Force Close Application
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <form method="post" action="{% url 'customer-application-force-close' docapplication.pk %}">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="">
+            <div class="modal-body">
+              <div class="alert alert-warning">
+                <strong><i class="bi bi-exclamation-triangle"></i> Warning!</strong>
+                This will mark the application as completed even if not all required documents have been uploaded.
+              </div>
+
+              <h6>Application Details:</h6>
+              <ul>
+                <li><strong>Customer:</strong> {{ docapplication.customer.full_name }}</li>
+                <li><strong>Product:</strong> {{ docapplication.product }}</li>
+                <li><strong>Current Status:</strong> {{ docapplication.get_status_display }}</li>
+              </ul>
+
+              {% if docapplication.total_required_documents != docapplication.completed_required_documents %}
+              <div class="alert alert-danger">
+                <strong>Missing Documents:</strong>
+                {{ docapplication.completed_required_documents }} of {{ docapplication.total_required_documents }} required documents are completed.
+              </div>
+              {% endif %}
+
+              <p class="mb-0">Are you sure you want to force close this application?</p>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="btn btn-info">
+                <i class="bi bi-check-circle"></i> Yes, Force Close
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  {% endfor %}
 </div>

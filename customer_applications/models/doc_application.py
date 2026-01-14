@@ -204,16 +204,18 @@ class DocApplication(models.Model):
 
         Args:
             skip_status_calculation: If True, skip automatic status calculation.
-                                   Useful when status is set explicitly (e.g., from invoice payment).
+                                   Useful when status is set explicitly (e.g., from invoice payment or re-open).
         """
         self.updated_at = timezone.now()
         self.due_date = self.calculate_application_due_date()
 
-        # If product has no required documents, set status to completed
-        if self.product and (not self.product.required_documents or not self.product.required_documents.strip()):
-            self.status = self.STATUS_COMPLETED
-        elif self.pk and not skip_status_calculation:
-            self.status = self._get_application_status()
+        # Skip all automatic status calculation when explicitly requested
+        if not skip_status_calculation:
+            # If product has no required documents, set status to completed
+            if self.product and (not self.product.required_documents or not self.product.required_documents.strip()):
+                self.status = self.STATUS_COMPLETED
+            elif self.pk:
+                self.status = self._get_application_status()
         super().save(*args, **kwargs)
 
     def _get_application_status(self):

@@ -165,6 +165,7 @@
       </div>
       <form id="markAsPaidForm" method="post" action="{% url 'invoice-mark-as-paid' object.pk %}">
         {% csrf_token %}
+        <input type="hidden" name="next" value="{% url 'invoice-detail' object.pk %}">
         <div class="modal-body">
           <p class="text-muted">This will create payments for all unpaid invoice applications.</p>
 
@@ -237,7 +238,7 @@
           <div class="alert alert-danger" role="alert">
             <h6 class="alert-heading"><i class="bi bi-exclamation-triangle-fill"></i> Warning: Force Delete</h6>
             <p><strong>You are about to permanently delete this invoice and all related data!</strong></p>
-            
+
             <h6 class="mt-3">Invoice Details:</h6>
             <ul>
               <li><strong>Invoice Number:</strong> {{ object.invoice_no_display }}</li>
@@ -251,7 +252,7 @@
               <li><strong>{{ customer_applications_count }}</strong> linked Customer Application(s)</li>
               <li><strong>{{ payments_count }}</strong> Payment(s)</li>
             </ul>
-            
+
             <hr>
             <p class="mb-0"><strong>This action cannot be undone!</strong></p>
           </div>

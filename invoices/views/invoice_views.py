@@ -285,6 +285,10 @@ class InvoiceUpdateView(PermissionRequiredMixin, SuccessMessageMixin, UpdateView
         customer = self.object.customer
         customer_applications = customer.get_doc_applications_for_invoice(current_invoice_to_include=self.object)
 
+        # Check if invoice has unpaid applications for the mark as paid section
+        data["has_unpaid_applications"] = any(app.due_amount > 0 for app in self.object.invoice_applications.all())
+        data["today"] = timezone.now().date()
+
         data["customer_applications_json"] = customer.doc_applications_to_json(current_invoice_to_include=self.object)
 
         if self.request.POST:
@@ -339,6 +343,13 @@ class InvoiceUpdateView(PermissionRequiredMixin, SuccessMessageMixin, UpdateView
             # Recalculate total amount after applications are saved
             self.object.save()
 
+            # Handle mark as paid functionality
+            mark_as_paid = form.cleaned_data.get("mark_as_paid")
+            if mark_as_paid:
+                payment_type = form.cleaned_data.get("payment_type")
+                payment_date = form.cleaned_data.get("payment_date")
+                self._create_payments_for_unpaid_applications(payment_type, payment_date)
+
             # Add success message manually
             messages.success(self.request, self.success_message)
 
@@ -346,6 +357,31 @@ class InvoiceUpdateView(PermissionRequiredMixin, SuccessMessageMixin, UpdateView
             return redirect(self.success_url)
         else:
             return self.form_invalid(form)
+
+    def _create_payments_for_unpaid_applications(self, payment_type, payment_date):
+        """Create payments for all unpaid invoice applications."""
+        from payments.models import Payment
+
+        # Get all unpaid invoice applications
+        unpaid_applications = [app for app in self.object.invoice_applications.all() if app.due_amount > 0]
+
+        payments_created = 0
+        for invoice_app in unpaid_applications:
+            Payment.objects.create(
+                invoice_application=invoice_app,
+                from_customer=self.object.customer,
+                payment_date=payment_date,
+                amount=invoice_app.due_amount,
+                payment_type=payment_type,
+                created_by=self.request.user,
+            )
+            payments_created += 1
+
+        if payments_created > 0:
+            messages.info(
+                self.request,
+                f"Created {payments_created} payment(s) for invoice {self.object.invoice_no_display}",
+            )
 
     def form_invalid(self, form):
         messages.error(self.request, "Please correct the errors below and resubmit.")
@@ -510,7 +546,8 @@ class InvoiceMarkAsPaidView(PermissionRequiredMixin, View):
 
         if not unpaid_applications:
             messages.warning(request, "No unpaid invoice applications found.")
-            return redirect("invoice-detail", pk=invoice_id)
+            next_url = request.POST.get("next") or reverse_lazy("invoice-detail", kwargs={"pk": invoice_id})
+            return redirect(next_url)
 
         # Create payments for each unpaid application
         payments_created = 0
@@ -529,7 +566,9 @@ class InvoiceMarkAsPaidView(PermissionRequiredMixin, View):
         messages.success(
             request, f"Successfully created {payments_created} payment(s) for invoice {invoice.invoice_no_display}"
         )
-        return redirect("invoice-detail", pk=invoice_id)
+        # Redirect to 'next' URL if provided, otherwise default to invoice detail
+        next_url = request.POST.get("next") or reverse_lazy("invoice-detail", kwargs={"pk": invoice_id})
+        return redirect(next_url)
 
 
 class InvoiceDeleteAllView(PermissionRequiredMixin, View):

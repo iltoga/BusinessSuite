@@ -32,3 +32,34 @@ class DocapplicationDetailView(UnicornModelView):
         workflow.save()
         # update the docapplication updated_by field
         DocApplication.objects.filter(pk=self.docapplication_pk).update(updated_by=self.request.user)
+
+    def reopen_application(self):
+        """
+        Re-opens a completed application by setting its status back to processing
+        and reverting the last completed workflow step if it exists.
+        """
+        if not self.docapplication_pk:
+            return
+
+        # Reload the application to ensure we have the latest state
+        self.docapplication = DocApplication.objects.get(pk=self.docapplication_pk)
+
+        if self.docapplication.status == DocApplication.STATUS_COMPLETED:
+            # Change status back to processing
+            self.docapplication.status = DocApplication.STATUS_PROCESSING
+            self.docapplication.updated_by = self.request.user
+
+            # If there are workflows, mark the last completed one as processing
+            last_workflow = self.docapplication.workflows.order_by("-task__step").first()
+            if last_workflow and last_workflow.status == DocWorkflow.STATUS_COMPLETED:
+                last_workflow.status = DocWorkflow.STATUS_PROCESSING
+                last_workflow.updated_by = self.request.user
+                last_workflow.save()
+
+            # Save the application, skipping automatic status calculation to maintain 'processing'
+            self.docapplication.save(skip_status_calculation=True)
+
+            # Re-fetch for template rendering with relations
+            self.docapplication = DocApplication.objects.select_related("product", "customer").get(
+                pk=self.docapplication_pk
+            )

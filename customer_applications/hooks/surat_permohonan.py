@@ -76,6 +76,18 @@ class SuratPermohonanHook(BaseDocumentTypeHook):
             from letters.services.LetterService import LetterService
 
             customer = document.doc_application.customer
+
+            # Check if customer has Bali address populated
+            if not customer.address_bali or not customer.address_bali.strip():
+                logger.warning(
+                    "Cannot generate Surat Permohonan: customer %s has no Bali address",
+                    customer.pk,
+                )
+                return {
+                    "success": False,
+                    "error": "Cannot generate document: Customer does not have a Bali address populated. Please update the customer's Bali address first.",
+                }
+
             template_name = getattr(
                 settings,
                 "DOCX_SURAT_PERMOHONAN_PERPANJANGAN_TEMPLATE_NAME",

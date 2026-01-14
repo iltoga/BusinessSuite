@@ -60,9 +60,9 @@ class InvoiceListView(UnicornSearchListView):
                 )
             )
             .annotate(
-                total_paid=Coalesce(Subquery(payment_subquery), Value(0), output_field=DecimalField()),
+                total_paid_annotated=Coalesce(Subquery(payment_subquery), Value(0), output_field=DecimalField()),
             )
-            .annotate(total_due=F("total_amount") - F("total_paid"))
+            .annotate(total_due_annotated=F("total_amount") - F("total_paid_annotated"))
         )
 
         return queryset
