@@ -114,6 +114,73 @@
             </div>
           </div>
         </div>
+        <div class="card mt-3">
+          <div class="card-header bg-secondary text-white">
+            <div class="d-flex justify-content-between align-items-center">
+              <h5 class="mb-0">Uninvoiced Applications</h5>
+              {% if perms.customer_applications.add_docapplication %}
+                <a href="{% url 'customer-application-create-from-customer' customer.pk %}" class="btn btn-light btn-sm">New application</a>
+              {% endif %}
+            </div>
+          </div>
+          <div class="card-body">
+            {% if uninvoiced_applications %}
+              <div class="table-responsive">
+                <table class="table table-bordered table-condensed mb-0">
+                  <thead class="thead-light">
+                    <tr>
+                      <th scope="col" class="text-start">#ID</th>
+                      <th scope="col" class="text-start">Product</th>
+                      <th scope="col" class="text-start">Type</th>
+                      <th scope="col" class="text-start">Doc Date</th>
+                      <th scope="col" class="text-start">Status</th>
+                      <th scope="col" class="text-start">Invoice Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for docapplication in uninvoiced_applications %}
+                      <tr class="align-middle">
+                        <td class="text-start">
+                          <a href="{% url 'customer-application-detail' docapplication.pk %}" class="text-primary font-weight-light">{{ docapplication.pk }}</a>
+                        </td>
+                        <td class="text-start">
+                          <a href="{% url 'product-detail' docapplication.product.pk %}" class="text-primary font-weight-light">{{ docapplication.product }}</a>
+                        </td>
+                        <td class="text-start">{{ docapplication.product.get_product_type_display }}</td>
+                        <td class="text-start">{{ docapplication.doc_date }}</td>
+                        <td class="text-start">{% include "components/model_status_badge.html" with status=docapplication.status %}</td>
+                        <td class="text-start">
+                          {% if perms.invoices.view_invoice or perms.invoices.add_invoice %}
+                            {% with first_invoice_app=docapplication.invoice_applications.first %}
+                              {% if first_invoice_app and perms.invoices.view_invoice %}
+                                <div class="btn-group" role="group" aria-label="Invoice actions">
+                                  <a href="{% url 'invoice-detail' first_invoice_app.invoice.pk %}" class="btn btn-primary btn-sm me-1">View</a>
+                                  {% if perms.invoices.change_invoice %}
+                                    <a href="{% url 'invoice-update' first_invoice_app.invoice.pk %}" class="btn btn-warning btn-sm">Edit</a>
+                                  {% endif %}
+                                </div>
+                              {% elif perms.invoices.add_invoice and docapplication.is_document_collection_completed %}
+                                <div class="btn-group" role="group" aria-label="Invoice actions">
+                                  <a href="{% url 'invoice-create-by-doc-application' docapplication.pk %}" class="btn btn-success btn-sm">Create</a>
+                                </div>
+                              {% else %}
+                                <span class="badge bg-warning text-dark">Not Ready</span>
+                              {% endif %}
+                            {% endwith %}
+                          {% else %}
+                            <span class="text-muted">No access</span>
+                          {% endif %}
+                        </td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            {% else %}
+              <div class="text-muted">No uninvoiced applications found.</div>
+            {% endif %}
+          </div>
+        </div>
         {% if perms.customers.change_customer %}
         <a href="{% url 'customer-update' customer.id %}" class="btn btn-warning">Edit</a>
         {% endif %}
