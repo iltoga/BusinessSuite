@@ -85,6 +85,33 @@ services:
         source: ${DATA_PATH}/staticfiles
         target: /staticfiles
 
+  bs-worker:
+    container_name: bs-worker
+    depends_on:
+      - db
+      - bs-core
+    image: bs-app:web
+    restart: unless-stopped
+    networks:
+      - dockernet
+    volumes:
+      - type: bind
+        source: ./
+        target: /usr/src/app
+      - type: bind
+        source: ${DATA_PATH}/media
+        target: /media
+      - type: bind
+        source: ${DATA_PATH}/db
+        target: /db
+      - type: bind
+        source: ${DATA_PATH}/logs
+        target: /logs
+      - type: bind
+        source: ${DATA_PATH}/staticfiles
+        target: /staticfiles
+    command: python manage.py run_huey
+
   bs-cron:
     container_name: bs-cron
     depends_on:

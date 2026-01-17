@@ -66,7 +66,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.postgres",
-    "core",
+    "core.apps.CoreConfig",
     "landing",
     "customers",
     "products",
@@ -91,6 +91,7 @@ INSTALLED_APPS = [
     # "django_cron",  # Disabled due to Django 5.x compatibility issues
     "django_cleanup.apps.CleanupConfig",
     "django_user_agents",
+    "huey.contrib.djhuey",
 ]
 
 MIDDLEWARE = [
@@ -266,6 +267,7 @@ REST_FRAMEWORK = {
         "quick_create": "20/minute",
         "cron": "5/minute",
         "ocr": "10/minute",
+        "ocr_status": "120/minute",
     },
 }
 
@@ -300,6 +302,22 @@ CACHES = {
     },
     "select2": {
         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+    },
+}
+
+HUEY = {
+    "huey_class": "huey.SqliteHuey",
+    "name": "business_suite",
+    "filename": os.getenv("HUEY_DB_PATH", os.path.join(BASE_DIR, "files/huey.db")),
+    "results": True,
+    "store_errors": True,
+    "immediate": False,
+    "consumer": {
+        "workers": int(os.getenv("HUEY_WORKERS", "2")),
+        "worker_type": os.getenv("HUEY_WORKER_TYPE", "thread"),
+        "scheduler_interval": 1,
+        "check_worker_health": True,
+        "health_check_interval": 1,
     },
 }
 

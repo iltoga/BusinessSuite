@@ -81,6 +81,8 @@ fonttools==4.61.1
     # via matplotlib
 gunicorn==23.0.0
     # via business-suite (pyproject.toml)
+huey==2.5.3
+    # via business-suite (pyproject.toml)
 h11==0.16.0
     # via httpcore
 httpcore==1.0.9
