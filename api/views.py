@@ -1,5 +1,6 @@
 import mimetypes
 import os
+import uuid
 from datetime import datetime
 from math import e
 
@@ -26,8 +27,9 @@ from api.serializers import (
     ProductQuickCreateSerializer,
     ProductSerializer,
 )
-from core.models import OCRJob
+from core.models import DocumentOCRJob, OCRJob
 from core.services.quick_create import create_quick_customer, create_quick_customer_application, create_quick_product
+from core.tasks.document_ocr import run_document_ocr_job
 from core.tasks.ocr import run_ocr_job
 from core.utils.dateutils import calculate_due_date
 from customer_applications.models import DocApplication
@@ -359,6 +361,106 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                 job.save(update_fields=["session_saved", "updated_at"])
         elif job.status == OCRJob.STATUS_FAILED:
             response_data["error"] = job.error_message or "OCR job failed"
+
+        return Response(data=response_data, status=status.HTTP_200_OK)
+
+
+class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
+    """
+    API endpoint for document OCR text extraction.
+
+    POST Parameters:
+        - file: The document file (PDF, Excel, Word)
+
+    Returns:
+        - text: Extracted text when completed
+    """
+
+    permission_classes = [IsAuthenticated]
+    throttle_scope = "document_ocr"
+    throttle_classes = [ScopedRateThrottle]
+
+    def get_throttles(self):
+        if getattr(self, "action", None) == "status":
+            self.throttle_scope = "document_ocr_status"
+        else:
+            self.throttle_scope = "document_ocr"
+        return super().get_throttles()
+
+    @action(detail=False, methods=["post"], url_path="check")
+    def check(self, request):
+        from django.utils.text import get_valid_filename
+
+        file = request.data.get("file")
+        if not file or file == "undefined":
+            return self.error_response("No file provided!", status.HTTP_400_BAD_REQUEST)
+
+        valid_file_types = {
+            ".pdf": "application/pdf",
+            ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            ".xls": "application/vnd.ms-excel",
+            ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            ".doc": "application/msword",
+        }
+
+        file_type = mimetypes.guess_type(file.name)[0]
+        file_ext = os.path.splitext(file.name)[1].lower()
+        if not file_type:
+            file_type = valid_file_types.get(file_ext)
+
+        if file_ext not in valid_file_types or file_type not in valid_file_types.values():
+            return self.error_response(
+                "File format not supported. Only PDF, Excel, and Word are accepted!",
+                status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            safe_filename = get_valid_filename(os.path.basename(file.name))
+            job_uuid = uuid.uuid4()
+            tmp_file_path = os.path.join(settings.TMPFILES_FOLDER, "document_ocr", str(job_uuid), safe_filename)
+            file_path = default_storage.save(tmp_file_path, file)
+
+            job = DocumentOCRJob.objects.create(
+                id=job_uuid,
+                status=DocumentOCRJob.STATUS_QUEUED,
+                progress=0,
+                file_path=file_path,
+                file_url=default_storage.url(file_path),
+                request_params={"file_type": file_type},
+            )
+            run_document_ocr_job(str(job.id))
+
+            status_url = request.build_absolute_uri(reverse("api-document-ocr-status", kwargs={"job_id": str(job.id)}))
+            return Response(
+                data={
+                    "job_id": str(job.id),
+                    "status": job.status,
+                    "progress": job.progress,
+                    "status_url": status_url,
+                },
+                status=status.HTTP_202_ACCEPTED,
+            )
+        except Exception as e:
+            errMsg = e.args[0] if e.args else str(e)
+            return self.error_response(errMsg, status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=["get"], url_path=r"status/(?P<job_id>[^/.]+)")
+    def status(self, request, job_id=None):
+        try:
+            job = DocumentOCRJob.objects.get(id=job_id)
+        except DocumentOCRJob.DoesNotExist:
+            return self.error_response("Document OCR job not found", status.HTTP_404_NOT_FOUND)
+
+        response_data = {
+            "job_id": str(job.id),
+            "status": job.status,
+            "progress": job.progress,
+        }
+
+        if job.status == DocumentOCRJob.STATUS_COMPLETED:
+            response_data["text"] = job.result_text
+        elif job.status == DocumentOCRJob.STATUS_FAILED:
+            response_data["error"] = job.error_message or "Document OCR job failed"
 
         return Response(data=response_data, status=status.HTTP_200_OK)
 

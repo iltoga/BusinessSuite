@@ -74,6 +74,7 @@ dependencies = [
     { name = "openpyxl" },
     { name = "passporteye" },
     { name = "pdf2image" },
+    { name = "peewee" },
     { name = "pillow" },
     { name = "psycopg2-binary" },
     { name = "pymemcache" },
@@ -115,6 +116,7 @@ requires-dist = [
     { name = "openpyxl", specifier = ">=3.1.5" },
     { name = "passporteye", specifier = "==2.2.2" },
     { name = "pdf2image", specifier = ">=1.17.0" },
+    { name = "peewee" },
     { name = "pillow" },
     { name = "psycopg2-binary", specifier = ">=2.9.11" },
     { name = "pymemcache", specifier = ">=4.0.0" },
@@ -1202,6 +1204,15 @@ dependencies = [
     { name = "pycryptodome" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/71/a3/155c5cde5f9c0b1069043b2946a93f54a41fd72cc19c6c100f6f2f5bdc15/pdfminer-20191125.tar.gz", hash = "sha256:9e700bc731300ed5c8936343c1dd4529638184198e54e91dd2b59b64a755dc01", size = 4173248, upload-time = "2019-11-25T12:02:21.1Z" }
+
+[[package]]
+name = "peewee"
+version = "3.19.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/88/b0/79462b42e89764998756e0557f2b58a15610a5b4512fbbcccae58fba7237/peewee-3.19.0.tar.gz", hash = "sha256:f88292a6f0d7b906cb26bca9c8599b8f4d8920ebd36124400d0cbaaaf915511f", size = 974035, upload-time = "2026-01-07T17:24:59.597Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1a/41/19c65578ef9a54b3083253c68a607f099642747168fe00f3a2bceb7c3a34/peewee-3.19.0-py3-none-any.whl", hash = "sha256:de220b94766e6008c466e00ce4ba5299b9a832117d9eb36d45d0062f3cfd7417", size = 411885, upload-time = "2026-01-07T17:24:58.33Z" },
+]
 
 [[package]]
 name = "pillow"

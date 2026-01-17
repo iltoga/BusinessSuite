@@ -70,7 +70,7 @@ INSTALLED_APPS = [
     "landing",
     "customers",
     "products",
-    "invoices",
+    "invoices.apps.InvoicesConfig",
     "payments",
     "customer_applications",
     "letters",
@@ -268,6 +268,8 @@ REST_FRAMEWORK = {
         "cron": "5/minute",
         "ocr": "10/minute",
         "ocr_status": "120/minute",
+        "document_ocr": "10/minute",
+        "document_ocr_status": "120/minute",
     },
 }
 
@@ -306,12 +308,12 @@ CACHES = {
 }
 
 HUEY = {
-    "huey_class": "huey.SqliteHuey",
+    "huey_class": "huey.contrib.sql_huey.SqlHuey",
     "name": "business_suite",
-    "filename": os.getenv("HUEY_DB_PATH", os.path.join(BASE_DIR, "files/huey.db")),
     "results": True,
     "store_errors": True,
     "immediate": False,
+    "database": f"postgresql://{os.getenv('DB_USER')}:{os.getenv('DB_PASS')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}",
     "consumer": {
         "workers": int(os.getenv("HUEY_WORKERS", "2")),
         "worker_type": os.getenv("HUEY_WORKER_TYPE", "thread"),

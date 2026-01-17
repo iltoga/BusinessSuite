@@ -7,4 +7,4 @@ class CoreConfig(AppConfig):
 
     def ready(self):
         # Ensure Huey tasks are registered
-        from core.tasks import ocr  # noqa: F401
+        from core.tasks import document_ocr, ocr  # noqa: F401

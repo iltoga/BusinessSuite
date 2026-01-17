@@ -13,6 +13,7 @@ dependencies = [
     "gunicorn>=23.0.0",
     "setuptools>=80.9.0",
     "huey>=2.5.3",
+    "peewee",
     "django-bootstrap-sidebar>=1.2.7",
     "djangorestframework>=3.16.1",
     "django-cors-headers>=4.9.0",

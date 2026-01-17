@@ -23,6 +23,22 @@ urlpatterns = [
     path("mark-as-paid/<int:pk>/", views.InvoiceMarkAsPaidView.as_view(), name="invoice-mark-as-paid"),
     path("delete-all/", views.InvoiceDeleteAllView.as_view(), name="invoice-delete-all"),
     path("download/<int:pk>", views.InvoiceDownloadView.as_view(), name="invoice-download"),
+    path("download/bulk/", views.InvoiceBulkDocumentCreateView.as_view(), name="invoice-bulk-download"),
+    path(
+        "download/bulk/status/<uuid:job_id>/",
+        views.InvoiceBulkDocumentStatusView.as_view(),
+        name="invoice-bulk-download-status",
+    ),
+    path(
+        "download/bulk/stream/<uuid:job_id>/",
+        views.InvoiceBulkDocumentStreamView.as_view(),
+        name="invoice-bulk-download-stream",
+    ),
+    path(
+        "download/bulk/file/<uuid:job_id>/",
+        views.InvoiceBulkDocumentDownloadView.as_view(),
+        name="invoice-bulk-download-file",
+    ),
     # Import invoice routes
     path("import/", import_invoice_views.InvoiceImportView.as_view(), name="invoice-import"),
     path("import/single/", import_invoice_views.InvoiceSingleImportView.as_view(), name="invoice-single-import"),

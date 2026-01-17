@@ -51,7 +51,7 @@ def run_ocr_job(job_id: str) -> None:
 
         use_ai = bool(job.request_params.get("use_ai"))
         logger.info(f"Extracting data (use_ai={use_ai})")
-        
+
         if use_ai:
             mrz_data = extract_passport_with_ai(uploaded_file, use_ai=True)
         else:
@@ -93,7 +93,7 @@ def run_ocr_job(job_id: str) -> None:
     except Exception as exc:
         full_traceback = traceback.format_exc()
         logger.error(f"OCR job {job_id} failed: {str(exc)}\n{full_traceback}")
-        
+
         job.status = OCRJob.STATUS_FAILED
         job.error_message = str(exc)
         job.traceback = full_traceback
