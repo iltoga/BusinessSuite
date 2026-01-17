@@ -310,4 +310,11 @@ def manage_server_action(request):
         except Exception as e:
             return JsonResponse({"ok": False, "message": str(e)}, status=500)
 
+    if action == "media_repair":
+        try:
+            repairs = services.repair_media_paths()
+            return JsonResponse({"ok": True, "repairs": repairs})
+        except Exception as e:
+            return JsonResponse({"ok": False, "message": str(e)}, status=500)
+
     return JsonResponse({"error": "unknown action"}, status=400)

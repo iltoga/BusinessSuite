@@ -6,6 +6,9 @@
   <button id="media-diagnostic" class="btn btn-info">
     Check Media Files (Disk vs DB)
   </button>
+  <button id="media-repair" class="btn btn-warning">
+    Repair Media Paths (Name Mismatch)
+  </button>
 </div>
 
 <div
@@ -44,6 +47,10 @@
   document
     .getElementById("media-diagnostic")
     .addEventListener("click", () => postAction("media_diagnostic"));
+
+  document
+    .getElementById("media-repair")
+    .addEventListener("click", () => postAction("media_repair"));
 
   function getCookie(name) {
     let cookieValue = null;

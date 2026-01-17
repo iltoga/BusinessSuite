@@ -15,6 +15,7 @@ from .base import *
 ALLOWED_HOSTS = [APP_DOMAIN, f"www.{APP_DOMAIN}", f"{APP_DOMAIN}", "bs-cron", "bs-core"]
 
 MEDIA_ROOT = "/media/"
+MEDIA_URL = "/media/"
 
 STATIC_ROOT = "/staticfiles/"
 

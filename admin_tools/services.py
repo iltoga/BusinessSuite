@@ -372,6 +372,13 @@ def check_media_files():
                     except Exception as e:
                         url = f"ERROR: {str(e)}"
                         abs_path = "ERROR"
+
+                    # Check for file_link discrepancy if it exists on the model
+                    file_link = getattr(obj, "file_link", None)
+                    discrepancy = False
+                    if file_link and url and file_link != url:
+                        discrepancy = True
+
                     results.append(
                         {
                             "model": model._meta.label,
@@ -381,6 +388,52 @@ def check_media_files():
                             "abs_path": abs_path,
                             "exists": exists,
                             "url": url,
+                            "file_link": file_link,
+                            "discrepancy": discrepancy,
                         }
                     )
     return results
+
+
+def repair_media_paths():
+    """Attempt to find missing files if customer name changed. Returns repair log."""
+    from django.apps import apps
+    from django.core.files.storage import default_storage
+    from django.db.models.fields.files import FileField
+
+    repairs = []
+    for model in apps.get_models():
+        for field in model._meta.get_fields():
+            if isinstance(field, FileField):
+                field_name = field.name
+                try:
+                    qs = model.objects.exclude(**{field_name: ""})
+                except Exception:
+                    continue
+                for obj in qs:
+                    file_field = getattr(obj, field_name)
+                    if not file_field or default_storage.exists(file_field.name):
+                        continue
+
+                    # File is missing. Check if the model has a property 'upload_folder' or similar
+                    # that suggests where it SHOULD be now.
+                    expected_dir = None
+                    if hasattr(obj, "upload_folder"):
+                        expected_dir = obj.upload_folder
+                    elif hasattr(obj, "doc_application") and hasattr(obj.doc_application, "upload_folder"):
+                        # For Document model
+                        expected_dir = obj.doc_application.upload_folder
+
+                    if expected_dir:
+                        filename = os.path.basename(file_field.name)
+                        new_path = f"{expected_dir}/{filename}"
+                        if default_storage.exists(new_path):
+                            old_path = file_field.name
+                            setattr(obj, field_name, new_path)
+                            # Also update file_link if present
+                            if hasattr(obj, "file_link"):
+                                obj.file_link = default_storage.url(new_path)
+                            obj.save(update_fields=[field_name] + (["file_link"] if hasattr(obj, "file_link") else []))
+                            repairs.append(f"Fixed {model._meta.label} #{obj.pk}: moved from {old_path} to {new_path}")
+
+    return repairs
