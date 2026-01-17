@@ -57,10 +57,11 @@ services:
     depends_on:
       - memcached
       - db
-    image: bs-core:custom
+    image: bs-app:web
     build:
       context: ./
       dockerfile: Dockerfile
+      target: web
     networks:
       dockernet:
         ipv4_address: 192.168.2.60
@@ -97,10 +98,11 @@ services:
     container_name: bs-cron
     depends_on:
       - bs-core
-    image: bs-cron:custom
+    image: bs-app:cron
     build:
       context: ./
-      dockerfile: Dockerfile.cron
+      dockerfile: Dockerfile
+      target: cron
     networks:
       dockernet:
         ipv4_address: 192.168.2.61
