@@ -18,7 +18,11 @@ urlpatterns = [
     # Compatibility aliases for template tags
     path("customers/<int:pk>/", views.CustomerViewSet.as_view({"get": "retrieve"}), name="api-customer-detail"),
     path("customers/search/", views.CustomerViewSet.as_view({"get": "search"}), name="api-customer-search"),
-    path("products/get_product_by_id/<int:product_id>/", views.ProductViewSet.as_view({"get": "get_product_by_id"}), name="api-product-by-id"),
+    path(
+        "products/get_product_by_id/<int:product_id>/",
+        views.ProductViewSet.as_view({"get": "get_product_by_id"}),
+        name="api-product-by-id",
+    ),
     path(
         "invoices/get_customer_applications/<int:customer_id>/",
         views.InvoiceViewSet.as_view({"get": "get_customer_applications"}),
