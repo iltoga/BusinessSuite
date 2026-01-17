@@ -90,7 +90,6 @@ INSTALLED_APPS = [
     "dbbackup",
     "storages",
     "admin_tools",
-    # "django_cron",  # Disabled due to Django 5.x compatibility issues
     "django_cleanup.apps.CleanupConfig",
     "django_user_agents",
     "huey.contrib.djhuey",
@@ -372,13 +371,7 @@ DBBACKUP_STORAGE_OPTIONS = {
 # Folders to exclude from media backup
 DBBACKUP_EXCLUDE_MEDIA_FODERS = ["tmpfiles"]
 
-CRON_CLASSES = [
-    "core.cron.FullBackupJob",
-    "core.cron.ClearCacheJob",
-]
-
-EVERY_ONE_MINUTE = 1  # 1 minute
-EVERY_ONE_DAY = 60 * 24  # 24 hours
+FULL_BACKUP_SCHEDULE = "02:00"
 CLEAR_CACHE_SCHEDULE = ["03:00"]
 
 LOGGING = {

@@ -124,29 +124,6 @@ services:
         target: /staticfiles
     command: python manage.py run_huey
 
-  bs-cron:
-    container_name: bs-cron
-    depends_on:
-      - bs-core
-    image: bs-app:cron
-    build:
-      context: ./
-      dockerfile: Dockerfile
-      target: cron
-    restart: unless-stopped
-    networks:
-      - dockernet
-    environment:
-      DB_HOST: ${DB_HOST}
-      DB_PORT: ${DB_PORT}
-      DB_NAME: ${DB_NAME}
-      DB_USER: ${DB_USER}
-      DB_PASS: ${DB_PASS}
-    volumes:
-      - type: bind
-        source: ./
-        target: /usr/src/app
-
 networks:
   dockernet:
     driver: bridge

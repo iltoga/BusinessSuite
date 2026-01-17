@@ -6,7 +6,6 @@ from math import e
 
 from django.conf import settings
 from django.core.files.storage import default_storage
-from django.core.management import call_command
 from django.db.models import Count, Q
 from django.urls import reverse
 from django.utils import timezone
@@ -29,6 +28,7 @@ from api.serializers import (
 )
 from core.models import DocumentOCRJob, OCRJob
 from core.services.quick_create import create_quick_customer, create_quick_customer_application, create_quick_product
+from core.tasks.cron_jobs import run_clear_cache_now, run_full_backup_now
 from core.tasks.document_ocr import run_document_ocr_job
 from core.tasks.ocr import run_ocr_job
 from core.utils.dateutils import calculate_due_date
@@ -506,12 +506,12 @@ class ComputeViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
 @throttle_classes([ScopedRateThrottle])
 def exec_cron_jobs(request):
     """
-    Execute cron jobs via django_cron
+    Execute cron jobs via Huey
     """
     request.throttle_scope = "cron"
-    # run all jobs
-    call_command("runcrons")
-    return Response({"status": "success"}, status=status.HTTP_200_OK)
+    run_full_backup_now.delay()
+    run_clear_cache_now.delay()
+    return Response({"status": "queued"}, status=status.HTTP_202_ACCEPTED)
 
 
 @api_view(["POST"])
