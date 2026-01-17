@@ -1,27 +1,49 @@
 {% extends "base_template.html" %} {% block content %}
 <h1>Manage Server</h1>
 
-<button id="clear-cache" class="btn btn-secondary">Clear Cache</button>
+<div class="mb-3">
+  <button id="clear-cache" class="btn btn-secondary">Clear Cache</button>
+  <button id="media-diagnostic" class="btn btn-info">
+    Check Media Files (Disk vs DB)
+  </button>
+</div>
 
-<div id="result" style="margin-top: 1rem"></div>
+<div
+  id="result"
+  class="card card-body bg-light"
+  style="margin-top: 1rem; font-family: monospace; white-space: pre-wrap"
+>
+  Diagnostic results will appear here...
+</div>
 
 <script>
   async function postAction(action) {
-    const res = await fetch('{% url "admin_tools:manage_server_action" %}', {
-      method: "POST",
-      headers: {
-        "X-CSRFToken": getCookie("csrftoken"),
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: "action=" + encodeURIComponent(action),
-    });
-    const data = await res.json();
-    document.getElementById("result").textContent = JSON.stringify(data);
+    const resultDiv = document.getElementById("result");
+    resultDiv.textContent = "Processing " + action + "...";
+
+    try {
+      const res = await fetch('{% url "admin_tools:manage_server_action" %}', {
+        method: "POST",
+        headers: {
+          "X-CSRFToken": getCookie("csrftoken"),
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: "action=" + encodeURIComponent(action),
+      });
+      const data = await res.json();
+      resultDiv.textContent = JSON.stringify(data, null, 2);
+    } catch (e) {
+      resultDiv.textContent = "Error: " + e.message;
+    }
   }
 
   document
     .getElementById("clear-cache")
     .addEventListener("click", () => postAction("clear_cache"));
+
+  document
+    .getElementById("media-diagnostic")
+    .addEventListener("click", () => postAction("media_diagnostic"));
 
   function getCookie(name) {
     let cookieValue = null;

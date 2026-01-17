@@ -339,3 +339,48 @@ def restore_from_file(path, include_users=False):
                 shutil.rmtree(extracted_tmp)
             except Exception:
                 pass
+
+
+def check_media_files():
+    """Verify disk presence for files referenced in FileFields. Returns list of dicts."""
+    from django.apps import apps
+    from django.core.files.storage import default_storage
+    from django.db.models.fields.files import FileField
+
+    results = []
+    for model in apps.get_models():
+        for field in model._meta.get_fields():
+            if isinstance(field, FileField):
+                field_name = field.name
+                try:
+                    # Check first 100 entries only for performance
+                    qs = model.objects.exclude(**{field_name: ""})[:100]
+                except Exception:
+                    continue
+                for obj in qs:
+                    file_field = getattr(obj, field_name)
+                    if not file_field:
+                        continue
+                    path = file_field.name
+                    exists = default_storage.exists(path)
+                    try:
+                        url = file_field.url
+                        try:
+                            abs_path = default_storage.path(path)
+                        except Exception:
+                            abs_path = "N/A (not on local filesystem)"
+                    except Exception as e:
+                        url = f"ERROR: {str(e)}"
+                        abs_path = "ERROR"
+                    results.append(
+                        {
+                            "model": model._meta.label,
+                            "id": obj.pk,
+                            "field": field_name,
+                            "path": path,
+                            "abs_path": abs_path,
+                            "exists": exists,
+                            "url": url,
+                        }
+                    )
+    return results

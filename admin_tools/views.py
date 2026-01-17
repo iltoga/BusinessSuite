@@ -298,4 +298,16 @@ def manage_server_action(request):
         except Exception as e:
             return JsonResponse({"ok": False, "message": str(e)}, status=500)
 
+    if action == "media_diagnostic":
+        try:
+            results = services.check_media_files()
+            settings_info = {
+                "MEDIA_ROOT": str(settings.MEDIA_ROOT),
+                "MEDIA_URL": settings.MEDIA_URL,
+                "DEBUG": settings.DEBUG,
+            }
+            return JsonResponse({"ok": True, "results": results, "settings": settings_info})
+        except Exception as e:
+            return JsonResponse({"ok": False, "message": str(e)}, status=500)
+
     return JsonResponse({"error": "unknown action"}, status=400)
