@@ -1,5 +1,6 @@
 import mimetypes
 import os
+import uuid
 from datetime import datetime
 from math import e
 
@@ -7,6 +8,7 @@ from django.conf import settings
 from django.core.files.storage import default_storage
 from django.core.management import call_command
 from django.db.models import Count, Q
+from django.urls import reverse
 from django.utils import timezone
 from rest_framework import filters, pagination, status, viewsets
 from rest_framework.authentication import SessionAuthentication
@@ -25,10 +27,11 @@ from api.serializers import (
     ProductQuickCreateSerializer,
     ProductSerializer,
 )
+from core.models import DocumentOCRJob, OCRJob
 from core.services.quick_create import create_quick_customer, create_quick_customer_application, create_quick_product
+from core.tasks.document_ocr import run_document_ocr_job
+from core.tasks.ocr import run_ocr_job
 from core.utils.dateutils import calculate_due_date
-from core.utils.imgutils import convert_and_resize_image
-from core.utils.passport_ocr import extract_mrz_data, extract_passport_with_ai
 from customer_applications.models import DocApplication
 from customers.models import Customer
 from invoices.models.invoice import InvoiceApplication
@@ -263,6 +266,13 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
     throttle_scope = "ocr"
     throttle_classes = [ScopedRateThrottle]
 
+    def get_throttles(self):
+        if getattr(self, "action", None) == "status":
+            self.throttle_scope = "ocr_status"
+        else:
+            self.throttle_scope = "ocr"
+        return super().get_throttles()
+
     @action(detail=False, methods=["post"], url_path="check")
     def check(self, request):
         from django.utils.text import get_valid_filename
@@ -279,58 +289,180 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                 status.HTTP_400_BAD_REQUEST,
             )
 
-        doc_type = request.data.get("doc_type").lower()
-        if not doc_type or doc_type == "undefined":
+        doc_type_raw = request.data.get("doc_type")
+        if not doc_type_raw or doc_type_raw == "undefined":
             return self.error_response("No doc_type provided!", status.HTTP_400_BAD_REQUEST)
+        doc_type = doc_type_raw.lower()
 
         # Check if AI extraction is requested
-        use_ai = request.data.get("use_ai", "false").lower() == "true"
+        use_ai = str(request.data.get("use_ai", "false")).lower() == "true"
+        save_session = str(request.data.get("save_session", "false")).lower() == "true"
+        img_preview = str(request.data.get("img_preview", "false")).lower() == "true"
+        resize = str(request.data.get("resize", "false")).lower() == "true"
+        width = request.data.get("width", None)
 
         try:
-            # Use hybrid extraction if AI is enabled, otherwise use MRZ only
-            if use_ai:
-                mrz_data = extract_passport_with_ai(file, use_ai=True)
-            else:
-                mrz_data = extract_mrz_data(file)
+            safe_filename = get_valid_filename(os.path.basename(file.name))
+            tmp_file_path = os.path.join(settings.TMPFILES_FOLDER, safe_filename)
+            file_path = default_storage.save(tmp_file_path, file)
 
-            save_session = request.data.get("save_session")
-            if save_session:
-                # Sanitize filename to prevent path traversal and use RELATIVE path for storage
-                safe_filename = get_valid_filename(os.path.basename(file.name))
-                tmp_file_path = os.path.join(settings.TMPFILES_FOLDER, safe_filename)
-                file_path = default_storage.save(tmp_file_path, file)
-                request.session["file_path"] = default_storage.path(file_path)
-                request.session["file_url"] = default_storage.url(file_path)
-                request.session["mrz_data"] = mrz_data
-                request.session.save()
-
-            # Convert and resize the image. the file is the file path, not the file itself
-            img_preview = request.data.get("img_preview", False)
-            if img_preview:
-                img_preview = True
-            resize = request.data.get("resize", False)
-            if resize:
-                resize = True
-            width = request.data.get("width", None)
-            if width:
-                width = int(width)
-            _, img_str = convert_and_resize_image(
-                file,
-                file_type,
-                return_encoded=img_preview,
-                resize=resize,
-                base_width=width,
+            job = OCRJob.objects.create(
+                status=OCRJob.STATUS_QUEUED,
+                progress=0,
+                file_path=file_path,
+                file_url=default_storage.url(file_path),
+                save_session=save_session,
+                request_params={
+                    "doc_type": doc_type,
+                    "use_ai": use_ai,
+                    "img_preview": img_preview,
+                    "resize": resize,
+                    "width": width,
+                },
             )
+            run_ocr_job(str(job.id))
 
-            # Build response with optional AI error warning
-            response_data = {"b64_resized_image": img_str, "mrz_data": mrz_data}
-            if "ai_error" in mrz_data:
-                response_data["ai_warning"] = mrz_data.pop("ai_error")
-
-            return Response(data=response_data, status=status.HTTP_200_OK)
+            status_url = request.build_absolute_uri(reverse("api-ocr-status", kwargs={"job_id": str(job.id)}))
+            return Response(
+                data={
+                    "job_id": str(job.id),
+                    "status": job.status,
+                    "progress": job.progress,
+                    "status_url": status_url,
+                },
+                status=status.HTTP_202_ACCEPTED,
+            )
         except Exception as e:
             errMsg = e.args[0] if e.args else str(e)
             return self.error_response(errMsg, status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=["get"], url_path=r"status/(?P<job_id>[^/.]+)")
+    def status(self, request, job_id=None):
+        try:
+            job = OCRJob.objects.get(id=job_id)
+        except OCRJob.DoesNotExist:
+            return self.error_response("OCR job not found", status.HTTP_404_NOT_FOUND)
+
+        response_data = {
+            "job_id": str(job.id),
+            "status": job.status,
+            "progress": job.progress,
+        }
+
+        if job.status == OCRJob.STATUS_COMPLETED:
+            if job.result:
+                response_data.update(job.result)
+            if job.save_session and not job.session_saved and job.result:
+                request.session["file_path"] = default_storage.path(job.file_path)
+                request.session["file_url"] = job.file_url
+                request.session["mrz_data"] = job.result.get("mrz_data")
+                request.session.save()
+                job.session_saved = True
+                job.save(update_fields=["session_saved", "updated_at"])
+        elif job.status == OCRJob.STATUS_FAILED:
+            response_data["error"] = job.error_message or "OCR job failed"
+
+        return Response(data=response_data, status=status.HTTP_200_OK)
+
+
+class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
+    """
+    API endpoint for document OCR text extraction.
+
+    POST Parameters:
+        - file: The document file (PDF, Excel, Word)
+
+    Returns:
+        - text: Extracted text when completed
+    """
+
+    permission_classes = [IsAuthenticated]
+    throttle_scope = "document_ocr"
+    throttle_classes = [ScopedRateThrottle]
+
+    def get_throttles(self):
+        if getattr(self, "action", None) == "status":
+            self.throttle_scope = "document_ocr_status"
+        else:
+            self.throttle_scope = "document_ocr"
+        return super().get_throttles()
+
+    @action(detail=False, methods=["post"], url_path="check")
+    def check(self, request):
+        from django.utils.text import get_valid_filename
+
+        file = request.data.get("file")
+        if not file or file == "undefined":
+            return self.error_response("No file provided!", status.HTTP_400_BAD_REQUEST)
+
+        valid_file_types = {
+            ".pdf": "application/pdf",
+            ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            ".xls": "application/vnd.ms-excel",
+            ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            ".doc": "application/msword",
+        }
+
+        file_type = mimetypes.guess_type(file.name)[0]
+        file_ext = os.path.splitext(file.name)[1].lower()
+        if not file_type:
+            file_type = valid_file_types.get(file_ext)
+
+        if file_ext not in valid_file_types or file_type not in valid_file_types.values():
+            return self.error_response(
+                "File format not supported. Only PDF, Excel, and Word are accepted!",
+                status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            safe_filename = get_valid_filename(os.path.basename(file.name))
+            job_uuid = uuid.uuid4()
+            tmp_file_path = os.path.join(settings.TMPFILES_FOLDER, "document_ocr", str(job_uuid), safe_filename)
+            file_path = default_storage.save(tmp_file_path, file)
+
+            job = DocumentOCRJob.objects.create(
+                id=job_uuid,
+                status=DocumentOCRJob.STATUS_QUEUED,
+                progress=0,
+                file_path=file_path,
+                file_url=default_storage.url(file_path),
+                request_params={"file_type": file_type},
+            )
+            run_document_ocr_job(str(job.id))
+
+            status_url = request.build_absolute_uri(reverse("api-document-ocr-status", kwargs={"job_id": str(job.id)}))
+            return Response(
+                data={
+                    "job_id": str(job.id),
+                    "status": job.status,
+                    "progress": job.progress,
+                    "status_url": status_url,
+                },
+                status=status.HTTP_202_ACCEPTED,
+            )
+        except Exception as e:
+            errMsg = e.args[0] if e.args else str(e)
+            return self.error_response(errMsg, status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=["get"], url_path=r"status/(?P<job_id>[^/.]+)")
+    def status(self, request, job_id=None):
+        try:
+            job = DocumentOCRJob.objects.get(id=job_id)
+        except DocumentOCRJob.DoesNotExist:
+            return self.error_response("Document OCR job not found", status.HTTP_404_NOT_FOUND)
+
+        response_data = {
+            "job_id": str(job.id),
+            "status": job.status,
+            "progress": job.progress,
+        }
+
+        if job.status == DocumentOCRJob.STATUS_COMPLETED:
+            response_data["text"] = job.result_text
+        elif job.status == DocumentOCRJob.STATUS_FAILED:
+            response_data["error"] = job.error_message or "Document OCR job failed"
+
+        return Response(data=response_data, status=status.HTTP_200_OK)
 
 
 # the urlpattern for this view is:

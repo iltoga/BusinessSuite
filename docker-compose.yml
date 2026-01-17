@@ -65,6 +65,12 @@ services:
     networks:
       dockernet:
         ipv4_address: 192.168.2.60
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
     volumes:
       - type: bind
         source: ./
@@ -94,6 +100,51 @@ services:
       - le-certs:/etc/letsencrypt
     restart: unless-stopped
 
+  bs-worker:
+    container_name: bs-worker
+    depends_on:
+      - db
+      - bs-core
+    image: bs-app:web
+    networks:
+      dockernet:
+        ipv4_address: 192.168.2.63
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
+    volumes:
+      - type: bind
+        source: ./
+        target: /usr/src/app
+        bind:
+          propagation: rslave
+      - type: bind
+        source: ${DATA_PATH}/media
+        target: /media
+        bind:
+          propagation: rslave
+      - type: bind
+        source: ${DATA_PATH}/db
+        target: /db
+        bind:
+          propagation: rslave
+      - type: bind
+        source: ${DATA_PATH}/logs
+        target: /logs
+        bind:
+          propagation: rslave
+      - type: bind
+        source: ${DATA_PATH}/staticfiles
+        target: /staticfiles
+        bind:
+          propagation: rslave
+      - le-certs:/etc/letsencrypt
+    restart: unless-stopped
+    command: python manage.py run_huey
+
   bs-cron:
     container_name: bs-cron
     depends_on:
@@ -106,6 +157,12 @@ services:
     networks:
       dockernet:
         ipv4_address: 192.168.2.61
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
     restart: unless-stopped
 
 networks:

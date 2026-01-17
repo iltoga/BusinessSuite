@@ -6,20 +6,21 @@ Supports parallel processing with configurable concurrency.
 
 import json
 import logging
+import os
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from django.conf import settings
-from django.contrib import messages
 from django.contrib.auth.mixins import PermissionRequiredMixin
+from django.core.files.storage import default_storage
 from django.http import JsonResponse, StreamingHttpResponse
 from django.urls import reverse_lazy
-from django.utils import timezone
+from django.utils.text import get_valid_filename
 from django.views import View
 from django.views.generic import TemplateView
 
+from invoices.models import InvoiceImportItem, InvoiceImportJob
 from invoices.services.invoice_importer import InvoiceImporter
-from payments.models import Payment
+from invoices.tasks.import_jobs import run_invoice_import_item
 
 logger = logging.getLogger(__name__)
 
@@ -147,252 +148,156 @@ class InvoiceBatchImportView(PermissionRequiredMixin, View):
         if not files:
             return JsonResponse({"success": False, "error": "No files uploaded"}, status=400)
 
+        job = InvoiceImportJob.objects.create(
+            status=InvoiceImportJob.STATUS_QUEUED,
+            progress=0,
+            total_files=len(files),
+            created_by=request.user,
+            request_params={"llm_provider": llm_provider, "llm_model": llm_model},
+        )
+
+        for index, uploaded_file in enumerate(files, 1):
+            filename = uploaded_file.name
+            is_paid = paid_status_list[index - 1].lower() == "true" if index - 1 < len(paid_status_list) else False
+            safe_name = get_valid_filename(os.path.basename(filename))
+            tmp_dir = os.path.join(settings.TMPFILES_FOLDER, "invoice_imports", str(job.id))
+            tmp_path = os.path.join(tmp_dir, safe_name)
+            file_path = default_storage.save(tmp_path, uploaded_file)
+
+            item = InvoiceImportItem.objects.create(
+                job=job,
+                sort_index=index,
+                filename=filename,
+                file_path=file_path,
+                is_paid=is_paid,
+                status=InvoiceImportItem.STATUS_QUEUED,
+            )
+            run_invoice_import_item(str(item.id))
+
         # Return SSE stream
         response = StreamingHttpResponse(
-            self.process_files_stream(files, paid_status_list, request.user, llm_provider, llm_model),
+            self.stream_job(job.id),
             content_type="text/event-stream",
         )
         response["Cache-Control"] = "no-cache"
         response["X-Accel-Buffering"] = "no"
         return response
 
-    def process_files_stream(self, files, paid_status_list, user, llm_provider=None, llm_model=None):
-        """
-        Generator that yields SSE events for each step of the import process.
-        Uses parallel processing with ThreadPoolExecutor for faster imports.
+    def stream_job(self, job_id):
+        """Stream SSE updates for a running Huey import job."""
+        sent_states = {}
+        job = InvoiceImportJob.objects.get(id=job_id)
+        total_files = job.total_files
 
-        Args:
-            llm_provider: Optional LLM provider override ("openrouter" or "openai")
-            llm_model: Optional LLM model override
-        """
-        total_files = len(files)
-        results = []
-        max_workers = getattr(settings, "INVOICE_IMPORT_MAX_WORKERS", 3)
-
-        # Send initial event
         yield self.send_event(
             "start",
             {
                 "total": total_files,
-                "message": f"Starting parallel import of {total_files} file(s) (max {max_workers} concurrent)...",
+                "message": f"Starting background import of {total_files} file(s)...",
             },
         )
 
-        # Prepare file data for parallel processing
-        file_tasks = []
-        for index, uploaded_file in enumerate(files, 1):
-            filename = uploaded_file.name
-            is_paid = paid_status_list[index - 1].lower() == "true" if index - 1 < len(paid_status_list) else False
+        while True:
+            job.refresh_from_db()
+            items = list(job.items.all().order_by("sort_index"))
 
-            # Read file content to bytes (so it's safe to pass to threads)
-            file_content = uploaded_file.read()
-            uploaded_file.seek(0)  # Reset file pointer
+            for item in items:
+                state = sent_states.get(item.id, {"file_start": False, "parsing": False, "done": False})
 
-            file_tasks.append(
-                {
-                    "index": index,
-                    "filename": filename,
-                    "file_content": file_content,
-                    "is_paid": is_paid,
-                }
-            )
+                if item.status == InvoiceImportItem.STATUS_PROCESSING and not state["file_start"]:
+                    yield self.send_event(
+                        "file_start",
+                        {
+                            "index": item.sort_index,
+                            "filename": item.filename,
+                            "message": f"Processing {item.filename}...",
+                        },
+                    )
+                    state["file_start"] = True
 
-        # Process files in parallel using ThreadPoolExecutor
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            # Submit all tasks
-            future_to_file = {
-                executor.submit(self._process_single_file, task, user, llm_provider, llm_model): task
-                for task in file_tasks
-            }
+                if (
+                    item.status == InvoiceImportItem.STATUS_PROCESSING
+                    and item.result
+                    and item.result.get("stage") == "parsing"
+                    and not state["parsing"]
+                ):
+                    yield self.send_event(
+                        "parsing",
+                        {
+                            "index": item.sort_index,
+                            "filename": item.filename,
+                            "message": f"Parsing {item.filename} with AI...",
+                        },
+                    )
+                    state["parsing"] = True
 
-            # Process results as they complete (not necessarily in order)
-            for future in as_completed(future_to_file):
-                task = future_to_file[future]
-                index = task["index"]
-                filename = task["filename"]
-
-                try:
-                    result_data = future.result()
-                    results.append(result_data)
-
-                    # Send appropriate event based on status
-                    if result_data["status"] == "imported":
-                        yield self.send_event(
-                            "file_success",
-                            {
-                                "index": index,
-                                "filename": filename,
-                                "message": f"✓ Successfully imported {filename}",
-                                "result": result_data,
-                            },
-                        )
-                    elif result_data["status"] == "duplicate":
-                        yield self.send_event(
-                            "file_duplicate",
-                            {
-                                "index": index,
-                                "filename": filename,
-                                "message": f"⚠ Duplicate invoice detected: {filename}",
-                                "result": result_data,
-                            },
-                        )
+                if (
+                    item.status
+                    in [
+                        InvoiceImportItem.STATUS_IMPORTED,
+                        InvoiceImportItem.STATUS_DUPLICATE,
+                        InvoiceImportItem.STATUS_ERROR,
+                    ]
+                    and not state["done"]
+                ):
+                    result_data = self._build_result(item)
+                    if item.status == InvoiceImportItem.STATUS_IMPORTED:
+                        event_type = "file_success"
+                        message = f"✓ Successfully imported {item.filename}"
+                    elif item.status == InvoiceImportItem.STATUS_DUPLICATE:
+                        event_type = "file_duplicate"
+                        message = f"⚠ Duplicate invoice detected: {item.filename}"
                     else:
-                        yield self.send_event(
-                            "file_error",
-                            {
-                                "index": index,
-                                "filename": filename,
-                                "message": f"✗ Error processing {filename}: {result_data.get('message', 'Unknown error')}",
-                                "result": result_data,
-                            },
-                        )
-
-                except Exception as e:
-                    logger.error(f"Error processing {filename}: {str(e)}", exc_info=True)
-                    result_data = {
-                        "success": False,
-                        "status": "error",
-                        "message": f"Server error: {str(e)}",
-                        "filename": filename,
-                        "errors": [str(e)],
-                    }
-                    results.append(result_data)
+                        event_type = "file_error"
+                        message = f"✗ Error processing {item.filename}: {result_data.get('message', 'Unknown error')}"
 
                     yield self.send_event(
-                        "file_error",
+                        event_type,
                         {
-                            "index": index,
-                            "filename": filename,
-                            "message": f"✗ Server error processing {filename}",
+                            "index": item.sort_index,
+                            "filename": item.filename,
+                            "message": message,
                             "result": result_data,
                         },
                     )
+                    state["done"] = True
 
-        # Calculate summary
-        total = len(results)
-        imported = sum(1 for r in results if r["status"] == "imported")
-        duplicates = sum(1 for r in results if r["status"] == "duplicate")
-        errors = sum(1 for r in results if r["status"] == "error")
+                sent_states[item.id] = state
 
-        summary = {"total": total, "imported": imported, "duplicates": duplicates, "errors": errors}
+            if job.processed_files >= job.total_files and all(state["done"] for state in sent_states.values()):
+                summary = self._build_summary(job, items)
+                yield self.send_event(
+                    "complete",
+                    {
+                        "message": f"Import complete: {summary['summary']['imported']} imported, "
+                        f"{summary['summary']['duplicates']} duplicates, {summary['summary']['errors']} errors",
+                        **summary,
+                    },
+                )
+                break
 
-        # Send final completion event
-        yield self.send_event(
-            "complete",
-            {
-                "message": f"Import complete: {imported} imported, {duplicates} duplicates, {errors} errors",
-                "summary": summary,
-                "results": results,
-            },
-        )
+            yield ": keep-alive\n\n"
+            time.sleep(0.5)
 
-    def _process_single_file(self, task, user, llm_provider=None, llm_model=None):
-        """
-        Process a single file import. This method runs in a separate thread.
+    def _build_result(self, item):
+        if item.result and isinstance(item.result, dict) and item.result.get("status"):
+            return item.result
+        return {
+            "success": item.status == InvoiceImportItem.STATUS_IMPORTED,
+            "status": item.status,
+            "message": item.error_message or "Processing",
+            "filename": item.filename,
+        }
 
-        Args:
-            task: Dict with index, filename, file_content, is_paid
-            user: Django user for import
-            llm_provider: Optional LLM provider override
-            llm_model: Optional LLM model override
-
-        Returns:
-            Dict with result data
-        """
-        from io import BytesIO
-
-        from django.core.files.uploadedfile import InMemoryUploadedFile
-        from django.db import close_old_connections
-
-        # CRITICAL: Each thread needs its own database connection
-        # Close any stale connections inherited from parent thread
-        close_old_connections()
-
-        filename = task["filename"]
-        file_content = task["file_content"]
-        is_paid = task["is_paid"]
-
-        # Validate file extension
-        allowed_extensions = [".pdf", ".xlsx", ".xls", ".docx", ".doc"]
-        file_ext = filename.lower().split(".")[-1]
-
-        if f".{file_ext}" not in allowed_extensions:
-            return {
-                "success": False,
-                "status": "error",
-                "message": f"Unsupported file format: .{file_ext}",
-                "filename": filename,
-                "errors": [f"File type .{file_ext} not supported"],
-            }
-
-        try:
-            # Import the invoice (with database locking to prevent race conditions)
-            # Pass the bytes content directly, not a BytesIO object
-            importer = InvoiceImporter(user=user, llm_provider=llm_provider, llm_model=llm_model)
-            result = importer.import_from_file(file_content, filename)
-
-            # If invoice was successfully imported and marked as paid, create payments
-            if result.success and result.status == "imported" and is_paid and result.invoice:
-                try:
-                    # Create full payment for each invoice application
-                    payment_count = 0
-                    for invoice_app in result.invoice.invoice_applications.all():
-                        Payment.objects.create(
-                            invoice_application=invoice_app,
-                            from_customer=result.invoice.customer,
-                            payment_date=result.invoice.due_date,
-                            amount=invoice_app.amount,
-                            payment_type=Payment.CASH,
-                            notes=f"Auto-created payment for imported invoice {result.invoice.invoice_no_display}",
-                            created_by=user,
-                            updated_by=user,
-                        )
-                        payment_count += 1
-
-                    logger.info(f"Created {payment_count} payment(s) for invoice {result.invoice.invoice_no_display}")
-                    result.message += f" (Marked as paid with {payment_count} payment(s))"
-                except Exception as e:
-                    logger.error(f"Error creating payments for {filename}: {str(e)}", exc_info=True)
-                    result.message += " (Warning: Failed to create payments)"
-
-            result_data = {
-                "success": result.success,
-                "status": result.status,
-                "message": result.message,
-                "filename": filename,
-            }
-
-            if result.invoice:
-                result_data["invoice"] = {
-                    "id": result.invoice.pk,
-                    "invoice_no": result.invoice.invoice_no_display,
-                    "customer_name": result.invoice.customer.full_name,
-                    "total_amount": str(result.invoice.total_amount),
-                    "invoice_date": result.invoice.invoice_date.strftime("%Y-%m-%d"),
-                    "status": result.invoice.get_status_display(),
-                    "url": str(reverse_lazy("invoice-detail", kwargs={"pk": result.invoice.pk})),
-                }
-
-            if result.customer:
-                result_data["customer"] = {
-                    "id": result.customer.pk,
-                    "name": result.customer.full_name,
-                }
-
-            if result.errors:
-                result_data["errors"] = result.errors
-
-            return result_data
-
-        except Exception as e:
-            logger.error(f"Error processing {filename}: {str(e)}", exc_info=True)
-            return {
-                "success": False,
-                "status": "error",
-                "message": f"Server error: {str(e)}",
-                "filename": filename,
-                "errors": [str(e)],
-            }
+    def _build_summary(self, job, items):
+        results = [self._build_result(item) for item in items]
+        summary = {
+            "total": job.total_files,
+            "imported": job.imported_count,
+            "duplicates": job.duplicate_count,
+            "errors": job.error_count,
+        }
+        return {"summary": summary, "results": results}
 
     def send_event(self, event_type, data):
         """

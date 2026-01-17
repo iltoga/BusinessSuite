@@ -64,8 +64,12 @@ This document lists the main API endpoints exposed by the application in this re
     - `img_preview`: Boolean (optional, if true, returns a base64-encoded resized image)
     - `resize`: Boolean (optional, if true, resizes image)
     - `width`: Integer (optional, width for resizing)
-  - **Description:** Run OCR (Optical Character Recognition) check, e.g., for passport MRZ extraction. Returns `mrz_data` and optionally a base64-encoded resized image.
+  - **Description:** Queue OCR (Optical Character Recognition) check, e.g., for passport MRZ extraction. Returns a `job_id` and `status_url` for polling.
   - **Validation:** Only JPEG, PNG, TIFF, and PDF files are accepted. Both `file` and `doc_type` are required.
+
+- **GET `/api/ocr/status/<job_id>/`**
+  - **Input:** URL parameter `job_id` (UUID)
+  - **Description:** Poll OCR job status. Returns `status`, `progress`, and when completed, the same payload as the original OCR response (`mrz_data`, optional `b64_resized_image`, `ai_warning`).
 
 ---
 

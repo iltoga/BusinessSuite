@@ -10,10 +10,12 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
+import logging
 import os
 from pathlib import Path
 
 from dotenv import load_dotenv
+from peewee import PostgresqlDatabase
 
 from core.utils.dropbox_refresh_token import refresh_dropbox_token
 
@@ -66,11 +68,11 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.postgres",
-    "core",
+    "core.apps.CoreConfig",
     "landing",
     "customers",
     "products",
-    "invoices",
+    "invoices.apps.InvoicesConfig",
     "payments",
     "customer_applications",
     "letters",
@@ -91,6 +93,7 @@ INSTALLED_APPS = [
     # "django_cron",  # Disabled due to Django 5.x compatibility issues
     "django_cleanup.apps.CleanupConfig",
     "django_user_agents",
+    "huey.contrib.djhuey",
 ]
 
 MIDDLEWARE = [
@@ -266,6 +269,9 @@ REST_FRAMEWORK = {
         "quick_create": "20/minute",
         "cron": "5/minute",
         "ocr": "10/minute",
+        "ocr_status": "120/minute",
+        "document_ocr": "10/minute",
+        "document_ocr_status": "120/minute",
     },
 }
 
@@ -293,6 +299,7 @@ SESSION_SAVE_EVERY_REQUEST = True
 #     hostname, _, ips = socket.gethostbyname_ex(socket.gethostname())
 #     INTERNAL_IPS = [ip[: ip.rfind(".")] + ".1" for ip in ips] + ["127.0.0.1", "10.0.2.2"]
 
+
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
@@ -300,6 +307,28 @@ CACHES = {
     },
     "select2": {
         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+    },
+}
+
+HUEY = {
+    "huey_class": "huey.contrib.sql_huey.SqlHuey",
+    "name": "business_suite",
+    "results": True,
+    "store_errors": True,
+    "immediate": False,
+    "database": PostgresqlDatabase(
+        os.getenv("DB_NAME"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASS"),
+        host=os.getenv("DB_HOST") or "localhost",
+        port=int(os.getenv("DB_PORT")) if os.getenv("DB_PORT") else 5432,
+    ),
+    "consumer": {
+        "workers": int(os.getenv("HUEY_WORKERS", "2")),
+        "worker_type": os.getenv("HUEY_WORKER_TYPE", "thread"),
+        "scheduler_interval": 1,
+        "check_worker_health": True,
+        "health_check_interval": 1,
     },
 }
 

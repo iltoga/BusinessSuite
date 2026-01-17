@@ -9,12 +9,24 @@ router.register(r"customers", views.CustomerViewSet, basename="customers")
 router.register(r"products", views.ProductViewSet, basename="products")
 router.register(r"invoices", views.InvoiceViewSet, basename="invoices")
 router.register(r"ocr", views.OCRViewSet, basename="ocr")
+router.register(r"document-ocr", views.DocumentOCRViewSet, basename="document-ocr")
 router.register(r"compute", views.ComputeViewSet, basename="compute")
 
 urlpatterns = [
     path("api-token-auth/", auth_views.obtain_auth_token),
     path("session-auth/", include("rest_framework.urls", namespace="rest_framework")),
     path("ocr/check/", views.OCRViewSet.as_view({"post": "check"}), name="api-ocr-check"),
+    path("ocr/status/<uuid:job_id>/", views.OCRViewSet.as_view({"get": "status"}), name="api-ocr-status"),
+    path(
+        "document-ocr/check/",
+        views.DocumentOCRViewSet.as_view({"post": "check"}),
+        name="api-document-ocr-check",
+    ),
+    path(
+        "document-ocr/status/<uuid:job_id>/",
+        views.DocumentOCRViewSet.as_view({"get": "status"}),
+        name="api-document-ocr-status",
+    ),
     # Compatibility aliases for template tags
     path("customers/<int:pk>/", views.CustomerViewSet.as_view({"get": "retrieve"}), name="api-customer-detail"),
     path("customers/search/", views.CustomerViewSet.as_view({"get": "search"}), name="api-customer-search"),

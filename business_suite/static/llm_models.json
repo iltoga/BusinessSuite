@@ -49,7 +49,7 @@
                     "description": "Google Gemini 2.5 Flash"
                 },
                 {
-                    "id": "google/google/gemini-3-flash-preview",
+                    "id": "google/gemini-3-flash-preview",
                     "name": "Gemini 3 Flash Preview",
                     "description": "Google Gemini 3 Flash Preview"
                 },
