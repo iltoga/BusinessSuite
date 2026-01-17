@@ -46,9 +46,14 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 APP_DOMAIN = os.getenv("APP_DOMAIN")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv("DJANGO_DEBUG", "False") == "True"
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    "localhost",
+    "127.0.0.1",
+    "[::1]",
+    os.getenv("APP_DOMAIN", ""),
+]
 
 
 # Application definition
@@ -250,6 +255,18 @@ REST_FRAMEWORK = {
         "rest_framework.parsers.MultiPartParser",
         "rest_framework.parsers.FileUploadParser",
     ],
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+        "rest_framework.throttling.ScopedRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "100/day",
+        "user": "1000/day",
+        "quick_create": "20/minute",
+        "cron": "5/minute",
+        "ocr": "10/minute",
+    },
 }
 
 # in case we want to try using nodejs for the frontend

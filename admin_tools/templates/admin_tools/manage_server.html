@@ -1,42 +1,42 @@
-{% extends "base_template.html" %}
-{% block content %}
+{% extends "base_template.html" %} {% block content %}
 <h1>Manage Server</h1>
 
 <button id="clear-cache" class="btn btn-secondary">Clear Cache</button>
-<button id="restart-server" class="btn btn-warning">Restart Server</button>
 
-<div id="result" style="margin-top:1rem"></div>
+<div id="result" style="margin-top: 1rem"></div>
 
 <script>
-async function postAction(action){
-  const res = await fetch('{% url "admin_tools:manage_server_action" %}', {
-    method: 'POST',
-    headers: { 'X-CSRFToken': getCookie('csrftoken'), 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: 'action=' + encodeURIComponent(action)
-  });
-  const data = await res.json();
-  document.getElementById('result').textContent = JSON.stringify(data);
-}
+  async function postAction(action) {
+    const res = await fetch('{% url "admin_tools:manage_server_action" %}', {
+      method: "POST",
+      headers: {
+        "X-CSRFToken": getCookie("csrftoken"),
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: "action=" + encodeURIComponent(action),
+    });
+    const data = await res.json();
+    document.getElementById("result").textContent = JSON.stringify(data);
+  }
 
-document.getElementById('clear-cache').addEventListener('click', ()=> postAction('clear_cache'));
-document.getElementById('restart-server').addEventListener('click', ()=> {
-  if(!confirm('Are you sure you want to restart the server?')) return; postAction('restart_server');
-});
+  document
+    .getElementById("clear-cache")
+    .addEventListener("click", () => postAction("clear_cache"));
 
-function getCookie(name) {
-  let cookieValue = null;
-  if (document.cookie && document.cookie !== '') {
-    const cookies = document.cookie.split(';');
-    for (let i = 0; i < cookies.length; i++) {
-      const cookie = cookies[i].trim();
-      if (cookie.substring(0, name.length + 1) === (name + '=')) {
-        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-        break;
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== "") {
+      const cookies = document.cookie.split(";");
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === name + "=") {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
       }
     }
+    return cookieValue;
   }
-  return cookieValue;
-}
 </script>
 
 {% endblock %}

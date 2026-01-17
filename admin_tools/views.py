@@ -7,7 +7,6 @@ from django.contrib.auth.decorators import user_passes_test
 from django.core.cache import caches
 from django.http import FileResponse, HttpResponse, JsonResponse, StreamingHttpResponse
 from django.shortcuts import redirect, render
-from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from . import services
@@ -285,7 +284,6 @@ def document_types_page(request):
 
 @superuser_required
 @require_POST
-@csrf_exempt
 def manage_server_action(request):
     """Perform server actions: clear_cache, restart_server"""
     action = request.POST.get("action")
@@ -297,53 +295,6 @@ def manage_server_action(request):
         try:
             caches["default"].clear()
             return JsonResponse({"ok": True, "message": "Cache cleared"})
-        except Exception as e:
-            return JsonResponse({"ok": False, "message": str(e)}, status=500)
-
-    if action == "restart_server":
-        import signal
-        import subprocess
-
-        restart_cmd = os.getenv("SERVER_RESTART_CMD")
-        try:
-            if restart_cmd:
-                os.system(restart_cmd)
-                return JsonResponse({"ok": True, "message": f"Restart command executed: {restart_cmd}"})
-
-            # Try to find Gunicorn master process and send SIGHUP
-            try:
-                ps = subprocess.check_output(["ps", "aux"]).decode()
-                gunicorn_lines = [l for l in ps.splitlines() if "gunicorn" in l and "master" in l and "python" in l]
-                if gunicorn_lines:
-                    # Get the PID (second column)
-                    pid = int(gunicorn_lines[0].split()[1])
-                    os.kill(pid, signal.SIGHUP)
-                    return JsonResponse({"ok": True, "message": f"Sent SIGHUP to Gunicorn master process (PID {pid})"})
-            except Exception as e:
-                # If ps or kill fails, continue to fallback
-                pass
-
-            # fallback: touch wsgi.py to trigger reload in many deployments
-            wsgi_path = os.path.join(settings.BASE_DIR, "business_suite", "wsgi.py")
-            if os.path.exists(wsgi_path):
-                os.utime(wsgi_path, None)
-                return JsonResponse({"ok": True, "message": "Touched wsgi.py to trigger reload"})
-            # fallback: touch manage.py (may work in some setups)
-            manage_path = os.path.join(settings.BASE_DIR, "manage.py")
-            if os.path.exists(manage_path):
-                os.utime(manage_path, None)
-                return JsonResponse({"ok": True, "message": "Touched manage.py to trigger reload (fallback)"})
-            return JsonResponse(
-                {
-                    "ok": False,
-                    "message": (
-                        "Could not find Gunicorn master process. "
-                        "Set the SERVER_RESTART_CMD environment variable to a shell command that restarts your server, "
-                        "or ensure business_suite/wsgi.py or manage.py exists and is writable to allow reload via file touch."
-                    ),
-                },
-                status=500,
-            )
         except Exception as e:
             return JsonResponse({"ok": False, "message": str(e)}, status=500)
 

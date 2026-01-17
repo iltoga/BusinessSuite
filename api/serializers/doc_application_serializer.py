@@ -8,7 +8,20 @@ from customer_applications.models import DocApplication
 class DocApplicationSerializer(serializers.ModelSerializer):
     class Meta:
         model = DocApplication
-        fields = "__all__"
+        fields = [
+            "id",
+            "customer",
+            "product",
+            "doc_date",
+            "due_date",
+            "status",
+            "notes",
+            "created_at",
+            "updated_at",
+            "created_by",
+            "updated_by",
+        ]
+        read_only_fields = ["created_at", "updated_at"]
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
@@ -19,7 +32,20 @@ class DocApplicationSerializer(serializers.ModelSerializer):
 class DocApplicationSerializerWithRelations(serializers.ModelSerializer):
     class Meta:
         model = DocApplication
-        fields = "__all__"
+        fields = [
+            "id",
+            "customer",
+            "product",
+            "doc_date",
+            "due_date",
+            "status",
+            "notes",
+            "created_at",
+            "updated_at",
+            "created_by",
+            "updated_by",
+        ]
+        read_only_fields = ["created_at", "updated_at"]
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)

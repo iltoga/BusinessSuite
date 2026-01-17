@@ -12,9 +12,6 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 from .base import *
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
 ALLOWED_HOSTS = [APP_DOMAIN, f"www.{APP_DOMAIN}", f"{APP_DOMAIN}", "bs-cron", "bs-core"]
 
 MEDIA_ROOT = "/media/"

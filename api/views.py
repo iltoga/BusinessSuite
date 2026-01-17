@@ -8,12 +8,12 @@ from django.core.files.storage import default_storage
 from django.core.management import call_command
 from django.db.models import Count, Q
 from django.utils import timezone
-from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
 from rest_framework.authentication import SessionAuthentication
-from rest_framework.decorators import api_view, authentication_classes, permission_classes
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.decorators import api_view, authentication_classes, permission_classes, throttle_classes
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from api.serializers import (
@@ -36,6 +36,7 @@ from products.models.task import Task
 
 
 class SearchCustomers(APIView):
+    permission_classes = [IsAuthenticated]
     queryset = Customer.objects.all()
 
     def get(self, request, format=None):
@@ -48,6 +49,7 @@ class SearchCustomers(APIView):
 
 
 class CustomersView(APIView):
+    permission_classes = [IsAuthenticated]
     queryset = Customer.objects.all()
 
     def get(self, request):
@@ -56,6 +58,7 @@ class CustomersView(APIView):
 
 
 class CustomerDetailView(APIView):
+    permission_classes = [IsAuthenticated]
     queryset = Customer.objects.all()
 
     def get(self, request, pk):
@@ -93,6 +96,7 @@ class CustomerDetailView(APIView):
 
 
 class ProductsView(APIView):
+    permission_classes = [IsAuthenticated]
     queryset = Product.objects.all()
 
     def get(self, request):
@@ -101,6 +105,7 @@ class ProductsView(APIView):
 
 
 class ProductByIDView(APIView):
+    permission_classes = [IsAuthenticated]
     queryset = Product.objects.none()
 
     def get(self, request, *args, **kwargs):
@@ -135,6 +140,7 @@ class ProductByIDView(APIView):
 
 
 class CustomerApplicationsView(APIView):
+    permission_classes = [IsAuthenticated]
     queryset = DocApplication.objects.none()
 
     def get(self, request, *args, **kwargs):
@@ -184,6 +190,8 @@ class CustomerApplicationsView(APIView):
 
 
 class ProductsByTypeView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def get(self, request, product_type):
         products = Product.objects.filter(product_type=product_type)
         serializer = ProductSerializer(products, many=True)
@@ -209,6 +217,9 @@ class OCRCheckView(APIView):
         - mrz_data: Extracted passport data (enhanced with AI data if use_ai=true)
         - b64_resized_image: Base64 encoded preview (if img_preview=true)
     """
+
+    permission_classes = [IsAuthenticated]
+    throttle_scope = "ocr"
 
     def get_queryset(self):
         return Product.objects.none()
@@ -294,6 +305,8 @@ class OCRCheckView(APIView):
 
 
 class ComputeDocworkflowDueDate(APIView):
+    permission_classes = [IsAuthenticated]
+
     def get_queryset(self):
         return Product.objects.none()
 
@@ -323,6 +336,7 @@ class InvoiceApplicationDueAmountView(APIView):
     Returns the due amount for an invoice application
     """
 
+    permission_classes = [IsAuthenticated]
     queryset = InvoiceApplication.objects.none()
 
     def get(self, request, *args, **kwargs):
@@ -345,23 +359,26 @@ class InvoiceApplicationDueAmountView(APIView):
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
+@throttle_classes([ScopedRateThrottle])
 def exec_cron_jobs(request):
     """
     Execute cron jobs via django_cron
     """
+    request.throttle_scope = "cron"
     # run all jobs
     call_command("runcrons")
     return Response({"status": "success"}, status=status.HTTP_200_OK)
 
 
-@csrf_exempt
 @api_view(["POST"])
-@authentication_classes([])
-@permission_classes([AllowAny])
+@authentication_classes([SessionAuthentication])
+@permission_classes([IsAuthenticated])
+@throttle_classes([ScopedRateThrottle])
 def customer_quick_create(request):
     """
     Quick create a customer with minimal required fields
     """
+    request.throttle_scope = "quick_create"
     try:
         # Extract data from request
         def sanitize_phone(value):
@@ -464,10 +481,12 @@ def customer_quick_create(request):
 @api_view(["POST"])
 @authentication_classes([SessionAuthentication])
 @permission_classes([IsAuthenticated])
+@throttle_classes([ScopedRateThrottle])
 def customer_application_quick_create(request):
     """
     Quick create a customer application with documents and workflows
     """
+    request.throttle_scope = "quick_create"
     try:
         from customer_applications.models import Document, DocWorkflow
         from products.models.document_type import DocumentType
@@ -593,14 +612,15 @@ def customer_application_quick_create(request):
         return Response({"success": False, "error": error_msg}, status=status.HTTP_400_BAD_REQUEST)
 
 
-@csrf_exempt
 @api_view(["POST"])
-@authentication_classes([])
-@permission_classes([AllowAny])
+@authentication_classes([SessionAuthentication])
+@permission_classes([IsAuthenticated])
+@throttle_classes([ScopedRateThrottle])
 def product_quick_create(request):
     """
     Quick create a product with minimal required fields
     """
+    request.throttle_scope = "quick_create"
     try:
         # Extract and clean data from request
         validity = request.data.get("validity")

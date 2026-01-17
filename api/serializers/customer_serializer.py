@@ -12,4 +12,36 @@ class CustomerSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Customer
-        fields = "__all__"
+        fields = [
+            "id",
+            "created_at",
+            "updated_at",
+            "title",
+            "customer_type",
+            "first_name",
+            "last_name",
+            "company_name",
+            "email",
+            "telephone",
+            "whatsapp",
+            "telegram",
+            "facebook",
+            "instagram",
+            "twitter",
+            "npwp",
+            "nationality",
+            "birthdate",
+            "birth_place",
+            "passport_number",
+            "passport_issue_date",
+            "passport_expiration_date",
+            "gender",
+            "address_bali",
+            "address_abroad",
+            "notify_documents_expiration",
+            "notify_by",
+            "active",
+            "full_name",
+            "full_name_with_company",
+        ]
+        read_only_fields = ["created_at", "updated_at"]
