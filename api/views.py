@@ -8,13 +8,13 @@ from django.core.files.storage import default_storage
 from django.core.management import call_command
 from django.db.models import Count, Q
 from django.utils import timezone
-from rest_framework import status
+from rest_framework import filters, pagination, status, viewsets
 from rest_framework.authentication import SessionAuthentication
-from rest_framework.decorators import api_view, authentication_classes, permission_classes, throttle_classes
+from rest_framework.decorators import action, api_view, authentication_classes, permission_classes, throttle_classes
+from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
-from rest_framework.views import APIView
 
 from api.serializers import (
     CustomerSerializer,
@@ -35,170 +35,202 @@ from products.models.document_type import DocumentType
 from products.models.task import Task
 
 
-class SearchCustomers(APIView):
+class ApiErrorHandlingMixin:
+    def error_response(self, message, status_code=status.HTTP_400_BAD_REQUEST, details=None):
+        payload = {"error": message}
+        if details is not None:
+            payload["details"] = details
+        return Response(payload, status=status_code)
+
+    def handle_exception(self, exc):
+        response = super().handle_exception(exc)
+        if response is None:
+            return self.error_response("Server error", status.HTTP_500_INTERNAL_SERVER_ERROR)
+        if isinstance(exc, ValidationError):
+            return self.error_response("Validation error", response.status_code, details=response.data)
+        if isinstance(exc, NotFound):
+            return self.error_response("Not found", response.status_code)
+        if isinstance(response.data, dict) and "detail" in response.data:
+            return self.error_response(response.data["detail"], response.status_code)
+        return response
+
+
+class StandardResultsSetPagination(pagination.PageNumberPagination):
+    page_size = 50
+    page_size_query_param = "page_size"
+    max_page_size = 200
+
+
+class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
     queryset = Customer.objects.all()
+    serializer_class = CustomerSerializer
+    pagination_class = StandardResultsSetPagination
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["first_name", "last_name", "email", "company_name", "passport_number"]
+    ordering_fields = ["first_name", "last_name", "email", "company_name", "passport_number"]
+    ordering = ["last_name", "first_name"]
 
-    def get(self, request, format=None):
-        query = request.GET.get("q", "")
-        customers = self.queryset.filter(
+    def retrieve(self, request, *args, **kwargs):
+        language = request.GET.get("document_lang", settings.DEFAULT_DOCUMENT_LANGUAGE_CODE)
+        try:
+            customer = Customer.objects.select_related("nationality").get(pk=kwargs.get("pk"))
+        except Customer.DoesNotExist:
+            return self.error_response("Customer not found", status.HTTP_404_NOT_FOUND)
+        data = {
+            "id": customer.id,
+            "first_name": customer.first_name or "",
+            "last_name": customer.last_name or "",
+            "company_name": customer.company_name or "",
+            "full_name": customer.full_name,
+            "gender_display": customer.get_gender_display(language) if customer.gender else "",
+            "nationality_name": (
+                (
+                    customer.nationality.country_idn
+                    if getattr(customer.nationality, "country_idn", None)
+                    else customer.nationality.country
+                )
+                if customer.nationality
+                else ""
+            ),
+            "nationality_code": customer.nationality.alpha3_code if customer.nationality else "",
+            "birth_place": customer.birth_place or "",
+            "birthdate": customer.birthdate.isoformat() if customer.birthdate else "",
+            "passport_number": customer.passport_number or "",
+            "passport_expiration_date": (
+                customer.passport_expiration_date.isoformat() if customer.passport_expiration_date else ""
+            ),
+            "address_bali": customer.address_bali or "",
+        }
+        return Response(data)
+
+    @action(detail=False, methods=["get"], url_path="search")
+    def search(self, request):
+        query = request.query_params.get("q", "")
+        customers = self.get_queryset().filter(
             Q(first_name__icontains=query) | Q(last_name__icontains=query) | Q(email__icontains=query)
         )
-        serializer = CustomerSerializer(customers, many=True)
+        page = self.paginate_queryset(customers)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(customers, many=True)
         return Response(serializer.data)
 
 
-class CustomersView(APIView):
-    permission_classes = [IsAuthenticated]
-    queryset = Customer.objects.all()
-
-    def get(self, request):
-        serializer = CustomerSerializer(self.queryset.all(), many=True)
-        return Response(serializer.data)
-
-
-class CustomerDetailView(APIView):
-    permission_classes = [IsAuthenticated]
-    queryset = Customer.objects.all()
-
-    def get(self, request, pk):
-        try:
-            language = request.GET.get("document_lang", settings.DEFAULT_DOCUMENT_LANGUAGE_CODE)
-            customer = Customer.objects.select_related("nationality").get(pk=pk)
-            data = {
-                "id": customer.id,
-                "first_name": customer.first_name or "",
-                "last_name": customer.last_name or "",
-                "company_name": customer.company_name or "",
-                "full_name": customer.full_name,
-                "gender_display": customer.get_gender_display(language) if customer.gender else "",
-                "nationality_name": (
-                    (
-                        customer.nationality.country_idn
-                        if getattr(customer.nationality, "country_idn", None)
-                        else customer.nationality.country
-                    )
-                    if customer.nationality
-                    else ""
-                ),
-                "nationality_code": customer.nationality.alpha3_code if customer.nationality else "",
-                "birth_place": customer.birth_place or "",
-                "birthdate": customer.birthdate.isoformat() if customer.birthdate else "",
-                "passport_number": customer.passport_number or "",
-                "passport_expiration_date": (
-                    customer.passport_expiration_date.isoformat() if customer.passport_expiration_date else ""
-                ),
-                "address_bali": customer.address_bali or "",
-            }
-            return Response(data)
-        except Customer.DoesNotExist:
-            return Response({"error": "Customer not found"}, status=status.HTTP_404_NOT_FOUND)
-
-
-class ProductsView(APIView):
+class ProductViewSet(ApiErrorHandlingMixin, viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
     queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+    pagination_class = StandardResultsSetPagination
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["name", "code", "product_type"]
+    ordering_fields = ["name", "code", "product_type"]
+    ordering = ["name"]
 
-    def get(self, request):
-        serializer = ProductSerializer(self.queryset.all(), many=True)
-        return Response(serializer.data)
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        product_type = self.request.query_params.get("product_type")
+        if product_type:
+            queryset = queryset.filter(product_type=product_type)
+        return queryset
 
+    @action(detail=False, methods=["get"], url_path="get_product_by_id/(?P<product_id>[^/.]+)")
+    def get_product_by_id(self, request, product_id=None):
+        if not product_id:
+            return self.error_response("Invalid request", status.HTTP_400_BAD_REQUEST)
+        try:
+            product = Product.objects.get(id=product_id)
+        except Product.DoesNotExist:
+            return self.error_response("Product does not exist", status.HTTP_404_NOT_FOUND)
+        required_document_types_str = product.required_documents.split(",")
+        required_document_types_str = [document.strip() for document in required_document_types_str]
+        required_document_types = DocumentType.objects.filter(name__in=required_document_types_str)
+        serialized_product = ProductSerializer(product, many=False)
+        serialzed_document_types = DocumentTypeSerializer(required_document_types, many=True)
+        optional_document_types_str = product.optional_documents.split(",")
+        optional_document_types_str = [document.strip() for document in optional_document_types_str]
+        optional_document_types = DocumentType.objects.filter(name__in=optional_document_types_str)
+        serialzed_optional_document_types = DocumentTypeSerializer(optional_document_types, many=True)
+        return Response(
+            {
+                "product": serialized_product.data,
+                "required_documents": serialzed_document_types.data,
+                "optional_documents": serialzed_optional_document_types.data,
+            }
+        )
 
-class ProductByIDView(APIView):
-    permission_classes = [IsAuthenticated]
-    queryset = Product.objects.none()
-
-    def get(self, request, *args, **kwargs):
-        product_id = self.kwargs.get("product_id")
-        if product_id:
-            try:
-                product = Product.objects.get(id=product_id)
-                # split the string into a list and trim the spaces
-                required_document_types_str = product.required_documents.split(",")
-                required_document_types_str = [document.strip() for document in required_document_types_str]
-                # get the corresponting DocumentType objects
-                required_document_types = DocumentType.objects.filter(name__in=required_document_types_str)
-                # serialize the product and the required documents
-                serialized_product = ProductSerializer(product, many=False)
-                serialzed_document_types = DocumentTypeSerializer(required_document_types, many=True)
-                # also return the optional documents
-                optional_document_types_str = product.optional_documents.split(",")
-                optional_document_types_str = [document.strip() for document in optional_document_types_str]
-                optional_document_types = DocumentType.objects.filter(name__in=optional_document_types_str)
-                serialzed_optional_document_types = DocumentTypeSerializer(optional_document_types, many=True)
-                return Response(
-                    {
-                        "product": serialized_product.data,
-                        "required_documents": serialzed_document_types.data,
-                        "optional_documents": serialzed_optional_document_types.data,
-                    }
-                )
-            except Product.DoesNotExist:
-                return Response({"error": "Product does not exist"}, status=status.HTTP_404_NOT_FOUND)
-        else:
-            return Response({"error": "Invalid request"}, status=status.HTTP_400_BAD_REQUEST)
-
-
-class CustomerApplicationsView(APIView):
-    permission_classes = [IsAuthenticated]
-    queryset = DocApplication.objects.none()
-
-    def get(self, request, *args, **kwargs):
-        """
-        Returns all applications for a customer
-        """
-        customer_id = self.kwargs.get("customer_id")
-        if customer_id:
-            try:
-                applications = DocApplication.objects.filter(customer_id=customer_id)
-
-                # Get applications related to the customer and annotate them with the count of invoice_applications
-                applications = applications.annotate(num_invoices=Count("invoice_applications"))
-
-                # Filter applications based on provided kwargs. If not provided, use defaults
-                # Defaults: exclude_incomplete_document_collection=True, status!=STATUS_REJECTED, num_invoices=0
-                exclude_incomplete_document_collection = (
-                    request.query_params.get("exclude_incomplete_document_collection", "true").lower() == "true"
-                )
-                exclude_statuses_string = request.query_params.get("exclude_statuses", None)
-                if exclude_statuses_string:
-                    exclude_statuses = [status for status in exclude_statuses_string.split(",")]
-                    STATUS_DICT = dict(DocApplication.STATUS_CHOICES)
-                    if not all(status in STATUS_DICT.keys() for status in exclude_statuses):
-                        return Response(data={"error": "Invalid status provided"}, status=status.HTTP_400_BAD_REQUEST)
-                else:
-                    exclude_statuses = [DocApplication.STATUS_REJECTED]
-                exclude_with_invoices = request.query_params.get("exclude_with_invoices", "true").lower() == "true"
-
-                if exclude_incomplete_document_collection:
-                    applications = applications.filter_by_document_collection_completed()
-
-                if exclude_statuses:
-                    applications = applications.exclude(status__in=exclude_statuses)
-
-                if exclude_with_invoices:
-                    applications = applications.exclude(num_invoices__gt=0)
-
-                serializer = DocApplicationSerializerWithRelations(applications, many=True)
-                return Response(serializer.data)
-            except Customer.DoesNotExist:
-                return Response(data={"error": "Customer does not exist"}, status=status.HTTP_404_NOT_FOUND)
-            except Exception as e:
-                return Response(data={"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        else:
-            return Response(data={"error": "Invalid request"}, status=status.HTTP_400_BAD_REQUEST)
-
-
-class ProductsByTypeView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, product_type):
+    @action(detail=False, methods=["get"], url_path="get_products_by_product_type/(?P<product_type>[^/.]+)")
+    def get_products_by_product_type(self, request, product_type=None):
         products = Product.objects.filter(product_type=product_type)
-        serializer = ProductSerializer(products, many=True)
+        page = self.paginate_queryset(products)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(products, many=True)
         return Response(serializer.data)
 
 
-class OCRCheckView(APIView):
+class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.GenericViewSet):
+    permission_classes = [IsAuthenticated]
+    pagination_class = StandardResultsSetPagination
+
+    @action(detail=False, methods=["get"], url_path="get_customer_applications/(?P<customer_id>[^/.]+)")
+    def get_customer_applications(self, request, customer_id=None):
+        if not customer_id:
+            return self.error_response("Invalid request", status.HTTP_400_BAD_REQUEST)
+        applications = DocApplication.objects.filter(customer_id=customer_id)
+        applications = applications.annotate(num_invoices=Count("invoice_applications"))
+
+        exclude_incomplete_document_collection = (
+            request.query_params.get("exclude_incomplete_document_collection", "true").lower() == "true"
+        )
+        exclude_statuses_string = request.query_params.get("exclude_statuses", None)
+        if exclude_statuses_string:
+            exclude_statuses = [status for status in exclude_statuses_string.split(",")]
+            STATUS_DICT = dict(DocApplication.STATUS_CHOICES)
+            if not all(status in STATUS_DICT.keys() for status in exclude_statuses):
+                return self.error_response("Invalid status provided", status.HTTP_400_BAD_REQUEST)
+        else:
+            exclude_statuses = [DocApplication.STATUS_REJECTED]
+        exclude_with_invoices = request.query_params.get("exclude_with_invoices", "true").lower() == "true"
+
+        if exclude_incomplete_document_collection:
+            applications = applications.filter_by_document_collection_completed()
+
+        if exclude_statuses:
+            applications = applications.exclude(status__in=exclude_statuses)
+
+        if exclude_with_invoices:
+            applications = applications.exclude(num_invoices__gt=0)
+
+        page = self.paginate_queryset(applications)
+        if page is not None:
+            serializer = DocApplicationSerializerWithRelations(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = DocApplicationSerializerWithRelations(applications, many=True)
+        return Response(serializer.data)
+
+    @action(
+        detail=False, methods=["get"], url_path="get_invoice_application_due_amount/(?P<invoice_application_id>[^/.]+)"
+    )
+    def get_invoice_application_due_amount(self, request, invoice_application_id=None):
+        if not invoice_application_id:
+            return self.error_response("Invalid request", status.HTTP_400_BAD_REQUEST)
+        try:
+            invoice_application = InvoiceApplication.objects.get(pk=invoice_application_id)
+        except InvoiceApplication.DoesNotExist:
+            return self.error_response("Invoice Application does not exist", status.HTTP_404_NOT_FOUND)
+        return Response(
+            {
+                "due_amount": str(invoice_application.due_amount),
+                "amount": str(invoice_application.amount),
+                "paid_amount": str(invoice_application.paid_amount),
+            }
+        )
+
+
+class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
     """
     API endpoint for passport OCR extraction.
 
@@ -220,28 +252,27 @@ class OCRCheckView(APIView):
 
     permission_classes = [IsAuthenticated]
     throttle_scope = "ocr"
+    throttle_classes = [ScopedRateThrottle]
 
-    def get_queryset(self):
-        return Product.objects.none()
-
-    def post(self, request):
+    @action(detail=False, methods=["post"], url_path="check")
+    def check(self, request):
         from django.utils.text import get_valid_filename
 
         file = request.data.get("file")
         if not file or file == "undefined":
-            return Response(data={"error": "No file provided!"}, status=status.HTTP_400_BAD_REQUEST)
+            return self.error_response("No file provided!", status.HTTP_400_BAD_REQUEST)
 
         valid_file_types = ["image/jpeg", "image/png", "image/tiff", "application/pdf"]
         file_type = mimetypes.guess_type(file.name)[0]
         if file_type not in valid_file_types:
-            return Response(
-                data={"error": "File format not supported. Only images (jpeg and png) and pdf are accepted!"},
-                status=status.HTTP_400_BAD_REQUEST,
+            return self.error_response(
+                "File format not supported. Only images (jpeg and png) and pdf are accepted!",
+                status.HTTP_400_BAD_REQUEST,
             )
 
         doc_type = request.data.get("doc_type").lower()
         if not doc_type or doc_type == "undefined":
-            return Response(data={"error": "No doc_type provided!"}, status=status.HTTP_400_BAD_REQUEST)
+            return self.error_response("No doc_type provided!", status.HTTP_400_BAD_REQUEST)
 
         # Check if AI extraction is requested
         use_ai = request.data.get("use_ai", "false").lower() == "true"
@@ -290,7 +321,7 @@ class OCRCheckView(APIView):
             return Response(data=response_data, status=status.HTTP_200_OK)
         except Exception as e:
             errMsg = e.args[0] if e.args else str(e)
-            return Response(data={"error": errMsg}, status=status.HTTP_400_BAD_REQUEST)
+            return self.error_response(errMsg, status.HTTP_400_BAD_REQUEST)
 
 
 # the urlpattern for this view is:
@@ -304,13 +335,11 @@ class OCRCheckView(APIView):
 """
 
 
-class ComputeDocworkflowDueDate(APIView):
+class ComputeViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
 
-    def get_queryset(self):
-        return Product.objects.none()
-
-    def get(self, request, *args, **kwargs):
+    @action(detail=False, methods=["get"], url_path="doc_workflow_due_date/(?P<task_id>[^/.]+)/(?P<start_date>[^/.]+)")
+    def doc_workflow_due_date(self, request, task_id=None, start_date=None):
         task_id = self.kwargs.get("task_id")
         start_date = self.kwargs.get("start_date")
         # check that the date is a valid date and convert it to a datetime object
@@ -318,7 +347,7 @@ class ComputeDocworkflowDueDate(APIView):
             try:
                 start_date = datetime.strptime(start_date, "%Y-%m-%d")
             except ValueError:
-                return Response({"error": "Invalid date format. Date must be in the format YYYY-MM-DD"})
+                return self.error_response("Invalid date format. Date must be in the format YYYY-MM-DD")
         if task_id:
             try:
                 task = Task.objects.get(id=task_id)
@@ -326,35 +355,9 @@ class ComputeDocworkflowDueDate(APIView):
                 due_date = due_date.strftime("%Y-%m-%d")
                 return Response({"due_date": due_date})
             except Task.DoesNotExist:
-                return Response({"error": "Task does not exist"}, status=status.HTTP_404_NOT_FOUND)
+                return self.error_response("Task does not exist", status.HTTP_404_NOT_FOUND)
         else:
-            return Response({"error": "Invalid request"}, status=status.HTTP_400_BAD_REQUEST)
-
-
-class InvoiceApplicationDueAmountView(APIView):
-    """
-    Returns the due amount for an invoice application
-    """
-
-    permission_classes = [IsAuthenticated]
-    queryset = InvoiceApplication.objects.none()
-
-    def get(self, request, *args, **kwargs):
-        invoice_application_id = self.kwargs.get("invoice_application_id")
-        if invoice_application_id:
-            try:
-                invoice_application = InvoiceApplication.objects.get(pk=invoice_application_id)
-                return Response(
-                    {
-                        "due_amount": str(invoice_application.due_amount),
-                        "amount": str(invoice_application.amount),
-                        "paid_amount": str(invoice_application.paid_amount),
-                    }
-                )
-            except InvoiceApplication.DoesNotExist:
-                return Response({"error": "Invoice Application does not exist"}, status=status.HTTP_404_NOT_FOUND)
-        else:
-            return Response({"error": "Invalid request"}, status=status.HTTP_400_BAD_REQUEST)
+            return self.error_response("Invalid request", status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(["GET"])

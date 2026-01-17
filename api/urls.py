@@ -1,32 +1,37 @@
 from django.urls import include, path
 from rest_framework.authtoken import views as auth_views
+from rest_framework.routers import DefaultRouter
 
 from . import views
+
+router = DefaultRouter()
+router.register(r"customers", views.CustomerViewSet, basename="customers")
+router.register(r"products", views.ProductViewSet, basename="products")
+router.register(r"invoices", views.InvoiceViewSet, basename="invoices")
+router.register(r"ocr", views.OCRViewSet, basename="ocr")
+router.register(r"compute", views.ComputeViewSet, basename="compute")
 
 urlpatterns = [
     path("api-token-auth/", auth_views.obtain_auth_token),
     path("session-auth/", include("rest_framework.urls", namespace="rest_framework")),
-    path("customers/", views.CustomersView.as_view()),
-    path("customers/<int:pk>/", views.CustomerDetailView.as_view(), name="api-customer-detail"),
-    # the view requires a 'q' parameter with the query string
-    path("customers/search/", views.SearchCustomers.as_view(), name="api-customer-search"),
-    path("products/", views.ProductsView.as_view()),
-    path("products/get_product_by_id/<int:product_id>/", views.ProductByIDView.as_view(), name="api-product-by-id"),
-    path("products/get_products_by_product_type/<str:product_type>/", views.ProductsByTypeView.as_view()),
+    path("ocr/check/", views.OCRViewSet.as_view({"post": "check"}), name="api-ocr-check"),
+    # Compatibility aliases for template tags
+    path("customers/<int:pk>/", views.CustomerViewSet.as_view({"get": "retrieve"}), name="api-customer-detail"),
+    path("customers/search/", views.CustomerViewSet.as_view({"get": "search"}), name="api-customer-search"),
+    path("products/get_product_by_id/<int:product_id>/", views.ProductViewSet.as_view({"get": "get_product_by_id"}), name="api-product-by-id"),
     path(
         "invoices/get_customer_applications/<int:customer_id>/",
-        views.CustomerApplicationsView.as_view(),
+        views.InvoiceViewSet.as_view({"get": "get_customer_applications"}),
         name="api-customer-applications",
     ),
     path(
         "invoices/get_invoice_application_due_amount/<int:invoice_application_id>/",
-        views.InvoiceApplicationDueAmountView.as_view(),
+        views.InvoiceViewSet.as_view({"get": "get_invoice_application_due_amount"}),
         name="api-invoice-application-due-amount",
     ),
-    path("ocr/check/", views.OCRCheckView.as_view(), name="api-ocr-check"),
     path(
         "compute/doc_workflow_due_date/<int:task_id>/<slug:start_date>/",
-        views.ComputeDocworkflowDueDate.as_view(),
+        views.ComputeViewSet.as_view({"get": "doc_workflow_due_date"}),
         name="api-compute-docworkflow-due-date",
     ),
     # exec_cron_jobs
@@ -41,4 +46,5 @@ urlpatterns = [
         views.customer_application_quick_create,
         name="api-customer-application-quick-create",
     ),
+    path("", include(router.urls)),
 ]
