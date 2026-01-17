@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 import os
 from pathlib import Path
+from urllib.parse import quote
 
 from dotenv import load_dotenv
 
@@ -313,7 +314,7 @@ HUEY = {
     "results": True,
     "store_errors": True,
     "immediate": False,
-    "database": f"postgresql://{os.getenv('DB_USER')}:{os.getenv('DB_PASS')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}",
+    "database": f"postgresql://{quote(os.getenv('DB_USER', ''), safe='')}:{quote(os.getenv('DB_PASS', ''), safe='')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}",
     "consumer": {
         "workers": int(os.getenv("HUEY_WORKERS", "2")),
         "worker_type": os.getenv("HUEY_WORKER_TYPE", "thread"),
