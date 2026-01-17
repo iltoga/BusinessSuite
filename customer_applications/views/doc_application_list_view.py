@@ -19,4 +19,4 @@ class DocApplicationListView(PermissionRequiredMixin, ListView):
                 queryset = self.model.objects.search_doc_applications(query).order_by(*order_by)
             else:
                 queryset = self.model.objects.search_doc_applications(query)
-        return queryset
+        return queryset.select_related("customer", "product").prefetch_related("documents", "workflows")

@@ -17,14 +17,16 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 
 from api.serializers import (
+    CustomerApplicationQuickCreateSerializer,
+    CustomerQuickCreateSerializer,
     CustomerSerializer,
     DocApplicationSerializerWithRelations,
     DocumentTypeSerializer,
+    ProductQuickCreateSerializer,
     ProductSerializer,
 )
-from core.models import CountryCode
-from core.utils.dateutils import calculate_due_date, parse_date_field
-from core.utils.form_validators import normalize_phone_number
+from core.services.quick_create import create_quick_customer, create_quick_customer_application, create_quick_product
+from core.utils.dateutils import calculate_due_date
 from core.utils.imgutils import convert_and_resize_image
 from core.utils.passport_ocr import extract_mrz_data, extract_passport_with_ai
 from customer_applications.models import DocApplication
@@ -63,7 +65,10 @@ class StandardResultsSetPagination(pagination.PageNumberPagination):
 
 class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
-    queryset = Customer.objects.all()
+
+    def get_queryset(self):
+        return Customer.objects.select_related("nationality").all()
+
     serializer_class = CustomerSerializer
     pagination_class = StandardResultsSetPagination
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
@@ -179,7 +184,11 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.GenericViewSet):
     def get_customer_applications(self, request, customer_id=None):
         if not customer_id:
             return self.error_response("Invalid request", status.HTTP_400_BAD_REQUEST)
-        applications = DocApplication.objects.filter(customer_id=customer_id)
+        applications = (
+            DocApplication.objects.filter(customer_id=customer_id)
+            .select_related("customer", "product")
+            .prefetch_related("invoice_applications")
+        )
         applications = applications.annotate(num_invoices=Count("invoice_applications"))
 
         exclude_incomplete_document_collection = (
@@ -383,72 +392,11 @@ def customer_quick_create(request):
     """
     request.throttle_scope = "quick_create"
     try:
-        # Extract data from request
-        def sanitize_phone(value):
-            if not value:
-                return None
-            normalized = normalize_phone_number(value)
-            return normalized or None
+        serializer = CustomerQuickCreateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response({"success": False, "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
-        data = {
-            "title": request.data.get("title", ""),
-            "customer_type": request.data.get("customer_type", "person"),
-            "first_name": request.data.get("first_name"),
-            "last_name": request.data.get("last_name"),
-            "company_name": request.data.get("company_name", ""),
-            "npwp": request.data.get("npwp", ""),
-            "birth_place": request.data.get("birth_place"),
-            "email": request.data.get("email") or None,
-            "telephone": sanitize_phone(request.data.get("telephone")),
-            "whatsapp": sanitize_phone(request.data.get("whatsapp")),
-            "address_bali": request.data.get("address_bali", ""),
-            "address_abroad": request.data.get("address_abroad", ""),
-            "passport_number": request.data.get("passport_number", ""),
-            "gender": request.data.get("gender", ""),
-        }
-
-        # Parse all date fields - convert empty strings to None
-        birthdate = parse_date_field(request.data.get("birthdate"))
-        if birthdate:
-            data["birthdate"] = birthdate
-
-        passport_issue_date = parse_date_field(request.data.get("passport_issue_date"))
-        if passport_issue_date:
-            data["passport_issue_date"] = passport_issue_date
-
-        passport_expiration_date = parse_date_field(request.data.get("passport_expiration_date"))
-        if passport_expiration_date:
-            data["passport_expiration_date"] = passport_expiration_date
-
-        # Handle nationality
-        nationality_code = request.data.get("nationality")
-        if nationality_code:
-            try:
-                nationality = CountryCode.objects.get(alpha3_code=nationality_code)
-                data["nationality"] = nationality
-            except CountryCode.DoesNotExist:
-                pass
-
-        # Validate required fields based on customer type
-        customer_type = data.get("customer_type", "person")
-        if customer_type == "person":
-            if not data["first_name"] or not data["last_name"]:
-                return Response(
-                    {
-                        "success": False,
-                        "errors": {"__all__": ["First name and last name are required for person customers."]},
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-        elif customer_type == "company":
-            if not data["company_name"]:
-                return Response(
-                    {"success": False, "errors": {"__all__": ["Company name is required for company customers."]}},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-        # Create customer
-        customer = Customer.objects.create(**data)
+        customer = create_quick_customer(validated_data=serializer.validated_data)
 
         return Response(
             {
@@ -491,98 +439,28 @@ def customer_application_quick_create(request):
     """
     request.throttle_scope = "quick_create"
     try:
-        from customer_applications.models import Document, DocWorkflow
-        from products.models.document_type import DocumentType
+        serializer = CustomerApplicationQuickCreateSerializer(data=request.data)
+        if not serializer.is_valid():
+            if "doc_date" in serializer.errors:
+                return Response(
+                    {"success": False, "error": "Invalid date format. Use YYYY-MM-DD or DD/MM/YYYY."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if "customer" in serializer.errors or "product" in serializer.errors:
+                return Response(
+                    {"success": False, "error": "Customer or product not found."},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            return Response({"success": False, "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Extract data from request
-        customer_id = request.data.get("customer")
-        product_id = request.data.get("product")
-        doc_date = request.data.get("doc_date")
-        notes = request.data.get("notes", "")
-
-        # Validate required fields
-        if not customer_id or not product_id or not doc_date:
-            return Response(
-                {"success": False, "errors": {"__all__": ["Customer, product and application date are required."]}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Parse doc_date using the shared utility
-        doc_date = parse_date_field(doc_date)
-        if not doc_date:
-            return Response(
-                {"success": False, "error": "Invalid date format. Use YYYY-MM-DD or DD/MM/YYYY."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Get customer and product
-        try:
-            customer = Customer.objects.get(pk=customer_id)
-            product = Product.objects.get(pk=product_id)
-        except (Customer.DoesNotExist, Product.DoesNotExist) as e:
-            return Response(
-                {"success": False, "error": "Customer or product not found."},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-        # Create DocApplication
-        doc_app = DocApplication.objects.create(
-            customer=customer,
-            product=product,
-            doc_date=doc_date,
-            notes=notes,
+        validated_data = serializer.validated_data
+        doc_app = create_quick_customer_application(
+            customer=validated_data.get("customer"),
+            product=validated_data.get("product"),
+            doc_date=validated_data.get("doc_date"),
+            notes=validated_data.get("notes", ""),
             created_by=request.user,
         )
-
-        # Create documents based on product requirements
-        required_docs_str = product.required_documents or ""
-        optional_docs_str = product.optional_documents or ""
-
-        required_doc_names = [name.strip() for name in required_docs_str.split(",") if name.strip()]
-        optional_doc_names = [name.strip() for name in optional_docs_str.split(",") if name.strip()]
-
-        # Create required documents
-        for doc_name in required_doc_names:
-            try:
-                doc_type = DocumentType.objects.get(name=doc_name)
-                Document.objects.create(
-                    doc_application=doc_app,
-                    doc_type=doc_type,
-                    required=True,
-                    created_by=request.user,
-                )
-            except DocumentType.DoesNotExist:
-                pass
-
-        # Create optional documents
-        for doc_name in optional_doc_names:
-            try:
-                doc_type = DocumentType.objects.get(name=doc_name)
-                Document.objects.create(
-                    doc_application=doc_app,
-                    doc_type=doc_type,
-                    required=False,
-                    created_by=request.user,
-                )
-            except DocumentType.DoesNotExist:
-                pass
-
-        # Create initial workflow step
-        first_task = product.tasks.order_by("step").first()
-        if first_task:
-            due_date = calculate_due_date(
-                start_date=doc_app.doc_date,
-                days_to_complete=first_task.duration,
-                business_days_only=first_task.duration_is_business_days,
-            )
-            DocWorkflow.objects.create(
-                doc_application=doc_app,
-                task=first_task,
-                start_date=timezone.now().date(),  # REQUIRED: start_date must be set
-                due_date=due_date,
-                status=DocWorkflow.STATUS_PENDING,
-                created_by=request.user,
-            )
 
         return Response(
             {
@@ -625,47 +503,11 @@ def product_quick_create(request):
     """
     request.throttle_scope = "quick_create"
     try:
-        # Extract and clean data from request
-        validity = request.data.get("validity")
-        documents_min_validity = request.data.get("documents_min_validity")
-        base_price = request.data.get("base_price")
+        serializer = ProductQuickCreateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response({"success": False, "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Convert empty strings to None for integer fields
-        if validity == "" or validity is None:
-            validity = None
-        if documents_min_validity == "" or documents_min_validity is None:
-            documents_min_validity = None
-        if base_price == "" or base_price is None:
-            base_price = 0.00
-
-        data = {
-            "name": request.data.get("name"),
-            "code": request.data.get("code"),
-            "product_type": request.data.get("product_type", "other"),
-            "description": request.data.get("description", ""),
-            "base_price": base_price,
-            "validity": validity,
-            "documents_min_validity": documents_min_validity,
-            "required_documents": request.data.get("required_documents", ""),
-            "optional_documents": request.data.get("optional_documents", ""),
-        }
-
-        # Validate required fields
-        if not data["name"] or not data["code"] or not data["product_type"]:
-            return Response(
-                {"success": False, "errors": {"__all__": ["Name, code and product type are required."]}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Check if code already exists
-        if Product.objects.filter(code=data["code"]).exists():
-            return Response(
-                {"success": False, "errors": {"code": ["A product with this code already exists."]}},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Create product
-        product = Product.objects.create(**data)
+        product = create_quick_product(validated_data=serializer.validated_data)
 
         return Response(
             {

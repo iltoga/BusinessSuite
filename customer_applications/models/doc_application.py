@@ -120,6 +120,9 @@ class DocApplication(models.Model):
 
     class Meta:
         ordering = ["-id"]
+        indexes = [
+            models.Index(fields=["customer", "status"], name="docapp_customer_status_idx"),
+        ]
 
     def __str__(self):
         return self.product.name + " - " + self.customer.full_name + f" #{self.pk}"
