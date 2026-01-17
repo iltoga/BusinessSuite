@@ -65,6 +65,12 @@ services:
     networks:
       dockernet:
         ipv4_address: 192.168.2.60
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
     volumes:
       - type: bind
         source: ./
@@ -103,6 +109,12 @@ services:
     networks:
       dockernet:
         ipv4_address: 192.168.2.63
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
     volumes:
       - type: bind
         source: ./
@@ -145,6 +157,12 @@ services:
     networks:
       dockernet:
         ipv4_address: 192.168.2.61
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
     restart: unless-stopped
 
 networks:
