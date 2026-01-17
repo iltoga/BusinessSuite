@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
+import logging
 import os
 from pathlib import Path
 from urllib.parse import quote
@@ -298,6 +299,62 @@ SESSION_SAVE_EVERY_REQUEST = True
 #     hostname, _, ips = socket.gethostbyname_ex(socket.gethostname())
 #     INTERNAL_IPS = [ip[: ip.rfind(".")] + ".1" for ip in ips] + ["127.0.0.1", "10.0.2.2"]
 
+
+def _normalize_db_host_and_port(host: str, port: str) -> tuple[str, str]:
+    host_part = host
+    port_part = port
+
+    if host.startswith("[") and "]" in host:
+        if "]:" in host and not port_part:
+            host_part, port_part = host.rsplit(":", 1)
+    elif host.count(":") >= 2:
+        host_part = f"[{host}]"
+    elif host and ":" in host and not port_part:
+        host_part, port_part = host.rsplit(":", 1)
+
+    return host_part, port_part
+
+
+def _build_huey_database_url() -> str:
+    user = quote(os.getenv("DB_USER", ""), safe="")
+    password = quote(os.getenv("DB_PASS", ""), safe="")
+    host = os.getenv("DB_HOST", "")
+    port = os.getenv("DB_PORT", "")
+    name = os.getenv("DB_NAME", "")
+
+    host_part, port_part = _normalize_db_host_and_port(host, port)
+    netloc = host_part
+    if port_part:
+        netloc = f"{host_part}:{port_part}"
+
+    return f"postgresql://{user}:{password}@{netloc}/{name}"
+
+
+def _mask_huey_database_url(dsn: str) -> str:
+    if "://" not in dsn or "@" not in dsn:
+        return dsn
+    prefix, rest = dsn.split("://", 1)
+    creds, tail = rest.split("@", 1)
+    if ":" in creds:
+        user, _ = creds.split(":", 1)
+        creds = f"{user}:***"
+    else:
+        creds = "***"
+    return f"{prefix}://{creds}@{tail}"
+
+
+def _log_huey_database_url(dsn: str) -> None:
+    if os.getenv("HUEY_LOG_DSN", "false").lower() not in {"1", "true", "yes"}:
+        return
+    include_password = os.getenv("HUEY_LOG_DSN_INCLUDE_PASSWORD", "false").lower() in {
+        "1",
+        "true",
+        "yes",
+    }
+    output_dsn = dsn if include_password else _mask_huey_database_url(dsn)
+    logging.getLogger("huey").warning("Huey database DSN: %s", output_dsn)
+
+
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
@@ -308,13 +365,16 @@ CACHES = {
     },
 }
 
+_HUEY_DATABASE_URL = _build_huey_database_url()
+_log_huey_database_url(_HUEY_DATABASE_URL)
+
 HUEY = {
     "huey_class": "huey.contrib.sql_huey.SqlHuey",
     "name": "business_suite",
     "results": True,
     "store_errors": True,
     "immediate": False,
-    "database": f"postgresql://{quote(os.getenv('DB_USER', ''), safe='')}:{quote(os.getenv('DB_PASS', ''), safe='')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}",
+    "database": _HUEY_DATABASE_URL,
     "consumer": {
         "workers": int(os.getenv("HUEY_WORKERS", "2")),
         "worker_type": os.getenv("HUEY_WORKER_TYPE", "thread"),
