@@ -259,6 +259,9 @@ def restore_from_file(path, include_users=False):
             total_files = len(all_files)
             yield f"Restoring {total_files} media files..."
 
+            # Map original relative path -> actual saved path (in case storage renames files)
+            saved_path_map = {}
+
             for i, src in enumerate(all_files):
                 # relative path under extracted_media_tmpdir
                 rel = os.path.relpath(src, extracted_media_tmpdir)
@@ -271,7 +274,9 @@ def restore_from_file(path, include_users=False):
                                 default_storage.delete(rel)
                             except Exception:
                                 pass
-                        default_storage.save(rel, django_file)
+                        saved_path = default_storage.save(rel, django_file)
+                        if saved_path != rel:
+                            saved_path_map[rel] = saved_path
 
                     if (i + 1) % 10 == 0 or (i + 1) == total_files:
                         progress = int(((i + 1) / total_files) * 100)
@@ -279,6 +284,35 @@ def restore_from_file(path, include_users=False):
                         yield f"Restored {i + 1}/{total_files} files..."
                 except Exception as e:
                     yield f"Warning: could not restore media file {rel}: {e}"
+
+            # If storage renamed files, sync FileField paths in the DB
+            if saved_path_map:
+                try:
+                    from django.apps import apps
+                    from django.db import transaction
+
+                    yield f"Syncing {len(saved_path_map)} renamed media paths..."
+                    with transaction.atomic():
+                        for model in apps.get_models():
+                            for field in model._meta.get_fields():
+                                if isinstance(field, FileField):
+                                    field_name = field.name
+                                    old_paths = list(saved_path_map.keys())
+                                    try:
+                                        qs = model.objects.filter(**{f"{field_name}__in": old_paths})
+                                    except Exception:
+                                        continue
+                                    for obj in qs:
+                                        current_value = getattr(obj, field_name)
+                                        if not current_value:
+                                            continue
+                                        old_path = current_value.name
+                                        new_path = saved_path_map.get(old_path)
+                                        if new_path and new_path != old_path:
+                                            setattr(obj, field_name, new_path)
+                                            obj.save(update_fields=[field_name])
+                except Exception as e:
+                    yield f"Warning: could not sync renamed media paths: {e}"
 
         yield "Restore completed successfully."
         return True
