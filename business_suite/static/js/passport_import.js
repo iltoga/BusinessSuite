@@ -13,6 +13,7 @@
     }
     fetch(url, {
       method: "GET",
+      credentials: "same-origin",
       headers: {
         "X-Requested-With": "XMLHttpRequest",
       },
@@ -29,6 +30,32 @@
       .catch(function (err) {
         onError(err || { message: "Request failed" });
       });
+  }
+
+  function normalizeStatusUrl(url) {
+    if (!url || typeof url !== "string") {
+      return url;
+    }
+    try {
+      var resolved = new URL(url, window.location.origin);
+      if (
+        window.location.protocol === "https:" &&
+        resolved.protocol === "http:"
+      ) {
+        resolved.protocol = "https:";
+      }
+      if (resolved.origin !== window.location.origin) {
+        return (
+          window.location.origin +
+          resolved.pathname +
+          resolved.search +
+          resolved.hash
+        );
+      }
+      return resolved.toString();
+    } catch (e) {
+      return url;
+    }
   }
 
   function assignFieldValue(fieldId, value, inputType) {
@@ -235,6 +262,7 @@
       fetch(url, {
         method: method,
         body: formData,
+        credentials: "same-origin",
         headers: {
           "X-Requested-With": "XMLHttpRequest",
         },
@@ -441,8 +469,10 @@
             data.status_url
           ) {
             if (buttonText) buttonText.textContent = "Queued...";
+            var normalizedStatusUrl = normalizeStatusUrl(data.status_url);
+            console.log("OCR status URL:", normalizedStatusUrl);
             pollOcrStatus(
-              data.status_url,
+              normalizedStatusUrl,
               function (result) {
                 console.log("OCR polling completed:", result);
                 handleSuccess(result);
