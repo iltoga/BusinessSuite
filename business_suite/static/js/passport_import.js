@@ -96,7 +96,6 @@
       assignFieldValue(config.addressAbroadId, mrz.address_abroad);
     }
 
-    // Log extracted data for debugging
     if (mrz.extraction_method === "hybrid_mrz_ai") {
       if (mrz.ai_confidence_score !== undefined) {
         console.log(
@@ -104,12 +103,13 @@
           mrz.ai_confidence_score,
         );
       }
-      // Log all extracted MRZ data as JSON
-      try {
-        console.log("Extracted MRZ data:", JSON.stringify(mrz, null, 2));
-      } catch (e) {
-        console.warn("Failed to stringify MRZ data:", e);
-      }
+    }
+
+    // Log all extracted MRZ data as JSON for debugging
+    try {
+      console.log("Extracted Passport data:", JSON.stringify(mrz, null, 2));
+    } catch (e) {
+      console.warn("Failed to stringify MRZ data:", e);
     }
 
     // Return mismatch info for UI handling
@@ -263,11 +263,12 @@
         fetchJson(
           statusUrl,
           function (data) {
-            if (data.status === "completed") {
+            var status = data && data.status ? data.status.toLowerCase() : "";
+            if (status === "completed") {
               onComplete(data);
               return;
             }
-            if (data.status === "failed") {
+            if (status === "failed") {
               onError({ message: data.error || "OCR failed" });
               return;
             }
@@ -276,6 +277,7 @@
               progressMsg = "Processing... " + data.progress + "%";
             }
             if (successMsg) successMsg.textContent = progressMsg;
+            if (buttonText) buttonText.textContent = progressMsg;
             if (successEl) {
               successEl.classList.remove("alert-warning");
               successEl.classList.add("alert-info");
@@ -323,9 +325,36 @@
       }
 
       function handleSuccess(data) {
+        // Log received data for debugging
+        console.log("OCR handleSuccess called with data:", data);
+
+        // If we still have a "queued" or "processing" status here, it means something called handleSuccess too early
+        var status = data && data.status ? data.status.toLowerCase() : "";
+        if (
+          data &&
+          (status === "queued" ||
+            status === "processing" ||
+            status === "pending")
+        ) {
+          console.warn(
+            "handleSuccess called while job still in progress:",
+            status,
+          );
+          return;
+        }
+
         toggleElement(spinner, false, "class");
         if (button) button.disabled = false;
         if (buttonText) buttonText.textContent = "Import";
+
+        if (!data || !data.mrz_data) {
+          console.error("OCR completed but mrz_data is missing:", data);
+          if (errorMsg)
+            errorMsg.textContent = "OCR completed but no data was extracted.";
+          toggleElement(errorEl, true);
+          toggleElement(successEl, false);
+          return;
+        }
 
         var successText = "Data successfully imported via OCR!";
         var hasMismatches = false;
@@ -402,18 +431,24 @@
         config.ocrUrl,
         formData,
         function (data) {
+          console.log("OCR POST response received:", data);
+          var status = data && data.status ? data.status.toLowerCase() : "";
           if (
             data &&
-            (data.status === "queued" || data.status === "processing") &&
+            (status === "queued" ||
+              status === "processing" ||
+              status === "pending") &&
             data.status_url
           ) {
             if (buttonText) buttonText.textContent = "Queued...";
             pollOcrStatus(
               data.status_url,
               function (result) {
+                console.log("OCR polling completed:", result);
                 handleSuccess(result);
               },
               function (error) {
+                console.error("OCR polling failed:", error);
                 toggleElement(spinner, false, "class");
                 if (button) button.disabled = false;
                 if (buttonText) buttonText.textContent = "Import";
@@ -421,6 +456,7 @@
                   errorMsg.textContent =
                     (error && error.message) || "OCR failed";
                 toggleElement(errorEl, true);
+                toggleElement(successEl, false);
               },
             );
             return;
@@ -486,10 +522,6 @@
                 '<span class="spinner-border spinner-border-sm"></span> Uploading...';
             }
             startUpload(file);
-            if (clipboardStatus) {
-              clipboardStatus.innerHTML =
-                '<span class="text-success">Image uploaded and processed!</span>';
-            }
             e.preventDefault();
             break;
           }

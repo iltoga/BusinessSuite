@@ -32,15 +32,15 @@ fi
 # 4. Database Initialization
 if [[ "${RESET_DB_ON_STARTUP}" == "true" ]]; then
   echo "Clearing database as requested..."
-  python manage.py flush --no-input
+  python manage.py flush --noinput
 fi
 
 # 5. Core Django Operations
 echo "Running migrations..."
-python manage.py migrate --no-input
+python manage.py migrate --noinput
 
 echo "Collecting static files..."
-python manage.py collectstatic --no-input --clear
+python manage.py collectstatic --noinput --clear
 
 echo "Compiling translations..."
 python manage.py compilemessages || echo "Warning: compilemessages skipped (msgfmt might be missing)"
