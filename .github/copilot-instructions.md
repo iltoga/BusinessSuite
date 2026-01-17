@@ -1,57 +1,54 @@
-# AI Coding Assistant Instructions for RevisBaliCRM
+# GitHub Copilot Project Instructions — RevisBaliCRM
 
-## Project Overview
+## Project context
 
-RevisBaliCRM is a Django-based ERP/CRM system for service agencies, managing customer applications with document workflows, invoicing, and payments. Key components include customer applications, document processing with OCR, task-based workflows, and REST API integration.
+RevisBaliCRM is a Django-based ERP/CRM for service agencies. It manages customer applications, document workflows (with OCR), tasks, invoicing, and payments.
 
-## Architecture
+## Architecture & conventions
 
-- **Apps**: `customers`, `products`, `customer_applications`, `invoices`, `payments`, `core`
-- **Data Flow**: Products define tasks/workflows and document types → CustomerApplications link customers to products → Documents collected per application → Workflows track task progress → Invoices generated from completed applications
-- **Key Models**:
-  - `DocApplication`: Core application entity with status tracking
-  - `Document`: File/number/expiration/details with completion logic based on `DocumentType` requirements
-  - `DocWorkflow`: Task progress with due dates and notifications
-  - `Product`: Defines tasks and required document types
-- **UI**: Django templates + Bootstrap + Django Unicorn for reactive components (e.g., dynamic form updates without full page reloads)
+- Apps: `customers`, `products`, `customer_applications`, `invoices`, `payments`, `core`.
+- Data flow: Products → required document types/tasks → CustomerApplications → Documents → Workflows → Invoices.
+- UI: Django templates + Bootstrap 5 + Django Unicorn for reactive UI.
+- API: DRF `APIView` classes, token auth (`rest_framework.authtoken`), serializers in `api/serializers/`.
+- Forms: Django `ModelForm` + `inlineformset_factory`, render with Crispy Forms and Widget Tweaks.
 
-## Critical Workflows
+## Code quality rules (backend)
 
-- **Setup**: Run `./start.sh` for migrations, data population, user creation, static collection
-- **Data Population**: Use `fixtures.sh` or management commands like `populate_documenttypes`, `populate_products`
-- **Reset**: `./reset_app.sh` clears DB and migrations for clean slate
-- **Deployment**: Docker Compose with Postgres, pgAdmin, memcached, cron jobs
-- **Backups**: Automated to Dropbox via `django-dbbackup`
-- **OCR Processing**: Uses `pytesseract` and `passporteye` for passport scans, stores metadata in `Document.metadata` JSONField
+- Keep views thin; place business logic in models/services/managers.
+- Preserve public APIs and existing patterns; avoid breaking changes.
+- Model changes must include migrations and any needed admin/form/serializer updates.
+- Maintain data integrity for:
+  - `Document.completed` logic in `Document.save()` based on `DocumentType` flags.
+  - Workflow progression via `DocWorkflow` and due dates using `calculate_due_date()`.
+  - Safe deletion checks (e.g., prevent deleting invoiced applications).
+- Use `default_storage` for file access and `get_upload_to()` for upload paths.
+- Keep settings/secrets in `.env`; do not hardcode credentials.
 
-## Project Conventions
+## Code quality rules (frontend/templates)
 
-- **APIs**: Django REST Framework (DRF) with APIView classes for endpoints; token authentication via `rest_framework.authtoken`; serializers in `api/serializers/`
-- **Views**: Django generic class-based views (ListView, CreateView, etc.) with templates; Bootstrap 5 for styling; Django Unicorn for reactive components (AJAX updates via `unicorn:click`, `unicorn:model`)
-- **Forms**: Django ModelForm and inlineformset_factory for formsets; rendered with Crispy Forms (`{% load crispy_forms_tags %}`, `{{ form | crispy }}`); Widget Tweaks for field customization; Nested Admin for inline forms in admin
-- **Document Completion**: In `Document.save()`, check fields based on `DocumentType` flags (e.g., `has_file`, `has_expiration_date`)
-- **Upload Paths**: `documents/<customer_folder>/<application_id>/<filename>` via `get_upload_to()` function
-- **Workflow Progression**: Applications advance via `DocWorkflow` completion; due dates calculated with business day logic
-- **Search Managers**: Custom managers like `DocApplicationManager.search_doc_applications()` for query filtering
-- **Signals**: Post-delete cleanup for application folders using `shutil.rmtree()`
-- **Environment**: Use `.env` for secrets; settings split into `base.py`, `dev.py`, `prod.py`
-- **API**: DRF with token auth; endpoints for customers, products, OCR checks
-- **Cron Jobs**: Disabled Django cron due to Django 5 compatibility; use custom scripts
+- Use Bootstrap 5 classes and existing template blocks; avoid ad‑hoc styling.
+- Keep templates consistent with current layout and include `{% load crispy_forms_tags %}` when rendering forms.
+- Prefer Django Unicorn components (`components/` folders) for interactive behavior; minimize custom JS.
 
-## Examples
+## Style & consistency
 
-- **Creating a Document**: Ensure `completed` field updates based on `doc_type.has_file` etc. in `save()` method
-- **Workflow Due Dates**: Use `calculate_due_date()` from `core.utils.dateutils` for business day calculations
-- **Model Deletion**: Override `delete()` to check relations (e.g., prevent deleting invoiced applications)
-- **File Handling**: Use `default_storage` for cloud/local storage abstraction
-- **Unicorn Components**: Place in app `components/` folders for reactive UI elements
+- Python: follow PEP 8, use clear naming, add type hints when obvious.
+- Avoid unused imports; keep modules small and single‑responsibility.
+- Do not reformat unrelated code; keep diffs minimal.
 
-## Integration Points
+## Tests & validation
 
-- **Dropbox**: File storage and backups via `django-storages`
-- **OCR**: `passporteye` for MRZ reading; metadata extraction stored as JSON
-- **Payments**: Custom payment processing (check `payments` app)
-- **External APIs**: REST endpoints for third-party integrations
+- Update or add tests in the relevant app’s `tests/` when changing behavior.
+- For API changes, add/adjust DRF tests and serializers.
+- Keep fixtures aligned with `fixtures/` when adding core data types.
 
-Focus on maintaining data integrity, especially around document completion and workflow states. Use existing patterns for new features to ensure consistency.
-When possible use context7 mcp server to get updated information about the python packages and libraries used in the project.
+## When adding features
+
+- Update URLs, views, serializers, permissions, and templates consistently.
+- Ensure admin, forms, and API serializers reflect model changes.
+- Use existing custom managers (e.g., `DocApplicationManager.search_doc_applications()`) for search logic.
+
+## Documentation & references
+
+- Use the Context7 documentation source when clarifying library behavior.
+- Keep README/API docs aligned if endpoints or workflows change.
