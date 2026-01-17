@@ -12,7 +12,6 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 import os
 from pathlib import Path
-from urllib.parse import quote
 
 from dotenv import load_dotenv
 
@@ -298,32 +297,6 @@ SESSION_SAVE_EVERY_REQUEST = True
 #     hostname, _, ips = socket.gethostbyname_ex(socket.gethostname())
 #     INTERNAL_IPS = [ip[: ip.rfind(".")] + ".1" for ip in ips] + ["127.0.0.1", "10.0.2.2"]
 
-
-def _build_huey_database_url() -> str:
-    user = os.getenv("DB_USER", "")
-    password = os.getenv("DB_PASS", "")
-    host = os.getenv("DB_HOST", "")
-    port = os.getenv("DB_PORT", "")
-    name = os.getenv("DB_NAME", "")
-
-    host_part = host
-    port_part = port
-
-    if host.startswith("[") and "]" in host:
-        if "]:" in host and not port_part:
-            host_part, port_part = host.rsplit(":", 1)
-    elif host.count(":") >= 2:
-        host_part = f"[{host}]"
-    elif host and ":" in host and not port_part:
-        host_part, port_part = host.rsplit(":", 1)
-
-    netloc = host_part
-    if port_part:
-        netloc = f"{host_part}:{port_part}"
-
-    return f"postgresql://{quote(user)}:{quote(password)}@{netloc}/{name}"
-
-
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
@@ -340,7 +313,7 @@ HUEY = {
     "results": True,
     "store_errors": True,
     "immediate": False,
-    "database": _build_huey_database_url(),
+    "database": f"postgresql://{os.getenv('DB_USER')}:{os.getenv('DB_PASS')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}",
     "consumer": {
         "workers": int(os.getenv("HUEY_WORKERS", "2")),
         "worker_type": os.getenv("HUEY_WORKER_TYPE", "thread"),
