@@ -13,6 +13,12 @@ class InvoiceService:
     def __init__(self, invoice: Invoice):
         self.invoice = invoice
 
+    @staticmethod
+    def _normalize_multiline_text(value: str) -> str:
+        normalized = value.replace("\r\n", "\n").replace("\r", "\n")
+        lines = [line.strip() for line in normalized.split("\n") if line.strip()]
+        return ", ".join(lines)
+
     def generate_invoice_data(self):
         cur_date = formatutils.as_date_str(datetime_now())
         data = {
@@ -44,10 +50,14 @@ class InvoiceService:
             # Match the 'Items' column from the Invoice List view:
             # "<product.code> - <customer_application.notes or customer.full_name>"
             prod_code = str(item.customer_application.product.code)
-            prod_description = str(item.customer_application.product.description)
+            prod_description = self._normalize_multiline_text(str(item.customer_application.product.description))
             notes = item.customer_application.notes
             customer_name = str(item.customer_application.customer.full_name)
-            description = f"{prod_description} - {notes}" if notes else f"{prod_description} for {customer_name}"
+            if notes:
+                notes_text = self._normalize_multiline_text(str(notes))
+                description = f"{prod_description} - {notes_text}"
+            else:
+                description = f"{prod_description} for {customer_name}"
 
             items.append(
                 {

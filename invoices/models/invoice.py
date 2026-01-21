@@ -123,7 +123,17 @@ class Invoice(models.Model):
 
     @property
     def invoice_no_display(self):
-        return f"{self.invoice_no:08d}"
+        if not self.invoice_no:
+            return ""
+
+        year = self.get_invoice_year()
+        year_str = str(year)
+        invoice_no_str = str(self.invoice_no)
+
+        if invoice_no_str.startswith(year_str):
+            return invoice_no_str.zfill(8)
+
+        return f"{year_str}{invoice_no_str}".zfill(8)
 
     @property
     def total_paid_amount(self):
@@ -233,16 +243,35 @@ class Invoice(models.Model):
         return total
 
     def get_next_invoice_no(self):
-        # get the highest invoice number for the invoice year (fall back to current year)
-        try:
-            year = self.invoice_date.year if self.invoice_date else timezone.now().year
-        except Exception:
-            year = timezone.now().year
+        return Invoice.get_next_invoice_no_for_year(self.get_invoice_year())
 
-        last_invoice = Invoice.objects.filter(invoice_date__year=year).order_by("-invoice_no").first()
+    @staticmethod
+    def _build_year_invoice_no(year: int, sequence: int) -> int:
+        return int(f"{year}{sequence}")
+
+    @staticmethod
+    def _extract_sequence(invoice_no: int, year: int) -> int:
+        invoice_no_str = str(invoice_no)
+        year_str = str(year)
+        if invoice_no_str.startswith(year_str):
+            sequence_str = invoice_no_str[len(year_str) :] or "0"
+            return int(sequence_str)
+        return int(invoice_no)
+
+    @classmethod
+    def get_next_invoice_no_for_year(cls, year: int) -> int:
+        last_invoice = cls.objects.filter(invoice_date__year=year).order_by("-invoice_no").first()
         if last_invoice:
-            return last_invoice.invoice_no + 1
-        return 1
+            next_sequence = cls._extract_sequence(last_invoice.invoice_no, year) + 1
+        else:
+            next_sequence = 1
+        return cls._build_year_invoice_no(year, next_sequence)
+
+    def get_invoice_year(self) -> int:
+        try:
+            return self.invoice_date.year if self.invoice_date else timezone.now().year
+        except Exception:
+            return timezone.now().year
 
     def get_invoice_status(self):
         if self.total_due_amount < 0:
