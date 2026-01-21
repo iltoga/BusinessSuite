@@ -1,6 +1,6 @@
 """
-Custom management command to replace django_cron functionality.
-This command executes all the cron jobs defined in core/cron.py
+Custom management command to enqueue scheduled jobs via Huey.
+This command queues the same jobs that are scheduled periodically.
 """
 
 import logging
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = "Run cron jobs manually (replacement for django_cron runcrons command)"
+    help = "Queue scheduled jobs manually via Huey"
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -24,14 +24,13 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         """Execute all cron jobs."""
-        from core.cron import ClearCacheJob, FullBackupJob
+        from core.tasks.cron_jobs import run_clear_cache_now, run_full_backup_now
 
         force = options.get("force", False)
 
-        # List of all cron job classes
         cron_jobs = [
-            FullBackupJob,
-            ClearCacheJob,
+            ("FullBackupJob", run_full_backup_now),
+            ("ClearCacheJob", run_clear_cache_now),
         ]
 
         self.stdout.write(self.style.SUCCESS(f"Starting cron jobs execution at {timezone.now()}"))
@@ -39,18 +38,12 @@ class Command(BaseCommand):
         success_count = 0
         error_count = 0
 
-        for job_class in cron_jobs:
-            job_name = job_class.__name__
+        for job_name, job_task in cron_jobs:
             try:
                 self.stdout.write(f"Running {job_name}...")
-
-                # Create an instance of the job and run it
-                job_instance = job_class()
-                job_instance.do()
-
-                self.stdout.write(self.style.SUCCESS(f"✅ {job_name} completed successfully"))
+                job_task.delay()
+                self.stdout.write(self.style.SUCCESS(f"✅ {job_name} queued successfully"))
                 success_count += 1
-
             except Exception as e:
                 error_message = f"❌ {job_name} failed: {str(e)}"
                 self.stdout.write(self.style.ERROR(error_message))

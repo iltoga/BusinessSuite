@@ -61,7 +61,7 @@ jobs:
             docker ps -a -q --filter "name=postgres-srv" | xargs -r docker rm -f || true
             docker ps -a -q --filter "name=pgadmin" | xargs -r docker rm -f || true
             docker ps -a -q --filter "name=bs-core" | xargs -r docker rm -f || true
-            docker ps -a -q --filter "name=bs-cron" | xargs -r docker rm -f || true
+            docker ps -a -q --filter "name=bs-worker" | xargs -r docker rm -f || true
             docker ps -a -q --filter "name=memcached" | xargs -r docker rm -f || true
             docker ps -a -q --filter "name=crmrevisbalicom" | xargs -r docker rm -f || true
             echo "✅  All containers removed"

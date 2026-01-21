@@ -62,18 +62,3 @@ CMD /bin/bash -c "chmod +x /usr/src/app/scripts/* && /usr/src/app/start.sh"
 
 EXPOSE 8000
 
-
-# -------- Cron Runtime --------
-FROM web AS cron
-
-USER root
-
-RUN apt-get update && apt-get install -y --no-install-recommends cron \
-  && apt-get clean && rm -rf /var/lib/apt/lists/*
-
-COPY scripts/exec_cron_api.sh /usr/src/app/exec_cron_api.sh
-RUN chmod +x /usr/src/app/exec_cron_api.sh
-
-RUN crontab -l | { cat; echo "0 3 * * * bash /usr/src/app/exec_cron_api.sh"; } | crontab -
-
-CMD ["cron", "-f", "-L", "15"]

@@ -5,7 +5,6 @@ from typing import Any
 
 from django import forms
 from django.core import serializers
-from django.db.models import Max
 from django.forms.fields import Field
 from django.utils import timezone
 from matplotlib import widgets
@@ -69,8 +68,7 @@ class InvoiceCreateForm(forms.ModelForm):
             # Compute suggested invoice number for the year
             from invoices.models.invoice import Invoice
 
-            max_obj = Invoice.objects.filter(invoice_date__year=year).aggregate(max_no=Max("invoice_no"))
-            proposed = (max_obj.get("max_no") or 0) + 1
+            proposed = Invoice.get_next_invoice_no_for_year(year)
 
             # configure invoice_no field widget with min and initial value
             self.fields["invoice_no"].widget = forms.NumberInput(attrs={"min": proposed})
@@ -143,22 +141,27 @@ class InvoiceCreateForm(forms.ModelForm):
 
         from invoices.models.invoice import Invoice
 
-        max_obj = Invoice.objects.filter(invoice_date__year=year).aggregate(max_no=Max("invoice_no"))
-        proposed = (max_obj.get("max_no") or 0) + 1
+        proposed = Invoice.get_next_invoice_no_for_year(year)
 
         if invoice_no is None:
             return invoice_no
 
-        if invoice_no < proposed:
+        normalized_invoice_no = Invoice._build_year_invoice_no(year, Invoice._extract_sequence(invoice_no, year))
+
+        if normalized_invoice_no < proposed:
             raise forms.ValidationError(
                 f"Invoice number cannot be lower than the first available number for {year} ({proposed})."
             )
 
         # Also check uniqueness
-        if Invoice.objects.filter(invoice_no=invoice_no).exclude(pk=getattr(self.instance, "pk", None)).exists():
+        if (
+            Invoice.objects.filter(invoice_no=normalized_invoice_no)
+            .exclude(pk=getattr(self.instance, "pk", None))
+            .exists()
+        ):
             raise forms.ValidationError("This invoice number is already in use.")
 
-        return invoice_no
+        return normalized_invoice_no
 
 
 class InvoiceUpdateForm(forms.ModelForm):
