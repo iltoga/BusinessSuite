@@ -42,17 +42,22 @@ def backup_page(request):
             except Exception:
                 size = None
             btype = (
-                "tar.gz"
-                if fn.endswith(".tar.gz") or fn.endswith(".tgz")
-                else ("json.gz" if fn.endswith(".gz") else "json")
+                "tar.zst"
+                if fn.endswith(".tar.zst")
+                else (
+                    "tar.gz"
+                    if fn.endswith(".tar.gz") or fn.endswith(".tgz")
+                    else ("json.gz" if fn.endswith(".gz") else "json")
+                )
             )
             included_files = None
-            if btype == "tar.gz":
+            if btype in ("tar.gz", "tar.zst"):
                 try:
                     import json as _json
                     import tarfile
 
-                    with tarfile.open(path, "r:gz") as tar:
+                    comp = "zst" if btype == "tar.zst" else "gz"
+                    with tarfile.open(path, f"r:{comp}") as tar:
                         try:
                             member = tar.getmember("manifest.json")
                             f = tar.extractfile(member)
@@ -135,17 +140,22 @@ def restore_page(request):
             except Exception:
                 size = None
             btype = (
-                "tar.gz"
-                if fn.endswith(".tar.gz") or fn.endswith(".tgz")
-                else ("json.gz" if fn.endswith(".gz") else "json")
+                "tar.zst"
+                if fn.endswith(".tar.zst")
+                else (
+                    "tar.gz"
+                    if fn.endswith(".tar.gz") or fn.endswith(".tgz")
+                    else ("json.gz" if fn.endswith(".gz") else "json")
+                )
             )
             included_files = None
-            if btype == "tar.gz":
+            if btype in ("tar.gz", "tar.zst"):
                 try:
                     import json as _json
                     import tarfile
 
-                    with tarfile.open(path, "r:gz") as tar:
+                    comp = "zst" if btype == "tar.zst" else "gz"
+                    with tarfile.open(path, f"r:{comp}") as tar:
                         try:
                             member = tar.getmember("manifest.json")
                             f = tar.extractfile(member)
@@ -173,17 +183,22 @@ def backups_json(request):
             except Exception:
                 size = None
             btype = (
-                "tar.gz"
-                if fn.endswith(".tar.gz") or fn.endswith(".tgz")
-                else ("json.gz" if fn.endswith(".gz") else "json")
+                "tar.zst"
+                if fn.endswith(".tar.zst")
+                else (
+                    "tar.gz"
+                    if fn.endswith(".tar.gz") or fn.endswith(".tgz")
+                    else ("json.gz" if fn.endswith(".gz") else "json")
+                )
             )
             included_files = None
-            if btype == "tar.gz":
+            if btype in ("tar.gz", "tar.zst"):
                 try:
                     import json as _json
                     import tarfile
 
-                    with tarfile.open(path, "r:gz") as tar:
+                    comp = "zst" if btype == "tar.zst" else "gz"
+                    with tarfile.open(path, f"r:{comp}") as tar:
                         try:
                             member = tar.getmember("manifest.json")
                             f = tar.extractfile(member)
@@ -243,9 +258,11 @@ def upload_backup(request):
         or uploaded_file.name.endswith(".gz")
         or uploaded_file.name.endswith(".tar.gz")
         or uploaded_file.name.endswith(".tgz")
+        or uploaded_file.name.endswith(".tar.zst")
+        or uploaded_file.name.endswith(".zst")
     ):
         return JsonResponse(
-            {"ok": False, "error": "Invalid file type. Only .json or .json.gz files are allowed."}, status=400
+            {"ok": False, "error": "Invalid file type. Only .json, .gz, or .tar.zst files are allowed."}, status=400
         )
 
     # Save to backups directory

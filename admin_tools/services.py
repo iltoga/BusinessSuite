@@ -6,6 +6,7 @@ import os
 import shutil
 import tarfile
 import tempfile
+from pathlib import Path
 
 from django.apps import apps
 from django.conf import settings
@@ -28,8 +29,8 @@ def backup_all(include_users=False):
     ensure_backups_dir()
     ts = datetime.datetime.utcnow().strftime("%Y%m%d-%H%M%S")
     suffix = "_with_users" if include_users else ""
-    # Use tar.gz archive to store JSON dump + media files
-    filename = f"backup-{ts}{suffix}.tar.gz"
+    # Use tar.zst archive (Python 3.14+) to store JSON dump + media files
+    filename = f"backup-{ts}{suffix}.tar.zst"
     out_path = os.path.join(BACKUPS_DIR, filename)
 
     yield "Starting Django dumpdata backup..."
@@ -82,8 +83,8 @@ def backup_all(include_users=False):
 
         yield f"Found {len(filepaths)} media files referenced in DB to include in backup"
 
-        # Create tar.gz with JSON, manifest and files under 'media/' prefix
-        with tarfile.open(out_path, "w:gz") as tar:
+        # Create tar.zst with JSON, manifest and files under 'media/' prefix
+        with tarfile.open(out_path, "w:zst") as tar:
             tar.add(temp_json, arcname="data.json")
             for i, (rel_path, storage_path) in enumerate(sorted(filepaths)):
                 # store under media/relative_path so we can restore to MEDIA_ROOT
@@ -175,23 +176,34 @@ def restore_from_file(path, include_users=False):
     # temp dir for extracted files
     extracted_media_tmpdir = None
     try:
-        # Handle tar.gz backed up archives that include files
-        if path.endswith(".tar.gz"):
+        # Handle tar backed up archives that include files (gz or zst for Python 3.14+)
+        if path.endswith((".tar.gz", ".tar.zst")):
             yield "Extracting archive..."
             # Extract tar to a temp dir and set fixture_path to extracted data.json
+            comp = "zst" if path.endswith(".tar.zst") else "gz"
             extracted_tmp = tempfile.mkdtemp(prefix="restore-")
             extracted_media_tmpdir = os.path.join(extracted_tmp, "media")
             os.makedirs(extracted_media_tmpdir, exist_ok=True)
-            with tarfile.open(path, "r:gz") as tar:
+            with tarfile.open(path, f"r:{comp}") as tar:
                 tar.extractall(path=extracted_tmp)
             fixture_path = os.path.join(extracted_tmp, "data.json")
-        elif path.endswith(".gz"):
+        elif path.endswith((".gz", ".zst")):
             import gzip
 
-            yield "Decompressing JSON..."
+            try:
+                import compression.zstd as zstd
+            except ImportError:
+                zstd = None
+
+            yield f"Decompressing {path.split('.')[-1]} JSON..."
             tmp_path = path + ".decompressed.json"
-            with gzip.open(path, "rb") as f_in, open(tmp_path, "wb") as f_out:
-                f_out.write(f_in.read())
+
+            if path.endswith(".zst") and zstd:
+                with zstd.open(path, "rb") as f_in, open(tmp_path, "wb") as f_out:
+                    f_out.write(f_in.read())
+            else:
+                with gzip.open(path, "rb") as f_in, open(tmp_path, "wb") as f_out:
+                    f_out.write(f_in.read())
             fixture_path = tmp_path
         else:
             fixture_path = path
@@ -252,9 +264,9 @@ def restore_from_file(path, include_users=False):
             from django.core.files import File
 
             all_files = []
-            for root, dirs, files in os.walk(extracted_media_tmpdir):
+            for root, dirs, files in Path(extracted_media_tmpdir).walk():
                 for fname in files:
-                    all_files.append(os.path.join(root, fname))
+                    all_files.append(str(root / fname))
 
             total_files = len(all_files)
             yield f"Restoring {total_files} media files..."

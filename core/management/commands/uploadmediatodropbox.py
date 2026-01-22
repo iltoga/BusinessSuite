@@ -1,5 +1,6 @@
 import logging
 import os
+from pathlib import Path
 
 from django.conf import settings
 from django.core.files import File
@@ -49,12 +50,12 @@ class Command(BaseCommand):
             file_count = 0
 
             # Iterate over files in the local directory
-            for root, dirs, files in os.walk(local_directory):
+            for root, dirs, files in Path(local_directory).walk():
                 # Exclude directories in exclude_folders
                 dirs[:] = [d for d in dirs if d not in exclude_folders]
                 for file in files:
                     # Construct full local file path
-                    local_file_path = os.path.join(root, file)
+                    local_file_path = str(root / file)
 
                     # Construct destination file path in Dropbox
                     relative_path = os.path.relpath(local_file_path, local_directory)

@@ -470,3 +470,10 @@ DEFAULT_SPONSOR_PASSPORT_FILE_PATH = os.getenv(
 DEFAULT_DOCUMENT_LANGUAGE_CODE = os.getenv("DEFAULT_DOCUMENT_LANGUAGE_CODE", "id")
 
 DEFFAULT_CUSTOMER_EMAIL = os.getenv("DEFFAULT_CUSTOMER_EMAIL", "sample_email@gmail.com")
+
+# Python 3.14+ Logging Performance Optimizations
+# Disable gathering of thread, process, and asyncio information to reduce overhead
+logging.logThreads = False
+logging.logProcesses = False
+logging.logMultiprocessing = False
+logging.logAsyncioTasks = False
