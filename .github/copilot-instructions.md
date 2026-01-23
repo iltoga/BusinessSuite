@@ -1,8 +1,8 @@
-# GitHub Copilot Project Instructions — RevisBaliCRM
+# GitHub Copilot Project Instructions — BusinessSuite
 
 ## Project context
 
-RevisBaliCRM is a Django-based ERP/CRM for service agencies. It manages customer applications, document workflows (with OCR), tasks, invoicing, and payments.
+BusinessSuite is a Django-based ERP/CRM for service agencies. It manages customer applications, document workflows (with OCR), tasks, invoicing, and payments.
 
 ## Architecture & conventions
 

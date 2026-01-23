@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Reports module provides comprehensive business analytics and reporting capabilities for RevisBaliCRM. It includes 9 different report types covering financial, customer, product, and operational metrics.
+The Reports module provides comprehensive business analytics and reporting capabilities for BusinessSuite. It includes 9 different report types covering financial, customer, product, and operational metrics.
 
 ## Installation
 
@@ -11,6 +11,7 @@ The reports app is already configured in `settings/base.py` and URL patterns are
 ## Available Reports
 
 ### 1. **KPI Dashboard** (Executive Overview)
+
 - **URL**: `/reports/kpi-dashboard/`
 - **Purpose**: High-level executive dashboard with key performance indicators
 - **Features**:
@@ -23,6 +24,7 @@ The reports app is already configured in `settings/base.py` and URL patterns are
   - Recent payments (last 7 days)
 
 ### 2. **Monthly/Yearly Revenue Report**
+
 - **URL**: `/reports/revenue/`
 - **Purpose**: Track total revenues from invoices and payments over time
 - **Features**:
@@ -35,6 +37,7 @@ The reports app is already configured in `settings/base.py` and URL patterns are
   - Detailed monthly breakdown table
 
 ### 3. **Invoice Status Dashboard**
+
 - **URL**: `/reports/invoice-status/`
 - **Purpose**: Monitor invoice collection efficiency and aging
 - **Features**:
@@ -46,6 +49,7 @@ The reports app is already configured in `settings/base.py` and URL patterns are
   - Aging breakdown bar chart
 
 ### 4. **Monthly Invoice Details Report** ⭐ NEW
+
 - **URL**: `/reports/monthly-invoices/`
 - **Purpose**: Detailed invoice listing with Excel export capability
 - **Features**:
@@ -65,6 +69,7 @@ The reports app is already configured in `settings/base.py` and URL patterns are
   - Professional spreadsheet layout
 
 ### 5. **Customer Lifetime Value Report**
+
 - **URL**: `/reports/customer-ltv/`
 - **Purpose**: Identify most valuable customers
 - **Features**:
@@ -77,6 +82,7 @@ The reports app is already configured in `settings/base.py` and URL patterns are
   - Complete customer details table
 
 ### 6. **Product Revenue Analysis**
+
 - **URL**: `/reports/product-revenue/`
 - **Purpose**: Understand product performance and revenue
 - **Features**:
@@ -87,6 +93,7 @@ The reports app is already configured in `settings/base.py` and URL patterns are
   - Detailed product performance table
 
 ### 7. **Cash Flow Analysis**
+
 - **URL**: `/reports/cash-flow/`
 - **Purpose**: Track actual cash movements and payment types
 - **Features**:
@@ -98,6 +105,7 @@ The reports app is already configured in `settings/base.py` and URL patterns are
   - Transaction count
 
 ### 8. **Application Pipeline Report**
+
 - **URL**: `/reports/application-pipeline/`
 - **Purpose**: Track application processing efficiency
 - **Features**:
@@ -109,6 +117,7 @@ The reports app is already configured in `settings/base.py` and URL patterns are
   - Task completion rates
 
 ### 8. **Product Demand Forecast**
+
 - **URL**: `/reports/product-demand/`
 - **Purpose**: Predict future demand based on historical data
 - **Features**:
@@ -165,6 +174,7 @@ reports/
 **Template Tags**: Custom `to_json` filter for safely serializing Python data to JSON for Chart.js.
 
 **Utilities**:
+
 - `date_utils.py`: Date range filtering and month list generation
 - `report_helpers.py`: Currency formatting and trend indicators
 
@@ -183,6 +193,7 @@ reports/
 ### Navigation Menu
 
 Reports are accessible from:
+
 - **Top Navbar**: Dropdown menu with all reports
 - **Sidebar**: Collapsible "Reports" section with all reports
 - **Reports Index**: Card-based layout grouped by category
@@ -190,6 +201,7 @@ Reports are accessible from:
 ### Filtering
 
 Reports that support filtering (Revenue, Cash Flow):
+
 1. Use the date picker inputs to select date range
 2. Click "Filter" button to apply filters
 3. Click "Reset" to return to default view (current year)
@@ -203,6 +215,7 @@ Reports that support filtering (Revenue, Cash Flow):
    - Adjust page settings
 
 The print stylesheet automatically:
+
 - Hides navigation elements
 - Optimizes chart sizes
 - Ensures proper page breaks
@@ -261,6 +274,7 @@ All reports require authentication (`LoginRequiredMixin`). Future enhancement co
 ## Support
 
 For issues or questions, refer to:
-- Django documentation: https://docs.djangoproject.com/
-- Chart.js documentation: https://www.chartjs.org/docs/
-- Bootstrap documentation: https://getbootstrap.com/docs/
+
+- Django documentation: <https://docs.djangoproject.com/>
+- Chart.js documentation: <https://www.chartjs.org/docs/>
+- Bootstrap documentation: <https://getbootstrap.com/docs/>

@@ -2,7 +2,7 @@
 
 Purpose
 
-- Assist a developer to generate a new Document Type Hook for RevisBaliCRM.
+- Assist a developer to generate a new Document Type Hook for BusinessSuite.
 
 - Follow the existing hooks architecture and patterns: the hook registry, lifecycle signal dispatch, UI actions, and tests.
 
@@ -11,7 +11,6 @@ Project Context
 - This repository uses a pluggable document-type hook system under customer_applications/hooks.
 
 - Use the project's existing codebase in customer_applications/hooks and related files to generate the hook; review these files when producing code:
-
   - `customer_applications/hooks/base.py` (BaseDocumentTypeHook, DocumentAction)
 
   - `customer_applications/hooks/registry.py` (HookRegistry and global `hook_registry`)
@@ -25,7 +24,7 @@ Project Context
   - `customer_applications/templates/customer_applications/partials/document_actions.html` and `business_suite/static/js/document_actions.js` (UI integration)
 
 - The primary classes and files involved are those listed above.
-Goals for generated hook
+  Goals for generated hook
 
 - Create a single, focused Python file implementing a hook class subclassing `BaseDocumentTypeHook`.
 
@@ -60,13 +59,11 @@ Coding Conventions and Safeguards
 Action Integration & UI
 
 - If implementing UI actions, create `DocumentAction` instances in `get_extra_actions()`:
-
   - `DocumentAction(name='auto_generate', label='Auto Generate', icon='fas fa-magic', css_class='btn-success')`
 
 - Implement `execute_action(self, action_name, document, request) -> dict` to handle action(s), returning success/error.
 
 - The DocumentUpdateForm loads `extra_actions` using hook_registry in `_load_extra_actions()`; the template includes the JS file `static/js/document_actions.js` which calls the endpoint at
-
   - `/customer_applications/api/documents/<document_id>/actions/<action_name>/` (use reverse URL `document-action`).
 
 Testing
