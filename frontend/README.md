@@ -54,6 +54,26 @@ ng e2e
 
 Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
 
+## Mocked authentication for local development ✅
+
+You can enable a mocked authentication mode so you don't have to login repeatedly during local development. Steps:
+
+1. Open `src/app/core/config/app.config.ts` and set `mockAuthEnabled: true`:
+
+```ts
+export const APP_CONFIG = {
+  mockAuthEnabled: true, // <-- Set to true
+} as const;
+```
+
+2. Restart the Angular dev server (`bun run start`).
+
+When enabled, `AuthService.login()` will immediately return a fake token (`mock-token`) and the app will auto-set a token on startup if none exists.
+
+3. Switch it back to `false` before testing real authentication flows or when running integration tests.
+
+---
+
 ## Additional Resources
 
 For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
