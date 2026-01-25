@@ -61,7 +61,7 @@
 <ng-template #passportTemplate let-row>
   <div class="flex flex-col gap-1">
     <div class="flex items-center gap-2">
-      <span class="font-mono text-sm">{{ row.passportNumber || '—' }}</span>
+      <span class="font-mono text-base font-medium">{{ row.passportNumber || '—' }}</span>
     </div>
     @if (row.passportExpirationDate) {
       <app-expiry-badge [date]="row.passportExpirationDate" />
