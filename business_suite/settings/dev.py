@@ -25,6 +25,10 @@ ALLOWED_HOSTS = ["*"]
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+# Avoid exhausting Postgres connection limits during local refreshes.
+# Keep connections non-persistent in dev so they close at the end of each request.
+DATABASES["default"]["CONN_MAX_AGE"] = 0
+
 # This is to show django-debug-toolbar (https://django-debug-toolbar.readthedocs.io/en/latest/installation.html)
 INTERNAL_IPS = [
     "127.0.0.1",
