@@ -1,0 +1,738 @@
+openapi: 3.0.3
+info:
+  title: BusinessSuite API
+  version: 1.0.0
+  description: API for BusinessSuite ERP/CRM
+paths:
+  /api/api-token-auth/:
+    post:
+      operationId: apiTokenAuthCreate
+      tags:
+      - api-token-auth
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AuthToken'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AuthToken'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthToken'
+        required: true
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthToken'
+          description: ''
+  /api/compute/doc_workflow_due_date/{taskId}/{startDate}/:
+    get:
+      operationId: computeDocWorkflowDueDateRetrieve
+      parameters:
+      - in: path
+        name: startDate
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: taskId
+        schema:
+          type: integer
+        required: true
+      tags:
+      - compute
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/cron/exec_cron_jobs/:
+    get:
+      operationId: cronExecCronJobsRetrieve
+      description: Execute cron jobs via Huey
+      tags:
+      - cron
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/customer-applications/quick-create/:
+    post:
+      operationId: customerApplicationsQuickCreateCreate
+      description: Quick create a customer application with documents and workflows
+      tags:
+      - customer-applications
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/customers/:
+    get:
+      operationId: customersList
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - customers
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCustomerList'
+          description: ''
+  /api/customers/{id}/:
+    get:
+      operationId: customersRetrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - customers
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+          description: ''
+  /api/customers/quick-create/:
+    post:
+      operationId: customersQuickCreateCreate
+      description: Quick create a customer with minimal required fields
+      tags:
+      - customers
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/customers/search/:
+    get:
+      operationId: customersSearchRetrieve
+      tags:
+      - customers
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+          description: ''
+  /api/document-ocr/check/:
+    post:
+      operationId: documentOcrCheckCreate
+      description: |-
+        API endpoint for document OCR text extraction.
+
+        POST Parameters:
+            - file: The document file (PDF, Excel, Word)
+
+        Returns:
+            - text: Extracted text when completed
+      tags:
+      - document-ocr
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/document-ocr/status/{jobId}/:
+    get:
+      operationId: documentOcrStatusRetrieve
+      description: |-
+        API endpoint for document OCR text extraction.
+
+        POST Parameters:
+            - file: The document file (PDF, Excel, Word)
+
+        Returns:
+            - text: Extracted text when completed
+      parameters:
+      - in: path
+        name: jobId
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - document-ocr
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/invoices/get_customer_applications/{customerId}/:
+    get:
+      operationId: invoicesGetCustomerApplicationsRetrieve
+      parameters:
+      - in: path
+        name: customerId
+        schema:
+          type: integer
+        required: true
+      tags:
+      - invoices
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/invoices/get_invoice_application_due_amount/{invoiceApplicationId}/:
+    get:
+      operationId: invoicesGetInvoiceApplicationDueAmountRetrieve
+      parameters:
+      - in: path
+        name: invoiceApplicationId
+        schema:
+          type: integer
+        required: true
+      tags:
+      - invoices
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/ocr/check/:
+    post:
+      operationId: ocrCheckCreate
+      description: |-
+        API endpoint for passport OCR extraction.
+
+        Supports hybrid extraction mode with AI vision for enhanced data extraction.
+
+        POST Parameters:
+            - file: The passport image or PDF file
+            - doc_type: Document type (e.g., 'passport')
+            - use_ai: (optional) Set to 'true' to enable AI-enhanced extraction (default: false)
+            - save_session: (optional) Save file and data to session
+            - img_preview: (optional) Return base64 preview image
+            - resize: (optional) Resize the image
+            - width: (optional) Target width for resize
+
+        Returns:
+            - mrz_data: Extracted passport data (enhanced with AI data if use_ai=true)
+            - b64_resized_image: Base64 encoded preview (if img_preview=true)
+      tags:
+      - ocr
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/ocr/status/{jobId}/:
+    get:
+      operationId: ocrStatusRetrieve
+      description: |-
+        API endpoint for passport OCR extraction.
+
+        Supports hybrid extraction mode with AI vision for enhanced data extraction.
+
+        POST Parameters:
+            - file: The passport image or PDF file
+            - doc_type: Document type (e.g., 'passport')
+            - use_ai: (optional) Set to 'true' to enable AI-enhanced extraction (default: false)
+            - save_session: (optional) Save file and data to session
+            - img_preview: (optional) Return base64 preview image
+            - resize: (optional) Resize the image
+            - width: (optional) Target width for resize
+
+        Returns:
+            - mrz_data: Extracted passport data (enhanced with AI data if use_ai=true)
+            - b64_resized_image: Base64 encoded preview (if img_preview=true)
+      parameters:
+      - in: path
+        name: jobId
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - ocr
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/products/:
+    get:
+      operationId: productsList
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - products
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedProductList'
+          description: ''
+  /api/products/{id}/:
+    get:
+      operationId: productsRetrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this product.
+        required: true
+      tags:
+      - products
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+          description: ''
+  /api/products/get_product_by_id/{productId}/:
+    get:
+      operationId: productsGetProductByIdRetrieve
+      parameters:
+      - in: path
+        name: productId
+        schema:
+          type: integer
+        required: true
+      tags:
+      - products
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+          description: ''
+  /api/products/get_products_by_product_type/{productType}/:
+    get:
+      operationId: productsGetProductsByProductTypeRetrieve
+      parameters:
+      - in: path
+        name: productType
+        schema:
+          enum:
+          - visa
+          - other
+          type: string
+          description: |-
+            * `visa` - Visa
+            * `other` - Other
+        required: true
+      tags:
+      - products
+      security:
+      - cookieAuth: []
+      - tokenAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+          description: ''
+  /api/products/quick-create/:
+    post:
+      operationId: productsQuickCreateCreate
+      description: Quick create a product with minimal required fields
+      tags:
+      - products
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+components:
+  schemas:
+    AuthToken:
+      type: object
+      properties:
+        username:
+          type: string
+          writeOnly: true
+        password:
+          type: string
+          writeOnly: true
+        token:
+          type: string
+          readOnly: true
+      required:
+      - password
+      - token
+      - username
+    BlankEnum:
+      enum:
+      - ''
+    Customer:
+      type: object
+      description: |-
+        Serializer for Customer model.
+
+        Note: This serializer exposes all model fields.
+        Keep `fields = '__all__'` to avoid missing fields from the model.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        title:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/TitleEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        customer_type:
+          $ref: '#/components/schemas/CustomerTypeEnum'
+        first_name:
+          type: string
+          nullable: true
+          maxLength: 50
+        last_name:
+          type: string
+          nullable: true
+          maxLength: 50
+        company_name:
+          type: string
+          nullable: true
+          maxLength: 100
+        email:
+          type: string
+          format: email
+          nullable: true
+          maxLength: 50
+        telephone:
+          type: string
+          nullable: true
+          maxLength: 50
+        whatsapp:
+          type: string
+          nullable: true
+          maxLength: 50
+        telegram:
+          type: string
+          nullable: true
+          maxLength: 50
+        facebook:
+          type: string
+          nullable: true
+          maxLength: 50
+        instagram:
+          type: string
+          nullable: true
+          maxLength: 50
+        twitter:
+          type: string
+          nullable: true
+          maxLength: 50
+        npwp:
+          type: string
+          nullable: true
+          title: NPWP (Indonesia)
+          maxLength: 30
+        nationality:
+          type: string
+          nullable: true
+        birthdate:
+          type: string
+          format: date
+          nullable: true
+        birth_place:
+          type: string
+          nullable: true
+          maxLength: 100
+        passport_number:
+          type: string
+          nullable: true
+          maxLength: 50
+        passport_issue_date:
+          type: string
+          format: date
+          nullable: true
+        passport_expiration_date:
+          type: string
+          format: date
+          nullable: true
+        gender:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/GenderEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        address_bali:
+          type: string
+          nullable: true
+        address_abroad:
+          type: string
+          nullable: true
+        notify_documents_expiration:
+          type: boolean
+        notify_by:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/NotifyByEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        active:
+          type: boolean
+        full_name:
+          type: string
+          readOnly: true
+        full_name_with_company:
+          type: string
+          readOnly: true
+      required:
+      - created_at
+      - full_name
+      - full_name_with_company
+      - id
+      - updated_at
+    CustomerTypeEnum:
+      enum:
+      - person
+      - company
+      type: string
+      description: |-
+        * `person` - Person
+        * `company` - Company
+    GenderEnum:
+      enum:
+      - M
+      - F
+      type: string
+      description: |-
+        * `` - ---------
+        * `M` - Male
+        * `F` - Female
+    NotifyByEnum:
+      enum:
+      - Email
+      - SMS
+      - WhatsApp
+      - Telegram
+      - Telephone
+      type: string
+      description: |-
+        * `` - ---------
+        * `Email` - Email
+        * `SMS` - SMS
+        * `WhatsApp` - WhatsApp
+        * `Telegram` - Telegram
+        * `Telephone` - Telephone
+    NullEnum:
+      enum:
+      - null
+    PaginatedCustomerList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Customer'
+    PaginatedProductList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        code:
+          type: string
+          maxLength: 20
+        description:
+          type: string
+        immigration_id:
+          type: string
+          format: uuid
+          nullable: true
+        base_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+        product_type:
+          $ref: '#/components/schemas/ProductTypeEnum'
+        validity:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        required_documents:
+          type: string
+          maxLength: 1024
+        optional_documents:
+          type: string
+          maxLength: 1024
+        documents_min_validity:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+      required:
+      - code
+      - id
+      - name
+    ProductTypeEnum:
+      enum:
+      - visa
+      - other
+      type: string
+      description: |-
+        * `visa` - Visa
+        * `other` - Other
+    TitleEnum:
+      enum:
+      - Mr
+      - Mrs
+      - Ms
+      - Miss
+      - Dr
+      - Prof
+      type: string
+      description: |-
+        * `` - ---------
+        * `Mr` - Mr
+        * `Mrs` - Mrs
+        * `Ms` - Ms
+        * `Miss` - Miss
+        * `Dr` - Dr
+        * `Prof` - Prof
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid
+    tokenAuth:
+      type: http
+      scheme: bearer

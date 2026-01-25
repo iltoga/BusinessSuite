@@ -1,0 +1,49 @@
+<div class="flex flex-wrap items-center justify-center gap-2">
+  <button
+    type="button"
+    z-button
+    zType="outline"
+    zSize="sm"
+    [zDisabled]="disabled() || !hasPrevious()"
+    (click)="goToFirst()"
+  >
+    <z-icon zType="arrow-left" class="mr-1" />
+    First
+  </button>
+
+  <button
+    type="button"
+    z-button
+    zType="outline"
+    zSize="sm"
+    [zDisabled]="disabled() || !hasPrevious()"
+    (click)="goToPrevious()"
+  >
+    Previous
+  </button>
+
+  <div class="px-3 text-sm text-muted-foreground">Page {{ page() }} of {{ totalPages() }}</div>
+
+  <button
+    type="button"
+    z-button
+    zType="outline"
+    zSize="sm"
+    [zDisabled]="disabled() || !hasNext()"
+    (click)="goToNext()"
+  >
+    Next
+  </button>
+
+  <button
+    type="button"
+    z-button
+    zType="outline"
+    zSize="sm"
+    [zDisabled]="disabled() || !hasNext()"
+    (click)="goToLast()"
+  >
+    Last
+    <z-icon zType="arrow-right" class="ml-1" />
+  </button>
+</div>

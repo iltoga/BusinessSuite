@@ -1,0 +1,56 @@
+@if (isLoading()) {
+  <div class="text-muted-foreground">Loading customer...</div>
+} @else if (!customer()) {
+  <div class="text-muted-foreground">Customer not found.</div>
+} @else {
+  <div class="space-y-6">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <h1 class="text-2xl font-semibold">{{ customer()!.fullNameWithCompany }}</h1>
+        <p class="text-sm text-muted-foreground">Customer detail</p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <a z-button zType="outline" routerLink="/customers/{{ customer()!.id }}/edit">Edit</a>
+        <button z-button zType="destructive" (click)="onDelete()">Delete</button>
+        <a z-button zType="ghost" routerLink="/customers">Back to list</a>
+      </div>
+    </div>
+
+    <z-card class="p-6">
+      <div class="grid gap-4 md:grid-cols-2">
+        <div>
+          <div class="text-xs uppercase text-muted-foreground">Email</div>
+          <div class="text-sm">{{ customer()!.email || '—' }}</div>
+        </div>
+        <div>
+          <div class="text-xs uppercase text-muted-foreground">Telephone</div>
+          <div class="text-sm">{{ customer()!.telephone || '—' }}</div>
+        </div>
+        <div>
+          <div class="text-xs uppercase text-muted-foreground">Passport</div>
+          <div class="text-sm">{{ customer()!.passportNumber || '—' }}</div>
+        </div>
+        <div>
+          <div class="text-xs uppercase text-muted-foreground">Passport Expiry</div>
+          <div class="text-sm">{{ customer()!.passportExpirationDate || '—' }}</div>
+        </div>
+        <div>
+          <div class="text-xs uppercase text-muted-foreground">Birthdate</div>
+          <div class="text-sm">{{ customer()!.birthdate || '—' }}</div>
+        </div>
+        <div>
+          <div class="text-xs uppercase text-muted-foreground">Birth Place</div>
+          <div class="text-sm">{{ customer()!.birthPlace || '—' }}</div>
+        </div>
+        <div>
+          <div class="text-xs uppercase text-muted-foreground">Address (Bali)</div>
+          <div class="text-sm">{{ customer()!.addressBali || '—' }}</div>
+        </div>
+        <div>
+          <div class="text-xs uppercase text-muted-foreground">Address (Abroad)</div>
+          <div class="text-sm">{{ customer()!.addressAbroad || '—' }}</div>
+        </div>
+      </div>
+    </z-card>
+  </div>
+}

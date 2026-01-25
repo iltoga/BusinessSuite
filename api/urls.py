@@ -1,5 +1,5 @@
 from django.urls import include, path
-from rest_framework.authtoken import views as auth_views
+from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 from rest_framework.routers import DefaultRouter
 
 from . import views
@@ -11,9 +11,13 @@ router.register(r"invoices", views.InvoiceViewSet, basename="invoices")
 router.register(r"ocr", views.OCRViewSet, basename="ocr")
 router.register(r"document-ocr", views.DocumentOCRViewSet, basename="document-ocr")
 router.register(r"compute", views.ComputeViewSet, basename="compute")
+router.register(r"dashboard-stats", views.DashboardStatsView, basename="dashboard-stats")
 
 urlpatterns = [
-    path("api-token-auth/", auth_views.obtain_auth_token),
+    path("schema/", SpectacularAPIView.as_view(), name="schema"),
+    path("schema/swagger-ui/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
+    path("schema/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
+    path("api-token-auth/", views.TokenAuthView.as_view(), name="api-token-auth"),
     path("session-auth/", include("rest_framework.urls", namespace="rest_framework")),
     path("ocr/check/", views.OCRViewSet.as_view({"post": "check"}), name="api-ocr-check"),
     path("ocr/status/<uuid:job_id>/", views.OCRViewSet.as_view({"get": "status"}), name="api-ocr-status"),

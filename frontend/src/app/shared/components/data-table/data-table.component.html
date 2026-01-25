@@ -1,0 +1,75 @@
+<table z-table class="w-full">
+  <thead z-table-header>
+    <tr z-table-row>
+      @for (column of columns(); track column.key) {
+        <th z-table-head>
+          <button
+            type="button"
+            class="flex items-center gap-2"
+            [class.cursor-pointer]="column.sortable"
+            [class.opacity-60]="!column.sortable"
+            (click)="onSort(column)"
+          >
+            <div class="flex flex-col items-start">
+              <span>{{ column.header }}</span>
+              @if (column.subtitle) {
+                <span class="text-xs font-normal text-muted-foreground normal-case">{{
+                  column.subtitle
+                }}</span>
+              }
+            </div>
+            @if (currentSort()?.column === (column.sortKey ?? column.key)) {
+              <span class="text-xs text-muted-foreground">
+                {{ currentSort()?.direction === 'asc' ? '▲' : '▼' }}
+              </span>
+            }
+          </button>
+        </th>
+      }
+    </tr>
+  </thead>
+  <tbody z-table-body>
+    @if (isLoading()) {
+      <tr z-table-row>
+        <td
+          z-table-cell
+          [attr.colspan]="columns().length"
+          class="text-center text-muted-foreground"
+        >
+          Loading...
+        </td>
+      </tr>
+    } @else {
+      @if (data().length === 0) {
+        <tr z-table-row>
+          <td
+            z-table-cell
+            [attr.colspan]="columns().length"
+            class="text-center text-muted-foreground"
+          >
+            No results
+          </td>
+        </tr>
+      } @else {
+        @for (row of data(); track $index) {
+          <tr z-table-row>
+            @for (column of columns(); track column.key) {
+              <td z-table-cell>
+                @if (column.template) {
+                  <ng-container
+                    *ngTemplateOutlet="
+                      column.template;
+                      context: { $implicit: row, value: getRawValue(row, column.key), row: row }
+                    "
+                  />
+                } @else {
+                  {{ getCellValue(row, column.key) }}
+                }
+              </td>
+            }
+          </tr>
+        }
+      }
+    }
+  </tbody>
+</table>

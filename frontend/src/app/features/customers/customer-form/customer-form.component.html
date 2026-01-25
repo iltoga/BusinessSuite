@@ -1,0 +1,81 @@
+<div class="space-y-6">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-semibold">
+        {{ isEditMode() ? 'Edit Customer' : 'New Customer' }}
+      </h1>
+      <p class="text-sm text-muted-foreground">Manage customer profile data.</p>
+    </div>
+    <div class="flex gap-2">
+      <a z-button zType="ghost" routerLink="/customers">Back to list</a>
+    </div>
+  </div>
+
+  <z-card class="p-6">
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="grid gap-4 md:grid-cols-2">
+      <div class="space-y-2">
+        <label class="text-sm font-medium">First Name</label>
+        <input z-input formControlName="first_name" placeholder="First name" />
+      </div>
+      <div class="space-y-2">
+        <label class="text-sm font-medium">Last Name</label>
+        <input z-input formControlName="last_name" placeholder="Last name" />
+      </div>
+      <div class="space-y-2">
+        <label class="text-sm font-medium">Company Name</label>
+        <input z-input formControlName="company_name" placeholder="Company name" />
+      </div>
+      <div class="space-y-2">
+        <label class="text-sm font-medium">Email</label>
+        <input z-input type="email" formControlName="email" placeholder="Email" />
+      </div>
+      <div class="space-y-2">
+        <label class="text-sm font-medium">Telephone</label>
+        <input z-input formControlName="telephone" placeholder="Telephone" />
+      </div>
+      <div class="space-y-2">
+        <label class="text-sm font-medium">WhatsApp</label>
+        <input z-input formControlName="whatsapp" placeholder="WhatsApp" />
+      </div>
+      <div class="space-y-2">
+        <label class="text-sm font-medium">Telegram</label>
+        <input z-input formControlName="telegram" placeholder="Telegram" />
+      </div>
+      <div class="space-y-2">
+        <label class="text-sm font-medium">Passport Number</label>
+        <input z-input formControlName="passport_number" placeholder="Passport number" />
+      </div>
+      <div class="space-y-2">
+        <label class="text-sm font-medium">Passport Issue Date</label>
+        <input z-input type="date" formControlName="passport_issue_date" />
+      </div>
+      <div class="space-y-2">
+        <label class="text-sm font-medium">Passport Expiration Date</label>
+        <input z-input type="date" formControlName="passport_expiration_date" />
+      </div>
+      <div class="space-y-2">
+        <label class="text-sm font-medium">Birthdate</label>
+        <input z-input type="date" formControlName="birthdate" />
+      </div>
+      <div class="space-y-2">
+        <label class="text-sm font-medium">Birth Place</label>
+        <input z-input formControlName="birth_place" placeholder="Birth place" />
+      </div>
+      <div class="space-y-2 md:col-span-2">
+        <label class="text-sm font-medium">Address (Bali)</label>
+        <input z-input formControlName="address_bali" placeholder="Address in Bali" />
+      </div>
+      <div class="space-y-2 md:col-span-2">
+        <label class="text-sm font-medium">Address (Abroad)</label>
+        <input z-input formControlName="address_abroad" placeholder="Address abroad" />
+      </div>
+
+      <div class="md:col-span-2 flex flex-wrap gap-3 pt-2">
+        <button z-button zType="default" [zDisabled]="isLoading()">
+          {{ isEditMode() ? 'Save Changes' : 'Create Customer' }}
+        </button>
+        <button type="button" z-button zType="outline" routerLink="/customers">Cancel</button>
+      </div>
+    </form>
+  </z-card>
+</div>

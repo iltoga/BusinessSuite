@@ -490,6 +490,48 @@ async uploadDocument(file: File) {
 }
 ```
 
+### 6.4 Real-Time Updates (SSE + Fallback)
+
+The legacy system uses Server-Sent Events (SSE) for long-running workflows. The Angular SPA **MUST** provide a native SSE abstraction and fallback to polling when SSE is unavailable or too costly.
+
+**Guidelines:**
+
+- Prefer SSE (`EventSource`) for streaming progress updates.
+- Use polling with exponential backoff as a fallback.
+- Keep payloads minimal (progress, status, message).
+- Close streams on component destroy to prevent leaks.
+- For auth: use session cookies where possible; if token auth is required, pass short-lived tokens via query params.
+
+**Reference Pattern:**
+
+```typescript
+// src/app/core/services/sse.service.ts
+import { Injectable, NgZone } from "@angular/core";
+import { Observable } from "rxjs";
+
+@Injectable({ providedIn: "root" })
+export class SseService {
+  constructor(private zone: NgZone) {}
+
+  connect<T>(url: string, withCredentials = true): Observable<T> {
+    return new Observable<T>((subscriber) => {
+      const source = new EventSource(url, { withCredentials });
+
+      source.onmessage = (event) => {
+        this.zone.run(() => subscriber.next(JSON.parse(event.data) as T));
+      };
+
+      source.onerror = (err) => {
+        this.zone.run(() => subscriber.error(err));
+        source.close();
+      };
+
+      return () => source.close();
+    });
+  }
+}
+```
+
 ## 7. Anti-Patterns to Avoid
 
 ### 7.1 DON'T: Manual HTTP calls in components

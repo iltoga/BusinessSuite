@@ -252,7 +252,43 @@ The requirements are derived from the need to modernize the UI while strictly pr
     };
     ```
 
-- **FR-07 (CORS Policy):** The backend **MUST** enforce strict CORS settings.
+### 2.3 Real-Time Updates
+
+**User Story:** As a user, I need to see long-running task progress in real time without overloading the server.
+
+- **FR-07 (SSE + Fallback):** The frontend **MUST** implement a native SSE client for streaming updates and a fallback polling strategy when SSE is unavailable.
+  - _Acceptance:_ SSE uses `EventSource` with cleanup on unsubscribe; polling uses exponential backoff and stops on completion.
+  - _Implementation:_
+
+    ```typescript
+    // core/services/sse.service.ts
+    import { Injectable, NgZone } from "@angular/core";
+    import { Observable } from "rxjs";
+
+    @Injectable({ providedIn: "root" })
+    export class SseService {
+      constructor(private zone: NgZone) {}
+
+      connect<T>(url: string, withCredentials = true): Observable<T> {
+        return new Observable<T>((subscriber) => {
+          const source = new EventSource(url, { withCredentials });
+
+          source.onmessage = (event) => {
+            this.zone.run(() => subscriber.next(JSON.parse(event.data) as T));
+          };
+
+          source.onerror = (err) => {
+            this.zone.run(() => subscriber.error(err));
+            source.close();
+          };
+
+          return () => source.close();
+        });
+      }
+    }
+    ```
+
+- **FR-08 (CORS Policy):** The backend **MUST** enforce strict CORS settings.
   - _Acceptance:_ `CORS_ALLOWED_ORIGINS` is populated via environment variables; `CORS_ALLOW_ALL_ORIGINS` is `False` in production.
   - _Implementation:_
 

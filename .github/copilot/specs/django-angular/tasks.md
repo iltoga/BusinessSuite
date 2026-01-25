@@ -15,8 +15,11 @@
 ### Before Starting Implementation
 
 - [ ] Check `docs/shared_components.md` for reusable components
+- [ ] Audit existing Django views/templates/unicorn components and any jQuery/JS for the feature being migrated; capture UI logic and edge cases
+- [ ] Identify and design shared/reusable Angular components to replicate legacy UI behaviors (search, filters, pagination, status badges)
 - [ ] Review generated TypeScript interfaces from OpenAPI
 - [ ] Verify backend endpoint exists and matches OpenAPI schema
+- [ ] Preserve existing routes and views; if a new API is required for Angular, add a new endpoint and tag the old one with: "TO BE REMOVED WHEN ANGULAR FRONTEND IS COMPLETE"
 - [ ] Run `bun run generate:api` if schema changed
 - [ ] Create feature flag in Django Waffle if needed
 - [ ] Review anti-patterns in Design Doc section 7
@@ -37,8 +40,8 @@
 
 **Goal:** Establish the feedback loops, backend API contracts, and frontend build environment before writing feature code.
 
-- [ ] **0.1 Initialize Feedback & Documentation System**
-  - [ ] 0.1.1 Create `docs/shared_components.md`.
+- [x] **0.1 Initialize Feedback & Documentation System**
+  - [x] 0.1.1 Create `docs/shared_components.md`.
     - Structure:
 
       ````markdown
@@ -98,7 +101,7 @@
 
       ```
 
-  - [ ] 0.1.2 Create `docs/implementation_feedback.md`.
+  - [x] 0.1.2 Create `docs/implementation_feedback.md`.
     - Structure:
 
       ```markdown
@@ -127,8 +130,8 @@
 
     - _Action:_ Commit these files to the repository root immediately.
 
-- [ ] **0.2 Backend API Configuration (The Contract)**
-  - [ ] 0.2.1 Install and Configure `drf-spectacular`.
+- [x] **0.2 Backend API Configuration (The Contract)**
+  - [x] 0.2.1 Install and Configure `drf-spectacular`.
     - Install: `pip install drf-spectacular`.
     - Update `settings.py`:
 
@@ -196,7 +199,7 @@
 
       - Expected browser response: `{"firstName":"John","lastName":"Doe"}`
 
-  - [ ] 0.2.3 Implement Standardized Error Handling.
+  - [x] 0.2.3 Implement Standardized Error Handling.
     - Create `api/utils/exception_handler.py`:
 
       ```python
@@ -232,7 +235,7 @@
       # Expected: {"code": "validation_error", "errors": {"email": ["Enter a valid email."]}}
       ```
 
-  - [ ] 0.2.4 Configure CORS and Hybrid Auth.
+  - [x] 0.2.4 Configure CORS and Hybrid Auth.
     - Install: `pip install django-cors-headers djangorestframework-simplejwt`.
     - Update `settings.py`:
 
@@ -262,8 +265,8 @@
       }
       ```
 
-- [ ] **0.3 Frontend Scaffold (Bun + Angular + ZardUI)**
-  - [ ] 0.3.1 Initialize Angular Project with Bun.
+- [x] **0.3 Frontend Scaffold (Bun + Angular + ZardUI)**
+  - [x] 0.3.1 Initialize Angular Project with Bun.
     - Run: `ng new frontend --style=css --routing --ssr=false --package-manager=bun`
     - Create `bunfig.toml`:
 
@@ -284,7 +287,7 @@
 
     - _Verify:_ Run `cd frontend && bun install` successfully.
 
-  - [ ] 0.3.2 Initialize ZardUI (Tailwind v4).
+  - [x] 0.3.2 Initialize ZardUI (Tailwind v4).
     - Run: `cd frontend && bunx @ngzard/ui init`
     - Select:
       - Theme: Neutral
@@ -295,7 +298,7 @@
       - `components.json`
       - `src/styles.css` (with Tailwind directives)
 
-  - [ ] 0.3.3 Configure Proxy for Development.
+  - [x] 0.3.3 Configure Proxy for Development.
     - Create `frontend/proxy.conf.json`:
 
       ```json
@@ -327,8 +330,8 @@
 
 **Goal:** Build the "shell" of the Angular application, including Auth, API clients, and the base UI library.
 
-- [ ] **1.1 API Client Generation**
-  - [ ] 1.1.1 Setup OpenAPI Generator.
+- [x] **1.1 API Client Generation**
+  - [x] 1.1.1 Setup OpenAPI Generator.
     - Add to `frontend/package.json`:
 
       ```json
@@ -339,7 +342,7 @@
       }
       ```
 
-  - [ ] 1.1.2 Generate Clients.
+  - [x] 1.1.2 Generate Clients.
     - Ensure backend is running: `python manage.py runserver`
     - Run: `cd frontend && bun run generate:api`
     - _Validation:_ Check `src/app/core/api` for:
@@ -359,8 +362,8 @@
       }
       ```
 
-- [ ] **1.2 Authentication Module**
-  - [ ] 1.2.1 Implement `AuthService`.
+- [x] **1.2 Authentication Module**
+  - [x] 1.2.1 Implement `AuthService`.
     - Create `src/app/core/services/auth.service.ts`:
 
       ```typescript
@@ -429,7 +432,7 @@
       }
       ```
 
-  - [ ] 1.2.2 Implement `AuthInterceptor` (Functional).
+  - [x] 1.2.2 Implement `AuthInterceptor` (Functional).
     - Create `src/app/core/interceptors/auth.interceptor.ts`:
 
       ```typescript
@@ -467,7 +470,7 @@
       };
       ```
 
-  - [ ] 1.2.3 Implement `AuthGuard`.
+  - [x] 1.2.3 Implement `AuthGuard`.
     - Create `src/app/core/guards/auth.guard.ts`:
 
       ```typescript
@@ -501,12 +504,12 @@
       ];
       ```
 
-- [ ] **1.3 Shared UI Components (ZardUI)**
-  - [ ] 1.3.1 Install Base Components.
+- [x] **1.3 Shared UI Components (ZardUI)**
+  - [x] 1.3.1 Install Base Components.
     - Run: `bunx @ngzard/ui add button input label card table dialog toast badge avatar dropdown separator skeleton`
     - _Verify:_ Check `src/app/shared/components/ui/` for generated components.
 
-  - [ ] 1.3.2 Create `DataTableComponent` (Smart Wrapper).
+  - [x] 1.3.2 Create `DataTableComponent` (Smart Wrapper).
     - Path: `src/app/shared/components/data-table/`
     - Create files:
       - `data-table.component.ts`
@@ -562,7 +565,7 @@
 
     - _Documentation:_ Add entry to `docs/shared_components.md`.
 
-  - [ ] 1.3.3 Create `ConfirmDialogComponent`.
+  - [x] 1.3.3 Create `ConfirmDialogComponent`.
     - Path: `src/app/shared/components/confirm-dialog/`
     - Implementation:
 
@@ -602,7 +605,7 @@
 
     - _Documentation:_ Add entry to `docs/shared_components.md`.
 
-  - [ ] 1.3.4 Create `GlobalToastService`.
+  - [x] 1.3.4 Create `GlobalToastService`.
     - Install: `bun add ngx-sonner`
     - Create `src/app/core/services/toast.service.ts`:
 
@@ -630,8 +633,8 @@
       }
       ```
 
-- [ ] **1.4 Application Layouts**
-  - [ ] 1.4.1 Create `MainLayoutComponent`.
+- [x] **1.4 Application Layouts**
+  - [x] 1.4.1 Create `MainLayoutComponent`.
     - Path: `src/app/shared/layouts/main-layout/`
     - Features:
       - Sidebar with navigation links
@@ -664,7 +667,7 @@
       export class MainLayoutComponent {}
       ```
 
-  - [ ] 1.4.2 Create `AuthLayoutComponent`.
+  - [x] 1.4.2 Create `AuthLayoutComponent`.
     - Path: `src/app/shared/layouts/auth-layout/`
     - Structure: Centered card for login forms
     - Template:
@@ -686,9 +689,9 @@
 
 **Goal:** Allow users to log in and view a basic dashboard.
 
-- [ ] **2.1 Login Page**
-  - [ ] 2.1.1 Create `features/auth/login/login.component.ts`.
-  - [ ] 2.1.2 Implement Form.
+- [x] **2.1 Login Page**
+  - [x] 2.1.1 Create `features/auth/login/login.component.ts`.
+  - [x] 2.1.2 Implement Form.
 
     ```typescript
     import { Component } from "@angular/core";
@@ -739,14 +742,14 @@
     }
     ```
 
-  - [ ] 2.1.3 UX Improvements.
+  - [x] 2.1.3 UX Improvements.
     - Use ZardUI `Input` with error states
     - Add loading state to submit button
     - Show password toggle
 
-- [ ] **2.2 Dashboard (Placeholder)**
-  - [ ] 2.2.1 Create `features/dashboard/dashboard.component.ts`.
-  - [ ] 2.2.2 Add basic stats cards.
+- [x] **2.2 Dashboard (Placeholder)**
+  - [x] 2.2.1 Create `features/dashboard/dashboard.component.ts`.
+  - [x] 2.2.2 Add basic stats cards.
 
     ```typescript
     @Component({
@@ -777,14 +780,20 @@
     }
     ```
 
-  - [ ] 2.2.3 Connect to `MainLayout` in `app.routes.ts`.
+  - [x] 2.2.3 Connect to `MainLayout` in `app.routes.ts`.
 
 ## Phase 3: Vertical Slice 1 - Customer Management
 
 **Goal:** Full CRUD for Customers, proving the pattern.
 
-- [ ] **3.1 Backend Preparation**
-  - [ ] 3.1.1 Audit `CustomerViewSet`.
+- [x] **3.0 Legacy UI & Logic Audit (Mandatory)**
+  - [x] 3.0.1 Review `customers/views/*.py`, Unicorn components, and Django templates used for the list/detail/create flows.
+  - [x] 3.0.2 Review any related frontend JS (jQuery/vanilla) and document behaviors to replicate.
+  - [x] 3.0.3 Identify shared components to extract (search toolbar, pagination, status badges, action groups) and add them to `docs/shared_components.md`.
+  - [x] 3.0.4 Determine real-time needs and SSE endpoints used by legacy flows; define Angular replacement strategy (SSE + fallback polling).
+
+- [x] **3.1 Backend Preparation**
+  - [x] 3.1.1 Audit `CustomerViewSet`.
 
     ```python
     class CustomerViewSet(viewsets.ModelViewSet):
@@ -794,19 +803,19 @@
         search_fields = ['first_name', 'last_name', 'email']
     ```
 
-  - [ ] 3.1.2 Refactor Logic (if needed).
+  - [x] 3.1.2 Refactor Logic (if needed).
     - Move complex creation logic to `core/services/customer_service.py`.
 
-- [ ] **3.2 Customer List View**
-  - [ ] 3.2.1 Create `features/customers/customer-list/`.
-  - [ ] 3.2.2 Implement State with Signals.
-  - [ ] 3.2.3 Use `DataTableComponent` from shared.
-  - [ ] 3.2.4 Implement debounced search.
+- [x] **3.2 Customer List View**
+  - [x] 3.2.1 Create `features/customers/customer-list/`.
+  - [x] 3.2.2 Implement State with Signals.
+  - [x] 3.2.3 Use `DataTableComponent` from shared.
+  - [x] 3.2.4 Implement debounced search.
 
-- [ ] **3.3 Customer Create/Edit Form**
-  - [ ] 3.3.1 Create typed FormGroup.
-  - [ ] 3.3.2 Implement `FormErrorMapper` utility.
-  - [ ] 3.3.3 Test validation error mapping.
+- [x] **3.3 Customer Create/Edit Form**
+  - [x] 3.3.1 Create typed FormGroup.
+  - [x] 3.3.2 Implement `FormErrorMapper` utility.
+  - [x] 3.3.3 Test validation error mapping.
 
 ## Phase 4: Vertical Slice 2 - Applications & OCR
 

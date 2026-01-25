@@ -79,6 +79,7 @@ INSTALLED_APPS = [
     "reports",
     "corsheaders",
     "rest_framework",
+    "drf_spectacular",
     "rest_framework.authtoken",
     "widget_tweaks",
     "nested_admin",
@@ -238,6 +239,7 @@ CSRF_TRUSTED_ORIGINS = [
     f"https://{APP_DOMAIN}",
     "https://localhost",
     "http://localhost",
+    "http://localhost:4200",
 ]
 SESSION_COOKIE_SAMESITE = "Lax"  # Changed from "None" - use Lax for same-site Django apps
 CSRF_COOKIE_SAMESITE = "Lax"  # Changed from "None"
@@ -251,12 +253,18 @@ REST_FRAMEWORK = {
         # 'rest_framework.permissions.IsAuthenticated', #the one below is more granular
         "rest_framework.permissions.DjangoModelPermissions",
     ],
+    "DEFAULT_RENDERER_CLASSES": [
+        "rest_framework.renderers.JSONRenderer",
+        "rest_framework.renderers.BrowsableAPIRenderer",
+    ],
     "DEFAULT_PARSER_CLASSES": [
         "rest_framework.parsers.JSONParser",
         "rest_framework.parsers.FormParser",
         "rest_framework.parsers.MultiPartParser",
         "rest_framework.parsers.FileUploadParser",
     ],
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "EXCEPTION_HANDLER": "api.utils.exception_handler.custom_exception_handler",
     "DEFAULT_THROTTLE_CLASSES": [
         "rest_framework.throttling.AnonRateThrottle",
         "rest_framework.throttling.UserRateThrottle",
@@ -274,8 +282,16 @@ REST_FRAMEWORK = {
     },
 }
 
+SPECTACULAR_SETTINGS = {
+    "TITLE": "BusinessSuite API",
+    "DESCRIPTION": "API for BusinessSuite ERP/CRM",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "CAMELIZE_NAMES": True,
+}
+
 # in case we want to try using nodejs for the frontend
-CORS_ORIGIN_WHITELIST = ["http://localhost:3000"]
+CORS_ORIGIN_WHITELIST = ["http://localhost:3000", "http://localhost:4200"]
 
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"

@@ -59,3 +59,45 @@ class CustomerQuickCreateAPITestCase(TestCase):
         self.assertIsInstance(gender_display, str)
         if gender_display != "Female":
             self.assertEqual(gender_display, "Perempuan")
+
+
+class CustomerListAPITestCase(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_superuser(username="testadmin", email="admin@example.com", password="password")
+        self.client.force_login(self.user)
+
+    def test_customer_list_includes_passport_flags(self):
+        today = timezone.now().date()
+        expired = Customer.objects.create(
+            customer_type="person",
+            first_name="Expired",
+            last_name="Customer",
+            passport_expiration_date=today - datetime.timedelta(days=1),
+        )
+        expiring = Customer.objects.create(
+            customer_type="person",
+            first_name="Soon",
+            last_name="Customer",
+            passport_expiration_date=today + datetime.timedelta(days=30),
+        )
+
+        url = reverse("customers-list")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+
+        expired_item = next(item for item in data["results"] if item["id"] == expired.id)
+        expiring_item = next(item for item in data["results"] if item["id"] == expiring.id)
+
+        self.assertTrue(expired_item["passportExpired"])
+        self.assertFalse(expired_item["passportExpiringSoon"])
+        self.assertTrue(expiring_item["passportExpiringSoon"])
+
+    def test_toggle_active_endpoint(self):
+        customer = Customer.objects.create(customer_type="person", first_name="Active", last_name="User")
+        url = reverse("customers-toggle-active", args=[customer.id])
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, 200)
+        customer.refresh_from_db()
+        self.assertFalse(customer.active)

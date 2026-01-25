@@ -11,9 +11,10 @@ from django.urls import reverse
 from django.utils import timezone
 from rest_framework import filters, pagination, status, viewsets
 from rest_framework.authentication import SessionAuthentication
+from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.decorators import action, api_view, authentication_classes, permission_classes, throttle_classes
 from rest_framework.exceptions import NotFound, ValidationError
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 
@@ -66,11 +67,26 @@ class StandardResultsSetPagination(pagination.PageNumberPagination):
     max_page_size = 200
 
 
-class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ReadOnlyModelViewSet):
+class TokenAuthView(ObtainAuthToken):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+
+class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Customer.objects.select_related("nationality").all()
+        queryset = Customer.objects.select_related("nationality").all()
+
+        query = self.request.query_params.get("q") or self.request.query_params.get("search")
+        if query:
+            queryset = Customer.objects.search_customers(query).select_related("nationality")
+
+        hide_disabled = self.request.query_params.get("hide_disabled", "true").lower() == "true"
+        if hide_disabled:
+            queryset = queryset.filter(active=True)
+
+        return queryset
 
     serializer_class = CustomerSerializer
     pagination_class = StandardResultsSetPagination
@@ -124,6 +140,17 @@ class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ReadOnlyModelViewSet):
             return self.get_paginated_response(serializer.data)
         serializer = self.get_serializer(customers, many=True)
         return Response(serializer.data)
+
+    @action(detail=True, methods=["post"], url_path="toggle-active")
+    def toggle_active(self, request, pk=None):
+        try:
+            customer = Customer.objects.get(pk=pk)
+        except Customer.DoesNotExist:
+            return self.error_response("Customer not found", status.HTTP_404_NOT_FOUND)
+
+        customer.active = not customer.active
+        customer.save(update_fields=["active"])
+        return Response({"id": customer.id, "active": customer.active})
 
 
 class ProductViewSet(ApiErrorHandlingMixin, viewsets.ReadOnlyModelViewSet):
@@ -499,6 +526,23 @@ class ComputeViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                 return self.error_response("Task does not exist", status.HTTP_404_NOT_FOUND)
         else:
             return self.error_response("Invalid request", status.HTTP_400_BAD_REQUEST)
+
+
+class DashboardStatsView(ApiErrorHandlingMixin, viewsets.ViewSet):
+    """
+    API endpoint for dashboard statistics.
+    TO BE REMOVED WHEN ANGULAR FRONTEND IS COMPLETE
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def list(self, request):
+        stats = {
+            "customers": Customer.objects.count(),
+            "applications": DocApplication.objects.count(),
+            "invoices": InvoiceApplication.objects.count(),
+        }
+        return Response(stats)
 
 
 @api_view(["GET"])

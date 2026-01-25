@@ -184,11 +184,23 @@ Reference these documents (located in `copilot/specs/django-angular/`) for guida
 ### Migration Phase Status
 
 - [x] Phase 0: Foundation & Documentation Setup
-- [ ] Phase 1: Core Architecture (In Progress)
-- [ ] Phase 2: Authentication & Dashboard
-- [ ] Phase 3: Customer Management
-- [ ] Phase 4: Applications & OCR
-- [ ] Phase 5: Invoices & Payments
-- [ ] Phase 6: Integration & Cutover
+- [x] Phase 1: Core Architecture & Shared Services
+- [x] Phase 2: Feature Implementation - Authentication & Dashboard
+- [x] Phase 3: Vertical Slice 1 - Customer Management
+- [ ] Phase 4: Vertical Slice 2 - Applications & OCR
+- [ ] Phase 5: Vertical Slice 3 - Invoices & Payments
+- [ ] Phase 6: Integration, Testing, and Cutover
+
+**Current focus:** Phase 4 - Applications & OCR
 
 **Current focus:** Refer to [tasks.md](./copilot/specs/django-angular/tasks.md) for the current implementation phase and next steps.
+
+## OTHER FRONTEND DOCUMENTATION
+
+### QUICK THEME GUIDE
+
+For info on how to maintain and customize the Angular frontend theme, see [QUICK THEME GUIDE.md](./copilot/specs/django-angular/QUICK_THEME_GUIDE.md):
+
+### zardui Documentation and links to component docs
+
+For info on Zard UI component library used in the Angular frontend, see [zardui.md](./copilot/specs/django-angular/zardui.md):
