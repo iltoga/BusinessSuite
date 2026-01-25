@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
+import { ThemeService } from '@/core/services/theme.service';
 import { ZardAvatarComponent } from '@/shared/components/avatar';
 import { ZardIconComponent } from '@/shared/components/icon';
 
@@ -17,7 +18,7 @@ import { ZardIconComponent } from '@/shared/components/icon';
     ZardIconComponent,
   ],
   template: `
-    <div class="flex h-screen bg-background text-foreground">
+    <div class="flex h-screen bg-background text-foreground overflow-hidden">
       <aside
         [class.-translate-x-full]="!sidebarOpen"
         [ngClass]="
@@ -25,7 +26,11 @@ import { ZardIconComponent } from '@/shared/components/icon';
         "
         class="fixed md:relative inset-y-0 left-0 z-40 w-64 transform flex-col border-r bg-card p-4 transition-all duration-200 ease-in-out overflow-hidden"
       >
-        <div class="mb-6 text-lg font-semibold">BusinessSuite</div>
+        <img
+          [src]="logoSrc()"
+          alt="BusinessSuite Logo"
+          class="block w-full max-w-full h-auto mb-6 object-contain"
+        />
         <nav class="space-y-2 text-sm">
           <a
             routerLink="/dashboard"
@@ -68,7 +73,7 @@ import { ZardIconComponent } from '@/shared/components/icon';
           </div>
         </header>
 
-        <main class="flex-1 overflow-auto p-6">
+        <main class="flex-1 p-6">
           <router-outlet />
         </main>
       </div>
@@ -78,6 +83,11 @@ import { ZardIconComponent } from '@/shared/components/icon';
 })
 export class MainLayoutComponent {
   sidebarOpen = true;
+
+  private themeService = inject(ThemeService);
+  logoSrc = computed(() =>
+    this.themeService.isDarkMode() ? '/logo_inverted_transparent.png' : '/logo_transparent.png',
+  );
 
   toggleSidebar() {
     this.sidebarOpen = !this.sidebarOpen;

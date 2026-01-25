@@ -2,7 +2,7 @@ import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/
 import {
   APP_INITIALIZER,
   ApplicationConfig,
-  provideBrowserGlobalErrorListeners,
+  provideBrowserGlobalErrorListeners, isDevMode,
 } from '@angular/core';
 import { provideRouter } from '@angular/router';
 
@@ -14,6 +14,7 @@ import { routes } from './app.routes';
 
 import { APP_CONFIG } from './core/config/app.config';
 import { MOCK_AUTH_ENABLED } from './core/config/mock-auth.token';
+import { provideServiceWorker } from '@angular/service-worker';
 
 /**
  * Theme initialization factory
@@ -45,6 +46,9 @@ export const appConfig: ApplicationConfig = {
     {
       provide: MOCK_AUTH_ENABLED,
       useValue: APP_CONFIG.mockAuthEnabled,
-    },
+    }, provideServiceWorker('ngsw-worker.js', {
+            enabled: !isDevMode(),
+            registrationStrategy: 'registerWhenStable:30000'
+          }),
   ],
 };
