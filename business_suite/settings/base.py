@@ -246,8 +246,8 @@ CSRF_COOKIE_SAMESITE = "Lax"  # Changed from "None"
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework.authentication.SessionAuthentication",
         "business_suite.authentication.BearerAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         # 'rest_framework.permissions.IsAuthenticated', #the one below is more granular

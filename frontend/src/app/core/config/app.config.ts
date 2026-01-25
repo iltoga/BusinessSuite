@@ -10,7 +10,7 @@ export const APP_CONFIG = {
    * Set to `true` to bypass authentication during development
    * Set to `false` for production or to test real authentication
    */
-  mockAuthEnabled: true, // <-- Toggle this to enable/disable mock auth
+  mockAuthEnabled: false, // <-- Toggle this to enable/disable mock auth
 
   /**
    * Application theme
