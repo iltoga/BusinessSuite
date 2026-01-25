@@ -113,11 +113,31 @@
             formControlName="passport_expiration_date"
             placeholder="DD-MM-YYYY"
           ></z-date-input>
+          @if (
+            form.get('passport_expiration_date')?.hasError('passportExpirationBeforeIssue') &&
+            (form.get('passport_expiration_date')?.touched || submitted())
+          ) {
+            <p class="text-sm text-red-500">Expiration date cannot be earlier than issue date</p>
+          }
         </div>
         @if (isPerson()) {
           <div class="space-y-2">
             <label class="text-sm font-medium">Birthdate</label>
             <z-date-input formControlName="birthdate" placeholder="DD-MM-YYYY"></z-date-input>
+            @if (
+              form.get('birthdate')?.hasError('birthdateAfterIssue') &&
+              (form.get('birthdate')?.touched || submitted())
+            ) {
+              <p class="text-sm text-red-500">Birthdate cannot be later than passport issue date</p>
+            }
+            @if (
+              form.get('birthdate')?.hasError('birthdateAfterExpiration') &&
+              (form.get('birthdate')?.touched || submitted())
+            ) {
+              <p class="text-sm text-red-500">
+                Birthdate cannot be later than passport expiration date
+              </p>
+            }
           </div>
           <div class="space-y-2">
             <label class="text-sm font-medium">Birth Place</label>

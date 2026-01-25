@@ -43,33 +43,40 @@ export class CustomerFormComponent implements OnInit {
   readonly countries = signal<CountryCode[]>([]);
   readonly isPerson = signal(true); // Track if customer type is 'person'
 
-  form = this.fb.group({
-    customer_type: ['person'],
-    title: [''],
-    first_name: [''],
-    last_name: [''],
-    company_name: [''],
-    gender: [''],
-    nationality: [''],
-    birthdate: [null as Date | null],
-    birth_place: [''],
-    passport_number: [''],
-    passport_issue_date: [null as Date | null],
-    passport_expiration_date: [null as Date | null],
-    npwp: [''],
-    email: ['', Validators.email],
-    telephone: [''],
-    whatsapp: [''],
-    telegram: [''],
-    facebook: [''],
-    instagram: [''],
-    twitter: [''],
-    address_bali: [''],
-    address_abroad: [''],
-    notify_documents_expiration: [false],
-    notify_by: [''],
-    active: [true],
-  });
+  readonly submitted = signal(false);
+
+  form = this.fb.group(
+    {
+      customer_type: ['person'],
+      title: [''],
+      first_name: [''],
+      last_name: [''],
+      company_name: [''],
+      gender: [''],
+      nationality: [''],
+      birthdate: [null as Date | null],
+      birth_place: [''],
+      passport_number: [''],
+      passport_issue_date: [null as Date | null],
+      passport_expiration_date: [null as Date | null],
+      npwp: [''],
+      email: ['', Validators.email],
+      telephone: [''],
+      whatsapp: [''],
+      telegram: [''],
+      facebook: [''],
+      instagram: [''],
+      twitter: [''],
+      address_bali: [''],
+      address_abroad: [''],
+      notify_documents_expiration: [false],
+      notify_by: [''],
+      active: [true],
+    },
+    {
+      validators: [this.passportDatesValidator.bind(this), this.birthDateValidator.bind(this)],
+    },
+  );
 
   // Title options
   readonly titleOptions = [
@@ -104,6 +111,17 @@ export class CustomerFormComponent implements OnInit {
     this.customersService.getCountries().subscribe({
       next: (data) => this.countries.set(data),
       error: () => this.toast.error('Failed to load countries'),
+    });
+
+    // Re-run group validators when related fields change.
+    this.form.get('passport_issue_date')?.valueChanges.subscribe(() => {
+      this.form.updateValueAndValidity({ onlySelf: false, emitEvent: false });
+    });
+    this.form.get('passport_expiration_date')?.valueChanges.subscribe(() => {
+      this.form.updateValueAndValidity({ onlySelf: false, emitEvent: false });
+    });
+    this.form.get('birthdate')?.valueChanges.subscribe(() => {
+      this.form.updateValueAndValidity({ onlySelf: false, emitEvent: false });
     });
 
     // Set up conditional validation based on customer_type changes
@@ -180,7 +198,52 @@ export class CustomerFormComponent implements OnInit {
     }
   }
 
+  private passportDatesValidator(
+    group: import('@angular/forms').AbstractControl,
+  ): import('@angular/forms').ValidationErrors | null {
+    const issue = group.get('passport_issue_date')?.value as Date | null;
+    const expiration = group.get('passport_expiration_date')?.value as Date | null;
+
+    // Clear related errors first
+    group.get('passport_expiration_date')?.setErrors(null);
+
+    if (issue && expiration) {
+      if (expiration < issue) {
+        group.get('passport_expiration_date')?.setErrors({ passportExpirationBeforeIssue: true });
+        return { passportExpirationBeforeIssue: true };
+      }
+    }
+    return null;
+  }
+
+  private birthDateValidator(
+    group: import('@angular/forms').AbstractControl,
+  ): import('@angular/forms').ValidationErrors | null {
+    const birth = group.get('birthdate')?.value as Date | null;
+    const issue = group.get('passport_issue_date')?.value as Date | null;
+    const expiration = group.get('passport_expiration_date')?.value as Date | null;
+
+    // Clear existing birth errors
+    group.get('birthdate')?.setErrors(null);
+
+    if (!birth) return null;
+
+    if (issue && birth > issue) {
+      group.get('birthdate')?.setErrors({ birthdateAfterIssue: true });
+      return { birthdateAfterIssue: true };
+    }
+
+    if (expiration && birth > expiration) {
+      group.get('birthdate')?.setErrors({ birthdateAfterExpiration: true });
+      return { birthdateAfterExpiration: true };
+    }
+
+    return null;
+  }
+
   onSubmit(): void {
+    this.submitted.set(true);
+
     if (this.form.invalid) {
       this.toast.error('Please fix validation errors');
       return;
