@@ -1,11 +1,11 @@
 .gitignore
-.openapi-generator-ignore
 README.md
 api.base.service.ts
 api.module.ts
 api/api-token-auth.service.ts
 api/api.ts
 api/compute.service.ts
+api/country-codes.service.ts
 api/cron.service.ts
 api/customer-applications.service.ts
 api/customers.service.ts
@@ -20,6 +20,7 @@ git_push.sh
 index.ts
 model/auth-token.ts
 model/blank-enum.ts
+model/country-code.ts
 model/customer-type-enum.ts
 model/customer.ts
 model/gender-enum.ts

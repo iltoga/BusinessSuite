@@ -36,9 +36,13 @@ export interface PatchedCustomer {
     passport_number?: string | null;
     passport_issue_date?: string | null;
     passport_expiration_date?: string | null;
+    passport_file?: string | null;
     readonly passport_expired?: string;
     readonly passport_expiring_soon?: string;
     gender?: PatchedCustomer.GenderEnum | null;
+    readonly gender_display?: string;
+    readonly nationality_name?: string;
+    readonly nationality_code?: string;
     address_bali?: string | null;
     address_abroad?: string | null;
     notify_documents_expiration?: boolean;

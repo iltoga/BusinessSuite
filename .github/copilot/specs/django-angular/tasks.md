@@ -167,7 +167,7 @@
 
     - _Test:_ Visit `http://localhost:8000/api/schema/` and verify YAML output.
 
-  - [ ] 0.2.2 Install and Configure `djangorestframework-camel-case`.
+  - [x] 0.2.2 Install and Configure `djangorestframework-camel-case`.
     - Install: `pip install djangorestframework-camel-case`.
     - Update `settings.py`:
 

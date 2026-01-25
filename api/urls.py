@@ -33,7 +33,13 @@ urlpatterns = [
         name="api-document-ocr-status",
     ),
     # Compatibility aliases for template tags
-    path("customers/<int:pk>/", views.CustomerViewSet.as_view({"get": "retrieve"}), name="api-customer-detail"),
+    path(
+        "customers/<int:pk>/",
+        views.CustomerViewSet.as_view(
+            {"get": "retrieve", "put": "update", "patch": "partial_update", "delete": "destroy"}
+        ),
+        name="api-customer-detail",
+    ),
     path("customers/search/", views.CustomerViewSet.as_view({"get": "search"}), name="api-customer-search"),
     path(
         "products/get_product_by_id/<int:product_id>/",

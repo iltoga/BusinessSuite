@@ -89,13 +89,15 @@ class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = Customer.objects.select_related("nationality").all()
 
-        query = self.request.query_params.get("q") or self.request.query_params.get("search")
-        if query:
-            queryset = Customer.objects.search_customers(query).select_related("nationality")
+        # Only apply search and active filters for the list action
+        if self.action == "list":
+            query = self.request.query_params.get("q") or self.request.query_params.get("search")
+            if query:
+                queryset = Customer.objects.search_customers(query).select_related("nationality")
 
-        hide_disabled = self.request.query_params.get("hide_disabled", "true").lower() == "true"
-        if hide_disabled:
-            queryset = queryset.filter(active=True)
+            hide_disabled = self.request.query_params.get("hide_disabled", "true").lower() == "true"
+            if hide_disabled:
+                queryset = queryset.filter(active=True)
 
         return queryset
 
@@ -105,39 +107,6 @@ class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     search_fields = ["first_name", "last_name", "email", "company_name", "passport_number"]
     ordering_fields = ["first_name", "last_name", "email", "company_name", "passport_number", "created_at"]
     ordering = ["-created_at"]
-
-    def retrieve(self, request, *args, **kwargs):
-        language = request.GET.get("document_lang", settings.DEFAULT_DOCUMENT_LANGUAGE_CODE)
-        try:
-            customer = Customer.objects.select_related("nationality").get(pk=kwargs.get("pk"))
-        except Customer.DoesNotExist:
-            return self.error_response("Customer not found", status.HTTP_404_NOT_FOUND)
-        data = {
-            "id": customer.id,
-            "first_name": customer.first_name or "",
-            "last_name": customer.last_name or "",
-            "company_name": customer.company_name or "",
-            "full_name": customer.full_name,
-            "gender_display": customer.get_gender_display(language) if customer.gender else "",
-            "nationality_name": (
-                (
-                    customer.nationality.country_idn
-                    if getattr(customer.nationality, "country_idn", None)
-                    else customer.nationality.country
-                )
-                if customer.nationality
-                else ""
-            ),
-            "nationality_code": customer.nationality.alpha3_code if customer.nationality else "",
-            "birth_place": customer.birth_place or "",
-            "birthdate": customer.birthdate.isoformat() if customer.birthdate else "",
-            "passport_number": customer.passport_number or "",
-            "passport_expiration_date": (
-                customer.passport_expiration_date.isoformat() if customer.passport_expiration_date else ""
-            ),
-            "address_bali": customer.address_bali or "",
-        }
-        return Response(data)
 
     @action(detail=False, methods=["get"], url_path="search")
     def search(self, request):
