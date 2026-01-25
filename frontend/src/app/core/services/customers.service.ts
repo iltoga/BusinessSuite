@@ -36,8 +36,30 @@ export interface CustomerDetail extends CustomerListItem {
   gender?: string | null;
   npwp?: string | null;
   passportIssueDate?: string | null;
+  passportFile?: string | null;
   notifyDocumentsExpiration?: boolean | null;
   notifyBy?: string | null;
+}
+
+export interface UninvoicedApplication {
+  id: number;
+  customer: CustomerDetail;
+  product: {
+    id: number;
+    name: string;
+    code: string;
+    product_type: string;
+    base_price: string;
+  };
+  doc_date: string;
+  due_date: string;
+  status: string;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+  created_by: number;
+  updated_by: number;
+  str_field: string;
 }
 
 export interface CountryCode {
@@ -130,6 +152,14 @@ export class CustomersService {
     return this.http.delete<void>(`${this.apiUrl}${customerId}/`, { headers });
   }
 
+  getUninvoicedApplications(customerId: number): Observable<UninvoicedApplication[]> {
+    const headers = this.buildHeaders();
+    return this.http.get<UninvoicedApplication[]>(
+      `/api/invoices/get_customer_applications/${customerId}/`,
+      { headers },
+    );
+  }
+
   getCountries(): Observable<CountryCode[]> {
     const headers = this.buildHeaders();
     return this.http.get<CountryCode[]>('/api/country-codes/', { headers });
@@ -170,6 +200,7 @@ export class CustomersService {
     nationality: item.nationality ?? null,
     gender: item.gender ?? null,
     npwp: item.npwp ?? null,
+    passportFile: item.passport_file ?? item.passportFile ?? null,
     notifyDocumentsExpiration:
       item.notify_documents_expiration ?? item.notifyDocumentsExpiration ?? null,
     notifyBy: item.notify_by ?? item.notifyBy ?? null,

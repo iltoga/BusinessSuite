@@ -2,15 +2,28 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
-import { CustomersService, type CustomerDetail } from '@/core/services/customers.service';
+import {
+  CustomersService,
+  type CustomerDetail,
+  type UninvoicedApplication,
+} from '@/core/services/customers.service';
 import { GlobalToastService } from '@/core/services/toast.service';
+import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
+import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 
 @Component({
   selector: 'app-customer-detail',
   standalone: true,
-  imports: [CommonModule, RouterLink, ZardButtonComponent, ZardCardComponent],
+  imports: [
+    CommonModule,
+    RouterLink,
+    ZardButtonComponent,
+    ZardCardComponent,
+    ZardBadgeComponent,
+    AppDatePipe,
+  ],
   templateUrl: './customer-detail.component.html',
   styleUrls: ['./customer-detail.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -22,6 +35,7 @@ export class CustomerDetailComponent implements OnInit {
   private toast = inject(GlobalToastService);
 
   readonly customer = signal<CustomerDetail | null>(null);
+  readonly uninvoicedApplications = signal<UninvoicedApplication[]>([]);
   readonly isLoading = signal(true);
 
   ngOnInit(): void {
@@ -32,13 +46,25 @@ export class CustomerDetailComponent implements OnInit {
       return;
     }
 
+    // Fetch customer details
     this.customersService.getCustomer(id).subscribe({
       next: (data) => {
         this.customer.set(data);
-        this.isLoading.set(false);
       },
       error: () => {
         this.toast.error('Failed to load customer');
+        this.isLoading.set(false);
+      },
+    });
+
+    // Fetch uninvoiced applications
+    this.customersService.getUninvoicedApplications(id).subscribe({
+      next: (data) => {
+        this.uninvoicedApplications.set(data);
+        this.isLoading.set(false);
+      },
+      error: () => {
+        this.toast.error('Failed to load applications');
         this.isLoading.set(false);
       },
     });
@@ -59,5 +85,18 @@ export class CustomerDetailComponent implements OnInit {
       },
       error: () => this.toast.error('Failed to delete customer'),
     });
+  }
+
+  getStatusBadgeType(status: string): 'default' | 'secondary' | 'destructive' | 'outline' {
+    switch (status.toLowerCase()) {
+      case 'completed':
+        return 'default';
+      case 'pending':
+        return 'secondary';
+      case 'rejected':
+        return 'destructive';
+      default:
+        return 'outline';
+    }
   }
 }

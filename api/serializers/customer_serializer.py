@@ -41,6 +41,7 @@ class CustomerSerializer(serializers.ModelSerializer):
             "passport_number",
             "passport_issue_date",
             "passport_expiration_date",
+            "passport_file",
             "passport_expired",
             "passport_expiring_soon",
             "gender",

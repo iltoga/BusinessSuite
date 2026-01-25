@@ -28,4 +28,20 @@ export const APP_CONFIG = {
    * Change this value to switch the entire app theme
    */
   theme: 'neutral' as ThemeName, // <-- Change theme here
+
+  /**
+   * Display date format
+   *
+   * Uses Angular DatePipe format options:
+   * - 'short': 'M/d/yy, h:mm a'
+   * - 'medium': 'MMM d, y, h:mm:ss a'
+   * - 'long': 'MMMM d, y, h:mm:ss a z'
+   * - 'full': 'EEEE, MMMM d, y, h:mm:ss a zzzz'
+   * - 'shortDate': 'M/d/yy'
+   * - 'mediumDate': 'MMM d, y'
+   * - 'longDate': 'MMMM d, y'
+   * - 'fullDate': 'EEEE, MMMM d, y'
+   * - Or custom format like 'dd-MM-yyyy' (note: MM for month, not mm)
+   */
+  dateFormat: 'dd-MM-yyyy' as string,
 } as const;
