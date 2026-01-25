@@ -63,7 +63,7 @@ export class CustomerListComponent implements OnInit {
   readonly pageSize = signal(10);
   readonly totalItems = signal(0);
   readonly hideDisabled = signal(true);
-  readonly ordering = signal<string | undefined>('last_name');
+  readonly ordering = signal<string | undefined>('-created_at');
 
   readonly columns = computed<ColumnConfig[]>(() => [
     {

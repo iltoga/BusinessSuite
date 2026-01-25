@@ -92,8 +92,8 @@ class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     pagination_class = StandardResultsSetPagination
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["first_name", "last_name", "email", "company_name", "passport_number"]
-    ordering_fields = ["first_name", "last_name", "email", "company_name", "passport_number"]
-    ordering = ["last_name", "first_name"]
+    ordering_fields = ["first_name", "last_name", "email", "company_name", "passport_number", "created_at"]
+    ordering = ["-created_at"]
 
     def retrieve(self, request, *args, **kwargs):
         language = request.GET.get("document_lang", settings.DEFAULT_DOCUMENT_LANGUAGE_CODE)
