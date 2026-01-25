@@ -60,7 +60,7 @@ export class CustomerListComponent implements OnInit {
   readonly isLoading = signal(false);
   readonly query = signal('');
   readonly page = signal(1);
-  readonly pageSize = signal(10);
+  readonly pageSize = signal(9);
   readonly totalItems = signal(0);
   readonly hideDisabled = signal(true);
   readonly ordering = signal<string | undefined>('-created_at');

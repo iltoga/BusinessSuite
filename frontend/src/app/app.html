@@ -1,2 +1,4 @@
 <router-outlet></router-outlet>
-<z-toaster></z-toaster>
+@if (isBrowser()) {
+  <z-toaster></z-toaster>
+}

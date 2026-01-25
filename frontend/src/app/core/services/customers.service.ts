@@ -25,14 +25,27 @@ export interface CustomerDetail extends CustomerListItem {
   companyName?: string | null;
   whatsapp?: string | null;
   telegram?: string | null;
+  facebook?: string | null;
+  instagram?: string | null;
+  twitter?: string | null;
   birthdate?: string | null;
   birthPlace?: string | null;
   addressBali?: string | null;
   addressAbroad?: string | null;
   nationality?: string | null;
   gender?: string | null;
+  npwp?: string | null;
+  passportIssueDate?: string | null;
   notifyDocumentsExpiration?: boolean | null;
   notifyBy?: string | null;
+}
+
+export interface CountryCode {
+  country: string;
+  countryIdn: string;
+  alpha2Code: string;
+  alpha3Code: string;
+  numericCode: string;
 }
 
 export interface PaginatedResponse<T> {
@@ -117,6 +130,11 @@ export class CustomersService {
     return this.http.delete<void>(`${this.apiUrl}${customerId}/`, { headers });
   }
 
+  getCountries(): Observable<CountryCode[]> {
+    const headers = this.buildHeaders();
+    return this.http.get<CountryCode[]>('/api/country-codes/', { headers });
+  }
+
   private buildHeaders(): HttpHeaders | undefined {
     const token = this.authService.getToken();
     return token ? new HttpHeaders({ Authorization: `Bearer ${token}` }) : undefined;
@@ -130,6 +148,7 @@ export class CustomersService {
     email: item.email ?? null,
     telephone: item.telephone ?? null,
     passportNumber: item.passport_number ?? item.passportNumber ?? null,
+    passportIssueDate: item.passport_issue_date ?? item.passportIssueDate ?? null,
     passportExpirationDate: item.passport_expiration_date ?? item.passportExpirationDate ?? null,
     passportExpired: item.passport_expired ?? item.passportExpired ?? false,
     passportExpiringSoon: item.passport_expiring_soon ?? item.passportExpiringSoon ?? false,
@@ -141,12 +160,16 @@ export class CustomersService {
     companyName: item.company_name ?? item.companyName ?? null,
     whatsapp: item.whatsapp ?? null,
     telegram: item.telegram ?? null,
+    facebook: item.facebook ?? null,
+    instagram: item.instagram ?? null,
+    twitter: item.twitter ?? null,
     birthdate: item.birthdate ?? null,
     birthPlace: item.birth_place ?? item.birthPlace ?? null,
     addressBali: item.address_bali ?? item.addressBali ?? null,
     addressAbroad: item.address_abroad ?? item.addressAbroad ?? null,
     nationality: item.nationality ?? null,
     gender: item.gender ?? null,
+    npwp: item.npwp ?? null,
     notifyDocumentsExpiration:
       item.notify_documents_expiration ?? item.notifyDocumentsExpiration ?? null,
     notifyBy: item.notify_by ?? item.notifyBy ?? null,

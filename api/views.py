@@ -19,6 +19,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 
 from api.serializers import (
+    CountryCodeSerializer,
     CustomerApplicationQuickCreateSerializer,
     CustomerQuickCreateSerializer,
     CustomerSerializer,
@@ -27,7 +28,7 @@ from api.serializers import (
     ProductQuickCreateSerializer,
     ProductSerializer,
 )
-from core.models import DocumentOCRJob, OCRJob
+from core.models import CountryCode, DocumentOCRJob, OCRJob
 from core.services.quick_create import create_quick_customer, create_quick_customer_application, create_quick_product
 from core.tasks.cron_jobs import run_clear_cache_now, run_full_backup_now
 from core.tasks.document_ocr import run_document_ocr_job
@@ -70,6 +71,16 @@ class StandardResultsSetPagination(pagination.PageNumberPagination):
 class TokenAuthView(ObtainAuthToken):
     authentication_classes = []
     permission_classes = [AllowAny]
+
+
+class CountryCodeViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [IsAuthenticated]
+    queryset = CountryCode.objects.all()
+    serializer_class = CountryCodeSerializer
+    pagination_class = None  # No pagination for country list as it's small and used for dropdowns
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["country", "country_idn", "alpha3_code"]
+    ordering = ["country"]
 
 
 class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):

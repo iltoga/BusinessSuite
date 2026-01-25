@@ -73,7 +73,7 @@ import { ZardIconComponent } from '@/shared/components/icon';
           </div>
         </header>
 
-        <main class="flex-1 p-6">
+        <main class="flex-1 p-6 overflow-y-auto">
           <router-outlet />
         </main>
       </div>

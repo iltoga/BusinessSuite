@@ -6,6 +6,7 @@ from . import views
 
 router = DefaultRouter()
 router.register(r"customers", views.CustomerViewSet, basename="customers")
+router.register(r"country-codes", views.CountryCodeViewSet, basename="country-codes")
 router.register(r"products", views.ProductViewSet, basename="products")
 router.register(r"invoices", views.InvoiceViewSet, basename="invoices")
 router.register(r"ocr", views.OCRViewSet, basename="ocr")
