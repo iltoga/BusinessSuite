@@ -11,11 +11,16 @@ import {
 
 import type { ClassValue } from 'clsx';
 
-import { ZardButtonComponent } from '@/shared/components/button/button.component';
+import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardIdDirective, ZardStringTemplateOutletDirective } from '@/shared/core';
 import { mergeClasses } from '@/shared/utils/merge-classes';
 
-import { cardBodyVariants, cardFooterVariants, cardHeaderVariants, cardVariants } from './card.variants';
+import {
+  cardBodyVariants,
+  cardFooterVariants,
+  cardHeaderVariants,
+  cardVariants,
+} from './card.variants';
 
 @Component({
   selector: 'z-card',
@@ -31,7 +36,11 @@ import { cardBodyVariants, cardFooterVariants, cardHeaderVariants, cardVariants 
 
           @let description = zDescription();
           @if (description) {
-            <div class="text-muted-foreground text-sm" [id]="descriptionId()" data-slot="card-description">
+            <div
+              class="text-muted-foreground text-sm"
+              [id]="descriptionId()"
+              data-slot="card-description"
+            >
               <ng-container *zStringTemplateOutlet="description">{{ description }}</ng-container>
             </div>
           }

@@ -74,6 +74,71 @@ When enabled, `AuthService.login()` will immediately return a fake token (`mock-
 
 ---
 
+## Theming System 🎨
+
+The application uses a comprehensive theming system based on Zard UI with support for multiple pre-made themes and dark mode.
+
+### Quick Start: Change Theme
+
+1. Open `src/app/core/config/app.config.ts`
+2. Change the `theme` property:
+
+```typescript
+export const APP_CONFIG = {
+  mockAuthEnabled: true,
+  theme: 'blue', // <-- Change to: 'neutral', 'slate', 'gray', 'zinc', 'stone', 'blue', 'purple', or 'teal'
+} as const;
+```
+
+3. Restart the dev server to see changes
+
+### Available Themes
+
+- **`neutral`** (default) - Pure grayscale, professional
+- **`slate`** - Cool blue-gray, tech/SaaS
+- **`gray`** - Balanced gray, enterprise apps
+- **`zinc`** - Slightly cool gray, modern apps
+- **`stone`** - Warm gray, e-commerce/lifestyle
+- **`blue`** - Corporate blue primary
+- **`purple`** - Creative purple primary
+- **`teal`** - Modern teal/cyan primary
+
+### Dark Mode
+
+The theme system includes automatic dark mode support:
+
+- Detects system preference automatically
+- Persists user choice to localStorage
+- Smooth transitions between modes
+
+### Dynamic Theme Switching
+
+Add the theme switcher component anywhere in your app:
+
+```typescript
+import { ThemeSwitcherComponent } from '@/shared/components/theme-switcher/theme-switcher.component';
+
+@Component({
+  imports: [ThemeSwitcherComponent],
+  template: `<app-theme-switcher />`
+})
+```
+
+### Creating Custom Themes
+
+See [THEMING_GUIDE.md](./THEMING_GUIDE.md) for:
+
+- Complete theme customization guide
+- OKLCH color format explanation
+- Creating custom themes
+- Theme service API reference
+- Dark mode implementation
+- Best practices and troubleshooting
+
+Also see [QUICK_THEME_GUIDE.md](../.github/copilot/specs/django-angular/QUICK_THEME_GUIDE.md) for additional examples and color theory.
+
+---
+
 ## Additional Resources
 
 For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.

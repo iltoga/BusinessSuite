@@ -25,12 +25,12 @@ import {
 
 import { mergeClasses, noopFn } from '@/shared/utils/merge-classes';
 
+import { ZardButtonComponent } from '@/shared/components/button';
+import type { ZardIcon } from '@/shared/components/icon';
+import { ZardIconComponent } from '@/shared/components/icon';
 import type { ZardDialogRef } from './dialog-ref';
 import { ZardDialogService } from './dialog.service';
 import { dialogVariants } from './dialog.variants';
-import { ZardButtonComponent } from '@/shared/components/button/button.component';
-import { ZardIconComponent } from '@/shared/components/icon/icon.component';
-import type { ZardIcon } from '@/shared/components/icon/icons';
 
 // Used by the NgModule provider definition
 
@@ -77,10 +77,14 @@ export class ZardDialogOptions<T, U> {
     @if (config.zTitle || config.zDescription) {
       <header class="flex flex-col space-y-1.5 text-center sm:text-left">
         @if (config.zTitle) {
-          <h4 data-testid="z-title" class="text-lg leading-none font-semibold tracking-tight">{{ config.zTitle }}</h4>
+          <h4 data-testid="z-title" class="text-lg leading-none font-semibold tracking-tight">
+            {{ config.zTitle }}
+          </h4>
 
           @if (config.zDescription) {
-            <p data-testid="z-description" class="text-muted-foreground text-sm">{{ config.zDescription }}</p>
+            <p data-testid="z-description" class="text-muted-foreground text-sm">
+              {{ config.zDescription }}
+            </p>
           }
         }
       </header>
@@ -97,7 +101,13 @@ export class ZardDialogOptions<T, U> {
     @if (!config.zHideFooter) {
       <footer class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-0 sm:space-x-2">
         @if (config.zCancelText !== null) {
-          <button type="button" data-testid="z-cancel-button" z-button zType="outline" (click)="onCloseClick()">
+          <button
+            type="button"
+            data-testid="z-cancel-button"
+            z-button
+            zType="outline"
+            (click)="onCloseClick()"
+          >
             @if (config.zCancelIcon) {
               <z-icon [zType]="config.zCancelIcon" />
             }
@@ -162,7 +172,9 @@ export class ZardDialogComponent<T, U> extends BasePortalOutlet {
   private readonly host = inject(ElementRef<HTMLElement>);
   protected readonly config = inject(ZardDialogOptions<T, U>);
 
-  protected readonly classes = computed(() => mergeClasses(dialogVariants(), this.config.zCustomClasses));
+  protected readonly classes = computed(() =>
+    mergeClasses(dialogVariants(), this.config.zCustomClasses),
+  );
   dialogRef?: ZardDialogRef<T>;
 
   protected readonly isStringContent = typeof this.config.zContent === 'string';

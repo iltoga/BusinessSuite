@@ -199,7 +199,7 @@ Reference these documents (located in `copilot/specs/django-angular/`) for guida
 
 ### QUICK THEME GUIDE
 
-For info on how to maintain and customize the Angular frontend theme, see [QUICK THEME GUIDE.md](./copilot/specs/django-angular/QUICK_THEME_GUIDE.md):
+For info on how to maintain and customize the Angular frontend theme, see [THEME GUIDE.md](./copilot/specs/django-angular/THEME_GUIDE.md):
 
 ### zardui Documentation and links to component docs
 

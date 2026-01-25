@@ -1,14 +1,29 @@
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
-import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
+import {
+  APP_INITIALIZER,
+  ApplicationConfig,
+  provideBrowserGlobalErrorListeners,
+} from '@angular/core';
 import { provideRouter } from '@angular/router';
 
 import { authInterceptor } from '@/core/interceptors/auth.interceptor';
+import { ThemeService } from '@/core/services/theme.service';
 import { provideZard } from '@/shared/core/provider/providezard';
 import { provideClientHydration, withEventReplay } from '@angular/platform-browser';
 import { routes } from './app.routes';
 
 import { APP_CONFIG } from './core/config/app.config';
 import { MOCK_AUTH_ENABLED } from './core/config/mock-auth.token';
+
+/**
+ * Theme initialization factory
+ * Applies the configured theme on app startup
+ */
+function initializeTheme(themeService: ThemeService) {
+  return () => {
+    themeService.initializeTheme(APP_CONFIG.theme);
+  };
+}
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -17,6 +32,14 @@ export const appConfig: ApplicationConfig = {
     provideHttpClient(withFetch(), withInterceptors([authInterceptor])),
     provideZard(),
     provideClientHydration(withEventReplay()),
+
+    // Initialize theme on app startup
+    {
+      provide: APP_INITIALIZER,
+      useFactory: initializeTheme,
+      deps: [ThemeService],
+      multi: true,
+    },
 
     // Mocked authentication (toggle in src/app/core/config/app.config.ts)
     {
