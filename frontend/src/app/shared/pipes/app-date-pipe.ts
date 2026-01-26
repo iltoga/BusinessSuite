@@ -1,7 +1,7 @@
 import { formatDate } from '@angular/common';
 import { inject, LOCALE_ID, Pipe, PipeTransform } from '@angular/core';
 
-import { APP_CONFIG } from '@/core/config/app.config';
+import { ConfigService } from '@/core/services/config.service';
 
 @Pipe({
   name: 'appDate',
@@ -9,6 +9,7 @@ import { APP_CONFIG } from '@/core/config/app.config';
 })
 export class AppDatePipe implements PipeTransform {
   private locale = inject(LOCALE_ID);
+  private configService = inject(ConfigService);
 
   transform(value: unknown, ...args: unknown[]): unknown {
     if (!value || value === '') return null;
@@ -16,7 +17,7 @@ export class AppDatePipe implements PipeTransform {
     try {
       const result = formatDate(
         value as string | number | Date,
-        APP_CONFIG.dateFormat,
+        this.configService.settings.dateFormat,
         this.locale,
       );
       return result;

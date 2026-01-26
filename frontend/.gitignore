@@ -39,6 +39,9 @@ testem.log
 /typings
 __screenshots__/
 
+# Runtime config (local only)
+/src/assets/config.json
+
 # System files
 .DS_Store
 Thumbs.db

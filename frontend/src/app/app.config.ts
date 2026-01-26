@@ -1,30 +1,24 @@
+import { isPlatformBrowser } from '@angular/common';
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import {
-  APP_INITIALIZER,
   ApplicationConfig,
-  provideBrowserGlobalErrorListeners, isDevMode,
+  inject,
+  isDevMode,
+  PLATFORM_ID,
+  provideAppInitializer,
+  provideBrowserGlobalErrorListeners,
 } from '@angular/core';
 import { provideRouter } from '@angular/router';
 
 import { authInterceptor } from '@/core/interceptors/auth.interceptor';
+import { ConfigService } from '@/core/services/config.service';
 import { ThemeService } from '@/core/services/theme.service';
 import { provideZard } from '@/shared/core/provider/providezard';
 import { provideClientHydration, withEventReplay } from '@angular/platform-browser';
 import { routes } from './app.routes';
 
-import { APP_CONFIG } from './core/config/app.config';
-import { MOCK_AUTH_ENABLED } from './core/config/mock-auth.token';
 import { provideServiceWorker } from '@angular/service-worker';
-
-/**
- * Theme initialization factory
- * Applies the configured theme on app startup
- */
-function initializeTheme(themeService: ThemeService) {
-  return () => {
-    themeService.initializeTheme(APP_CONFIG.theme);
-  };
-}
+import { MOCK_AUTH_ENABLED } from './core/config/mock-auth.token';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -34,21 +28,32 @@ export const appConfig: ApplicationConfig = {
     provideZard(),
     provideClientHydration(withEventReplay()),
 
-    // Initialize theme on app startup
-    {
-      provide: APP_INITIALIZER,
-      useFactory: initializeTheme,
-      deps: [ThemeService],
-      multi: true,
-    },
+    // Load runtime config then initialize theme
+    provideAppInitializer(() => {
+      const configService = inject(ConfigService);
+      const themeService = inject(ThemeService);
+      const platformId = inject(PLATFORM_ID);
 
-    // Mocked authentication (toggle in src/app/core/config/app.config.ts)
+      if (!isPlatformBrowser(platformId)) {
+        return Promise.resolve();
+      }
+
+      return configService.loadConfig().then(() => {
+        themeService.initializeTheme(configService.settings.theme);
+      });
+    }),
+
+    // Mocked authentication (toggle in src/assets/config.json)
     {
       provide: MOCK_AUTH_ENABLED,
-      useValue: APP_CONFIG.mockAuthEnabled,
-    }, provideServiceWorker('ngsw-worker.js', {
-            enabled: !isDevMode(),
-            registrationStrategy: 'registerWhenStable:30000'
-          }),
+      useFactory: () => {
+        const configService = inject(ConfigService);
+        return configService.settings.mockAuthEnabled;
+      },
+    },
+    provideServiceWorker('ngsw-worker.js', {
+      enabled: !isDevMode(),
+      registrationStrategy: 'registerWhenStable:30000',
+    }),
   ],
 };
