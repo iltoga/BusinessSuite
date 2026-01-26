@@ -29,6 +29,24 @@ class AuthLoginRequiredMiddleware(MiddlewareMixin):
         includes 'django.core.context_processors.auth'."""
 
         if not request.user.is_authenticated:
+            if getattr(settings, "MOCK_AUTH_ENABLED", False):
+                from django.contrib.auth.models import User
+
+                user, _ = User.objects.get_or_create(
+                    username="mockuser",
+                    defaults={
+                        "is_staff": True,
+                        "is_superuser": True,
+                        "email": "mock@example.com",
+                    },
+                )
+                if not user.is_staff or not user.is_superuser:
+                    user.is_staff = True
+                    user.is_superuser = True
+                    user.save()
+                request.user = user
+                return None
+
             path = request.path_info.lstrip("/")
             if not any(m.match(path) for m in EXEMPT_URLS):
                 return redirect(settings.LOGIN_URL)

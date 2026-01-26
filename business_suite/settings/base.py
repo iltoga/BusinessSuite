@@ -22,6 +22,9 @@ from core.utils.dropbox_refresh_token import refresh_dropbox_token
 # Load environment variables from .env file
 load_dotenv()
 
+# MOCK AUTH SETTINGS
+MOCK_AUTH_ENABLED = os.getenv("MOCK_AUTH_ENABLED", "False") == "True"
+
 GLOBAL_SETTINGS = {
     "SITE_NAME": os.getenv("SITE_NAME", "Business Suite"),
     "SITE_DESCRIPTION": os.getenv(
