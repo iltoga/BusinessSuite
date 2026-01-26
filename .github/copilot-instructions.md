@@ -379,11 +379,14 @@ Located in `copilot/specs/django-angular/`:
 - [x] Phase 1: Core Architecture & Shared Services
 - [x] Phase 2: Authentication & Dashboard
 - [x] Phase 3: Customer Management
-- [ ] Phase 4: Applications & OCR (CURRENT)
-- [ ] Phase 5: Invoices & Payments
-- [ ] Phase 6: Integration & Cutover
+- [x] Phase 4: Application Detail & OCR
+- [ ] Phase 5: Products Management (CURRENT)
+- [ ] Phase 6: Customer Applications List & CRUD
+- [ ] Phase 7: Letters (Surat Permohonan)
+- [ ] Phase 8: Invoices & Payments
+- [ ] Phase 9: Integration & Cutover
 
-**Current focus:** Applications & OCR workflow implementation (see [tasks.md](./copilot/specs/django-angular/tasks.md) Phase 4)
+**Current focus:** Products Management (see [tasks.md](./copilot/specs/django-angular/tasks.md) Phase 5)
 
 ---
 

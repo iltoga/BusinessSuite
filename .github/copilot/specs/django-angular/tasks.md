@@ -817,7 +817,7 @@
   - [x] 3.3.2 Implement `FormErrorMapper` utility.
   - [x] 3.3.3 Test validation error mapping.
 
-## Phase 4: Vertical Slice 2 - Applications & OCR
+## Phase 4: Vertical Slice 2 - Application Detail & OCR
 
 - [x] **4.1 Backend: OCR & File Handling**
   - [x] Verify `DocumentViewSet` and OCR status endpoint
@@ -829,27 +829,778 @@
   - [x] Implement OCR polling pattern
   - [x] Show extracted data review modal
 
-## Phase 5: Vertical Slice 3 - Invoices & Payments
+---
 
-- [ ] **5.1 Invoice Management**
-  - Dynamic FormArray for line items
-  - Computed totals using signals
+## Phase 5: Products Management (NEW)
 
-- [ ] **5.2 Payment Recording**
-  - Payment modal component
-  - Validation against balance due
+**Goal:** Full CRUD for Products with inline Tasks formset, replicating Django legacy behavior.
 
-## Phase 6: Integration, Testing, and Cutover
+### 5.0 Legacy UI & Logic Audit
 
-- [ ] **6.1 Feature Flagging**
-  - Install `django-waffle`
-  - Create `ENABLE_ANGULAR_FRONTEND` flag
+- [ ] **5.0.1** Review `products/views/*.py` for CRUD logic:
+  - `ProductListView`: paginated list with search via `ProductManager.search_products()`
+  - `ProductDetailView`: shows product + related tasks
+  - `ProductCreateView` / `ProductUpdateView`: form + `TaskModelFormSet` inline formset
+  - Delete logic: `Product.can_be_deleted()` checks for related invoices/applications
 
-- [ ] **6.2 Production Build & Deployment**
-  - Configure Nginx routing
-  - Deploy Angular build
+- [ ] **5.0.2** Review `products/forms/product_form.py`:
+  - `SortableSelectMultiple` widget for drag-drop document ordering
+  - Required/optional documents stored as comma-separated names
+  - POST data uses `required_documents_multiselect` / `optional_documents_multiselect`
 
-- [ ] **6.3 Final Validation**
-  - End-to-end testing
-  - Update documentation
-  - Complete feedback log
+- [ ] **5.0.3** Review `products/forms/task_form.py`:
+  - `TaskModelFormSet` with `extra=0`, `max_num=10`, `can_delete=True`
+  - Validation: `notify_days_before <= duration`, unique step per product, single `last_step`
+
+### 5.1 Backend API Preparation
+
+- [ ] **5.1.1** Verify `ProductViewSet` is read-only; add write endpoints if needed:
+
+  ```python
+  # api/views.py - Extend ProductViewSet to ModelViewSet for full CRUD
+  class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
+      permission_classes = [IsAuthenticated]
+      queryset = Product.objects.prefetch_related('tasks').all()
+      serializer_class = ProductSerializer
+      # ... existing config
+  ```
+
+- [ ] **5.1.2** Create `ProductDetailSerializer` with nested tasks:
+
+  ```python
+  # api/serializers/product_serializer.py
+  class TaskNestedSerializer(serializers.ModelSerializer):
+      class Meta:
+          model = Task
+          fields = ['id', 'step', 'name', 'description', 'cost',
+                    'duration', 'duration_is_business_days',
+                    'notify_days_before', 'last_step']
+
+  class ProductDetailSerializer(serializers.ModelSerializer):
+      tasks = TaskNestedSerializer(many=True, read_only=True)
+      required_document_types = DocumentTypeSerializer(many=True, read_only=True)
+      optional_document_types = DocumentTypeSerializer(many=True, read_only=True)
+
+      class Meta:
+          model = Product
+          fields = ['id', 'name', 'code', 'description', 'immigration_id',
+                    'base_price', 'product_type', 'validity',
+                    'required_documents', 'optional_documents',
+                    'documents_min_validity', 'tasks',
+                    'required_document_types', 'optional_document_types']
+  ```
+
+- [ ] **5.1.3** Add `ProductCreateUpdateSerializer` with tasks write support:
+
+  ```python
+  class ProductCreateUpdateSerializer(serializers.ModelSerializer):
+      tasks = TaskNestedSerializer(many=True)
+      required_document_ids = serializers.ListField(
+          child=serializers.IntegerField(), write_only=True, required=False)
+      optional_document_ids = serializers.ListField(
+          child=serializers.IntegerField(), write_only=True, required=False)
+
+      class Meta:
+          model = Product
+          fields = ['name', 'code', 'description', 'immigration_id',
+                    'base_price', 'product_type', 'validity',
+                    'documents_min_validity', 'tasks',
+                    'required_document_ids', 'optional_document_ids']
+
+      def create(self, validated_data):
+          tasks_data = validated_data.pop('tasks', [])
+          req_ids = validated_data.pop('required_document_ids', [])
+          opt_ids = validated_data.pop('optional_document_ids', [])
+
+          # Convert IDs to comma-separated names preserving order
+          req_docs = DocumentType.objects.filter(pk__in=req_ids)
+          opt_docs = DocumentType.objects.filter(pk__in=opt_ids)
+          docs_by_pk = {d.pk: d.name for d in list(req_docs) + list(opt_docs)}
+
+          validated_data['required_documents'] = ','.join(
+              docs_by_pk[pk] for pk in req_ids if pk in docs_by_pk)
+          validated_data['optional_documents'] = ','.join(
+              docs_by_pk[pk] for pk in opt_ids if pk in docs_by_pk)
+
+          product = Product.objects.create(**validated_data)
+          for task_data in tasks_data:
+              Task.objects.create(product=product, **task_data)
+          return product
+  ```
+
+- [ ] **5.1.4** Run `bun run generate:api` to generate TypeScript clients
+
+### 5.2 Product List View
+
+- [ ] **5.2.1** Create `features/products/product-list/product-list.component.ts`:
+
+  ```typescript
+  // Pseudocode - reuse DataTableComponent pattern from customer-list
+  @Component({
+    selector: 'app-product-list',
+    standalone: true,
+    imports: [DataTableComponent, SearchToolbarComponent, PaginationControlsComponent, ...],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+  })
+  export class ProductListComponent implements OnInit {
+    private productsApi = inject(ProductsService); // Generated API client
+
+    readonly products = signal<Product[]>([]);
+    readonly isLoading = signal(true);
+    readonly searchQuery = signal('');
+    readonly currentPage = signal(1);
+    readonly totalPages = signal(1);
+
+    readonly columns: ColumnConfig[] = [
+      { key: 'code', header: 'Code', sortable: true },
+      { key: 'name', header: 'Name', sortable: true },
+      { key: 'productType', header: 'Type', sortable: true },
+      { key: 'basePrice', header: 'Base Price', sortable: true },
+      { key: 'actions', header: '', template: this.actionsTemplate },
+    ];
+
+    ngOnInit(): void {
+      this.loadProducts();
+    }
+
+    loadProducts(): void {
+      this.isLoading.set(true);
+      this.productsApi.productsList(this.currentPage(), 15, this.searchQuery())
+        .subscribe({
+          next: (response) => {
+            this.products.set(response.results ?? []);
+            this.totalPages.set(Math.ceil((response.count ?? 0) / 15));
+            this.isLoading.set(false);
+          },
+          error: () => {
+            this.toast.error('Failed to load products');
+            this.isLoading.set(false);
+          }
+        });
+    }
+  }
+  ```
+
+- [ ] **5.2.2** Add route `/products` to `app.routes.ts`
+
+- [ ] **5.2.3** Add navigation link to sidebar
+
+### 5.3 Product Detail View
+
+- [ ] **5.3.1** Create `features/products/product-detail/product-detail.component.ts`:
+
+  ```typescript
+  // Show product info + tasks table + required/optional documents
+  @Component({
+    selector: 'app-product-detail',
+    standalone: true,
+    imports: [ZardCardComponent, ZardBadgeComponent, ...],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+  })
+  export class ProductDetailComponent implements OnInit {
+    readonly product = signal<ProductDetail | null>(null);
+    readonly isLoading = signal(true);
+
+    // Computed: tasks sorted by step
+    readonly sortedTasks = computed(() =>
+      [...(this.product()?.tasks ?? [])].sort((a, b) => a.step - b.step)
+    );
+  }
+  ```
+
+- [ ] **5.3.2** Add route `/products/:id` to `app.routes.ts`
+
+### 5.4 Product Create/Edit Form
+
+- [ ] **5.4.1** Create shared `SortableMultiSelectComponent`:
+
+  ```typescript
+  // Replicates Django's SortableSelectMultiple widget
+  // Features: drag-drop reordering, checkbox selection, preserves order
+  @Component({
+    selector: "app-sortable-multi-select",
+    standalone: true,
+    changeDetection: ChangeDetectionStrategy.OnPush,
+  })
+  export class SortableMultiSelectComponent {
+    options = input.required<{ id: number; label: string }[]>();
+    selectedIds = input<number[]>([]);
+    label = input<string>("");
+
+    selectedIdsChange = output<number[]>();
+
+    // Use @angular/cdk DragDropModule for reordering
+  }
+  ```
+
+- [ ] **5.4.2** Create `features/products/product-form/product-form.component.ts`:
+
+  ```typescript
+  @Component({
+    selector: "app-product-form",
+    standalone: true,
+    changeDetection: ChangeDetectionStrategy.OnPush,
+  })
+  export class ProductFormComponent implements OnInit {
+    private fb = inject(FormBuilder);
+    private route = inject(ActivatedRoute);
+
+    readonly isEditMode = signal(false);
+    readonly isSaving = signal(false);
+    readonly documentTypes = signal<DocumentType[]>([]);
+
+    // FormArray for tasks (replaces Django's TaskModelFormSet)
+    readonly productForm = this.fb.group({
+      name: ["", Validators.required],
+      code: ["", Validators.required],
+      description: [""],
+      basePrice: [0, [Validators.required, Validators.min(0)]],
+      productType: ["visa", Validators.required],
+      validity: [null as number | null],
+      documentsMinValidity: [null as number | null],
+      requiredDocumentIds: [[] as number[]],
+      optionalDocumentIds: [[] as number[]],
+      tasks: this.fb.array<FormGroup>([]),
+    });
+
+    get tasksArray(): FormArray {
+      return this.productForm.get("tasks") as FormArray;
+    }
+
+    addTask(): void {
+      const taskGroup = this.fb.group({
+        id: [null],
+        step: [this.tasksArray.length + 1, Validators.required],
+        name: ["", Validators.required],
+        description: [""],
+        cost: [0, Validators.min(0)],
+        duration: [0, [Validators.required, Validators.min(0)]],
+        durationIsBusinessDays: [true],
+        notifyDaysBefore: [0, Validators.min(0)],
+        lastStep: [false],
+      });
+      this.tasksArray.push(taskGroup);
+    }
+
+    removeTask(index: number): void {
+      this.tasksArray.removeAt(index);
+      // Renumber steps
+      this.tasksArray.controls.forEach((ctrl, i) => {
+        ctrl.patchValue({ step: i + 1 });
+      });
+    }
+
+    // Validation: only one lastStep allowed
+    validateLastStep(): boolean {
+      const lastStepCount = this.tasksArray.controls.filter(
+        (c) => c.value.lastStep,
+      ).length;
+      return lastStepCount <= 1;
+    }
+  }
+  ```
+
+- [ ] **5.4.3** Add routes `/products/new` and `/products/:id/edit`
+
+- [ ] **5.4.4** Add `SortableMultiSelectComponent` to `docs/shared_components.md`
+
+### 5.5 Product Deletion
+
+- [ ] **5.5.1** Implement delete with confirmation dialog:
+
+  ```typescript
+  // Use ConfirmDialogComponent from shared
+  // Show warning if related applications exist (from can_be_deleted())
+  onDelete(): void {
+    this.productsApi.productsCanDelete(this.product()!.id).subscribe({
+      next: (result) => {
+        if (!result.canDelete) {
+          this.toast.error(result.message);
+          return;
+        }
+        if (result.warning) {
+          this.confirmMessage.set(result.warning);
+        }
+        this.showConfirmDialog.set(true);
+      }
+    });
+  }
+  ```
+
+---
+
+## Phase 6: Customer Applications List & CRUD (NEW)
+
+**Goal:** Full applications management with document creation, workflow steps, and status tracking.
+
+### 6.0 Legacy UI & Logic Audit
+
+- [ ] **6.0.1** Review `customer_applications/views/*.py`:
+  - `DocApplicationListView`: paginated with search via `DocApplicationManager.search_doc_applications()`
+  - `DocApplicationCreateView`: complex logic including:
+    - `DocumentCreateFormSet` for initial documents
+    - Auto-creation of first workflow step
+    - Passport auto-import from customer or previous application
+  - `DocApplicationUpdateView`: add new documents via `NewDocumentFormSet`
+  - `DocApplicationDetailView`: shows documents, workflows, status
+
+- [ ] **6.0.2** Review `customer_applications/forms/doc_application.py`:
+  - Customer/Product selects (disabled on edit)
+  - doc_date with today's default
+
+- [ ] **6.0.3** Review `customer_applications/models/doc_application.py` properties:
+  - `is_document_collection_completed`: all required docs completed
+  - `is_application_completed`: last workflow step completed
+  - `has_next_task`, `next_task`: workflow progression logic
+  - `get_completed_documents()`, `get_incomplete_documents()`: ordered by product config
+
+### 6.1 Backend API Preparation
+
+- [ ] **6.1.1** Extend `CustomerApplicationViewSet` for full CRUD:
+
+  ```python
+  class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
+      permission_classes = [IsAuthenticated]
+      filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+      search_fields = ['product__name', 'product__code', 'customer__first_name',
+                       'customer__last_name', 'doc_date']
+      ordering_fields = ['doc_date', 'status', 'created_at']
+      ordering = ['-id']
+
+      def get_serializer_class(self):
+          if self.action in ['create', 'update', 'partial_update']:
+              return DocApplicationCreateUpdateSerializer
+          return DocApplicationDetailSerializer
+
+      @action(detail=True, methods=['post'], url_path='advance-workflow')
+      def advance_workflow(self, request, pk=None):
+          """Complete current workflow and create next step."""
+          application = self.get_object()
+          # Logic from has_next_task / next_task properties
+          ...
+  ```
+
+- [ ] **6.1.2** Create `DocApplicationCreateUpdateSerializer`:
+
+  ```python
+  class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
+      document_types = serializers.ListField(
+          child=serializers.DictSerializer(), write_only=True, required=False
+      )  # [{doc_type_id, required}]
+
+      class Meta:
+          model = DocApplication
+          fields = ['customer', 'product', 'doc_date', 'notes', 'document_types']
+
+      def create(self, validated_data):
+          doc_types = validated_data.pop('document_types', [])
+          user = self.context['request'].user
+
+          with transaction.atomic():
+              validated_data['created_by'] = user
+              application = DocApplication.objects.create(**validated_data)
+
+              # Create documents from doc_types
+              for dt in doc_types:
+                  doc_type = DocumentType.objects.get(pk=dt['doc_type_id'])
+                  Document.objects.create(
+                      doc_application=application,
+                      doc_type=doc_type,
+                      required=dt.get('required', True),
+                      created_by=user,
+                      created_at=timezone.now(),
+                      updated_at=timezone.now(),
+                  )
+
+              # Create first workflow step
+              first_task = application.product.tasks.order_by('step').first()
+              if first_task:
+                  DocWorkflow.objects.create(
+                      doc_application=application,
+                      task=first_task,
+                      start_date=timezone.now().date(),
+                      due_date=calculate_due_date(...),
+                      status='pending',
+                      created_by=user,
+                  )
+
+              # Auto-import passport if applicable
+              if application.product.required_documents and 'Passport' in application.product.required_documents:
+                  self._import_passport(application, user)
+
+              return application
+  ```
+
+- [ ] **6.1.3** Run `bun run generate:api`
+
+### 6.2 Application List View
+
+- [ ] **6.2.1** Create `features/applications/application-list/application-list.component.ts`:
+
+  ```typescript
+  @Component({
+    selector: 'app-application-list',
+    standalone: true,
+    imports: [DataTableComponent, SearchToolbarComponent,
+              PaginationControlsComponent, ZardBadgeComponent, ...],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+  })
+  export class ApplicationListComponent implements OnInit {
+    readonly columns: ColumnConfig[] = [
+      { key: 'id', header: '#', sortable: true },
+      { key: 'customer.fullName', header: 'Customer', sortable: false },
+      { key: 'product.name', header: 'Product', sortable: true },
+      { key: 'docDate', header: 'Date', sortable: true },
+      { key: 'status', header: 'Status', template: this.statusTemplate },
+      { key: 'actions', header: '', template: this.actionsTemplate },
+    ];
+
+    // Status badge colors
+    readonly statusVariants: Record<string, string> = {
+      pending: 'default',
+      processing: 'secondary',
+      completed: 'success',
+      rejected: 'destructive',
+    };
+  }
+  ```
+
+- [ ] **6.2.2** Add route `/applications` to `app.routes.ts`
+
+### 6.3 Application Create Form
+
+- [ ] **6.3.1** Create `features/applications/application-form/application-form.component.ts`:
+
+  ```typescript
+  @Component({
+    selector: "app-application-form",
+    standalone: true,
+    changeDetection: ChangeDetectionStrategy.OnPush,
+  })
+  export class ApplicationFormComponent implements OnInit {
+    private customersApi = inject(CustomersService);
+    private productsApi = inject(ProductsService);
+
+    readonly customers = signal<Customer[]>([]);
+    readonly products = signal<Product[]>([]);
+    readonly selectedProduct = signal<ProductDetail | null>(null);
+    readonly documentTypes = signal<
+      { docType: DocumentType; required: boolean }[]
+    >([]);
+
+    readonly applicationForm = this.fb.group({
+      customerId: [null as number | null, Validators.required],
+      productId: [null as number | null, Validators.required],
+      docDate: [new Date().toISOString().split("T")[0], Validators.required],
+      notes: [""],
+    });
+
+    // When product changes, load document types from product config
+    onProductChange(productId: number): void {
+      this.productsApi.productsRetrieve(productId).subscribe({
+        next: (product) => {
+          this.selectedProduct.set(product);
+          // Parse required_documents and optional_documents
+          const reqNames = (product.requiredDocuments || "")
+            .split(",")
+            .filter(Boolean);
+          const optNames = (product.optionalDocuments || "")
+            .split(",")
+            .filter(Boolean);
+
+          // Fetch DocumentTypes and set up checkboxes
+          this.documentTypesApi.documentTypesList().subscribe((docTypes) => {
+            const docs: { docType: DocumentType; required: boolean }[] = [];
+            for (const name of reqNames) {
+              const dt = docTypes.find((d) => d.name.trim() === name.trim());
+              if (dt) docs.push({ docType: dt, required: true });
+            }
+            for (const name of optNames) {
+              const dt = docTypes.find((d) => d.name.trim() === name.trim());
+              if (dt) docs.push({ docType: dt, required: false });
+            }
+            this.documentTypes.set(docs);
+          });
+        },
+      });
+    }
+  }
+  ```
+
+- [ ] **6.3.2** Create shared `CustomerSelectComponent` (searchable dropdown):
+
+  ```typescript
+  // Reusable select with async search for customers
+  @Component({
+    selector: "app-customer-select",
+    standalone: true,
+  })
+  export class CustomerSelectComponent {
+    selectedId = input<number | null>(null);
+    disabled = input<boolean>(false);
+
+    selectedIdChange = output<number>();
+
+    // Uses ZardUI Popover + Command for searchable dropdown
+  }
+  ```
+
+- [ ] **6.3.3** Add routes `/applications/new`, `/customers/:customerId/applications/new`
+
+### 6.4 Workflow Progression
+
+- [ ] **6.4.1** Add workflow actions to application detail:
+
+  ```typescript
+  // In existing application-detail.component.ts
+  readonly canAdvanceWorkflow = computed(() => {
+    const app = this.application();
+    if (!app) return false;
+    return app.isDocumentCollectionCompleted && app.hasNextTask;
+  });
+
+  advanceWorkflow(): void {
+    this.applicationsApi.customerApplicationsAdvanceWorkflow(this.application()!.id)
+      .subscribe({
+        next: () => {
+          this.toast.success('Workflow advanced');
+          this.loadApplication(this.application()!.id);
+        },
+        error: () => this.toast.error('Failed to advance workflow')
+      });
+  }
+  ```
+
+- [ ] **6.4.2** Show workflow timeline in detail view
+
+---
+
+## Phase 7: Letters (Surat Permohonan) (NEW)
+
+**Goal:** Generate DOCX letters with customer data pre-filled, replicating Django's LetterService.
+
+### 7.0 Legacy UI & Logic Audit
+
+- [ ] **7.0.1** Review `letters/views.py`:
+  - `SuratPermohonanView`: form with customer select + editable fields
+  - `DownloadSuratPermohonanView`: POST generates DOCX via `LetterService`
+
+- [ ] **7.0.2** Review `letters/forms.py`:
+  - `SuratPermohonanForm`: customer dropdown, visa_type, personal fields
+  - Fields auto-populated from customer data but editable
+
+- [ ] **7.0.3** Review `letters/services/LetterService.py`:
+  - `generate_letter_data()`: merges customer data with form overrides
+  - `generate_letter_document()`: uses `mailmerge` library on DOCX template
+  - Date formatting, gender translation (Indonesian), address line splitting
+
+### 7.1 Backend API Preparation
+
+- [ ] **7.1.1** Create `LettersViewSet`:
+
+  ```python
+  # api/views.py
+  class LettersViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
+      permission_classes = [IsAuthenticated]
+
+      @action(detail=False, methods=['post'], url_path='surat-permohonan')
+      def generate_surat_permohonan(self, request):
+          customer_id = request.data.get('customer_id')
+          if not customer_id:
+              return self.error_response('Customer is required', status.HTTP_400_BAD_REQUEST)
+
+          try:
+              customer = Customer.objects.get(pk=customer_id)
+          except Customer.DoesNotExist:
+              return self.error_response('Customer not found', status.HTTP_404_NOT_FOUND)
+
+          extra_data = {
+              'doc_date': request.data.get('doc_date'),
+              'visa_type': request.data.get('visa_type'),
+              'name': request.data.get('name'),
+              'gender': request.data.get('gender'),
+              'country': request.data.get('country'),
+              'birth_place': request.data.get('birth_place'),
+              'birthdate': request.data.get('birthdate'),
+              'passport_no': request.data.get('passport_no'),
+              'passport_exp_date': request.data.get('passport_exp_date'),
+              'address_bali': request.data.get('address_bali'),
+          }
+
+          service = LetterService(customer, settings.DOCX_SURAT_PERMOHONAN_TEMPLATE)
+          try:
+              data = service.generate_letter_data(extra_data)
+              buffer = service.generate_letter_document(data)
+
+              response = FileResponse(
+                  buffer,
+                  as_attachment=True,
+                  filename=f'surat_permohonan_{customer.full_name}.docx',
+                  content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+              )
+              return response
+          except FileNotFoundError as e:
+              return self.error_response(str(e), status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+      @action(detail=False, methods=['get'], url_path='customer-data/(?P<customer_id>[^/.]+)')
+      def get_customer_data(self, request, customer_id=None):
+          """Get customer data pre-filled for the form."""
+          customer = get_object_or_404(Customer, pk=customer_id)
+          return Response({
+              'name': customer.full_name,
+              'gender': customer.gender or customer.get_gender_display(),
+              'country': customer.nationality.alpha3_code if customer.nationality else None,
+              'birthPlace': customer.birth_place or '',
+              'birthdate': customer.birthdate.isoformat() if customer.birthdate else None,
+              'passportNo': customer.passport_number or '',
+              'passportExpDate': customer.passport_expiration_date.isoformat() if customer.passport_expiration_date else None,
+              'addressBali': customer.address_bali or '',
+          })
+  ```
+
+- [ ] **7.1.2** Add route to `api/urls.py`:
+
+  ```python
+  router.register(r'letters', LettersViewSet, basename='letters')
+  ```
+
+- [ ] **7.1.3** Run `bun run generate:api`
+
+### 7.2 Surat Permohonan Form Component
+
+- [ ] **7.2.1** Create `features/letters/surat-permohonan/surat-permohonan.component.ts`:
+
+  ```typescript
+  @Component({
+    selector: 'app-surat-permohonan',
+    standalone: true,
+    imports: [ReactiveFormsModule, CustomerSelectComponent, ZardInputDirective,
+              ZardButtonComponent, ZardSelectComponent, ...],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+  })
+  export class SuratPermohonanComponent {
+    private lettersApi = inject(LettersService);
+    private countriesApi = inject(CountryCodesService);
+
+    readonly countries = signal<CountryCode[]>([]);
+    readonly isGenerating = signal(false);
+
+    readonly form = this.fb.group({
+      customerId: [null as number | null, Validators.required],
+      docDate: [new Date().toISOString().split('T')[0], Validators.required],
+      visaType: ['voa', Validators.required],
+      name: ['', Validators.required],
+      gender: [''],
+      country: [null as string | null],  // alpha3 code
+      birthPlace: [''],
+      birthdate: [null as string | null],
+      passportNo: [''],
+      passportExpDate: [null as string | null],
+      addressBali: [''],
+    });
+
+    readonly visaTypeOptions = [
+      { value: 'voa', label: 'VOA' },
+      { value: 'C1', label: 'C1' },
+    ];
+
+    // When customer changes, fetch and populate data
+    onCustomerChange(customerId: number): void {
+      this.lettersApi.lettersCustomerData(customerId).subscribe({
+        next: (data) => {
+          this.form.patchValue({
+            name: data.name,
+            gender: data.gender,
+            country: data.country,
+            birthPlace: data.birthPlace,
+            birthdate: data.birthdate,
+            passportNo: data.passportNo,
+            passportExpDate: data.passportExpDate,
+            addressBali: data.addressBali,
+          });
+        }
+      });
+    }
+
+    generateLetter(): void {
+      if (this.form.invalid) return;
+
+      this.isGenerating.set(true);
+      const formValue = this.form.getRawValue();
+
+      this.lettersApi.lettersSuratPermohonan({
+        customerId: formValue.customerId!,
+        docDate: formValue.docDate,
+        visaType: formValue.visaType,
+        name: formValue.name,
+        gender: formValue.gender,
+        country: formValue.country,
+        birthPlace: formValue.birthPlace,
+        birthdate: formValue.birthdate,
+        passportNo: formValue.passportNo,
+        passportExpDate: formValue.passportExpDate,
+        addressBali: formValue.addressBali,
+      }, { observe: 'response', responseType: 'blob' }).subscribe({
+        next: (response) => {
+          // Download the blob
+          const blob = response.body!;
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `surat_permohonan_${formValue.name}.docx`;
+          a.click();
+          window.URL.revokeObjectURL(url);
+
+          this.toast.success('Letter generated successfully');
+          this.isGenerating.set(false);
+        },
+        error: () => {
+          this.toast.error('Failed to generate letter');
+          this.isGenerating.set(false);
+        }
+      });
+    }
+  }
+  ```
+
+- [ ] **7.2.2** Add route `/letters/surat-permohonan` to `app.routes.ts`
+
+- [ ] **7.2.3** Add navigation link to sidebar under "Letters" section
+
+---
+
+## Phase 8: Invoices & Payments
+
+**Goal:** Invoice management with line items, payments recording, and balance tracking.
+
+- [ ] **8.1 Invoice Management**
+  - [ ] Dynamic FormArray for line items (applications + amounts)
+  - [ ] Computed totals using signals
+  - [ ] Status badges (paid, partial, unpaid, overdue)
+  - [ ] Customer application selection (exclude already invoiced)
+
+- [ ] **8.2 Payment Recording**
+  - [ ] Payment modal component
+  - [ ] Validation against balance due (cannot overpay)
+  - [ ] Payment history list
+
+---
+
+## Phase 9: Integration, Testing, and Cutover
+
+- [ ] **9.1 Feature Flagging**
+  - [ ] Install `django-waffle`
+  - [ ] Create `ENABLE_ANGULAR_FRONTEND` flag
+  - [ ] Conditional routing based on flag
+
+- [ ] **9.2 Production Build & Deployment**
+  - [ ] Configure Nginx routing (API vs Angular routes)
+  - [ ] Deploy Angular build to `staticfiles/`
+  - [ ] Configure CSP headers
+
+- [ ] **9.3 Final Validation**
+  - [ ] End-to-end testing all modules
+  - [ ] Performance testing (N+1 queries audit)
+  - [ ] Accessibility audit
+  - [ ] Update `docs/implementation_feedback.md`
+  - [ ] Complete feedback log
