@@ -1,9 +1,10 @@
-import { MOCK_AUTH_ENABLED } from '@/core/config/mock-auth.token';
 import { isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { computed, Inject, Injectable, PLATFORM_ID, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, Observable, of, tap, throwError } from 'rxjs';
+
+import { ConfigService } from './config.service';
 
 export interface AuthToken {
   token: string;
@@ -32,17 +33,25 @@ export class AuthService {
   constructor(
     private http: HttpClient,
     private router: Router,
+    private configService: ConfigService,
     @Inject(PLATFORM_ID) private platformId: Object,
-    @Inject(MOCK_AUTH_ENABLED) private mockAuthEnabled: boolean,
   ) {
     if (isPlatformBrowser(this.platformId)) {
       this._token.set(this.getStoredToken());
-
-      // If mock auth is enabled and there is no token, set a fake token so you don't have to login
-      if (this.mockAuthEnabled && !this._token()) {
-        this.setToken('mock-token');
-      }
     }
+  }
+
+  /**
+   * Initialize mock authentication - must be called AFTER config is loaded
+   */
+  initMockAuth(): void {
+    if (isPlatformBrowser(this.platformId) && this.mockAuthEnabled && !this._token()) {
+      this.setToken('mock-token');
+    }
+  }
+
+  private get mockAuthEnabled(): boolean {
+    return this.configService.settings.mockAuthEnabled;
   }
 
   login(credentials: LoginCredentials): Observable<AuthToken> {

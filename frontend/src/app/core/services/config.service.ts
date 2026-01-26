@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpBackend, HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { catchError, firstValueFrom, of, tap } from 'rxjs';
 
@@ -7,8 +7,11 @@ import { AppConfig, DEFAULT_APP_CONFIG } from '@/core/config/app.config';
 @Injectable({ providedIn: 'root' })
 export class ConfigService {
   private config: AppConfig = DEFAULT_APP_CONFIG;
+  private http: HttpClient;
 
-  constructor(private http: HttpClient) {}
+  constructor(handler: HttpBackend) {
+    this.http = new HttpClient(handler);
+  }
 
   loadConfig() {
     return firstValueFrom(

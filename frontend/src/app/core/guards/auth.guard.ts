@@ -9,8 +9,8 @@ export const authGuard: CanActivateFn = () => {
   const router = inject(Router);
   const platformId = inject(PLATFORM_ID);
 
-  // Skip auth check on server-side rendering only when mock auth is enabled
-  if (isPlatformServer(platformId) && authService.isMockEnabled()) {
+  // Skip auth check on server-side rendering - let browser handle it after hydration
+  if (isPlatformServer(platformId)) {
     return true;
   }
 
