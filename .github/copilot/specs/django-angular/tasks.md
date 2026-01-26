@@ -831,7 +831,7 @@
 
 ---
 
-## Phase 5: Products Management (NEW)
+## Phase 5: Products Management
 
 **Goal:** Full CRUD for Products with inline Tasks formset, replicating Django legacy behavior.
 
@@ -1129,7 +1129,7 @@
 
 ---
 
-## Phase 6: Customer Applications List & CRUD (NEW)
+## Phase 6: Customer Applications List & CRUD
 
 **Goal:** Full applications management with document creation, workflow steps, and status tracking.
 
@@ -1375,7 +1375,7 @@
 
 ---
 
-## Phase 7: Letters (Surat Permohonan) (NEW)
+## Phase 7: Letters (Surat Permohonan)
 
 **Goal:** Generate DOCX letters with customer data pre-filled, replicating Django's LetterService.
 
