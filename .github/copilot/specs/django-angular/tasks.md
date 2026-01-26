@@ -837,24 +837,24 @@
 
 ### 5.0 Legacy UI & Logic Audit
 
-- [ ] **5.0.1** Review `products/views/*.py` for CRUD logic:
+- [x] **5.0.1** Review `products/views/*.py` for CRUD logic:
   - `ProductListView`: paginated list with search via `ProductManager.search_products()`
   - `ProductDetailView`: shows product + related tasks
   - `ProductCreateView` / `ProductUpdateView`: form + `TaskModelFormSet` inline formset
   - Delete logic: `Product.can_be_deleted()` checks for related invoices/applications
 
-- [ ] **5.0.2** Review `products/forms/product_form.py`:
+- [x] **5.0.2** Review `products/forms/product_form.py`:
   - `SortableSelectMultiple` widget for drag-drop document ordering
   - Required/optional documents stored as comma-separated names
   - POST data uses `required_documents_multiselect` / `optional_documents_multiselect`
 
-- [ ] **5.0.3** Review `products/forms/task_form.py`:
+- [x] **5.0.3** Review `products/forms/task_form.py`:
   - `TaskModelFormSet` with `extra=0`, `max_num=10`, `can_delete=True`
   - Validation: `notify_days_before <= duration`, unique step per product, single `last_step`
 
 ### 5.1 Backend API Preparation
 
-- [ ] **5.1.1** Verify `ProductViewSet` is read-only; add write endpoints if needed:
+- [x] **5.1.1** Verify `ProductViewSet` is read-only; add write endpoints if needed:
 
   ```python
   # api/views.py - Extend ProductViewSet to ModelViewSet for full CRUD
@@ -865,7 +865,7 @@
       # ... existing config
   ```
 
-- [ ] **5.1.2** Create `ProductDetailSerializer` with nested tasks:
+- [x] **5.1.2** Create `ProductDetailSerializer` with nested tasks:
 
   ```python
   # api/serializers/product_serializer.py
@@ -890,7 +890,7 @@
                     'required_document_types', 'optional_document_types']
   ```
 
-- [ ] **5.1.3** Add `ProductCreateUpdateSerializer` with tasks write support:
+- [x] **5.1.3** Add `ProductCreateUpdateSerializer` with tasks write support:
 
   ```python
   class ProductCreateUpdateSerializer(serializers.ModelSerializer):
@@ -928,11 +928,11 @@
           return product
   ```
 
-- [ ] **5.1.4** Run `bun run generate:api` to generate TypeScript clients
+- [x] **5.1.4** Run `bun run generate:api` to generate TypeScript clients
 
 ### 5.2 Product List View
 
-- [ ] **5.2.1** Create `features/products/product-list/product-list.component.ts`:
+- [x] **5.2.1** Create `features/products/product-list/product-list.component.ts`:
 
   ```typescript
   // Pseudocode - reuse DataTableComponent pattern from customer-list
@@ -981,13 +981,13 @@
   }
   ```
 
-- [ ] **5.2.2** Add route `/products` to `app.routes.ts`
+- [x] **5.2.2** Add route `/products` to `app.routes.ts`
 
-- [ ] **5.2.3** Add navigation link to sidebar
+- [x] **5.2.3** Add navigation link to sidebar
 
 ### 5.3 Product Detail View
 
-- [ ] **5.3.1** Create `features/products/product-detail/product-detail.component.ts`:
+- [x] **5.3.1** Create `features/products/product-detail/product-detail.component.ts`:
 
   ```typescript
   // Show product info + tasks table + required/optional documents
@@ -1008,7 +1008,7 @@
   }
   ```
 
-- [ ] **5.3.2** Add route `/products/:id` to `app.routes.ts`
+- [x] **5.3.2** Add route `/products/:id` to `app.routes.ts`
 
 ### 5.4 Product Create/Edit Form
 
@@ -1033,7 +1033,7 @@
   }
   ```
 
-- [ ] **5.4.2** Create `features/products/product-form/product-form.component.ts`:
+- [x] **5.4.2** Create `features/products/product-form/product-form.component.ts`:
 
   ```typescript
   @Component({
@@ -1100,13 +1100,13 @@
   }
   ```
 
-- [ ] **5.4.3** Add routes `/products/new` and `/products/:id/edit`
+- [x] **5.4.3** Add routes `/products/new` and `/products/:id/edit`
 
-- [ ] **5.4.4** Add `SortableMultiSelectComponent` to `docs/shared_components.md`
+- [x] **5.4.4** Add `SortableMultiSelectComponent` to `docs/shared_components.md`
 
 ### 5.5 Product Deletion
 
-- [ ] **5.5.1** Implement delete with confirmation dialog:
+- [x] **5.5.1** Implement delete with confirmation dialog:
 
   ```typescript
   // Use ConfirmDialogComponent from shared

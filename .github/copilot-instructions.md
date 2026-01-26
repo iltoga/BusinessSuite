@@ -380,13 +380,13 @@ Located in `copilot/specs/django-angular/`:
 - [x] Phase 2: Authentication & Dashboard
 - [x] Phase 3: Customer Management
 - [x] Phase 4: Application Detail & OCR
-- [ ] Phase 5: Products Management (CURRENT)
-- [ ] Phase 6: Customer Applications List & CRUD
+- [x] Phase 5: Products Management
+- [ ] Phase 6: Customer Applications List & CRUD (CURRENT)
 - [ ] Phase 7: Letters (Surat Permohonan)
 - [ ] Phase 8: Invoices & Payments
 - [ ] Phase 9: Integration & Cutover
 
-**Current focus:** Products Management (see [tasks.md](./copilot/specs/django-angular/tasks.md) Phase 5)
+**Current focus:** Customer Applications List & CRUD (see [tasks.md](./copilot/specs/django-angular/tasks.md) Phase 6)
 
 ---
 
