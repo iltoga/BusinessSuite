@@ -548,8 +548,10 @@ class DashboardStatsView(ApiErrorHandlingMixin, viewsets.ViewSet):
     def list(self, request):
         stats = {
             "customers": Customer.objects.count(),
-            "applications": DocApplication.objects.count(),
-            "invoices": InvoiceApplication.objects.count(),
+            "applications": DocApplication.objects.filter(
+                status__in=[DocApplication.STATUS_PENDING, DocApplication.STATUS_PROCESSING]
+            ).count(),
+            "invoices": InvoiceApplication.objects.not_fully_paid().count(),
         }
         return Response(stats)
 
