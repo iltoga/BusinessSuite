@@ -20,8 +20,6 @@ import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 import { Customer } from '../model/customer';
 // @ts-ignore
 import { PaginatedCustomerList } from '../model/paginated-customer-list';
-// @ts-ignore
-import { PatchedCustomer } from '../model/patched-customer';
 
 // @ts-ignore
 import { BASE_PATH, COLLECTION_FORMATS }                     from '../variables';
@@ -110,7 +108,7 @@ export class CustomersService extends BaseService {
 
     /**
      * @endpoint delete /api/customers/{id}/
-     * @param id A unique integer value identifying this customer.
+     * @param id 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
@@ -268,16 +266,16 @@ export class CustomersService extends BaseService {
 
     /**
      * @endpoint patch /api/customers/{id}/
-     * @param id A unique integer value identifying this customer.
-     * @param patchedCustomer 
+     * @param id 
+     * @param customer 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public customersPartialUpdate(id: number, patchedCustomer?: PatchedCustomer, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<Customer>;
-    public customersPartialUpdate(id: number, patchedCustomer?: PatchedCustomer, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<Customer>>;
-    public customersPartialUpdate(id: number, patchedCustomer?: PatchedCustomer, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<Customer>>;
-    public customersPartialUpdate(id: number, patchedCustomer?: PatchedCustomer, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+    public customersPartialUpdate(id: number, customer?: Customer, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<Customer>;
+    public customersPartialUpdate(id: number, customer?: Customer, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<Customer>>;
+    public customersPartialUpdate(id: number, customer?: Customer, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<Customer>>;
+    public customersPartialUpdate(id: number, customer?: Customer, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
         if (id === null || id === undefined) {
             throw new Error('Required parameter id was null or undefined when calling customersPartialUpdate.');
         }
@@ -328,7 +326,7 @@ export class CustomersService extends BaseService {
         return this.httpClient.request<Customer>('patch', `${basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
-                body: patchedCustomer,
+                body: customer,
                 responseType: <any>responseType_,
                 ...(withCredentials ? { withCredentials } : {}),
                 headers: localVarHeaders,
@@ -583,7 +581,7 @@ export class CustomersService extends BaseService {
 
     /**
      * @endpoint put /api/customers/{id}/
-     * @param id A unique integer value identifying this customer.
+     * @param id 
      * @param customer 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.

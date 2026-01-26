@@ -1,5 +1,6 @@
 import { authGuard } from '@/core/guards/auth.guard';
 import { Routes } from '@angular/router';
+import { ApplicationDetailComponent } from './features/applications/application-detail/application-detail.component';
 import { LoginComponent } from './features/auth/login/login.component';
 import { CustomerDetailComponent } from './features/customers/customer-detail/customer-detail.component';
 import { CustomerFormComponent } from './features/customers/customer-form/customer-form.component';
@@ -24,6 +25,7 @@ export const routes: Routes = [
       { path: 'customers/new', component: CustomerFormComponent },
       { path: 'customers/:id/edit', component: CustomerFormComponent },
       { path: 'customers/:id', component: CustomerDetailComponent },
+      { path: 'applications/:id', component: ApplicationDetailComponent },
       { path: '', redirectTo: '/dashboard', pathMatch: 'full' },
     ],
   },

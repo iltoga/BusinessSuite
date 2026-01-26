@@ -15,6 +15,7 @@
 | SearchToolbar  | app-search-toolbar      | src/app/shared/components/search-toolbar      | Input, Button  | ✅ Ready |
 | Pagination     | app-pagination-controls | src/app/shared/components/pagination-controls | Button, Icon   | ✅ Ready |
 | ExpiryBadge    | app-expiry-badge        | src/app/shared/components/expiry-badge        | Badge          | ✅ Ready |
+| FileUpload     | app-file-upload         | src/app/shared/components/file-upload         | Button         | ✅ Ready |
 
 ## Component Details
 
@@ -121,7 +122,7 @@ export class PaginationControlsComponent {
 
 **Interface:**
 
-```typescript
+````typescript
 @Component({
   selector: "app-expiry-badge",
   standalone: true,
@@ -131,4 +132,30 @@ export class ExpiryBadgeComponent {
   warningDays = input<number>(183);
   emptyLabel = input<string>("—");
 }
+
+### FileUploadComponent
+
+**Location:** `src/app/shared/components/file-upload/file-upload.component.ts`
+
+**Interface:**
+
+```typescript
+@Component({
+  selector: "app-file-upload",
+  standalone: true,
+})
+export class FileUploadComponent {
+  label = input<string>("Upload file");
+  accept = input<string>("*/*");
+  disabled = input<boolean>(false);
+  progress = input<number | null>(null);
+  fileName = input<string | null>(null);
+  helperText = input<string | null>(null);
+  fileSelected = output<File>();
+  cleared = output<void>();
+}
+````
+
+```
+
 ```

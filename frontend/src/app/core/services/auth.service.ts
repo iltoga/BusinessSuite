@@ -35,19 +35,11 @@ export class AuthService {
     @Inject(PLATFORM_ID) private platformId: Object,
     @Inject(MOCK_AUTH_ENABLED) private mockAuthEnabled: boolean,
   ) {
-    console.log('[AuthService] Mock auth enabled:', this.mockAuthEnabled);
-    console.log(
-      '[AuthService] Platform:',
-      isPlatformBrowser(this.platformId) ? 'Browser' : 'Server',
-    );
-
     if (isPlatformBrowser(this.platformId)) {
       this._token.set(this.getStoredToken());
-      console.log('[AuthService] Existing token:', this._token());
 
       // If mock auth is enabled and there is no token, set a fake token so you don't have to login
       if (this.mockAuthEnabled && !this._token()) {
-        console.log('[AuthService] Setting mock token');
         this.setToken('mock-token');
       }
     }

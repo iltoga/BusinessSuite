@@ -1,0 +1,44 @@
+<div class="space-y-3">
+  <div
+    [class]="getDropzoneClasses()"
+    (click)="onBrowseClick()"
+    (drop)="onDrop($event)"
+    (dragover)="onDragOver($event)"
+    (dragleave)="onDragLeave($event)"
+  >
+    <input
+      #fileInput
+      type="file"
+      class="hidden"
+      [accept]="accept()"
+      [disabled]="disabled()"
+      (change)="onFileChange($event)"
+    />
+    <div class="text-sm font-medium">{{ label() }}</div>
+    <div class="text-xs text-muted-foreground">Drag and drop here, or click to browse</div>
+    @if (helperText()) {
+      <div class="text-xs text-muted-foreground">{{ helperText() }}</div>
+    }
+  </div>
+
+  @if (fileName()) {
+    <div class="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2 text-sm">
+      <span class="truncate">{{ fileName() }}</span>
+      <button type="button" z-button zType="ghost" zSize="sm" (click)="clearSelection()">
+        Clear
+      </button>
+    </div>
+  }
+
+  @if (progress() !== null) {
+    <div class="space-y-1">
+      <div class="flex items-center justify-between text-xs text-muted-foreground">
+        <span>Upload progress</span>
+        <span>{{ progress() }}%</span>
+      </div>
+      <div class="h-2 w-full rounded-full bg-muted">
+        <div class="h-2 rounded-full bg-primary" [style.width.%]="progress()"></div>
+      </div>
+    </div>
+  }
+</div>

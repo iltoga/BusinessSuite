@@ -22,8 +22,7 @@ paths:
               $ref: '#/components/schemas/AuthToken'
         required: true
       security:
-      - cookieAuth: []
-      - tokenAuth: []
+      - {}
       responses:
         '200':
           content:
@@ -48,11 +47,63 @@ paths:
       tags:
       - compute
       security:
-      - cookieAuth: []
       - tokenAuth: []
+      - cookieAuth: []
       responses:
         '200':
           description: No response body
+  /api/country-codes/:
+    get:
+      operationId: countryCodesList
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - country-codes
+      security:
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CountryCode'
+          description: ''
+  /api/country-codes/{alpha3Code}/:
+    get:
+      operationId: countryCodesRetrieve
+      parameters:
+      - in: path
+        name: alpha3Code
+        schema:
+          type: string
+        description: A unique value identifying this country code.
+        required: true
+      tags:
+      - country-codes
+      security:
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CountryCode'
+          description: ''
   /api/cron/exec_cron_jobs/:
     get:
       operationId: cronExecCronJobsRetrieve
@@ -60,11 +111,61 @@ paths:
       tags:
       - cron
       security:
-      - cookieAuth: []
       - tokenAuth: []
+      - cookieAuth: []
       responses:
         '200':
           description: No response body
+  /api/customer-applications/:
+    get:
+      operationId: customerApplicationsList
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - customer-applications
+      security:
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedDocApplicationDetailList'
+          description: ''
+  /api/customer-applications/{id}/:
+    get:
+      operationId: customerApplicationsRetrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this doc application.
+        required: true
+      tags:
+      - customer-applications
+      security:
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocApplicationDetail'
+          description: ''
   /api/customer-applications/quick-create/:
     post:
       operationId: customerApplicationsQuickCreateCreate
@@ -107,14 +208,42 @@ paths:
       tags:
       - customers
       security:
-      - cookieAuth: []
       - tokenAuth: []
+      - cookieAuth: []
       responses:
         '200':
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaginatedCustomerList'
+          description: ''
+    post:
+      operationId: customersCreate
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Customer'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Customer'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Customer'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/Customer'
+      security:
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
           description: ''
   /api/customers/{id}/:
     get:
@@ -128,8 +257,128 @@ paths:
       tags:
       - customers
       security:
-      - cookieAuth: []
       - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+          description: ''
+    put:
+      operationId: customersUpdate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Customer'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Customer'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Customer'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/Customer'
+      security:
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+          description: ''
+    patch:
+      operationId: customersPartialUpdate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Customer'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Customer'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Customer'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/Customer'
+      security:
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+          description: ''
+    delete:
+      operationId: customersDestroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - customers
+      security:
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/customers/{id}/toggle-active/:
+    post:
+      operationId: customersToggleActiveCreate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this customer.
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Customer'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Customer'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Customer'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/Customer'
+      security:
+      - tokenAuth: []
+      - cookieAuth: []
       responses:
         '200':
           content:
@@ -154,8 +403,8 @@ paths:
       tags:
       - customers
       security:
-      - cookieAuth: []
       - tokenAuth: []
+      - cookieAuth: []
       responses:
         '200':
           content:
@@ -163,6 +412,20 @@ paths:
               schema:
                 $ref: '#/components/schemas/Customer'
           description: ''
+  /api/dashboard-stats/:
+    get:
+      operationId: dashboardStatsRetrieve
+      description: |-
+        API endpoint for dashboard statistics.
+        TO BE REMOVED WHEN ANGULAR FRONTEND IS COMPLETE
+      tags:
+      - dashboard-stats
+      security:
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
   /api/document-ocr/check/:
     post:
       operationId: documentOcrCheckCreate
@@ -177,8 +440,8 @@ paths:
       tags:
       - document-ocr
       security:
-      - cookieAuth: []
       - tokenAuth: []
+      - cookieAuth: []
       responses:
         '200':
           description: No response body
@@ -203,11 +466,114 @@ paths:
       tags:
       - document-ocr
       security:
-      - cookieAuth: []
       - tokenAuth: []
+      - cookieAuth: []
       responses:
         '200':
           description: No response body
+  /api/documents/:
+    get:
+      operationId: documentsList
+      tags:
+      - documents
+      security:
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Document'
+          description: ''
+  /api/documents/{id}/:
+    get:
+      operationId: documentsRetrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this document.
+        required: true
+      tags:
+      - documents
+      security:
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+          description: ''
+    put:
+      operationId: documentsUpdate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this document.
+        required: true
+      tags:
+      - documents
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Document'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Document'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Document'
+      security:
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+          description: ''
+    patch:
+      operationId: documentsPartialUpdate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this document.
+        required: true
+      tags:
+      - documents
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Document'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Document'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Document'
+      security:
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+          description: ''
   /api/invoices/get_customer_applications/{customerId}/:
     get:
       operationId: invoicesGetCustomerApplicationsRetrieve
@@ -220,8 +586,8 @@ paths:
       tags:
       - invoices
       security:
-      - cookieAuth: []
       - tokenAuth: []
+      - cookieAuth: []
       responses:
         '200':
           description: No response body
@@ -237,8 +603,8 @@ paths:
       tags:
       - invoices
       security:
-      - cookieAuth: []
       - tokenAuth: []
+      - cookieAuth: []
       responses:
         '200':
           description: No response body
@@ -265,8 +631,8 @@ paths:
       tags:
       - ocr
       security:
-      - cookieAuth: []
       - tokenAuth: []
+      - cookieAuth: []
       responses:
         '200':
           description: No response body
@@ -300,8 +666,8 @@ paths:
       tags:
       - ocr
       security:
-      - cookieAuth: []
       - tokenAuth: []
+      - cookieAuth: []
       responses:
         '200':
           description: No response body
@@ -336,8 +702,8 @@ paths:
       tags:
       - products
       security:
-      - cookieAuth: []
       - tokenAuth: []
+      - cookieAuth: []
       responses:
         '200':
           content:
@@ -358,8 +724,8 @@ paths:
       tags:
       - products
       security:
-      - cookieAuth: []
       - tokenAuth: []
+      - cookieAuth: []
       responses:
         '200':
           content:
@@ -379,8 +745,8 @@ paths:
       tags:
       - products
       security:
-      - cookieAuth: []
       - tokenAuth: []
+      - cookieAuth: []
       responses:
         '200':
           content:
@@ -406,8 +772,8 @@ paths:
       tags:
       - products
       security:
-      - cookieAuth: []
       - tokenAuth: []
+      - cookieAuth: []
       responses:
         '200':
           content:
@@ -447,6 +813,30 @@ components:
     BlankEnum:
       enum:
       - ''
+    CountryCode:
+      type: object
+      properties:
+        country:
+          type: string
+          maxLength: 100
+        country_idn:
+          type: string
+          nullable: true
+          maxLength: 128
+        alpha2_code:
+          type: string
+          maxLength: 2
+        alpha3_code:
+          type: string
+          maxLength: 3
+        numeric_code:
+          type: string
+          maxLength: 3
+      required:
+      - alpha2_code
+      - alpha3_code
+      - country
+      - numeric_code
     Customer:
       type: object
       description: |-
@@ -543,12 +933,31 @@ components:
           type: string
           format: date
           nullable: true
+        passport_file:
+          type: string
+          format: uri
+          nullable: true
+        passport_expired:
+          type: string
+          readOnly: true
+        passport_expiring_soon:
+          type: string
+          readOnly: true
         gender:
           nullable: true
           oneOf:
           - $ref: '#/components/schemas/GenderEnum'
           - $ref: '#/components/schemas/BlankEnum'
           - $ref: '#/components/schemas/NullEnum'
+        gender_display:
+          type: string
+          readOnly: true
+        nationality_name:
+          type: string
+          readOnly: true
+        nationality_code:
+          type: string
+          readOnly: true
         address_bali:
           type: string
           nullable: true
@@ -575,7 +984,12 @@ components:
       - created_at
       - full_name
       - full_name_with_company
+      - gender_display
       - id
+      - nationality_code
+      - nationality_name
+      - passport_expired
+      - passport_expiring_soon
       - updated_at
     CustomerTypeEnum:
       enum:
@@ -585,6 +999,229 @@ components:
       description: |-
         * `person` - Person
         * `company` - Company
+    DocApplicationDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        customer:
+          allOf:
+          - $ref: '#/components/schemas/Customer'
+          readOnly: true
+        product:
+          allOf:
+          - $ref: '#/components/schemas/Product'
+          readOnly: true
+        doc_date:
+          type: string
+          format: date
+          readOnly: true
+        due_date:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusEnum'
+          readOnly: true
+        notes:
+          type: string
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+        updated_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        documents:
+          type: string
+          readOnly: true
+        workflows:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocWorkflow'
+          readOnly: true
+        str_field:
+          type: string
+          readOnly: true
+      required:
+      - created_at
+      - created_by
+      - customer
+      - doc_date
+      - documents
+      - due_date
+      - id
+      - notes
+      - product
+      - status
+      - str_field
+      - updated_at
+      - updated_by
+      - workflows
+    DocWorkflow:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        task:
+          allOf:
+          - $ref: '#/components/schemas/Task'
+          readOnly: true
+        start_date:
+          type: string
+          format: date
+          readOnly: true
+        completion_date:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
+        due_date:
+          type: string
+          format: date
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusEnum'
+          readOnly: true
+        notes:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+        updated_by:
+          type: integer
+          readOnly: true
+          nullable: true
+      required:
+      - completion_date
+      - created_at
+      - created_by
+      - due_date
+      - id
+      - notes
+      - start_date
+      - status
+      - task
+      - updated_at
+      - updated_by
+    Document:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        doc_application:
+          type: integer
+          readOnly: true
+        doc_type:
+          allOf:
+          - $ref: '#/components/schemas/DocumentType'
+          readOnly: true
+        doc_type_id:
+          type: integer
+          writeOnly: true
+        doc_number:
+          type: string
+          maxLength: 50
+        expiration_date:
+          type: string
+          format: date
+          nullable: true
+        file:
+          type: string
+          format: uri
+        file_link:
+          type: string
+          readOnly: true
+        details:
+          type: string
+        completed:
+          type: boolean
+          readOnly: true
+        metadata:
+          nullable: true
+        ocr_check:
+          type: boolean
+          readOnly: true
+        required:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+        updated_by:
+          type: integer
+          readOnly: true
+          nullable: true
+      required:
+      - completed
+      - created_at
+      - created_by
+      - doc_application
+      - doc_type
+      - file_link
+      - id
+      - ocr_check
+      - updated_at
+      - updated_by
+    DocumentType:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 50
+        description:
+          type: string
+          maxLength: 500
+        has_ocr_check:
+          type: boolean
+        has_expiration_date:
+          type: boolean
+        has_doc_number:
+          type: boolean
+        has_file:
+          type: boolean
+        has_details:
+          type: boolean
+        is_in_required_documents:
+          type: boolean
+      required:
+      - id
+      - name
     GenderEnum:
       enum:
       - M
@@ -635,6 +1272,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Customer'
+    PaginatedDocApplicationDetailList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocApplicationDetail'
     PaginatedProductList:
       type: object
       required:
@@ -711,6 +1371,47 @@ components:
       description: |-
         * `visa` - Visa
         * `other` - Other
+    StatusEnum:
+      enum:
+      - pending
+      - processing
+      - completed
+      - rejected
+      type: string
+      description: |-
+        * `pending` - Pending
+        * `processing` - Processing
+        * `completed` - Completed
+        * `rejected` - Rejected
+    Task:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        step:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        duration:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        duration_is_business_days:
+          type: boolean
+        notify_days_before:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        last_step:
+          type: boolean
+      required:
+      - id
+      - name
+      - step
     TitleEnum:
       enum:
       - Mr

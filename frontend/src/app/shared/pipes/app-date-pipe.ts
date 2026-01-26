@@ -12,13 +12,13 @@ export class AppDatePipe implements PipeTransform {
 
   transform(value: unknown, ...args: unknown[]): unknown {
     if (!value || value === '') return null;
-    
-    // Debug log to see what's happening
-    console.log('[AppDatePipe] Formatting value:', value, 'with format:', APP_CONFIG.dateFormat);
-    
+
     try {
-      const result = formatDate(value as string | number | Date, APP_CONFIG.dateFormat, this.locale);
-      console.log('[AppDatePipe] Result:', result);
+      const result = formatDate(
+        value as string | number | Date,
+        APP_CONFIG.dateFormat,
+        this.locale,
+      );
       return result;
     } catch (e) {
       console.error('[AppDatePipe] Error formatting date:', e);

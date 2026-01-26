@@ -293,6 +293,7 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "CAMELIZE_NAMES": True,
+    "COMPONENT_SPLIT_PATCH": False,
 }
 
 # in case we want to try using nodejs for the frontend

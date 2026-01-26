@@ -5,7 +5,10 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
+from customer_applications.models import DocApplication, Document
 from customers.models import Customer
+from products.models import Product
+from products.models.document_type import DocumentType
 
 
 class CustomerQuickCreateAPITestCase(TestCase):
@@ -101,3 +104,64 @@ class CustomerListAPITestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         customer.refresh_from_db()
         self.assertFalse(customer.active)
+
+
+class CustomerApplicationDetailAPITestCase(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_superuser(username="appadmin", email="app@example.com", password="password")
+        self.client.force_login(self.user)
+
+        self.customer = Customer.objects.create(
+            customer_type="person",
+            first_name="Ana",
+            last_name="Doe",
+            active=True,
+            created_at=timezone.now(),
+            updated_at=timezone.now(),
+        )
+        self.product = Product.objects.create(
+            name="Visa Extension",
+            code="VISA-EXT",
+            product_type="visa",
+            required_documents="Passport",
+        )
+        self.application = DocApplication.objects.create(
+            customer=self.customer,
+            product=self.product,
+            doc_date=timezone.now().date(),
+            created_by=self.user,
+        )
+        self.doc_type = DocumentType.objects.create(
+            name="Passport",
+            has_ocr_check=True,
+            has_doc_number=True,
+            has_expiration_date=True,
+            has_file=True,
+        )
+        self.document = Document.objects.create(
+            doc_application=self.application,
+            doc_type=self.doc_type,
+            created_by=self.user,
+        )
+
+    def test_application_detail_includes_documents(self):
+        url = reverse("customer-applications-detail", kwargs={"pk": self.application.pk})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["id"], self.application.id)
+        self.assertEqual(len(payload["documents"]), 1)
+        self.assertEqual(payload["documents"][0]["docType"]["name"], "Passport")
+
+    def test_document_update_accepts_metadata(self):
+        url = reverse("documents-detail", kwargs={"pk": self.document.pk})
+        payload = {
+            "doc_number": "A123456",
+            "metadata": {"number": "A123456"},
+        }
+        response = self.client.patch(url, payload, content_type="application/json")
+        self.assertEqual(response.status_code, 200)
+        self.document.refresh_from_db()
+        self.assertEqual(self.document.doc_number, "A123456")
+        self.assertEqual(self.document.metadata.get("number"), "A123456")

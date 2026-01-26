@@ -17,7 +17,7 @@ import { getTheme, ThemeColors, ThemeName, THEMES } from '../theme.config';
  *   this.themeService.setTheme('blue');
  *
  *   // Or get current theme
- *   console.log(this.themeService.currentTheme());
+ *   this.themeService.currentTheme();
  * }
  * ```
  */
@@ -58,8 +58,6 @@ export class ThemeService {
 
     // Apply theme colors
     this.applyThemeColors();
-
-    console.log(`✅ Theme applied: ${themeName}`);
   }
 
   /**

@@ -234,7 +234,9 @@
                     }}</z-badge>
                   </td>
                   <td class="py-3 px-4 text-sm">
-                    <span class="text-muted-foreground">Coming soon</span>
+                    <a z-button zType="outline" zSize="sm" [routerLink]="['/applications', app.id]">
+                      View
+                    </a>
                   </td>
                 </tr>
               }

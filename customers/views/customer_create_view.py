@@ -138,5 +138,4 @@ class CustomerCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateVie
             logger.error(f"Error saving passport file: {e}")
 
     def form_invalid(self, form: BaseModelForm) -> HttpResponse:
-        print(form.errors)
         return super().form_invalid(form)

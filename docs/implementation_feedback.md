@@ -7,10 +7,12 @@
 - **2026-01-24:** Initialized ZardUI and added shared DataTable/ConfirmDialog components
 - **2026-01-24:** Added auth/main layouts and GlobalToastService
 - **2026-01-24:** Implemented Customer List feature with search, pagination, and status toggling
+- **2026-01-25:** Added Application Detail view with OCR polling and shared FileUpload component
 
 ## Reuse Hints
 
 - Search, pagination, and expiry badge components are reusable across list views
+- FileUpload component can be reused for invoice attachments and payment proofs
 
 ## Refactor Requests
 

@@ -87,12 +87,12 @@ export class CustomerDetailComponent implements OnInit {
     });
   }
 
-  getStatusBadgeType(status: string): 'default' | 'secondary' | 'destructive' | 'outline' {
+  getStatusBadgeType(status: string): any {
     switch (status.toLowerCase()) {
       case 'completed':
-        return 'default';
+        return 'success';
       case 'pending':
-        return 'secondary';
+        return 'warning';
       case 'rejected':
         return 'destructive';
       default:

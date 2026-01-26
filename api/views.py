@@ -14,6 +14,7 @@ from rest_framework.authentication import SessionAuthentication
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.decorators import action, api_view, authentication_classes, permission_classes, throttle_classes
 from rest_framework.exceptions import NotFound, ValidationError
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
@@ -23,7 +24,9 @@ from api.serializers import (
     CustomerApplicationQuickCreateSerializer,
     CustomerQuickCreateSerializer,
     CustomerSerializer,
+    DocApplicationDetailSerializer,
     DocApplicationSerializerWithRelations,
+    DocumentSerializer,
     DocumentTypeSerializer,
     ProductQuickCreateSerializer,
     ProductSerializer,
@@ -34,7 +37,7 @@ from core.tasks.cron_jobs import run_clear_cache_now, run_full_backup_now
 from core.tasks.document_ocr import run_document_ocr_job
 from core.tasks.ocr import run_ocr_job
 from core.utils.dateutils import calculate_due_date
-from customer_applications.models import DocApplication
+from customer_applications.models import DocApplication, Document
 from customers.models import Customer
 from invoices.models.invoice import InvoiceApplication
 from products.models import Product
@@ -247,6 +250,32 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.GenericViewSet):
                 "paid_amount": str(invoice_application.paid_amount),
             }
         )
+
+
+class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ReadOnlyModelViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class = DocApplicationDetailSerializer
+    pagination_class = StandardResultsSetPagination
+
+    def get_queryset(self):
+        return (
+            DocApplication.objects.select_related("customer", "product")
+            .prefetch_related("documents__doc_type", "workflows__task")
+            .all()
+        )
+
+
+class DocumentViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class = DocumentSerializer
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+    http_method_names = ["get", "patch", "put"]
+
+    def get_queryset(self):
+        return Document.objects.select_related("doc_application", "doc_type")
+
+    def perform_update(self, serializer):
+        serializer.save(updated_by=self.request.user)
 
 
 class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):

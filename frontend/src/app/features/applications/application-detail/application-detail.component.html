@@ -1,0 +1,285 @@
+@if (isLoading()) {
+  <div class="text-muted-foreground">Loading application...</div>
+} @else if (!application()) {
+  <div class="text-muted-foreground">Application not found.</div>
+} @else {
+  <div class="space-y-6">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <h1 class="text-2xl font-semibold">
+          Application #{{ application()!.id }} — {{ application()!.product.name }}
+        </h1>
+        <p class="text-sm text-muted-foreground">
+          Customer: {{ application()!.customer.fullName }}
+        </p>
+      </div>
+      <div class="flex gap-2">
+        <a z-button zType="ghost" routerLink="/customers/{{ application()!.customer.id }}">
+          Back to customer
+        </a>
+      </div>
+    </div>
+
+    <z-card class="p-6">
+      <div class="grid gap-4 md:grid-cols-2">
+        <div>
+          <div class="text-sm text-muted-foreground">Status</div>
+          <z-badge [zType]="application()!.status === 'completed' ? 'success' : 'warning'">
+            {{ application()!.status | titlecase }}
+          </z-badge>
+        </div>
+        <div>
+          <div class="text-sm text-muted-foreground">Document Date</div>
+          <div>{{ application()!.docDate | appDate }}</div>
+        </div>
+        @if (application()!.dueDate) {
+          <div>
+            <div class="text-sm text-muted-foreground">Due Date</div>
+            <div>{{ application()!.dueDate | appDate }}</div>
+          </div>
+        }
+        @if (application()!.notes) {
+          <div class="md:col-span-2">
+            <div class="text-sm text-muted-foreground">Notes</div>
+            <div>{{ application()!.notes }}</div>
+          </div>
+        }
+      </div>
+    </z-card>
+
+    <z-card class="p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold">Uploaded Documents</h3>
+      </div>
+      @if (uploadedDocuments().length === 0) {
+        <div class="text-sm text-muted-foreground">No uploaded documents yet.</div>
+      } @else {
+        <div class="overflow-x-auto">
+          <table class="w-full border-collapse">
+            <thead>
+              <tr class="border-b text-sm text-muted-foreground">
+                <th class="text-left py-2">Document</th>
+                <th class="text-left py-2">Doc Number</th>
+                <th class="text-left py-2">Expiration</th>
+                <th class="text-left py-2">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (doc of uploadedDocuments(); track doc.id) {
+                <tr class="border-b">
+                  <td class="py-3">{{ doc.docType.name }}</td>
+                  <td class="py-3">{{ doc.docNumber || '—' }}</td>
+                  <td class="py-3">{{ doc.expirationDate | appDate }}</td>
+                  <td class="py-3">
+                    <div class="flex flex-wrap gap-2">
+                      <button z-button zType="outline" zSize="sm" (click)="openUpload(doc)">
+                        Update
+                      </button>
+                      @if (doc.fileLink) {
+                        <a z-button zType="ghost" zSize="sm" [href]="doc.fileLink" target="_blank">
+                          View
+                        </a>
+                      }
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </z-card>
+
+    <z-card class="p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold">Required Documents</h3>
+      </div>
+      @if (requiredDocuments().length === 0) {
+        <div class="text-sm text-muted-foreground">No required documents pending.</div>
+      } @else {
+        <div class="overflow-x-auto">
+          <table class="w-full border-collapse">
+            <thead>
+              <tr class="border-b text-sm text-muted-foreground">
+                <th class="text-left py-2">Document</th>
+                <th class="text-left py-2">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (doc of requiredDocuments(); track doc.id) {
+                <tr class="border-b">
+                  <td class="py-3">{{ doc.docType.name }}</td>
+                  <td class="py-3">
+                    <button z-button zType="default" zSize="sm" (click)="openUpload(doc)">
+                      Upload
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </z-card>
+
+    <z-card class="p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold">Optional Documents</h3>
+      </div>
+      @if (optionalDocuments().length === 0) {
+        <div class="text-sm text-muted-foreground">No optional documents pending.</div>
+      } @else {
+        <div class="overflow-x-auto">
+          <table class="w-full border-collapse">
+            <thead>
+              <tr class="border-b text-sm text-muted-foreground">
+                <th class="text-left py-2">Document</th>
+                <th class="text-left py-2">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (doc of optionalDocuments(); track doc.id) {
+                <tr class="border-b">
+                  <td class="py-3">{{ doc.docType.name }}</td>
+                  <td class="py-3">
+                    <button z-button zType="default" zSize="sm" (click)="openUpload(doc)">
+                      Upload
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </z-card>
+  </div>
+}
+
+@if (isUploadOpen() && selectedDocument()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div class="w-full max-w-2xl rounded-lg bg-card p-6 shadow-lg">
+      <div class="flex items-start justify-between">
+        <div>
+          <h3 class="text-lg font-semibold">Upload {{ selectedDocument()!.docType.name }}</h3>
+          <p class="text-sm text-muted-foreground">Attach file and update document details.</p>
+        </div>
+        <button z-button zType="ghost" zSize="sm" (click)="closeUpload()">Close</button>
+      </div>
+
+      <form class="mt-6 space-y-4" [formGroup]="uploadForm">
+        <app-file-upload
+          [label]="'Drop file here'"
+          [accept]="selectedDocument()!.docType.hasFile ? '*/*' : ''"
+          [fileName]="selectedFile()?.name || selectedDocument()!.fileLink || null"
+          [progress]="uploadProgress()"
+          [disabled]="isSaving()"
+          (fileSelected)="onFileSelected($event)"
+          (cleared)="onFileCleared()"
+        />
+
+        @if (selectedDocument()!.docType.hasDocNumber) {
+          <div class="space-y-2">
+            <label class="text-sm font-medium">Document Number</label>
+            <input z-input formControlName="docNumber" />
+          </div>
+        }
+
+        @if (selectedDocument()!.docType.hasExpirationDate) {
+          <div class="space-y-2">
+            <label class="text-sm font-medium">Expiration Date</label>
+            <input z-input type="date" formControlName="expirationDate" />
+          </div>
+        }
+
+        @if (selectedDocument()!.docType.hasDetails) {
+          <div class="space-y-2">
+            <label class="text-sm font-medium">Details</label>
+            <textarea z-input rows="3" formControlName="details"></textarea>
+          </div>
+        }
+
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="text-sm text-muted-foreground">
+            @if (ocrPolling()) {
+              OCR: {{ ocrStatus() || 'Processing' }}
+            } @else if (selectedDocument()!.docType.hasOcrCheck) {
+              OCR available for this document.
+            }
+          </div>
+          <div class="flex gap-2">
+            @if (selectedDocument()!.docType.hasOcrCheck) {
+              <button
+                z-button
+                zType="outline"
+                zSize="sm"
+                type="button"
+                (click)="runOcr()"
+                [disabled]="ocrPolling()"
+              >
+                Run OCR
+              </button>
+            }
+            <button
+              z-button
+              zType="default"
+              type="button"
+              (click)="onSaveDocument()"
+              [disabled]="isSaving()"
+            >
+              Save
+            </button>
+          </div>
+        </div>
+
+        @if (ocrPreviewImage()) {
+          <div class="rounded-md border p-3">
+            <div class="text-sm font-medium mb-2">OCR Preview</div>
+            <img [src]="ocrPreviewImage()" alt="OCR Preview" class="max-h-60 rounded" />
+          </div>
+        }
+      </form>
+    </div>
+  </div>
+}
+
+@if (ocrReviewOpen() && ocrReviewData()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div class="w-full max-w-lg rounded-lg bg-card p-6 shadow-lg">
+      <div class="flex items-start justify-between">
+        <div>
+          <h3 class="text-lg font-semibold">OCR Review</h3>
+          <p class="text-sm text-muted-foreground">
+            Review extracted data before applying to the document.
+          </p>
+        </div>
+        <button z-button zType="ghost" zSize="sm" (click)="dismissOcrReview()">Close</button>
+      </div>
+
+      <div class="mt-4 space-y-3 text-sm">
+        @if (ocrReviewData()!.mrzData?.number) {
+          <div class="flex justify-between">
+            <span class="text-muted-foreground">Document Number</span>
+            <span>{{ ocrReviewData()!.mrzData?.number }}</span>
+          </div>
+        }
+        @if (ocrReviewData()!.mrzData?.expirationDateYyyyMmDd) {
+          <div class="flex justify-between">
+            <span class="text-muted-foreground">Expiration Date</span>
+            <span>{{ ocrReviewData()!.mrzData?.expirationDateYyyyMmDd }}</span>
+          </div>
+        }
+        @if (ocrReviewData()!.aiWarning) {
+          <div class="rounded-md bg-warning/10 p-2 text-warning">
+            {{ ocrReviewData()!.aiWarning }}
+          </div>
+        }
+      </div>
+
+      <div class="mt-6 flex justify-end gap-2">
+        <button z-button zType="outline" (click)="dismissOcrReview()">Dismiss</button>
+        <button z-button zType="default" (click)="applyOcrData()">Apply Data</button>
+      </div>
+    </div>
+  </div>
+}
