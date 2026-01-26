@@ -84,6 +84,94 @@
     <!-- Identification & Documents Section -->
     <z-card class="p-6">
       <h3 class="text-lg font-semibold mb-4">Identification & Documents</h3>
+      @if (isPerson()) {
+        <div class="space-y-4 mb-6">
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h4 class="text-base font-semibold">Import data from Passport</h4>
+              <p class="text-sm text-muted-foreground">
+                Upload a passport image or PDF to auto-fill the form fields.
+              </p>
+            </div>
+            <label class="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                class="h-4 w-4"
+                [checked]="ocrUseAi()"
+                (change)="onToggleUseAi($event)"
+              />
+              <span>Use AI-enhanced extraction</span>
+            </label>
+          </div>
+
+          <app-file-upload
+            [label]="'Passport file (image or PDF)'"
+            [accept]="'image/*,application/pdf'"
+            [disabled]="ocrProcessing()"
+            [progress]="ocrProcessing() ? 10 : null"
+            [fileName]="passportFile()?.name ?? null"
+            [helperText]="'Supported: JPG, PNG, PDF'"
+            (fileSelected)="onPassportFileSelected($event)"
+            (cleared)="onPassportFileCleared()"
+          ></app-file-upload>
+
+          <div class="flex flex-wrap gap-3">
+            <button
+              type="button"
+              z-button
+              zType="default"
+              [zDisabled]="ocrProcessing()"
+              (click)="onPassportImport()"
+            >
+              {{ ocrProcessing() ? 'Processing...' : 'Import' }}
+            </button>
+            @if (ocrProcessing()) {
+              <span class="text-sm text-muted-foreground">Please wait while OCR runs.</span>
+            }
+          </div>
+
+          @if (ocrMessage()) {
+            <div
+              class="rounded-md border p-3 text-sm"
+              [class.border-green-500]="ocrMessageTone() === 'success'"
+              [class.text-green-600]="ocrMessageTone() === 'success'"
+              [class.border-yellow-500]="ocrMessageTone() === 'warning'"
+              [class.text-yellow-600]="ocrMessageTone() === 'warning'"
+              [class.border-red-500]="ocrMessageTone() === 'error'"
+              [class.text-red-600]="ocrMessageTone() === 'error'"
+              [class.border-slate-300]="ocrMessageTone() === 'info'"
+              [class.text-slate-600]="ocrMessageTone() === 'info'"
+            >
+              {{ ocrMessage() }}
+            </div>
+          }
+
+          @if (passportPreviewUrl()) {
+            <img class="passport-preview" [src]="passportPreviewUrl()" alt="Passport preview" />
+          }
+
+          <div class="space-y-2">
+            <label class="text-sm font-medium">Paste image from clipboard</label>
+            <div
+              class="passport-clipboard"
+              contenteditable="true"
+              (paste)="onPastePassport($event)"
+            >
+              Click here and press Cmd+V / Ctrl+V to paste an image
+            </div>
+            @if (passportPastePreviewUrl()) {
+              <img
+                class="passport-preview"
+                [src]="passportPastePreviewUrl()"
+                alt="Clipboard preview"
+              />
+            }
+            @if (passportPasteStatus()) {
+              <p class="text-sm text-muted-foreground">{{ passportPasteStatus() }}</p>
+            }
+          </div>
+        </div>
+      }
       <div class="grid gap-4 md:grid-cols-2">
         <div class="space-y-2">
           <label class="text-sm font-medium">Passport Number</label>

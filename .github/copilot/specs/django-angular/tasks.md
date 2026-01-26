@@ -819,15 +819,15 @@
 
 ## Phase 4: Vertical Slice 2 - Applications & OCR
 
-- [ ] **4.1 Backend: OCR & File Handling**
-  - Verify `DocumentViewSet` and OCR status endpoint
+- [x] **4.1 Backend: OCR & File Handling**
+  - [x] Verify `DocumentViewSet` and OCR status endpoint
 
-- [ ] **4.2 Shared File Upload Component**
-  - Create drag-drop zone with progress bar
+- [x] **4.2 Shared File Upload Component**
+  - [x] Create drag-drop zone with progress bar
 
-- [ ] **4.3 Application Detail View**
-  - Implement OCR polling pattern
-  - Show extracted data review modal
+- [x] **4.3 Application Detail View**
+  - [x] Implement OCR polling pattern
+  - [x] Show extracted data review modal
 
 ## Phase 5: Vertical Slice 3 - Invoices & Payments
 

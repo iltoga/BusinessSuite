@@ -247,7 +247,6 @@ class AIPassportParser:
             return self._parse_with_vision(file_bytes, filename)
 
         except Exception as e:
-            logger.error(f"Error parsing passport image: {str(e)}")
             return AIPassportResult(
                 passport_data=PassportData(),
                 success=False,
@@ -310,7 +309,6 @@ class AIPassportParser:
             )
 
         except Exception as e:
-            logger.error(f"Error in passport vision parsing: {str(e)}")
             return AIPassportResult(
                 passport_data=PassportData(),
                 success=False,
@@ -339,7 +337,7 @@ class AIPassportParser:
             return self._convert_to_result(parsed_data)
 
         except Exception as e:
-            logger.error(f"Error calling vision API: {str(e)}")
+            # error_message will contain the detailed message from AIClient
             return AIPassportResult(
                 passport_data=PassportData(),
                 success=False,

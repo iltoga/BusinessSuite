@@ -189,8 +189,11 @@ export class ApplicationDetailComponent implements OnInit {
 
     this.applicationsService.startOcrCheck(file, document.docType.name).subscribe({
       next: (response) => {
-        if (response.statusUrl) {
-          this.pollOcrStatus(response.statusUrl, 0);
+        const statusUrl =
+          ('statusUrl' in response && response.statusUrl) ||
+          (response as { status_url?: string }).status_url;
+        if (statusUrl) {
+          this.pollOcrStatus(statusUrl, 0);
         } else {
           this.handleOcrResult(response as OcrStatusResponse);
         }

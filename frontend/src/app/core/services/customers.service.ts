@@ -37,6 +37,7 @@ export interface CustomerDetail extends CustomerListItem {
   npwp?: string | null;
   passportIssueDate?: string | null;
   passportFile?: string | null;
+  passportMetadata?: Record<string, unknown> | null;
   notifyDocumentsExpiration?: boolean | null;
   notifyBy?: string | null;
 }
@@ -135,12 +136,15 @@ export class CustomersService {
       .pipe(map(this.mapCustomer));
   }
 
-  createCustomer(payload: Record<string, unknown>): Observable<CustomerDetail> {
+  createCustomer(payload: Record<string, unknown> | FormData): Observable<CustomerDetail> {
     const headers = this.buildHeaders();
     return this.http.post<any>(this.apiUrl, payload, { headers }).pipe(map(this.mapCustomer));
   }
 
-  updateCustomer(customerId: number, payload: Record<string, unknown>): Observable<CustomerDetail> {
+  updateCustomer(
+    customerId: number,
+    payload: Record<string, unknown> | FormData,
+  ): Observable<CustomerDetail> {
     const headers = this.buildHeaders();
     return this.http
       .put<any>(`${this.apiUrl}${customerId}/`, payload, { headers })
@@ -201,6 +205,7 @@ export class CustomersService {
     gender: item.gender ?? null,
     npwp: item.npwp ?? null,
     passportFile: item.passport_file ?? item.passportFile ?? null,
+    passportMetadata: item.passport_metadata ?? item.passportMetadata ?? null,
     notifyDocumentsExpiration:
       item.notify_documents_expiration ?? item.notifyDocumentsExpiration ?? null,
     notifyBy: item.notify_by ?? item.notifyBy ?? null,

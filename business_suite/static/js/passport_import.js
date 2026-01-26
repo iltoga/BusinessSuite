@@ -84,11 +84,19 @@
     el.classList[show ? "remove" : "add"]("d-none");
   }
 
+  // Helper to get a value from either camelCase or snake_case property
+  function getMrzValue(mrz, camelKey, snakeKey) {
+    if (mrz[camelKey] !== undefined) return mrz[camelKey];
+    if (snakeKey && mrz[snakeKey] !== undefined) return mrz[snakeKey];
+    return undefined;
+  }
+
   function handleResponse(config, data) {
-    if (!data || !data.mrz_data) {
+    // Check for both mrzData (camelCase) and mrz_data (snake_case)
+    var mrz = data && (data.mrzData || data.mrz_data);
+    if (!mrz) {
       return;
     }
-    var mrz = data.mrz_data;
 
     assignFieldValue(config.firstNameId, mrz.names);
     assignFieldValue(config.lastNameId, mrz.surname);
@@ -98,36 +106,64 @@
       assignFieldValue(config.titleId, titleVal);
     }
     assignFieldValue(config.nationalityId, mrz.nationality);
-    assignFieldValue(config.birthdateId, mrz.date_of_birth_yyyy_mm_dd, "date");
-    assignFieldValue(config.passportNumberId, mrz.number);
-    assignFieldValue(
-      config.passportExpirationId,
-      mrz.expiration_date_yyyy_mm_dd,
-      "date",
+
+    // Date of birth - check both camelCase and snake_case
+    var dob = getMrzValue(
+      mrz,
+      "dateOfBirthYyyyMmDd",
+      "date_of_birth_yyyy_mm_dd",
     );
+    assignFieldValue(config.birthdateId, dob, "date");
 
-    if (mrz.passport_issue_date) {
-      assignFieldValue(config.passportIssueId, mrz.passport_issue_date, "date");
-    } else if (mrz.issue_date_yyyy_mm_dd) {
-      assignFieldValue(
-        config.passportIssueId,
-        mrz.issue_date_yyyy_mm_dd,
-        "date",
+    assignFieldValue(config.passportNumberId, mrz.number);
+
+    // Expiration date - check both camelCase and snake_case
+    var expDate = getMrzValue(
+      mrz,
+      "expirationDateYyyyMmDd",
+      "expiration_date_yyyy_mm_dd",
+    );
+    assignFieldValue(config.passportExpirationId, expDate, "date");
+
+    // Issue date - check multiple possible field names in both cases
+    var issueDate =
+      getMrzValue(mrz, "passportIssueDate", "passport_issue_date") ||
+      getMrzValue(mrz, "issueDateYyyyMmDd", "issue_date_yyyy_mm_dd");
+    if (issueDate) {
+      assignFieldValue(config.passportIssueId, issueDate, "date");
+    }
+
+    // Birth place - check both cases
+    var birthPlace = getMrzValue(mrz, "birthPlace", "birth_place");
+    if (birthPlace) {
+      assignFieldValue(config.birthPlaceId, birthPlace);
+    }
+
+    // Address abroad - check both cases
+    var addressAbroad = getMrzValue(mrz, "addressAbroad", "address_abroad");
+    if (addressAbroad) {
+      assignFieldValue(config.addressAbroadId, addressAbroad);
+    }
+
+    // Check extraction method - both cases
+    var extractionMethod = getMrzValue(
+      mrz,
+      "extractionMethod",
+      "extraction_method",
+    );
+    if (
+      extractionMethod === "hybrid_mrz_ai" ||
+      extractionMethod === "hybridMrzAi"
+    ) {
+      var confidence = getMrzValue(
+        mrz,
+        "aiConfidenceScore",
+        "ai_confidence_score",
       );
-    }
-
-    if (mrz.birth_place) {
-      assignFieldValue(config.birthPlaceId, mrz.birth_place);
-    }
-    if (mrz.address_abroad) {
-      assignFieldValue(config.addressAbroadId, mrz.address_abroad);
-    }
-
-    if (mrz.extraction_method === "hybrid_mrz_ai") {
-      if (mrz.ai_confidence_score !== undefined) {
+      if (confidence !== undefined) {
         console.log(
           "AI-enhanced extraction completed. Confidence:",
-          mrz.ai_confidence_score,
+          confidence,
         );
       }
     }
@@ -139,11 +175,14 @@
       console.warn("Failed to stringify MRZ data:", e);
     }
 
-    // Return mismatch info for UI handling
+    // Return mismatch info for UI handling - check both cases
     return {
-      hasMismatches: mrz.has_mismatches || false,
-      fieldMismatches: mrz.field_mismatches || [],
-      mismatchSummary: mrz.mismatch_summary || "",
+      hasMismatches:
+        getMrzValue(mrz, "hasMismatches", "has_mismatches") || false,
+      fieldMismatches:
+        getMrzValue(mrz, "fieldMismatches", "field_mismatches") || [],
+      mismatchSummary:
+        getMrzValue(mrz, "mismatchSummary", "mismatch_summary") || "",
     };
   }
 
@@ -375,8 +414,10 @@
         if (button) button.disabled = false;
         if (buttonText) buttonText.textContent = "Import";
 
-        if (!data || !data.mrz_data) {
-          console.error("OCR completed but mrz_data is missing:", data);
+        // Check for both mrzData (camelCase) and mrz_data (snake_case)
+        var mrz = data && (data.mrzData || data.mrz_data);
+        if (!mrz) {
+          console.error("OCR completed but mrz_data/mrzData is missing:", data);
           if (errorMsg)
             errorMsg.textContent = "OCR completed but no data was extracted.";
           toggleElement(errorEl, true);
@@ -388,31 +429,45 @@
         var hasMismatches = false;
         var mismatchDetails = "";
 
+        // Check extraction method - both camelCase and snake_case
+        var extractionMethod = getMrzValue(
+          mrz,
+          "extractionMethod",
+          "extraction_method",
+        );
         if (
-          data &&
-          data.mrz_data &&
-          data.mrz_data.extraction_method === "hybrid_mrz_ai"
+          extractionMethod === "hybrid_mrz_ai" ||
+          extractionMethod === "hybridMrzAi"
         ) {
-          var confidence = data.mrz_data.ai_confidence_score || 0;
+          var confidence =
+            getMrzValue(mrz, "aiConfidenceScore", "ai_confidence_score") || 0;
           successText =
             "Data imported via OCR + AI (confidence: " +
             (confidence * 100).toFixed(0) +
             "%)";
 
-          // Check for field mismatches
-          if (data.mrz_data.has_mismatches && data.mrz_data.field_mismatches) {
+          // Check for field mismatches - both cases
+          var hasMismatchesFlag = getMrzValue(
+            mrz,
+            "hasMismatches",
+            "has_mismatches",
+          );
+          var fieldMismatches = getMrzValue(
+            mrz,
+            "fieldMismatches",
+            "field_mismatches",
+          );
+          if (hasMismatchesFlag && fieldMismatches) {
             hasMismatches = true;
-            var mismatches = data.mrz_data.field_mismatches;
             var mismatchLines = [];
-            for (var i = 0; i < mismatches.length; i++) {
-              var m = mismatches[i];
+            for (var i = 0; i < fieldMismatches.length; i++) {
+              var m = fieldMismatches[i];
+              // Handle both camelCase and snake_case in mismatch object
+              var mField = m.field;
+              var mAiValue = m.aiValue || m.ai_value;
+              var mMrzValue = m.mrzValue || m.mrz_value;
               mismatchLines.push(
-                m.field +
-                  ': AI="' +
-                  m.ai_value +
-                  '" vs MRZ="' +
-                  m.mrz_value +
-                  '"',
+                mField + ': AI="' + mAiValue + '" vs MRZ="' + mMrzValue + '"',
               );
             }
             mismatchDetails = mismatchLines.join("; ");
@@ -420,11 +475,11 @@
           }
         }
 
-        if (data && data.ai_warning) {
+        // Check AI warning - both cases
+        var aiWarning = data.aiWarning || data.ai_warning;
+        if (aiWarning) {
           successText =
-            "Data imported via OCR (AI validation failed: " +
-            data.ai_warning +
-            ")";
+            "Data imported via OCR (AI validation failed: " + aiWarning + ")";
           if (successMsg) successMsg.textContent = successText;
           if (successEl) successEl.classList.remove("alert-info");
           if (successEl) successEl.classList.remove("alert-success");
@@ -448,8 +503,10 @@
         }
 
         handleResponse(config, data);
-        if (data && data.b64_resized_image && previewEl) {
-          previewEl.src = "data:image/jpeg;base64," + data.b64_resized_image;
+        // Check both camelCase and snake_case for image preview
+        var previewImage = data.b64ResizedImage || data.b64_resized_image;
+        if (previewImage && previewEl) {
+          previewEl.src = "data:image/jpeg;base64," + previewImage;
           previewEl.classList.remove("d-none");
         }
       }
@@ -461,15 +518,16 @@
         function (data) {
           console.log("OCR POST response received:", data);
           var status = data && data.status ? data.status.toLowerCase() : "";
+          var statusUrl = (data && (data.status_url || data.statusUrl)) || "";
           if (
             data &&
             (status === "queued" ||
               status === "processing" ||
               status === "pending") &&
-            data.status_url
+            statusUrl
           ) {
             if (buttonText) buttonText.textContent = "Queued...";
-            var normalizedStatusUrl = normalizeStatusUrl(data.status_url);
+            var normalizedStatusUrl = normalizeStatusUrl(statusUrl);
             console.log("OCR status URL:", normalizedStatusUrl);
             pollOcrStatus(
               normalizedStatusUrl,

@@ -8,15 +8,16 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from huey.contrib.djhuey import db_task
 
 from core.models import OCRJob
+from core.services.ai_client import AIConnectionError
 from core.utils.imgutils import convert_and_resize_image
 from core.utils.passport_ocr import extract_mrz_data, extract_passport_with_ai
 
 logger = logging.getLogger(__name__)
 
 
-@db_task()
-def run_ocr_job(job_id: str) -> None:
-    logger.info(f"Starting OCR job {job_id}")
+@db_task(retries=2, retry_delay=10, context=True)
+def run_ocr_job(job_id: str, task=None) -> None:
+    logger.info(f"Starting OCR job {job_id} (retries remaining: {task.retries if task else 'N/A'})")
     try:
         job = OCRJob.objects.get(id=job_id)
     except OCRJob.DoesNotExist:
@@ -89,6 +90,21 @@ def run_ocr_job(job_id: str) -> None:
         job.progress = 100
         job.save(update_fields=["status", "progress", "result", "updated_at"])
         logger.info(f"OCR job {job_id} completed successfully")
+
+    except AIConnectionError as exc:
+        if task and task.retries > 0:
+            logger.warning(
+                f"OCR job {job_id} encountered AI connection error. Retrying in 10s... ({task.retries} left)"
+            )
+            job.error_message = f"AI connection error, retrying... ({task.retries} left)"
+            job.save(update_fields=["error_message", "updated_at"])
+            raise exc  # Re-raise to trigger Huey retry
+
+        logger.error(f"OCR job {job_id} failed after retries: {str(exc)}")
+        job.status = OCRJob.STATUS_FAILED
+        job.error_message = f"AI extraction failed after retries: {str(exc)}"
+        job.progress = 100
+        job.save(update_fields=["status", "progress", "error_message", "updated_at"])
 
     except Exception as exc:
         full_traceback = traceback.format_exc()
