@@ -17,17 +17,17 @@ export interface DocApplicationDetail {
     readonly id: number;
     readonly customer: Customer;
     readonly product: Product;
-    readonly doc_date: string;
-    readonly due_date: string | null;
+    readonly docDate: string;
+    readonly dueDate: string | null;
     readonly status: StatusEnum;
     readonly notes: string | null;
-    readonly created_at: string;
-    readonly updated_at: string;
-    readonly created_by: number;
-    readonly updated_by: number | null;
+    readonly createdAt: string;
+    readonly updatedAt: string;
+    readonly createdBy: number;
+    readonly updatedBy: number | null;
     readonly documents: string;
     readonly workflows: Array<DocWorkflow>;
-    readonly str_field: string;
+    readonly strField: string;
 }
 export namespace DocApplicationDetail {
 }

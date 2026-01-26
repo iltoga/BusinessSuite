@@ -18,6 +18,7 @@ import { provideZard } from '@/shared/core/provider/providezard';
 import { provideClientHydration, withEventReplay } from '@angular/platform-browser';
 import { routes } from './app.routes';
 
+import { provideApi } from '@/core/api';
 import { provideServiceWorker } from '@angular/service-worker';
 
 export const appConfig: ApplicationConfig = {
@@ -25,6 +26,7 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
     provideHttpClient(withFetch(), withInterceptors([authInterceptor])),
+    provideApi(''),
     provideZard(),
     provideClientHydration(withEventReplay()),
 

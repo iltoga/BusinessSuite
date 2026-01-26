@@ -11,13 +11,13 @@ import {
 
 import { ZardTableImports } from '@/shared/components/table';
 
-export interface ColumnConfig {
+export interface ColumnConfig<T = any> {
   key: string;
   header: string;
   subtitle?: string;
   sortable?: boolean;
   sortKey?: string;
-  template?: TemplateRef<unknown>;
+  template?: TemplateRef<{ $implicit: T; value: any; row: T }>;
 }
 
 export interface PageEvent {
@@ -38,9 +38,9 @@ export interface SortEvent {
   styleUrls: ['./data-table.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class DataTableComponent<T = Record<string, unknown>> {
+export class DataTableComponent<T = Record<string, any>> {
   data = input.required<readonly T[]>();
-  columns = input.required<readonly ColumnConfig[]>();
+  columns = input.required<readonly ColumnConfig<T>[]>();
   totalItems = input<number>(0);
   isLoading = input<boolean>(false);
 
@@ -50,7 +50,7 @@ export class DataTableComponent<T = Record<string, unknown>> {
   private sortState = signal<SortEvent | null>(null);
   currentSort = computed(() => this.sortState());
 
-  onSort(column: ColumnConfig): void {
+  onSort(column: ColumnConfig<T>): void {
     if (!column.sortable) return;
 
     const current = this.sortState();

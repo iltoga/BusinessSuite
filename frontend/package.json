@@ -7,8 +7,10 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
+    "test:unit": "ng test --watch=false",
+    "test:e2e": "playwright test",
     "serve:ssr:business-suite-frontend": "node dist/business-suite-frontend/server/server.mjs",
-    "generate:api": "bunx @openapitools/openapi-generator-cli generate -i http://localhost:8000/api/schema/ -g typescript-angular -o src/app/core/api --additional-properties=fileNaming=kebab-case,ngVersion=21"
+    "generate:api": "bunx @openapitools/openapi-generator-cli generate -i http://localhost:8000/api/schema/ -g typescript-angular -o src/app/core/api --additional-properties=fileNaming=kebab-case,ngVersion=21,modelPropertyNaming=camelCase"
   },
   "prettier": {
     "printWidth": 100,
@@ -50,10 +52,13 @@
     "@angular/cli": "^21.1.1",
     "@angular/compiler-cli": "^21.1.0",
     "@openapitools/openapi-generator-cli": "^2.28.0",
+    "@playwright/test": "^1.58.0",
     "@tailwindcss/postcss": "^4.1.18",
     "@types/express": "^5.0.1",
     "@types/node": "^20.17.19",
+    "@vitest/browser-playwright": "^4.0.18",
     "jsdom": "^27.1.0",
+    "playwright": "^1.58.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.18",
     "tailwindcss-animate": "^1.0.7",

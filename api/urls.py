@@ -7,6 +7,7 @@ from . import views
 router = DefaultRouter()
 router.register(r"customers", views.CustomerViewSet, basename="customers")
 router.register(r"country-codes", views.CountryCodeViewSet, basename="country-codes")
+router.register(r"document-types", views.DocumentTypeViewSet, basename="document-types")
 router.register(r"products", views.ProductViewSet, basename="products")
 router.register(r"customer-applications", views.CustomerApplicationViewSet, basename="customer-applications")
 router.register(r"documents", views.DocumentViewSet, basename="documents")

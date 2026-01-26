@@ -13,11 +13,11 @@ export interface DocumentType {
     readonly id: number;
     name: string;
     description?: string;
-    has_ocr_check?: boolean;
-    has_expiration_date?: boolean;
-    has_doc_number?: boolean;
-    has_file?: boolean;
-    has_details?: boolean;
-    is_in_required_documents?: boolean;
+    hasOcrCheck?: boolean;
+    hasExpirationDate?: boolean;
+    hasDocNumber?: boolean;
+    hasFile?: boolean;
+    hasDetails?: boolean;
+    isInRequiredDocuments?: boolean;
 }
 

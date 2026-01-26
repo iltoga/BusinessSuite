@@ -8,9 +8,10 @@
  * Do not edit the class manually.
  */
 import { ProductTypeEnum } from './product-type-enum';
+import { TaskNested } from './task-nested';
 
 
-export interface Product { 
+export interface ProductCreateUpdate { 
     readonly id: number;
     name: string;
     code: string;
@@ -19,11 +20,12 @@ export interface Product {
     basePrice?: string | null;
     productType?: ProductTypeEnum;
     validity?: number | null;
-    requiredDocuments?: string;
-    optionalDocuments?: string;
     documentsMinValidity?: number | null;
+    tasks?: Array<TaskNested>;
+    requiredDocumentIds?: Array<number>;
+    optionalDocumentIds?: Array<number>;
 }
-export namespace Product {
+export namespace ProductCreateUpdate {
 }
 
 

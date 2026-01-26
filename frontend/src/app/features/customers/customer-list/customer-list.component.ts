@@ -46,15 +46,25 @@ export class CustomerListComponent implements OnInit {
   private platformId = inject(PLATFORM_ID);
 
   private readonly customerTemplate =
-    viewChild.required<TemplateRef<{ $implicit: CustomerListItem }>>('customerTemplate');
+    viewChild.required<
+      TemplateRef<{ $implicit: CustomerListItem; value: any; row: CustomerListItem }>
+    >('customerTemplate');
   private readonly passportTemplate =
-    viewChild.required<TemplateRef<{ $implicit: CustomerListItem }>>('passportTemplate');
+    viewChild.required<
+      TemplateRef<{ $implicit: CustomerListItem; value: any; row: CustomerListItem }>
+    >('passportTemplate');
   private readonly emailTemplate =
-    viewChild.required<TemplateRef<{ $implicit: CustomerListItem }>>('emailTemplate');
+    viewChild.required<
+      TemplateRef<{ $implicit: CustomerListItem; value: any; row: CustomerListItem }>
+    >('emailTemplate');
   private readonly telephoneTemplate =
-    viewChild.required<TemplateRef<{ $implicit: CustomerListItem }>>('telephoneTemplate');
+    viewChild.required<
+      TemplateRef<{ $implicit: CustomerListItem; value: any; row: CustomerListItem }>
+    >('telephoneTemplate');
   private readonly actionsTemplate =
-    viewChild.required<TemplateRef<{ $implicit: CustomerListItem }>>('actionsTemplate');
+    viewChild.required<
+      TemplateRef<{ $implicit: CustomerListItem; value: any; row: CustomerListItem }>
+    >('actionsTemplate');
 
   readonly customers = signal<CustomerListItem[]>([]);
   readonly isLoading = signal(false);

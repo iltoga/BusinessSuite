@@ -11,6 +11,7 @@ api/customer-applications.service.ts
 api/customers.service.ts
 api/dashboard-stats.service.ts
 api/document-ocr.service.ts
+api/document-types.service.ts
 api/documents.service.ts
 api/invoices.service.ts
 api/ocr.service.ts
@@ -35,9 +36,12 @@ model/null-enum.ts
 model/paginated-customer-list.ts
 model/paginated-doc-application-detail-list.ts
 model/paginated-product-list.ts
+model/product-create-update.ts
+model/product-detail.ts
 model/product-type-enum.ts
 model/product.ts
 model/status-enum.ts
+model/task-nested.ts
 model/task.ts
 model/title-enum.ts
 param.ts

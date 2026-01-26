@@ -9,10 +9,12 @@
  */
 
 
-export interface Task { 
-    readonly id: number;
-    name: string;
+export interface TaskNested { 
+    id?: number;
     step: number;
+    name: string;
+    description?: string | null;
+    cost?: string;
     duration?: number;
     durationIsBusinessDays?: boolean;
     notifyDaysBefore?: number;

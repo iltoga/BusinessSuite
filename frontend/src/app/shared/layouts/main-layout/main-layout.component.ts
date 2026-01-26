@@ -44,6 +44,12 @@ import { ZardIconComponent } from '@/shared/components/icon';
             class="block rounded px-3 py-2 hover:bg-accent"
             >Customers</a
           >
+          <a
+            routerLink="/products"
+            routerLinkActive="font-semibold"
+            class="block rounded px-3 py-2 hover:bg-accent"
+            >Products</a
+          >
         </nav>
       </aside>
 

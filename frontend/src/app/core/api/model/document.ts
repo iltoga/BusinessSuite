@@ -12,21 +12,21 @@ import { DocumentType } from './document-type';
 
 export interface Document { 
     readonly id: number;
-    readonly doc_application: number;
-    readonly doc_type: DocumentType;
-    doc_type_id?: number;
-    doc_number?: string;
-    expiration_date?: string | null;
+    readonly docApplication: number;
+    readonly docType: DocumentType;
+    docTypeId?: number;
+    docNumber?: string;
+    expirationDate?: string | null;
     file?: string;
-    readonly file_link: string;
+    readonly fileLink: string;
     details?: string;
     readonly completed: boolean;
     metadata?: any | null;
-    readonly ocr_check: boolean;
+    readonly ocrCheck: boolean;
     required?: boolean;
-    readonly created_at: string;
-    readonly updated_at: string;
-    readonly created_by: number;
-    readonly updated_by: number | null;
+    readonly createdAt: string;
+    readonly updatedAt: string;
+    readonly createdBy: number;
+    readonly updatedBy: number | null;
 }
 

@@ -42,6 +42,11 @@ __screenshots__/
 # Runtime config (local only)
 /src/assets/config.json
 
+# Ignore legacy auto-generated API client (kept for cleanup)
+/src/app/api
+
+
 # System files
 .DS_Store
 Thumbs.db
+.last-run.json

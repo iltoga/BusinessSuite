@@ -6,6 +6,9 @@ import { CustomerDetailComponent } from './features/customers/customer-detail/cu
 import { CustomerFormComponent } from './features/customers/customer-form/customer-form.component';
 import { CustomerListComponent } from './features/customers/customer-list/customer-list.component';
 import { DashboardComponent } from './features/dashboard/dashboard.component';
+import { ProductDetailComponent } from './features/products/product-detail/product-detail.component';
+import { ProductFormComponent } from './features/products/product-form/product-form.component';
+import { ProductListComponent } from './features/products/product-list/product-list.component';
 import { AuthLayoutComponent } from './shared/layouts/auth-layout/auth-layout.component';
 import { MainLayoutComponent } from './shared/layouts/main-layout/main-layout.component';
 
@@ -25,6 +28,10 @@ export const routes: Routes = [
       { path: 'customers/new', component: CustomerFormComponent },
       { path: 'customers/:id/edit', component: CustomerFormComponent },
       { path: 'customers/:id', component: CustomerDetailComponent },
+      { path: 'products', component: ProductListComponent },
+      { path: 'products/new', component: ProductFormComponent },
+      { path: 'products/:id/edit', component: ProductFormComponent },
+      { path: 'products/:id', component: ProductDetailComponent },
       { path: 'applications/:id', component: ApplicationDetailComponent },
       { path: '', redirectTo: '/dashboard', pathMatch: 'full' },
     ],

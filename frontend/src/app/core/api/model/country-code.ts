@@ -11,9 +11,9 @@
 
 export interface CountryCode { 
     country: string;
-    country_idn?: string | null;
-    alpha2_code: string;
-    alpha3_code: string;
-    numeric_code: string;
+    countryIdn?: string | null;
+    alpha2Code: string;
+    alpha3Code: string;
+    numericCode: string;
 }
 

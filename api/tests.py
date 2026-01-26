@@ -1,4 +1,5 @@
 import datetime
+import json
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -165,3 +166,120 @@ class CustomerApplicationDetailAPITestCase(TestCase):
         self.document.refresh_from_db()
         self.assertEqual(self.document.doc_number, "A123456")
         self.assertEqual(self.document.metadata.get("number"), "A123456")
+
+
+class ProductApiTestCase(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_superuser(
+            username="productadmin", email="product@example.com", password="password"
+        )
+        self.client.force_login(self.user)
+        self.required_doc = DocumentType.objects.create(name="Passport", is_in_required_documents=True)
+        self.optional_doc = DocumentType.objects.create(name="Bank Statement", is_in_required_documents=False)
+
+    def test_product_create_with_tasks_and_documents(self):
+        url = reverse("products-list")
+        payload = {
+            "name": "Visa Extension",
+            "code": "VISA-EXT",
+            "description": "Extension service",
+            "productType": "visa",
+            "basePrice": "1500000.00",
+            "validity": 30,
+            "documentsMinValidity": 180,
+            "requiredDocumentIds": [self.required_doc.id],
+            "optionalDocumentIds": [self.optional_doc.id],
+            "tasks": [
+                {
+                    "step": 1,
+                    "name": "Collect Documents",
+                    "description": "Gather required docs",
+                    "cost": "0.00",
+                    "duration": 5,
+                    "durationIsBusinessDays": True,
+                    "notifyDaysBefore": 2,
+                    "lastStep": False,
+                },
+                {
+                    "step": 2,
+                    "name": "Submit Application",
+                    "description": "Submit to immigration",
+                    "cost": "500000.00",
+                    "duration": 3,
+                    "durationIsBusinessDays": True,
+                    "notifyDaysBefore": 1,
+                    "lastStep": True,
+                },
+            ],
+        }
+
+        response = self.client.post(url, data=json.dumps(payload), content_type="application/json")
+        self.assertEqual(response.status_code, 201)
+        product = Product.objects.get(code="VISA-EXT")
+        self.assertEqual(product.required_documents, "Passport")
+        self.assertEqual(product.optional_documents, "Bank Statement")
+        self.assertEqual(product.tasks.count(), 2)
+
+    def test_product_update_reconciles_tasks(self):
+        product = Product.objects.create(
+            name="Tourist Visa",
+            code="TOUR-1",
+            product_type="visa",
+            required_documents="Passport",
+        )
+        task_one = product.tasks.create(
+            step=1,
+            name="Collect Documents",
+            description="",
+            cost=0,
+            duration=2,
+            duration_is_business_days=True,
+            notify_days_before=1,
+            last_step=False,
+        )
+        product.tasks.create(
+            step=2,
+            name="Submit",
+            description="",
+            cost=0,
+            duration=1,
+            duration_is_business_days=True,
+            notify_days_before=0,
+            last_step=True,
+        )
+
+        url = reverse("products-detail", kwargs={"pk": product.id})
+        payload = {
+            "name": "Tourist Visa Updated",
+            "code": "TOUR-1",
+            "productType": "visa",
+            "requiredDocumentIds": [self.required_doc.id],
+            "optionalDocumentIds": [],
+            "tasks": [
+                {
+                    "id": task_one.id,
+                    "step": 1,
+                    "name": "Collect Docs",
+                    "description": "Updated",
+                    "cost": "0.00",
+                    "duration": 4,
+                    "durationIsBusinessDays": True,
+                    "notifyDaysBefore": 1,
+                    "lastStep": True,
+                }
+            ],
+        }
+        response = self.client.put(url, data=json.dumps(payload), content_type="application/json")
+        self.assertEqual(response.status_code, 200)
+        product.refresh_from_db()
+        self.assertEqual(product.tasks.count(), 1)
+        self.assertEqual(product.tasks.first().name, "Collect Docs")
+
+    def test_product_can_delete_endpoint(self):
+        product = Product.objects.create(name="Simple", code="S-1", product_type="other")
+        url = reverse("products-can-delete", kwargs={"pk": product.id})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertIn("can_delete", payload)

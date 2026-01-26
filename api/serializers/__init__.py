@@ -8,7 +8,7 @@ from .doc_application_serializer import (
 from .doc_workflow_serializer import DocWorkflowSerializer, TaskSerializer
 from .document_serializer import DocumentSerializer
 from .document_type_serializer import DocumentTypeSerializer
-from .product_serializer import ProductSerializer
+from .product_serializer import ProductCreateUpdateSerializer, ProductDetailSerializer, ProductSerializer
 from .quick_create_serializer import (
     CustomerApplicationQuickCreateSerializer,
     CustomerQuickCreateSerializer,

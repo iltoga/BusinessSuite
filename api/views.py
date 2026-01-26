@@ -28,6 +28,8 @@ from api.serializers import (
     DocApplicationSerializerWithRelations,
     DocumentSerializer,
     DocumentTypeSerializer,
+    ProductCreateUpdateSerializer,
+    ProductDetailSerializer,
     ProductQuickCreateSerializer,
     ProductSerializer,
 )
@@ -86,6 +88,16 @@ class CountryCodeViewSet(viewsets.ReadOnlyModelViewSet):
     ordering = ["country"]
 
 
+class DocumentTypeViewSet(ApiErrorHandlingMixin, viewsets.ReadOnlyModelViewSet):
+    permission_classes = [IsAuthenticated]
+    queryset = DocumentType.objects.all()
+    serializer_class = DocumentTypeSerializer
+    pagination_class = None
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["name", "description"]
+    ordering = ["name"]
+
+
 class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
@@ -136,15 +148,21 @@ class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         return Response({"id": customer.id, "active": customer.active})
 
 
-class ProductViewSet(ApiErrorHandlingMixin, viewsets.ReadOnlyModelViewSet):
+class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
-    queryset = Product.objects.all()
-    serializer_class = ProductSerializer
+    queryset = Product.objects.prefetch_related("tasks").all()
     pagination_class = StandardResultsSetPagination
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["name", "code", "product_type"]
-    ordering_fields = ["name", "code", "product_type"]
+    ordering_fields = ["name", "code", "product_type", "base_price"]
     ordering = ["name"]
+
+    def get_serializer_class(self):
+        if self.action in ["create", "update", "partial_update"]:
+            return ProductCreateUpdateSerializer
+        if self.action == "retrieve":
+            return ProductDetailSerializer
+        return ProductSerializer
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -152,6 +170,12 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ReadOnlyModelViewSet):
         if product_type:
             queryset = queryset.filter(product_type=product_type)
         return queryset
+
+    @action(detail=True, methods=["get"], url_path="can-delete")
+    def can_delete(self, request, pk=None):
+        product = self.get_object()
+        can_delete, message = product.can_be_deleted()
+        return Response({"can_delete": can_delete, "message": message})
 
     @action(detail=False, methods=["get"], url_path="get_product_by_id/(?P<product_id>[^/.]+)")
     def get_product_by_id(self, request, product_id=None):

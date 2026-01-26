@@ -8,14 +8,15 @@
 
 ## Component Index
 
-| Component Name | Selector                | Location                                      | ZardUI Deps    | Status   |
-| -------------- | ----------------------- | --------------------------------------------- | -------------- | -------- |
-| DataTable      | app-data-table          | src/app/shared/components/data-table          | Table          | ✅ Ready |
-| ConfirmDialog  | app-confirm-dialog      | src/app/shared/components/confirm-dialog      | Dialog, Button | ✅ Ready |
-| SearchToolbar  | app-search-toolbar      | src/app/shared/components/search-toolbar      | Input, Button  | ✅ Ready |
-| Pagination     | app-pagination-controls | src/app/shared/components/pagination-controls | Button, Icon   | ✅ Ready |
-| ExpiryBadge    | app-expiry-badge        | src/app/shared/components/expiry-badge        | Badge          | ✅ Ready |
-| FileUpload     | app-file-upload         | src/app/shared/components/file-upload         | Button         | ✅ Ready |
+| Component Name      | Selector                  | Location                                        | ZardUI Deps    | Status   |
+| ------------------- | ------------------------- | ----------------------------------------------- | -------------- | -------- |
+| DataTable           | app-data-table            | src/app/shared/components/data-table            | Table          | ✅ Ready |
+| ConfirmDialog       | app-confirm-dialog        | src/app/shared/components/confirm-dialog        | Dialog, Button | ✅ Ready |
+| SearchToolbar       | app-search-toolbar        | src/app/shared/components/search-toolbar        | Input, Button  | ✅ Ready |
+| Pagination          | app-pagination-controls   | src/app/shared/components/pagination-controls   | Button, Icon   | ✅ Ready |
+| ExpiryBadge         | app-expiry-badge          | src/app/shared/components/expiry-badge          | Badge          | ✅ Ready |
+| FileUpload          | app-file-upload           | src/app/shared/components/file-upload           | Button         | ✅ Ready |
+| SortableMultiSelect | app-sortable-multi-select | src/app/shared/components/sortable-multi-select | DragDrop       | ✅ Ready |
 
 ## Component Details
 
@@ -155,6 +156,25 @@ export class FileUploadComponent {
   cleared = output<void>();
 }
 ````
+
+### SortableMultiSelectComponent
+
+**Location:** `src/app/shared/components/sortable-multi-select/sortable-multi-select.component.ts`
+
+**Interface:**
+
+```typescript
+@Component({
+  selector: "app-sortable-multi-select",
+  standalone: true,
+})
+export class SortableMultiSelectComponent {
+  options = input.required<readonly { id: number; label: string }[]>();
+  selectedIds = input<number[]>([]);
+  label = input<string>("");
+  selectedIdsChange = output<number[]>();
+}
+```
 
 ```
 

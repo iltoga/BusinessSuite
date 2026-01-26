@@ -14,15 +14,15 @@ import { Task } from './task';
 export interface DocWorkflow { 
     readonly id: number;
     readonly task: Task;
-    readonly start_date: string;
-    readonly completion_date: string | null;
-    readonly due_date: string;
+    readonly startDate: string;
+    readonly completionDate: string | null;
+    readonly dueDate: string;
     readonly status: StatusEnum;
     readonly notes: string;
-    readonly created_at: string;
-    readonly updated_at: string;
-    readonly created_by: number;
-    readonly updated_by: number | null;
+    readonly createdAt: string;
+    readonly updatedAt: string;
+    readonly createdBy: number;
+    readonly updatedBy: number | null;
 }
 export namespace DocWorkflow {
 }

@@ -15,13 +15,13 @@ import { CustomerTypeEnum } from './customer-type-enum';
  */
 export interface Customer { 
     readonly id: number;
-    readonly created_at: string;
-    readonly updated_at: string;
+    readonly createdAt: string;
+    readonly updatedAt: string;
     title?: Customer.TitleEnum | null;
-    customer_type?: CustomerTypeEnum;
-    first_name?: string | null;
-    last_name?: string | null;
-    company_name?: string | null;
+    customerType?: CustomerTypeEnum;
+    firstName?: string | null;
+    lastName?: string | null;
+    companyName?: string | null;
     email?: string | null;
     telephone?: string | null;
     whatsapp?: string | null;
@@ -32,24 +32,25 @@ export interface Customer {
     npwp?: string | null;
     nationality?: string | null;
     birthdate?: string | null;
-    birth_place?: string | null;
-    passport_number?: string | null;
-    passport_issue_date?: string | null;
-    passport_expiration_date?: string | null;
-    passport_file?: string | null;
-    readonly passport_expired: string;
-    readonly passport_expiring_soon: string;
+    birthPlace?: string | null;
+    passportNumber?: string | null;
+    passportIssueDate?: string | null;
+    passportExpirationDate?: string | null;
+    passportFile?: string | null;
+    passportMetadata?: any | null;
+    readonly passportExpired: string;
+    readonly passportExpiringSoon: string;
     gender?: Customer.GenderEnum | null;
-    readonly gender_display: string;
-    readonly nationality_name: string;
-    readonly nationality_code: string;
-    address_bali?: string | null;
-    address_abroad?: string | null;
-    notify_documents_expiration?: boolean;
-    notify_by?: Customer.NotifyByEnum | null;
+    readonly genderDisplay: string;
+    readonly nationalityName: string;
+    readonly nationalityCode: string;
+    addressBali?: string | null;
+    addressAbroad?: string | null;
+    notifyDocumentsExpiration?: boolean;
+    notifyBy?: Customer.NotifyByEnum | null;
     active?: boolean;
-    readonly full_name: string;
-    readonly full_name_with_company: string;
+    readonly fullName: string;
+    readonly fullNameWithCompany: string;
 }
 export namespace Customer {
     export const TitleEnum = {
