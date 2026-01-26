@@ -1135,7 +1135,7 @@
 
 ### 6.0 Legacy UI & Logic Audit
 
-- [ ] **6.0.1** Review `customer_applications/views/*.py`:
+- [x] **6.0.1** Review `customer_applications/views/*.py`:
   - `DocApplicationListView`: paginated with search via `DocApplicationManager.search_doc_applications()`
   - `DocApplicationCreateView`: complex logic including:
     - `DocumentCreateFormSet` for initial documents
@@ -1144,11 +1144,11 @@
   - `DocApplicationUpdateView`: add new documents via `NewDocumentFormSet`
   - `DocApplicationDetailView`: shows documents, workflows, status
 
-- [ ] **6.0.2** Review `customer_applications/forms/doc_application.py`:
+- [x] **6.0.2** Review `customer_applications/forms/doc_application.py`:
   - Customer/Product selects (disabled on edit)
   - doc_date with today's default
 
-- [ ] **6.0.3** Review `customer_applications/models/doc_application.py` properties:
+- [x] **6.0.3** Review `customer_applications/models/doc_application.py` properties:
   - `is_document_collection_completed`: all required docs completed
   - `is_application_completed`: last workflow step completed
   - `has_next_task`, `next_task`: workflow progression logic
