@@ -1,0 +1,95 @@
+<div class="h-full flex flex-col gap-6">
+  <div class="flex justify-between items-center">
+    <h1 class="text-3xl font-bold tracking-tight">Applications</h1>
+    <a routerLink="/applications/new">
+      <z-button zType="default" zSize="default">New Application</z-button>
+    </a>
+  </div>
+
+  <div class="bg-card rounded-lg border shadow-sm">
+    <div class="p-4 border-b">
+      <app-search-toolbar
+        [query]="query()"
+        [placeholder]="'Search Applications...'"
+        (queryChange)="onQueryChange($event)"
+      >
+      </app-search-toolbar>
+    </div>
+
+    <div class="p-0">
+      <app-data-table
+        [columns]="columns()"
+        [data]="items()"
+        [isLoading]="isLoading()"
+        (sortChange)="onSortChange($event)"
+      >
+        <ng-template #columnCustomer let-row>
+          <a [routerLink]="['/customers', row.customer?.id]" class="font-medium hover:underline">{{
+            row.customer?.fullName
+          }}</a>
+        </ng-template>
+        <ng-template #columnProduct let-row>
+          <div>{{ row.product?.name }}</div>
+        </ng-template>
+        <ng-template #columnDate let-row>
+          <div class="whitespace-nowrap">{{ row.docDate | date: 'dd MMM yyyy' }}</div>
+        </ng-template>
+        <ng-template #columnStatus let-row>
+          @switch (row.status) {
+            @case ('completed') {
+              <z-badge zType="success">Completed</z-badge>
+            }
+            @case ('processing') {
+              <z-badge zType="secondary">Processing</z-badge>
+            }
+            @case ('rejected') {
+              <z-badge zType="destructive">Rejected</z-badge>
+            }
+            @default {
+              <z-badge zType="outline">Pending</z-badge>
+            }
+          }
+        </ng-template>
+        <ng-template #columnActions let-row>
+          <div class="flex flex-wrap gap-1">
+            <a [routerLink]="['/applications', row.id]">
+              <z-button zType="secondary" zSize="sm">Manage</z-button>
+            </a>
+            @if (row.status !== 'completed') {
+              <a [routerLink]="['/applications', row.id, 'edit']">
+                <z-button zType="warning" zSize="sm">Edit</z-button>
+              </a>
+            }
+            <z-button zType="destructive" zSize="sm" (click)="confirmDelete(row)">Delete</z-button>
+          </div>
+        </ng-template>
+        <ng-template #columnInvoiceActions let-row>
+          <div class="flex flex-wrap gap-1 items-center">
+            @if (row.hasInvoice && row.invoiceId) {
+              <a [routerLink]="['/invoices', row.invoiceId]">
+                <z-button zType="default" zSize="sm">View</z-button>
+              </a>
+              <a [routerLink]="['/invoices', row.invoiceId, 'edit']">
+                <z-button zType="warning" zSize="sm">Edit</z-button>
+              </a>
+            } @else if (row.readyForInvoice) {
+              <a [routerLink]="['/invoices', 'new']" [queryParams]="{ applicationId: row.id }">
+                <z-button zType="success" zSize="sm">Create</z-button>
+              </a>
+            } @else {
+              <z-badge zType="warning">Not Ready</z-badge>
+            }
+          </div>
+        </ng-template>
+      </app-data-table>
+    </div>
+
+    <div class="p-4 border-t bg-muted/20">
+      <app-pagination-controls
+        [page]="page()"
+        [totalPages]="totalPages()"
+        (pageChange)="onPageChange($event)"
+      />
+    </div>
+  </div>
+</div>

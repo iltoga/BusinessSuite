@@ -11,6 +11,7 @@ import { StatusEnum } from './status-enum';
 import { DocWorkflow } from './doc-workflow';
 import { Customer } from './customer';
 import { Product } from './product';
+import { Document } from './document';
 
 
 export interface DocApplicationDetail { 
@@ -25,7 +26,7 @@ export interface DocApplicationDetail {
     readonly updatedAt: string;
     readonly createdBy: number;
     readonly updatedBy: number | null;
-    readonly documents: string;
+    readonly documents: Array<Document>;
     readonly workflows: Array<DocWorkflow>;
     readonly strField: string;
 }

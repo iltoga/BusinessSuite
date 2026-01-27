@@ -1,0 +1,66 @@
+/* Styles for the screen view */
+:host {
+  display: block;
+  min-height: 100vh;
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+@media print {
+  @page {
+    margin: 0;
+    size: auto;
+  }
+
+  :host {
+    background-color: white !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Hide metadata and UI elements */
+  .print\:hidden,
+  .brand-header,
+  .document-title,
+  .details-grid,
+  .attachment-header,
+  .print-footer {
+    display: none !important;
+  }
+
+  /* Strip all containers of padding/margins/borders to make room for the image */
+  .max-w-4xl,
+  z-card,
+  [data-slot='card'],
+  .p-8,
+  .attachment-wrapper {
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    max-width: none !important;
+    width: 100% !important;
+    display: block !important;
+  }
+
+  /* Ensure the attachment container fills the entire viewport */
+  .attachment-container {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .attachment-container img {
+    max-width: 100% !important;
+    max-height: 100% !important;
+    width: auto !important;
+    height: auto !important;
+    object-fit: contain !important;
+    display: block !important;
+  }
+}

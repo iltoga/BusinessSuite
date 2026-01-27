@@ -1,0 +1,4 @@
+/* minimal styling - keep consistent with other lists */
+:host {
+  display: block;
+}

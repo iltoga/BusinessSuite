@@ -14,9 +14,7 @@
         </p>
       </div>
       <div class="flex gap-2">
-        <a z-button zType="ghost" routerLink="/customers/{{ application()!.customer.id }}">
-          Back to customer
-        </a>
+        <button z-button zType="ghost" (click)="goBack()">Back</button>
       </div>
     </div>
 
@@ -61,6 +59,8 @@
                 <th class="text-left py-2">Document</th>
                 <th class="text-left py-2">Doc Number</th>
                 <th class="text-left py-2">Expiration</th>
+                <th class="text-left py-2">Last Updated</th>
+                <th class="text-left py-2">Completed</th>
                 <th class="text-left py-2">Actions</th>
               </tr>
             </thead>
@@ -71,15 +71,34 @@
                   <td class="py-3">{{ doc.docNumber || '—' }}</td>
                   <td class="py-3">{{ doc.expirationDate | appDate }}</td>
                   <td class="py-3">
+                    <div class="text-sm">{{ doc.updatedAt | appDate: 'datetime' }}</div>
+                    @if (doc.updatedByUsername) {
+                      <div class="text-xs text-muted-foreground">{{ doc.updatedByUsername }}</div>
+                    }
+                  </td>
+                  <td class="py-3">
+                    @if (doc.completed) {
+                      <z-badge zType="success">Yes</z-badge>
+                    } @else {
+                      <z-badge zType="secondary">No</z-badge>
+                    }
+                  </td>
+                  <td class="py-3">
                     <div class="flex flex-wrap gap-2">
                       <button z-button zType="outline" zSize="sm" (click)="openUpload(doc)">
                         Update
                       </button>
-                      @if (doc.fileLink) {
-                        <a z-button zType="ghost" zSize="sm" [href]="doc.fileLink" target="_blank">
-                          View
-                        </a>
-                      }
+                      <app-document-preview
+                        [documentId]="doc.id"
+                        [fileLink]="doc.fileLink"
+                        zType="ghost"
+                        zSize="sm"
+                        label="View"
+                        (viewFull)="viewDocument(doc)"
+                      />
+                      <button z-button zType="secondary" zSize="sm" (click)="printDocument(doc)">
+                        Print
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -178,6 +197,29 @@
           (cleared)="onFileCleared()"
         />
 
+        @if (selectedDocument()!.extraActions && selectedDocument()!.extraActions!.length > 0) {
+          <div class="flex flex-wrap gap-2">
+            @for (action of selectedDocument()!.extraActions; track action.name) {
+              <button
+                z-button
+                zType="success"
+                zSize="sm"
+                type="button"
+                (click)="executeAction(action)"
+                [disabled]="actionLoading() !== null"
+              >
+                @if (action.icon) {
+                  <i [class]="action.icon + ' mr-1'"></i>
+                }
+                {{ action.label }}
+                @if (actionLoading() === action.name) {
+                  <span class="ml-2 inline-block animate-spin">⏳</span>
+                }
+              </button>
+            }
+          </div>
+        }
+
         @if (selectedDocument()!.docType.hasDocNumber) {
           <div class="space-y-2">
             <label class="text-sm font-medium">Document Number</label>
@@ -208,6 +250,14 @@
             }
           </div>
           <div class="flex gap-2">
+            <app-document-preview
+              [documentId]="selectedDocument()!.id"
+              [fileLink]="selectedDocument()!.fileLink"
+              zType="outline"
+              zSize="sm"
+              label="Preview"
+              (viewFull)="viewDocument(selectedDocument()!)"
+            />
             @if (selectedDocument()!.docType.hasOcrCheck) {
               <button
                 z-button

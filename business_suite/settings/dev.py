@@ -18,9 +18,19 @@ CSRF_COOKIE_DOMAIN = None
 CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SAMESITE = None
 SESSION_COOKIE_DOMAIN = None
-CSRF_TRUSTED_ORIGINS = ["http://192.168.100.80", "https://192.168.100.80"]
+CSRF_TRUSTED_ORIGINS = [
+    "http://192.168.100.80",
+    "https://192.168.100.80",
+    "http://localhost:4200",
+    "http://127.0.0.1:4200",
+]
 SESSION_COOKIE_SAMESITE = None
 ALLOWED_HOSTS = ["*"]
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:4200",
+    "http://127.0.0.1:4200",
+]
+CORS_ALLOW_CREDENTIALS = True
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -36,16 +46,17 @@ INTERNAL_IPS = [
 
 MIDDLEWARE = [
     "debug_toolbar.middleware.DebugToolbarMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",  # to serve static files
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "business_suite.middlewares.disable_csrf_check.DisableCsrfCheckMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",  # CSRF middleware - REQUIRED
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "business_suite.middlewares.AuthLoginRequiredMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "corsheaders.middleware.CorsMiddleware",
     "django_user_agents.middleware.UserAgentMiddleware",
     "core.middleware.performance_logger.PerformanceLoggingMiddleware",
 ]

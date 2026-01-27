@@ -1,6 +1,7 @@
 from .country_code_serializer import CountryCodeSerializer
 from .customer_serializer import CustomerSerializer
 from .doc_application_serializer import (
+    DocApplicationCreateUpdateSerializer,
     DocApplicationDetailSerializer,
     DocApplicationSerializer,
     DocApplicationSerializerWithRelations,

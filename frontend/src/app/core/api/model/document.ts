@@ -8,6 +8,7 @@
  * Do not edit the class manually.
  */
 import { DocumentType } from './document-type';
+import { DocumentAction } from './document-action';
 
 
 export interface Document { 
@@ -28,5 +29,14 @@ export interface Document {
     readonly updatedAt: string;
     readonly createdBy: number;
     readonly updatedBy: number | null;
+    /**
+     * Return the username of the user who last updated the document.
+     */
+    readonly updatedByUsername: string | null;
+    /**
+     * Return the username of the user who created the document.
+     */
+    readonly createdByUsername: string | null;
+    readonly extraActions: Array<DocumentAction>;
 }
 

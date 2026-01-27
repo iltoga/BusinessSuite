@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -9,20 +9,25 @@ import {
   type OnInit,
 } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import {
   ApplicationsService,
   type ApplicationDetail,
   type ApplicationDocument,
+  type DocumentAction,
   type OcrStatusResponse,
 } from '@/core/services/applications.service';
+import { DocumentsService } from '@/core/services/documents.service';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
+import { DocumentPreviewComponent } from '@/shared/components/document-preview';
 import { FileUploadComponent } from '@/shared/components/file-upload';
+import { ZardIconComponent } from '@/shared/components/icon';
 import { ZardInputDirective } from '@/shared/components/input';
+import { ZardPopoverComponent, ZardPopoverDirective } from '@/shared/components/popover';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 
 @Component({
@@ -35,8 +40,12 @@ import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
     ZardBadgeComponent,
     ZardButtonComponent,
     ZardCardComponent,
+    DocumentPreviewComponent,
     FileUploadComponent,
+    ZardIconComponent,
     ZardInputDirective,
+    ZardPopoverComponent,
+    ZardPopoverDirective,
     AppDatePipe,
   ],
   templateUrl: './application-detail.component.html',
@@ -45,7 +54,10 @@ import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 })
 export class ApplicationDetailComponent implements OnInit {
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
+  private location = inject(Location);
   private applicationsService = inject(ApplicationsService);
+  private documentsService = inject(DocumentsService);
   private toast = inject(GlobalToastService);
   private fb = inject(FormBuilder);
   private destroyRef = inject(DestroyRef);
@@ -64,6 +76,7 @@ export class ApplicationDetailComponent implements OnInit {
   readonly ocrReviewOpen = signal(false);
   readonly ocrReviewData = signal<OcrStatusResponse | null>(null);
   readonly ocrMetadata = signal<Record<string, unknown> | null>(null);
+  readonly actionLoading = signal<string | null>(null);
 
   private pollTimer: number | null = null;
 
@@ -222,6 +235,105 @@ export class ApplicationDetailComponent implements OnInit {
 
   dismissOcrReview(): void {
     this.ocrReviewOpen.set(false);
+  }
+
+  executeAction(action: DocumentAction): void {
+    const document = this.selectedDocument();
+    if (!document) {
+      return;
+    }
+
+    this.actionLoading.set(action.name);
+
+    this.applicationsService.executeDocumentAction(document.id, action.name).subscribe({
+      next: (response) => {
+        if (response.success) {
+          this.toast.success(response.message ?? 'Action completed successfully');
+          if (response.document) {
+            this.replaceDocument(response.document);
+            // Update selected document with new data
+            this.selectedDocument.set(response.document);
+            // Update file name in upload component if file was uploaded
+            if (response.document.fileLink) {
+              this.selectedFile.set(null);
+            }
+          }
+        } else {
+          this.toast.error('Action failed');
+        }
+        this.actionLoading.set(null);
+      },
+      error: () => {
+        this.toast.error('Failed to execute action');
+        this.actionLoading.set(null);
+      },
+    });
+  }
+
+  viewDocument(doc: ApplicationDocument): void {
+    this.documentsService.downloadDocumentFile(doc.id).subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const popup = window.open(url, '_blank');
+        if (!popup) {
+          this.toast.error('Popup blocked. Please allow popups for this site.');
+        }
+        window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+      },
+      error: () => {
+        if (doc.fileLink) {
+          window.open(doc.fileLink, '_blank');
+          return;
+        }
+        this.toast.error('Failed to open document');
+      },
+    });
+  }
+
+  printDocument(doc: ApplicationDocument): void {
+    // Navigate to print-friendly view using replaceUrl to avoid cluttering history
+    this.router.navigate(['/documents', doc.id, 'print'], { replaceUrl: true });
+  }
+
+  /**
+   * Navigate back to the previous view that opened this page.
+   * Strategy:
+   * 1. If navigation state provides a `from`/`returnUrl`, navigate there
+   * 2. Else, if there is a browser history, use Location.back()
+   * 3. Fallback to the customer view
+   */
+  goBack(): void {
+    // If the navigation contained a 'from' value in state, use it
+    const nav = this.router.getCurrentNavigation();
+    const stateFrom =
+      (nav && nav.extras && (nav.extras.state as any)?.from) ||
+      (history.state && (history.state as any).from);
+    if (stateFrom) {
+      if (typeof stateFrom === 'string') {
+        this.router.navigateByUrl(stateFrom);
+      } else {
+        this.router.navigate(stateFrom as any[]);
+      }
+      return;
+    }
+
+    // Use browser history if available
+    try {
+      if (window.history.length > 1) {
+        this.location.back();
+        return;
+      }
+    } catch (e) {
+      // ignore and fallback
+    }
+
+    // Fallback to customer profile
+    const customerId = this.application()?.customer.id;
+    if (customerId) {
+      this.router.navigate(['/customers', customerId]);
+    } else {
+      this.router.navigate(['/customers']);
+    }
   }
 
   private loadApplication(id: number): void {

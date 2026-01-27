@@ -7,8 +7,10 @@ from math import e
 from django.conf import settings
 from django.core.files.storage import default_storage
 from django.db.models import Count, Q
+from django.http import FileResponse
 from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework import filters, pagination, status, viewsets
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.authtoken.views import ObtainAuthToken
@@ -33,6 +35,7 @@ from api.serializers import (
     ProductQuickCreateSerializer,
     ProductSerializer,
 )
+from business_suite.authentication import BearerAuthentication
 from core.models import CountryCode, DocumentOCRJob, OCRJob
 from core.services.quick_create import create_quick_customer, create_quick_customer_application, create_quick_product
 from core.tasks.cron_jobs import run_clear_cache_now, run_full_backup_now
@@ -276,30 +279,206 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.GenericViewSet):
         )
 
 
-class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ReadOnlyModelViewSet):
+class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
-    serializer_class = DocApplicationDetailSerializer
     pagination_class = StandardResultsSetPagination
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = [
+        "product__name",
+        "product__code",
+        "customer__first_name",
+        "customer__last_name",
+        "doc_date",
+    ]
+    ordering = ["-id"]
 
     def get_queryset(self):
+        from django.db.models import Count, Q
+
         return (
             DocApplication.objects.select_related("customer", "product")
-            .prefetch_related("documents__doc_type", "workflows__task")
-            .all()
+            .prefetch_related("documents__doc_type", "workflows__task", "invoice_applications__invoice")
+            .annotate(
+                total_required_documents=Count("documents", filter=Q(documents__required=True)),
+                completed_required_documents=Count(
+                    "documents", filter=Q(documents__required=True, documents__completed=True)
+                ),
+            )
         )
+
+    def get_serializer_class(self):
+        # Use specialized serializer for create/update actions
+        if self.action in ["create", "update", "partial_update"]:
+            from api.serializers.doc_application_serializer import DocApplicationCreateUpdateSerializer
+
+            return DocApplicationCreateUpdateSerializer
+        if self.action == "retrieve":
+            return DocApplicationDetailSerializer
+        return DocApplicationSerializerWithRelations
+
+    @action(detail=True, methods=["post"], url_path="advance-workflow")
+    def advance_workflow(self, request, pk=None):
+        """Complete current workflow and create next step."""
+        try:
+            application = self.get_object()
+        except DocApplication.DoesNotExist:
+            return self.error_response("Application not found", status.HTTP_404_NOT_FOUND)
+
+        # If product requires documents but none exist at all -> incomplete
+        if application.product and (application.product.required_documents or "").strip():
+            if not application.documents.filter(required=True).exists():
+                return self.error_response("Document collection is not completed", status.HTTP_400_BAD_REQUEST)
+
+        current_workflow = application.current_workflow
+        if not current_workflow:
+            return self.error_response("No current workflow found", status.HTTP_400_BAD_REQUEST)
+
+        # Complete current workflow
+        current_workflow.status = current_workflow.STATUS_COMPLETED
+        current_workflow.updated_by = request.user
+        current_workflow.save()
+
+        # Create next workflow if exists
+        next_task = application.next_task
+        if next_task:
+            from customer_applications.models.doc_workflow import DocWorkflow
+
+            step = DocWorkflow(
+                start_date=timezone.now().date(),
+                task=next_task,
+                doc_application=application,
+                created_by=request.user,
+                status=DocWorkflow.STATUS_PENDING,
+            )
+            step.due_date = step.calculate_workflow_due_date()
+            step.save()
+
+        # Refresh application status
+        application.save()
+
+        return Response({"success": True})
 
 
 class DocumentViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = DocumentSerializer
     parser_classes = [MultiPartParser, FormParser, JSONParser]
-    http_method_names = ["get", "patch", "put"]
+    http_method_names = ["get", "patch", "put", "post"]
 
     def get_queryset(self):
-        return Document.objects.select_related("doc_application", "doc_type")
+        return Document.objects.select_related("doc_application", "doc_type", "updated_by", "created_by")
 
     def perform_update(self, serializer):
         serializer.save(updated_by=self.request.user)
+
+    @action(detail=True, methods=["post"], url_path=r"actions/(?P<action_name>[^/.]+)")
+    def execute_action(self, request, pk=None, action_name=None):
+        """Execute a document type hook action.
+
+        Args:
+            pk: The document ID.
+            action_name: The name of the action to execute.
+
+        Returns:
+            JSON response with success status and message or error.
+        """
+        from customer_applications.hooks.registry import hook_registry
+
+        document = self.get_object()
+
+        if not document.doc_type:
+            return self.error_response("Document has no type", status.HTTP_400_BAD_REQUEST)
+
+        hook = hook_registry.get_hook(document.doc_type.name)
+        if not hook:
+            return self.error_response(
+                "No hook registered for this document type",
+                status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Verify the action exists for this hook
+        available_actions = [action.name for action in hook.get_extra_actions()]
+        if action_name not in available_actions:
+            return self.error_response(
+                f"Unknown action: {action_name}",
+                status.HTTP_400_BAD_REQUEST,
+            )
+
+        result = hook.execute_action(action_name, document, request)
+
+        if result.get("success"):
+            # Return updated document data
+            document.refresh_from_db()
+            serializer = self.get_serializer(document)
+            return Response(
+                {
+                    "success": True,
+                    "message": result.get("message", "Action completed successfully"),
+                    "document": serializer.data,
+                }
+            )
+        else:
+            return self.error_response(
+                result.get("error", "Action failed"),
+                status.HTTP_400_BAD_REQUEST,
+            )
+
+    @action(detail=True, methods=["get"], url_path="download")
+    def download_file(self, request, pk=None):
+        """Download the document file with authentication."""
+        document = self.get_object()
+        if not document.file:
+            return self.error_response("Document has no file", status.HTTP_404_NOT_FOUND)
+
+        try:
+            file_handle = default_storage.open(document.file.name, "rb")
+        except Exception:
+            return self.error_response("File not found", status.HTTP_404_NOT_FOUND)
+
+        content_type, _ = mimetypes.guess_type(document.file.name)
+        response = FileResponse(file_handle, content_type=content_type or "application/octet-stream")
+        response["Content-Disposition"] = f'inline; filename="{os.path.basename(document.file.name)}"'
+        return response
+
+    @action(detail=True, methods=["get"], url_path="print")
+    def get_print_data(self, request, pk=None):
+        """Get document data for print view.
+
+        Returns the document with nested doc_application data including customer info.
+        """
+        from api.serializers.customer_serializer import CustomerSerializer
+        from api.serializers.product_serializer import ProductSerializer
+
+        document = self.get_object()
+        doc_application = document.doc_application
+
+        data = {
+            "id": document.id,
+            "docType": {
+                "name": document.doc_type.name if document.doc_type else "",
+                "hasOcrCheck": document.doc_type.has_ocr_check if document.doc_type else False,
+            },
+            "docApplication": {
+                "id": doc_application.id if doc_application else None,
+                "customer": (
+                    CustomerSerializer(doc_application.customer).data
+                    if doc_application and doc_application.customer
+                    else None
+                ),
+                "product": (
+                    ProductSerializer(doc_application.product).data
+                    if doc_application and doc_application.product
+                    else None
+                ),
+            },
+            "docNumber": document.doc_number,
+            "expirationDate": str(document.expiration_date) if document.expiration_date else None,
+            "details": document.details,
+            "fileLink": document.file_link,
+            "ocrCheck": document.ocr_check,
+            "completed": document.completed,
+        }
+        return Response(data)
 
 
 class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
@@ -594,7 +773,8 @@ def exec_cron_jobs(request):
 
 
 @api_view(["POST"])
-@authentication_classes([SessionAuthentication])
+@csrf_exempt
+@authentication_classes([BearerAuthentication, SessionAuthentication])
 @permission_classes([IsAuthenticated])
 @throttle_classes([ScopedRateThrottle])
 def customer_quick_create(request):
@@ -641,7 +821,8 @@ def customer_quick_create(request):
 
 
 @api_view(["POST"])
-@authentication_classes([SessionAuthentication])
+@csrf_exempt
+@authentication_classes([BearerAuthentication, SessionAuthentication])
 @permission_classes([IsAuthenticated])
 @throttle_classes([ScopedRateThrottle])
 def customer_application_quick_create(request):
@@ -705,7 +886,8 @@ def customer_application_quick_create(request):
 
 
 @api_view(["POST"])
-@authentication_classes([SessionAuthentication])
+@csrf_exempt
+@authentication_classes([BearerAuthentication, SessionAuthentication])
 @permission_classes([IsAuthenticated])
 @throttle_classes([ScopedRateThrottle])
 def product_quick_create(request):

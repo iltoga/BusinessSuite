@@ -180,12 +180,18 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
                 task_id = task_data.pop("id", None)
                 if task_id and task_id in existing_tasks:
                     task = existing_tasks[task_id]
+                    # If incoming task sets last_step to True, clear last_step on other tasks first
+                    if task_data.get("last_step"):
+                        Task.objects.filter(product=instance).exclude(id=task_id).update(last_step=False)
                     for attr, value in task_data.items():
                         setattr(task, attr, value)
                     task.full_clean()
                     task.save()
                     updated_ids.add(task_id)
                 else:
+                    # If creating a new last_step, clear other last steps first
+                    if task_data.get("last_step"):
+                        Task.objects.filter(product=instance).update(last_step=False)
                     task = Task(product=instance, **task_data)
                     task.full_clean()
                     task.save()

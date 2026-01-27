@@ -91,7 +91,7 @@
       {{ row.active ? 'Disable' : 'Enable' }}
     </z-button>
     <z-button zType="destructive" zSize="sm" (click)="onDelete(row)">Delete</z-button>
-    <a [href]="newApplicationUrl(row.id)">
+    <a [routerLink]="['/customers', row.id, 'applications', 'new']">
       <z-button zType="success" zSize="sm">New Application</z-button>
     </a>
   </div>

@@ -25,8 +25,11 @@ model/blank-enum.ts
 model/country-code.ts
 model/customer-type-enum.ts
 model/customer.ts
+model/doc-application-create-update.ts
 model/doc-application-detail.ts
+model/doc-application-serializer-with-relations.ts
 model/doc-workflow.ts
+model/document-action.ts
 model/document-type.ts
 model/document.ts
 model/gender-enum.ts
@@ -34,7 +37,7 @@ model/models.ts
 model/notify-by-enum.ts
 model/null-enum.ts
 model/paginated-customer-list.ts
-model/paginated-doc-application-detail-list.ts
+model/paginated-doc-application-serializer-with-relations-list.ts
 model/paginated-product-list.ts
 model/product-create-update.ts
 model/product-detail.ts

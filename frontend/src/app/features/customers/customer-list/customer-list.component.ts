@@ -174,10 +174,6 @@ export class CustomerListComponent implements OnInit {
     });
   }
 
-  newApplicationUrl(id: number): string {
-    return `/customer-applications/create_from_customer/${id}`;
-  }
-
   private loadCustomers(): void {
     if (!isPlatformBrowser(this.platformId)) {
       return;

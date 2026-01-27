@@ -179,14 +179,14 @@
         </div>
         <div class="space-y-2">
           <label class="text-sm font-medium">Nationality</label>
-          <select z-input formControlName="nationality" class="w-full">
-            <option value="">---------</option>
-            @for (country of countries(); track country.alpha3Code) {
-              <option [value]="country.alpha3Code">
-                {{ country.country }} ({{ country.alpha3Code }})
-              </option>
-            }
-          </select>
+          <z-combobox
+            formControlName="nationality"
+            [options]="nationalityOptions()"
+            [searchable]="true"
+            placeholder="Nationality"
+            searchPlaceholder="Search country..."
+            [zWidth]="'full'"
+          />
         </div>
         <div class="space-y-2">
           <label class="text-sm font-medium">Passport Issue Date</label>

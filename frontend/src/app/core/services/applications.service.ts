@@ -1,14 +1,11 @@
-import {
-  HttpClient,
-  HttpEvent,
-  HttpEventType,
-  HttpHeaders,
-  HttpRequest,
-} from '@angular/common/http';
+import { HttpClient, HttpEvent, HttpEventType, HttpHeaders } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 
+import { CustomerApplicationsService } from '@/core/api/api/customer-applications.service';
 import { AuthService } from '@/core/services/auth.service';
+import { DocumentsService } from '@/core/services/documents.service';
+import { OcrService } from '@/core/services/ocr.service';
 
 export interface ApplicationCustomer {
   id: number;
@@ -38,6 +35,13 @@ export interface DocumentTypeInfo {
   hasFile: boolean;
 }
 
+export interface DocumentAction {
+  name: string;
+  label: string;
+  icon: string;
+  cssClass: string;
+}
+
 export interface ApplicationDocument {
   id: number;
   docType: DocumentTypeInfo;
@@ -51,6 +55,9 @@ export interface ApplicationDocument {
   ocrCheck: boolean;
   updatedAt?: string | null;
   createdAt?: string | null;
+  updatedByUsername?: string | null;
+  createdByUsername?: string | null;
+  extraActions?: DocumentAction[];
 }
 
 export interface ApplicationWorkflow {
@@ -114,11 +121,14 @@ export type UploadState =
 export class ApplicationsService {
   private http = inject(HttpClient);
   private authService = inject(AuthService);
+  private customerApplicationsService = inject(CustomerApplicationsService);
+  private documentsService = inject(DocumentsService);
+  private ocrService = inject(OcrService);
+
   private apiUrl = '/api/customer-applications/';
 
-  getApplication(applicationId: number): Observable<ApplicationDetail> {
-    const headers = this.buildHeaders();
-    return this.http.get<ApplicationDetail>(`${this.apiUrl}${applicationId}/`, { headers });
+  getApplication(applicationId: number): Observable<any> {
+    return this.customerApplicationsService.customerApplicationsRetrieve(applicationId, 'body');
   }
 
   updateDocument(
@@ -131,61 +141,46 @@ export class ApplicationsService {
     },
     file?: File | null,
   ): Observable<UploadState> {
-    const headers = this.buildHeaders();
-    const formData = new FormData();
-
-    if (payload.docNumber) {
-      formData.append('doc_number', payload.docNumber);
-    }
-    if (payload.expirationDate) {
-      formData.append('expiration_date', payload.expirationDate);
-    }
-    if (payload.details) {
-      formData.append('details', payload.details);
-    }
-    if (payload.metadata) {
-      formData.append('metadata', JSON.stringify(payload.metadata));
-    }
-    if (file) {
-      formData.append('file', file);
-    }
-
-    const request = new HttpRequest('PATCH', `/api/documents/${documentId}/`, formData, {
-      headers,
-      reportProgress: true,
-    });
-
-    return this.http.request<ApplicationDocument>(request).pipe(
-      map((event: HttpEvent<ApplicationDocument>) => {
-        if (event.type === HttpEventType.UploadProgress) {
-          const progress = event.total ? Math.round((event.loaded / event.total) * 100) : 0;
-          return { state: 'progress', progress };
-        }
-        if (event.type === HttpEventType.Response) {
-          return { state: 'done', progress: 100, document: event.body as ApplicationDocument };
-        }
-        return { state: 'progress', progress: 0 };
-      }),
-    );
+    // Use DocumentsService wrapper that supports multipart uploads with progress
+    return this.documentsService
+      .documentsPartialUpdateWithProgress(documentId, {
+        docNumber: payload.docNumber ?? undefined,
+        expirationDate: payload.expirationDate ?? undefined,
+        details: payload.details ?? undefined,
+        metadata: payload.metadata ?? undefined,
+        file: file ?? undefined,
+      })
+      .pipe(
+        map((event: HttpEvent<ApplicationDocument>) => {
+          if (event.type === HttpEventType.UploadProgress) {
+            const progress = event.total ? Math.round((event.loaded / event.total) * 100) : 0;
+            return { state: 'progress', progress };
+          }
+          if (event.type === HttpEventType.Response) {
+            return { state: 'done', progress: 100, document: event.body as ApplicationDocument };
+          }
+          return { state: 'progress', progress: 0 };
+        }),
+      );
   }
 
-  startOcrCheck(file: File, docType: string): Observable<OcrQueuedResponse> {
-    const headers = this.buildHeaders();
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('doc_type', docType);
-    formData.append('use_ai', 'true');
-    formData.append('img_preview', 'true');
-    formData.append('resize', 'true');
-    formData.append('width', '900');
-
-    return this.http.post<OcrQueuedResponse>('/api/ocr/check/', formData, { headers });
+  startOcrCheck(file: File, docType: string): Observable<any> {
+    // Delegate to OcrService which handles headers and form-data building
+    return this.ocrService.startPassportOcr(file, { useAi: true, previewWidth: 900 });
   }
 
   getOcrStatus(statusUrl: string): Observable<OcrStatusResponse> {
-    const headers = this.buildHeaders();
-    const normalizedUrl = statusUrl.replace(/^https?:\/\/[^/]+/, '');
-    return this.http.get<OcrStatusResponse>(normalizedUrl, { headers });
+    return this.ocrService.getOcrStatus(statusUrl);
+  }
+
+  executeDocumentAction(
+    documentId: number,
+    actionName: string,
+  ): Observable<{ success: boolean; message?: string; document?: ApplicationDocument }> {
+    return this.http.post<{ success: boolean; message?: string; document?: ApplicationDocument }>(
+      `/api/documents/${documentId}/actions/${actionName}/`,
+      {},
+    );
   }
 
   private buildHeaders(): HttpHeaders | undefined {

@@ -8,6 +8,8 @@
 
 ## Component Index
 
+> **UI note:** Prefer using `z-combobox` (searchable combobox) for long/static lists where typeahead improves UX (e.g., country, customer, product selections). Use the standard select only for short, non-searchable lists. This helps provide consistent keyboard navigation, search filtering, and accessibility across forms.
+
 | Component Name      | Selector                  | Location                                        | ZardUI Deps    | Status   |
 | ------------------- | ------------------------- | ----------------------------------------------- | -------------- | -------- |
 | DataTable           | app-data-table            | src/app/shared/components/data-table            | Table          | ✅ Ready |
@@ -16,6 +18,7 @@
 | Pagination          | app-pagination-controls   | src/app/shared/components/pagination-controls   | Button, Icon   | ✅ Ready |
 | ExpiryBadge         | app-expiry-badge          | src/app/shared/components/expiry-badge          | Badge          | ✅ Ready |
 | FileUpload          | app-file-upload           | src/app/shared/components/file-upload           | Button         | ✅ Ready |
+| DocumentPreview     | app-document-preview      | src/app/shared/components/document-preview      | Popover, Icon  | ✅ Ready |
 | SortableMultiSelect | app-sortable-multi-select | src/app/shared/components/sortable-multi-select | DragDrop       | ✅ Ready |
 
 ## Component Details
@@ -157,6 +160,27 @@ export class FileUploadComponent {
 }
 ````
 
+### DocumentPreviewComponent
+
+**Location:** `src/app/shared/components/document-preview/document-preview.component.ts`
+
+**Interface:**
+
+```typescript
+@Component({
+  selector: "app-document-preview",
+  standalone: true,
+})
+export class DocumentPreviewComponent {
+  documentId = input.required<number>();
+  fileLink = input<string | null>(null);
+  label = input<string>("Preview");
+  zType = input<ZardButtonTypeVariants>("outline");
+  zSize = input<ZardButtonSizeVariants>("sm");
+  viewFull = output<void>();
+}
+```
+
 ### SortableMultiSelectComponent
 
 **Location:** `src/app/shared/components/sortable-multi-select/sortable-multi-select.component.ts`
@@ -174,8 +198,4 @@ export class SortableMultiSelectComponent {
   label = input<string>("");
   selectedIdsChange = output<number[]>();
 }
-```
-
-```
-
 ```

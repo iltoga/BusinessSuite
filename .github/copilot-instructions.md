@@ -287,7 +287,7 @@ BusinessSuite is migrating from Django Templates to a decoupled Angular 19 SPA f
 
 Located in `copilot/specs/django-angular/`:
 
-#### 📐 [Design Specification](./copilot/specs/django-angular/design.md)
+#### 📐 [Design Specification](copilot/specs/django-angular/design.md)
 
 **Use when:** Planning architecture, understanding data flow, choosing implementation patterns.
 
@@ -298,7 +298,7 @@ Located in `copilot/specs/django-angular/`:
 - Section 7: Anti-Patterns (what NOT to do) — **READ THIS FIRST**
 - Section 8: Migration Strategy (Strangler Fig pattern)
 
-#### 📋 [Requirements Specification](./copilot/specs/django-angular/requirements.md)
+#### 📋 [Requirements Specification](copilot/specs/django-angular/requirements.md)
 
 **Use when:** Implementing features, validating acceptance criteria, handling errors.
 
@@ -309,7 +309,7 @@ Located in `copilot/specs/django-angular/`:
 - Section 3.1: Service Layer requirements (keep logic in backend)
 - Section 5: Error Handling Standards (global error handler utility)
 
-#### ✅ [Implementation Tasks](./copilot/specs/django-angular/tasks.md)
+#### ✅ [Implementation Tasks](copilot/specs/django-angular/tasks.md)
 
 **Use when:** Starting a new feature, setting up tooling, tracking progress.
 
@@ -320,7 +320,7 @@ Located in `copilot/specs/django-angular/`:
 - Phase 1: Core architecture (Auth, API generation, shared components)
 - Vertical slices: Complete feature implementation examples
 
-#### 📦 [API Contract Examples](./copilot/specs/django-angular/api-contract-examples.md)
+#### 📦 [API Contract Examples](copilot/specs/django-angular/api-contract-examples.md)
 
 **Use when:** Implementing API endpoints, generating TypeScript types, understanding request/response formats.
 
@@ -335,23 +335,23 @@ Located in `copilot/specs/django-angular/`:
 
 **Before starting ANY Angular feature:**
 
-1. Copy Pre-Task Checklist from [tasks.md](./copilot/specs/django-angular/tasks.md)
-2. Review anti-patterns in [design.md](./copilot/specs/django-angular/design.md) Section 7
-3. Check [api-contract-examples.md](./copilot/specs/django-angular/api-contract-examples.md) for endpoint schema
-4. Search `docs/shared_components.md` for reusable components
+1. Copy Pre-Task Checklist from [tasks.md](copilot/specs/django-angular/tasks.md)
+2. Review anti-patterns in [design.md](copilot/specs/django-angular/design.md) Section 7
+3. Check [api-contract-examples.md](copilot/specs/django-angular/api-contract-examples.md) for endpoint schema
+4. Search [docs/shared_components.md](/docs/shared_components.md) for reusable components
 
 **During implementation:**
 
-1. Follow state management patterns from [design.md](./copilot/specs/django-angular/design.md) Section 6.2
-2. Use error handling utility from [requirements.md](./copilot/specs/django-angular/requirements.md) Section 5
+1. Follow state management patterns from [design.md](copilot/specs/django-angular/design.md) Section 6.2
+2. Use error handling utility from [requirements.md](copilot/specs/django-angular/requirements.md) Section 5
 3. Use generated API clients — NEVER manual TypeScript interfaces
 4. All components must use `ChangeDetectionStrategy.OnPush`
 
 **After completing a feature:**
 
-1. Update `docs/shared_components.md` if reusable components created
-2. Update `docs/implementation_feedback.md` with lessons learned
-3. Run Post-Task Checklist from [tasks.md](./copilot/specs/django-angular/tasks.md)
+1. Update [docs/shared_components.md](/docs/shared_components.md) if reusable components created
+2. Update [docs/implementation_feedback.md](docs/implementation_feedback.md) with lessons learned
+3. Run Post-Task Checklist from [tasks.md](copilot/specs/django-angular/tasks.md)
 4. **Automatic cleanup:** Remove unused code, imports, debug statements
 5. Verify tests pass (minimum 80% coverage)
 
@@ -386,7 +386,7 @@ Located in `copilot/specs/django-angular/`:
 - [ ] Phase 8: Invoices & Payments
 - [ ] Phase 9: Integration & Cutover
 
-**Current focus:** Customer Applications List & CRUD (see [tasks.md](./copilot/specs/django-angular/tasks.md) Phase 6)
+**Current focus:** Customer Applications List & CRUD (see [tasks.md](copilot/specs/django-angular/tasks.md) Phase 6)
 
 ---
 
@@ -394,11 +394,11 @@ Located in `copilot/specs/django-angular/`:
 
 ### Theme Customization
 
-See [THEME_GUIDE.md](./copilot/specs/django-angular/THEME_GUIDE.md) for maintaining and customizing the Angular frontend theme.
+See [THEME_GUIDE.md](copilot/specs/django-angular/THEME_GUIDE.md) for maintaining and customizing the Angular frontend theme.
 
 ### ZardUI Component Library
 
-See [zardui.md](./copilot/specs/django-angular/zardui.md) for documentation on the ZardUI component library and links to component-specific docs.
+See [zardui.md](copilot/specs/django-angular/zardui.md) for documentation on the ZardUI component library and links to component-specific docs.
 
 ---
 
@@ -447,6 +447,6 @@ This is a Django + Angular ERP/CRM for visa processing agencies. Key priorities:
 4. **Angular Migration:** Use specifications in `copilot/specs/django-angular/`, follow anti-patterns guide
 5. **Generated Clients:** Use OpenAPI → TypeScript generation, never manual interfaces
 6. **Automatic Cleanup:** Remove unused/stale code after every task without asking
-7. **Documentation:** Update `docs/shared_components.md` and `docs/implementation_feedback.md`
+7. **Documentation:** Update [/docs/shared_components.md](/docs/shared_components.md) and [/docs/implementation_feedback.md](/docs/implementation_feedback.md)
 
 When in doubt, check the migration specs in `copilot/specs/django-angular/` — they contain complete working examples for every pattern.

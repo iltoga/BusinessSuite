@@ -120,6 +120,12 @@ paths:
     get:
       operationId: customerApplicationsList
       parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
       - name: page
         required: false
         in: query
@@ -132,6 +138,12 @@ paths:
         description: Number of results to return per page.
         schema:
           type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
       tags:
       - customer-applications
       security:
@@ -142,7 +154,36 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedDocApplicationDetailList'
+                $ref: '#/components/schemas/PaginatedDocApplicationSerializerWithRelationsList'
+          description: ''
+    post:
+      operationId: customerApplicationsCreate
+      tags:
+      - customer-applications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+        required: true
+      security:
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocApplicationCreateUpdate'
           description: ''
   /api/customer-applications/{id}/:
     get:
@@ -165,6 +206,133 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DocApplicationDetail'
+          description: ''
+    put:
+      operationId: customerApplicationsUpdate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this doc application.
+        required: true
+      tags:
+      - customer-applications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+        required: true
+      security:
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocApplicationCreateUpdate'
+          description: ''
+    patch:
+      operationId: customerApplicationsPartialUpdate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this doc application.
+        required: true
+      tags:
+      - customer-applications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+        required: true
+      security:
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocApplicationCreateUpdate'
+          description: ''
+    delete:
+      operationId: customerApplicationsDestroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this doc application.
+        required: true
+      tags:
+      - customer-applications
+      security:
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/customer-applications/{id}/advance-workflow/:
+    post:
+      operationId: customerApplicationsAdvanceWorkflowCreate
+      description: Complete current workflow and create next step.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this doc application.
+        required: true
+      tags:
+      - customer-applications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+        required: true
+      security:
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
           description: ''
   /api/customer-applications/quick-create/:
     post:
@@ -471,6 +639,58 @@ paths:
       responses:
         '200':
           description: No response body
+  /api/document-types/:
+    get:
+      operationId: documentTypesList
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - document-types
+      security:
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DocumentType'
+          description: ''
+  /api/document-types/{id}/:
+    get:
+      operationId: documentTypesRetrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this document type.
+        required: true
+      tags:
+      - document-types
+      security:
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentType'
+          description: ''
   /api/documents/:
     get:
       operationId: documentsList
@@ -487,6 +707,31 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Document'
+          description: ''
+    post:
+      operationId: documentsCreate
+      tags:
+      - documents
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Document'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Document'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Document'
+      security:
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
           description: ''
   /api/documents/{id}/:
     get:
@@ -564,6 +809,79 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Document'
+      security:
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+          description: ''
+  /api/documents/{id}/actions/{actionName}/:
+    post:
+      operationId: documentsActionsCreate
+      description: |-
+        Execute a document type hook action.
+
+        Args:
+            pk: The document ID.
+            action_name: The name of the action to execute.
+
+        Returns:
+            JSON response with success status and message or error.
+      parameters:
+      - in: path
+        name: actionName
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this document.
+        required: true
+      tags:
+      - documents
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Document'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Document'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Document'
+      security:
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+          description: ''
+  /api/documents/{id}/print/:
+    get:
+      operationId: documentsPrintRetrieve
+      description: |-
+        Get document data for print view.
+
+        Returns the document with nested doc_application data including customer info.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this document.
+        required: true
+      tags:
+      - documents
       security:
       - tokenAuth: []
       - cookieAuth: []
@@ -711,9 +1029,149 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedProductList'
           description: ''
+    post:
+      operationId: productsCreate
+      tags:
+      - products
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductCreateUpdate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProductCreateUpdate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProductCreateUpdate'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/ProductCreateUpdate'
+        required: true
+      security:
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductCreateUpdate'
+          description: ''
   /api/products/{id}/:
     get:
       operationId: productsRetrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this product.
+        required: true
+      tags:
+      - products
+      security:
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductDetail'
+          description: ''
+    put:
+      operationId: productsUpdate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this product.
+        required: true
+      tags:
+      - products
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductCreateUpdate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProductCreateUpdate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProductCreateUpdate'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/ProductCreateUpdate'
+        required: true
+      security:
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductCreateUpdate'
+          description: ''
+    patch:
+      operationId: productsPartialUpdate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this product.
+        required: true
+      tags:
+      - products
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductCreateUpdate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProductCreateUpdate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProductCreateUpdate'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/ProductCreateUpdate'
+        required: true
+      security:
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductCreateUpdate'
+          description: ''
+    delete:
+      operationId: productsDestroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this product.
+        required: true
+      tags:
+      - products
+      security:
+      - tokenAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/products/{id}/can-delete/:
+    get:
+      operationId: productsCanDeleteRetrieve
       parameters:
       - in: path
         name: id
@@ -937,6 +1395,8 @@ components:
           type: string
           format: uri
           nullable: true
+        passport_metadata:
+          nullable: true
         passport_expired:
           type: string
           readOnly: true
@@ -999,6 +1459,33 @@ components:
       description: |-
         * `person` - Person
         * `company` - Company
+    DocApplicationCreateUpdate:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        customer:
+          type: integer
+        product:
+          type: integer
+        doc_date:
+          type: string
+          format: date
+        notes:
+          type: string
+          nullable: true
+        document_types:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          writeOnly: true
+      required:
+      - customer
+      - doc_date
+      - id
+      - product
     DocApplicationDetail:
       type: object
       properties:
@@ -1046,7 +1533,9 @@ components:
           readOnly: true
           nullable: true
         documents:
-          type: string
+          type: array
+          items:
+            $ref: '#/components/schemas/Document'
           readOnly: true
         workflows:
           type: array
@@ -1071,6 +1560,65 @@ components:
       - updated_at
       - updated_by
       - workflows
+    DocApplicationSerializerWithRelations:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        customer:
+          type: integer
+        product:
+          type: integer
+        doc_date:
+          type: string
+          format: date
+        due_date:
+          type: string
+          format: date
+          nullable: true
+        status:
+          $ref: '#/components/schemas/StatusEnum'
+        notes:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+        updated_by:
+          type: integer
+          nullable: true
+        has_invoice:
+          type: boolean
+          description: Check if the application has an invoice.
+          readOnly: true
+        invoice_id:
+          type: integer
+          nullable: true
+          description: Get the invoice ID if it exists.
+          readOnly: true
+        ready_for_invoice:
+          type: boolean
+          description: Check if all required documents are completed.
+          readOnly: true
+      required:
+      - created_at
+      - created_by
+      - customer
+      - doc_date
+      - has_invoice
+      - id
+      - invoice_id
+      - product
+      - ready_for_invoice
+      - updated_at
     DocWorkflow:
       type: object
       properties:
@@ -1184,17 +1732,52 @@ components:
           type: integer
           readOnly: true
           nullable: true
+        updated_by_username:
+          type: string
+          nullable: true
+          description: Return the username of the user who last updated the document.
+          readOnly: true
+        created_by_username:
+          type: string
+          nullable: true
+          description: Return the username of the user who created the document.
+          readOnly: true
+        extra_actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentAction'
+          readOnly: true
       required:
       - completed
       - created_at
       - created_by
+      - created_by_username
       - doc_application
       - doc_type
+      - extra_actions
       - file_link
       - id
       - ocr_check
       - updated_at
       - updated_by
+      - updated_by_username
+    DocumentAction:
+      type: object
+      description: Serializer for document hook actions.
+      properties:
+        name:
+          type: string
+        label:
+          type: string
+        icon:
+          type: string
+        css_class:
+          type: string
+      required:
+      - css_class
+      - icon
+      - label
+      - name
     DocumentType:
       type: object
       properties:
@@ -1272,7 +1855,7 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Customer'
-    PaginatedDocApplicationDetailList:
+    PaginatedDocApplicationSerializerWithRelationsList:
       type: object
       required:
       - count
@@ -1294,7 +1877,7 @@ components:
         results:
           type: array
           items:
-            $ref: '#/components/schemas/DocApplicationDetail'
+            $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
     PaginatedProductList:
       type: object
       required:
@@ -1363,6 +1946,122 @@ components:
       - code
       - id
       - name
+    ProductCreateUpdate:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        code:
+          type: string
+          maxLength: 20
+        description:
+          type: string
+        immigration_id:
+          type: string
+          format: uuid
+          nullable: true
+        base_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+        product_type:
+          $ref: '#/components/schemas/ProductTypeEnum'
+        validity:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        documents_min_validity:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        tasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskNested'
+        required_document_ids:
+          type: array
+          items:
+            type: integer
+          writeOnly: true
+        optional_document_ids:
+          type: array
+          items:
+            type: integer
+          writeOnly: true
+      required:
+      - code
+      - id
+      - name
+    ProductDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        code:
+          type: string
+          maxLength: 20
+        description:
+          type: string
+        immigration_id:
+          type: string
+          format: uuid
+          nullable: true
+        base_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+        product_type:
+          $ref: '#/components/schemas/ProductTypeEnum'
+        validity:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        required_documents:
+          type: string
+          maxLength: 1024
+        optional_documents:
+          type: string
+          maxLength: 1024
+        documents_min_validity:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        tasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskNested'
+          readOnly: true
+        required_document_types:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentType'
+          readOnly: true
+        optional_document_types:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentType'
+          readOnly: true
+      required:
+      - code
+      - id
+      - name
+      - optional_document_types
+      - required_document_types
+      - tasks
     ProductTypeEnum:
       enum:
       - visa
@@ -1410,6 +2109,40 @@ components:
           type: boolean
       required:
       - id
+      - name
+      - step
+    TaskNested:
+      type: object
+      properties:
+        id:
+          type: integer
+        step:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          nullable: true
+        cost:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        duration:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        duration_is_business_days:
+          type: boolean
+        notify_days_before:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        last_step:
+          type: boolean
+      required:
       - name
       - step
     TitleEnum:

@@ -4,6 +4,7 @@ import {
   Component,
   DestroyRef,
   OnInit,
+  computed,
   inject,
   signal,
 } from '@angular/core';
@@ -19,6 +20,7 @@ import { OcrService, type OcrStatusResponse } from '@/core/services/ocr.service'
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
+import { ZardComboboxComponent, type ZardComboboxOption } from '@/shared/components/combobox';
 import { ZardDateInputComponent } from '@/shared/components/date-input';
 import { FileUploadComponent } from '@/shared/components/file-upload';
 import { ZardInputDirective } from '@/shared/components/input';
@@ -31,6 +33,7 @@ import { ZardInputDirective } from '@/shared/components/input';
     RouterLink,
     ReactiveFormsModule,
     ZardInputDirective,
+    ZardComboboxComponent,
     ZardButtonComponent,
     ZardCardComponent,
     ZardDateInputComponent,
@@ -129,6 +132,16 @@ export class CustomerFormComponent implements OnInit {
     { value: 'Telegram', label: 'Telegram' },
     { value: 'Telephone', label: 'Telephone' },
   ];
+
+  // Nationality options (for z-combobox)
+  readonly nationalityOptions = computed<ZardComboboxOption[]>(() => {
+    const list = this.countries() ?? [];
+    const opts: ZardComboboxOption[] = [{ value: '', label: '---------' }];
+    for (const c of list) {
+      opts.push({ value: c.alpha3Code, label: `${c.country} (${c.alpha3Code})` });
+    }
+    return opts;
+  });
 
   ngOnInit(): void {
     // Load countries for the nationality dropdown

@@ -83,7 +83,7 @@
 
       **Usage Example:**
 
-      ```typescript
+      ````typescript
       // In customer-list.component.ts
       columns = [
         { key: 'name', header: 'Customer Name', sortable: true },
@@ -95,14 +95,7 @@
         [columns]="columns"
         (pageChange)="onPageChange($event)"
       />
-      ```
 
-      ```
-
-      ```
-
-  - [x] 0.1.2 Create `docs/implementation_feedback.md`.
-    - Structure:
 
       ```markdown
       # Implementation Feedback Log
@@ -126,7 +119,7 @@
       ## Wins & Lessons Learned
 
       - OpenAPI generation works perfectly, saving ~4 hours per module
-      ```
+      ````
 
     - _Action:_ Commit these files to the repository root immediately.
 
@@ -1156,7 +1149,7 @@
 
 ### 6.1 Backend API Preparation
 
-- [ ] **6.1.1** Extend `CustomerApplicationViewSet` for full CRUD:
+- [x] **6.1.1** Extend `CustomerApplicationViewSet` for full CRUD:
 
   ```python
   class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
@@ -1179,6 +1172,10 @@
           # Logic from has_next_task / next_task properties
           ...
   ```
+
+- [x] **6.1.2** Create `DocApplicationCreateUpdateSerializer`: (implemented)
+
+- [ ] **6.1.3** Run `bun run generate:api`
 
 - [ ] **6.1.2** Create `DocApplicationCreateUpdateSerializer`:
 

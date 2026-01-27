@@ -19,6 +19,8 @@ import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 // @ts-ignore
 import { Document } from '../model/document';
 // @ts-ignore
+import { DocumentAction } from '../model/document-action';
+// @ts-ignore
 import { DocumentType } from '../model/document-type';
 
 // @ts-ignore
@@ -38,63 +40,9 @@ export class DocumentsService extends BaseService {
     }
 
     /**
-     * @endpoint get /api/documents/
-     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
-     * @param reportProgress flag to report request and response progress.
-     * @param options additional options
-     */
-    public documentsList(observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<Array<Document>>;
-    public documentsList(observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<Array<Document>>>;
-    public documentsList(observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<Array<Document>>>;
-    public documentsList(observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
-
-        let localVarHeaders = this.defaultHeaders;
-
-        // authentication (cookieAuth) required
-
-        // authentication (tokenAuth) required
-        localVarHeaders = this.configuration.addCredentialToHeaders('tokenAuth', 'Authorization', localVarHeaders, 'Bearer ');
-
-        const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
-            'application/json'
-        ]);
-        if (localVarHttpHeaderAcceptSelected !== undefined) {
-            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
-        }
-
-        const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
-
-        const localVarTransferCache: boolean = options?.transferCache ?? true;
-
-
-        let responseType_: 'text' | 'json' | 'blob' = 'json';
-        if (localVarHttpHeaderAcceptSelected) {
-            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
-                responseType_ = 'text';
-            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
-                responseType_ = 'json';
-            } else {
-                responseType_ = 'blob';
-            }
-        }
-
-        let localVarPath = `/api/documents/`;
-        const { basePath, withCredentials } = this.configuration;
-        return this.httpClient.request<Array<Document>>('get', `${basePath}${localVarPath}`,
-            {
-                context: localVarHttpContext,
-                responseType: <any>responseType_,
-                ...(withCredentials ? { withCredentials } : {}),
-                headers: localVarHeaders,
-                observe: observe,
-                ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
-                reportProgress: reportProgress
-            }
-        );
-    }
-
-    /**
-     * @endpoint patch /api/documents/{id}/
+     * Execute a document type hook action.  Args:     pk: The document ID.     action_name: The name of the action to execute.  Returns:     JSON response with success status and message or error.
+     * @endpoint post /api/documents/{id}/actions/{actionName}/
+     * @param actionName 
      * @param id A unique integer value identifying this document.
      * @param id2 
      * @param docApplication 
@@ -106,6 +54,9 @@ export class DocumentsService extends BaseService {
      * @param updatedAt 
      * @param createdBy 
      * @param updatedBy 
+     * @param updatedByUsername Return the username of the user who last updated the document.
+     * @param createdByUsername Return the username of the user who created the document.
+     * @param extraActions 
      * @param docTypeId 
      * @param docNumber 
      * @param expirationDate 
@@ -117,42 +68,54 @@ export class DocumentsService extends BaseService {
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public documentsPartialUpdate(id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<Document>;
-    public documentsPartialUpdate(id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<Document>>;
-    public documentsPartialUpdate(id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<Document>>;
-    public documentsPartialUpdate(id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+    public documentsActionsCreate(actionName: string, id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<Document>;
+    public documentsActionsCreate(actionName: string, id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<Document>>;
+    public documentsActionsCreate(actionName: string, id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<Document>>;
+    public documentsActionsCreate(actionName: string, id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+        if (actionName === null || actionName === undefined) {
+            throw new Error('Required parameter actionName was null or undefined when calling documentsActionsCreate.');
+        }
         if (id === null || id === undefined) {
-            throw new Error('Required parameter id was null or undefined when calling documentsPartialUpdate.');
+            throw new Error('Required parameter id was null or undefined when calling documentsActionsCreate.');
         }
         if (id2 === null || id2 === undefined) {
-            throw new Error('Required parameter id2 was null or undefined when calling documentsPartialUpdate.');
+            throw new Error('Required parameter id2 was null or undefined when calling documentsActionsCreate.');
         }
         if (docApplication === null || docApplication === undefined) {
-            throw new Error('Required parameter docApplication was null or undefined when calling documentsPartialUpdate.');
+            throw new Error('Required parameter docApplication was null or undefined when calling documentsActionsCreate.');
         }
         if (docType === null || docType === undefined) {
-            throw new Error('Required parameter docType was null or undefined when calling documentsPartialUpdate.');
+            throw new Error('Required parameter docType was null or undefined when calling documentsActionsCreate.');
         }
         if (fileLink === null || fileLink === undefined) {
-            throw new Error('Required parameter fileLink was null or undefined when calling documentsPartialUpdate.');
+            throw new Error('Required parameter fileLink was null or undefined when calling documentsActionsCreate.');
         }
         if (completed === null || completed === undefined) {
-            throw new Error('Required parameter completed was null or undefined when calling documentsPartialUpdate.');
+            throw new Error('Required parameter completed was null or undefined when calling documentsActionsCreate.');
         }
         if (ocrCheck === null || ocrCheck === undefined) {
-            throw new Error('Required parameter ocrCheck was null or undefined when calling documentsPartialUpdate.');
+            throw new Error('Required parameter ocrCheck was null or undefined when calling documentsActionsCreate.');
         }
         if (createdAt === null || createdAt === undefined) {
-            throw new Error('Required parameter createdAt was null or undefined when calling documentsPartialUpdate.');
+            throw new Error('Required parameter createdAt was null or undefined when calling documentsActionsCreate.');
         }
         if (updatedAt === null || updatedAt === undefined) {
-            throw new Error('Required parameter updatedAt was null or undefined when calling documentsPartialUpdate.');
+            throw new Error('Required parameter updatedAt was null or undefined when calling documentsActionsCreate.');
         }
         if (createdBy === null || createdBy === undefined) {
-            throw new Error('Required parameter createdBy was null or undefined when calling documentsPartialUpdate.');
+            throw new Error('Required parameter createdBy was null or undefined when calling documentsActionsCreate.');
         }
         if (updatedBy === null || updatedBy === undefined) {
-            throw new Error('Required parameter updatedBy was null or undefined when calling documentsPartialUpdate.');
+            throw new Error('Required parameter updatedBy was null or undefined when calling documentsActionsCreate.');
+        }
+        if (updatedByUsername === null || updatedByUsername === undefined) {
+            throw new Error('Required parameter updatedByUsername was null or undefined when calling documentsActionsCreate.');
+        }
+        if (createdByUsername === null || createdByUsername === undefined) {
+            throw new Error('Required parameter createdByUsername was null or undefined when calling documentsActionsCreate.');
+        }
+        if (extraActions === null || extraActions === undefined) {
+            throw new Error('Required parameter extraActions was null or undefined when calling documentsActionsCreate.');
         }
 
         let localVarHeaders = this.defaultHeaders;
@@ -242,6 +205,481 @@ export class DocumentsService extends BaseService {
         if (updatedBy !== undefined) {
             localVarFormParams = localVarFormParams.append('updated_by', <any>updatedBy) as any || localVarFormParams;
         }
+        if (updatedByUsername !== undefined) {
+            localVarFormParams = localVarFormParams.append('updated_by_username', <any>updatedByUsername) as any || localVarFormParams;
+        }
+        if (createdByUsername !== undefined) {
+            localVarFormParams = localVarFormParams.append('created_by_username', <any>createdByUsername) as any || localVarFormParams;
+        }
+        if (extraActions) {
+            if (localVarUseForm) {
+                extraActions.forEach((element) => {
+                    localVarFormParams = localVarFormParams.append('extra_actions', <any>element) as any || localVarFormParams;
+            })
+            } else {
+                localVarFormParams = localVarFormParams.append('extra_actions', [...extraActions].join(COLLECTION_FORMATS['csv'])) as any || localVarFormParams;
+            }
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/documents/${this.configuration.encodeParam({name: "id", value: id, in: "path", style: "simple", explode: false, dataType: "number", dataFormat: undefined})}/actions/${this.configuration.encodeParam({name: "actionName", value: actionName, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: undefined})}/`;
+        const { basePath, withCredentials } = this.configuration;
+        return this.httpClient.request<Document>('post', `${basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: localVarConvertFormParamsToString ? localVarFormParams.toString() : localVarFormParams,
+                responseType: <any>responseType_,
+                ...(withCredentials ? { withCredentials } : {}),
+                headers: localVarHeaders,
+                observe: observe,
+                ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * @endpoint post /api/documents/
+     * @param id 
+     * @param docApplication 
+     * @param docType 
+     * @param fileLink 
+     * @param completed 
+     * @param ocrCheck 
+     * @param createdAt 
+     * @param updatedAt 
+     * @param createdBy 
+     * @param updatedBy 
+     * @param updatedByUsername Return the username of the user who last updated the document.
+     * @param createdByUsername Return the username of the user who created the document.
+     * @param extraActions 
+     * @param docTypeId 
+     * @param docNumber 
+     * @param expirationDate 
+     * @param file 
+     * @param details 
+     * @param metadata 
+     * @param required 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     * @param options additional options
+     */
+    public documentsCreate(id: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<Document>;
+    public documentsCreate(id: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<Document>>;
+    public documentsCreate(id: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<Document>>;
+    public documentsCreate(id: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+        if (id === null || id === undefined) {
+            throw new Error('Required parameter id was null or undefined when calling documentsCreate.');
+        }
+        if (docApplication === null || docApplication === undefined) {
+            throw new Error('Required parameter docApplication was null or undefined when calling documentsCreate.');
+        }
+        if (docType === null || docType === undefined) {
+            throw new Error('Required parameter docType was null or undefined when calling documentsCreate.');
+        }
+        if (fileLink === null || fileLink === undefined) {
+            throw new Error('Required parameter fileLink was null or undefined when calling documentsCreate.');
+        }
+        if (completed === null || completed === undefined) {
+            throw new Error('Required parameter completed was null or undefined when calling documentsCreate.');
+        }
+        if (ocrCheck === null || ocrCheck === undefined) {
+            throw new Error('Required parameter ocrCheck was null or undefined when calling documentsCreate.');
+        }
+        if (createdAt === null || createdAt === undefined) {
+            throw new Error('Required parameter createdAt was null or undefined when calling documentsCreate.');
+        }
+        if (updatedAt === null || updatedAt === undefined) {
+            throw new Error('Required parameter updatedAt was null or undefined when calling documentsCreate.');
+        }
+        if (createdBy === null || createdBy === undefined) {
+            throw new Error('Required parameter createdBy was null or undefined when calling documentsCreate.');
+        }
+        if (updatedBy === null || updatedBy === undefined) {
+            throw new Error('Required parameter updatedBy was null or undefined when calling documentsCreate.');
+        }
+        if (updatedByUsername === null || updatedByUsername === undefined) {
+            throw new Error('Required parameter updatedByUsername was null or undefined when calling documentsCreate.');
+        }
+        if (createdByUsername === null || createdByUsername === undefined) {
+            throw new Error('Required parameter createdByUsername was null or undefined when calling documentsCreate.');
+        }
+        if (extraActions === null || extraActions === undefined) {
+            throw new Error('Required parameter extraActions was null or undefined when calling documentsCreate.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        // authentication (cookieAuth) required
+
+        // authentication (tokenAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('tokenAuth', 'Authorization', localVarHeaders, 'Bearer ');
+
+        const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            'application/json'
+        ]);
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+        const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'multipart/form-data',
+            'application/x-www-form-urlencoded',
+            'application/json'
+        ];
+
+        const canConsumeForm = this.canConsumeForm(consumes);
+
+        let localVarFormParams: { append(param: string, value: any): any; };
+        let localVarUseForm = false;
+        let localVarConvertFormParamsToString = false;
+        if (localVarUseForm) {
+            localVarFormParams = new FormData();
+        } else {
+            localVarFormParams = new HttpParams({encoder: this.encoder});
+        }
+
+        if (id !== undefined) {
+            localVarFormParams = localVarFormParams.append('id', <any>id) as any || localVarFormParams;
+        }
+        if (docApplication !== undefined) {
+            localVarFormParams = localVarFormParams.append('doc_application', <any>docApplication) as any || localVarFormParams;
+        }
+        if (docType !== undefined) {
+            localVarFormParams = localVarFormParams.append('doc_type', localVarUseForm ? new Blob([JSON.stringify(docType)], {type: 'application/json'}) : <any>docType) as any || localVarFormParams;
+        }
+        if (docTypeId !== undefined) {
+            localVarFormParams = localVarFormParams.append('doc_type_id', <any>docTypeId) as any || localVarFormParams;
+        }
+        if (docNumber !== undefined) {
+            localVarFormParams = localVarFormParams.append('doc_number', <any>docNumber) as any || localVarFormParams;
+        }
+        if (expirationDate !== undefined) {
+            localVarFormParams = localVarFormParams.append('expiration_date', <any>expirationDate) as any || localVarFormParams;
+        }
+        if (file !== undefined) {
+            localVarFormParams = localVarFormParams.append('file', <any>file) as any || localVarFormParams;
+        }
+        if (fileLink !== undefined) {
+            localVarFormParams = localVarFormParams.append('file_link', <any>fileLink) as any || localVarFormParams;
+        }
+        if (details !== undefined) {
+            localVarFormParams = localVarFormParams.append('details', <any>details) as any || localVarFormParams;
+        }
+        if (completed !== undefined) {
+            localVarFormParams = localVarFormParams.append('completed', <any>completed) as any || localVarFormParams;
+        }
+        if (metadata !== undefined) {
+            localVarFormParams = localVarFormParams.append('metadata', <any>metadata) as any || localVarFormParams;
+        }
+        if (ocrCheck !== undefined) {
+            localVarFormParams = localVarFormParams.append('ocr_check', <any>ocrCheck) as any || localVarFormParams;
+        }
+        if (required !== undefined) {
+            localVarFormParams = localVarFormParams.append('required', <any>required) as any || localVarFormParams;
+        }
+        if (createdAt !== undefined) {
+            localVarFormParams = localVarFormParams.append('created_at', <any>createdAt) as any || localVarFormParams;
+        }
+        if (updatedAt !== undefined) {
+            localVarFormParams = localVarFormParams.append('updated_at', <any>updatedAt) as any || localVarFormParams;
+        }
+        if (createdBy !== undefined) {
+            localVarFormParams = localVarFormParams.append('created_by', <any>createdBy) as any || localVarFormParams;
+        }
+        if (updatedBy !== undefined) {
+            localVarFormParams = localVarFormParams.append('updated_by', <any>updatedBy) as any || localVarFormParams;
+        }
+        if (updatedByUsername !== undefined) {
+            localVarFormParams = localVarFormParams.append('updated_by_username', <any>updatedByUsername) as any || localVarFormParams;
+        }
+        if (createdByUsername !== undefined) {
+            localVarFormParams = localVarFormParams.append('created_by_username', <any>createdByUsername) as any || localVarFormParams;
+        }
+        if (extraActions) {
+            if (localVarUseForm) {
+                extraActions.forEach((element) => {
+                    localVarFormParams = localVarFormParams.append('extra_actions', <any>element) as any || localVarFormParams;
+            })
+            } else {
+                localVarFormParams = localVarFormParams.append('extra_actions', [...extraActions].join(COLLECTION_FORMATS['csv'])) as any || localVarFormParams;
+            }
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/documents/`;
+        const { basePath, withCredentials } = this.configuration;
+        return this.httpClient.request<Document>('post', `${basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: localVarConvertFormParamsToString ? localVarFormParams.toString() : localVarFormParams,
+                responseType: <any>responseType_,
+                ...(withCredentials ? { withCredentials } : {}),
+                headers: localVarHeaders,
+                observe: observe,
+                ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * @endpoint get /api/documents/
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     * @param options additional options
+     */
+    public documentsList(observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<Array<Document>>;
+    public documentsList(observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<Array<Document>>>;
+    public documentsList(observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<Array<Document>>>;
+    public documentsList(observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+
+        let localVarHeaders = this.defaultHeaders;
+
+        // authentication (cookieAuth) required
+
+        // authentication (tokenAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('tokenAuth', 'Authorization', localVarHeaders, 'Bearer ');
+
+        const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            'application/json'
+        ]);
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+        const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/documents/`;
+        const { basePath, withCredentials } = this.configuration;
+        return this.httpClient.request<Array<Document>>('get', `${basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                responseType: <any>responseType_,
+                ...(withCredentials ? { withCredentials } : {}),
+                headers: localVarHeaders,
+                observe: observe,
+                ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * @endpoint patch /api/documents/{id}/
+     * @param id A unique integer value identifying this document.
+     * @param id2 
+     * @param docApplication 
+     * @param docType 
+     * @param fileLink 
+     * @param completed 
+     * @param ocrCheck 
+     * @param createdAt 
+     * @param updatedAt 
+     * @param createdBy 
+     * @param updatedBy 
+     * @param updatedByUsername Return the username of the user who last updated the document.
+     * @param createdByUsername Return the username of the user who created the document.
+     * @param extraActions 
+     * @param docTypeId 
+     * @param docNumber 
+     * @param expirationDate 
+     * @param file 
+     * @param details 
+     * @param metadata 
+     * @param required 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     * @param options additional options
+     */
+    public documentsPartialUpdate(id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<Document>;
+    public documentsPartialUpdate(id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<Document>>;
+    public documentsPartialUpdate(id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<Document>>;
+    public documentsPartialUpdate(id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+        if (id === null || id === undefined) {
+            throw new Error('Required parameter id was null or undefined when calling documentsPartialUpdate.');
+        }
+        if (id2 === null || id2 === undefined) {
+            throw new Error('Required parameter id2 was null or undefined when calling documentsPartialUpdate.');
+        }
+        if (docApplication === null || docApplication === undefined) {
+            throw new Error('Required parameter docApplication was null or undefined when calling documentsPartialUpdate.');
+        }
+        if (docType === null || docType === undefined) {
+            throw new Error('Required parameter docType was null or undefined when calling documentsPartialUpdate.');
+        }
+        if (fileLink === null || fileLink === undefined) {
+            throw new Error('Required parameter fileLink was null or undefined when calling documentsPartialUpdate.');
+        }
+        if (completed === null || completed === undefined) {
+            throw new Error('Required parameter completed was null or undefined when calling documentsPartialUpdate.');
+        }
+        if (ocrCheck === null || ocrCheck === undefined) {
+            throw new Error('Required parameter ocrCheck was null or undefined when calling documentsPartialUpdate.');
+        }
+        if (createdAt === null || createdAt === undefined) {
+            throw new Error('Required parameter createdAt was null or undefined when calling documentsPartialUpdate.');
+        }
+        if (updatedAt === null || updatedAt === undefined) {
+            throw new Error('Required parameter updatedAt was null or undefined when calling documentsPartialUpdate.');
+        }
+        if (createdBy === null || createdBy === undefined) {
+            throw new Error('Required parameter createdBy was null or undefined when calling documentsPartialUpdate.');
+        }
+        if (updatedBy === null || updatedBy === undefined) {
+            throw new Error('Required parameter updatedBy was null or undefined when calling documentsPartialUpdate.');
+        }
+        if (updatedByUsername === null || updatedByUsername === undefined) {
+            throw new Error('Required parameter updatedByUsername was null or undefined when calling documentsPartialUpdate.');
+        }
+        if (createdByUsername === null || createdByUsername === undefined) {
+            throw new Error('Required parameter createdByUsername was null or undefined when calling documentsPartialUpdate.');
+        }
+        if (extraActions === null || extraActions === undefined) {
+            throw new Error('Required parameter extraActions was null or undefined when calling documentsPartialUpdate.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        // authentication (cookieAuth) required
+
+        // authentication (tokenAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('tokenAuth', 'Authorization', localVarHeaders, 'Bearer ');
+
+        const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            'application/json'
+        ]);
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+        const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'multipart/form-data',
+            'application/x-www-form-urlencoded',
+            'application/json'
+        ];
+
+        const canConsumeForm = this.canConsumeForm(consumes);
+
+        let localVarFormParams: { append(param: string, value: any): any; };
+        let localVarUseForm = false;
+        let localVarConvertFormParamsToString = false;
+        if (localVarUseForm) {
+            localVarFormParams = new FormData();
+        } else {
+            localVarFormParams = new HttpParams({encoder: this.encoder});
+        }
+
+        if (id2 !== undefined) {
+            localVarFormParams = localVarFormParams.append('id', <any>id2) as any || localVarFormParams;
+        }
+        if (docApplication !== undefined) {
+            localVarFormParams = localVarFormParams.append('doc_application', <any>docApplication) as any || localVarFormParams;
+        }
+        if (docType !== undefined) {
+            localVarFormParams = localVarFormParams.append('doc_type', localVarUseForm ? new Blob([JSON.stringify(docType)], {type: 'application/json'}) : <any>docType) as any || localVarFormParams;
+        }
+        if (docTypeId !== undefined) {
+            localVarFormParams = localVarFormParams.append('doc_type_id', <any>docTypeId) as any || localVarFormParams;
+        }
+        if (docNumber !== undefined) {
+            localVarFormParams = localVarFormParams.append('doc_number', <any>docNumber) as any || localVarFormParams;
+        }
+        if (expirationDate !== undefined) {
+            localVarFormParams = localVarFormParams.append('expiration_date', <any>expirationDate) as any || localVarFormParams;
+        }
+        if (file !== undefined) {
+            localVarFormParams = localVarFormParams.append('file', <any>file) as any || localVarFormParams;
+        }
+        if (fileLink !== undefined) {
+            localVarFormParams = localVarFormParams.append('file_link', <any>fileLink) as any || localVarFormParams;
+        }
+        if (details !== undefined) {
+            localVarFormParams = localVarFormParams.append('details', <any>details) as any || localVarFormParams;
+        }
+        if (completed !== undefined) {
+            localVarFormParams = localVarFormParams.append('completed', <any>completed) as any || localVarFormParams;
+        }
+        if (metadata !== undefined) {
+            localVarFormParams = localVarFormParams.append('metadata', <any>metadata) as any || localVarFormParams;
+        }
+        if (ocrCheck !== undefined) {
+            localVarFormParams = localVarFormParams.append('ocr_check', <any>ocrCheck) as any || localVarFormParams;
+        }
+        if (required !== undefined) {
+            localVarFormParams = localVarFormParams.append('required', <any>required) as any || localVarFormParams;
+        }
+        if (createdAt !== undefined) {
+            localVarFormParams = localVarFormParams.append('created_at', <any>createdAt) as any || localVarFormParams;
+        }
+        if (updatedAt !== undefined) {
+            localVarFormParams = localVarFormParams.append('updated_at', <any>updatedAt) as any || localVarFormParams;
+        }
+        if (createdBy !== undefined) {
+            localVarFormParams = localVarFormParams.append('created_by', <any>createdBy) as any || localVarFormParams;
+        }
+        if (updatedBy !== undefined) {
+            localVarFormParams = localVarFormParams.append('updated_by', <any>updatedBy) as any || localVarFormParams;
+        }
+        if (updatedByUsername !== undefined) {
+            localVarFormParams = localVarFormParams.append('updated_by_username', <any>updatedByUsername) as any || localVarFormParams;
+        }
+        if (createdByUsername !== undefined) {
+            localVarFormParams = localVarFormParams.append('created_by_username', <any>createdByUsername) as any || localVarFormParams;
+        }
+        if (extraActions) {
+            if (localVarUseForm) {
+                extraActions.forEach((element) => {
+                    localVarFormParams = localVarFormParams.append('extra_actions', <any>element) as any || localVarFormParams;
+            })
+            } else {
+                localVarFormParams = localVarFormParams.append('extra_actions', [...extraActions].join(COLLECTION_FORMATS['csv'])) as any || localVarFormParams;
+            }
+        }
 
         let responseType_: 'text' | 'json' | 'blob' = 'json';
         if (localVarHttpHeaderAcceptSelected) {
@@ -260,6 +698,67 @@ export class DocumentsService extends BaseService {
             {
                 context: localVarHttpContext,
                 body: localVarConvertFormParamsToString ? localVarFormParams.toString() : localVarFormParams,
+                responseType: <any>responseType_,
+                ...(withCredentials ? { withCredentials } : {}),
+                headers: localVarHeaders,
+                observe: observe,
+                ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Get document data for print view.  Returns the document with nested doc_application data including customer info.
+     * @endpoint get /api/documents/{id}/print/
+     * @param id A unique integer value identifying this document.
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     * @param options additional options
+     */
+    public documentsPrintRetrieve(id: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<Document>;
+    public documentsPrintRetrieve(id: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<Document>>;
+    public documentsPrintRetrieve(id: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<Document>>;
+    public documentsPrintRetrieve(id: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+        if (id === null || id === undefined) {
+            throw new Error('Required parameter id was null or undefined when calling documentsPrintRetrieve.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        // authentication (cookieAuth) required
+
+        // authentication (tokenAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('tokenAuth', 'Authorization', localVarHeaders, 'Bearer ');
+
+        const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            'application/json'
+        ]);
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+        const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/documents/${this.configuration.encodeParam({name: "id", value: id, in: "path", style: "simple", explode: false, dataType: "number", dataFormat: undefined})}/print/`;
+        const { basePath, withCredentials } = this.configuration;
+        return this.httpClient.request<Document>('get', `${basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
                 responseType: <any>responseType_,
                 ...(withCredentials ? { withCredentials } : {}),
                 headers: localVarHeaders,
@@ -343,6 +842,9 @@ export class DocumentsService extends BaseService {
      * @param updatedAt 
      * @param createdBy 
      * @param updatedBy 
+     * @param updatedByUsername Return the username of the user who last updated the document.
+     * @param createdByUsername Return the username of the user who created the document.
+     * @param extraActions 
      * @param docTypeId 
      * @param docNumber 
      * @param expirationDate 
@@ -354,10 +856,10 @@ export class DocumentsService extends BaseService {
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public documentsUpdate(id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<Document>;
-    public documentsUpdate(id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<Document>>;
-    public documentsUpdate(id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<Document>>;
-    public documentsUpdate(id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+    public documentsUpdate(id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<Document>;
+    public documentsUpdate(id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<Document>>;
+    public documentsUpdate(id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<Document>>;
+    public documentsUpdate(id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
         if (id === null || id === undefined) {
             throw new Error('Required parameter id was null or undefined when calling documentsUpdate.');
         }
@@ -390,6 +892,15 @@ export class DocumentsService extends BaseService {
         }
         if (updatedBy === null || updatedBy === undefined) {
             throw new Error('Required parameter updatedBy was null or undefined when calling documentsUpdate.');
+        }
+        if (updatedByUsername === null || updatedByUsername === undefined) {
+            throw new Error('Required parameter updatedByUsername was null or undefined when calling documentsUpdate.');
+        }
+        if (createdByUsername === null || createdByUsername === undefined) {
+            throw new Error('Required parameter createdByUsername was null or undefined when calling documentsUpdate.');
+        }
+        if (extraActions === null || extraActions === undefined) {
+            throw new Error('Required parameter extraActions was null or undefined when calling documentsUpdate.');
         }
 
         let localVarHeaders = this.defaultHeaders;
@@ -478,6 +989,21 @@ export class DocumentsService extends BaseService {
         }
         if (updatedBy !== undefined) {
             localVarFormParams = localVarFormParams.append('updated_by', <any>updatedBy) as any || localVarFormParams;
+        }
+        if (updatedByUsername !== undefined) {
+            localVarFormParams = localVarFormParams.append('updated_by_username', <any>updatedByUsername) as any || localVarFormParams;
+        }
+        if (createdByUsername !== undefined) {
+            localVarFormParams = localVarFormParams.append('created_by_username', <any>createdByUsername) as any || localVarFormParams;
+        }
+        if (extraActions) {
+            if (localVarUseForm) {
+                extraActions.forEach((element) => {
+                    localVarFormParams = localVarFormParams.append('extra_actions', <any>element) as any || localVarFormParams;
+            })
+            } else {
+                localVarFormParams = localVarFormParams.append('extra_actions', [...extraActions].join(COLLECTION_FORMATS['csv'])) as any || localVarFormParams;
+            }
         }
 
         let responseType_: 'text' | 'json' | 'blob' = 'json';
