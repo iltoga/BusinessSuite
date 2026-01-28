@@ -473,7 +473,8 @@ export const legacyDark: ThemeColors = {
   warning: 'oklch(0.75 0.20 80)',
   warningForeground: 'oklch(0.985 0 0)',
   success: 'oklch(0.595 0.165 155)',
-  successForeground: 'oklch(0.145 0 0)',
+  // Ensure green (success) buttons show white text in legacy dark theme
+  successForeground: 'oklch(0.985 0 0)',
   border: 'oklch(0.14 0.02 260)',
   input: 'oklch(0.13 0.02 260)',
   ring: 'oklch(0.12 0.03 260)',
