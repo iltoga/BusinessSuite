@@ -1601,3 +1601,378 @@
   - [ ] Accessibility audit
   - [ ] Update `docs/implementation_feedback.md`
   - [ ] Complete feedback log
+
+---
+
+## Phase 10: Admin & Maintenance Tools (CRITICAL - RECENTLY ADDED)
+
+**Goal:** Migrate system administration, maintenance, and backup/restore tools from legacy Django UI, preserving superuser-only access and real-time feedback.
+
+### 10.0 Legacy UI & Logic Audit
+
+- [ ] Review `admin_tools/views.py` and `admin_tools/services.py` for backup/restore mechanics (tar.zst, SQL dumpdata, media collection).
+- [ ] Audit `admin_tools/components/document_type_list.py` (Unicorn) for document type CRUD rules.
+- [ ] Review `admin_tools/templates/admin_tools/` for UI specifics: SSE logging, diagnostic result rendering.
+- [ ] Audit `admin_tools/services.py` for media diagnostic vs repair logic.
+
+### 10.1 Backend API Modernization (Security & Performance)
+
+- [ ] **10.1.1 Enhance Auth Response**: Update `TokenAuthView` in `api/views.py` to include `isSuperuser` and `fullName` in token response.
+- [ ] **10.1.2 Rebuild DocumentType API**:
+  - Update `DocumentTypeSerializer` to include `validationRuleRegex`.
+  - Convert `DocumentTypeViewSet` from `ReadOnlyModelViewSet` to `ModelViewSet`.
+  - Add search/ordering by name/description.
+- [ ] **10.1.3 Implement BackupsViewSet**:
+  - `GET /api/backups/`: List local backups with metadata.
+  - `POST /api/backups/start/`: Trigger SSE backup stream (using `services.backup_all`).
+  - `GET /api/backups/{filename}/download/`: Secure download for backup archives.
+  - `POST /api/backups/upload/`: Multi-part upload for existing archives.
+  - `POST /api/backups/restore/`: Trigger SSE restore stream (using `services.restore_from_file`).
+  - `DELETE /api/backups/`: Purge all backups (with secondary confirmation).
+- [ ] **10.1.4 Implement ServerManagementViewSet**:
+  - `POST /api/server-management/clear-cache/`: Global cache purge.
+  - `GET /api/server-management/media-diagnostic/`: Comprehensive check of disk vs DB.
+  - `POST /api/server-management/media-repair/`: Automated path fixing.
+- [ ] **10.1.5 Schema Generation**: Run `bun run generate:api` to sync TypeScript clients.
+
+### 10.2 Angular Admin Foundations
+
+- [ ] **10.2.1 Superuser Authorization**:
+  - Update `AuthService` to track `isSuperuser` status via signals.
+  - Create `superuser.guard.ts` to protect `/admin/**` routes.
+- [ ] **10.2.2 Admin Layout**: Add an "Admin" sidebar section with sub-links: Document Types, Backup/Restore, Server.
+
+### 10.3 Document Types Management
+
+- [ ] **10.3.1 Feature Module**: Create `features/admin/document-types/`.
+- [ ] **10.3.2 CRUD Interface**: Replicate the Unicorn component behavior using `DataTableComponent`.
+- [ ] **10.3.3 Integrity Enforcement**: Implement frontend validation to prevent deletion of document types referenced by products (using `can_be_deleted` endpoint).
+
+### 10.4 Backup & Restore Module
+
+- [ ] **10.4.1 Feature Module**: Create `features/admin/backups/`.
+- [ ] **10.4.2 Dashboard View**: Cards for available backups with size/type badges (e.g., "Full" for backups with users).
+- [ ] **10.4.3 Real-time SSE Log**: Create a terminal-style component to display the backup/restore log using `SseService`.
+- [ ] **10.4.4 Restore Workflow**: Implementation of "Include Users" toggle and file upload zone.
+
+### 10.5 Server Management Dashboard
+
+- [ ] **10.5.1 Feature Module**: Create `features/admin/server-management/`.
+- [ ] **10.5.2 Actions Bar**: Clean ZardUI buttons for cache and media maintenance.
+- [ ] **10.5.3 Diagnostic View**: JSON/Table viewer for media diagnostic results, highlighting discrepancies (e.g., "Missing on disk").
+
+### 10.6 Privileged Actions in Feature Modules
+
+- [ ] **10.6.1 Bulk Deletion in Products**:
+  - Add "Delete All" / "Delete Selected" button to `ProductListComponent` (visible only to superusers).
+  - Implement `products/delete-all` API endpoint integration.
+- [ ] **10.6.2 Force Delete Invoice**:
+  - Implement a "Force Delete" option in Invoice deletion workflow for superusers.
+  - Implement cascade deletion flag for associated Customer Applications as seen in legacy `InvoiceDeleteView`.
+
+### 10.7 Navigation & UX
+
+- [ ] Update `app.routes.ts` with lazy-loaded admin routes: - Implement `products/delete-all` API endpoint integration.
+- [ ] **10.6.2 Force Delete Invoice**:
+  - Implement a "Force Delete" option in Invoice deletion workflow for superusers.
+  - Implement cascade deletion flag for associated Customer Applications as seen in legacy `InvoiceDeleteView`.
+
+### 10.7 Navigation & UX
+
+- [ ] Update `app.routes.ts` with lazy-loaded admin routes:
+      `{ path: 'admin', canActivate: [superuserGuard], children: [...] }`
+- [ ] Add sidebar icons (Settings, Database, Server) for admin sections.
+- [ ] Ensure superuser-only elements are conditionally rendered across the entire SPA using a `directive` or `signal`.
+
+---
+
+## Phase 11: User Profile View (NEW FEATURE - ANGULAR EXCLUSIVE)
+
+**Goal:** Add a user profile view accessible from the top-right profile icon, allowing users to view and edit their profile information using ZardUI components and following UX standards.
+
+### 11.0 UX Research & Design
+
+- [x] **11.0.1** Research UX standards for profile sections using ZardUI component documentation:
+  - Profile icon in top-right header (MatIconButton pattern)
+  - Dropdown menu for profile actions (logout, settings)
+  - Profile view with avatar, personal info, and edit functionality
+  - Form fields with proper spacing and validation
+
+- [x] **11.0.2** Define profile data structure:
+  - Display: full name, email, role, last login
+  - Editable: first name, last name, email, phone, avatar upload
+  - Security: password change (separate modal)
+
+### 11.1 Backend API Preparation
+
+- [ ] **11.1.1** Extend `TokenAuthView` to include user profile data in auth response:
+
+  ```python
+  # api/views.py
+  class TokenAuthView(ApiErrorHandlingMixin, ObtainAuthToken):
+      def post(self, request, *args, **kwargs):
+          response = super().post(request, *args, **kwargs)
+          if response.status_code == 200:
+              user = request.user
+              response.data.update({
+                  'user': {
+                      'id': user.id,
+                      'username': user.username,
+                      'firstName': user.first_name,
+                      'lastName': user.last_name,
+                      'email': user.email,
+                      'isSuperuser': user.is_superuser,
+                      'fullName': user.get_full_name(),
+                      'lastLogin': user.last_login.isoformat() if user.last_login else None,
+                  }
+              })
+          return response
+  ```
+
+- [ ] **11.1.2** Create `UserProfileViewSet` for profile management:
+
+  ```python
+  class UserProfileViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
+      permission_classes = [IsAuthenticated]
+
+      @action(detail=False, methods=['get'])
+      def me(self, request):
+          """Get current user profile."""
+          user = request.user
+          return Response({
+              'id': user.id,
+              'username': user.username,
+              'firstName': user.first_name,
+              'lastName': user.last_name,
+              'email': user.email,
+              'isSuperuser': user.is_superuser,
+              'fullName': user.get_full_name(),
+              'lastLogin': user.last_login.isoformat() if user.last_login else None,
+          })
+
+      @action(detail=False, methods=['patch'])
+      def update_profile(self, request):
+          """Update user profile."""
+          user = request.user
+          serializer = UserProfileUpdateSerializer(user, data=request.data, partial=True)
+          if serializer.is_valid():
+              serializer.save()
+              return Response(serializer.data)
+          return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+      @action(detail=False, methods=['post'])
+      def change_password(self, request):
+          """Change user password."""
+          serializer = ChangePasswordSerializer(data=request.data, context={'user': user})
+          if serializer.is_valid():
+              user.set_password(serializer.validated_data['new_password'])
+              user.save()
+              return Response({'message': 'Password changed successfully'})
+          return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+  ```
+
+- [ ] **11.1.3** Create serializers:
+
+  ```python
+  class UserProfileUpdateSerializer(serializers.ModelSerializer):
+      class Meta:
+          model = User
+          fields = ['first_name', 'last_name', 'email']
+
+  class ChangePasswordSerializer(serializers.Serializer):
+      old_password = serializers.CharField(required=True)
+      new_password = serializers.CharField(required=True, validators=[validate_password])
+      confirm_password = serializers.CharField(required=True)
+
+      def validate(self, data):
+          if data['new_password'] != data['confirm_password']:
+              raise serializers.ValidationError("Passwords don't match")
+          if not self.context['user'].check_password(data['old_password']):
+              raise serializers.ValidationError("Old password is incorrect")
+          return data
+  ```
+
+- [ ] **11.1.4** Add routes to `api/urls.py`:
+
+  ```python
+  router.register(r'user-profile', UserProfileViewSet, basename='user-profile')
+  ```
+
+- [ ] **11.1.5** Run `bun run generate:api`
+
+### 11.2 Angular Profile Implementation
+
+- [ ] **11.2.1** Update `AuthService` to store user profile data:
+
+  ```typescript
+  // core/services/auth.service.ts
+  readonly currentUser = signal<UserProfile | null>(null);
+
+  login(credentials: LoginCredentials): Observable<TokenResponse> {
+    return this.http.post<TokenResponse>(`${this.apiUrl}/auth/token/`, credentials).pipe(
+      tap(response => {
+        this.token.set(response.token);
+        this.currentUser.set(response.user);  // Store user data
+      })
+    );
+  }
+  ```
+
+- [ ] **11.2.2** Update `MainLayoutComponent` to add profile icon:
+
+  ```typescript
+  // shared/layouts/main-layout.component.ts
+  @Component({
+    selector: 'app-main-layout',
+    standalone: true,
+    imports: [ZardButtonComponent, ZardAvatarComponent, ZardDropdownComponent, ...],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+  })
+  export class MainLayoutComponent {
+    private authService = inject(AuthService);
+
+    readonly currentUser = this.authService.currentUser;
+
+    readonly profileMenuItems = computed(() => [
+      { label: 'Profile', action: () => this.router.navigate(['/profile']) },
+      { label: 'Settings', action: () => this.router.navigate(['/settings']) },
+      { label: 'Logout', action: () => this.logout() },
+    ]);
+
+    logout(): void {
+      this.authService.logout();
+      this.router.navigate(['/login']);
+    }
+  }
+  ```
+
+- [ ] **11.2.3** Create `features/profile/profile.component.ts`:
+
+  ```typescript
+  @Component({
+    selector: 'app-profile',
+    standalone: true,
+    imports: [ReactiveFormsModule, ZardCardComponent, ZardInputDirective,
+              ZardButtonComponent, ZardAvatarComponent, ...],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+  })
+  export class ProfileComponent implements OnInit {
+    private profileApi = inject(UserProfileService);
+    private authService = inject(AuthService);
+
+    readonly currentUser = this.authService.currentUser;
+    readonly isEditing = signal(false);
+    readonly isSaving = signal(false);
+
+    readonly profileForm = this.fb.group({
+      firstName: ['', Validators.required],
+      lastName: ['', Validators.required],
+      email: ['', [Validators.required, Validators.email]],
+    });
+
+    ngOnInit(): void {
+      this.loadProfile();
+    }
+
+    loadProfile(): void {
+      this.profileApi.userProfileMe().subscribe({
+        next: (user) => {
+          this.profileForm.patchValue({
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+          });
+        }
+      });
+    }
+
+    toggleEdit(): void {
+      this.isEditing.set(!this.isEditing());
+      if (!this.isEditing()) {
+        this.profileForm.patchValue({
+          firstName: this.currentUser()?.firstName,
+          lastName: this.currentUser()?.lastName,
+          email: this.currentUser()?.email,
+        });
+      }
+    }
+
+    saveProfile(): void {
+      if (this.profileForm.invalid) return;
+
+      this.isSaving.set(true);
+      this.profileApi.userProfileUpdateProfile(this.profileForm.value).subscribe({
+        next: (user) => {
+          this.authService.currentUser.set(user);
+          this.isEditing.set(false);
+          this.toast.success('Profile updated successfully');
+        },
+        error: () => this.toast.error('Failed to update profile'),
+        complete: () => this.isSaving.set(false)
+      });
+    }
+  }
+  ```
+
+- [ ] **11.2.4** Add route `/profile` to `app.routes.ts`
+
+- [ ] **11.2.5** Add `ProfileComponent` to `docs/shared_components.md`
+
+### 11.3 Password Change Modal
+
+- [ ] **11.3.1** Create `ChangePasswordModalComponent`:
+
+- [ ] **11.2.4** Add route `/profile` to `app.routes.ts`
+
+- [ ] **11.2.5** Add `ProfileComponent` to `docs/shared_components.md`
+
+### 11.3 Password Change Modal
+
+- [ ] **11.3.1** Create `ChangePasswordModalComponent`:
+
+  ```typescript
+  @Component({
+    selector: 'app-change-password-modal',
+    standalone: true,
+    imports: [ReactiveFormsModule, ZardInputDirective, ZardButtonComponent, ...],
+    changeDetection: ChangeDetectionStrategy.OnPush,
+  })
+  export class ChangePasswordModalComponent {
+    readonly isOpen = input(false);
+    readonly isOpenChange = output<boolean>();
+
+    readonly passwordForm = this.fb.group({
+      oldPassword: ['', Validators.required],
+      newPassword: ['', [Validators.required, Validators.minLength(8)]],
+      confirmPassword: ['', Validators.required],
+    }, { validators: passwordMatchValidator });
+
+    changePassword(): void {
+      if (this.passwordForm.invalid) return;
+
+      this.profileApi.userProfileChangePassword(this.passwordForm.value).subscribe({
+        next: () => {
+          this.toast.success('Password changed successfully');
+          this.isOpenChange.emit(false);
+          this.passwordForm.reset();
+        },
+        error: () => this.toast.error('Failed to change password')
+      });
+    }
+  }
+  ```
+
+- [ ] **11.3.2** Integrate modal into `ProfileComponent`
+
+### 11.4 Avatar Upload (Optional Enhancement)
+
+- [ ] **11.4.1** Add avatar field to user model and API
+- [ ] **11.4.2** Implement file upload in profile component
+- [ ] **11.4.3** Display avatar in header and profile view
+
+### 11.5 Testing & Validation
+
+- [ ] **11.5.1** Add unit tests for profile component
+- [ ] **11.5.2** Test profile editing workflow
+- [ ] **11.5.3** Validate password change security
+- [ ] **11.5.4** Update `docs/implementation_feedback.md` with UX learnings
