@@ -430,6 +430,7 @@ See [zardui.md](copilot/specs/django-angular/zardui.md) for documentation on the
 
 ## References and Resources
 
+- **API Endpoints:** See `/docs/API_ENDPOINTS.md` for a list of main API endpoints (note: update it as new endpoints are added)
 - **Context7 Documentation:** Reference for library behavior clarification
 - **Django REST Framework Docs:** https://www.django-rest-framework.org/
 - **Angular 19 Docs:** https://angular.dev/

@@ -723,12 +723,13 @@ def extract_passport_with_ai(file, use_ai: bool = True) -> dict:
             mrz_data["ai_error"] = ai_error
         return mrz_data
 
-    # If MRZ failed but AI succeeded, return AI data only
+    # If MRZ failed but AI succeeded, return AI data mapped to standard keys
     if not mrz_data:
-        logger.info("MRZ extraction failed but AI succeeded, returning AI-only data")
-        ai_data["extraction_method"] = "ai_only"
-        ai_data["mrz_error"] = mrz_extraction_error
-        return ai_data
+        logger.info("MRZ extraction failed but AI succeeded, returning AI data mapped to standard keys")
+        merged_data = _merge_passport_data({}, ai_data, logger)
+        merged_data["extraction_method"] = "ai_only"
+        merged_data["mrz_error"] = mrz_extraction_error
+        return merged_data
 
     # Step 3: Merge results with comparison logic
     merged_data = _merge_passport_data(mrz_data, ai_data, logger)

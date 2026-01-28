@@ -410,6 +410,11 @@ export class CustomerFormComponent implements OnInit {
           (confidence !== null ? ` (confidence ${(confidence * 100).toFixed(0)}%)` : ''),
       );
       this.ocrMessageTone.set('warning');
+    } else if (extractionMethod === 'ai_only' && confidence !== null) {
+      this.ocrMessage.set(
+        `Data imported via AI (Passport OCR failed, confidence ${(confidence * 100).toFixed(0)}%)`,
+      );
+      this.ocrMessageTone.set('success');
     } else if (extractionMethod === 'hybridMrzAi' && confidence !== null) {
       this.ocrMessage.set(
         `Data imported via OCR + AI (confidence ${(confidence * 100).toFixed(0)}%)`,

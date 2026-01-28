@@ -50,10 +50,14 @@ export class ThemeService {
 
     this._currentTheme.set(themeName);
 
-    // Persist to localStorage
+    // Persist to localStorage (defensive)
     const storage = this.getStorage();
     if (persistToLocalStorage && storage) {
-      storage.setItem('theme', themeName);
+      try {
+        storage.setItem('theme', themeName);
+      } catch (err) {
+        console.warn('[ThemeService] Failed to persist theme to localStorage.', err);
+      }
     }
 
     // Apply theme colors
@@ -67,10 +71,14 @@ export class ThemeService {
     this._isDarkMode.set(!this._isDarkMode());
     this.applyThemeColors();
 
-    // Persist to localStorage
+    // Persist to localStorage (defensive)
     const storage = this.getStorage();
     if (storage) {
-      storage.setItem('darkMode', String(this._isDarkMode()));
+      try {
+        storage.setItem('darkMode', String(this._isDarkMode()));
+      } catch (err) {
+        console.warn('[ThemeService] Failed to persist darkMode to localStorage.', err);
+      }
     }
   }
 
@@ -81,10 +89,14 @@ export class ThemeService {
     this._isDarkMode.set(isDark);
     this.applyThemeColors();
 
-    // Persist to localStorage
+    // Persist to localStorage (defensive)
     const storage = this.getStorage();
     if (storage) {
-      storage.setItem('darkMode', String(isDark));
+      try {
+        storage.setItem('darkMode', String(isDark));
+      } catch (err) {
+        console.warn('[ThemeService] Failed to persist darkMode to localStorage.', err);
+      }
     }
   }
 
@@ -170,6 +182,32 @@ export class ThemeService {
     if (theme.chart4) this.setCssVar(root, '--chart-4', theme.chart4);
     if (theme.chart5) this.setCssVar(root, '--chart-5', theme.chart5);
 
+    // Ensure semantic foreground fallbacks are applied (some palettes omit them)
+    this.setCssVar(
+      root,
+      '--destructive-foreground',
+      (theme as any).destructiveForeground ?? theme.foreground,
+    );
+    this.setCssVar(
+      root,
+      '--warning-foreground',
+      (theme as any).warningForeground ?? theme.foreground,
+    );
+    this.setCssVar(
+      root,
+      '--success-foreground',
+      (theme as any).successForeground ?? theme.foreground,
+    );
+
+    // Sidebar variables (optional in theme)
+    if ((theme as any).sidebar) this.setCssVar(root, '--sidebar', (theme as any).sidebar);
+    if ((theme as any).sidebarForeground)
+      this.setCssVar(root, '--sidebar-foreground', (theme as any).sidebarForeground);
+    if ((theme as any).sidebarPrimary)
+      this.setCssVar(root, '--sidebar-primary', (theme as any).sidebarPrimary);
+    if ((theme as any).sidebarPrimaryForeground)
+      this.setCssVar(root, '--sidebar-primary-foreground', (theme as any).sidebarPrimaryForeground);
+
     // Toggle .dark class on html element for TailwindCSS
     if (this._isDarkMode()) {
       root.classList.add('dark');
@@ -193,12 +231,16 @@ export class ThemeService {
       return null;
     }
 
-    const storage = globalThis?.localStorage as Storage | undefined;
-    if (!storage || typeof storage.getItem !== 'function') {
+    try {
+      const storage = (globalThis as any)?.localStorage as Storage | undefined;
+      if (!storage || typeof storage.getItem !== 'function') {
+        return null;
+      }
+      return storage;
+    } catch (err) {
+      console.warn('[ThemeService] localStorage is not accessible.', err);
       return null;
     }
-
-    return storage;
   }
 
   /**

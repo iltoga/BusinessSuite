@@ -153,7 +153,8 @@
     );
     if (
       extractionMethod === "hybrid_mrz_ai" ||
-      extractionMethod === "hybridMrzAi"
+      extractionMethod === "hybridMrzAi" ||
+      extractionMethod === "ai_only"
     ) {
       var confidence = getMrzValue(
         mrz,
@@ -437,14 +438,23 @@
         );
         if (
           extractionMethod === "hybrid_mrz_ai" ||
-          extractionMethod === "hybridMrzAi"
+          extractionMethod === "hybridMrzAi" ||
+          extractionMethod === "ai_only"
         ) {
           var confidence =
             getMrzValue(mrz, "aiConfidenceScore", "ai_confidence_score") || 0;
-          successText =
-            "Data imported via OCR + AI (confidence: " +
-            (confidence * 100).toFixed(0) +
-            "%)";
+
+          if (extractionMethod === "ai_only") {
+            successText =
+              "Data imported via AI (Passport OCR failed, confidence: " +
+              (confidence * 100).toFixed(0) +
+              "%)";
+          } else {
+            successText =
+              "Data imported via OCR + AI (confidence: " +
+              (confidence * 100).toFixed(0) +
+              "%)";
+          }
 
           // Check for field mismatches - both cases
           var hasMismatchesFlag = getMrzValue(

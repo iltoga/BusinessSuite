@@ -46,13 +46,23 @@ ng test
 
 ## Running end-to-end tests
 
-For end-to-end (e2e) testing, run:
+We use Playwright for e2e tests. Playwright will automatically start the dev server defined in `playwright.config.ts` (so you don't need to run `ng serve` manually).
+
+Run tests locally:
 
 ```bash
-ng e2e
+# Run the Playwright test runner (starts the dev server automatically)
+npm run test:e2e
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+Useful options:
+
+- Run a single test file: `npx playwright test e2e/theme.spec.ts`
+- Run headed (non-headless) for debugging: `npx playwright test --headed`
+
+CI integration: a GitHub Actions workflow is provided at `.github/workflows/playwright.yml` which installs dependencies, installs Playwright browsers, and runs `npm run test:e2e` (Playwright will bring up the dev server).
+
+If you prefer Playwright to _not_ start the dev server, set `reuseExistingServer=true` in `playwright.config.ts` and start the app manually before running tests.
 
 ## Mocked authentication for local development ✅
 

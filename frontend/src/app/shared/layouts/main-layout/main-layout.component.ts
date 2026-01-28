@@ -5,6 +5,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { ThemeService } from '@/core/services/theme.service';
 import { ZardAvatarComponent } from '@/shared/components/avatar';
 import { ZardIconComponent } from '@/shared/components/icon';
+import { ThemeSwitcherComponent } from '@/shared/components/theme-switcher/theme-switcher.component';
 
 @Component({
   selector: 'app-main-layout',
@@ -16,6 +17,8 @@ import { ZardIconComponent } from '@/shared/components/icon';
     RouterLinkActive,
     ZardAvatarComponent,
     ZardIconComponent,
+    // Expose theme switcher in header
+    ThemeSwitcherComponent,
   ],
   template: `
     <div class="flex h-screen bg-background text-foreground overflow-hidden">
@@ -80,6 +83,9 @@ import { ZardIconComponent } from '@/shared/components/icon';
           </div>
 
           <div class="flex items-center gap-3">
+            <!-- Theme switcher visible in header -->
+            <app-theme-switcher />
+
             <span class="text-sm text-muted-foreground">revisadmin</span>
             <z-avatar class="h-8 w-8" zFallback="RA" />
           </div>
@@ -98,7 +104,10 @@ export class MainLayoutComponent {
 
   private themeService = inject(ThemeService);
   logoSrc = computed(() =>
-    this.themeService.isDarkMode() ? '/logo_inverted_transparent.png' : '/logo_transparent.png',
+    // Use assets path to ensure the dev-server and production builds serve the images reliably
+    this.themeService.isDarkMode()
+      ? '/assets/logo_inverted_transparent.png'
+      : '/assets/logo_transparent.png',
   );
 
   toggleSidebar() {

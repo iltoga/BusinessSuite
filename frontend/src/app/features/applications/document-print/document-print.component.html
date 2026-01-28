@@ -48,9 +48,13 @@
         <!-- Brand Header -->
         <div class="brand-header flex items-center justify-between mb-10 border-b pb-6">
           <img
-            src="/logo_transparent.png"
+            src="/assets/logo_transparent.png"
             alt="BusinessSuite"
             class="h-10 object-contain grayscale print:grayscale-0"
+            onerror="
+              this.onerror = null;
+              this.src = '/assets/logo.png';
+            "
           />
           <div class="text-right">
             <h2 class="text-lg font-bold text-primary">BUSINESS SUITE</h2>
