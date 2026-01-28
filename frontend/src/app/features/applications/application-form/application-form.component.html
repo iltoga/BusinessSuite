@@ -8,14 +8,11 @@
   } @else {
     <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-4">
       <div>
-        <label class="text-sm font-medium block mb-1">Customer</label>
-        <z-combobox
+        <app-customer-select
           formControlName="customer"
-          [options]="customerOptions()"
-          [searchable]="true"
-          placeholder="Select a customer..."
-          searchPlaceholder="Search customers..."
-          [zWidth]="'full'"
+          [label]="'Customer'"
+          [placeholder]="'Select a customer...'"
+          [searchPlaceholder]="'Search customers...'"
         />
         <div
           *ngIf="form.get('customer')?.invalid && form.get('customer')?.touched"

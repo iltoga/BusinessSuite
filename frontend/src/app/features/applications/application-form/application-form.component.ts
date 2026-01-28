@@ -2,10 +2,12 @@ import { CustomerApplicationsService } from '@/core/api/api/customer-application
 import { CustomersService } from '@/core/api/api/customers.service';
 import { DocumentTypesService } from '@/core/api/api/document-types.service';
 import { ProductsService } from '@/core/api/api/products.service';
+import type { Customer } from '@/core/api/model/customer';
 import { AuthService } from '@/core/services/auth.service';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardComboboxComponent, type ZardComboboxOption } from '@/shared/components/combobox';
+import { CustomerSelectComponent } from '@/shared/components/customer-select';
 import { ZardDateInputComponent } from '@/shared/components/date-input';
 import { ZardInputDirective } from '@/shared/components/input';
 import { CommonModule, Location } from '@angular/common';
@@ -34,6 +36,7 @@ import { map, startWith, Subject, takeUntil } from 'rxjs';
     ZardButtonComponent,
     ZardInputDirective,
     ZardComboboxComponent,
+    CustomerSelectComponent,
     ZardDateInputComponent,
   ],
   templateUrl: './application-form.component.html',
@@ -55,7 +58,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
 
   private destroy$ = new Subject<void>();
 
-  readonly customers = signal<any[]>([]);
+  readonly selectedCustomer = signal<Customer | null>(null);
   readonly products = signal<any[]>([]);
   readonly documentTypes = signal<any[]>([]);
   readonly isEditMode = signal(false);
@@ -72,14 +75,6 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
   });
 
   readonly isSubmitting = signal(false);
-
-  // Map raw data to Combobox options
-  readonly customerOptions = computed<ZardComboboxOption[]>(() => {
-    return this.customers().map((c) => ({
-      value: String(c.id),
-      label: c.fullName ?? `${c.firstName || ''} ${c.lastName || ''}`.trim(),
-    }));
-  });
 
   readonly productOptions = computed<ZardComboboxOption[]>(() => {
     return this.products().map((p) => ({
@@ -145,6 +140,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
       const customerIdParam = this.route.snapshot.paramMap.get('id');
       if (customerIdParam) {
         this.form.patchValue({ customer: customerIdParam });
+        this.loadCustomerDetail(Number(customerIdParam));
       }
 
       // Load product documents when product or customer changes (only in create mode)
@@ -162,7 +158,10 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
       this.form
         .get('customer')
         ?.valueChanges.pipe(takeUntil(this.destroy$))
-        .subscribe(() => {
+        .subscribe((customerId) => {
+          if (customerId) {
+            this.loadCustomerDetail(Number(customerId));
+          }
           const productId = this.form.get('product')?.value;
           if (productId) {
             this.loadProductDocuments(Number(productId));
@@ -170,7 +169,6 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
         });
     }
 
-    this.loadCustomers();
     this.loadProducts();
     this.loadDocumentTypes();
   }
@@ -180,12 +178,16 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
     this.customerApplicationsService.customerApplicationsRetrieve(id).subscribe({
       next: (app: any) => {
         const docDate = app.docDate ? new Date(app.docDate) : new Date();
+        const customerId = Number(app.customer?.id ?? app.customer);
         this.form.patchValue({
-          customer: String(app.customer?.id ?? app.customer),
+          customer: String(customerId),
           product: String(app.product?.id ?? app.product),
           docDate: docDate,
           notes: app.notes ?? '',
         });
+        if (customerId) {
+          this.loadCustomerDetail(customerId);
+        }
         this.isLoading.set(false);
       },
       error: () => {
@@ -195,17 +197,17 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
     });
   }
 
-  private loadCustomers() {
-    this.customersService.customersList(undefined, 1, 100).subscribe({
-      next: (res) => this.customers.set(res.results ?? []),
-      error: () => this.toast.error('Failed to load customers'),
-    });
-  }
-
   private loadProducts() {
     this.productsService.productsList(undefined, 1, 100).subscribe({
       next: (res) => this.products.set(res.results ?? []),
       error: () => this.toast.error('Failed to load products'),
+    });
+  }
+
+  private loadCustomerDetail(customerId: number): void {
+    this.customersService.customersRetrieve(customerId).subscribe({
+      next: (customer) => this.selectedCustomer.set(customer),
+      error: () => this.selectedCustomer.set(null),
     });
   }
 
@@ -255,7 +257,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
     const docType = this.documentTypes().find((dt) => String(dt.id) === String(docTypeId));
     if (docType?.name !== 'Passport') return false;
 
-    const customer = this.customers().find((c) => String(c.id) === String(customerId));
+    const customer = this.selectedCustomer();
     if (!customer) return false;
 
     // Check if customer has passport file and number

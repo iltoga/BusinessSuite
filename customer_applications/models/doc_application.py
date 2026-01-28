@@ -324,6 +324,31 @@ class DocApplication(models.Model):
         """
         return self.invoice_applications.first().invoice if self.has_invoice() else None
 
+    def reopen(self, user) -> bool:
+        """
+        Re-open a completed application and reset the last workflow step to processing.
+        """
+        if self.status != self.STATUS_COMPLETED:
+            return False
+
+        self.status = self.STATUS_PROCESSING
+        self.updated_by = user
+
+        try:
+            from customer_applications.models.doc_workflow import DocWorkflow
+
+            last_workflow = self.workflows.order_by("-task__step").first()
+            if last_workflow and last_workflow.status == DocWorkflow.STATUS_COMPLETED:
+                last_workflow.status = DocWorkflow.STATUS_PROCESSING
+                last_workflow.updated_by = user
+                last_workflow.save()
+        except Exception:
+            # Allow application status change even if workflow update fails
+            pass
+
+        self.save(skip_status_calculation=True)
+        return True
+
     def can_be_deleted(self):
         # Block deletion if related invoices exist
         if self.invoice_applications.exists():

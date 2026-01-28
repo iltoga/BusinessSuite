@@ -23,6 +23,7 @@ import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
+import { ZardComboboxComponent, type ZardComboboxOption } from '@/shared/components/combobox';
 import { DocumentPreviewComponent } from '@/shared/components/document-preview';
 import { FileUploadComponent } from '@/shared/components/file-upload';
 import { ZardIconComponent } from '@/shared/components/icon';
@@ -40,6 +41,7 @@ import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
     ZardBadgeComponent,
     ZardButtonComponent,
     ZardCardComponent,
+    ZardComboboxComponent,
     DocumentPreviewComponent,
     FileUploadComponent,
     ZardIconComponent,
@@ -77,6 +79,14 @@ export class ApplicationDetailComponent implements OnInit {
   readonly ocrReviewData = signal<OcrStatusResponse | null>(null);
   readonly ocrMetadata = signal<Record<string, unknown> | null>(null);
   readonly actionLoading = signal<string | null>(null);
+  readonly workflowAction = signal<string | null>(null);
+
+  readonly workflowStatusOptions: ZardComboboxOption[] = [
+    { value: 'pending', label: 'Pending' },
+    { value: 'processing', label: 'Processing' },
+    { value: 'completed', label: 'Completed' },
+    { value: 'rejected', label: 'Rejected' },
+  ];
 
   private pollTimer: number | null = null;
 
@@ -89,6 +99,19 @@ export class ApplicationDetailComponent implements OnInit {
   readonly optionalDocuments = computed(() =>
     (this.application()?.documents ?? []).filter((doc) => !doc.required && !doc.completed),
   );
+
+  readonly sortedWorkflows = computed(() => {
+    const workflows = this.application()?.workflows ?? [];
+    return [...workflows].sort((a, b) => (a.task?.step ?? 0) - (b.task?.step ?? 0));
+  });
+
+  readonly canAdvanceWorkflow = computed(() => {
+    const app = this.application();
+    if (!app) return false;
+    return !!app.isDocumentCollectionCompleted && !!app.hasNextTask && !app.isApplicationCompleted;
+  });
+
+  readonly canReopen = computed(() => !!this.application()?.isApplicationCompleted);
 
   readonly uploadForm = this.fb.group({
     docNumber: [''],
@@ -293,6 +316,80 @@ export class ApplicationDetailComponent implements OnInit {
   printDocument(doc: ApplicationDocument): void {
     // Navigate to print-friendly view using replaceUrl to avoid cluttering history
     this.router.navigate(['/documents', doc.id, 'print'], { replaceUrl: true });
+  }
+
+  advanceWorkflow(): void {
+    const app = this.application();
+    if (!app) return;
+
+    this.workflowAction.set('advance');
+    this.applicationsService.advanceWorkflow(app.id).subscribe({
+      next: () => {
+        this.toast.success('Workflow advanced');
+        this.loadApplication(app.id);
+        this.workflowAction.set(null);
+      },
+      error: () => {
+        this.toast.error('Failed to advance workflow');
+        this.workflowAction.set(null);
+      },
+    });
+  }
+
+  updateWorkflowStatus(workflowId: number, status: string | null): void {
+    const app = this.application();
+    if (!app || !status) return;
+
+    this.workflowAction.set(`status-${workflowId}`);
+    this.applicationsService.updateWorkflowStatus(app.id, workflowId, status).subscribe({
+      next: () => {
+        this.toast.success('Workflow status updated');
+        this.loadApplication(app.id);
+        this.workflowAction.set(null);
+      },
+      error: () => {
+        this.toast.error('Failed to update workflow status');
+        this.workflowAction.set(null);
+      },
+    });
+  }
+
+  reopenApplication(): void {
+    const app = this.application();
+    if (!app) return;
+
+    this.workflowAction.set('reopen');
+    this.applicationsService.reopenApplication(app.id).subscribe({
+      next: () => {
+        this.toast.success('Application re-opened');
+        this.loadApplication(app.id);
+        this.workflowAction.set(null);
+      },
+      error: () => {
+        this.toast.error('Failed to re-open application');
+        this.workflowAction.set(null);
+      },
+    });
+  }
+
+  getWorkflowStatusVariant(
+    status: string,
+    isOverdue?: boolean,
+  ): 'default' | 'secondary' | 'warning' | 'success' | 'destructive' {
+    if (isOverdue) {
+      return 'destructive';
+    }
+    switch (status) {
+      case 'completed':
+        return 'success';
+      case 'processing':
+        return 'warning';
+      case 'rejected':
+        return 'destructive';
+      case 'pending':
+      default:
+        return 'secondary';
+    }
   }
 
   /**

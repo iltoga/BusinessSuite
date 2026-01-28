@@ -3,7 +3,7 @@ import os
 from rest_framework import serializers
 
 from api.serializers.customer_serializer import CustomerSerializer
-from api.serializers.doc_workflow_serializer import DocWorkflowSerializer
+from api.serializers.doc_workflow_serializer import DocWorkflowSerializer, TaskSerializer
 from api.serializers.document_serializer import DocumentSerializer
 from api.serializers.product_serializer import ProductSerializer
 from customer_applications.models import DocApplication
@@ -85,6 +85,12 @@ class DocApplicationDetailSerializer(serializers.ModelSerializer):
     documents = DocumentSerializer(many=True, read_only=True)
     workflows = DocWorkflowSerializer(many=True, read_only=True)
     str_field = serializers.SerializerMethodField()
+    is_document_collection_completed = serializers.BooleanField(read_only=True)
+    is_application_completed = serializers.BooleanField(read_only=True)
+    has_next_task = serializers.BooleanField(read_only=True)
+    next_task = TaskSerializer(read_only=True)
+    has_invoice = serializers.SerializerMethodField()
+    invoice_id = serializers.SerializerMethodField()
 
     class Meta:
         model = DocApplication
@@ -102,12 +108,25 @@ class DocApplicationDetailSerializer(serializers.ModelSerializer):
             "updated_by",
             "documents",
             "workflows",
+            "is_document_collection_completed",
+            "is_application_completed",
+            "has_next_task",
+            "next_task",
+            "has_invoice",
+            "invoice_id",
             "str_field",
         ]
         read_only_fields = fields
 
     def get_str_field(self, instance):
         return str(instance)
+
+    def get_has_invoice(self, instance) -> bool:
+        return instance.has_invoice()
+
+    def get_invoice_id(self, instance) -> int | None:
+        invoice = instance.get_invoice()
+        return invoice.id if invoice else None
 
 
 class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):

@@ -8,6 +8,7 @@
  * Do not edit the class manually.
  */
 import { StatusEnum } from './status-enum';
+import { Task } from './task';
 import { DocWorkflow } from './doc-workflow';
 import { Customer } from './customer';
 import { Product } from './product';
@@ -28,6 +29,12 @@ export interface DocApplicationDetail {
     readonly updatedBy: number | null;
     readonly documents: Array<Document>;
     readonly workflows: Array<DocWorkflow>;
+    readonly isDocumentCollectionCompleted: boolean;
+    readonly isApplicationCompleted: boolean;
+    readonly hasNextTask: boolean;
+    readonly nextTask: Task;
+    readonly hasInvoice: boolean;
+    readonly invoiceId: number | null;
     readonly strField: string;
 }
 export namespace DocApplicationDetail {

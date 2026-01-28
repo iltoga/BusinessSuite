@@ -46,6 +46,97 @@
     </z-card>
 
     <z-card class="p-6">
+      <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+        <h3 class="text-lg font-semibold">Workflow Timeline</h3>
+        <div class="flex flex-wrap gap-2">
+          @if (canAdvanceWorkflow()) {
+            <button
+              z-button
+              zType="warning"
+              (click)="advanceWorkflow()"
+              [disabled]="workflowAction() !== null"
+            >
+              @if (application()!.nextTask?.step === 1) {
+                Start
+              } @else {
+                Next Step
+              }
+            </button>
+          }
+          @if (canReopen()) {
+            <button
+              z-button
+              zType="destructive"
+              (click)="reopenApplication()"
+              [disabled]="workflowAction() !== null"
+            >
+              Re-open Application
+            </button>
+          }
+        </div>
+      </div>
+
+      @if (!application()!.isDocumentCollectionCompleted) {
+        <div class="mb-4">
+          <z-badge zType="warning">Document Collection Pending</z-badge>
+        </div>
+      }
+
+      @if (sortedWorkflows().length === 0) {
+        <div class="text-sm text-muted-foreground">No workflow steps yet.</div>
+      } @else {
+        <ol class="space-y-4">
+          @for (workflow of sortedWorkflows(); track workflow.id) {
+            <li class="rounded-lg border p-4">
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div class="text-sm text-muted-foreground">Step {{ workflow.task.step }}</div>
+                  <div class="font-medium">{{ workflow.task.name }}</div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <z-badge [zType]="getWorkflowStatusVariant(workflow.status, workflow.isOverdue)">
+                    {{ workflow.status | titlecase }}
+                  </z-badge>
+                  @if (workflow.hasNotes) {
+                    <span class="text-warning">&#9888;</span>
+                  }
+                </div>
+              </div>
+
+              <div class="mt-2 grid gap-2 text-sm text-muted-foreground md:grid-cols-3">
+                <div>
+                  <span class="font-medium text-foreground">Start:</span>
+                  {{ workflow.startDate | appDate }}
+                </div>
+                <div>
+                  <span class="font-medium text-foreground">Due:</span>
+                  {{ workflow.dueDate | appDate }}
+                </div>
+                <div>
+                  <span class="font-medium text-foreground">Completed:</span>
+                  {{ workflow.completionDate ? (workflow.completionDate | appDate) : '—' }}
+                </div>
+              </div>
+
+              @if (workflow.isCurrentStep && !application()!.isApplicationCompleted) {
+                <div class="mt-3 max-w-xs">
+                  <z-combobox
+                    [value]="workflow.status"
+                    [options]="workflowStatusOptions"
+                    [searchable]="false"
+                    [zWidth]="'full'"
+                    [disabled]="workflowAction() !== null"
+                    (zValueChange)="updateWorkflowStatus(workflow.id, $event)"
+                  />
+                </div>
+              }
+            </li>
+          }
+        </ol>
+      }
+    </z-card>
+
+    <z-card class="p-6">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold">Uploaded Documents</h3>
       </div>

@@ -11,6 +11,8 @@ from django.http import FileResponse
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema
 from rest_framework import filters, pagination, status, viewsets
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.authtoken.views import ObtainAuthToken
@@ -30,6 +32,7 @@ from api.serializers import (
     DocApplicationSerializerWithRelations,
     DocumentSerializer,
     DocumentTypeSerializer,
+    DocWorkflowSerializer,
     ProductCreateUpdateSerializer,
     ProductDetailSerializer,
     ProductQuickCreateSerializer,
@@ -356,6 +359,50 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         # Refresh application status
         application.save()
 
+        return Response({"success": True})
+
+    @extend_schema(request=OpenApiTypes.OBJECT, responses=DocWorkflowSerializer)
+    @action(detail=True, methods=["post"], url_path=r"workflows/(?P<workflow_id>[^/.]+)/status")
+    def update_workflow_status(self, request, pk=None, workflow_id=None):
+        """Update the status of a workflow step for an application."""
+        from customer_applications.models.doc_workflow import DocWorkflow
+
+        status_value = request.data.get("status")
+        valid_statuses = {choice[0] for choice in DocWorkflow.STATUS_CHOICES}
+
+        if not status_value or status_value not in valid_statuses:
+            return self.error_response("Invalid workflow status", status.HTTP_400_BAD_REQUEST)
+
+        workflow = (
+            DocWorkflow.objects.select_related("doc_application").filter(pk=workflow_id, doc_application_id=pk).first()
+        )
+        if not workflow:
+            return self.error_response("Workflow not found", status.HTTP_404_NOT_FOUND)
+
+        if (
+            status_value == DocWorkflow.STATUS_COMPLETED
+            and not workflow.doc_application.is_document_collection_completed
+        ):
+            return self.error_response("Document collection is not completed", status.HTTP_400_BAD_REQUEST)
+
+        workflow.status = status_value
+        workflow.updated_by = request.user
+        workflow.save()
+
+        workflow.doc_application.updated_by = request.user
+        workflow.doc_application.save()
+
+        from api.serializers.doc_workflow_serializer import DocWorkflowSerializer
+
+        return Response(DocWorkflowSerializer(workflow).data)
+
+    @extend_schema(responses=OpenApiTypes.OBJECT)
+    @action(detail=True, methods=["post"], url_path="reopen")
+    def reopen_application(self, request, pk=None):
+        """Re-open a completed application."""
+        application = self.get_object()
+        if not application.reopen(request.user):
+            return self.error_response("Application is not completed", status.HTTP_400_BAD_REQUEST)
         return Response({"success": True})
 
 

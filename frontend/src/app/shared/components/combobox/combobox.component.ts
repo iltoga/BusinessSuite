@@ -18,18 +18,24 @@ import { type ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angu
 
 import type { ClassValue } from 'clsx';
 
-import { comboboxVariants, type ZardComboboxVariants } from './combobox.variants';
 import { ZardButtonComponent } from '@/shared/components/button/button.component';
 import { ZardCommandEmptyComponent } from '@/shared/components/command/command-empty.component';
 import { ZardCommandInputComponent } from '@/shared/components/command/command-input.component';
 import { ZardCommandListComponent } from '@/shared/components/command/command-list.component';
 import { ZardCommandOptionGroupComponent } from '@/shared/components/command/command-option-group.component';
 import { ZardCommandOptionComponent } from '@/shared/components/command/command-option.component';
-import { ZardCommandComponent, type ZardCommandOption } from '@/shared/components/command/command.component';
+import {
+  ZardCommandComponent,
+  type ZardCommandOption,
+} from '@/shared/components/command/command.component';
 import { ZardEmptyComponent } from '@/shared/components/empty/empty.component';
 import { ZardIconComponent } from '@/shared/components/icon/icon.component';
 import type { ZardIcon } from '@/shared/components/icon/icons';
-import { ZardPopoverComponent, ZardPopoverDirective } from '@/shared/components/popover/popover.component';
+import {
+  ZardPopoverComponent,
+  ZardPopoverDirective,
+} from '@/shared/components/popover/popover.component';
+import { comboboxVariants, type ZardComboboxVariants } from './combobox.variants';
 
 import { mergeClasses } from '@/shared/utils/merge-classes';
 
@@ -91,7 +97,11 @@ export interface ZardComboboxGroup {
       <z-popover [class]="popoverClasses()">
         <z-command class="min-h-auto" (zCommandSelected)="handleSelect($event)" #commandRef>
           @if (searchable()) {
-            <z-command-input [placeholder]="searchPlaceholder()" #commandInputRef />
+            <z-command-input
+              [placeholder]="searchPlaceholder()"
+              (valueChange)="onSearchChange($event)"
+              #commandInputRef
+            />
           }
 
           <z-command-list id="combobox-listbox" role="listbox">
@@ -171,7 +181,8 @@ export interface ZardComboboxGroup {
     '[class]': 'classes()',
     '(document:keydown.escape)': 'onDocumentKeyDown($event)',
     '(keydown.escape.prevent-with-stop)': 'onKeyDownEscape()',
-    '(keydown.{arrowdown,arrowup,enter,home,end,pageup,pagedown,space}.prevent)': 'onKeyDown($event)',
+    '(keydown.{arrowdown,arrowup,enter,home,end,pageup,pagedown,space}.prevent)':
+      'onKeyDown($event)',
     '(keydown.tab)': 'onKeyDown($event)',
   },
   exportAs: 'zCombobox',
@@ -195,6 +206,7 @@ export class ZardComboboxComponent implements ControlValueAccessor {
 
   readonly zValueChange = output<string | null>();
   readonly zComboSelected = output<ZardComboboxOption>();
+  readonly searchChange = output<string>();
 
   readonly popoverDirective = viewChild.required('popoverTrigger', { read: ZardPopoverDirective });
   readonly buttonRef = viewChild.required('popoverTrigger', { read: ElementRef });
@@ -231,7 +243,7 @@ export class ZardComboboxComponent implements ControlValueAccessor {
     // Search in groups first
     if (this.groups().length) {
       for (const group of this.groups()) {
-        const option = group.options.find(opt => opt.value === currentValue);
+        const option = group.options.find((opt) => opt.value === currentValue);
         if (option) {
           return option.label;
         }
@@ -239,7 +251,7 @@ export class ZardComboboxComponent implements ControlValueAccessor {
     }
 
     // Then search in flat options
-    const option = this.options().find(opt => opt.value === currentValue);
+    const option = this.options().find((opt) => opt.value === currentValue);
     return option?.label ?? null;
   });
 
@@ -288,13 +300,13 @@ export class ZardComboboxComponent implements ControlValueAccessor {
 
       if (this.groups().length > 0) {
         for (const group of this.groups()) {
-          selectedOption = group.options.find(opt => opt.value === newValue);
+          selectedOption = group.options.find((opt) => opt.value === newValue);
           if (selectedOption) {
             break;
           }
         }
       } else {
-        selectedOption = this.options().find(opt => opt.value === newValue);
+        selectedOption = this.options().find((opt) => opt.value === newValue);
       }
 
       if (selectedOption) {
@@ -307,6 +319,10 @@ export class ZardComboboxComponent implements ControlValueAccessor {
 
     // Return focus to the combobox button after selection
     this.buttonRef().nativeElement.focus();
+  }
+
+  onSearchChange(value: string): void {
+    this.searchChange.emit(value);
   }
 
   onKeyDownEscape(): void {

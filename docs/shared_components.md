@@ -20,6 +20,7 @@
 | FileUpload          | app-file-upload           | src/app/shared/components/file-upload           | Button         | ✅ Ready |
 | DocumentPreview     | app-document-preview      | src/app/shared/components/document-preview      | Popover, Icon  | ✅ Ready |
 | SortableMultiSelect | app-sortable-multi-select | src/app/shared/components/sortable-multi-select | DragDrop       | ✅ Ready |
+| CustomerSelect      | app-customer-select       | src/app/shared/components/customer-select       | Combobox       | ✅ Ready |
 
 ## Component Details
 
@@ -187,7 +188,7 @@ export class DocumentPreviewComponent {
 
 **Interface:**
 
-```typescript
+````typescript
 @Component({
   selector: "app-sortable-multi-select",
   standalone: true,
@@ -198,4 +199,27 @@ export class SortableMultiSelectComponent {
   label = input<string>("");
   selectedIdsChange = output<number[]>();
 }
+
+### CustomerSelectComponent
+
+**Location:** `src/app/shared/components/customer-select/customer-select.component.ts`
+
+**Interface:**
+
+```typescript
+@Component({
+  selector: "app-customer-select",
+  standalone: true,
+})
+export class CustomerSelectComponent {
+  label = input<string>("Customer");
+  placeholder = input<string>("Select a customer...");
+  searchPlaceholder = input<string>("Search customers...");
+  selectedId = input<number | null>(null);
+  selectedIdChange = output<number | null>();
+}
+````
+
+```
+
 ```

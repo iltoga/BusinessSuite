@@ -9,6 +9,7 @@
 - **2026-01-24:** Implemented Customer List feature with search, pagination, and status toggling
 - **2026-01-25:** Added Application Detail view with OCR polling and shared FileUpload component
 - **2026-01-26:** Implemented Products management (list/detail/form), API CRUD for products, and SortableMultiSelect component
+- **2026-01-28:** Added CustomerSelect shared component and workflow progression UI for applications
 
 ## Reuse Hints
 
@@ -26,3 +27,4 @@
 ## Wins & Lessons Learned
 
 - SortableMultiSelect simplifies ordered document selection for products and future formsets
+- CustomerSelect centralizes async customer lookup, reducing duplicated combobox logic

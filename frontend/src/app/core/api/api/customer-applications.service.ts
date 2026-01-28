@@ -23,6 +23,8 @@ import { DocApplicationDetail } from '../model/doc-application-detail';
 // @ts-ignore
 import { DocApplicationSerializerWithRelations } from '../model/doc-application-serializer-with-relations';
 // @ts-ignore
+import { DocWorkflow } from '../model/doc-workflow';
+// @ts-ignore
 import { PaginatedDocApplicationSerializerWithRelationsList } from '../model/paginated-doc-application-serializer-with-relations-list';
 
 // @ts-ignore
@@ -440,6 +442,9 @@ export class CustomerApplicationsService extends BaseService {
 
         // authentication (cookieAuth) required
 
+        // authentication (tokenAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('tokenAuth', 'Authorization', localVarHeaders, 'Bearer ');
+
         const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
         ]);
         if (localVarHttpHeaderAcceptSelected !== undefined) {
@@ -467,6 +472,83 @@ export class CustomerApplicationsService extends BaseService {
         return this.httpClient.request<any>('post', `${basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
+                responseType: <any>responseType_,
+                ...(withCredentials ? { withCredentials } : {}),
+                headers: localVarHeaders,
+                observe: observe,
+                ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Re-open a completed application.
+     * @endpoint post /api/customer-applications/{id}/reopen/
+     * @param id A unique integer value identifying this doc application.
+     * @param docApplicationSerializerWithRelations 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     * @param options additional options
+     */
+    public customerApplicationsReopenCreate(id: number, docApplicationSerializerWithRelations: DocApplicationSerializerWithRelations, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<{ [key: string]: any; }>;
+    public customerApplicationsReopenCreate(id: number, docApplicationSerializerWithRelations: DocApplicationSerializerWithRelations, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<{ [key: string]: any; }>>;
+    public customerApplicationsReopenCreate(id: number, docApplicationSerializerWithRelations: DocApplicationSerializerWithRelations, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<{ [key: string]: any; }>>;
+    public customerApplicationsReopenCreate(id: number, docApplicationSerializerWithRelations: DocApplicationSerializerWithRelations, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+        if (id === null || id === undefined) {
+            throw new Error('Required parameter id was null or undefined when calling customerApplicationsReopenCreate.');
+        }
+        if (docApplicationSerializerWithRelations === null || docApplicationSerializerWithRelations === undefined) {
+            throw new Error('Required parameter docApplicationSerializerWithRelations was null or undefined when calling customerApplicationsReopenCreate.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        // authentication (cookieAuth) required
+
+        // authentication (tokenAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('tokenAuth', 'Authorization', localVarHeaders, 'Bearer ');
+
+        const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            'application/json'
+        ]);
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+        const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json',
+            'application/x-www-form-urlencoded',
+            'multipart/form-data'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/customer-applications/${this.configuration.encodeParam({name: "id", value: id, in: "path", style: "simple", explode: false, dataType: "number", dataFormat: undefined})}/reopen/`;
+        const { basePath, withCredentials } = this.configuration;
+        return this.httpClient.request<{ [key: string]: any; }>('post', `${basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: docApplicationSerializerWithRelations,
                 responseType: <any>responseType_,
                 ...(withCredentials ? { withCredentials } : {}),
                 headers: localVarHeaders,
@@ -603,6 +685,84 @@ export class CustomerApplicationsService extends BaseService {
             {
                 context: localVarHttpContext,
                 body: docApplicationCreateUpdate,
+                responseType: <any>responseType_,
+                ...(withCredentials ? { withCredentials } : {}),
+                headers: localVarHeaders,
+                observe: observe,
+                ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Update the status of a workflow step for an application.
+     * @endpoint post /api/customer-applications/{id}/workflows/{workflowId}/status/
+     * @param id A unique integer value identifying this doc application.
+     * @param workflowId 
+     * @param requestBody 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     * @param options additional options
+     */
+    public customerApplicationsWorkflowsStatusCreate(id: number, workflowId: string, requestBody?: { [key: string]: any; }, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<DocWorkflow>;
+    public customerApplicationsWorkflowsStatusCreate(id: number, workflowId: string, requestBody?: { [key: string]: any; }, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<DocWorkflow>>;
+    public customerApplicationsWorkflowsStatusCreate(id: number, workflowId: string, requestBody?: { [key: string]: any; }, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<DocWorkflow>>;
+    public customerApplicationsWorkflowsStatusCreate(id: number, workflowId: string, requestBody?: { [key: string]: any; }, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+        if (id === null || id === undefined) {
+            throw new Error('Required parameter id was null or undefined when calling customerApplicationsWorkflowsStatusCreate.');
+        }
+        if (workflowId === null || workflowId === undefined) {
+            throw new Error('Required parameter workflowId was null or undefined when calling customerApplicationsWorkflowsStatusCreate.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        // authentication (cookieAuth) required
+
+        // authentication (tokenAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('tokenAuth', 'Authorization', localVarHeaders, 'Bearer ');
+
+        const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            'application/json'
+        ]);
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+        const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json',
+            'application/x-www-form-urlencoded',
+            'multipart/form-data'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/customer-applications/${this.configuration.encodeParam({name: "id", value: id, in: "path", style: "simple", explode: false, dataType: "number", dataFormat: undefined})}/workflows/${this.configuration.encodeParam({name: "workflowId", value: workflowId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: undefined})}/status/`;
+        const { basePath, withCredentials } = this.configuration;
+        return this.httpClient.request<DocWorkflow>('post', `${basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: requestBody,
                 responseType: <any>responseType_,
                 ...(withCredentials ? { withCredentials } : {}),
                 headers: localVarHeaders,

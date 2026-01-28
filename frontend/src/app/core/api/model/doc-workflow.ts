@@ -19,6 +19,10 @@ export interface DocWorkflow {
     readonly dueDate: string;
     readonly status: StatusEnum;
     readonly notes: string;
+    readonly isCurrentStep: boolean;
+    readonly isOverdue: boolean;
+    readonly isNotificationDateReached: boolean;
+    readonly hasNotes: boolean;
     readonly createdAt: string;
     readonly updatedAt: string;
     readonly createdBy: number;

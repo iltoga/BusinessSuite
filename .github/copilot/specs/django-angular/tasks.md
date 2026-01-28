@@ -1005,7 +1005,7 @@
 
 ### 5.4 Product Create/Edit Form
 
-- [ ] **5.4.1** Create shared `SortableMultiSelectComponent`:
+- [x] **5.4.1** Create shared `SortableMultiSelectComponent`:
 
   ```typescript
   // Replicates Django's SortableSelectMultiple widget
@@ -1175,9 +1175,9 @@
 
 - [x] **6.1.2** Create `DocApplicationCreateUpdateSerializer`: (implemented)
 
-- [ ] **6.1.3** Run `bun run generate:api`
+- [x] **6.1.3** Run `bun run generate:api`
 
-- [ ] **6.1.2** Create `DocApplicationCreateUpdateSerializer`:
+- [x] **6.1.2** Create `DocApplicationCreateUpdateSerializer`:
 
   ```python
   class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
@@ -1232,7 +1232,7 @@
 
 ### 6.2 Application List View
 
-- [ ] **6.2.1** Create `features/applications/application-list/application-list.component.ts`:
+- [x] **6.2.1** Create `features/applications/application-list/application-list.component.ts`:
 
   ```typescript
   @Component({
@@ -1262,11 +1262,11 @@
   }
   ```
 
-- [ ] **6.2.2** Add route `/applications` to `app.routes.ts`
+- [x] **6.2.2** Add route `/applications` to `app.routes.ts`
 
 ### 6.3 Application Create Form
 
-- [ ] **6.3.1** Create `features/applications/application-form/application-form.component.ts`:
+- [x] **6.3.1** Create `features/applications/application-form/application-form.component.ts`:
 
   ```typescript
   @Component({
@@ -1324,7 +1324,7 @@
   }
   ```
 
-- [ ] **6.3.2** Create shared `CustomerSelectComponent` (searchable dropdown):
+- [x] **6.3.2** Create shared `CustomerSelectComponent` (searchable dropdown):
 
   ```typescript
   // Reusable select with async search for customers
@@ -1342,11 +1342,11 @@
   }
   ```
 
-- [ ] **6.3.3** Add routes `/applications/new`, `/customers/:customerId/applications/new`
+- [x] **6.3.3** Add routes `/applications/new`, `/customers/:customerId/applications/new`
 
 ### 6.4 Workflow Progression
 
-- [ ] **6.4.1** Add workflow actions to application detail:
+- [x] **6.4.1** Add workflow actions to application detail:
 
   ```typescript
   // In existing application-detail.component.ts
@@ -1368,7 +1368,7 @@
   }
   ```
 
-- [ ] **6.4.2** Show workflow timeline in detail view
+- [x] **6.4.2** Show workflow timeline in detail view
 
 ---
 

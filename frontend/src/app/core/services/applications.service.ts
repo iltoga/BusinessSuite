@@ -1,9 +1,8 @@
-import { HttpClient, HttpEvent, HttpEventType, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpEvent, HttpEventType } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 
 import { CustomerApplicationsService } from '@/core/api/api/customer-applications.service';
-import { AuthService } from '@/core/services/auth.service';
 import { DocumentsService } from '@/core/services/documents.service';
 import { OcrService } from '@/core/services/ocr.service';
 
@@ -76,6 +75,20 @@ export interface ApplicationWorkflow {
   completionDate?: string | null;
   status: string;
   notes?: string | null;
+  isCurrentStep?: boolean;
+  isOverdue?: boolean;
+  isNotificationDateReached?: boolean;
+  hasNotes?: boolean;
+}
+
+export interface ApplicationTask {
+  id: number;
+  name: string;
+  step: number;
+  duration: number;
+  durationIsBusinessDays: boolean;
+  notifyDaysBefore: number;
+  lastStep: boolean;
 }
 
 export interface ApplicationDetail {
@@ -88,6 +101,12 @@ export interface ApplicationDetail {
   notes?: string | null;
   documents: ApplicationDocument[];
   workflows: ApplicationWorkflow[];
+  isDocumentCollectionCompleted?: boolean;
+  isApplicationCompleted?: boolean;
+  hasNextTask?: boolean;
+  nextTask?: ApplicationTask | null;
+  hasInvoice?: boolean;
+  invoiceId?: number | null;
   strField?: string;
 }
 
@@ -120,15 +139,34 @@ export type UploadState =
 })
 export class ApplicationsService {
   private http = inject(HttpClient);
-  private authService = inject(AuthService);
   private customerApplicationsService = inject(CustomerApplicationsService);
   private documentsService = inject(DocumentsService);
   private ocrService = inject(OcrService);
 
-  private apiUrl = '/api/customer-applications/';
-
   getApplication(applicationId: number): Observable<any> {
     return this.customerApplicationsService.customerApplicationsRetrieve(applicationId, 'body');
+  }
+
+  advanceWorkflow(applicationId: number): Observable<any> {
+    return this.customerApplicationsService.customerApplicationsAdvanceWorkflowCreate(
+      applicationId,
+      {} as any,
+    );
+  }
+
+  updateWorkflowStatus(applicationId: number, workflowId: number, status: string): Observable<any> {
+    return this.customerApplicationsService.customerApplicationsWorkflowsStatusCreate(
+      applicationId,
+      String(workflowId),
+      { status },
+    );
+  }
+
+  reopenApplication(applicationId: number): Observable<any> {
+    return this.customerApplicationsService.customerApplicationsReopenCreate(
+      applicationId,
+      {} as any,
+    );
   }
 
   updateDocument(
@@ -181,10 +219,5 @@ export class ApplicationsService {
       `/api/documents/${documentId}/actions/${actionName}/`,
       {},
     );
-  }
-
-  private buildHeaders(): HttpHeaders | undefined {
-    const token = this.authService.getToken();
-    return token ? new HttpHeaders({ Authorization: `Bearer ${token}` }) : undefined;
   }
 }
