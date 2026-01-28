@@ -396,7 +396,7 @@ Located in `copilot/specs/django-angular/`:
 
 ### Theme Customization
 
-See [THEME_GUIDE.md](copilot/specs/django-angular/THEME_GUIDE.md) for maintaining and customizing the Angular frontend theme.
+**Canonical theme guide:** See [THEME_GUIDE.md](copilot/specs/django-angular/THEME_GUIDE.md) — this file is the single source of truth for colors, button variants, and theme behavior. All frontend work, specs, and automated checks should reference it to keep the style consistent.
 
 ### ZardUI Component Library
 

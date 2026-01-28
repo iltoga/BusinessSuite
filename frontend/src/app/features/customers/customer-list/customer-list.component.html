@@ -87,7 +87,7 @@
     <a [routerLink]="['/customers', row.id, 'edit']">
       <z-button zType="warning" zSize="sm">Edit</z-button>
     </a>
-    <z-button zType="ghost" zSize="sm" (click)="onToggleActive(row)">
+    <z-button [zType]="row.active ? 'secondary' : 'ghost'" zSize="sm" (click)="onToggleActive(row)">
       {{ row.active ? 'Disable' : 'Enable' }}
     </z-button>
     <z-button zType="destructive" zSize="sm" (click)="onDelete(row)">Delete</z-button>

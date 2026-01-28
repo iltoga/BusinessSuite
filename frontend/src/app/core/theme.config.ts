@@ -27,6 +27,7 @@
  * - 'blue': Corporate blue primary
  * - 'purple': Creative purple primary
  * - 'teal': Modern teal primary
+ * - 'legacy': Classic Bootstrap-like palette (navy, yellow, green)
  */
 
 export type ThemeName =
@@ -37,7 +38,8 @@ export type ThemeName =
   | 'stone'
   | 'blue'
   | 'purple'
-  | 'teal';
+  | 'teal'
+  | 'legacy';
 
 export interface ThemeColors {
   // Base colors
@@ -348,9 +350,10 @@ export const stoneDark: ThemeColors = {
  */
 export const blueLight: ThemeColors = {
   ...neutralLight,
-  primary: 'oklch(0.488 0.243 264.376)', // Blue
+  // More distinct, accessible blue (deeper navy tone supporting good contrast)
+  primary: 'oklch(0.42 0.22 260)', // Distinct Blue
   warning: 'oklch(0.754 0.149 50)', // Orange (complementary)
-  chart1: 'oklch(0.488 0.243 264.376)', // Blue
+  chart1: 'oklch(0.42 0.22 260)', // Blue
   chart2: 'oklch(0.696 0.17 162.48)', // Green
   chart3: 'oklch(0.627 0.265 303.9)', // Purple
   chart4: 'oklch(0.754 0.149 50)', // Orange
@@ -370,9 +373,10 @@ export const blueDark: ThemeColors = {
  */
 export const purpleLight: ThemeColors = {
   ...neutralLight,
-  primary: 'oklch(0.627 0.265 303.9)', // Purple
-  chart1: 'oklch(0.627 0.265 303.9)', // Purple
-  chart2: 'oklch(0.488 0.243 264.376)', // Blue
+  // Strong, more magenta-lean purple for contrast against blue/teal themes
+  primary: 'oklch(0.58 0.28 292)', // Magenta-Purple
+  chart1: 'oklch(0.58 0.28 292)', // Purple
+  chart2: 'oklch(0.42 0.22 260)', // Blue
   chart3: 'oklch(0.754 0.149 50)', // Orange
   chart4: 'oklch(0.696 0.17 162.48)', // Green
   chart5: 'oklch(0.645 0.246 16.439)', // Red-orange
@@ -391,9 +395,10 @@ export const purpleDark: ThemeColors = {
  */
 export const tealLight: ThemeColors = {
   ...neutralLight,
-  primary: 'oklch(0.6 0.118 184.704)', // Teal
-  chart1: 'oklch(0.6 0.118 184.704)', // Teal
-  chart2: 'oklch(0.488 0.243 264.376)', // Blue
+  // Slightly more saturated teal/cyan for clearer separation
+  primary: 'oklch(0.58 0.2 190)', // Teal-Cyan
+  chart1: 'oklch(0.58 0.2 190)', // Teal
+  chart2: 'oklch(0.42 0.22 260)', // Blue
   chart3: 'oklch(0.696 0.17 162.48)', // Green
   chart4: 'oklch(0.627 0.265 303.9)', // Purple
   chart5: 'oklch(0.754 0.149 83.317)', // Yellow
@@ -403,6 +408,88 @@ export const tealDark: ThemeColors = {
   ...neutralDark,
   primary: 'oklch(0.7 0.15 184)', // Lighter teal for dark mode
   primaryForeground: 'oklch(0.145 0 0)',
+};
+
+// ====================
+// LEGACY THEME (Bootstrap-like) - OKLCH Precise Values
+// ====================
+
+export const legacyLight: ThemeColors = {
+  background: 'oklch(1 0 0)',
+  foreground: 'oklch(0.145 0.01 260)',
+  card: 'oklch(1 0 0)',
+  cardForeground: 'oklch(0.145 0.01 260)',
+  popover: 'oklch(1 0 0)',
+  popoverForeground: 'oklch(0.145 0.01 260)',
+  primary: 'oklch(0.18 0.06 260)', // deep navy similar to #2C3E50
+  primaryForeground: 'oklch(0.985 0 0)',
+  secondary: 'oklch(0.35 0.02 240)', // muted gray-blue similar to #6c757d
+  secondaryForeground: 'oklch(0.985 0 0)',
+  muted: 'oklch(0.98 0 0)',
+  mutedForeground: 'oklch(0.35 0.02 240)',
+  accent: 'oklch(0.75 0.20 80)', // yellow (warning)
+  accentForeground: 'oklch(0.145 0.01 260)',
+  destructive: 'oklch(0.577 0.245 27.325)', // red
+  destructiveForeground: 'oklch(0.985 0 0)',
+  warning: 'oklch(0.75 0.20 80)',
+  warningForeground: 'oklch(0.985 0 0)',
+  success: 'oklch(0.595 0.165 155)',
+  successForeground: 'oklch(0.985 0 0)',
+  border: 'oklch(0.922 0 0)',
+  input: 'oklch(1 0 0)',
+  ring: 'oklch(0.18 0.06 260)',
+  sidebarAccent: 'oklch(0.75 0.20 80)',
+  sidebarAccentForeground: 'oklch(0.145 0 0)',
+  chart1: 'oklch(0.18 0.06 260)',
+  chart2: 'oklch(0.6 0.118 184.704)',
+  chart3: 'oklch(0.595 0.165 155)',
+  chart4: 'oklch(0.75 0.20 80)',
+  chart5: 'oklch(0.35 0.02 240)',
+  sidebar: 'oklch(0.18 0.06 260)',
+  sidebarForeground: 'oklch(0.985 0 0)',
+  sidebarPrimary: 'oklch(0.18 0.06 260)',
+  sidebarPrimaryForeground: 'oklch(0.985 0 0)',
+  sidebarBorder: 'oklch(0.94 0 0)',
+  sidebarRing: 'oklch(0.12 0.03 260)',
+};
+
+export const legacyDark: ThemeColors = {
+  background: 'oklch(0.145 0.01 260)',
+  foreground: 'oklch(0.985 0 0)',
+  card: 'oklch(0.13 0.02 260)',
+  cardForeground: 'oklch(0.985 0 0)',
+  popover: 'oklch(0.13 0.02 260)',
+  popoverForeground: 'oklch(0.985 0 0)',
+  primary: 'oklch(0.48 0.16 260)', // slightly lighter for contrast on dark
+  primaryForeground: 'oklch(0.985 0 0)',
+  secondary: 'oklch(0.35 0.02 240)',
+  secondaryForeground: 'oklch(0.985 0 0)',
+  muted: 'oklch(0.14 0.02 260)',
+  mutedForeground: 'oklch(0.69 0.02 240)',
+  accent: 'oklch(0.75 0.20 80)',
+  accentForeground: 'oklch(0.12 0 0)',
+  destructive: 'oklch(0.68 0.19 22.216)',
+  destructiveForeground: 'oklch(0.985 0 0)',
+  warning: 'oklch(0.75 0.20 80)',
+  warningForeground: 'oklch(0.985 0 0)',
+  success: 'oklch(0.595 0.165 155)',
+  successForeground: 'oklch(0.145 0 0)',
+  border: 'oklch(0.14 0.02 260)',
+  input: 'oklch(0.13 0.02 260)',
+  ring: 'oklch(0.12 0.03 260)',
+  sidebarAccent: 'oklch(0.75 0.20 80)',
+  sidebarAccentForeground: 'oklch(0.985 0 0)',
+  chart1: 'oklch(0.18 0.06 260)',
+  chart2: 'oklch(0.6 0.118 184.704)',
+  chart3: 'oklch(0.595 0.165 155)',
+  chart4: 'oklch(0.75 0.20 80)',
+  chart5: 'oklch(0.35 0.02 240)',
+  sidebar: 'oklch(0.11 0.02 260)',
+  sidebarForeground: 'oklch(0.985 0 0)',
+  sidebarPrimary: 'oklch(0.18 0.06 260)',
+  sidebarPrimaryForeground: 'oklch(0.985 0 0)',
+  sidebarBorder: 'oklch(0.09 0.01 260)',
+  sidebarRing: 'oklch(0.12 0.03 260)',
 };
 
 // ====================
@@ -421,6 +508,7 @@ export const THEMES = {
   blue: { light: blueLight, dark: blueDark },
   purple: { light: purpleLight, dark: purpleDark },
   teal: { light: tealLight, dark: tealDark },
+  legacy: { light: legacyLight, dark: legacyDark },
 } as const;
 
 /**

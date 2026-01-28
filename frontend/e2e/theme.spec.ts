@@ -41,4 +41,23 @@ test.describe('Theme initialization', () => {
     // Dark class should be present
     expect(hasDarkClass).toBe(true);
   });
+
+  test('applies legacy theme in light mode from localStorage', async ({ page }) => {
+    await page.goto('/');
+
+    // Set theme to 'legacy' and ensure light mode
+    await page.evaluate(() => {
+      localStorage.setItem('theme', 'legacy');
+      localStorage.setItem('darkMode', 'false');
+    });
+
+    await page.reload();
+
+    const appliedPrimary = await page.evaluate(() =>
+      getComputedStyle(document.documentElement).getPropertyValue('--primary').trim(),
+    );
+
+    // Should apply legacy navy (OKLCH hue ~260)
+    expect(appliedPrimary).toContain('260');
+  });
 });

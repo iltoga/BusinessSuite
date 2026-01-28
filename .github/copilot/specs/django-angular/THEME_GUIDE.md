@@ -36,7 +36,7 @@ Edit `/frontend/src/styles.css` and find these lines in the `:root` section:
 #### Blue Theme (Professional)
 
 ```css
---primary: oklch(0.488 0.243 264.376); /* Blue */
+--primary: oklch(0.42 0.22 260); /* Distinct Blue */
 --warning: oklch(0.754 0.149 50); /* Orange */
 --success: oklch(0.596 0.163 155.825); /* Green */
 --destructive: oklch(0.577 0.245 27.325); /* Red */
@@ -45,7 +45,7 @@ Edit `/frontend/src/styles.css` and find these lines in the `:root` section:
 #### Purple Theme (Creative)
 
 ```css
---primary: oklch(0.627 0.265 303.9); /* Purple */
+--primary: oklch(0.58 0.28 292); /* Magenta-Purple */
 --warning: oklch(0.754 0.149 83.317); /* Yellow */
 --success: oklch(0.596 0.163 155.825); /* Green */
 --destructive: oklch(0.577 0.245 27.325); /* Red */
@@ -54,11 +54,56 @@ Edit `/frontend/src/styles.css` and find these lines in the `:root` section:
 #### Teal Theme (Modern)
 
 ```css
---primary: oklch(0.6 0.118 184.704); /* Teal */
+--primary: oklch(0.58 0.2 190); /* Teal-Cyan */
 --warning: oklch(0.754 0.149 83.317); /* Yellow */
 --success: oklch(0.696 0.17 162.48); /* Light Green */
 --destructive: oklch(0.577 0.245 27.325); /* Red */
 ```
+
+#### Legacy Theme (Bootstrap-like)
+
+A precise OKLCH conversion of the classic Bootstrap palette used by the legacy Django templates. Use this if you want the Angular frontend to visually match the legacy CMS UI.
+
+```css
+/* Legacy - Light */
+--background: oklch(1 0 0);
+--foreground: oklch(0.145 0.01 260);
+--primary: oklch(0.18 0.06 260); /* deep navy */
+--primary-foreground: oklch(0.985 0 0);
+--secondary: oklch(0.35 0.02 240); /* muted gray-blue */
+--muted: oklch(0.98 0 0);
+--accent: oklch(0.75 0.2 80); /* yellow */
+--destructive: oklch(0.577 0.245 27.325);
+--warning: oklch(0.75 0.2 80);
+--success: oklch(0.595 0.165 155);
+--border: oklch(0.922 0 0);
+
+/* Legacy - Dark */
+--background: oklch(0.145 0.01 260);
+--card: oklch(0.13 0.02 260);
+--primary: oklch(0.48 0.16 260);
+--muted: oklch(0.14 0.02 260);
+--accent: oklch(0.75 0.2 80);
+```
+
+**Customer List / Action Button Mapping**
+
+The following mapping is used across the app (Customer List, Application Detail, Invoices):
+
+> Implementation notes:
+>
+> - The **Disable** action uses the `destructive` button variant when it represents a disabling action (white text on red background) — this improves parity with the legacy UI.
+> - Active/selected sidebar items use `--sidebar-accent` and `--sidebar-accent-foreground` so you can replicate the legacy orange highlight on the active menu item.
+
+| Action          | Button Variant | Color          | CSS Variable    |
+| --------------- | -------------- | -------------- | --------------- |
+| View            | `default`      | Primary (navy) | `--primary`     |
+| Edit            | `warning`      | Yellow/Orange  | `--warning`     |
+| Disable/Enable  | `ghost`        | Muted gray     | N/A             |
+| Delete          | `destructive`  | Red            | `--destructive` |
+| New Application | `success`      | Green          | `--success`     |
+
+**Canonical note:** This `THEME_GUIDE.md` is the single source of truth for theming and styling in the Angular frontend. All docs, specs, and the `copilot` instructions must reference this file when making design and theme decisions.
 
 ### Test Your Changes
 

@@ -37,25 +37,29 @@ import { ThemeSwitcherComponent } from '@/shared/components/theme-switcher/theme
         <nav class="space-y-2 text-sm">
           <a
             routerLink="/dashboard"
-            routerLinkActive="font-semibold"
+            routerLinkActive="active"
+            [routerLinkActiveOptions]="{ exact: true }"
             class="block rounded px-3 py-2 hover:bg-accent"
             >Dashboard</a
           >
           <a
             routerLink="/customers"
-            routerLinkActive="font-semibold"
+            routerLinkActive="active"
+            [routerLinkActiveOptions]="{ exact: true }"
             class="block rounded px-3 py-2 hover:bg-accent"
             >Customers</a
           >
           <a
             routerLink="/applications"
-            routerLinkActive="font-semibold"
+            routerLinkActive="active"
+            [routerLinkActiveOptions]="{ exact: true }"
             class="block rounded px-3 py-2 hover:bg-accent"
             >Applications</a
           >
           <a
             routerLink="/products"
-            routerLinkActive="font-semibold"
+            routerLinkActive="active"
+            [routerLinkActiveOptions]="{ exact: true }"
             class="block rounded px-3 py-2 hover:bg-accent"
             >Products</a
           >

@@ -176,18 +176,23 @@
                   </td>
                   <td class="py-3">
                     <div class="flex flex-wrap gap-2">
-                      <button z-button zType="outline" zSize="sm" (click)="openUpload(doc)">
+                      <button z-button zType="warning" zSize="default" (click)="openUpload(doc)">
                         Update
                       </button>
                       <app-document-preview
                         [documentId]="doc.id"
                         [fileLink]="doc.fileLink"
-                        zType="ghost"
-                        zSize="sm"
+                        zType="default"
+                        zSize="default"
                         label="View"
                         (viewFull)="viewDocument(doc)"
                       />
-                      <button z-button zType="secondary" zSize="sm" (click)="printDocument(doc)">
+                      <button
+                        z-button
+                        zType="secondary"
+                        zSize="default"
+                        (click)="printDocument(doc)"
+                      >
                         Print
                       </button>
                     </div>
