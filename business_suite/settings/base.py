@@ -383,12 +383,28 @@ TMPFILES_FOLDER = "tmpfiles"
 # Settings for django-dbbackup
 DBBACKUP_STORAGE = "storages.backends.dropbox.DropBoxStorage"
 
+
+def get_dropbox_token():
+    # Skip token refresh in development to avoid network issues
+    if os.getenv("DJANGO_DEBUG", "False") == "True":
+        return None
+    try:
+        return refresh_dropbox_token(
+            os.getenv("DROPBOX_APP_KEY"),
+            os.getenv("DROPBOX_APP_SECRET"),
+            os.getenv("DROPBOX_OAUTH2_REFRESH_TOKEN"),
+        )
+    except Exception as e:
+        # Log the error and return None to allow Django to start
+        import logging
+
+        logger = logging.getLogger(__name__)
+        logger.error(f"Failed to refresh Dropbox token: {e}")
+        return None
+
+
 DBBACKUP_STORAGE_OPTIONS = {
-    "oauth2_access_token": refresh_dropbox_token(
-        os.getenv("DROPBOX_APP_KEY"),
-        os.getenv("DROPBOX_APP_SECRET"),
-        os.getenv("DROPBOX_OAUTH2_REFRESH_TOKEN"),
-    ),
+    "oauth2_access_token": get_dropbox_token(),
     "app_key": os.getenv("DROPBOX_APP_KEY"),
     "app_secret": os.getenv("DROPBOX_APP_SECRET"),
 }
