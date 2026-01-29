@@ -313,11 +313,6 @@ export class ApplicationDetailComponent implements OnInit {
     });
   }
 
-  printDocument(doc: ApplicationDocument): void {
-    // Navigate to print-friendly view using replaceUrl to avoid cluttering history
-    this.router.navigate(['/documents', doc.id, 'print'], { replaceUrl: true });
-  }
-
   advanceWorkflow(): void {
     const app = this.application();
     if (!app) return;

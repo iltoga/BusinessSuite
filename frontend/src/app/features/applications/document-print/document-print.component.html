@@ -161,23 +161,35 @@
 
             @if (isPdf(document()!.fileLink!)) {
               <div
-                class="attachment-container border-2 border-dashed rounded-xl p-10 text-center bg-muted/10 print:bg-transparent"
+                class="attachment-container border-2 border-dashed rounded-xl p-6 bg-muted/10 print:bg-transparent"
               >
-                <div class="flex flex-col items-center">
-                  <svg class="w-16 h-16 text-red-500 mb-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path
-                      d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9v-2h2v2zm0-4H9V7h2v5z"
-                    />
-                  </svg>
-                  <p class="font-semibold text-lg">PDF Document Attached</p>
-                  <p class="text-sm text-muted-foreground mt-2 max-w-xs mx-auto">
-                    This document is a PDF and cannot be displayed directly here.
-                  </p>
-                  <div class="mt-6 print:hidden">
-                    <a [href]="document()!.fileLink" target="_blank" z-button zType="outline">
-                      View Original PDF
-                    </a>
-                  </div>
+                <div class="flex flex-col">
+                  @if (isPreviewLoading()) {
+                    <div class="text-center py-8 text-muted-foreground">Loading PDF preview...</div>
+                  } @else if (previewError()) {
+                    <div class="text-center py-8">
+                      <div class="font-semibold text-lg text-destructive">
+                        Unable to preview PDF
+                      </div>
+                      <div class="text-sm text-muted-foreground mt-2">{{ previewError() }}</div>
+                      <div class="mt-6">
+                        <a [href]="document()!.fileLink" target="_blank" z-button zType="outline"
+                          >Open Original PDF</a
+                        >
+                      </div>
+                    </div>
+                  } @else if (sanitizedPreview()) {
+                    <div class="w-full h-[80vh] rounded overflow-hidden border">
+                      <iframe [src]="sanitizedPreview()" class="w-full h-full border-0"></iframe>
+                    </div>
+                    <div class="mt-4 print:hidden">
+                      <a [href]="document()!.fileLink" target="_blank" z-button zType="outline"
+                        >Open Original PDF</a
+                      >
+                    </div>
+                  } @else {
+                    <div class="text-center py-8 text-muted-foreground">Preview not available.</div>
+                  }
                 </div>
               </div>
             } @else {

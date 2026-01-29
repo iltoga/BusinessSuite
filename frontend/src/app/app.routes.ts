@@ -3,7 +3,6 @@ import { Routes } from '@angular/router';
 import { ApplicationDetailComponent } from './features/applications/application-detail/application-detail.component';
 import { ApplicationFormComponent } from './features/applications/application-form/application-form.component';
 import { ApplicationListComponent } from './features/applications/application-list/application-list.component';
-import { DocumentPrintComponent } from './features/applications/document-print/document-print.component';
 import { LoginComponent } from './features/auth/login/login.component';
 import { CustomerDetailComponent } from './features/customers/customer-detail/customer-detail.component';
 import { CustomerFormComponent } from './features/customers/customer-form/customer-form.component';
@@ -43,10 +42,6 @@ export const routes: Routes = [
       { path: '', redirectTo: '/dashboard', pathMatch: 'full' },
     ],
   },
-  {
-    path: 'documents/:documentId/print',
-    component: DocumentPrintComponent,
-    canActivate: [authGuard],
-  },
+
   { path: '**', redirectTo: '/dashboard' },
 ];
