@@ -1,6 +1,8 @@
 import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
   Component,
   PLATFORM_ID,
   computed,
@@ -51,6 +53,8 @@ export class InvoiceFormComponent implements OnInit {
   private applicationsApi = inject(CustomerApplicationsService);
   private toast = inject(GlobalToastService);
   private platformId = inject(PLATFORM_ID);
+  private http = inject(HttpClient);
+  private cdr = inject(ChangeDetectorRef);
 
   readonly isLoading = signal(false);
   readonly isSaving = signal(false);
@@ -91,10 +95,24 @@ export class InvoiceFormComponent implements OnInit {
     if (idParam) {
       this.isEditMode.set(true);
       this.loadInvoice(Number(idParam));
-    } else if (applicationId) {
-      this.loadFromApplication(Number(applicationId));
     } else {
-      this.addLineItem();
+      if (applicationId) {
+        this.loadFromApplication(Number(applicationId));
+      } else {
+        this.addLineItem();
+      }
+
+      // For new invoices, propose an invoice number based on invoice date
+      this.proposeInvoiceNo(this.form.get('invoiceDate')?.value);
+
+      this.form.get('invoiceDate')?.valueChanges.subscribe((value) => {
+        // Only propose when creating, and don't overwrite if user already edited invoiceNo
+        if (this.isEditMode()) return;
+        const invoiceNoCtrl = this.form.get('invoiceNo');
+        if (invoiceNoCtrl && !invoiceNoCtrl.dirty) {
+          this.proposeInvoiceNo(value);
+        }
+      });
     }
 
     const customerId = this.form.get('customer')?.value;
@@ -312,5 +330,38 @@ export class InvoiceFormComponent implements OnInit {
     const date = value instanceof Date ? value : new Date(value);
     if (Number.isNaN(date.getTime())) return null;
     return date.toISOString().split('T')[0];
+  }
+
+  private proposeInvoiceNo(invoiceDate?: Date | string | null): void {
+    if (!invoiceDate) return;
+    const date = invoiceDate instanceof Date ? invoiceDate : new Date(invoiceDate);
+    if (Number.isNaN(date.getTime())) return;
+
+    // Use local date to avoid timezone shift issues with toISOString()
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+
+    const params: any = { invoice_date: dateStr };
+
+    this.http.get<any>(`/api/invoices/propose/`, { params }).subscribe({
+      next: (res) => {
+        const ctrl = this.form.get('invoiceNo');
+        if (ctrl && !ctrl.dirty) {
+          // The backend uses djangorestframework-camel-case, so invoice_no becomes invoiceNo
+          const proposedNo = res.invoiceNo || res.invoice_no;
+          if (proposedNo) {
+            ctrl.setValue(proposedNo, { emitEvent: false });
+            // mark pristine so future proposals still overwrite unless user edits
+            ctrl.markAsPristine();
+            this.cdr.markForCheck();
+          }
+        }
+      },
+      error: () => {
+        // non-fatal — proposal failed, leave invoiceNo empty
+      },
+    });
   }
 }
