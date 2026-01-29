@@ -1,0 +1,109 @@
+<div class="h-full flex flex-col gap-6">
+  <div class="flex justify-between items-center">
+    <h1 class="text-3xl font-bold tracking-tight">Invoices</h1>
+    <a routerLink="/invoices/new">
+      <z-button zType="default" zSize="default">New Invoice</z-button>
+    </a>
+  </div>
+
+  <div class="bg-card rounded-lg border shadow-sm">
+    <div class="p-4 border-b">
+      <app-search-toolbar
+        [query]="query()"
+        [placeholder]="'Search invoices...'"
+        (queryChange)="onQueryChange($event)"
+      >
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="hidePaid"
+              [checked]="hidePaid()"
+              (change)="onToggleHidePaid($event)"
+              class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+            />
+            <label
+              for="hidePaid"
+              class="text-sm font-medium leading-none cursor-pointer select-none"
+            >
+              Hide Paid
+            </label>
+          </div>
+        </div>
+      </app-search-toolbar>
+    </div>
+
+    <div class="p-0">
+      <app-data-table
+        [columns]="columns()"
+        [data]="invoices()"
+        [isLoading]="isLoading()"
+        (sortChange)="onSortChange($event)"
+      />
+    </div>
+
+    <div class="p-4 border-t bg-muted/20">
+      <app-pagination-controls
+        [page]="page()"
+        [totalPages]="totalPages()"
+        (pageChange)="onPageChange($event)"
+      />
+    </div>
+  </div>
+</div>
+
+<ng-template #numberTemplate let-row>
+  <a [routerLink]="['/invoices', row.id]" class="font-medium hover:underline">
+    {{ row.invoiceNoDisplay || row.invoiceNo || '—' }}
+  </a>
+</ng-template>
+
+<ng-template #customerTemplate let-row>
+  <div class="flex flex-col">
+    <span class="font-medium">{{
+      row.customer?.fullNameWithCompany || row.customer?.fullName
+    }}</span>
+    <span class="text-xs text-muted-foreground">{{ row.customer?.email || '—' }}</span>
+  </div>
+</ng-template>
+
+<ng-template #itemsTemplate let-row>
+  <ul class="space-y-1 text-sm">
+    @for (item of row.invoiceApplications ?? []; track item.id) {
+      <li>
+        {{ item.customerApplication?.product?.code }} -
+        {{ item.customerApplication?.notes || item.customerApplication?.customer?.fullName || '—' }}
+      </li>
+    }
+    @if (!row.invoiceApplications?.length) {
+      <li class="text-muted-foreground">—</li>
+    }
+  </ul>
+</ng-template>
+
+<ng-template #dueTemplate let-row>
+  <span>{{ row.dueDate || '—' }}</span>
+</ng-template>
+
+<ng-template #statusTemplate let-row>
+  <z-badge [zType]="statusVariant(row.status)">{{ row.status || '—' }}</z-badge>
+</ng-template>
+
+<ng-template #amountsTemplate let-row>
+  <div class="flex flex-col text-sm">
+    <span>Total: {{ formatCurrency(row.totalAmount) }}</span>
+    <span>Paid: {{ formatCurrency(row.totalPaidAmount) }}</span>
+    <span>Due: {{ formatCurrency(row.totalDueAmount) }}</span>
+  </div>
+</ng-template>
+
+<ng-template #actionsTemplate let-row>
+  <div class="flex items-center gap-2">
+    <a [routerLink]="['/invoices', row.id]">
+      <z-button zType="default" zSize="sm">View</z-button>
+    </a>
+    <a [routerLink]="['/invoices', row.id, 'edit']">
+      <z-button zType="warning" zSize="sm">Edit</z-button>
+    </a>
+  </div>
+</ng-template>

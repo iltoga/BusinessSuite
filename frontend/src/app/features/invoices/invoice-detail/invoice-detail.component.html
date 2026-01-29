@@ -1,0 +1,134 @@
+@if (invoice()) {
+  <div class="flex flex-col gap-6">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-3xl font-bold tracking-tight">
+          Invoice {{ invoice()!.invoiceNoDisplay || invoice()!.invoiceNo }}
+        </h1>
+        <p class="text-sm text-muted-foreground">
+          {{ invoice()!.customer.fullNameWithCompany || invoice()!.customer.fullName }}
+        </p>
+      </div>
+      <div class="flex items-center gap-2">
+        <a [routerLink]="['/invoices', invoice()!.id, 'edit']">
+          <z-button zType="warning">Edit</z-button>
+        </a>
+        <a routerLink="/invoices">
+          <z-button zType="ghost">Back</z-button>
+        </a>
+      </div>
+    </div>
+
+    <z-card class="p-6">
+      <div class="grid gap-4 md:grid-cols-3">
+        <div>
+          <div class="text-sm text-muted-foreground">Status</div>
+          <z-badge [zType]="statusVariant(invoice()!.status)">{{ invoice()!.status }}</z-badge>
+        </div>
+        <div>
+          <div class="text-sm text-muted-foreground">Invoice Date</div>
+          <div class="font-medium">{{ invoice()!.invoiceDate }}</div>
+        </div>
+        <div>
+          <div class="text-sm text-muted-foreground">Due Date</div>
+          <div class="font-medium">{{ invoice()!.dueDate }}</div>
+        </div>
+        <div>
+          <div class="text-sm text-muted-foreground">Total</div>
+          <div class="font-medium">{{ formatCurrency(invoice()!.totalAmount) }}</div>
+        </div>
+        <div>
+          <div class="text-sm text-muted-foreground">Paid</div>
+          <div class="font-medium">{{ formatCurrency(invoice()!.totalPaidAmount) }}</div>
+        </div>
+        <div>
+          <div class="text-sm text-muted-foreground">Due</div>
+          <div class="font-medium">{{ formatCurrency(invoice()!.totalDueAmount) }}</div>
+        </div>
+      </div>
+      @if (invoice()!.notes) {
+        <div class="mt-4 text-sm text-muted-foreground">{{ invoice()!.notes }}</div>
+      }
+    </z-card>
+
+    <z-card class="p-6">
+      <h2 class="text-lg font-semibold">Applications</h2>
+      <div class="mt-4 space-y-4">
+        @for (app of invoice()!.invoiceApplications; track app.id) {
+          <div class="rounded-lg border p-4">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div class="font-medium">
+                  {{ getApplicationProductCode(app) }} - {{ getApplicationProductName(app) }}
+                </div>
+                <div class="text-xs text-muted-foreground">
+                  {{ getApplicationCustomerName(app) }}
+                </div>
+              </div>
+              <div class="flex items-center gap-4">
+                <div>
+                  <div class="text-xs text-muted-foreground">Amount</div>
+                  <div class="font-medium">{{ formatCurrency(app.amount) }}</div>
+                </div>
+                <div>
+                  <div class="text-xs text-muted-foreground">Paid</div>
+                  <div class="font-medium">{{ formatCurrency(app.paidAmount) }}</div>
+                </div>
+                <div>
+                  <div class="text-xs text-muted-foreground">Due</div>
+                  <div class="font-medium">{{ formatCurrency(app.dueAmount) }}</div>
+                </div>
+                <z-badge [zType]="paymentStatusVariant(app.status)">{{ app.status }}</z-badge>
+              </div>
+              @if (hasDue(app)) {
+                <z-button zType="success" zSize="sm" (click)="openPaymentModal(app)">
+                  Add Payment
+                </z-button>
+              }
+            </div>
+
+            <div class="mt-4">
+              <div class="text-sm font-medium mb-2">Payments</div>
+              <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                  <thead>
+                    <tr class="text-left text-muted-foreground">
+                      <th class="py-2">Date</th>
+                      <th class="py-2">Amount</th>
+                      <th class="py-2">Type</th>
+                      <th class="py-2">Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (payment of app.payments; track payment.id) {
+                      <tr class="border-t">
+                        <td class="py-2">{{ payment.paymentDate }}</td>
+                        <td class="py-2">{{ formatCurrency(payment.amount) }}</td>
+                        <td class="py-2">{{ payment.paymentType }}</td>
+                        <td class="py-2">{{ payment.notes || '—' }}</td>
+                      </tr>
+                    }
+                    @if (!app.payments.length) {
+                      <tr class="border-t">
+                        <td colspan="4" class="py-2 text-muted-foreground">No payments yet.</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    </z-card>
+  </div>
+
+  <app-payment-modal
+    [isOpen]="paymentModalOpen()"
+    [invoiceApplication]="selectedApplication()"
+    (saved)="onPaymentSaved()"
+    (closed)="closePaymentModal()"
+  />
+} @else {
+  <div class="text-sm text-muted-foreground">Loading invoice...</div>
+}

@@ -30,16 +30,12 @@ import { ThemeSwitcherComponent } from '@/shared/components/theme-switcher/theme
         class="fixed md:relative inset-y-0 left-0 z-40 w-64 transform flex-col border-r bg-card transition-all duration-200 ease-in-out overflow-hidden"
       >
         <!-- Top Row: Logo Header -->
-        <div class="h-32 border-b bg-accent/5 p-2 dark:bg-accent/10">
+        <div class="h-32 border-b bg-accent/5 dark:bg-accent/10">
           <a
             routerLink="/dashboard"
             class="flex h-full w-full items-center justify-center rounded-md bg-card transition-transform hover:scale-[1.02] dark:bg-accent/20 overflow-hidden"
           >
-            <img
-              [src]="logoSrc()"
-              alt="BusinessSuite Logo"
-              class="h-full w-full object-contain p-2"
-            />
+            <img [src]="logoSrc()" alt="BusinessSuite Logo" class="h-full w-full object-contain" />
           </a>
         </div>
 
@@ -81,6 +77,15 @@ import { ThemeSwitcherComponent } from '@/shared/components/theme-switcher/theme
             >
               <z-icon zType="archive" class="h-4 w-4" />
               Products
+            </a>
+            <a
+              routerLink="/invoices"
+              routerLinkActive="bg-accent"
+              [routerLinkActiveOptions]="{ exact: true }"
+              class="flex items-center gap-3 rounded-md px-3 py-2 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
+            >
+              <z-icon zType="file-text" class="h-4 w-4" />
+              Invoices
             </a>
 
             <div class="pt-4 pb-1">

@@ -37,6 +37,7 @@ class DocApplicationSerializerWithRelations(serializers.ModelSerializer):
     has_invoice = serializers.SerializerMethodField()
     invoice_id = serializers.SerializerMethodField()
     ready_for_invoice = serializers.SerializerMethodField()
+    can_force_close = serializers.SerializerMethodField()
 
     class Meta:
         model = DocApplication
@@ -55,6 +56,7 @@ class DocApplicationSerializerWithRelations(serializers.ModelSerializer):
             "has_invoice",
             "invoice_id",
             "ready_for_invoice",
+            "can_force_close",
         ]
         read_only_fields = ["created_at", "updated_at"]
 
@@ -68,8 +70,24 @@ class DocApplicationSerializerWithRelations(serializers.ModelSerializer):
         return invoice.id if invoice else None
 
     def get_ready_for_invoice(self, instance) -> bool:
-        """Check if all required documents are completed."""
+        """Check if application is ready for invoicing.
+
+        Ready if all required documents are completed OR if the application
+        has been marked as completed (e.g. force closed).
+        """
+        if instance.status == DocApplication.STATUS_COMPLETED:
+            return True
         return instance.total_required_documents == instance.completed_required_documents
+
+    def get_can_force_close(self, instance) -> bool:
+        """Return True if the current user can force close this application."""
+        request = self.context.get("request") if hasattr(self, "context") else None
+        if not request or not getattr(request, "user", None) or not request.user.is_authenticated:
+            return False
+        return (
+            request.user.has_perm("customer_applications.change_docapplication")
+            and instance.status != DocApplication.STATUS_COMPLETED
+        )
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
@@ -77,6 +95,29 @@ class DocApplicationSerializerWithRelations(serializers.ModelSerializer):
         representation["customer"] = CustomerSerializer(instance.customer).data
         representation["str_field"] = str(instance)
         return representation
+
+
+class DocApplicationInvoiceSerializer(serializers.ModelSerializer):
+    product = ProductSerializer(read_only=True)
+    customer = CustomerSerializer(read_only=True)
+    str_field = serializers.SerializerMethodField()
+
+    class Meta:
+        model = DocApplication
+        fields = [
+            "id",
+            "customer",
+            "product",
+            "doc_date",
+            "due_date",
+            "status",
+            "notes",
+            "str_field",
+        ]
+        read_only_fields = fields
+
+    def get_str_field(self, instance):
+        return str(instance)
 
 
 class DocApplicationDetailSerializer(serializers.ModelSerializer):
@@ -91,6 +132,7 @@ class DocApplicationDetailSerializer(serializers.ModelSerializer):
     next_task = TaskSerializer(read_only=True)
     has_invoice = serializers.SerializerMethodField()
     invoice_id = serializers.SerializerMethodField()
+    can_force_close = serializers.SerializerMethodField()
 
     class Meta:
         model = DocApplication
@@ -115,6 +157,7 @@ class DocApplicationDetailSerializer(serializers.ModelSerializer):
             "has_invoice",
             "invoice_id",
             "str_field",
+            "can_force_close",
         ]
         read_only_fields = fields
 
@@ -127,6 +170,15 @@ class DocApplicationDetailSerializer(serializers.ModelSerializer):
     def get_invoice_id(self, instance) -> int | None:
         invoice = instance.get_invoice()
         return invoice.id if invoice else None
+
+    def get_can_force_close(self, instance) -> bool:
+        request = self.context.get("request") if hasattr(self, "context") else None
+        if not request or not getattr(request, "user", None) or not request.user.is_authenticated:
+            return False
+        return (
+            request.user.has_perm("customer_applications.change_docapplication")
+            and instance.status != DocApplication.STATUS_COMPLETED
+        )
 
 
 class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):

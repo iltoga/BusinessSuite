@@ -250,6 +250,7 @@ export class CustomerSelectComponent {
 ## Updates
 
 - **2026-01-29:** Letters (Surat Permohonan) feature reused existing shared components; no new shared components added.
+- **2026-01-29:** Invoices & Payments feature added new invoice screens; no new shared components added.
 
 ```
 

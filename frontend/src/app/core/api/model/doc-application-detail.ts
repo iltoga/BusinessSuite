@@ -7,12 +7,12 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
-import { StatusEnum } from './status-enum';
 import { Task } from './task';
 import { DocWorkflow } from './doc-workflow';
 import { Customer } from './customer';
 import { Product } from './product';
 import { Document } from './document';
+import { Status519Enum } from './status519-enum';
 
 
 export interface DocApplicationDetail { 
@@ -21,7 +21,7 @@ export interface DocApplicationDetail {
     readonly product: Product;
     readonly docDate: string;
     readonly dueDate: string | null;
-    readonly status: StatusEnum;
+    readonly status: Status519Enum;
     readonly notes: string | null;
     readonly createdAt: string;
     readonly updatedAt: string;
@@ -36,6 +36,7 @@ export interface DocApplicationDetail {
     readonly hasInvoice: boolean;
     readonly invoiceId: number | null;
     readonly strField: string;
+    readonly canForceClose: boolean;
 }
 export namespace DocApplicationDetail {
 }

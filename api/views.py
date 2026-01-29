@@ -5,7 +5,8 @@ from datetime import datetime
 
 from django.conf import settings
 from django.core.files.storage import default_storage
-from django.db.models import Count, Q
+from django.db.models import Count, DecimalField, F, OuterRef, Prefetch, Q, Subquery, Sum, Value
+from django.db.models.functions import Coalesce
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
@@ -30,10 +31,15 @@ from api.serializers import (
     CustomerQuickCreateSerializer,
     CustomerSerializer,
     DocApplicationDetailSerializer,
+    DocApplicationInvoiceSerializer,
     DocApplicationSerializerWithRelations,
     DocumentSerializer,
     DocumentTypeSerializer,
     DocWorkflowSerializer,
+    InvoiceCreateUpdateSerializer,
+    InvoiceDetailSerializer,
+    InvoiceListSerializer,
+    PaymentSerializer,
     ProductCreateUpdateSerializer,
     ProductDetailSerializer,
     ProductQuickCreateSerializer,
@@ -50,8 +56,9 @@ from core.tasks.ocr import run_ocr_job
 from core.utils.dateutils import calculate_due_date
 from customer_applications.models import DocApplication, Document
 from customers.models import Customer
-from invoices.models.invoice import InvoiceApplication
+from invoices.models.invoice import Invoice, InvoiceApplication
 from letters.services.LetterService import LetterService
+from payments.models import Payment
 from products.models import Product
 from products.models.document_type import DocumentType
 from products.models.task import Task
@@ -311,10 +318,134 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.GenericViewSet):
+class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     pagination_class = StandardResultsSetPagination
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = [
+        "invoice_no",
+        "invoice_date",
+        "due_date",
+        "status",
+        "customer__first_name",
+        "customer__last_name",
+        "customer__company_name",
+    ]
+    ordering_fields = ["invoice_no", "invoice_date", "due_date", "status", "total_amount"]
+    ordering = ["-invoice_date", "-invoice_no"]
 
+    def get_serializer_class(self):
+        if self.action in ["create", "update", "partial_update"]:
+            return InvoiceCreateUpdateSerializer
+        if self.action == "retrieve":
+            return InvoiceDetailSerializer
+        return InvoiceListSerializer
+
+    def get_queryset(self):
+        queryset = Invoice.objects.all()
+        query = self.request.query_params.get("search") or self.request.query_params.get("q")
+        if query:
+            queryset = Invoice.objects.search_invoices(query)
+
+        hide_paid = self.request.query_params.get("hide_paid", "false").lower() == "true"
+        if hide_paid:
+            queryset = queryset.exclude(status=Invoice.PAID)
+
+        return self._annotate_invoices(queryset)
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="hide_paid",
+                type=OpenApiTypes.BOOL,
+                location=OpenApiParameter.QUERY,
+                required=False,
+            )
+        ]
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    def _annotate_invoices(self, queryset):
+        payment_subquery = (
+            Payment.objects.filter(invoice_application__invoice=OuterRef("pk"))
+            .values("invoice_application__invoice")
+            .annotate(total=Sum("amount"))
+            .values("total")
+        )
+
+        app_payment_subquery = (
+            Payment.objects.filter(invoice_application=OuterRef("pk"))
+            .values("invoice_application")
+            .annotate(total=Sum("amount"))
+            .values("total")
+        )
+
+        invoice_applications_qs = (
+            InvoiceApplication.objects.select_related(
+                "customer_application__product",
+                "customer_application__customer",
+            )
+            .prefetch_related("payments")
+            .annotate(
+                annotated_paid_amount=Coalesce(Subquery(app_payment_subquery), Value(0), output_field=DecimalField()),
+                annotated_due_amount=F("amount")
+                - Coalesce(Subquery(app_payment_subquery), Value(0), output_field=DecimalField()),
+            )
+        )
+
+        return (
+            queryset.select_related("customer")
+            .prefetch_related(Prefetch("invoice_applications", queryset=invoice_applications_qs))
+            .annotate(total_paid=Coalesce(Subquery(payment_subquery), Value(0), output_field=DecimalField()))
+            .annotate(total_due=F("total_amount") - F("total_paid"))
+        )
+
+    def perform_create(self, serializer):
+        from core.services.invoice_service import create_invoice
+
+        invoice = create_invoice(data=serializer.validated_data, user=self.request.user)
+        serializer.instance = invoice
+
+    def perform_update(self, serializer):
+        from core.services.invoice_service import update_invoice
+
+        invoice = update_invoice(
+            invoice=self.get_object(),
+            data=serializer.validated_data,
+            user=self.request.user,
+        )
+        serializer.instance = invoice
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="exclude_incomplete_document_collection",
+                type=OpenApiTypes.BOOL,
+                location=OpenApiParameter.QUERY,
+                required=False,
+            ),
+            OpenApiParameter(
+                name="exclude_statuses",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                required=False,
+            ),
+            OpenApiParameter(
+                name="exclude_with_invoices",
+                type=OpenApiTypes.BOOL,
+                location=OpenApiParameter.QUERY,
+                required=False,
+            ),
+            OpenApiParameter(
+                name="current_invoice_id",
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                required=False,
+            ),
+        ],
+        responses=DocApplicationInvoiceSerializer(many=True),
+    )
     @action(detail=False, methods=["get"], url_path="get_customer_applications/(?P<customer_id>[^/.]+)")
     def get_customer_applications(self, request, customer_id=None):
         if not customer_id:
@@ -337,7 +468,9 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.GenericViewSet):
                 return self.error_response("Invalid status provided", status.HTTP_400_BAD_REQUEST)
         else:
             exclude_statuses = [DocApplication.STATUS_REJECTED]
+
         exclude_with_invoices = request.query_params.get("exclude_with_invoices", "true").lower() == "true"
+        current_invoice_id = request.query_params.get("current_invoice_id")
 
         if exclude_incomplete_document_collection:
             applications = applications.filter_by_document_collection_completed()
@@ -346,13 +479,16 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.GenericViewSet):
             applications = applications.exclude(status__in=exclude_statuses)
 
         if exclude_with_invoices:
-            applications = applications.exclude(num_invoices__gt=0)
+            if current_invoice_id:
+                applications = applications.exclude_already_invoiced(current_invoice_to_include=current_invoice_id)
+            else:
+                applications = applications.exclude(num_invoices__gt=0)
 
         page = self.paginate_queryset(applications)
         if page is not None:
-            serializer = DocApplicationSerializerWithRelations(page, many=True)
+            serializer = DocApplicationInvoiceSerializer(page, many=True)
             return self.get_paginated_response(serializer.data)
-        serializer = DocApplicationSerializerWithRelations(applications, many=True)
+        serializer = DocApplicationInvoiceSerializer(applications, many=True)
         return Response(serializer.data)
 
     @action(
@@ -372,6 +508,80 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.GenericViewSet):
                 "paid_amount": str(invoice_application.paid_amount),
             }
         )
+
+    @extend_schema(request=OpenApiTypes.OBJECT)
+    @action(detail=True, methods=["post"], url_path="mark-as-paid")
+    def mark_as_paid(self, request, pk=None):
+        invoice = self.get_object()
+        payment_type = request.data.get("payment_type")
+        payment_date = request.data.get("payment_date")
+        if not payment_type:
+            return self.error_response("Payment type is required", status.HTTP_400_BAD_REQUEST)
+
+        parsed_date = None
+        if payment_date:
+            try:
+                parsed_date = datetime.strptime(payment_date, "%Y-%m-%d").date()
+            except ValueError:
+                return self.error_response("Invalid payment date format", status.HTTP_400_BAD_REQUEST)
+
+        from core.services.invoice_service import mark_invoice_as_paid
+
+        created = mark_invoice_as_paid(
+            invoice=invoice,
+            payment_type=payment_type,
+            payment_date=parsed_date,
+            user=request.user,
+        )
+        return Response({"created": len(created)}, status=status.HTTP_201_CREATED)
+
+
+class PaymentViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class = PaymentSerializer
+    pagination_class = StandardResultsSetPagination
+
+    def get_queryset(self):
+        queryset = Payment.objects.select_related(
+            "invoice_application",
+            "invoice_application__invoice",
+            "from_customer",
+        )
+
+        invoice_application_id = self.request.query_params.get("invoice_application_id")
+        if invoice_application_id:
+            queryset = queryset.filter(invoice_application_id=invoice_application_id)
+        return queryset
+
+    def perform_create(self, serializer):
+        from core.services.invoice_service import create_payment
+
+        invoice_application = serializer.validated_data.get("invoice_application")
+        if not invoice_application:
+            raise ValidationError("invoice_application is required")
+
+        payment = create_payment(
+            invoice_application=invoice_application,
+            amount=serializer.validated_data.get("amount"),
+            payment_type=serializer.validated_data.get("payment_type"),
+            payment_date=serializer.validated_data.get("payment_date"),
+            user=self.request.user,
+            notes=serializer.validated_data.get("notes"),
+        )
+        serializer.instance = payment
+
+    def perform_update(self, serializer):
+        from core.services.invoice_service import update_payment
+
+        payment = update_payment(
+            payment=self.get_object(),
+            amount=serializer.validated_data.get("amount"),
+            payment_type=serializer.validated_data.get("payment_type"),
+            payment_date=serializer.validated_data.get("payment_date"),
+            user=self.request.user,
+            notes=serializer.validated_data.get("notes"),
+        )
+        serializer.instance = payment
 
 
 class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
@@ -496,6 +706,34 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         if not application.reopen(request.user):
             return self.error_response("Application is not completed", status.HTTP_400_BAD_REQUEST)
         return Response({"success": True})
+
+    @extend_schema(responses=DocApplicationDetailSerializer)
+    @action(detail=True, methods=["post"], url_path="force-close")
+    def force_close(self, request, pk=None):
+        """Force close an application by setting its status to completed.
+
+        This mirrors the legacy Django view behavior and bypasses automatic
+        status recalculation by saving with skip_status_calculation=True.
+        """
+        try:
+            application = self.get_object()
+        except DocApplication.DoesNotExist:
+            return self.error_response("Application not found", status.HTTP_404_NOT_FOUND)
+
+        # Permission check
+        if not request.user.has_perm("customer_applications.change_docapplication"):
+            return self.error_response("Permission denied", status.HTTP_403_FORBIDDEN)
+
+        if application.status == DocApplication.STATUS_COMPLETED:
+            return self.error_response("Application already completed", status.HTTP_400_BAD_REQUEST)
+
+        application.status = DocApplication.STATUS_COMPLETED
+        application.updated_by = request.user
+        application.save(skip_status_calculation=True)
+
+        # Return serialized application detail
+        serializer = DocApplicationDetailSerializer(application, context={"request": request})
+        return Response(serializer.data)
 
 
 class DocumentViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):

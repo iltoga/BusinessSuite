@@ -1,0 +1,46 @@
+<ng-template #contentTemplate>
+  <form [formGroup]="form" class="space-y-4">
+    <div class="text-sm text-muted-foreground">
+      Recording payment for {{ getApplicationProductCode() }} -
+      {{ getApplicationCustomerName() || 'Customer' }}
+    </div>
+
+    <div class="grid gap-3 md:grid-cols-2">
+      <div class="flex flex-col gap-2">
+        <label class="text-sm font-medium">Payment Date</label>
+        <input z-input type="date" formControlName="paymentDate" />
+      </div>
+      <div class="flex flex-col gap-2">
+        <label class="text-sm font-medium">Payment Type</label>
+        <select
+          class="w-full rounded border border-input bg-background px-3 py-2 text-sm"
+          formControlName="paymentType"
+        >
+          <option value="cash">Cash</option>
+          <option value="credit_card">Credit card</option>
+          <option value="wire_transfer">Wire transfer</option>
+          <option value="crypto">Crypto</option>
+          <option value="paypal">PayPal</option>
+        </select>
+      </div>
+      <div class="flex flex-col gap-2">
+        <label class="text-sm font-medium">Amount</label>
+        <input z-input type="number" formControlName="amount" />
+        <span class="text-xs text-muted-foreground">
+          Due: {{ invoiceApplication()?.dueAmount ?? 0 }}
+        </span>
+      </div>
+      <div class="flex flex-col gap-2 md:col-span-2">
+        <label class="text-sm font-medium">Notes</label>
+        <textarea z-input rows="2" formControlName="notes"></textarea>
+      </div>
+    </div>
+
+    <div class="flex items-center justify-end gap-2">
+      <z-button zType="ghost" (click)="close()">Cancel</z-button>
+      <z-button zType="default" (click)="submit()" [zDisabled]="isSaving()">
+        Record Payment
+      </z-button>
+    </div>
+  </form>
+</ng-template>

@@ -14,7 +14,7 @@ def refresh_dropbox_token(app_key, app_secret, refresh_token):
         + base64.b64encode(f"{app_key}:{app_secret}".encode()).decode(),  # Replace with your app key and secret
         "Content-Type": "application/x-www-form-urlencoded",
     }
-    response = requests.post("https://api.dropboxapi.com/oauth2/token", headers=headers, data=data)
+    response = requests.post("https://api.dropboxapi.com/oauth2/token", headers=headers, data=data, timeout=10)
 
     response.raise_for_status()  # This will raise an HTTPError if the request failed
 

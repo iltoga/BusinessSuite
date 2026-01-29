@@ -7,7 +7,7 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
-import { StatusEnum } from './status-enum';
+import { Status519Enum } from './status519-enum';
 
 
 export interface DocApplicationSerializerWithRelations { 
@@ -16,7 +16,7 @@ export interface DocApplicationSerializerWithRelations {
     product: number;
     docDate: string;
     dueDate?: string | null;
-    status?: StatusEnum;
+    status?: Status519Enum;
     notes?: string | null;
     readonly createdAt: string;
     readonly updatedAt: string;
@@ -34,6 +34,10 @@ export interface DocApplicationSerializerWithRelations {
      * Check if all required documents are completed.
      */
     readonly readyForInvoice: boolean;
+    /**
+     * Return True if the current user can force close this application.
+     */
+    readonly canForceClose: boolean;
 }
 export namespace DocApplicationSerializerWithRelations {
 }

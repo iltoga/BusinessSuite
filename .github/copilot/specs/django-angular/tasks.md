@@ -1372,201 +1372,81 @@
 
 ---
 
-## Phase 7: Letters (Surat Permohonan) (CURRENT)
+## Phase 7: Letters (Surat Permohonan) (COMPLETED)
 
 **Goal:** Generate DOCX letters with customer data pre-filled, replicating Django's LetterService.
 
 ### 7.0 Legacy UI & Logic Audit
 
-- [ ] **7.0.1** Review `letters/views.py`:
-  - `SuratPermohonanView`: form with customer select + editable fields
-  - `DownloadSuratPermohonanView`: POST generates DOCX via `LetterService`
+- [x] **7.0.1** Review `letters/views.py`:
+  - `SuratPermohonanView`: Simple FormView with SuratPermohonanForm
+  - `DownloadSuratPermohonanView`: POST endpoint that takes customer_id and form fields, generates DOCX using LetterService
+  - Uses FileResponse for download with slugified filename
+  - Supports AJAX responses for error handling
 
-- [ ] **7.0.2** Review `letters/forms.py`:
-  - `SuratPermohonanForm`: customer dropdown, visa_type, personal fields
-  - Fields auto-populated from customer data but editable
+- [x] **7.0.2** Review `letters/forms.py`:
+  - `SuratPermohonanForm`: customer dropdown (active customers only), doc_date (today default), name, visa_type (VOA/C1), gender, country (CountryCode with country_idn), birth_place, birthdate, passport_no, passport_exp_date, address_bali
+  - Customer field uses select2 widget
+  - Country field uses CountryIdnModelChoiceField to show Indonesian names
+  - All fields except customer and doc_date are optional and auto-populated from customer data
 
-- [ ] **7.0.3** Review `letters/services/LetterService.py`:
-  - `generate_letter_data()`: merges customer data with form overrides
-  - `generate_letter_document()`: uses `mailmerge` library on DOCX template
-  - Date formatting, gender translation (Indonesian), address line splitting
+- [x] **7.0.3** Review `letters/services/LetterService.py`:
+  - `generate_letter_data()`: Merges customer data with form overrides, formats dates, translates gender, handles address line splitting
+  - `generate_letter_document()`: Uses mailmerge library on DOCX template, post-processes with python-docx for address formatting
+  - Template: "surat_permohonan_perpanjangan.docx" in STATIC_SOURCE_ROOT/reporting/
+  - Date formatting: long format for doc_date ("17 November 2025"), dash format for birth/passport dates ("2025-11-17")
+  - Gender translation using Django i18n
+  - Address splitting into 4 lines for template merge fields
 
 ### 7.1 Backend API Preparation
 
-- [ ] **7.1.1** Create `LettersViewSet`:
+- [x] **7.1.1** Create `LettersViewSet`:
+  - `POST /api/letters/surat-permohonan/`: Generate DOCX with customer data + form overrides
+  - `GET /api/letters/customer-data/{customer_id}/`: Get pre-filled customer data for form
+  - Uses `LetterService` for DOCX generation with mailmerge and python-docx post-processing
+  - Returns FileResponse with slugified filename
 
-  ```python
-  # api/views.py
-  class LettersViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
-      permission_classes = [IsAuthenticated]
+- [x] **7.1.2** Add route to `api/urls.py`:
+  - Registered in DefaultRouter as `letters`
 
-      @action(detail=False, methods=['post'], url_path='surat-permohonan')
-      def generate_surat_permohonan(self, request):
-          customer_id = request.data.get('customer_id')
-          if not customer_id:
-              return self.error_response('Customer is required', status.HTTP_400_BAD_REQUEST)
-
-          try:
-              customer = Customer.objects.get(pk=customer_id)
-          except Customer.DoesNotExist:
-              return self.error_response('Customer not found', status.HTTP_404_NOT_FOUND)
-
-          extra_data = {
-              'doc_date': request.data.get('doc_date'),
-              'visa_type': request.data.get('visa_type'),
-              'name': request.data.get('name'),
-              'gender': request.data.get('gender'),
-              'country': request.data.get('country'),
-              'birth_place': request.data.get('birth_place'),
-              'birthdate': request.data.get('birthdate'),
-              'passport_no': request.data.get('passport_no'),
-              'passport_exp_date': request.data.get('passport_exp_date'),
-              'address_bali': request.data.get('address_bali'),
-          }
-
-          service = LetterService(customer, settings.DOCX_SURAT_PERMOHONAN_TEMPLATE)
-          try:
-              data = service.generate_letter_data(extra_data)
-              buffer = service.generate_letter_document(data)
-
-              response = FileResponse(
-                  buffer,
-                  as_attachment=True,
-                  filename=f'surat_permohonan_{customer.full_name}.docx',
-                  content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-              )
-              return response
-          except FileNotFoundError as e:
-              return self.error_response(str(e), status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-      @action(detail=False, methods=['get'], url_path='customer-data/(?P<customer_id>[^/.]+)')
-      def get_customer_data(self, request, customer_id=None):
-          """Get customer data pre-filled for the form."""
-          customer = get_object_or_404(Customer, pk=customer_id)
-          return Response({
-              'name': customer.full_name,
-              'gender': customer.gender or customer.get_gender_display(),
-              'country': customer.nationality.alpha3_code if customer.nationality else None,
-              'birthPlace': customer.birth_place or '',
-              'birthdate': customer.birthdate.isoformat() if customer.birthdate else None,
-              'passportNo': customer.passport_number or '',
-              'passportExpDate': customer.passport_expiration_date.isoformat() if customer.passport_expiration_date else None,
-              'addressBali': customer.address_bali or '',
-          })
-  ```
-
-- [ ] **7.1.2** Add route to `api/urls.py`:
-
-  ```python
-  router.register(r'letters', LettersViewSet, basename='letters')
-  ```
-
-- [ ] **7.1.3** Run `bun run generate:api`
+- [x] **7.1.3** Run `bun run generate:api`:
+  - Generates TypeScript clients for LettersService
+  - Creates interfaces for SuratPermohonanRequest and SuratPermohonanCustomerData
 
 ### 7.2 Surat Permohonan Form Component
 
-- [ ] **7.2.1** Create `features/letters/surat-permohonan/surat-permohonan.component.ts`:
+- [x] **7.2.1** Create `features/letters/surat-permohonan/surat-permohonan.component.ts`:
+  - Reactive form with customer selection, document date, visa type
+  - Auto-population from customer data via API
+  - Manual override fields for all personal details
+  - File download handling with proper filename extraction
+  - Error handling and loading states
 
-  ```typescript
-  @Component({
-    selector: 'app-surat-permohonan',
-    standalone: true,
-    imports: [ReactiveFormsModule, CustomerSelectComponent, ZardInputDirective,
-              ZardButtonComponent, ZardSelectComponent, ...],
-    changeDetection: ChangeDetectionStrategy.OnPush,
-  })
-  export class SuratPermohonanComponent {
-    private lettersApi = inject(LettersService);
-    private countriesApi = inject(CountryCodesService);
+- [x] **7.2.2** Add route `/letters/surat-permohonan` to `app.routes.ts`:
+  - Route added to MainLayoutComponent children
 
-    readonly countries = signal<CountryCode[]>([]);
-    readonly isGenerating = signal(false);
+- [x] **7.2.3** Add navigation link to sidebar under "Letters" section:
+  - Navigation link already exists in main-layout.component.ts
 
-    readonly form = this.fb.group({
-      customerId: [null as number | null, Validators.required],
-      docDate: [new Date().toISOString().split('T')[0], Validators.required],
-      visaType: ['voa', Validators.required],
-      name: ['', Validators.required],
-      gender: [''],
-      country: [null as string | null],  // alpha3 code
-      birthPlace: [''],
-      birthdate: [null as string | null],
-      passportNo: [''],
-      passportExpDate: [null as string | null],
-      addressBali: [''],
-    });
+### 7.3 Testing & Validation
 
-    readonly visaTypeOptions = [
-      { value: 'voa', label: 'VOA' },
-      { value: 'C1', label: 'C1' },
-    ];
+- [x] **7.3.1** Add component tests (minimum 80% coverage):
+  - Unit test for form submission
+  - Mock services and API calls
+  - Test passes successfully
 
-    // When customer changes, fetch and populate data
-    onCustomerChange(customerId: number): void {
-      this.lettersApi.lettersCustomerData(customerId).subscribe({
-        next: (data) => {
-          this.form.patchValue({
-            name: data.name,
-            gender: data.gender,
-            country: data.country,
-            birthPlace: data.birthPlace,
-            birthdate: data.birthdate,
-            passportNo: data.passportNo,
-            passportExpDate: data.passportExpDate,
-            addressBali: data.addressBali,
-          });
-        }
-      });
-    }
+- [x] **7.3.2** Verify `ChangeDetectionStrategy.OnPush` is used:
+  - Component uses OnPush change detection
 
-    generateLetter(): void {
-      if (this.form.invalid) return;
+- [x] **7.3.3** Test optimistic updates (if applicable):
+  - N/A - form submission with loading states
 
-      this.isGenerating.set(true);
-      const formValue = this.form.getRawValue();
-
-      this.lettersApi.lettersSuratPermohonan({
-        customerId: formValue.customerId!,
-        docDate: formValue.docDate,
-        visaType: formValue.visaType,
-        name: formValue.name,
-        gender: formValue.gender,
-        country: formValue.country,
-        birthPlace: formValue.birthPlace,
-        birthdate: formValue.birthdate,
-        passportNo: formValue.passportNo,
-        passportExpDate: formValue.passportExpDate,
-        addressBali: formValue.addressBali,
-      }, { observe: 'response', responseType: 'blob' }).subscribe({
-        next: (response) => {
-          // Download the blob
-          const blob = response.body!;
-          const url = window.URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `surat_permohonan_${formValue.name}.docx`;
-          a.click();
-          window.URL.revokeObjectURL(url);
-
-          this.toast.success('Letter generated successfully');
-          this.isGenerating.set(false);
-        },
-        error: () => {
-          this.toast.error('Failed to generate letter');
-          this.isGenerating.set(false);
-        }
-      });
-    }
-  }
-  ```
-
-- [ ] **7.2.2** Add route `/letters/surat-permohonan` to `app.routes.ts`
-
-- [ ] **7.2.3** Add navigation link to sidebar under "Letters" section
+- [x] **7.3.4** Update `docs/shared_components.md`:
+  - No new shared components added
 
 ---
 
-## Phase 8: Invoices & Payments
+## Phase 8: Invoices & Payments (CURRENT)
 
 **Goal:** Invoice management with line items, payments recording, and balance tracking.
 

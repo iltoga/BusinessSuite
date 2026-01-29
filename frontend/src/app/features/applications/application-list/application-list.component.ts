@@ -153,6 +153,30 @@ export class ApplicationListComponent implements OnInit {
     }
   }
 
+  canForceClose(row: DocApplicationSerializerWithRelations): boolean {
+    return !!row.canForceClose && row.status !== 'completed';
+  }
+
+  confirmForceClose(row: DocApplicationSerializerWithRelations) {
+    if (!this.canForceClose(row)) {
+      this.toast.error('You cannot force close this application');
+      return;
+    }
+
+    if (confirm(`Force close application #${row.id}? This will mark it as completed.`)) {
+      this.service.customerApplicationsForceCloseCreate(row.id, row).subscribe({
+        next: () => {
+          this.toast.success('Application force closed');
+          this.load();
+        },
+        error: (err: any) => {
+          const msg = err?.error?.detail || err?.error || 'Failed to force close application';
+          this.toast.error(msg);
+        },
+      });
+    }
+  }
+
   private load(): void {
     this.isLoading.set(true);
     this.service

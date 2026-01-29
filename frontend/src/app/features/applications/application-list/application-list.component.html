@@ -60,6 +60,13 @@
                 <z-button zType="warning" zSize="sm">Edit</z-button>
               </a>
             }
+
+            @if (canForceClose(row)) {
+              <z-button zType="outline" zSize="sm" (click)="confirmForceClose(row)"
+                >Force Close</z-button
+              >
+            }
+
             <z-button zType="destructive" zSize="sm" (click)="confirmDelete(row)">Delete</z-button>
           </div>
         </ng-template>

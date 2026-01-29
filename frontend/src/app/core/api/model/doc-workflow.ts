@@ -7,8 +7,8 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
-import { StatusEnum } from './status-enum';
 import { Task } from './task';
+import { Status519Enum } from './status519-enum';
 
 
 export interface DocWorkflow { 
@@ -17,7 +17,7 @@ export interface DocWorkflow {
     readonly startDate: string;
     readonly completionDate: string | null;
     readonly dueDate: string;
-    readonly status: StatusEnum;
+    readonly status: Status519Enum;
     readonly notes: string;
     readonly isCurrentStep: boolean;
     readonly isOverdue: boolean;
