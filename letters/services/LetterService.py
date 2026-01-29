@@ -290,3 +290,11 @@ class LetterService:
             self.generated_temp_files.append(tmp_path)
         except OSError:
             pass
+
+    def cleanup_temp_files(self):
+        for tmp_path in self.generated_temp_files:
+            try:
+                if os.path.exists(tmp_path):
+                    os.remove(tmp_path)
+            except OSError:
+                continue

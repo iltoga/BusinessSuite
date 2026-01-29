@@ -37,7 +37,11 @@ import { mergeClasses, transform } from '@/shared/utils/merge-classes';
         (mouseenter)="onMouseEnter()"
       >
         @if (zIcon()) {
-          <div z-icon [zType]="zIcon()!" class="mr-2 flex shrink-0 items-center justify-center"></div>
+          <div
+            z-icon
+            [zType]="zIcon()!"
+            class="mr-2 flex shrink-0 items-center justify-center"
+          ></div>
         }
         <span class="flex-1">{{ zLabel() }}</span>
         @if (zShortcut()) {
@@ -54,8 +58,8 @@ export class ZardCommandOptionComponent {
   private readonly elementRef = inject(ElementRef);
   private readonly commandComponent = inject(ZardCommandComponent, { optional: true });
 
-  readonly zValue = input.required<unknown>();
-  readonly zLabel = input.required<string>();
+  readonly zValue = input<unknown>(null);
+  readonly zLabel = input<string>('');
   readonly zCommand = input<string>('');
   readonly zIcon = input<ZardIcon>();
   readonly zShortcut = input<string>('');

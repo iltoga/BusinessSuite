@@ -8,6 +8,7 @@ import { CustomerDetailComponent } from './features/customers/customer-detail/cu
 import { CustomerFormComponent } from './features/customers/customer-form/customer-form.component';
 import { CustomerListComponent } from './features/customers/customer-list/customer-list.component';
 import { DashboardComponent } from './features/dashboard/dashboard.component';
+import { SuratPermohonanComponent } from './features/letters/surat-permohonan/surat-permohonan.component';
 import { ProductDetailComponent } from './features/products/product-detail/product-detail.component';
 import { ProductFormComponent } from './features/products/product-form/product-form.component';
 import { ProductListComponent } from './features/products/product-list/product-list.component';
@@ -39,6 +40,7 @@ export const routes: Routes = [
       { path: 'customers/:id/applications/new', component: ApplicationFormComponent },
       { path: 'applications/:id/edit', component: ApplicationFormComponent },
       { path: 'applications/:id', component: ApplicationDetailComponent },
+      { path: 'letters/surat-permohonan', component: SuratPermohonanComponent },
       { path: '', redirectTo: '/dashboard', pathMatch: 'full' },
     ],
   },

@@ -13,13 +13,14 @@
 export type ThemeName =
   | 'neutral'
   | 'slate'
-  | 'gray'
+  | 'spaceGray'
   | 'zinc'
   | 'stone'
   | 'blue'
   | 'purple'
   | 'teal'
-  | 'sakura' // New girly theme
+  | 'sakura'
+  | 'starlight'
   | 'legacy';
 
 export interface ThemeColors {
@@ -209,64 +210,127 @@ export const slateDark: ThemeColors = {
 };
 
 /**
- * Gray Theme
- * Balanced, modern gray. Middle ground between Slate (blue) and Neutral (stark).
- * Best for: Administration, general purpose SaaS.
+ * Space Gray Theme (Formerly Gray)
+ * Inspired by the MacBook Pro (2021) chassis.
+ * A premium, industrial palette. Deep, cool grays with a metallic finish.
+ * Best for: Professional tools, coding environments, high-end SaaS.
  */
-export const grayLight: ThemeColors = {
-  background: 'oklch(0.99 0.002 280)', // Very subtle cool gray
-  foreground: 'oklch(0.13 0.02 280)',
+export const spaceGrayLight: ThemeColors = {
+  background: 'oklch(0.985 0.002 260)', // Aluminum finish (very slight cool tint)
+  foreground: 'oklch(0.15 0.01 260)', // Dark gray text
   card: 'oklch(1 0 0)',
-  cardForeground: 'oklch(0.13 0.02 280)',
+  cardForeground: 'oklch(0.15 0.01 260)',
   popover: 'oklch(1 0 0)',
-  popoverForeground: 'oklch(0.13 0.02 280)',
-  primary: 'oklch(0.25 0.02 280)', // Charcoal
+  popoverForeground: 'oklch(0.15 0.01 260)',
+  primary: 'oklch(0.28 0.02 260)', // Dark Anodized Gray (Apple Logo style)
   primaryForeground: 'oklch(0.98 0 0)',
-  secondary: 'oklch(0.96 0.005 280)',
-  secondaryForeground: 'oklch(0.25 0.02 280)',
-  muted: 'oklch(0.96 0.005 280)',
-  mutedForeground: 'oklch(0.55 0.02 280)',
-  accent: 'oklch(0.96 0.005 280)',
-  accentForeground: 'oklch(0.25 0.02 280)',
+  secondary: 'oklch(0.94 0.005 260)', // Light metal
+  secondaryForeground: 'oklch(0.28 0.02 260)',
+  muted: 'oklch(0.94 0.005 260)',
+  mutedForeground: 'oklch(0.55 0.01 260)',
+  accent: 'oklch(0.94 0.005 260)',
+  accentForeground: 'oklch(0.28 0.02 260)',
   destructive: 'oklch(0.577 0.245 27.325)',
   warning: 'oklch(0.754 0.149 83.317)',
   success: 'oklch(0.596 0.163 155.825)',
-  border: 'oklch(0.91 0.01 280)',
-  input: 'oklch(0.91 0.01 280)',
-  ring: 'oklch(0.25 0.02 280)',
-  chart1: 'oklch(0.25 0.02 280)',
-  chart2: 'oklch(0.4 0.05 280)',
-  chart3: 'oklch(0.6 0.05 280)',
-  chart4: 'oklch(0.5 0.02 280)',
-  chart5: 'oklch(0.8 0.02 280)',
+  border: 'oklch(0.88 0.005 260)',
+  input: 'oklch(0.88 0.005 260)',
+  ring: 'oklch(0.28 0.02 260)',
+  chart1: 'oklch(0.28 0.02 260)',
+  chart2: 'oklch(0.45 0.02 260)',
+  chart3: 'oklch(0.6 0.02 260)',
+  chart4: 'oklch(0.2 0.02 260)',
+  chart5: 'oklch(0.8 0.01 260)',
 };
 
-export const grayDark: ThemeColors = {
-  background: 'oklch(0.12 0.01 280)', // Balanced dark gray
-  foreground: 'oklch(0.98 0 0)',
-  card: 'oklch(0.16 0.01 280)',
-  cardForeground: 'oklch(0.98 0 0)',
-  popover: 'oklch(0.16 0.01 280)',
-  popoverForeground: 'oklch(0.98 0 0)',
-  primary: 'oklch(0.9 0.01 280)', // Light gray
-  primaryForeground: 'oklch(0.12 0.01 280)',
-  secondary: 'oklch(0.25 0.01 280)',
-  secondaryForeground: 'oklch(0.98 0 0)',
-  muted: 'oklch(0.22 0.01 280)',
-  mutedForeground: 'oklch(0.65 0.01 280)',
-  accent: 'oklch(0.25 0.01 280)',
-  accentForeground: 'oklch(0.98 0 0)',
+export const spaceGrayDark: ThemeColors = {
+  background: 'oklch(0.11 0.01 260)', // Deep Space Gray (Chassis in shadow)
+  foreground: 'oklch(0.98 0.002 260)',
+  card: 'oklch(0.15 0.015 260)', // Slightly lighter metallic gray
+  cardForeground: 'oklch(0.98 0.002 260)',
+  popover: 'oklch(0.15 0.015 260)',
+  popoverForeground: 'oklch(0.98 0.002 260)',
+  primary: 'oklch(0.92 0.005 260)', // Bright Aluminum (Contrast against dark)
+  primaryForeground: 'oklch(0.11 0.01 260)',
+  secondary: 'oklch(0.22 0.015 260)',
+  secondaryForeground: 'oklch(0.98 0.002 260)',
+  muted: 'oklch(0.2 0.015 260)',
+  mutedForeground: 'oklch(0.65 0.01 260)',
+  accent: 'oklch(0.22 0.015 260)',
+  accentForeground: 'oklch(0.98 0.002 260)',
   destructive: 'oklch(0.6 0.2 25)',
   warning: 'oklch(0.75 0.15 80)',
   success: 'oklch(0.6 0.16 155)',
-  border: 'oklch(0.25 0.01 280)',
-  input: 'oklch(0.25 0.01 280)',
-  ring: 'oklch(0.8 0.01 280)',
-  chart1: 'oklch(0.9 0.01 280)',
-  chart2: 'oklch(0.7 0.04 280)',
-  chart3: 'oklch(0.5 0.04 280)',
-  chart4: 'oklch(0.3 0.02 280)',
-  chart5: 'oklch(0.6 0.02 280)',
+  border: 'oklch(0.22 0.015 260)',
+  input: 'oklch(0.22 0.015 260)',
+  ring: 'oklch(0.8 0.01 260)',
+  chart1: 'oklch(0.92 0.005 260)',
+  chart2: 'oklch(0.7 0.02 260)',
+  chart3: 'oklch(0.5 0.02 260)',
+  chart4: 'oklch(0.3 0.02 260)',
+  chart5: 'oklch(0.6 0.02 260)',
+};
+
+/**
+ * Starlight Theme (New!)
+ * Inspired by the Apple Watch & MacBook Air "Starlight" finish.
+ * A warm, champagne-silver aesthetic. Subtle luxury.
+ * Best for: Lifestyle apps, high-end commerce, elegant dashboards.
+ */
+export const starlightLight: ThemeColors = {
+  background: 'oklch(0.99 0.008 95)', // Warm, creamy white (Champagne tint)
+  foreground: 'oklch(0.2 0.03 85)', // Warm dark bronze-gray
+  card: 'oklch(1 0 0)', // Pure white to contrast with warm bg
+  cardForeground: 'oklch(0.2 0.03 85)',
+  popover: 'oklch(1 0 0)',
+  popoverForeground: 'oklch(0.2 0.03 85)',
+  primary: 'oklch(0.55 0.08 85)', // Antique Gold / Bronze (Readable on white)
+  primaryForeground: 'oklch(0.99 0.008 95)',
+  secondary: 'oklch(0.96 0.015 95)', // Pale warm beige
+  secondaryForeground: 'oklch(0.55 0.08 85)',
+  muted: 'oklch(0.96 0.015 95)',
+  mutedForeground: 'oklch(0.5 0.04 85)',
+  accent: 'oklch(0.95 0.02 95)', // Starlight shimmer
+  accentForeground: 'oklch(0.55 0.08 85)',
+  destructive: 'oklch(0.577 0.245 27.325)',
+  warning: 'oklch(0.75 0.14 85)', // Gold warning
+  success: 'oklch(0.6 0.14 145)', // Warm green
+  border: 'oklch(0.9 0.02 95)', // Warm border
+  input: 'oklch(0.9 0.02 95)',
+  ring: 'oklch(0.55 0.08 85)',
+  chart1: 'oklch(0.55 0.08 85)', // Bronze
+  chart2: 'oklch(0.7 0.12 80)', // Gold
+  chart3: 'oklch(0.6 0.06 50)', // Warm Stone
+  chart4: 'oklch(0.8 0.1 90)', // Pale Gold
+  chart5: 'oklch(0.4 0.05 85)', // Deep Bronze
+};
+
+export const starlightDark: ThemeColors = {
+  background: 'oklch(0.12 0.02 90)', // Warm Black / Deep Espresso
+  foreground: 'oklch(0.97 0.01 95)', // Warm white
+  card: 'oklch(0.16 0.025 90)', // Lighter warm dark
+  cardForeground: 'oklch(0.97 0.01 95)',
+  popover: 'oklch(0.16 0.025 90)',
+  popoverForeground: 'oklch(0.97 0.01 95)',
+  primary: 'oklch(0.88 0.06 95)', // Starlight Metal (Pale Champagne)
+  primaryForeground: 'oklch(0.12 0.02 90)', // Dark text on bright metal
+  secondary: 'oklch(0.25 0.03 90)',
+  secondaryForeground: 'oklch(0.97 0.01 95)',
+  muted: 'oklch(0.22 0.03 90)',
+  mutedForeground: 'oklch(0.65 0.03 90)',
+  accent: 'oklch(0.25 0.03 90)',
+  accentForeground: 'oklch(0.97 0.01 95)',
+  destructive: 'oklch(0.6 0.2 25)',
+  warning: 'oklch(0.75 0.15 80)',
+  success: 'oklch(0.6 0.16 155)',
+  border: 'oklch(0.25 0.03 90)',
+  input: 'oklch(0.25 0.03 90)',
+  ring: 'oklch(0.88 0.06 95)',
+  chart1: 'oklch(0.88 0.06 95)',
+  chart2: 'oklch(0.75 0.1 85)',
+  chart3: 'oklch(0.6 0.08 50)',
+  chart4: 'oklch(0.5 0.05 90)',
+  chart5: 'oklch(0.9 0.04 95)',
 };
 
 /**
@@ -733,13 +797,14 @@ export const legacyDark: ThemeColors = {
 export const THEMES = {
   neutral: { light: neutralLight, dark: neutralDark },
   slate: { light: slateLight, dark: slateDark },
-  gray: { light: grayLight, dark: grayDark },
+  spaceGray: { light: spaceGrayLight, dark: spaceGrayDark }, // Updated
   zinc: { light: zincLight, dark: zincDark },
   stone: { light: stoneLight, dark: stoneDark },
   blue: { light: blueLight, dark: blueDark },
   purple: { light: purpleLight, dark: purpleDark },
   teal: { light: tealLight, dark: tealDark },
-  sakura: { light: sakuraLight, dark: sakuraDark }, // Added Sakura
+  sakura: { light: sakuraLight, dark: sakuraDark },
+  starlight: { light: starlightLight, dark: starlightDark }, // Added
   legacy: { light: legacyLight, dark: legacyDark },
 } as const;
 

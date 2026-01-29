@@ -21,6 +21,7 @@ import {
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
+import { ZardIconComponent } from '@/shared/components/icon';
 import { ZardInputDirective } from '@/shared/components/input';
 import {
   SortableMultiSelectComponent,
@@ -40,6 +41,7 @@ type ProductTask = NonNullable<ProductDetail['tasks']>[number];
     ZardButtonComponent,
     ZardCardComponent,
     SortableMultiSelectComponent,
+    ZardIconComponent,
   ],
   templateUrl: './product-form.component.html',
   styleUrls: ['./product-form.component.css'],

@@ -1,337 +1,288 @@
-<div class="space-y-6">
-  <div class="flex flex-wrap items-center justify-between gap-4">
-    <div>
-      <h1 class="text-2xl font-semibold">
+<div class="max-w-4xl mx-auto space-y-8">
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div class="space-y-1">
+      <div class="flex items-center gap-2 text-muted-foreground mb-2">
+        <a
+          routerLink="/customers"
+          class="flex items-center hover:text-foreground transition-colors"
+        >
+          <z-icon zType="arrow-left" class="h-4 w-4" />
+          <span class="text-xs font-medium uppercase tracking-wider">Back to list</span>
+        </a>
+      </div>
+      <h1 class="text-3xl font-extrabold tracking-tight">
         {{ isEditMode() ? 'Edit Customer' : 'New Customer' }}
       </h1>
       <p class="text-sm text-muted-foreground">Manage customer profile data.</p>
     </div>
-    <div class="flex gap-2">
-      <a z-button zType="ghost" routerLink="/customers">Back to list</a>
-    </div>
   </div>
 
   <form [formGroup]="form" (ngSubmit)="onSubmit()" class="space-y-6">
-    <!-- Customer Type Section -->
-    <z-card class="p-6">
-      <h3 class="text-lg font-semibold mb-4">Customer Type</h3>
-      <div class="space-y-2">
-        <label class="text-sm font-medium">Type <span class="text-red-500">*</span></label>
-        <div class="flex gap-6">
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input type="radio" formControlName="customer_type" value="person" class="w-4 h-4" />
-            <span>Person</span>
-          </label>
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input type="radio" formControlName="customer_type" value="company" class="w-4 h-4" />
-            <span>Company</span>
-          </label>
-        </div>
+    <!-- 1) Customer Type -->
+    <z-card class="overflow-hidden">
+      <div class="bg-accent/30 px-6 py-4 border-b">
+        <h2 class="text-sm font-semibold uppercase tracking-wider flex items-center gap-2">
+          <z-icon zType="users" class="h-4 w-4 text-primary" />
+          1. Customer Type
+        </h2>
       </div>
-    </z-card>
-
-    <!-- Basic Information Section -->
-    <z-card class="p-6">
-      <h3 class="text-lg font-semibold mb-4">Basic Information</h3>
-      <div class="grid gap-4 md:grid-cols-2">
-        @if (isPerson()) {
-          <div class="space-y-2">
-            <label class="text-sm font-medium">Title</label>
-            <select z-input formControlName="title" class="w-full">
-              @for (option of titleOptions; track option.value) {
-                <option [value]="option.value">{{ option.label }}</option>
-              }
-            </select>
-          </div>
-          <div class="space-y-2">
-            <label class="text-sm font-medium">Gender</label>
-            <select z-input formControlName="gender" class="w-full">
-              @for (option of genderOptions; track option.value) {
-                <option [value]="option.value">{{ option.label }}</option>
-              }
-            </select>
-          </div>
-          <div class="space-y-2">
-            <label class="text-sm font-medium"
-              >First Name <span class="text-red-500">*</span></label
-            >
-            <input z-input formControlName="first_name" placeholder="First name" />
-            @if (form.get('first_name')?.invalid && form.get('first_name')?.touched) {
-              <p class="text-sm text-red-500">First name is required</p>
-            }
-          </div>
-          <div class="space-y-2">
-            <label class="text-sm font-medium">Last Name <span class="text-red-500">*</span></label>
-            <input z-input formControlName="last_name" placeholder="Last name" />
-            @if (form.get('last_name')?.invalid && form.get('last_name')?.touched) {
-              <p class="text-sm text-red-500">Last name is required</p>
-            }
-          </div>
-        } @else {
-          <div class="space-y-2 md:col-span-2">
-            <label class="text-sm font-medium"
-              >Company Name <span class="text-red-500">*</span></label
-            >
-            <input z-input formControlName="company_name" placeholder="Company name" />
-            @if (form.get('company_name')?.invalid && form.get('company_name')?.touched) {
-              <p class="text-sm text-red-500">Company name is required</p>
-            }
-          </div>
-        }
-      </div>
-    </z-card>
-
-    <!-- Identification & Documents Section -->
-    <z-card class="p-6">
-      <h3 class="text-lg font-semibold mb-4">Identification & Documents</h3>
-      @if (isPerson()) {
-        <div class="space-y-4 mb-6">
-          <div class="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <h4 class="text-base font-semibold">Import data from Passport</h4>
-              <p class="text-sm text-muted-foreground">
-                Upload a passport image or PDF to auto-fill the form fields.
-              </p>
-            </div>
-            <label class="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                class="h-4 w-4"
-                [checked]="ocrUseAi()"
-                (change)="onToggleUseAi($event)"
-              />
-              <span>Use AI-enhanced extraction</span>
+      <div class="p-6">
+        <div class="space-y-2">
+          <label class="text-sm font-medium">Type <span class="text-destructive">*</span></label>
+          <div class="flex gap-6">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="radio" formControlName="customer_type" value="person" class="w-4 h-4" />
+              <span>Person</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="radio" formControlName="customer_type" value="company" class="w-4 h-4" />
+              <span>Company</span>
             </label>
           </div>
+        </div>
+      </div>
+    </z-card>
 
-          <app-file-upload
-            [label]="'Passport file (image or PDF)'"
-            [accept]="'image/*,application/pdf'"
-            [disabled]="ocrProcessing()"
-            [progress]="ocrProcessing() ? 10 : null"
-            [fileName]="passportFile()?.name ?? null"
-            [helperText]="'Supported: JPG, PNG, PDF'"
-            (fileSelected)="onPassportFileSelected($event)"
-            (cleared)="onPassportFileCleared()"
-          ></app-file-upload>
+    <!-- 2) Basic Information -->
+    <z-card class="overflow-hidden">
+      <div class="bg-accent/30 px-6 py-4 border-b">
+        <h2 class="text-sm font-semibold uppercase tracking-wider flex items-center gap-2">
+          <z-icon zType="user" class="h-4 w-4 text-primary" />
+          2. Basic Information
+        </h2>
+      </div>
+      <div class="p-6">
+        <div class="grid gap-6 md:grid-cols-12">
+          @if (isPerson()) {
+            <div class="md:col-span-4 space-y-2">
+              <label class="text-sm font-medium">Title</label>
+              <select z-input formControlName="title" class="w-full">
+                @for (option of titleOptions; track option.value) {
+                  <option [value]="option.value">{{ option.label }}</option>
+                }
+              </select>
+            </div>
+            <div class="md:col-span-4 space-y-2">
+              <label class="text-sm font-medium">Gender</label>
+              <select z-input formControlName="gender" class="w-full">
+                @for (option of genderOptions; track option.value) {
+                  <option [value]="option.value">{{ option.label }}</option>
+                }
+              </select>
+            </div>
+            <div class="md:col-span-4 space-y-2">
+              <label class="text-sm font-medium"
+                >First Name <span class="text-destructive">*</span></label
+              >
+              <input z-input formControlName="first_name" placeholder="First name" />
+              @if (form.get('first_name')?.invalid && form.get('first_name')?.touched) {
+                <p class="text-sm text-red-500">First name is required</p>
+              }
+            </div>
 
-          <div class="flex flex-wrap gap-3">
-            <button
-              type="button"
-              z-button
-              zType="default"
-              [zDisabled]="ocrProcessing()"
-              (click)="onPassportImport()"
-            >
-              {{ ocrProcessing() ? 'Processing...' : 'Import' }}
-            </button>
-            @if (ocrProcessing()) {
-              <span class="text-sm text-muted-foreground">Please wait while OCR runs.</span>
-            }
-          </div>
-
-          @if (ocrMessage()) {
-            <div
-              class="rounded-md border p-3 text-sm"
-              [class.border-green-500]="ocrMessageTone() === 'success'"
-              [class.text-green-600]="ocrMessageTone() === 'success'"
-              [class.border-yellow-500]="ocrMessageTone() === 'warning'"
-              [class.text-yellow-600]="ocrMessageTone() === 'warning'"
-              [class.border-red-500]="ocrMessageTone() === 'error'"
-              [class.text-red-600]="ocrMessageTone() === 'error'"
-              [class.border-slate-300]="ocrMessageTone() === 'info'"
-              [class.text-slate-600]="ocrMessageTone() === 'info'"
-            >
-              {{ ocrMessage() }}
+            <div class="md:col-span-6 space-y-2">
+              <label class="text-sm font-medium"
+                >Last Name <span class="text-destructive">*</span></label
+              >
+              <input z-input formControlName="last_name" placeholder="Last name" />
+              @if (form.get('last_name')?.invalid && form.get('last_name')?.touched) {
+                <p class="text-sm text-red-500">Last name is required</p>
+              }
+            </div>
+          } @else {
+            <div class="md:col-span-12 space-y-2">
+              <label class="text-sm font-medium"
+                >Company Name <span class="text-destructive">*</span></label
+              >
+              <input z-input formControlName="company_name" placeholder="Company name" />
+              @if (form.get('company_name')?.invalid && form.get('company_name')?.touched) {
+                <p class="text-sm text-red-500">Company name is required</p>
+              }
             </div>
           }
+        </div>
+      </div>
+    </z-card>
 
-          @if (passportPreviewUrl()) {
-            <img class="passport-preview" [src]="passportPreviewUrl()" alt="Passport preview" />
-          }
-
-          <div class="space-y-2">
-            <label class="text-sm font-medium">Paste image from clipboard</label>
-            <div
-              class="passport-clipboard"
-              contenteditable="true"
-              (paste)="onPastePassport($event)"
-            >
-              Click here and press Cmd+V / Ctrl+V to paste an image
-            </div>
-            @if (passportPastePreviewUrl()) {
-              <img
-                class="passport-preview"
-                [src]="passportPastePreviewUrl()"
-                alt="Clipboard preview"
-              />
-            }
-            @if (passportPasteStatus()) {
-              <p class="text-sm text-muted-foreground">{{ passportPasteStatus() }}</p>
-            }
-          </div>
-        </div>
-      }
-      <div class="grid gap-4 md:grid-cols-2">
-        <div class="space-y-2">
-          <label class="text-sm font-medium">Passport Number</label>
-          <input z-input formControlName="passport_number" placeholder="Passport number" />
-        </div>
-        <div class="space-y-2">
-          <label class="text-sm font-medium">Nationality</label>
-          <z-combobox
-            formControlName="nationality"
-            [options]="nationalityOptions()"
-            [searchable]="true"
-            placeholder="Nationality"
-            searchPlaceholder="Search country..."
-            [zWidth]="'full'"
-          />
-        </div>
-        <div class="space-y-2">
-          <label class="text-sm font-medium">Passport Issue Date</label>
-          <z-date-input
-            formControlName="passport_issue_date"
-            placeholder="DD-MM-YYYY"
-          ></z-date-input>
-        </div>
-        <div class="space-y-2">
-          <label class="text-sm font-medium">Passport Expiration Date</label>
-          <z-date-input
-            formControlName="passport_expiration_date"
-            placeholder="DD-MM-YYYY"
-          ></z-date-input>
-          @if (
-            form.get('passport_expiration_date')?.hasError('passportExpirationBeforeIssue') &&
-            (form.get('passport_expiration_date')?.touched || submitted())
-          ) {
-            <p class="text-sm text-red-500">Expiration date cannot be earlier than issue date</p>
-          }
-        </div>
+    <!-- 3) Identification & Documents -->
+    <z-card class="overflow-hidden">
+      <div class="bg-accent/30 px-6 py-4 border-b">
+        <h2 class="text-sm font-semibold uppercase tracking-wider flex items-center gap-2">
+          <z-icon zType="file-text" class="h-4 w-4 text-primary" />
+          3. Identification & Documents
+        </h2>
+      </div>
+      <div class="p-6 space-y-4">
+        <!-- Passport import area keeps same logic -->
         @if (isPerson()) {
-          <div class="space-y-2">
-            <label class="text-sm font-medium">Birthdate</label>
-            <z-date-input formControlName="birthdate" placeholder="DD-MM-YYYY"></z-date-input>
-            @if (
-              form.get('birthdate')?.hasError('birthdateAfterIssue') &&
-              (form.get('birthdate')?.touched || submitted())
-            ) {
-              <p class="text-sm text-red-500">Birthdate cannot be later than passport issue date</p>
+          <div class="space-y-4 mb-6">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h4 class="text-base font-semibold">Import data from Passport</h4>
+                <p class="text-sm text-muted-foreground">
+                  Upload a passport image or PDF to auto-fill the form fields.
+                </p>
+              </div>
+              <label class="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  class="h-4 w-4"
+                  [checked]="ocrUseAi()"
+                  (change)="onToggleUseAi($event)"
+                />
+                <span>Use AI-enhanced extraction</span>
+              </label>
+            </div>
+
+            <app-file-upload
+              [label]="'Passport file (image or PDF)'"
+              [accept]="'image/*,application/pdf'"
+              [disabled]="ocrProcessing()"
+              [progress]="ocrProcessing() ? 10 : null"
+              [fileName]="passportFile()?.name ?? null"
+              [helperText]="'Supported: JPG, PNG, PDF'"
+              (fileSelected)="onPassportFileSelected($event)"
+              (cleared)="onPassportFileCleared()"
+            ></app-file-upload>
+
+            <div class="flex flex-wrap gap-3">
+              <button
+                type="button"
+                z-button
+                zType="default"
+                [zDisabled]="ocrProcessing()"
+                (click)="onPassportImport()"
+              >
+                {{ ocrProcessing() ? 'Processing...' : 'Import' }}
+              </button>
+              @if (ocrProcessing()) {
+                <span class="text-sm text-muted-foreground">Please wait while OCR runs.</span>
+              }
+            </div>
+
+            @if (ocrMessage()) {
+              <div
+                class="rounded-md border p-3 text-sm"
+                [class.border-green-500]="ocrMessageTone() === 'success'"
+                [class.text-green-600]="ocrMessageTone() === 'success'"
+                [class.border-yellow-500]="ocrMessageTone() === 'warning'"
+                [class.text-yellow-600]="ocrMessageTone() === 'warning'"
+                [class.border-red-500]="ocrMessageTone() === 'error'"
+                [class.text-red-600]="ocrMessageTone() === 'error'"
+                [class.border-slate-300]="ocrMessageTone() === 'info'"
+                [class.text-slate-600]="ocrMessageTone() === 'info'"
+              >
+                {{ ocrMessage() }}
+              </div>
             }
-            @if (
-              form.get('birthdate')?.hasError('birthdateAfterExpiration') &&
-              (form.get('birthdate')?.touched || submitted())
-            ) {
-              <p class="text-sm text-red-500">
-                Birthdate cannot be later than passport expiration date
-              </p>
+
+            @if (passportPreviewUrl()) {
+              <img class="passport-preview" [src]="passportPreviewUrl()" alt="Passport preview" />
             }
-          </div>
-          <div class="space-y-2">
-            <label class="text-sm font-medium">Birth Place</label>
-            <input z-input formControlName="birth_place" placeholder="Birth place" />
+
+            <div class="space-y-2">
+              <label class="text-sm font-medium">Paste image from clipboard</label>
+              <div
+                class="passport-clipboard"
+                contenteditable="true"
+                (paste)="onPastePassport($event)"
+              >
+                Click here and press Cmd+V / Ctrl+V to paste an image
+              </div>
+              @if (passportPastePreviewUrl()) {
+                <img
+                  class="passport-preview"
+                  [src]="passportPastePreviewUrl()"
+                  alt="Clipboard preview"
+                />
+              }
+              @if (passportPasteStatus()) {
+                <p class="text-sm text-muted-foreground">{{ passportPasteStatus() }}</p>
+              }
+            </div>
           </div>
         }
-        <div class="space-y-2 md:col-span-2">
-          <label class="text-sm font-medium">NPWP (Tax ID)</label>
-          <input z-input formControlName="npwp" placeholder="Indonesian Tax ID" />
-        </div>
-      </div>
-    </z-card>
 
-    <!-- Contact Information Section -->
-    <z-card class="p-6">
-      <h3 class="text-lg font-semibold mb-4">Contact Information</h3>
-      <div class="grid gap-4 md:grid-cols-2">
-        <div class="space-y-2">
-          <label class="text-sm font-medium">Email</label>
-          <input z-input type="email" formControlName="email" placeholder="Email address" />
-          @if (form.get('email')?.invalid && form.get('email')?.touched) {
-            <p class="text-sm text-red-500">Please enter a valid email</p>
-          }
-        </div>
-        <div class="space-y-2">
-          <label class="text-sm font-medium">Telephone</label>
-          <input z-input formControlName="telephone" placeholder="Phone number" />
-        </div>
-        <div class="space-y-2">
-          <label class="text-sm font-medium">WhatsApp</label>
-          <input z-input formControlName="whatsapp" placeholder="WhatsApp number" />
-        </div>
-        <div class="space-y-2">
-          <label class="text-sm font-medium">Telegram</label>
-          <input z-input formControlName="telegram" placeholder="Telegram username" />
-        </div>
-        <div class="space-y-2">
-          <label class="text-sm font-medium">Facebook</label>
-          <input z-input formControlName="facebook" placeholder="Facebook handle" />
-        </div>
-        <div class="space-y-2">
-          <label class="text-sm font-medium">Instagram</label>
-          <input z-input formControlName="instagram" placeholder="Instagram handle" />
-        </div>
-        <div class="space-y-2">
-          <label class="text-sm font-medium">Twitter</label>
-          <input z-input formControlName="twitter" placeholder="Twitter handle" />
-        </div>
-      </div>
-    </z-card>
-
-    <!-- Address Information Section -->
-    <z-card class="p-6">
-      <h3 class="text-lg font-semibold mb-4">Address Information</h3>
-      <div class="grid gap-4">
-        <div class="space-y-2">
-          <label class="text-sm font-medium">Address in Bali</label>
-          <textarea
-            z-input
-            formControlName="address_bali"
-            placeholder="Address in Bali"
-            rows="3"
-            class="w-full"
-          ></textarea>
-        </div>
-        <div class="space-y-2">
-          <label class="text-sm font-medium">Address Abroad</label>
-          <textarea
-            z-input
-            formControlName="address_abroad"
-            placeholder="Address abroad"
-            rows="3"
-            class="w-full"
-          ></textarea>
-        </div>
-      </div>
-    </z-card>
-
-    <!-- Notification Settings Section -->
-    <z-card class="p-6">
-      <h3 class="text-lg font-semibold mb-4">Notification Settings</h3>
-      <div class="grid gap-4 md:grid-cols-2">
-        <div class="space-y-2">
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" formControlName="notify_documents_expiration" class="w-4 h-4" />
-            <span class="text-sm font-medium">Notify about document expiration</span>
-          </label>
-        </div>
-        <div class="space-y-2">
-          <label class="text-sm font-medium">Notification Method</label>
-          <select z-input formControlName="notify_by" class="w-full">
-            @for (option of notifyByOptions; track option.value) {
-              <option [value]="option.value">{{ option.label }}</option>
+        <div class="grid gap-4 md:grid-cols-2">
+          <div class="space-y-2">
+            <label class="text-sm font-medium">Passport Number</label>
+            <input z-input formControlName="passport_number" placeholder="Passport number" />
+          </div>
+          <div class="space-y-2">
+            <label class="text-sm font-medium">Nationality</label>
+            <z-combobox
+              formControlName="nationality"
+              [options]="nationalityOptions()"
+              [searchable]="true"
+              placeholder="Nationality"
+              searchPlaceholder="Search country..."
+              [zWidth]="'full'"
+            />
+          </div>
+          <div class="space-y-2">
+            <label class="text-sm font-medium">Passport Issue Date</label>
+            <z-date-input
+              formControlName="passport_issue_date"
+              placeholder="DD-MM-YYYY"
+            ></z-date-input>
+          </div>
+          <div class="space-y-2">
+            <label class="text-sm font-medium">Passport Expiration Date</label>
+            <z-date-input
+              formControlName="passport_expiration_date"
+              placeholder="DD-MM-YYYY"
+            ></z-date-input>
+            @if (
+              form.get('passport_expiration_date')?.hasError('passportExpirationBeforeIssue') &&
+              (form.get('passport_expiration_date')?.touched || submitted())
+            ) {
+              <p class="text-sm text-red-500">Expiration date cannot be earlier than issue date</p>
             }
-          </select>
+          </div>
+          @if (isPerson()) {
+            <div class="space-y-2">
+              <label class="text-sm font-medium">Birthdate</label>
+              <z-date-input formControlName="birthdate" placeholder="DD-MM-YYYY"></z-date-input>
+              @if (
+                form.get('birthdate')?.hasError('birthdateAfterIssue') &&
+                (form.get('birthdate')?.touched || submitted())
+              ) {
+                <p class="text-sm text-red-500">
+                  Birthdate cannot be later than passport issue date
+                </p>
+              }
+              @if (
+                form.get('birthdate')?.hasError('birthdateAfterExpiration') &&
+                (form.get('birthdate')?.touched || submitted())
+              ) {
+                <p class="text-sm text-red-500">
+                  Birthdate cannot be later than passport expiration date
+                </p>
+              }
+            </div>
+            <div class="space-y-2">
+              <label class="text-sm font-medium">Birth Place</label>
+              <input z-input formControlName="birth_place" placeholder="Birth place" />
+            </div>
+          }
+          <div class="space-y-2 md:col-span-2">
+            <label class="text-sm font-medium">NPWP (Tax ID)</label>
+            <input z-input formControlName="npwp" placeholder="Indonesian Tax ID" />
+          </div>
         </div>
       </div>
-    </z-card>
-
-    <!-- Form Actions -->
-    <z-card class="p-6">
-      <div class="flex flex-wrap gap-3">
-        <button type="submit" z-button zType="default" [zDisabled]="isLoading() || form.invalid">
-          {{ isEditMode() ? 'Save Changes' : 'Create Customer' }}
-        </button>
-        <button type="button" z-button zType="outline" routerLink="/customers">Cancel</button>
+      <div class="bg-muted/30 px-6 py-4 border-t flex items-center justify-between gap-4">
+        <p class="text-xs text-muted-foreground max-w-md">
+          <span class="font-semibold italic">Note:</span> Changes made here only affect the
+          generated document and will not be saved to the customer's permanent profile.
+        </p>
+        <div class="flex gap-3">
+          <button type="submit" z-button zType="default" [zDisabled]="isLoading() || form.invalid">
+            {{ isEditMode() ? 'Save Changes' : 'Create Customer' }}
+          </button>
+          <button type="button" z-button zType="outline" routerLink="/customers">Cancel</button>
+        </div>
       </div>
     </z-card>
   </form>

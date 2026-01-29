@@ -1228,7 +1228,7 @@
               return application
   ```
 
-- [ ] **6.1.3** Run `bun run generate:api`
+- [x] **6.1.3** Run `bun run generate:api`
 
 ### 6.2 Application List View
 
@@ -1372,7 +1372,7 @@
 
 ---
 
-## Phase 7: Letters (Surat Permohonan)
+## Phase 7: Letters (Surat Permohonan) (CURRENT)
 
 **Goal:** Generate DOCX letters with customer data pre-filled, replicating Django's LetterService.
 

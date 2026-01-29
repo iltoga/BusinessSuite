@@ -2,17 +2,18 @@ import mimetypes
 import os
 import uuid
 from datetime import datetime
-from math import e
 
 from django.conf import settings
 from django.core.files.storage import default_storage
 from django.db.models import Count, Q
 from django.http import FileResponse
+from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.text import slugify
 from django.views.decorators.csrf import csrf_exempt
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import filters, pagination, status, viewsets
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.authtoken.views import ObtainAuthToken
@@ -37,6 +38,8 @@ from api.serializers import (
     ProductDetailSerializer,
     ProductQuickCreateSerializer,
     ProductSerializer,
+    SuratPermohonanCustomerDataSerializer,
+    SuratPermohonanRequestSerializer,
 )
 from business_suite.authentication import BearerAuthentication
 from core.models import CountryCode, DocumentOCRJob, OCRJob
@@ -48,6 +51,7 @@ from core.utils.dateutils import calculate_due_date
 from customer_applications.models import DocApplication, Document
 from customers.models import Customer
 from invoices.models.invoice import InvoiceApplication
+from letters.services.LetterService import LetterService
 from products.models import Product
 from products.models.document_type import DocumentType
 from products.models.task import Task
@@ -92,6 +96,94 @@ class CountryCodeViewSet(viewsets.ReadOnlyModelViewSet):
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["country", "country_idn", "alpha3_code"]
     ordering = ["country"]
+
+
+class LettersViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        request=SuratPermohonanRequestSerializer,
+        responses={200: OpenApiTypes.BINARY},
+    )
+    @action(detail=False, methods=["post"], url_path="surat-permohonan")
+    def generate_surat_permohonan(self, request):
+        serializer = SuratPermohonanRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        payload = serializer.validated_data
+
+        customer_id = payload.get("customer_id")
+        try:
+            customer = Customer.objects.get(pk=customer_id)
+        except Customer.DoesNotExist:
+            return self.error_response("Customer not found", status.HTTP_404_NOT_FOUND)
+
+        extra_data = {
+            "doc_date": payload.get("doc_date") or "",
+            "visa_type": payload.get("visa_type") or "",
+            "name": payload.get("name") or "",
+            "gender": payload.get("gender") or "",
+            "country": payload.get("country") or "",
+            "birth_place": payload.get("birth_place") or "",
+            "birthdate": payload.get("birthdate") or "",
+            "passport_no": payload.get("passport_no") or "",
+            "passport_exp_date": payload.get("passport_exp_date") or "",
+            "address_bali": payload.get("address_bali") or "",
+        }
+
+        service = LetterService(customer, settings.DOCX_SURAT_PERMOHONAN_PERPANJANGAN_TEMPLATE_NAME)
+
+        try:
+            data = service.generate_letter_data(extra_data)
+            buffer = service.generate_letter_document(data)
+            safe_name = slugify(f"surat_permohonan_{customer.full_name}", allow_unicode=False).replace("-", "_")
+            safe_name = (safe_name or "surat_permohonan").replace(".", "_")
+            filename = f"{safe_name}.docx"
+
+            return FileResponse(
+                buffer,
+                as_attachment=True,
+                filename=filename,
+                content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+        except FileNotFoundError as exc:
+            return self.error_response(str(exc), status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as exc:  # pragma: no cover - handled generically
+            return self.error_response(
+                f"Unable to generate Surat Permohonan: {exc}", status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        finally:
+            service.cleanup_temp_files()
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="customer_id",
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.PATH,
+            )
+        ],
+        responses=SuratPermohonanCustomerDataSerializer,
+    )
+    @action(detail=False, methods=["get"], url_path="customer-data/(?P<customer_id>[^/.]+)")
+    def get_customer_data(self, request, customer_id=None):
+        customer = get_object_or_404(Customer, pk=customer_id)
+        nationality_code = customer.nationality.alpha3_code if customer.nationality else None
+
+        response_data = {
+            "name": customer.full_name,
+            "gender": customer.gender or customer.get_gender_display(),
+            "country": nationality_code,
+            "birth_place": customer.birth_place or "",
+            "birthdate": customer.birthdate.isoformat() if customer.birthdate else None,
+            "passport_no": customer.passport_number or "",
+            "passport_exp_date": (
+                customer.passport_expiration_date.isoformat() if customer.passport_expiration_date else None
+            ),
+            "address_bali": customer.address_bali or "",
+        }
+
+        response_serializer = SuratPermohonanCustomerDataSerializer(response_data)
+        return Response(response_serializer.data)
 
 
 class DocumentTypeViewSet(ApiErrorHandlingMixin, viewsets.ReadOnlyModelViewSet):

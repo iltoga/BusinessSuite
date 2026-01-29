@@ -23,6 +23,7 @@ import { ZardCardComponent } from '@/shared/components/card';
 import { ZardComboboxComponent, type ZardComboboxOption } from '@/shared/components/combobox';
 import { ZardDateInputComponent } from '@/shared/components/date-input';
 import { FileUploadComponent } from '@/shared/components/file-upload';
+import { ZardIconComponent } from '@/shared/components/icon';
 import { ZardInputDirective } from '@/shared/components/input';
 
 @Component({
@@ -38,6 +39,7 @@ import { ZardInputDirective } from '@/shared/components/input';
     ZardCardComponent,
     ZardDateInputComponent,
     FileUploadComponent,
+    ZardIconComponent,
   ],
   templateUrl: './customer-form.component.html',
   styleUrls: ['./customer-form.component.css'],

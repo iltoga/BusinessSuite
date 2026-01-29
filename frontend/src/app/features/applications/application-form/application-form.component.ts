@@ -6,9 +6,11 @@ import type { Customer } from '@/core/api/model/customer';
 import { AuthService } from '@/core/services/auth.service';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardButtonComponent } from '@/shared/components/button';
+import { ZardCardComponent } from '@/shared/components/card';
 import { ZardComboboxComponent, type ZardComboboxOption } from '@/shared/components/combobox';
 import { CustomerSelectComponent } from '@/shared/components/customer-select';
 import { ZardDateInputComponent } from '@/shared/components/date-input';
+import { ZardIconComponent } from '@/shared/components/icon';
 import { ZardInputDirective } from '@/shared/components/input';
 import { CommonModule, Location } from '@angular/common';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
@@ -34,6 +36,8 @@ import { map, startWith, Subject, takeUntil } from 'rxjs';
     ReactiveFormsModule,
     RouterLink,
     ZardButtonComponent,
+    ZardCardComponent,
+    ZardIconComponent,
     ZardInputDirective,
     ZardComboboxComponent,
     CustomerSelectComponent,

@@ -10,11 +10,13 @@
 - **2026-01-25:** Added Application Detail view with OCR polling and shared FileUpload component
 - **2026-01-26:** Implemented Products management (list/detail/form), API CRUD for products, and SortableMultiSelect component
 - **2026-01-28:** Added CustomerSelect shared component and workflow progression UI for applications
+- **2026-01-29:** Implemented Letters (Surat Permohonan) API + Angular form with customer auto-fill
 
 ## Reuse Hints
 
 - Search, pagination, and expiry badge components are reusable across list views
 - FileUpload component can be reused for invoice attachments and payment proofs
+- CustomerSelect component works well for pre-filling form fields based on customer selection
 
 ## Refactor Requests
 

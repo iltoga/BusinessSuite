@@ -14,6 +14,7 @@ api/document-ocr.service.ts
 api/document-types.service.ts
 api/documents.service.ts
 api/invoices.service.ts
+api/letters.service.ts
 api/ocr.service.ts
 api/products.service.ts
 configuration.ts
@@ -44,6 +45,8 @@ model/product-detail.ts
 model/product-type-enum.ts
 model/product.ts
 model/status-enum.ts
+model/surat-permohonan-customer-data.ts
+model/surat-permohonan-request.ts
 model/task-nested.ts
 model/task.ts
 model/title-enum.ts

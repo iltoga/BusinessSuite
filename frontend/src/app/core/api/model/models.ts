@@ -21,6 +21,8 @@ export * from './product-create-update';
 export * from './product-detail';
 export * from './product-type-enum';
 export * from './status-enum';
+export * from './surat-permohonan-customer-data';
+export * from './surat-permohonan-request';
 export * from './task';
 export * from './task-nested';
 export * from './title-enum';

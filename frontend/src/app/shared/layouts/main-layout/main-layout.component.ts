@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
 import { ThemeService } from '@/core/services/theme.service';
@@ -27,43 +27,90 @@ import { ThemeSwitcherComponent } from '@/shared/components/theme-switcher/theme
         [ngClass]="
           sidebarOpen ? 'md:w-64 md:visible md:opacity-100' : 'md:w-0 md:invisible md:opacity-0'
         "
-        class="fixed md:relative inset-y-0 left-0 z-40 w-64 transform flex-col border-r bg-card p-4 transition-all duration-200 ease-in-out overflow-hidden"
+        class="fixed md:relative inset-y-0 left-0 z-40 w-64 transform flex-col border-r bg-card transition-all duration-200 ease-in-out overflow-hidden"
       >
-        <img
-          [src]="logoSrc()"
-          alt="BusinessSuite Logo"
-          class="block w-full max-w-full h-auto mb-6 object-contain"
-        />
-        <nav class="space-y-2 text-sm">
+        <!-- Top Row: Logo Header -->
+        <div class="h-32 border-b bg-accent/5 p-2 dark:bg-accent/10">
           <a
             routerLink="/dashboard"
-            routerLinkActive="active"
-            [routerLinkActiveOptions]="{ exact: true }"
-            class="block rounded px-3 py-2 hover:bg-accent"
-            >Dashboard</a
+            class="flex h-full w-full items-center justify-center rounded-md bg-card transition-transform hover:scale-[1.02] dark:bg-accent/20 overflow-hidden"
           >
-          <a
-            routerLink="/customers"
-            routerLinkActive="active"
-            [routerLinkActiveOptions]="{ exact: true }"
-            class="block rounded px-3 py-2 hover:bg-accent"
-            >Customers</a
-          >
-          <a
-            routerLink="/applications"
-            routerLinkActive="active"
-            [routerLinkActiveOptions]="{ exact: true }"
-            class="block rounded px-3 py-2 hover:bg-accent"
-            >Applications</a
-          >
-          <a
-            routerLink="/products"
-            routerLinkActive="active"
-            [routerLinkActiveOptions]="{ exact: true }"
-            class="block rounded px-3 py-2 hover:bg-accent"
-            >Products</a
-          >
-        </nav>
+            <img
+              [src]="logoSrc()"
+              alt="BusinessSuite Logo"
+              class="h-full w-full object-contain p-2"
+            />
+          </a>
+        </div>
+
+        <!-- Bottom Row: Navigation menu -->
+        <div class="flex-1 overflow-y-auto p-4">
+          <nav class="space-y-1 text-sm">
+            <a
+              routerLink="/dashboard"
+              routerLinkActive="bg-accent"
+              [routerLinkActiveOptions]="{ exact: true }"
+              class="flex items-center gap-3 rounded-md px-3 py-2 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
+            >
+              <z-icon zType="layout-dashboard" class="h-4 w-4" />
+              Dashboard
+            </a>
+            <a
+              routerLink="/customers"
+              routerLinkActive="bg-accent"
+              [routerLinkActiveOptions]="{ exact: true }"
+              class="flex items-center gap-3 rounded-md px-3 py-2 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
+            >
+              <z-icon zType="users" class="h-4 w-4" />
+              Customers
+            </a>
+            <a
+              routerLink="/applications"
+              routerLinkActive="bg-accent"
+              [routerLinkActiveOptions]="{ exact: true }"
+              class="flex items-center gap-3 rounded-md px-3 py-2 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
+            >
+              <z-icon zType="folder" class="h-4 w-4" />
+              Applications
+            </a>
+            <a
+              routerLink="/products"
+              routerLinkActive="bg-accent"
+              [routerLinkActiveOptions]="{ exact: true }"
+              class="flex items-center gap-3 rounded-md px-3 py-2 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
+            >
+              <z-icon zType="archive" class="h-4 w-4" />
+              Products
+            </a>
+
+            <div class="pt-4 pb-1">
+              <button
+                (click)="toggleLetters()"
+                class="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
+              >
+                <div class="flex items-center gap-3">
+                  <z-icon zType="file-text" class="h-4 w-4" />
+                  <span>Letters</span>
+                </div>
+                <z-icon
+                  [zType]="lettersExpanded() ? 'chevron-down' : 'chevron-right'"
+                  class="h-3 w-3"
+                />
+              </button>
+
+              <div *ngIf="lettersExpanded()" class="mt-1 space-y-1 pl-7">
+                <a
+                  routerLink="/letters/surat-permohonan"
+                  routerLinkActive="bg-accent text-foreground"
+                  [routerLinkActiveOptions]="{ exact: true }"
+                  class="block rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
+                >
+                  Surat Permohonan
+                </a>
+              </div>
+            </div>
+          </nav>
+        </div>
       </aside>
 
       <!-- backdrop for mobile when sidebar is open -->
@@ -105,6 +152,7 @@ import { ThemeSwitcherComponent } from '@/shared/components/theme-switcher/theme
 })
 export class MainLayoutComponent {
   sidebarOpen = true;
+  lettersExpanded = signal(true);
 
   private themeService = inject(ThemeService);
   logoSrc = computed(() =>
@@ -116,5 +164,9 @@ export class MainLayoutComponent {
 
   toggleSidebar() {
     this.sidebarOpen = !this.sidebarOpen;
+  }
+
+  toggleLetters() {
+    this.lettersExpanded.update((v) => !v);
   }
 }
