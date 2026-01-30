@@ -13,8 +13,13 @@ import {
 import { RouterLink } from '@angular/router';
 
 import { ProductsService, type PaginatedProductList, type Product } from '@/core/api';
+import { AuthService } from '@/core/services/auth.service';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardBadgeComponent } from '@/shared/components/badge';
+import {
+  BulkDeleteDialogComponent,
+  type BulkDeleteDialogData,
+} from '@/shared/components/bulk-delete-dialog/bulk-delete-dialog.component';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ConfirmDialogComponent } from '@/shared/components/confirm-dialog/confirm-dialog.component';
 import {
@@ -37,6 +42,7 @@ import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
     ZardButtonComponent,
     ConfirmDialogComponent,
     ZardBadgeComponent,
+    BulkDeleteDialogComponent,
   ],
   templateUrl: './product-list.component.html',
   styleUrls: ['./product-list.component.css'],
@@ -44,6 +50,7 @@ import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
 })
 export class ProductListComponent implements OnInit {
   private productsApi = inject(ProductsService);
+  private authService = inject(AuthService);
   private toast = inject(GlobalToastService);
   private platformId = inject(PLATFORM_ID);
 
@@ -75,10 +82,19 @@ export class ProductListComponent implements OnInit {
   readonly pageSize = signal(10);
   readonly totalItems = signal(0);
   readonly ordering = signal<string | undefined>('name');
+  readonly isSuperuser = this.authService.isSuperuser;
+
+  readonly bulkDeleteOpen = signal(false);
+  readonly bulkDeleteData = signal<BulkDeleteDialogData | null>(null);
+  private readonly bulkDeleteQuery = signal<string>('');
 
   readonly confirmOpen = signal(false);
   readonly confirmMessage = signal('');
   readonly pendingDelete = signal<Product | null>(null);
+
+  readonly bulkDeleteLabel = computed(() =>
+    this.query().trim() ? 'Delete Selected Products' : 'Delete All Products',
+  );
 
   readonly columns = computed<ColumnConfig<Product>[]>(() => [
     { key: 'code', header: 'Code', sortable: true, sortKey: 'code' },
@@ -134,6 +150,9 @@ export class ProductListComponent implements OnInit {
   }
 
   requestDelete(product: Product): void {
+    if (!this.isSuperuser()) {
+      return;
+    }
     this.productsApi.productsCanDeleteRetrieve(product.id).subscribe({
       next: (result) => {
         const payload = result as unknown as { can_delete: boolean; message?: string | null };
@@ -175,6 +194,49 @@ export class ProductListComponent implements OnInit {
   cancelDelete(): void {
     this.confirmOpen.set(false);
     this.pendingDelete.set(null);
+  }
+
+  openBulkDeleteDialog(): void {
+    const query = this.query().trim();
+    const mode = query ? 'selected' : 'all';
+    const detailsText = query
+      ? 'This will permanently remove all matching product records and their associated tasks from the database.'
+      : 'This will permanently remove all product records and their associated tasks from the database.';
+
+    this.bulkDeleteQuery.set(query);
+    this.bulkDeleteData.set({
+      entityLabel: 'Products',
+      totalCount: this.totalItems(),
+      query: query || null,
+      mode,
+      detailsText,
+    });
+    this.bulkDeleteOpen.set(true);
+  }
+
+  onBulkDeleteConfirmed(): void {
+    const query = this.bulkDeleteQuery();
+
+    this.productsApi.productsBulkDeleteCreate({ searchQuery: query || '' } as any).subscribe({
+      next: (response) => {
+        const payload = response as { deletedCount?: number; deleted_count?: number };
+        const count = payload.deletedCount ?? payload.deleted_count ?? 0;
+        this.toast.success(`Deleted ${count} product(s)`);
+        this.bulkDeleteOpen.set(false);
+        this.bulkDeleteData.set(null);
+        this.bulkDeleteQuery.set('');
+        this.loadProducts();
+      },
+      error: () => {
+        this.toast.error('Failed to delete products');
+      },
+    });
+  }
+
+  onBulkDeleteCancelled(): void {
+    this.bulkDeleteOpen.set(false);
+    this.bulkDeleteData.set(null);
+    this.bulkDeleteQuery.set('');
   }
 
   productTypeLabel(type?: string | null): string {

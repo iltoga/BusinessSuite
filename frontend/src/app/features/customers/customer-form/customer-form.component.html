@@ -19,6 +19,8 @@
   </div>
 
   <form [formGroup]="form" (ngSubmit)="onSubmit()" class="space-y-6">
+    <app-form-error-summary [form]="form" [labels]="formErrorLabels" />
+
     <!-- 1) Customer Type -->
     <z-card class="overflow-hidden">
       <div class="bg-accent/30 px-6 py-4 border-b">
@@ -55,7 +57,7 @@
       <div class="p-6">
         <div class="grid gap-6 md:grid-cols-12">
           @if (isPerson()) {
-            <div class="md:col-span-4 space-y-2">
+            <div class="md:col-span-2 space-y-2">
               <label class="text-sm font-medium">Title</label>
               <select z-input formControlName="title" class="w-full">
                 @for (option of titleOptions; track option.value) {
@@ -63,7 +65,7 @@
                 }
               </select>
             </div>
-            <div class="md:col-span-4 space-y-2">
+            <div class="md:col-span-2 space-y-2">
               <label class="text-sm font-medium">Gender</label>
               <select z-input formControlName="gender" class="w-full">
                 @for (option of genderOptions; track option.value) {
@@ -81,7 +83,7 @@
               }
             </div>
 
-            <div class="md:col-span-6 space-y-2">
+            <div class="md:col-span-4 space-y-2">
               <label class="text-sm font-medium"
                 >Last Name <span class="text-destructive">*</span></label
               >

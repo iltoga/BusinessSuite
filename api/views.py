@@ -17,13 +17,13 @@ from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import filters, pagination, status, viewsets
 from rest_framework.authentication import SessionAuthentication
-from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.decorators import action, api_view, authentication_classes, permission_classes, throttle_classes
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
+from rest_framework_simplejwt.views import TokenObtainPairView
 
 from api.serializers import (
     CountryCodeSerializer,
@@ -47,7 +47,8 @@ from api.serializers import (
     SuratPermohonanCustomerDataSerializer,
     SuratPermohonanRequestSerializer,
 )
-from business_suite.authentication import BearerAuthentication
+from api.serializers.auth_serializer import CustomTokenObtainSerializer
+from business_suite.authentication import JwtOrMockAuthentication
 from core.models import CountryCode, DocumentOCRJob, OCRJob
 from core.services.quick_create import create_quick_customer, create_quick_customer_application, create_quick_product
 from core.tasks.cron_jobs import run_clear_cache_now, run_full_backup_now
@@ -64,6 +65,14 @@ from products.models.document_type import DocumentType
 from products.models.task import Task
 
 
+def parse_bool(value, default=False):
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in {"true", "1", "yes", "y", "on"}
+
+
 class ApiErrorHandlingMixin:
     def error_response(self, message, status_code=status.HTTP_400_BAD_REQUEST, details=None):
         payload = {"error": message}
@@ -76,7 +85,10 @@ class ApiErrorHandlingMixin:
         if response is None:
             return self.error_response("Server error", status.HTTP_500_INTERNAL_SERVER_ERROR)
         if isinstance(exc, ValidationError):
-            return self.error_response("Validation error", response.status_code, details=response.data)
+            data = response.data or {}
+            errors = data.get("errors", data)
+            code = data.get("code", getattr(exc, "default_code", "invalid"))
+            return Response({"error": "Validation error", "code": code, "errors": errors}, status=response.status_code)
         if isinstance(exc, NotFound):
             return self.error_response("Not found", response.status_code)
         if isinstance(response.data, dict) and "detail" in response.data:
@@ -90,9 +102,10 @@ class StandardResultsSetPagination(pagination.PageNumberPagination):
     max_page_size = 200
 
 
-class TokenAuthView(ObtainAuthToken):
+class TokenAuthView(TokenObtainPairView):
     authentication_classes = []
     permission_classes = [AllowAny]
+    serializer_class = CustomTokenObtainSerializer
 
 
 class CountryCodeViewSet(viewsets.ReadOnlyModelViewSet):
@@ -252,6 +265,21 @@ class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         customer.save(update_fields=["active"])
         return Response({"id": customer.id, "active": customer.active})
 
+    @action(detail=False, methods=["post"], url_path="bulk-delete")
+    def bulk_delete(self, request):
+        if not request.user.is_superuser:
+            return self.error_response("You do not have permission to perform this action.", status.HTTP_403_FORBIDDEN)
+
+        from core.services.bulk_delete import bulk_delete_customers
+
+        query = (
+            request.data.get("search_query") or request.data.get("searchQuery") or request.data.get("query") or ""
+        ).strip()
+        hide_disabled = parse_bool(request.data.get("hide_disabled") or request.data.get("hideDisabled"), True)
+
+        count = bulk_delete_customers(query=query or None, hide_disabled=hide_disabled)
+        return Response({"deleted_count": count})
+
 
 class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
@@ -281,6 +309,20 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         product = self.get_object()
         can_delete, message = product.can_be_deleted()
         return Response({"can_delete": can_delete, "message": message})
+
+    @action(detail=False, methods=["post"], url_path="bulk-delete")
+    def bulk_delete(self, request):
+        if not request.user.is_superuser:
+            return self.error_response("You do not have permission to perform this action.", status.HTTP_403_FORBIDDEN)
+
+        from core.services.bulk_delete import bulk_delete_products
+
+        query = (
+            request.data.get("search_query") or request.data.get("searchQuery") or request.data.get("query") or ""
+        ).strip()
+
+        count = bulk_delete_products(query=query or None)
+        return Response({"deleted_count": count})
 
     @action(detail=False, methods=["get"], url_path="get_product_by_id/(?P<product_id>[^/.]+)")
     def get_product_by_id(self, request, product_id=None):
@@ -417,6 +459,79 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         )
         serializer.instance = invoice
 
+    @extend_schema(responses=OpenApiTypes.OBJECT)
+    @action(detail=True, methods=["get"], url_path="delete-preview")
+    def delete_preview(self, request, pk=None):
+        if not request.user.is_superuser:
+            return self.error_response("Only superusers can delete invoices.", status.HTTP_403_FORBIDDEN)
+
+        invoice = self.get_object()
+
+        from invoices.services.invoice_deletion import build_invoice_delete_preview
+
+        preview = build_invoice_delete_preview(invoice)
+
+        return Response(
+            {
+                "invoice_no_display": invoice.invoice_no_display,
+                "customer_name": invoice.customer.full_name,
+                "total_amount": invoice.total_amount,
+                "status_display": invoice.get_status_display(),
+                "invoice_applications_count": preview.invoice_applications_count,
+                "customer_applications_count": preview.customer_applications_count,
+                "payments_count": preview.payments_count,
+            }
+        )
+
+    @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)
+    @action(detail=True, methods=["post"], url_path="force-delete")
+    def force_delete(self, request, pk=None):
+        if not request.user.is_superuser:
+            return self.error_response("Only superusers can delete invoices.", status.HTTP_403_FORBIDDEN)
+
+        force_confirmed = parse_bool(
+            request.data.get("force_delete_confirmed")
+            or request.data.get("forceDeleteConfirmed")
+            or request.data.get("confirmed")
+        )
+        if not force_confirmed:
+            return self.error_response("Please confirm the force delete action.", status.HTTP_400_BAD_REQUEST)
+
+        delete_customer_apps = parse_bool(
+            request.data.get("delete_customer_applications") or request.data.get("deleteCustomerApplications")
+        )
+
+        from invoices.services.invoice_deletion import force_delete_invoice
+
+        invoice = self.get_object()
+        result = force_delete_invoice(invoice, delete_customer_apps=delete_customer_apps)
+
+        return Response({"deleted": True, **result})
+
+    @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)
+    @action(detail=False, methods=["post"], url_path="bulk-delete")
+    def bulk_delete(self, request):
+        if not request.user.is_superuser:
+            return self.error_response("Only superusers can delete invoices.", status.HTTP_403_FORBIDDEN)
+
+        query = (
+            request.data.get("search_query") or request.data.get("searchQuery") or request.data.get("query") or ""
+        ).strip()
+        hide_paid = parse_bool(request.data.get("hide_paid") or request.data.get("hidePaid"))
+        delete_customer_apps = parse_bool(
+            request.data.get("delete_customer_applications") or request.data.get("deleteCustomerApplications")
+        )
+
+        from invoices.services.invoice_deletion import bulk_delete_invoices
+
+        result = bulk_delete_invoices(
+            query=query or None,
+            hide_paid=hide_paid,
+            delete_customer_apps=delete_customer_apps,
+        )
+
+        return Response(result)
+
     @extend_schema(
         parameters=[
             OpenApiParameter(
@@ -508,6 +623,37 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                 "paid_amount": str(invoice_application.paid_amount),
             }
         )
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="invoice_date",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                required=False,
+            )
+        ]
+    )
+    @action(detail=False, methods=["get"], url_path="propose", url_name="propose")
+    def propose_invoice(self, request):
+        """Propose the next available invoice number for a given invoice_date."""
+        invoice_date = request.query_params.get("invoice_date")
+        year = None
+        if invoice_date:
+            try:
+                # Expect YYYY-MM-DD
+                year = datetime.fromisoformat(invoice_date).year
+            except Exception:
+                try:
+                    # try parsing date string fallback
+                    year = datetime.strptime(invoice_date, "%Y-%m-%d").year
+                except Exception:
+                    year = None
+        if year is None:
+            year = timezone.now().year
+
+        proposed = Invoice.get_next_invoice_no_for_year(year)
+        return Response({"invoice_no": proposed, "invoiceNo": proposed})
 
     @extend_schema(request=OpenApiTypes.OBJECT)
     @action(detail=True, methods=["post"], url_path="mark-as-paid")
@@ -620,6 +766,19 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         if self.action == "retrieve":
             return DocApplicationDetailSerializer
         return DocApplicationSerializerWithRelations
+
+    @action(detail=False, methods=["post"], url_path="bulk-delete")
+    def bulk_delete(self, request):
+        if not request.user.is_superuser:
+            return self.error_response("You do not have permission to perform this action.", status.HTTP_403_FORBIDDEN)
+
+        from core.services.bulk_delete import bulk_delete_applications
+
+        query = (
+            request.data.get("search_query") or request.data.get("searchQuery") or request.data.get("query") or ""
+        ).strip()
+        count = bulk_delete_applications(query=query or None)
+        return Response({"deleted_count": count})
 
     @action(detail=True, methods=["post"], url_path="advance-workflow")
     def advance_workflow(self, request, pk=None):
@@ -1149,9 +1308,37 @@ def exec_cron_jobs(request):
     return Response({"status": "queued"}, status=status.HTTP_202_ACCEPTED)
 
 
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def mock_auth_config(request):
+    if not getattr(settings, "MOCK_AUTH_ENABLED", False):
+        return Response(
+            {
+                "code": "mock_auth_disabled",
+                "errors": {"detail": ["Mock authentication is disabled."]},
+            },
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    username = getattr(settings, "MOCK_AUTH_USERNAME", "mockuser")
+    email = getattr(settings, "MOCK_AUTH_EMAIL", "mock@example.com")
+
+    return Response(
+        {
+            "sub": username,
+            "username": username,
+            "email": email,
+            "is_superuser": getattr(settings, "MOCK_AUTH_IS_SUPERUSER", True),
+            "is_staff": getattr(settings, "MOCK_AUTH_IS_STAFF", True),
+            "groups": getattr(settings, "MOCK_AUTH_GROUPS", []),
+            "roles": getattr(settings, "MOCK_AUTH_ROLES", []),
+        }
+    )
+
+
 @api_view(["POST"])
 @csrf_exempt
-@authentication_classes([BearerAuthentication, SessionAuthentication])
+@authentication_classes([JwtOrMockAuthentication, SessionAuthentication])
 @permission_classes([IsAuthenticated])
 @throttle_classes([ScopedRateThrottle])
 def customer_quick_create(request):
@@ -1199,7 +1386,7 @@ def customer_quick_create(request):
 
 @api_view(["POST"])
 @csrf_exempt
-@authentication_classes([BearerAuthentication, SessionAuthentication])
+@authentication_classes([JwtOrMockAuthentication, SessionAuthentication])
 @permission_classes([IsAuthenticated])
 @throttle_classes([ScopedRateThrottle])
 def customer_application_quick_create(request):
@@ -1264,7 +1451,7 @@ def customer_application_quick_create(request):
 
 @api_view(["POST"])
 @csrf_exempt
-@authentication_classes([BearerAuthentication, SessionAuthentication])
+@authentication_classes([JwtOrMockAuthentication, SessionAuthentication])
 @permission_classes([IsAuthenticated])
 @throttle_classes([ScopedRateThrottle])
 def product_quick_create(request):

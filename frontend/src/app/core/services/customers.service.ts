@@ -86,6 +86,10 @@ export interface CustomerListQuery {
   hideDisabled?: boolean;
 }
 
+export interface BulkDeleteResult {
+  deletedCount: number;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -154,6 +158,24 @@ export class CustomersService {
   deleteCustomer(customerId: number): Observable<void> {
     const headers = this.buildHeaders();
     return this.http.delete<void>(`${this.apiUrl}${customerId}/`, { headers });
+  }
+
+  bulkDeleteCustomers(query?: string, hideDisabled: boolean = true): Observable<BulkDeleteResult> {
+    const headers = this.buildHeaders();
+    const payload = {
+      searchQuery: query ?? '',
+      hideDisabled,
+    };
+    return this.http
+      .post<{
+        deletedCount?: number;
+        deleted_count?: number;
+      }>(`${this.apiUrl}bulk-delete/`, payload, { headers })
+      .pipe(
+        map((response) => ({
+          deletedCount: response.deletedCount ?? response.deleted_count ?? 0,
+        })),
+      );
   }
 
   getUninvoicedApplications(customerId: number): Observable<UninvoicedApplication[]> {

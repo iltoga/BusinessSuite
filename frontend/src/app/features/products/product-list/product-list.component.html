@@ -12,7 +12,13 @@
         [query]="query()"
         [placeholder]="'Search products...'"
         (queryChange)="onQueryChange($event)"
-      />
+      >
+        @if (isSuperuser() && totalItems() > 0) {
+          <z-button zType="destructive" zSize="sm" (click)="openBulkDeleteDialog()">
+            {{ bulkDeleteLabel() }}
+          </z-button>
+        }
+      </app-search-toolbar>
     </div>
 
     <div class="p-0">
@@ -72,7 +78,9 @@
     <a [routerLink]="['/products', row.id, 'edit']">
       <z-button zType="warning" zSize="sm">Edit</z-button>
     </a>
-    <z-button zType="destructive" zSize="sm" (click)="requestDelete(row)"> Delete </z-button>
+    @if (isSuperuser()) {
+      <z-button zType="destructive" zSize="sm" (click)="requestDelete(row)"> Delete </z-button>
+    }
   </div>
 </ng-template>
 
@@ -85,4 +93,11 @@
   cancelText="Cancel"
   (confirmed)="confirmDelete()"
   (cancelled)="cancelDelete()"
+/>
+
+<app-bulk-delete-dialog
+  [isOpen]="bulkDeleteOpen()"
+  [data]="bulkDeleteData()"
+  (confirmed)="onBulkDeleteConfirmed()"
+  (cancelled)="onBulkDeleteCancelled()"
 />

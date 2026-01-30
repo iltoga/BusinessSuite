@@ -3,6 +3,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  computed,
   effect,
   inject,
   input,
@@ -17,12 +18,20 @@ import { PaymentsService, type InvoiceApplicationDetail, type Payment } from '@/
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardDialogService } from '@/shared/components/dialog';
+import { FormErrorSummaryComponent } from '@/shared/components/form-error-summary/form-error-summary.component';
 import { ZardInputDirective } from '@/shared/components/input';
+import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/utils/form-errors';
 
 @Component({
   selector: 'app-payment-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, ZardButtonComponent, ZardInputDirective],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    ZardButtonComponent,
+    ZardInputDirective,
+    FormErrorSummaryComponent,
+  ],
   templateUrl: './payment-modal.component.html',
   styleUrls: ['./payment-modal.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -36,6 +45,7 @@ export class PaymentModalComponent {
 
   readonly isOpen = input<boolean>(false);
   readonly invoiceApplication = input<InvoiceApplicationDetail | null>(null);
+  readonly payment = input<Payment | null>(null);
   readonly saved = output<Payment>();
   readonly closed = output<void>();
 
@@ -45,6 +55,22 @@ export class PaymentModalComponent {
 
   readonly isSaving = signal(false);
 
+  readonly isEditMode = computed(() => !!this.payment());
+  readonly modalTitle = computed(() => (this.isEditMode() ? 'Edit Payment' : 'Record Payment'));
+  readonly submitLabel = computed(() => (this.isEditMode() ? 'Save Changes' : 'Record Payment'));
+  readonly maxEditableAmount = computed(() => {
+    const app = this.invoiceApplication();
+    if (!app) {
+      return 0;
+    }
+
+    const due = Number(app.dueAmount ?? 0);
+    const currentPayment = this.payment();
+    const currentAmount = currentPayment ? Number(currentPayment.amount ?? 0) : 0;
+
+    return due + currentAmount;
+  });
+
   readonly form = this.fb.group({
     paymentDate: [new Date().toISOString().split('T')[0], Validators.required],
     paymentType: ['cash', Validators.required],
@@ -52,22 +78,23 @@ export class PaymentModalComponent {
     notes: [''],
   });
 
+  readonly formErrorLabels: Record<string, string> = {
+    paymentDate: 'Payment Date',
+    paymentType: 'Payment Type',
+    amount: 'Amount',
+    notes: 'Notes',
+  };
+
   constructor() {
     effect(() => {
       const open = this.isOpen();
       const current = this.dialogRef();
 
       if (open && !current) {
-        const app = this.invoiceApplication();
-        if (app) {
-          this.form.patchValue({
-            amount: Number(app.dueAmount ?? 0),
-            paymentDate: new Date().toISOString().split('T')[0],
-          });
-        }
+        this.prefillForm();
 
         const ref = this.dialogService.create({
-          zTitle: 'Record Payment',
+          zTitle: this.modalTitle(),
           zContent: this.contentTemplate(),
           zHideFooter: true,
           zClosable: true,
@@ -81,6 +108,7 @@ export class PaymentModalComponent {
       if (!open && current) {
         current.close();
         this.dialogRef.set(null);
+        this.resetForm();
       }
     });
 
@@ -92,42 +120,93 @@ export class PaymentModalComponent {
     });
   }
 
-  submit(): void {
-    if (this.form.invalid || !this.invoiceApplication()) {
+  private resetForm(): void {
+    this.form.reset({
+      paymentDate: new Date().toISOString().split('T')[0],
+      paymentType: 'cash',
+      amount: 0,
+      notes: '',
+    });
+  }
+
+  private prefillForm(): void {
+    const app = this.invoiceApplication();
+    const payment = this.payment();
+    const defaultDate = new Date().toISOString().split('T')[0];
+
+    if (payment) {
+      this.form.patchValue({
+        paymentDate: payment.paymentDate ?? defaultDate,
+        paymentType: payment.paymentType ?? 'cash',
+        amount: Number(payment.amount ?? 0),
+        notes: payment.notes ?? '',
+      });
       return;
     }
 
-    const app = this.invoiceApplication()!;
+    if (app) {
+      this.form.patchValue({
+        amount: Number(app.dueAmount ?? 0),
+        paymentDate: defaultDate,
+        paymentType: 'cash',
+        notes: '',
+      });
+    } else {
+      this.resetForm();
+    }
+  }
+
+  submit(): void {
+    if (this.form.invalid) {
+      return;
+    }
+
+    const app = this.invoiceApplication();
+    const payment = this.payment();
     const raw = this.form.getRawValue();
     const amount = Number(raw.amount ?? 0);
-    const due = Number(app.dueAmount ?? 0);
+    const maxAllowed = this.maxEditableAmount();
+    const invoiceApplicationId = app?.id ?? payment?.invoiceApplication;
 
-    if (amount > due) {
-      this.toast.error('Payment amount exceeds the due amount.');
+    if (!invoiceApplicationId) {
+      this.toast.error('Unable to locate invoice application for this payment.');
+      return;
+    }
+
+    if (amount > maxAllowed) {
+      this.toast.error('Payment amount exceeds the allowed amount.');
       return;
     }
 
     this.isSaving.set(true);
 
-    this.paymentsApi
-      .paymentsCreate({
-        invoiceApplication: app.id,
-        paymentDate: raw.paymentDate,
-        paymentType: raw.paymentType,
-        amount: String(amount),
-        notes: raw.notes ?? '',
-      } as Payment)
-      .subscribe({
-        next: (payment: Payment) => {
-          this.toast.success('Payment recorded');
-          this.saved.emit(payment);
-          this.isSaving.set(false);
-        },
-        error: () => {
-          this.toast.error('Failed to record payment');
-          this.isSaving.set(false);
-        },
-      });
+    const payload = {
+      invoiceApplication: invoiceApplicationId,
+      paymentDate: raw.paymentDate,
+      paymentType: raw.paymentType,
+      amount: String(amount),
+      notes: raw.notes ?? '',
+    } as Payment;
+
+    const request$ = payment
+      ? this.paymentsApi.paymentsUpdate(payment.id, payload)
+      : this.paymentsApi.paymentsCreate(payload);
+
+    request$.subscribe({
+      next: (updated: Payment) => {
+        this.toast.success(payment ? 'Payment updated' : 'Payment recorded');
+        this.saved.emit(updated);
+        this.isSaving.set(false);
+      },
+      error: (error) => {
+        applyServerErrorsToForm(this.form, error);
+        this.form.markAllAsTouched();
+        const message = extractServerErrorMessage(error);
+        const fallback = payment ? 'Failed to update payment' : 'Failed to record payment';
+        this.toast.error(message ? `${fallback}: ${message}` : fallback);
+        this.isSaving.set(false);
+      },
+    });
   }
 
   getApplicationProductCode(): string {

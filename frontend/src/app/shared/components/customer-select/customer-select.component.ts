@@ -42,6 +42,7 @@ export class CustomerSelectComponent implements ControlValueAccessor {
   readonly pageSize = input<number>(20);
   readonly selectedId = input<number | null>(null);
   readonly disabled = input<boolean>(false);
+  readonly zStatus = input<'error' | 'success' | 'warning' | 'default' | undefined>();
 
   readonly selectedIdChange = output<number | null>();
 

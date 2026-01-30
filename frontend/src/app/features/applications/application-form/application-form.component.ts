@@ -10,8 +10,10 @@ import { ZardCardComponent } from '@/shared/components/card';
 import { ZardComboboxComponent, type ZardComboboxOption } from '@/shared/components/combobox';
 import { CustomerSelectComponent } from '@/shared/components/customer-select';
 import { ZardDateInputComponent } from '@/shared/components/date-input';
+import { FormErrorSummaryComponent } from '@/shared/components/form-error-summary/form-error-summary.component';
 import { ZardIconComponent } from '@/shared/components/icon';
 import { ZardInputDirective } from '@/shared/components/input';
+import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/utils/form-errors';
 import { CommonModule, Location } from '@angular/common';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import {
@@ -42,6 +44,7 @@ import { map, startWith, Subject, takeUntil } from 'rxjs';
     ZardComboboxComponent,
     CustomerSelectComponent,
     ZardDateInputComponent,
+    FormErrorSummaryComponent,
   ],
   templateUrl: './application-form.component.html',
   styleUrls: ['./application-form.component.css'],
@@ -77,6 +80,14 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
     notes: [''],
     documents: this.fb.array([]),
   });
+
+  readonly formErrorLabels: Record<string, string> = {
+    customer: 'Customer',
+    product: 'Product',
+    docDate: 'Document Date',
+    notes: 'Notes',
+    documents: 'Documents',
+  };
 
   readonly isSubmitting = signal(false);
 
@@ -329,8 +340,13 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
             this.router.navigate(['/applications', this.applicationId()]);
             this.isSubmitting.set(false);
           },
-          error: () => {
-            this.toast.error('Failed to update application');
+          error: (error) => {
+            applyServerErrorsToForm(this.form, error);
+            this.form.markAllAsTouched();
+            const message = extractServerErrorMessage(error);
+            this.toast.error(
+              message ? `Failed to update application: ${message}` : 'Failed to update application',
+            );
             this.isSubmitting.set(false);
           },
         });
@@ -359,8 +375,13 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
           }
           this.isSubmitting.set(false);
         },
-        error: () => {
-          this.toast.error('Failed to create application');
+        error: (error) => {
+          applyServerErrorsToForm(this.form, error);
+          this.form.markAllAsTouched();
+          const message = extractServerErrorMessage(error);
+          this.toast.error(
+            message ? `Failed to create application: ${message}` : 'Failed to create application',
+          );
           this.isSubmitting.set(false);
         },
       });

@@ -9,8 +9,10 @@ import { ZardCardComponent } from '@/shared/components/card';
 import { ZardComboboxComponent, type ZardComboboxOption } from '@/shared/components/combobox';
 import { CustomerSelectComponent } from '@/shared/components/customer-select';
 import { ZardDateInputComponent } from '@/shared/components/date-input';
+import { FormErrorSummaryComponent } from '@/shared/components/form-error-summary/form-error-summary.component';
 import { ZardIconComponent } from '@/shared/components/icon';
 import { ZardInputDirective } from '@/shared/components/input';
+import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/utils/form-errors';
 import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
@@ -40,6 +42,7 @@ import { finalize } from 'rxjs';
     CustomerSelectComponent,
     ZardDateInputComponent,
     ZardIconComponent,
+    FormErrorSummaryComponent,
   ],
   templateUrl: './surat-permohonan.component.html',
   styleUrls: ['./surat-permohonan.component.css'],
@@ -80,6 +83,20 @@ export class SuratPermohonanComponent implements OnInit {
     passportExpDate: [null as Date | null],
     addressBali: [''],
   });
+
+  readonly formErrorLabels: Record<string, string> = {
+    customerId: 'Customer',
+    docDate: 'Document Date',
+    visaType: 'Visa Type',
+    name: 'Name',
+    gender: 'Gender',
+    country: 'Country',
+    birthPlace: 'Birth Place',
+    birthdate: 'Birthdate',
+    passportNo: 'Passport No',
+    passportExpDate: 'Passport Expiry Date',
+    addressBali: 'Address (Bali)',
+  };
 
   ngOnInit(): void {
     this.loadCountries();
@@ -129,8 +146,13 @@ export class SuratPermohonanComponent implements OnInit {
           this.downloadBlob(blob, filename);
           this.toast.success('Letter generated successfully');
         },
-        error: () => {
-          this.toast.error('Failed to generate letter');
+        error: (error) => {
+          applyServerErrorsToForm(this.form, error);
+          this.form.markAllAsTouched();
+          const message = extractServerErrorMessage(error);
+          this.toast.error(
+            message ? `Failed to generate letter: ${message}` : 'Failed to generate letter',
+          );
         },
       });
   }

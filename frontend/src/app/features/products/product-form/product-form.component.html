@@ -21,6 +21,8 @@
     <div class="text-muted-foreground">Loading...</div>
   } @else {
     <form [formGroup]="form" (ngSubmit)="save()" class="space-y-6">
+      <app-form-error-summary [form]="form" [labels]="formErrorLabels" />
+
       <z-card class="overflow-hidden">
         <div class="bg-accent/30 px-6 py-4 border-b">
           <h2 class="text-sm font-semibold uppercase tracking-wider flex items-center gap-2">
@@ -32,11 +34,27 @@
           <div class="grid gap-6 md:grid-cols-12">
             <div class="md:col-span-6 space-y-2">
               <label class="text-sm font-medium">Name</label>
-              <input z-input formControlName="name" type="text" placeholder="Product name" />
+              <input
+                z-input
+                formControlName="name"
+                type="text"
+                placeholder="Product name"
+                [zStatus]="
+                  form.get('name')?.invalid && form.get('name')?.touched ? 'error' : undefined
+                "
+              />
             </div>
             <div class="md:col-span-6 space-y-2">
               <label class="text-sm font-medium">Code</label>
-              <input z-input formControlName="code" type="text" placeholder="Product code" />
+              <input
+                z-input
+                formControlName="code"
+                type="text"
+                placeholder="Product code"
+                [zStatus]="
+                  form.get('code')?.invalid && form.get('code')?.touched ? 'error' : undefined
+                "
+              />
             </div>
             <div class="md:col-span-4 space-y-2">
               <label class="text-sm font-medium">Product type</label>

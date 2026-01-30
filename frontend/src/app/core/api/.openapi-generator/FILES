@@ -22,9 +22,9 @@ configuration.ts
 encoder.ts
 git_push.sh
 index.ts
-model/auth-token.ts
 model/blank-enum.ts
 model/country-code.ts
+model/custom-token-obtain.ts
 model/customer-type-enum.ts
 model/customer.ts
 model/doc-application-create-update.ts

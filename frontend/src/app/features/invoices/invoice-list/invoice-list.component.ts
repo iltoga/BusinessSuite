@@ -13,14 +13,24 @@ import {
 import { RouterLink } from '@angular/router';
 
 import { InvoicesService, type InvoiceList, type PaginatedInvoiceListList } from '@/core/api';
+import { AuthService } from '@/core/services/auth.service';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardBadgeComponent } from '@/shared/components/badge';
+import {
+  BulkDeleteDialogComponent,
+  type BulkDeleteDialogData,
+} from '@/shared/components/bulk-delete-dialog/bulk-delete-dialog.component';
 import { ZardButtonComponent } from '@/shared/components/button';
 import {
   DataTableComponent,
   type ColumnConfig,
   type SortEvent,
 } from '@/shared/components/data-table/data-table.component';
+import {
+  InvoiceDeleteDialogComponent,
+  type InvoiceDeleteDialogResult,
+  type InvoiceDeletePreviewData,
+} from '@/shared/components/invoice-delete-dialog/invoice-delete-dialog.component';
 import { PaginationControlsComponent } from '@/shared/components/pagination-controls';
 import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
 
@@ -35,6 +45,8 @@ import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
     PaginationControlsComponent,
     ZardBadgeComponent,
     ZardButtonComponent,
+    BulkDeleteDialogComponent,
+    InvoiceDeleteDialogComponent,
   ],
   templateUrl: './invoice-list.component.html',
   styleUrls: ['./invoice-list.component.css'],
@@ -42,6 +54,7 @@ import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
 })
 export class InvoiceListComponent implements OnInit {
   private invoicesApi = inject(InvoicesService);
+  private authService = inject(AuthService);
   private toast = inject(GlobalToastService);
   private platformId = inject(PLATFORM_ID);
 
@@ -82,6 +95,19 @@ export class InvoiceListComponent implements OnInit {
   readonly totalItems = signal(0);
   readonly ordering = signal<string | undefined>('-invoice_date');
   readonly hidePaid = signal(false);
+  readonly isSuperuser = this.authService.isSuperuser;
+
+  readonly bulkDeleteOpen = signal(false);
+  readonly bulkDeleteData = signal<BulkDeleteDialogData | null>(null);
+  private readonly bulkDeleteContext = signal<{ query: string; hidePaid: boolean } | null>(null);
+
+  readonly invoiceDeleteOpen = signal(false);
+  readonly invoiceDeleteData = signal<InvoiceDeletePreviewData | null>(null);
+  private readonly pendingInvoiceId = signal<number | null>(null);
+
+  readonly bulkDeleteLabel = computed(() =>
+    this.query().trim() ? 'Delete Selected Invoices' : 'Delete All Invoices',
+  );
 
   readonly columns = computed<ColumnConfig<InvoiceList>[]>(() => [
     {
@@ -179,6 +205,145 @@ export class InvoiceListComponent implements OnInit {
       default:
         return 'default';
     }
+  }
+
+  openBulkDeleteDialog(): void {
+    const query = this.query().trim();
+    const mode = query ? 'selected' : 'all';
+    const detailsText = query
+      ? 'This will permanently remove all matching invoice records from the database.'
+      : 'This will permanently remove all invoice records from the database.';
+
+    this.bulkDeleteContext.set({ query, hidePaid: this.hidePaid() });
+    this.bulkDeleteData.set({
+      entityLabel: 'Invoices',
+      totalCount: this.totalItems(),
+      query: query || null,
+      mode,
+      detailsText,
+      extraCheckboxLabel:
+        'Also delete all corresponding customer applications (DocApplication) linked to the deleted invoices',
+    });
+    this.bulkDeleteOpen.set(true);
+  }
+
+  onBulkDeleteConfirmed(result: { extraChecked: boolean }): void {
+    const context = this.bulkDeleteContext();
+    if (!context) {
+      return;
+    }
+
+    this.invoicesApi
+      .invoicesBulkDeleteCreate({
+        searchQuery: context.query || '',
+        hidePaid: context.hidePaid,
+        deleteCustomerApplications: result.extraChecked,
+      })
+      .subscribe({
+        next: (response) => {
+          const payload = response as { deletedInvoices?: number; deleted_invoices?: number };
+          const count = payload.deletedInvoices ?? payload.deleted_invoices ?? 0;
+          this.toast.success(`Deleted ${count} invoice(s)`);
+          this.bulkDeleteOpen.set(false);
+          this.bulkDeleteData.set(null);
+          this.bulkDeleteContext.set(null);
+          this.loadInvoices();
+        },
+        error: () => {
+          this.toast.error('Failed to delete invoices');
+        },
+      });
+  }
+
+  onBulkDeleteCancelled(): void {
+    this.bulkDeleteOpen.set(false);
+    this.bulkDeleteData.set(null);
+    this.bulkDeleteContext.set(null);
+  }
+
+  openInvoiceDeleteDialog(invoice: InvoiceList): void {
+    if (!this.isSuperuser()) {
+      return;
+    }
+
+    this.pendingInvoiceId.set(invoice.id);
+    this.invoicesApi.invoicesDeletePreviewRetrieve(invoice.id).subscribe({
+      next: (response) => {
+        const payload = response as {
+          invoiceNoDisplay?: string;
+          invoice_no_display?: string;
+          customerName?: string;
+          customer_name?: string;
+          totalAmount?: string | number;
+          total_amount?: string | number;
+          statusDisplay?: string;
+          status_display?: string;
+          invoiceApplicationsCount?: number;
+          invoice_applications_count?: number;
+          customerApplicationsCount?: number;
+          customer_applications_count?: number;
+          paymentsCount?: number;
+          payments_count?: number;
+        };
+
+        this.invoiceDeleteData.set({
+          invoiceNoDisplay:
+            payload.invoiceNoDisplay ??
+            payload.invoice_no_display ??
+            invoice.invoiceNoDisplay ??
+            '',
+          customerName:
+            payload.customerName ??
+            payload.customer_name ??
+            invoice.customer?.fullNameWithCompany ??
+            invoice.customer?.fullName ??
+            '—',
+          totalAmount: payload.totalAmount ?? payload.total_amount ?? invoice.totalAmount ?? '—',
+          statusDisplay: payload.statusDisplay ?? payload.status_display ?? invoice.status ?? '—',
+          invoiceApplicationsCount:
+            payload.invoiceApplicationsCount ?? payload.invoice_applications_count ?? 0,
+          customerApplicationsCount:
+            payload.customerApplicationsCount ?? payload.customer_applications_count ?? 0,
+          paymentsCount: payload.paymentsCount ?? payload.payments_count ?? 0,
+        });
+        this.invoiceDeleteOpen.set(true);
+      },
+      error: () => {
+        this.toast.error('Failed to load delete preview');
+        this.pendingInvoiceId.set(null);
+      },
+    });
+  }
+
+  onInvoiceDeleteConfirmed(result: InvoiceDeleteDialogResult): void {
+    const invoiceId = this.pendingInvoiceId();
+    if (!invoiceId) {
+      return;
+    }
+
+    this.invoicesApi
+      .invoicesForceDeleteCreate(invoiceId, {
+        forceDeleteConfirmed: true,
+        deleteCustomerApplications: result.deleteCustomerApplications,
+      })
+      .subscribe({
+        next: () => {
+          this.toast.success('Invoice deleted');
+          this.invoiceDeleteOpen.set(false);
+          this.invoiceDeleteData.set(null);
+          this.pendingInvoiceId.set(null);
+          this.loadInvoices();
+        },
+        error: () => {
+          this.toast.error('Failed to delete invoice');
+        },
+      });
+  }
+
+  onInvoiceDeleteCancelled(): void {
+    this.invoiceDeleteOpen.set(false);
+    this.invoiceDeleteData.set(null);
+    this.pendingInvoiceId.set(null);
   }
 
   private loadInvoices(): void {

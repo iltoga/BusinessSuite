@@ -16,6 +16,10 @@ This document lists the main API endpoints exposed by the application in this re
   - **Input:** Session credentials (via browser or API client)
   - **Description:** Session-based authentication provided by Django REST Framework.
 
+- **GET `/api/mock-auth-config/`**
+  - **Input:** None
+  - **Description:** Return mock authentication claims when mock auth is enabled (used by the frontend to populate roles, groups, and superuser flags).
+
 ---
 
 ## Customers

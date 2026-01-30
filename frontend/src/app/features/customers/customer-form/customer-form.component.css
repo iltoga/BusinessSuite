@@ -2,6 +2,13 @@
   display: block;
 }
 
+/* Ensure native selects align with z-input styled inputs */
+select {
+  min-height: 2.5rem;
+  padding-top: 0.45rem;
+  padding-bottom: 0.45rem;
+}
+
 .passport-preview {
   max-width: 600px;
   border-radius: 0.5rem;

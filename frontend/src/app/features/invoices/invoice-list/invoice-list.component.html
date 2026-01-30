@@ -29,6 +29,11 @@
               Hide Paid
             </label>
           </div>
+          @if (isSuperuser() && totalItems() > 0) {
+            <z-button zType="destructive" zSize="sm" (click)="openBulkDeleteDialog()">
+              {{ bulkDeleteLabel() }}
+            </z-button>
+          }
         </div>
       </app-search-toolbar>
     </div>
@@ -105,5 +110,24 @@
     <a [routerLink]="['/invoices', row.id, 'edit']">
       <z-button zType="warning" zSize="sm">Edit</z-button>
     </a>
+    @if (isSuperuser()) {
+      <z-button zType="destructive" zSize="sm" (click)="openInvoiceDeleteDialog(row)"
+        >Delete</z-button
+      >
+    }
   </div>
 </ng-template>
+
+<app-bulk-delete-dialog
+  [isOpen]="bulkDeleteOpen()"
+  [data]="bulkDeleteData()"
+  (confirmed)="onBulkDeleteConfirmed($event)"
+  (cancelled)="onBulkDeleteCancelled()"
+/>
+
+<app-invoice-delete-dialog
+  [isOpen]="invoiceDeleteOpen()"
+  [data]="invoiceDeleteData()"
+  (confirmed)="onInvoiceDeleteConfirmed($event)"
+  (cancelled)="onInvoiceDeleteCancelled()"
+/>

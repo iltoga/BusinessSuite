@@ -3,6 +3,7 @@ from django.conf import settings
 from django.contrib.postgres.search import SearchVector, TrigramSimilarity
 from django.db import models
 from django.db.models import Q, Sum
+from django.db.models.functions import Cast
 from django.utils import timezone
 
 from customer_applications.models.doc_application import DocApplication
@@ -247,7 +248,7 @@ class Invoice(models.Model):
 
     @staticmethod
     def _build_year_invoice_no(year: int, sequence: int) -> int:
-        return int(f"{year}{sequence}")
+        return int(f"{year}{sequence:04d}")
 
     @staticmethod
     def _extract_sequence(invoice_no: int, year: int) -> int:
@@ -260,7 +261,13 @@ class Invoice(models.Model):
 
     @classmethod
     def get_next_invoice_no_for_year(cls, year: int) -> int:
-        last_invoice = cls.objects.filter(invoice_date__year=year).order_by("-invoice_no").first()
+        year_str = str(year)
+        last_invoice = (
+            cls.objects.annotate(invoice_no_str=Cast("invoice_no", models.CharField()))
+            .filter(invoice_no_str__startswith=year_str)
+            .order_by("-invoice_no")
+            .first()
+        )
         if last_invoice:
             next_sequence = cls._extract_sequence(last_invoice.invoice_no, year) + 1
         else:

@@ -97,6 +97,7 @@
                       <th class="py-2">Amount</th>
                       <th class="py-2">Type</th>
                       <th class="py-2">Notes</th>
+                      <th class="py-2 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -106,11 +107,29 @@
                         <td class="py-2">{{ formatCurrency(payment.amount) }}</td>
                         <td class="py-2">{{ payment.paymentType }}</td>
                         <td class="py-2">{{ payment.notes || '—' }}</td>
+                        <td class="py-2 text-right">
+                          <div class="flex justify-end gap-2">
+                            <z-button
+                              zType="warning"
+                              zSize="sm"
+                              (click)="openEditPaymentModal(app, payment)"
+                            >
+                              Edit
+                            </z-button>
+                            <z-button
+                              zType="destructive"
+                              zSize="sm"
+                              (click)="requestDeletePayment(payment)"
+                            >
+                              Delete
+                            </z-button>
+                          </div>
+                        </td>
                       </tr>
                     }
                     @if (!app.payments.length) {
                       <tr class="border-t">
-                        <td colspan="4" class="py-2 text-muted-foreground">No payments yet.</td>
+                        <td colspan="5" class="py-2 text-muted-foreground">No payments yet.</td>
                       </tr>
                     }
                   </tbody>
@@ -126,8 +145,20 @@
   <app-payment-modal
     [isOpen]="paymentModalOpen()"
     [invoiceApplication]="selectedApplication()"
+    [payment]="selectedPayment()"
     (saved)="onPaymentSaved()"
     (closed)="closePaymentModal()"
+  />
+
+  <app-confirm-dialog
+    [isOpen]="paymentDeleteOpen()"
+    title="Delete payment"
+    [message]="deletePaymentMessage()"
+    confirmText="Delete"
+    cancelText="Cancel"
+    [destructive]="true"
+    (confirmed)="confirmDeletePayment()"
+    (cancelled)="cancelDeletePayment()"
   />
 } @else {
   <div class="text-sm text-muted-foreground">Loading invoice...</div>

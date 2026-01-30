@@ -31,7 +31,7 @@ export interface DocApplicationSerializerWithRelations {
      */
     readonly invoiceId: number | null;
     /**
-     * Check if all required documents are completed.
+     * Check if application is ready for invoicing.  Ready if all required documents are completed OR if the application has been marked as completed (e.g. force closed).
      */
     readonly readyForInvoice: boolean;
     /**

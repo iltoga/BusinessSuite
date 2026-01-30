@@ -708,7 +708,11 @@ def extract_passport_with_ai(file, use_ai: bool = True) -> dict:
     ai_data = None
     ai_error = None
     try:
-        ai_data, ai_error = _extract_with_ai(file)
+        ai_result = _extract_with_ai(file)
+        if isinstance(ai_result, tuple):
+            ai_data, ai_error = ai_result
+        else:
+            ai_data, ai_error = ai_result, None
     except Exception as e:
         logger.warning(f"AI extraction failed, using MRZ data only: {e}")
         ai_error = str(e)
@@ -733,6 +737,11 @@ def extract_passport_with_ai(file, use_ai: bool = True) -> dict:
 
     # Step 3: Merge results with comparison logic
     merged_data = _merge_passport_data(mrz_data, ai_data, logger)
+    ai_birth_place = None
+    if isinstance(ai_data, dict):
+        ai_birth_place = ai_data.get("ai_birth_place") or ai_data.get("birth_place")
+    if "birth_place" not in merged_data and ai_birth_place not in (None, ""):
+        merged_data["birth_place"] = ai_birth_place
     try:
         logger.info("Merged MRZ+AI data: %s", json.dumps(merged_data, ensure_ascii=False, default=str))
     except Exception:
@@ -910,17 +919,40 @@ def _merge_passport_data(mrz_data: dict, ai_data: dict, logger: logging.Logger) 
     # === GENDER (AI preferred) ===
     add_field("sex", ai_data.get("ai_gender"), mrz_data.get("sex"), prefer_ai=True)
 
-    # === NATIONALITY (AI preferred) ===
-    ai_nationality = ai_data.get("ai_nationality_code") or ai_data.get("ai_nationality")
+    # === NATIONALITY (prefer MRZ on mismatch) ===
+    ai_nationality_name = ai_data.get("ai_nationality")
+    ai_nationality_code = ai_data.get("ai_nationality_code") or ai_nationality_name
     mrz_nationality = mrz_data.get("nationality")
 
     # Normalize to 3-letter code
-    if ai_nationality and len(ai_nationality) == 3 and ai_nationality.isalpha():
-        ai_nationality = ai_nationality.upper()
+    if ai_nationality_code and len(str(ai_nationality_code)) == 3 and str(ai_nationality_code).isalpha():
+        ai_nationality_code = str(ai_nationality_code).upper()
     else:
-        ai_nationality = None
+        ai_nationality_code = None
 
-    add_field("nationality", ai_nationality, mrz_nationality, prefer_ai=True)
+    if ai_nationality_code and mrz_nationality:
+        if normalize_for_compare(ai_nationality_code) != normalize_for_compare(mrz_nationality):
+            merged["nationality"] = mrz_nationality
+            merged["nationality_source"] = "mrz"
+            merged["ai_nationality_code"] = ai_nationality_code
+            if ai_nationality_name:
+                merged["ai_nationality_name"] = ai_nationality_name
+            field_mismatches.append(
+                {
+                    "field": "nationality",
+                    "ai_value": ai_nationality_code,
+                    "mrz_value": mrz_nationality,
+                    "used": "mrz",
+                }
+            )
+            logger.warning(
+                f"Field mismatch for 'nationality': AI='{ai_nationality_code}' vs MRZ='{mrz_nationality}' (using MRZ)"
+            )
+        else:
+            merged["nationality"] = ai_nationality_code
+            merged["nationality_source"] = "ai"
+    else:
+        add_field("nationality", ai_nationality_code, mrz_nationality, prefer_ai=True)
 
     # Keep country name
     if mrz_data.get("country_name"):
@@ -947,7 +979,7 @@ def _merge_passport_data(mrz_data: dict, ai_data: dict, logger: logging.Logger) 
     ]
 
     for target_key, ai_key in ai_only_mappings:
-        if ai_data.get(ai_key):
+        if ai_key in ai_data and ai_data[ai_key] not in (None, ""):
             merged[target_key] = ai_data[ai_key]
             logger.debug(f"Added AI-only field {target_key}: {ai_data[ai_key]}")
 

@@ -24,6 +24,7 @@ urlpatterns = [
     path("schema/swagger-ui/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
     path("schema/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
     path("api-token-auth/", views.TokenAuthView.as_view(), name="api-token-auth"),
+    path("mock-auth-config/", views.mock_auth_config, name="api-mock-auth-config"),
     path("session-auth/", include("rest_framework.urls", namespace="rest_framework")),
     path("ocr/check/", views.OCRViewSet.as_view({"post": "check"}), name="api-ocr-check"),
     path("ocr/status/<uuid:job_id>/", views.OCRViewSet.as_view({"get": "status"}), name="api-ocr-status"),

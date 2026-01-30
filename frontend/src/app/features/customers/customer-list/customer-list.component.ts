@@ -12,8 +12,13 @@ import {
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
+import { AuthService } from '@/core/services/auth.service';
 import { CustomersService, type CustomerListItem } from '@/core/services/customers.service';
 import { GlobalToastService } from '@/core/services/toast.service';
+import {
+  BulkDeleteDialogComponent,
+  type BulkDeleteDialogData,
+} from '@/shared/components/bulk-delete-dialog/bulk-delete-dialog.component';
 import { ZardButtonComponent } from '@/shared/components/button';
 import {
   DataTableComponent,
@@ -35,6 +40,7 @@ import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
     PaginationControlsComponent,
     ExpiryBadgeComponent,
     ZardButtonComponent,
+    BulkDeleteDialogComponent,
   ],
   templateUrl: './customer-list.component.html',
   styleUrls: ['./customer-list.component.css'],
@@ -42,6 +48,7 @@ import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
 })
 export class CustomerListComponent implements OnInit {
   private customersService = inject(CustomersService);
+  private authService = inject(AuthService);
   private toast = inject(GlobalToastService);
   private platformId = inject(PLATFORM_ID);
 
@@ -74,6 +81,17 @@ export class CustomerListComponent implements OnInit {
   readonly totalItems = signal(0);
   readonly hideDisabled = signal(true);
   readonly ordering = signal<string | undefined>('-created_at');
+  readonly isSuperuser = this.authService.isSuperuser;
+
+  readonly bulkDeleteOpen = signal(false);
+  readonly bulkDeleteData = signal<BulkDeleteDialogData | null>(null);
+  private readonly bulkDeleteContext = signal<{ query: string; hideDisabled: boolean } | null>(
+    null,
+  );
+
+  readonly bulkDeleteLabel = computed(() =>
+    this.query().trim() ? 'Delete Selected Customers' : 'Delete All Customers',
+  );
 
   readonly columns = computed<ColumnConfig[]>(() => [
     {
@@ -172,6 +190,52 @@ export class CustomerListComponent implements OnInit {
         this.toast.error('Failed to delete customer');
       },
     });
+  }
+
+  openBulkDeleteDialog(): void {
+    const query = this.query().trim();
+    const mode = query ? 'selected' : 'all';
+    const detailsText = query
+      ? 'This will permanently remove all matching customer records, their applications, invoices, and associated data.'
+      : 'This will permanently remove all customer records and their associated data from the database.';
+
+    this.bulkDeleteContext.set({ query, hideDisabled: this.hideDisabled() });
+    this.bulkDeleteData.set({
+      entityLabel: 'Customers',
+      totalCount: this.totalItems(),
+      query: query || null,
+      mode,
+      detailsText,
+    });
+    this.bulkDeleteOpen.set(true);
+  }
+
+  onBulkDeleteConfirmed(): void {
+    const context = this.bulkDeleteContext();
+    if (!context) {
+      return;
+    }
+
+    this.customersService
+      .bulkDeleteCustomers(context.query || undefined, context.hideDisabled)
+      .subscribe({
+        next: (result) => {
+          this.toast.success(`Deleted ${result.deletedCount} customer(s)`);
+          this.bulkDeleteOpen.set(false);
+          this.bulkDeleteData.set(null);
+          this.bulkDeleteContext.set(null);
+          this.loadCustomers();
+        },
+        error: () => {
+          this.toast.error('Failed to delete customers');
+        },
+      });
+  }
+
+  onBulkDeleteCancelled(): void {
+    this.bulkDeleteOpen.set(false);
+    this.bulkDeleteData.set(null);
+    this.bulkDeleteContext.set(null);
   }
 
   private loadCustomers(): void {

@@ -49,9 +49,6 @@ export class DocumentOcrService extends BaseService {
 
         // authentication (cookieAuth) required
 
-        // authentication (tokenAuth) required
-        localVarHeaders = this.configuration.addCredentialToHeaders('tokenAuth', 'Authorization', localVarHeaders, 'Bearer ');
-
         const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
         ]);
         if (localVarHttpHeaderAcceptSelected !== undefined) {
@@ -108,9 +105,6 @@ export class DocumentOcrService extends BaseService {
         let localVarHeaders = this.defaultHeaders;
 
         // authentication (cookieAuth) required
-
-        // authentication (tokenAuth) required
-        localVarHeaders = this.configuration.addCredentialToHeaders('tokenAuth', 'Authorization', localVarHeaders, 'Bearer ');
 
         const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
         ]);

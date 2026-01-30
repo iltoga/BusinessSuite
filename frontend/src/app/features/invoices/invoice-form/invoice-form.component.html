@@ -9,14 +9,28 @@
   </div>
 
   <form [formGroup]="form" class="space-y-6">
+    <app-form-error-summary [form]="form" [labels]="formErrorLabels" />
+
     <z-card class="p-6">
       <div class="grid gap-4 md:grid-cols-2">
         <div class="flex flex-col gap-2">
-          <app-customer-select formControlName="customer" />
+          <app-customer-select
+            formControlName="customer"
+            [zStatus]="
+              form.get('customer')?.invalid && form.get('customer')?.touched ? 'error' : undefined
+            "
+          />
         </div>
         <div class="flex flex-col gap-2">
           <label class="text-sm font-medium">Invoice No</label>
-          <input z-input type="number" formControlName="invoiceNo" />
+          <input
+            z-input
+            type="number"
+            formControlName="invoiceNo"
+            [zStatus]="
+              form.get('invoiceNo')?.invalid && form.get('invoiceNo')?.touched ? 'error' : undefined
+            "
+          />
         </div>
         <div class="flex flex-col gap-2">
           <label class="text-sm font-medium">Invoice Date</label>
@@ -45,7 +59,14 @@
     <z-card class="p-6">
       <div class="flex items-center justify-between">
         <h2 class="text-lg font-semibold">Invoice Applications</h2>
-        <z-button zType="secondary" zSize="sm" (click)="addLineItem()"> Add Application </z-button>
+        <z-button
+          zType="secondary"
+          zSize="sm"
+          (click)="addLineItem()"
+          [zDisabled]="!form.get('customer')?.value"
+        >
+          Add Application
+        </z-button>
       </div>
 
       <div class="mt-4 space-y-4" formArrayName="invoiceApplications">

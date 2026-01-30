@@ -21,12 +21,14 @@ import {
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
+import { FormErrorSummaryComponent } from '@/shared/components/form-error-summary/form-error-summary.component';
 import { ZardIconComponent } from '@/shared/components/icon';
 import { ZardInputDirective } from '@/shared/components/input';
 import {
   SortableMultiSelectComponent,
   type SortableOption,
 } from '@/shared/components/sortable-multi-select';
+import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/utils/form-errors';
 
 type ProductTask = NonNullable<ProductDetail['tasks']>[number];
 
@@ -42,6 +44,7 @@ type ProductTask = NonNullable<ProductDetail['tasks']>[number];
     ZardCardComponent,
     SortableMultiSelectComponent,
     ZardIconComponent,
+    FormErrorSummaryComponent,
   ],
   templateUrl: './product-form.component.html',
   styleUrls: ['./product-form.component.css'],
@@ -86,6 +89,19 @@ export class ProductFormComponent implements OnInit {
     optionalDocumentIds: [[] as number[]],
     tasks: this.fb.array<FormGroup>([]),
   });
+
+  readonly formErrorLabels: Record<string, string> = {
+    name: 'Name',
+    code: 'Code',
+    description: 'Description',
+    basePrice: 'Base Price',
+    productType: 'Product Type',
+    validity: 'Validity',
+    documentsMinValidity: 'Documents Min Validity',
+    requiredDocumentIds: 'Required Documents',
+    optionalDocumentIds: 'Optional Documents',
+    tasks: 'Tasks',
+  };
 
   readonly hasMultipleLastSteps = computed(() => {
     const tasks = this.tasksArray.controls;
@@ -179,8 +195,13 @@ export class ProductFormComponent implements OnInit {
           this.toast.success('Product updated successfully');
           this.router.navigate(['/products', product.id]);
         },
-        error: () => {
-          this.toast.error('Failed to update product');
+        error: (error) => {
+          applyServerErrorsToForm(this.form, error);
+          this.form.markAllAsTouched();
+          const message = extractServerErrorMessage(error);
+          this.toast.error(
+            message ? `Failed to update product: ${message}` : 'Failed to update product',
+          );
           this.isSaving.set(false);
         },
       });
@@ -192,8 +213,13 @@ export class ProductFormComponent implements OnInit {
         this.toast.success('Product created successfully');
         this.router.navigate(['/products', product.id]);
       },
-      error: () => {
-        this.toast.error('Failed to create product');
+      error: (error) => {
+        applyServerErrorsToForm(this.form, error);
+        this.form.markAllAsTouched();
+        const message = extractServerErrorMessage(error);
+        this.toast.error(
+          message ? `Failed to create product: ${message}` : 'Failed to create product',
+        );
         this.isSaving.set(false);
       },
     });

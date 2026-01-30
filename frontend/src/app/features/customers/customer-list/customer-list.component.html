@@ -29,6 +29,11 @@
               Hide Disabled
             </label>
           </div>
+          @if (isSuperuser() && totalItems() > 0) {
+            <z-button zType="destructive" zSize="sm" (click)="openBulkDeleteDialog()">
+              {{ bulkDeleteLabel() }}
+            </z-button>
+          }
         </div>
       </app-search-toolbar>
     </div>
@@ -90,9 +95,18 @@
     <z-button [zType]="row.active ? 'secondary' : 'ghost'" zSize="sm" (click)="onToggleActive(row)">
       {{ row.active ? 'Disable' : 'Enable' }}
     </z-button>
-    <z-button zType="destructive" zSize="sm" (click)="onDelete(row)">Delete</z-button>
+    @if (isSuperuser()) {
+      <z-button zType="destructive" zSize="sm" (click)="onDelete(row)">Delete</z-button>
+    }
     <a [routerLink]="['/customers', row.id, 'applications', 'new']">
       <z-button zType="success" zSize="sm">New Application</z-button>
     </a>
   </div>
 </ng-template>
+
+<app-bulk-delete-dialog
+  [isOpen]="bulkDeleteOpen()"
+  [data]="bulkDeleteData()"
+  (confirmed)="onBulkDeleteConfirmed()"
+  (cancelled)="onBulkDeleteCancelled()"
+/>

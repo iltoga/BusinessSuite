@@ -6,14 +6,24 @@ import { Router } from '@angular/router';
 import { AuthService, LoginCredentials } from '@/core/services/auth.service';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardButtonComponent } from '@/shared/components/button';
+import { FormErrorSummaryComponent } from '@/shared/components/form-error-summary/form-error-summary.component';
 import { ZardInputDirective } from '@/shared/components/input';
+import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/utils/form-errors';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, ZardButtonComponent, ZardInputDirective],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    ZardButtonComponent,
+    ZardInputDirective,
+    FormErrorSummaryComponent,
+  ],
   template: `
     <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="space-y-6">
+      <app-form-error-summary [form]="loginForm" [labels]="formErrorLabels" />
+
       <div class="space-y-2">
         <h2 class="text-2xl font-semibold">Login</h2>
         <p class="text-sm text-muted-foreground">Use your admin credentials to sign in.</p>
@@ -73,6 +83,11 @@ export class LoginComponent {
     password: ['', Validators.required],
   });
 
+  readonly formErrorLabels: Record<string, string> = {
+    username: 'Username',
+    password: 'Password',
+  };
+
   onSubmit(): void {
     if (this.loginForm.valid) {
       const credentials: LoginCredentials = this.loginForm.value;
@@ -81,8 +96,11 @@ export class LoginComponent {
           this.toast.success('Login successful');
           this.router.navigate(['/dashboard']);
         },
-        error: () => {
-          this.toast.error('Invalid credentials');
+        error: (error) => {
+          applyServerErrorsToForm(this.loginForm, error);
+          this.loginForm.markAllAsTouched();
+          const message = extractServerErrorMessage(error);
+          this.toast.error(message ? `Login failed: ${message}` : 'Invalid credentials');
         },
       });
     }

@@ -1,6 +1,6 @@
-export * from './auth-token';
 export * from './blank-enum';
 export * from './country-code';
+export * from './custom-token-obtain';
 export * from './customer';
 export * from './customer-type-enum';
 export * from './doc-application-create-update';

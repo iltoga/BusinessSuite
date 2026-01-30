@@ -30,21 +30,9 @@ class AuthLoginRequiredMiddleware(MiddlewareMixin):
 
         if not request.user.is_authenticated:
             if getattr(settings, "MOCK_AUTH_ENABLED", False):
-                from django.contrib.auth.models import User
+                from business_suite.authentication import ensure_mock_user
 
-                user, _ = User.objects.get_or_create(
-                    username="mockuser",
-                    defaults={
-                        "is_staff": True,
-                        "is_superuser": True,
-                        "email": "mock@example.com",
-                    },
-                )
-                if not user.is_staff or not user.is_superuser:
-                    user.is_staff = True
-                    user.is_superuser = True
-                    user.save()
-                request.user = user
+                request.user = ensure_mock_user()
                 return None
 
             path = request.path_info.lstrip("/")

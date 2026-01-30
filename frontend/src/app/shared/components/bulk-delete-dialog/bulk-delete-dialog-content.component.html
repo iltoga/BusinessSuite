@@ -1,0 +1,33 @@
+<div class="rounded-md border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">
+  <div class="font-semibold">Warning!</div>
+  <p>This action cannot be undone.</p>
+</div>
+
+<div class="space-y-3 text-sm">
+  @if (data.mode === 'selected') {
+    <p>
+      Are you sure you want to delete <strong>{{ data.totalCount }}</strong>
+      {{ data.entityLabel.toLowerCase() }} matching <strong>"{{ data.query }}"</strong>?
+    </p>
+  } @else {
+    <p>
+      Are you sure you want to delete <strong>ALL {{ data.totalCount }}</strong>
+      {{ data.entityLabel.toLowerCase() }}?
+    </p>
+  }
+  <p class="text-muted-foreground">
+    {{ data.detailsText }}
+  </p>
+</div>
+
+@if (data.extraCheckboxLabel) {
+  <label class="mt-4 flex items-start gap-2 text-sm text-destructive">
+    <input
+      type="checkbox"
+      class="mt-0.5 h-4 w-4 rounded border-gray-300 text-destructive focus:ring-destructive"
+      [checked]="extraChecked()"
+      (change)="extraChecked.set($any($event.target).checked)"
+    />
+    <span>{{ data.extraCheckboxLabel }}</span>
+  </label>
+}

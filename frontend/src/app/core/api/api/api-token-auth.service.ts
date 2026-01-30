@@ -17,7 +17,7 @@ import { Observable }                                        from 'rxjs';
 import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 
 // @ts-ignore
-import { AuthToken } from '../model/auth-token';
+import { CustomTokenObtain } from '../model/custom-token-obtain';
 
 // @ts-ignore
 import { BASE_PATH, COLLECTION_FORMATS }                     from '../variables';
@@ -36,26 +36,19 @@ export class ApiTokenAuthService extends BaseService {
     }
 
     /**
+     * Takes a set of user credentials and returns an access and refresh JSON web token pair to prove the authentication of those credentials.
      * @endpoint post /api/api-token-auth/
-     * @param username 
-     * @param password 
-     * @param token 
+     * @param customTokenObtain 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public apiTokenAuthCreate(username: string, password: string, token: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<AuthToken>;
-    public apiTokenAuthCreate(username: string, password: string, token: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<AuthToken>>;
-    public apiTokenAuthCreate(username: string, password: string, token: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<AuthToken>>;
-    public apiTokenAuthCreate(username: string, password: string, token: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
-        if (username === null || username === undefined) {
-            throw new Error('Required parameter username was null or undefined when calling apiTokenAuthCreate.');
-        }
-        if (password === null || password === undefined) {
-            throw new Error('Required parameter password was null or undefined when calling apiTokenAuthCreate.');
-        }
-        if (token === null || token === undefined) {
-            throw new Error('Required parameter token was null or undefined when calling apiTokenAuthCreate.');
+    public apiTokenAuthCreate(customTokenObtain: CustomTokenObtain, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<CustomTokenObtain>;
+    public apiTokenAuthCreate(customTokenObtain: CustomTokenObtain, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<CustomTokenObtain>>;
+    public apiTokenAuthCreate(customTokenObtain: CustomTokenObtain, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<CustomTokenObtain>>;
+    public apiTokenAuthCreate(customTokenObtain: CustomTokenObtain, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+        if (customTokenObtain === null || customTokenObtain === undefined) {
+            throw new Error('Required parameter customTokenObtain was null or undefined when calling apiTokenAuthCreate.');
         }
 
         let localVarHeaders = this.defaultHeaders;
@@ -71,32 +64,16 @@ export class ApiTokenAuthService extends BaseService {
 
         const localVarTransferCache: boolean = options?.transferCache ?? true;
 
+
         // to determine the Content-Type header
         const consumes: string[] = [
+            'application/json',
             'application/x-www-form-urlencoded',
-            'multipart/form-data',
-            'application/json'
+            'multipart/form-data'
         ];
-
-        const canConsumeForm = this.canConsumeForm(consumes);
-
-        let localVarFormParams: { append(param: string, value: any): any; };
-        let localVarUseForm = false;
-        let localVarConvertFormParamsToString = false;
-        if (localVarUseForm) {
-            localVarFormParams = new FormData();
-        } else {
-            localVarFormParams = new HttpParams({encoder: this.encoder});
-        }
-
-        if (username !== undefined) {
-            localVarFormParams = localVarFormParams.append('username', <any>username) as any || localVarFormParams;
-        }
-        if (password !== undefined) {
-            localVarFormParams = localVarFormParams.append('password', <any>password) as any || localVarFormParams;
-        }
-        if (token !== undefined) {
-            localVarFormParams = localVarFormParams.append('token', <any>token) as any || localVarFormParams;
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
         }
 
         let responseType_: 'text' | 'json' | 'blob' = 'json';
@@ -112,10 +89,10 @@ export class ApiTokenAuthService extends BaseService {
 
         let localVarPath = `/api/api-token-auth/`;
         const { basePath, withCredentials } = this.configuration;
-        return this.httpClient.request<AuthToken>('post', `${basePath}${localVarPath}`,
+        return this.httpClient.request<CustomTokenObtain>('post', `${basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
-                body: localVarConvertFormParamsToString ? localVarFormParams.toString() : localVarFormParams,
+                body: customTokenObtain,
                 responseType: <any>responseType_,
                 ...(withCredentials ? { withCredentials } : {}),
                 headers: localVarHeaders,

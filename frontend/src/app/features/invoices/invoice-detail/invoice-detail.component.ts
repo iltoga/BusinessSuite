@@ -10,11 +10,18 @@ import {
 } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
-import { InvoicesService, type InvoiceApplicationDetail, type InvoiceDetail } from '@/core/api';
+import {
+  InvoicesService,
+  PaymentsService,
+  type InvoiceApplicationDetail,
+  type InvoiceDetail,
+  type Payment,
+} from '@/core/api';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
+import { ConfirmDialogComponent } from '@/shared/components/confirm-dialog/confirm-dialog.component';
 import { PaymentModalComponent } from '../payment-modal/payment-modal.component';
 
 @Component({
@@ -26,6 +33,7 @@ import { PaymentModalComponent } from '../payment-modal/payment-modal.component'
     ZardBadgeComponent,
     ZardButtonComponent,
     ZardCardComponent,
+    ConfirmDialogComponent,
     PaymentModalComponent,
   ],
   templateUrl: './invoice-detail.component.html',
@@ -35,6 +43,7 @@ import { PaymentModalComponent } from '../payment-modal/payment-modal.component'
 export class InvoiceDetailComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private invoicesApi = inject(InvoicesService);
+  private paymentsApi = inject(PaymentsService);
   private toast = inject(GlobalToastService);
   private platformId = inject(PLATFORM_ID);
 
@@ -42,8 +51,22 @@ export class InvoiceDetailComponent implements OnInit {
   readonly isLoading = signal(false);
   readonly paymentModalOpen = signal(false);
   readonly selectedApplication = signal<InvoiceApplicationDetail | null>(null);
+  readonly selectedPayment = signal<Payment | null>(null);
+  readonly paymentDeleteOpen = signal(false);
+  readonly paymentToDelete = signal<Payment | null>(null);
+  readonly isDeletingPayment = signal(false);
 
   readonly totalDue = computed(() => this.invoice()?.totalDueAmount ?? 0);
+  readonly deletePaymentMessage = computed(() => {
+    const payment = this.paymentToDelete();
+    if (!payment) {
+      return 'Are you sure you want to delete this payment?';
+    }
+
+    const amount = this.formatCurrency(payment.amount);
+    const date = payment.paymentDate ?? '—';
+    return `Delete payment of ${amount} dated ${date}? This will update invoice totals.`;
+  });
 
   hasDue(app: InvoiceApplicationDetail): boolean {
     return Number(app.dueAmount) > 0;
@@ -83,12 +106,57 @@ export class InvoiceDetailComponent implements OnInit {
 
   openPaymentModal(app: InvoiceApplicationDetail): void {
     this.selectedApplication.set(app);
+    this.selectedPayment.set(null);
     this.paymentModalOpen.set(true);
+  }
+
+  openEditPaymentModal(app: InvoiceApplicationDetail, payment: Payment): void {
+    this.selectedApplication.set(app);
+    this.selectedPayment.set(payment);
+    this.paymentModalOpen.set(true);
+  }
+
+  requestDeletePayment(payment: Payment): void {
+    this.paymentToDelete.set(payment);
+    this.paymentDeleteOpen.set(true);
+  }
+
+  cancelDeletePayment(): void {
+    this.paymentDeleteOpen.set(false);
+    this.paymentToDelete.set(null);
+  }
+
+  confirmDeletePayment(): void {
+    const payment = this.paymentToDelete();
+    if (!payment || this.isDeletingPayment()) {
+      return;
+    }
+
+    this.isDeletingPayment.set(true);
+
+    this.paymentsApi.paymentsDestroy(payment.id).subscribe({
+      next: () => {
+        this.toast.success('Payment deleted');
+        this.isDeletingPayment.set(false);
+        this.paymentDeleteOpen.set(false);
+        this.paymentToDelete.set(null);
+
+        const id = this.invoice()?.id;
+        if (id) {
+          this.loadInvoice(id);
+        }
+      },
+      error: () => {
+        this.toast.error('Failed to delete payment');
+        this.isDeletingPayment.set(false);
+      },
+    });
   }
 
   closePaymentModal(): void {
     this.paymentModalOpen.set(false);
     this.selectedApplication.set(null);
+    this.selectedPayment.set(null);
   }
 
   onPaymentSaved(): void {

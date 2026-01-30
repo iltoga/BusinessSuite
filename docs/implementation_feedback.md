@@ -12,6 +12,7 @@
 - **2026-01-28:** Added CustomerSelect shared component and workflow progression UI for applications
 - **2026-01-29:** Implemented Letters (Surat Permohonan) API + Angular form with customer auto-fill
 - **2026-01-29:** Implemented Invoices & Payments API + Angular list/detail/form with payment modal
+- **2026-01-30:** Added JWT auth claims (roles/groups/is_superuser) and Angular admin-gated delete actions with bulk delete dialogs
 
 ## Reuse Hints
 

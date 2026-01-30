@@ -95,7 +95,9 @@ class ForceCloseAPITest(TestCase):
         resp = self.client.get(list_url)
         data = resp.json()
         app_data = next((r for r in data["results"] if r["id"] == self.application.id), None)
-        self.assertTrue(
-            app_data["readyForInvoice"],
-            "Force closed application should be ready for invoice regardless of document status",
-        )
+        self.assertIsNotNone(app_data, "Application not found in list response")
+        if app_data is not None:
+            self.assertTrue(
+                app_data["readyForInvoice"],
+                "Force closed application should be ready for invoice regardless of document status",
+            )

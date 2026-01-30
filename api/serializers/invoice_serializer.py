@@ -2,6 +2,7 @@ from rest_framework import serializers
 
 from api.serializers.customer_serializer import CustomerSerializer
 from api.serializers.doc_application_serializer import DocApplicationInvoiceSerializer
+from customer_applications.models import DocApplication
 from invoices.models.invoice import Invoice, InvoiceApplication
 from payments.models import Payment
 
@@ -130,11 +131,12 @@ class InvoiceDetailSerializer(serializers.ModelSerializer):
 
 class InvoiceApplicationWriteSerializer(serializers.Serializer):
     id = serializers.IntegerField(required=False)
-    customer_application = serializers.IntegerField()
+    customer_application = serializers.PrimaryKeyRelatedField(queryset=DocApplication.objects.all())
     amount = serializers.DecimalField(max_digits=10, decimal_places=2)
 
 
 class InvoiceCreateUpdateSerializer(serializers.ModelSerializer):
+    invoice_no = serializers.IntegerField(required=False, allow_null=True)
     invoice_applications = InvoiceApplicationWriteSerializer(many=True)
 
     class Meta:

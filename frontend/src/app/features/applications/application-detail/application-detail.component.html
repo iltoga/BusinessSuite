@@ -14,6 +14,26 @@
         </p>
       </div>
       <div class="flex gap-2">
+        @if (canForceClose()) {
+          <button
+            z-button
+            zType="destructive"
+            (click)="confirmForceClose()"
+            [disabled]="workflowAction() !== null"
+          >
+            Force Close
+          </button>
+        }
+        @if (canCreateInvoice()) {
+          <button
+            z-button
+            zType="success"
+            (click)="createInvoice()"
+            [disabled]="workflowAction() !== null"
+          >
+            Create Invoice
+          </button>
+        }
         <button z-button zType="ghost" (click)="goBack()">Back</button>
       </div>
     </div>

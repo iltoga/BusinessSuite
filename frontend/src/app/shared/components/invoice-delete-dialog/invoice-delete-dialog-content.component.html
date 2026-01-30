@@ -1,0 +1,57 @@
+<div class="space-y-2 text-sm">
+  <h3 class="text-base font-semibold">Invoice: {{ data.invoiceNoDisplay }}</h3>
+  <p><strong>Customer:</strong> {{ data.customerName }}</p>
+  <p><strong>Amount:</strong> {{ data.totalAmount }}</p>
+  <p><strong>Status:</strong> {{ data.statusDisplay }}</p>
+</div>
+
+<div
+  class="mt-4 rounded-md border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive"
+>
+  <div class="font-semibold">Warning: Force Delete</div>
+  <p><strong>You are about to permanently delete this invoice and all related data!</strong></p>
+
+  <h4 class="mt-3 font-semibold">The following will be CASCADE DELETED:</h4>
+  <ul class="mt-2 list-disc space-y-1 pl-5">
+    <li>
+      <strong>{{ data.invoiceApplicationsCount }}</strong> Invoice Application(s)
+    </li>
+    <li>
+      <strong>{{ data.customerApplicationsCount }}</strong> Customer Application(s)
+    </li>
+    <li>
+      <strong>{{ data.paymentsCount }}</strong> Payment(s)
+    </li>
+  </ul>
+
+  <p class="mt-3 font-semibold">This action cannot be undone!</p>
+</div>
+
+<label class="mt-4 flex items-start gap-2 text-sm text-destructive">
+  <input
+    type="checkbox"
+    class="mt-0.5 h-4 w-4 rounded border-gray-300 text-destructive focus:ring-destructive"
+    [checked]="confirmChecked()"
+    (change)="confirmChecked.set($any($event.target).checked); showValidation.set(false)"
+  />
+  <span class="font-semibold">
+    I understand this will permanently delete the invoice and all related customer applications and
+    payments
+  </span>
+</label>
+
+<label class="mt-3 flex items-start gap-2 text-sm text-destructive">
+  <input
+    type="checkbox"
+    class="mt-0.5 h-4 w-4 rounded border-gray-300 text-destructive focus:ring-destructive"
+    [checked]="deleteCustomerApps()"
+    (change)="deleteCustomerApps.set($any($event.target).checked)"
+  />
+  <span class="font-semibold">
+    Also delete all corresponding customer applications (DocApplication) linked to this invoice
+  </span>
+</label>
+
+@if (showValidation()) {
+  <p class="mt-3 text-xs text-destructive">Please confirm the force delete action.</p>
+}

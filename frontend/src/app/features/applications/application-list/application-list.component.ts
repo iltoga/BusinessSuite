@@ -13,9 +13,15 @@ import { RouterLink } from '@angular/router';
 
 import { CustomerApplicationsService } from '@/core/api/api/customer-applications.service';
 import { DocApplicationSerializerWithRelations } from '@/core/api/model/doc-application-serializer-with-relations';
+import { AuthService } from '@/core/services/auth.service';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardBadgeImports } from '@/shared/components/badge';
+import {
+  BulkDeleteDialogComponent,
+  type BulkDeleteDialogData,
+} from '@/shared/components/bulk-delete-dialog/bulk-delete-dialog.component';
 import { ZardButtonComponent } from '@/shared/components/button';
+import { ConfirmDialogComponent } from '@/shared/components/confirm-dialog/confirm-dialog.component';
 import {
   DataTableComponent,
   type ColumnConfig,
@@ -34,6 +40,8 @@ import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
     SearchToolbarComponent,
     PaginationControlsComponent,
     ZardButtonComponent,
+    ConfirmDialogComponent,
+    BulkDeleteDialogComponent,
     ...ZardBadgeImports,
   ],
   templateUrl: './application-list.component.html',
@@ -42,6 +50,7 @@ import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
 })
 export class ApplicationListComponent implements OnInit {
   private service = inject(CustomerApplicationsService);
+  private authService = inject(AuthService);
   private toast = inject(GlobalToastService);
 
   readonly items = signal<DocApplicationSerializerWithRelations[]>([]);
@@ -50,7 +59,21 @@ export class ApplicationListComponent implements OnInit {
   readonly page = signal(1);
   readonly pageSize = signal(10);
   readonly totalItems = signal(0);
-  readonly ordering = signal<string | undefined>('-doc_date');
+  // default ordering: ID descending
+  readonly ordering = signal<string | undefined>('-id');
+  readonly isSuperuser = this.authService.isSuperuser;
+
+  readonly confirmOpen = signal(false);
+  readonly confirmMessage = signal('');
+  readonly pendingDelete = signal<DocApplicationSerializerWithRelations | null>(null);
+
+  readonly bulkDeleteOpen = signal(false);
+  readonly bulkDeleteData = signal<BulkDeleteDialogData | null>(null);
+  private readonly bulkDeleteQuery = signal<string>('');
+
+  readonly bulkDeleteLabel = computed(() =>
+    this.query().trim() ? 'Delete Selected Applications' : 'Delete All Applications',
+  );
 
   private readonly customerTemplate =
     viewChild.required<
@@ -140,17 +163,36 @@ export class ApplicationListComponent implements OnInit {
   }
 
   confirmDelete(row: DocApplicationSerializerWithRelations) {
-    if (confirm(`Delete application #${row.id}? This action cannot be undone.`)) {
-      this.service.customerApplicationsDestroy(row.id).subscribe({
-        next: () => {
-          this.toast.success('Application deleted');
-          this.load();
-        },
-        error: () => {
-          this.toast.error('Failed to delete application');
-        },
-      });
+    if (!this.isSuperuser()) {
+      return;
     }
+    this.pendingDelete.set(row);
+    this.confirmMessage.set(`Delete application #${row.id}? This action cannot be undone.`);
+    this.confirmOpen.set(true);
+  }
+
+  confirmDeleteAction(): void {
+    const row = this.pendingDelete();
+    if (!row) {
+      return;
+    }
+
+    this.service.customerApplicationsDestroy(row.id).subscribe({
+      next: () => {
+        this.toast.success('Application deleted');
+        this.confirmOpen.set(false);
+        this.pendingDelete.set(null);
+        this.load();
+      },
+      error: () => {
+        this.toast.error('Failed to delete application');
+      },
+    });
+  }
+
+  cancelDeleteAction(): void {
+    this.confirmOpen.set(false);
+    this.pendingDelete.set(null);
   }
 
   canForceClose(row: DocApplicationSerializerWithRelations): boolean {
@@ -175,6 +217,51 @@ export class ApplicationListComponent implements OnInit {
         },
       });
     }
+  }
+
+  openBulkDeleteDialog(): void {
+    const query = this.query().trim();
+    const mode = query ? 'selected' : 'all';
+    const detailsText = query
+      ? 'This will permanently remove all matching customer application records and their associated documents and workflows from the database.'
+      : 'This will permanently remove all customer application records and their associated documents and workflows from the database.';
+
+    this.bulkDeleteQuery.set(query);
+    this.bulkDeleteData.set({
+      entityLabel: 'Applications',
+      totalCount: this.totalItems(),
+      query: query || null,
+      mode,
+      detailsText,
+    });
+    this.bulkDeleteOpen.set(true);
+  }
+
+  onBulkDeleteConfirmed(): void {
+    const query = this.bulkDeleteQuery();
+
+    this.service
+      .customerApplicationsBulkDeleteCreate({ searchQuery: query || '' } as any)
+      .subscribe({
+        next: (response) => {
+          const payload = response as { deletedCount?: number; deleted_count?: number };
+          const count = payload.deletedCount ?? payload.deleted_count ?? 0;
+          this.toast.success(`Deleted ${count} application(s)`);
+          this.bulkDeleteOpen.set(false);
+          this.bulkDeleteData.set(null);
+          this.bulkDeleteQuery.set('');
+          this.load();
+        },
+        error: () => {
+          this.toast.error('Failed to delete applications');
+        },
+      });
+  }
+
+  onBulkDeleteCancelled(): void {
+    this.bulkDeleteOpen.set(false);
+    this.bulkDeleteData.set(null);
+    this.bulkDeleteQuery.set('');
   }
 
   private load(): void {

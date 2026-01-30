@@ -11,6 +11,7 @@
     [searchable]="true"
     [disabled]="isDisabled()"
     [zWidth]="'full'"
+    [zStatus]="zStatus()"
     (zValueChange)="onValueChange($event)"
     (searchChange)="onSearchChange($event)"
     (blur)="onBlur()"

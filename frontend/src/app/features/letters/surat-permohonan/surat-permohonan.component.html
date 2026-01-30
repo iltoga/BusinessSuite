@@ -16,6 +16,8 @@
   </div>
 
   <form [formGroup]="form" (ngSubmit)="generateLetter()" class="space-y-6">
+    <app-form-error-summary [form]="form" [labels]="formErrorLabels" />
+
     <!-- Step 1: Selection -->
     <z-card class="overflow-hidden">
       <div class="bg-accent/30 px-6 py-4 border-b">

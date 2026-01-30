@@ -22,8 +22,30 @@ from core.utils.dropbox_refresh_token import refresh_dropbox_token
 # Load environment variables from .env file
 load_dotenv()
 
+
 # MOCK AUTH SETTINGS
-MOCK_AUTH_ENABLED = os.getenv("MOCK_AUTH_ENABLED", "False") == "True"
+def _parse_bool(value, default=False):
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in {"true", "1", "yes", "y", "on"}
+
+
+def _parse_list(value, default=None):
+    if value is None:
+        return default if default is not None else []
+    items = [item.strip() for item in str(value).split(",")]
+    return [item for item in items if item]
+
+
+MOCK_AUTH_ENABLED = _parse_bool(os.getenv("MOCK_AUTH_ENABLED", "False"))
+MOCK_AUTH_USERNAME = os.getenv("MOCK_AUTH_USERNAME", "mockuser")
+MOCK_AUTH_EMAIL = os.getenv("MOCK_AUTH_EMAIL", "mock@example.com")
+MOCK_AUTH_IS_SUPERUSER = _parse_bool(os.getenv("MOCK_AUTH_IS_SUPERUSER", "True"))
+MOCK_AUTH_IS_STAFF = _parse_bool(os.getenv("MOCK_AUTH_IS_STAFF", "True"))
+MOCK_AUTH_GROUPS = _parse_list(os.getenv("MOCK_AUTH_GROUPS", "admin"))
+MOCK_AUTH_ROLES = _parse_list(os.getenv("MOCK_AUTH_ROLES", "admin"))
 
 GLOBAL_SETTINGS = {
     "SITE_NAME": os.getenv("SITE_NAME", "Business Suite"),
@@ -249,7 +271,7 @@ CSRF_COOKIE_SAMESITE = "Lax"  # Changed from "None"
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "business_suite.authentication.BearerAuthentication",
+        "business_suite.authentication.JwtOrMockAuthentication",
         "rest_framework.authentication.SessionAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [

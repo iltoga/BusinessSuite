@@ -26,7 +26,9 @@ import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
 import { CustomerSelectComponent } from '@/shared/components/customer-select/customer-select.component';
 import { ZardDateInputComponent } from '@/shared/components/date-input';
+import { FormErrorSummaryComponent } from '@/shared/components/form-error-summary/form-error-summary.component';
 import { ZardInputDirective } from '@/shared/components/input';
+import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/utils/form-errors';
 
 @Component({
   selector: 'app-invoice-form',
@@ -40,6 +42,7 @@ import { ZardInputDirective } from '@/shared/components/input';
     ZardCardComponent,
     ZardDateInputComponent,
     CustomerSelectComponent,
+    FormErrorSummaryComponent,
   ],
   templateUrl: './invoice-form.component.html',
   styleUrls: ['./invoice-form.component.css'],
@@ -72,6 +75,18 @@ export class InvoiceFormComponent implements OnInit {
     invoiceApplications: this.fb.array<FormGroup>([]),
   });
 
+  readonly formErrorLabels: Record<string, string> = {
+    customer: 'Customer',
+    invoiceNo: 'Invoice No',
+    invoiceDate: 'Invoice Date',
+    dueDate: 'Due Date',
+    notes: 'Notes',
+    sent: 'Sent',
+    invoiceApplications: 'Invoice Applications',
+    invoiceApplicationsCustomerApplication: 'Application',
+    invoiceApplicationsAmount: 'Amount',
+  };
+
   readonly totalAmount = computed(() => {
     const items = this.invoiceApplications.controls;
     return items.reduce((sum, group) => {
@@ -99,7 +114,7 @@ export class InvoiceFormComponent implements OnInit {
       if (applicationId) {
         this.loadFromApplication(Number(applicationId));
       } else {
-        this.addLineItem();
+        this.addLineItem({});
       }
 
       // For new invoices, propose an invoice number based on invoice date
@@ -133,6 +148,12 @@ export class InvoiceFormComponent implements OnInit {
   }
 
   addLineItem(initial?: { id?: number; customerApplication?: number; amount?: number }): void {
+    // If user is trying to add a new empty row without selecting a customer, prompt them
+    if (!initial && !this.form.get('customer')?.value) {
+      this.toast.error('Please select a customer first.');
+      return;
+    }
+
     const group = this.fb.group({
       id: [initial?.id ?? null],
       customerApplication: [initial?.customerApplication ?? null, Validators.required],
@@ -149,6 +170,19 @@ export class InvoiceFormComponent implements OnInit {
     });
 
     this.invoiceApplications.push(group);
+
+    // After adding, if there's exactly one available application for this customer, auto-select it
+    const customerId = this.form.get('customer')?.value;
+    if (customerId && !initial) {
+      const available = this.availableApplications(null);
+      if (available.length === 1) {
+        const app = available[0];
+        group.get('customerApplication')?.setValue(app.id);
+        const price = app.product?.basePrice ? Number(app.product.basePrice) : 0;
+        group.get('amount')?.setValue(Number.isNaN(price) ? 0 : price, { emitEvent: false });
+        this.cdr.markForCheck();
+      }
+    }
   }
 
   removeLineItem(index: number): void {
@@ -187,8 +221,13 @@ export class InvoiceFormComponent implements OnInit {
           this.toast.success('Invoice updated');
           this.router.navigate(['/invoices', invoice.id]);
         },
-        error: () => {
-          this.toast.error('Failed to update invoice');
+        error: (error) => {
+          applyServerErrorsToForm(this.form, error);
+          this.form.markAllAsTouched();
+          const message = extractServerErrorMessage(error);
+          this.toast.error(
+            message ? `Failed to update invoice: ${message}` : 'Failed to update invoice',
+          );
           this.isSaving.set(false);
         },
       });
@@ -200,8 +239,13 @@ export class InvoiceFormComponent implements OnInit {
         this.toast.success('Invoice created');
         this.router.navigate(['/invoices', invoice.id]);
       },
-      error: () => {
-        this.toast.error('Failed to create invoice');
+      error: (error) => {
+        applyServerErrorsToForm(this.form, error);
+        this.form.markAllAsTouched();
+        const message = extractServerErrorMessage(error);
+        this.toast.error(
+          message ? `Failed to create invoice: ${message}` : 'Failed to create invoice',
+        );
         this.isSaving.set(false);
       },
     });
@@ -238,10 +282,18 @@ export class InvoiceFormComponent implements OnInit {
           this.form.get('customer')?.disable();
 
           this.invoicesApi
-            .invoicesGetCustomerApplicationsList(customerId, undefined, true, undefined, true)
+            .invoicesGetCustomerApplicationsList(customerId, undefined, false, undefined, true)
             .subscribe({
               next: (response: PaginatedDocApplicationInvoiceList) => {
-                this.customerApplications.set(response.results ?? []);
+                let results = response.results ?? [];
+
+                // Ensure the application that opened this view is present in the list
+                if (!results.some((r) => r.id === app.id)) {
+                  // Insert the current application at the beginning so it appears in the combobox
+                  results = [app, ...results];
+                }
+
+                this.customerApplications.set(results);
 
                 this.invoiceApplications.clear();
                 const amount = app.product?.basePrice ? Number(app.product.basePrice) : 0;
@@ -249,6 +301,14 @@ export class InvoiceFormComponent implements OnInit {
                   customerApplication: app.id,
                   amount: Number.isNaN(amount) ? 0 : amount,
                 });
+
+                // Disable the "Application" combobox in the first row so user cannot change it
+                const firstGroup = this.invoiceApplications.at(0);
+                firstGroup.get('customerApplication')?.disable({ emitEvent: false });
+
+                // Ensure OnPush view is updated
+                this.cdr.markForCheck();
+
                 this.isLoading.set(false);
               },
               error: () => {
@@ -258,13 +318,13 @@ export class InvoiceFormComponent implements OnInit {
             });
         } else {
           this.isLoading.set(false);
-          this.addLineItem();
+          this.addLineItem({});
         }
       },
       error: () => {
         this.toast.error('Failed to load application');
         this.isLoading.set(false);
-        this.addLineItem();
+        this.addLineItem({});
       },
     });
   }
@@ -296,7 +356,7 @@ export class InvoiceFormComponent implements OnInit {
         });
 
         if ((invoice.invoiceApplications ?? []).length === 0) {
-          this.addLineItem();
+          this.addLineItem({});
         }
 
         if (invoice.customer?.id) {
@@ -314,10 +374,32 @@ export class InvoiceFormComponent implements OnInit {
 
   private loadCustomerApplications(customerId: number, currentInvoiceId?: number): void {
     this.invoicesApi
-      .invoicesGetCustomerApplicationsList(customerId, currentInvoiceId, true, undefined, true)
+      .invoicesGetCustomerApplicationsList(customerId, currentInvoiceId, false, undefined, true)
       .subscribe({
         next: (response: PaginatedDocApplicationInvoiceList) => {
-          this.customerApplications.set(response.results ?? []);
+          const results = response.results ?? [];
+          this.customerApplications.set(results);
+
+          // Try to auto-select an application in any empty invoice application row if only one available
+          for (let i = 0; i < this.invoiceApplications.length; i++) {
+            const group = this.invoiceApplications.at(i);
+            const currentVal = group.get('customerApplication')?.value;
+            if (currentVal) continue;
+            const available = this.availableApplications(null).filter((a) =>
+              results.some((r) => r.id === a.id),
+            );
+            if (available.length === 1) {
+              const app = available[0];
+              group.get('customerApplication')?.setValue(app.id);
+              const price = app.product?.basePrice ? Number(app.product.basePrice) : 0;
+              group.get('amount')?.setValue(Number.isNaN(price) ? 0 : price, { emitEvent: false });
+              this.cdr.markForCheck();
+              // continue trying to fill other empty rows if more single options appear
+            } else {
+              // If multiple available, don't auto-select for this row
+              break;
+            }
+          }
         },
         error: () => {
           this.toast.error('Failed to load customer applications');

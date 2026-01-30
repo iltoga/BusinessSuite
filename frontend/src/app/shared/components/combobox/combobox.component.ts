@@ -191,6 +191,7 @@ export class ZardComboboxComponent implements ControlValueAccessor {
   private readonly injector = inject(Injector);
 
   readonly class = input<ClassValue>('');
+  readonly zStatus = input<'error' | 'success' | 'warning' | 'default' | undefined>();
   readonly buttonVariant = input<'default' | 'outline' | 'secondary' | 'ghost'>('outline');
   readonly zWidth = input<ZardComboboxVariants['zWidth']>('default');
   readonly placeholder = input<string>('Select...');
@@ -225,7 +226,12 @@ export class ZardComboboxComponent implements ControlValueAccessor {
     ),
   );
 
-  protected readonly buttonClasses = computed(() => 'w-full justify-between');
+  protected readonly buttonClasses = computed(() =>
+    mergeClasses(
+      'w-full justify-between',
+      this.zStatus() === 'error' ? 'border-destructive text-destructive' : '',
+    ),
+  );
 
   protected readonly popoverClasses = computed(() => {
     const widthClass = this.zWidth() === 'full' ? 'w-full' : 'w-[200px]';

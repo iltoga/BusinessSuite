@@ -8,6 +8,7 @@ from django.utils import timezone
 
 from customer_applications.models import DocApplication, Document
 from customers.models import Customer
+from invoices.models import Invoice
 from products.models import Product
 from products.models.document_type import DocumentType
 
@@ -239,9 +240,52 @@ class ProductApiTestCase(TestCase):
         self.user = User.objects.create_superuser(
             username="productadmin", email="product@example.com", password="password"
         )
-        self.client.force_login(self.user)
         self.required_doc = DocumentType.objects.create(name="Passport", is_in_required_documents=True)
         self.optional_doc = DocumentType.objects.create(name="Bank Statement", is_in_required_documents=False)
+
+    def test_propose_invoice_number_endpoint(self):
+        # Ensure the propose endpoint returns the next invoice number for a given date
+        self.client.force_login(self.user)
+        year = 2026
+        proposed = Invoice.get_next_invoice_no_for_year(year)
+        url = reverse("invoices-propose") + f"?invoice_date={year}-01-01"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        # Accept camelCase or snake_case
+        self.assertTrue("invoice_no" in data or "invoiceNo" in data)
+        value = data.get("invoice_no") or data.get("invoiceNo")
+        self.assertEqual(value, proposed)
+
+    def test_create_invoice_via_api(self):
+        # Test that creating an invoice via the API with an application works
+        self.client.force_login(self.user)
+        # Create a customer and product and application
+        customer = Customer.objects.create(customer_type="person", first_name="API", last_name="User", active=True)
+        product = Product.objects.create(
+            name="Test Product", code="TP-100", product_type="visa", required_documents="Passport"
+        )
+        application = DocApplication.objects.create(
+            customer=customer, product=product, doc_date=timezone.now().date(), created_by=self.user
+        )
+
+        payload = {
+            "customer": customer.id,
+            "invoice_date": timezone.now().date().isoformat(),
+            "due_date": timezone.now().date().isoformat(),
+            # Don’t set invoiceNo to allow proposal
+            "invoice_applications": [{"customer_application": application.id, "amount": "1000.00"}],
+        }
+
+        url = reverse("invoices-list")
+        response = self.client.post(url, data=json.dumps(payload), content_type="application/json")
+        self.assertIn(response.status_code, (200, 201))
+        data = response.json()
+        # Check invoice created and includes applications
+        self.assertTrue("id" in data)
+        inv = Invoice.objects.get(pk=data["id"])
+        self.assertEqual(inv.customer_id, customer.id)
+        self.assertEqual(inv.invoice_applications.count(), 1)
 
     def test_product_create_with_tasks_and_documents(self):
         url = reverse("products-list")

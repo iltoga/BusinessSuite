@@ -1,5 +1,6 @@
 import datetime
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
@@ -121,10 +122,13 @@ class CustomerModelTests(TestCase):
     def test_get_gender_display_returns_choice_label(self):
         # Create a customer with gender set
         cust = Customer.objects.create(customer_type="person", first_name="G", last_name="T", gender="M")
-        # Default language should return the English label defined in GENDERS
-        self.assertEqual(cust.get_gender_display(), "Male")
+        # Default language should follow configured document language
+        default_lang = settings.DEFAULT_DOCUMENT_LANGUAGE_CODE or "en"
+        self.assertEqual(cust.get_gender_display(), cust.get_gender_display(lang=default_lang))
         # Explicit language should return the expected string when coerced
         self.assertEqual(str(cust.get_gender_display(lang="en")), "Male")
+        if default_lang == "en":
+            self.assertEqual(cust.get_gender_display(), "Male")
         # If Indonesian translations exist and messages are compiled, expect the correct translation.
         id_display = str(cust.get_gender_display(lang="id"))
         # Always ensure it's a string and not empty

@@ -24,10 +24,14 @@ class InvoiceApplicationPayload:
 def _build_payloads(raw_items: Iterable[dict]) -> list[InvoiceApplicationPayload]:
     payloads: list[InvoiceApplicationPayload] = []
     for item in raw_items:
+        customer_application = item.get("customer_application")
+        customer_application_id = (
+            customer_application.id if hasattr(customer_application, "id") else customer_application
+        )
         payloads.append(
             InvoiceApplicationPayload(
                 invoice_application_id=item.get("id"),
-                customer_application_id=item.get("customer_application"),
+                customer_application_id=customer_application_id,
                 amount=Decimal(str(item.get("amount"))),
             )
         )
@@ -50,7 +54,7 @@ def _validate_application_availability(
     if current_invoice:
         existing = existing.exclude(invoice=current_invoice)
     if existing.exists():
-        raise ValidationError("One or more customer applications are already invoiced.")
+        raise ValidationError({"invoice_applications": ["One or more customer applications are already invoiced."]})
 
 
 def create_invoice(*, data: dict, user) -> Invoice:
@@ -58,11 +62,54 @@ def create_invoice(*, data: dict, user) -> Invoice:
     _validate_application_ids(payloads)
     _validate_application_availability(payloads=payloads)
 
-    with transaction.atomic():
-        invoice = Invoice.objects.create(created_by=user, **data)
-        _sync_invoice_applications(invoice=invoice, payloads=payloads, user=user)
-        invoice.save()
-        return invoice
+    invoice_date = data.get("invoice_date")
+    if isinstance(invoice_date, str):
+        try:
+            invoice_date = timezone.datetime.fromisoformat(invoice_date).date()
+        except Exception:
+            invoice_date = None
+    year = invoice_date.year if invoice_date else timezone.now().year
+
+    # Always assign the next available invoice number for the year
+    data["invoice_no"] = Invoice.get_next_invoice_no_for_year(year)
+
+    # Attempt creation; handle possible race conditions on invoice_no uniqueness by retrying
+    attempts = 0
+    max_attempts = 3
+    while True:
+        try:
+            with transaction.atomic():
+                invoice = Invoice.objects.create(created_by=user, **data)
+                _sync_invoice_applications(invoice=invoice, payloads=payloads, user=user)
+                invoice.save()
+                return invoice
+        except Exception as exc:
+            # Handle duplicate invoice_no integrity errors specifically
+            from django.db import IntegrityError
+
+            # detect unique constraint violation on invoice_no
+            if isinstance(exc, IntegrityError) and "invoices_invoice_invoice_no_key" in str(exc):
+                attempts += 1
+                if attempts >= max_attempts:
+                    raise ValidationError({"invoice_no": ["Invoice number already exists."]})
+
+                # Remove provided invoice_no (if any) so Invoice.save() will generate next available
+                data.pop("invoice_no", None)
+
+                # If invoice_date present, compute next invoice number for that year and set it explicitly
+                try:
+                    invoice_date = data.get("invoice_date")
+                    if isinstance(invoice_date, str):
+                        invoice_date = timezone.datetime.fromisoformat(invoice_date).date()
+                    year = invoice_date.year if invoice_date else timezone.now().year
+                except Exception:
+                    year = timezone.now().year
+
+                data["invoice_no"] = Invoice.get_next_invoice_no_for_year(year)
+                # Try again
+                continue
+            # re-raise other exceptions
+            raise
 
 
 def update_invoice(*, invoice: Invoice, data: dict, user) -> Invoice:

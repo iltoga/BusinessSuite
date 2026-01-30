@@ -367,6 +367,55 @@ export class ApplicationDetailComponent implements OnInit {
     });
   }
 
+  canForceClose(): boolean {
+    const app = this.application();
+    return !!(
+      app &&
+      (app as any).canForceClose &&
+      app.status !== 'completed' &&
+      !app.isDocumentCollectionCompleted
+    );
+  }
+
+  confirmForceClose(): void {
+    const app = this.application();
+    if (!app) {
+      return;
+    }
+    if (!this.canForceClose()) {
+      this.toast.error('You cannot force close this application');
+      return;
+    }
+
+    if (confirm(`Force close application #${app.id}? This will mark it as completed.`)) {
+      this.workflowAction.set('force-close');
+      this.applicationsService.forceClose(app.id, app as any).subscribe({
+        next: () => {
+          this.toast.success('Application force closed');
+          this.loadApplication(app.id);
+          this.workflowAction.set(null);
+        },
+        error: (err: any) => {
+          const msg = err?.error?.detail || err?.error || 'Failed to force close application';
+          this.toast.error(msg);
+          this.workflowAction.set(null);
+        },
+      });
+    }
+  }
+
+  canCreateInvoice(): boolean {
+    const app = this.application();
+    return !!(app && app.status === 'completed' && !app.hasInvoice);
+  }
+
+  createInvoice(): void {
+    const app = this.application();
+    if (!app || !this.canCreateInvoice()) return;
+    // Navigate to invoice creation page with applicationId pre-filled
+    this.router.navigate(['/invoices', 'new'], { queryParams: { applicationId: app.id } });
+  }
+
   getWorkflowStatusVariant(
     status: string,
     isOverdue?: boolean,

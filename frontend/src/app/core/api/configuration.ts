@@ -101,15 +101,6 @@ constructor({ accessToken, apiKeys, basePath, credentials, encodeParam, encoder,
                 }
             };
         }
-
-        // init default tokenAuth credential
-        if (!this.credentials['tokenAuth']) {
-            this.credentials['tokenAuth'] = () => {
-                return typeof this.accessToken === 'function'
-                    ? this.accessToken()
-                    : this.accessToken;
-            };
-        }
     }
 
     /**

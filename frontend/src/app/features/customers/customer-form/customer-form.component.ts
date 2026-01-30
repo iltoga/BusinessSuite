@@ -23,8 +23,10 @@ import { ZardCardComponent } from '@/shared/components/card';
 import { ZardComboboxComponent, type ZardComboboxOption } from '@/shared/components/combobox';
 import { ZardDateInputComponent } from '@/shared/components/date-input';
 import { FileUploadComponent } from '@/shared/components/file-upload';
+import { FormErrorSummaryComponent } from '@/shared/components/form-error-summary/form-error-summary.component';
 import { ZardIconComponent } from '@/shared/components/icon';
 import { ZardInputDirective } from '@/shared/components/input';
+import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/utils/form-errors';
 
 @Component({
   selector: 'app-customer-form',
@@ -40,6 +42,7 @@ import { ZardInputDirective } from '@/shared/components/input';
     ZardDateInputComponent,
     FileUploadComponent,
     ZardIconComponent,
+    FormErrorSummaryComponent,
   ],
   templateUrl: './customer-form.component.html',
   styleUrls: ['./customer-form.component.css'],
@@ -106,6 +109,34 @@ export class CustomerFormComponent implements OnInit {
       validators: [this.passportDatesValidator.bind(this), this.birthDateValidator.bind(this)],
     },
   );
+
+  readonly formErrorLabels: Record<string, string> = {
+    customer_type: 'Customer Type',
+    title: 'Title',
+    first_name: 'First Name',
+    last_name: 'Last Name',
+    company_name: 'Company Name',
+    gender: 'Gender',
+    nationality: 'Nationality',
+    birthdate: 'Birthdate',
+    birth_place: 'Birth Place',
+    passport_number: 'Passport Number',
+    passport_issue_date: 'Passport Issue Date',
+    passport_expiration_date: 'Passport Expiration Date',
+    npwp: 'NPWP',
+    email: 'Email',
+    telephone: 'Telephone',
+    whatsapp: 'WhatsApp',
+    telegram: 'Telegram',
+    facebook: 'Facebook',
+    instagram: 'Instagram',
+    twitter: 'Twitter',
+    address_bali: 'Address (Bali)',
+    address_abroad: 'Address (Abroad)',
+    notify_documents_expiration: 'Notify Documents Expiration',
+    notify_by: 'Notify By',
+    active: 'Active',
+  };
 
   // Title options
   readonly titleOptions = [
@@ -578,8 +609,13 @@ export class CustomerFormComponent implements OnInit {
           this.toast.success('Customer updated');
           this.router.navigate(['/customers', data.id]);
         },
-        error: () => {
-          this.toast.error('Failed to update customer');
+        error: (error) => {
+          applyServerErrorsToForm(this.form, error);
+          this.form.markAllAsTouched();
+          const message = extractServerErrorMessage(error);
+          this.toast.error(
+            message ? `Failed to update customer: ${message}` : 'Failed to update customer',
+          );
           this.isLoading.set(false);
         },
       });
@@ -589,8 +625,13 @@ export class CustomerFormComponent implements OnInit {
           this.toast.success('Customer created');
           this.router.navigate(['/customers', data.id]);
         },
-        error: () => {
-          this.toast.error('Failed to create customer');
+        error: (error) => {
+          applyServerErrorsToForm(this.form, error);
+          this.form.markAllAsTouched();
+          const message = extractServerErrorMessage(error);
+          this.toast.error(
+            message ? `Failed to create customer: ${message}` : 'Failed to create customer',
+          );
           this.isLoading.set(false);
         },
       });

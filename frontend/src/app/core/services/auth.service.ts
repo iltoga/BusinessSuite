@@ -10,6 +10,26 @@ export interface AuthToken {
   token: string;
 }
 
+export interface AuthClaims {
+  sub?: string;
+  email?: string | null;
+  roles?: string[];
+  groups?: string[];
+  isSuperuser?: boolean;
+  iat?: number;
+  exp?: number;
+}
+
+interface MockAuthConfigResponse {
+  sub?: string;
+  username?: string;
+  email?: string | null;
+  roles?: string[];
+  groups?: string[];
+  isSuperuser?: boolean;
+  is_superuser?: boolean;
+}
+
 export interface LoginCredentials {
   username: string;
   password: string;
@@ -21,12 +41,17 @@ export interface LoginCredentials {
 export class AuthService {
   private readonly TOKEN_KEY = 'auth_token';
   private readonly API_URL = '/api';
+  private readonly MOCK_CLAIMS_URL = '/api/mock-auth-config/';
 
   private _token = signal<string | null>(null);
+  private _claims = signal<AuthClaims | null>(null);
+  private _mockClaims = signal<AuthClaims | null>(null);
   private _isLoading = signal(false);
   private _error = signal<string | null>(null);
 
   isAuthenticated = computed(() => !!this.getToken());
+  claims = this._claims.asReadonly();
+  isSuperuser = computed(() => this._claims()?.isSuperuser ?? false);
   isLoading = this._isLoading.asReadonly();
   error = this._error.asReadonly();
 
@@ -37,7 +62,9 @@ export class AuthService {
     @Inject(PLATFORM_ID) private platformId: Object,
   ) {
     if (isPlatformBrowser(this.platformId)) {
-      this._token.set(this.getStoredToken());
+      const stored = this.getStoredToken();
+      this._token.set(stored);
+      this._claims.set(this.buildClaimsFromToken(stored));
     }
   }
 
@@ -45,8 +72,19 @@ export class AuthService {
    * Initialize mock authentication - must be called AFTER config is loaded
    */
   initMockAuth(): void {
-    if (isPlatformBrowser(this.platformId) && this.mockAuthEnabled && !this._token()) {
+    if (!isPlatformBrowser(this.platformId) || !this.mockAuthEnabled) {
+      return;
+    }
+
+    if (!this._token()) {
       this.setToken('mock-token');
+    }
+
+    if (this._token() === 'mock-token') {
+      const fallback = this.buildFallbackMockClaims();
+      this._mockClaims.set(fallback);
+      this._claims.set(fallback);
+      this.fetchMockClaims();
     }
   }
 
@@ -62,6 +100,10 @@ export class AuthService {
     if (this.mockAuthEnabled) {
       const fake = { token: 'mock-token' } as AuthToken;
       this.setToken(fake.token);
+      const fallback = this.buildFallbackMockClaims();
+      this._mockClaims.set(fallback);
+      this._claims.set(fallback);
+      this.fetchMockClaims();
       this._isLoading.set(false);
       return of(fake);
     }
@@ -69,6 +111,7 @@ export class AuthService {
     return this.http.post<AuthToken>(`${this.API_URL}/api-token-auth/`, credentials).pipe(
       tap((response) => {
         this.setToken(response.token);
+        this._claims.set(this.buildClaimsFromToken(response.token));
         this._isLoading.set(false);
       }),
       catchError((error) => {
@@ -93,6 +136,7 @@ export class AuthService {
 
   private clearToken(): void {
     this._token.set(null);
+    this._claims.set(null);
     if (isPlatformBrowser(this.platformId)) {
       localStorage.removeItem(this.TOKEN_KEY);
     }
@@ -100,13 +144,106 @@ export class AuthService {
 
   private getStoredToken(): string | null {
     if (isPlatformBrowser(this.platformId)) {
-      return localStorage.getItem(this.TOKEN_KEY);
+      try {
+        if (typeof localStorage?.getItem === 'function') {
+          return localStorage.getItem(this.TOKEN_KEY);
+        }
+      } catch {
+        return null;
+      }
     }
     return null;
   }
 
   getToken(): string | null {
     return this._token() ?? this.getStoredToken();
+  }
+
+  private buildClaimsFromToken(token: string | null): AuthClaims | null {
+    if (!token) {
+      return null;
+    }
+
+    if (token === 'mock-token' && this.mockAuthEnabled) {
+      return this._mockClaims() ?? this.buildFallbackMockClaims();
+    }
+
+    const payload = this.decodeJwtPayload(token);
+    if (!payload) {
+      return null;
+    }
+
+    return {
+      sub: payload['sub'],
+      email: payload['email'] ?? null,
+      roles: payload['roles'] ?? payload['groups'] ?? [],
+      groups: payload['groups'] ?? payload['roles'] ?? [],
+      isSuperuser: payload['is_superuser'] ?? payload['isSuperuser'] ?? false,
+      iat: payload['iat'],
+      exp: payload['exp'],
+    } satisfies AuthClaims;
+  }
+
+  private buildFallbackMockClaims(): AuthClaims {
+    return {
+      sub: 'mock-user',
+      email: 'mock@example.com',
+      roles: ['admin'],
+      groups: ['admin'],
+      isSuperuser: true,
+    };
+  }
+
+  private normalizeMockClaims(response: MockAuthConfigResponse): AuthClaims {
+    return {
+      sub: response.sub ?? response.username ?? 'mock-user',
+      email: response.email ?? null,
+      roles: response.roles ?? response.groups ?? [],
+      groups: response.groups ?? response.roles ?? [],
+      isSuperuser: response.isSuperuser ?? response.is_superuser ?? false,
+    } satisfies AuthClaims;
+  }
+
+  private fetchMockClaims(): void {
+    if (!isPlatformBrowser(this.platformId) || !this.mockAuthEnabled) {
+      return;
+    }
+
+    this.http
+      .get<MockAuthConfigResponse>(this.MOCK_CLAIMS_URL)
+      .pipe(
+        tap((response) => {
+          const claims = this.normalizeMockClaims(response);
+          this._mockClaims.set(claims);
+          this._claims.set(claims);
+        }),
+        catchError(() => {
+          const fallback = this.buildFallbackMockClaims();
+          this._mockClaims.set(fallback);
+          this._claims.set(fallback);
+          return of(null);
+        }),
+      )
+      .subscribe();
+  }
+
+  private decodeJwtPayload(token: string): Record<string, any> | null {
+    try {
+      const parts = token.split('.');
+      if (parts.length < 2) {
+        return null;
+      }
+      const payload = parts[1];
+      const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+      const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+      if (!isPlatformBrowser(this.platformId)) {
+        return null;
+      }
+      const decoded = atob(padded);
+      return JSON.parse(decoded);
+    } catch {
+      return null;
+    }
   }
 
   /**

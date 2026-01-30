@@ -13,6 +13,11 @@
         [placeholder]="'Search Applications...'"
         (queryChange)="onQueryChange($event)"
       >
+        @if (isSuperuser() && totalItems() > 0) {
+          <z-button zType="destructive" zSize="sm" (click)="openBulkDeleteDialog()">
+            {{ bulkDeleteLabel() }}
+          </z-button>
+        }
       </app-search-toolbar>
     </div>
 
@@ -67,7 +72,11 @@
               >
             }
 
-            <z-button zType="destructive" zSize="sm" (click)="confirmDelete(row)">Delete</z-button>
+            @if (isSuperuser()) {
+              <z-button zType="destructive" zSize="sm" (click)="confirmDelete(row)"
+                >Delete</z-button
+              >
+            }
           </div>
         </ng-template>
         <ng-template #columnInvoiceActions let-row>
@@ -100,3 +109,21 @@
     </div>
   </div>
 </div>
+
+<app-confirm-dialog
+  [isOpen]="confirmOpen()"
+  [title]="'Delete application'"
+  [message]="confirmMessage()"
+  [destructive]="true"
+  confirmText="Delete"
+  cancelText="Cancel"
+  (confirmed)="confirmDeleteAction()"
+  (cancelled)="cancelDeleteAction()"
+/>
+
+<app-bulk-delete-dialog
+  [isOpen]="bulkDeleteOpen()"
+  [data]="bulkDeleteData()"
+  (confirmed)="onBulkDeleteConfirmed()"
+  (cancelled)="onBulkDeleteCancelled()"
+/>

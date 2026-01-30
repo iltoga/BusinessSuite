@@ -1,5 +1,6 @@
 import { HttpResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
+import { RouterTestingModule } from '@angular/router/testing';
 import { of } from 'rxjs';
 import { vi } from 'vitest';
 
@@ -60,7 +61,7 @@ describe('SuratPermohonanComponent', () => {
     );
 
     await TestBed.configureTestingModule({
-      imports: [SuratPermohonanComponent],
+      imports: [SuratPermohonanComponent, RouterTestingModule],
       providers: [
         { provide: LettersService, useValue: lettersSpy },
         { provide: CountryCodesService, useValue: countriesSpy },

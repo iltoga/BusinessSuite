@@ -17,6 +17,8 @@
 | SearchToolbar       | app-search-toolbar        | src/app/shared/components/search-toolbar        | Input, Button           | ✅ Ready        |
 | Pagination          | app-pagination-controls   | src/app/shared/components/pagination-controls   | Button, Icon            | ✅ Ready        |
 | ExpiryBadge         | app-expiry-badge          | src/app/shared/components/expiry-badge          | Badge                   | ✅ Ready        |
+| BulkDeleteDialog    | app-bulk-delete-dialog    | src/app/shared/components/bulk-delete-dialog    | Dialog, Button          | ✅ Ready        |
+| InvoiceDeleteDialog | app-invoice-delete-dialog | src/app/shared/components/invoice-delete-dialog | Dialog, Button          | ✅ Ready        |
 | FileUpload          | app-file-upload           | src/app/shared/components/file-upload           | Button                  | ✅ Ready        |
 | DocumentPreview     | app-document-preview      | src/app/shared/components/document-preview      | Popover, Icon           | ✅ Ready        |
 | PdfViewerHost       | app-pdf-viewer-host       | src/app/shared/components/pdf-viewer-host       | ngx-extended-pdf-viewer | ✅ Ready (lazy) |
@@ -102,6 +104,48 @@ export class SearchToolbarComponent {
   submitted = output<string>();
 }
 ```
+
+### BulkDeleteDialogComponent
+
+**Location:** `src/app/shared/components/bulk-delete-dialog/bulk-delete-dialog.component.ts`
+
+**Interface:**
+
+```typescript
+@Component({
+  selector: "app-bulk-delete-dialog",
+  standalone: true,
+})
+export class BulkDeleteDialogComponent {
+  isOpen = input<boolean>(false);
+  data = input<BulkDeleteDialogData | null>(null);
+  confirmed = output<BulkDeleteDialogResult>();
+  cancelled = output<void>();
+}
+```
+
+**Notes:** Use for delete-all/selected confirmation dialogs with optional cascade checkbox.
+
+### InvoiceDeleteDialogComponent
+
+**Location:** `src/app/shared/components/invoice-delete-dialog/invoice-delete-dialog.component.ts`
+
+**Interface:**
+
+```typescript
+@Component({
+  selector: "app-invoice-delete-dialog",
+  standalone: true,
+})
+export class InvoiceDeleteDialogComponent {
+  isOpen = input<boolean>(false);
+  data = input<InvoiceDeletePreviewData | null>(null);
+  confirmed = output<InvoiceDeleteDialogResult>();
+  cancelled = output<void>();
+}
+```
+
+**Notes:** Matches legacy invoice force-delete flow with mandatory confirmation checkbox and cascade preview.
 
 ### PaginationControlsComponent
 
