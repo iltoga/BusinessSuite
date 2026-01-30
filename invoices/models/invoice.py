@@ -1,6 +1,7 @@
 # models.py
 from django.conf import settings
 from django.contrib.postgres.search import SearchVector, TrigramSimilarity
+from django.core.cache import cache
 from django.db import models
 from django.db.models import Q, Sum
 from django.db.models.functions import Cast
@@ -119,6 +120,9 @@ class Invoice(models.Model):
     )
     objects = InvoiceManager()
 
+    INVOICE_SEQ_CACHE_PREFIX = "invoices:invoice_seq"
+    INVOICE_SEQ_CACHE_TIMEOUT = 60 * 60 * 24 * 30  # 30 days
+
     class Meta:
         ordering = ("-invoice_date", "-invoice_no")
 
@@ -214,6 +218,8 @@ class Invoice(models.Model):
         # Save first to ensure status is up to date and pk is set
         super().save(*args, **kwargs)
 
+        self._sync_invoice_sequence_cache()
+
         # If invoice is paid, set all related DocApplications to completed
         from customer_applications.models.doc_application import DocApplication
 
@@ -260,7 +266,11 @@ class Invoice(models.Model):
         return int(invoice_no)
 
     @classmethod
-    def get_next_invoice_no_for_year(cls, year: int) -> int:
+    def _get_invoice_seq_cache_key(cls, year: int) -> str:
+        return f"{cls.INVOICE_SEQ_CACHE_PREFIX}:{year}"
+
+    @classmethod
+    def _get_last_sequence_for_year(cls, year: int) -> int:
         year_str = str(year)
         last_invoice = (
             cls.objects.annotate(invoice_no_str=Cast("invoice_no", models.CharField()))
@@ -269,10 +279,52 @@ class Invoice(models.Model):
             .first()
         )
         if last_invoice:
-            next_sequence = cls._extract_sequence(last_invoice.invoice_no, year) + 1
-        else:
-            next_sequence = 1
-        return cls._build_year_invoice_no(year, next_sequence)
+            return cls._extract_sequence(last_invoice.invoice_no, year)
+        return 0
+
+    @classmethod
+    def _prime_invoice_sequence_cache(cls, year: int) -> int:
+        last_sequence = cls._get_last_sequence_for_year(year)
+        try:
+            cache.add(
+                cls._get_invoice_seq_cache_key(year),
+                last_sequence,
+                timeout=cls.INVOICE_SEQ_CACHE_TIMEOUT,
+            )
+        except Exception:
+            pass
+        return last_sequence
+
+    def _sync_invoice_sequence_cache(self) -> None:
+        if not self.invoice_no:
+            return
+        try:
+            year = self.get_invoice_year()
+            sequence = self._extract_sequence(self.invoice_no, year)
+            cache_key = self._get_invoice_seq_cache_key(year)
+            cached_value = cache.get(cache_key)
+            if cached_value is None or sequence > cached_value:
+                cache.set(cache_key, sequence, timeout=self.INVOICE_SEQ_CACHE_TIMEOUT)
+        except Exception:
+            # Never block invoice saves on cache failures
+            pass
+
+    @classmethod
+    def get_next_invoice_no_for_year(cls, year: int) -> int:
+        cache_key = cls._get_invoice_seq_cache_key(year)
+
+        try:
+            next_sequence = cache.incr(cache_key)
+            return cls._build_year_invoice_no(year, next_sequence)
+        except Exception:
+            last_sequence = cls._prime_invoice_sequence_cache(year)
+
+        try:
+            next_sequence = cache.incr(cache_key)
+            return cls._build_year_invoice_no(year, next_sequence)
+        except Exception:
+            next_sequence = last_sequence + 1
+            return cls._build_year_invoice_no(year, next_sequence)
 
     def get_invoice_year(self) -> int:
         try:
