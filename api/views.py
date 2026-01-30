@@ -81,7 +81,16 @@ class ApiErrorHandlingMixin:
         return Response(payload, status=status_code)
 
     def handle_exception(self, exc):
-        response = super().handle_exception(exc)
+        from django.db.models.deletion import ProtectedError
+
+        if isinstance(exc, ProtectedError):
+            message = exc.args[0] if getattr(exc, "args", None) else "Cannot delete because related objects exist."
+            return self.error_response(str(message), status.HTTP_409_CONFLICT)
+
+        try:
+            response = super().handle_exception(exc)
+        except Exception:
+            return self.error_response("Server error", status.HTTP_500_INTERNAL_SERVER_ERROR)
         if response is None:
             return self.error_response("Server error", status.HTTP_500_INTERNAL_SERVER_ERROR)
         if isinstance(exc, ValidationError):

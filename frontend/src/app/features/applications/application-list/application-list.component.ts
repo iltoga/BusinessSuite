@@ -29,6 +29,7 @@ import {
 } from '@/shared/components/data-table/data-table.component';
 import { PaginationControlsComponent } from '@/shared/components/pagination-controls';
 import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
+import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 
 @Component({
   selector: 'app-application-list',
@@ -184,8 +185,11 @@ export class ApplicationListComponent implements OnInit {
         this.pendingDelete.set(null);
         this.load();
       },
-      error: () => {
-        this.toast.error('Failed to delete application');
+      error: (error) => {
+        const message = extractServerErrorMessage(error);
+        this.toast.error(
+          message ? `Failed to delete application: ${message}` : 'Failed to delete application',
+        );
       },
     });
   }
@@ -252,8 +256,11 @@ export class ApplicationListComponent implements OnInit {
           this.bulkDeleteQuery.set('');
           this.load();
         },
-        error: () => {
-          this.toast.error('Failed to delete applications');
+        error: (error) => {
+          const message = extractServerErrorMessage(error);
+          this.toast.error(
+            message ? `Failed to delete applications: ${message}` : 'Failed to delete applications',
+          );
         },
       });
   }

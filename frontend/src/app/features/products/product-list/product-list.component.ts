@@ -29,6 +29,7 @@ import {
 } from '@/shared/components/data-table/data-table.component';
 import { PaginationControlsComponent } from '@/shared/components/pagination-controls';
 import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
+import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 
 @Component({
   selector: 'app-product-list',
@@ -185,8 +186,11 @@ export class ProductListComponent implements OnInit {
         this.pendingDelete.set(null);
         this.loadProducts();
       },
-      error: () => {
-        this.toast.error('Failed to delete product');
+      error: (error) => {
+        const message = extractServerErrorMessage(error);
+        this.toast.error(
+          message ? `Failed to delete product: ${message}` : 'Failed to delete product',
+        );
       },
     });
   }
@@ -227,8 +231,11 @@ export class ProductListComponent implements OnInit {
         this.bulkDeleteQuery.set('');
         this.loadProducts();
       },
-      error: () => {
-        this.toast.error('Failed to delete products');
+      error: (error) => {
+        const message = extractServerErrorMessage(error);
+        this.toast.error(
+          message ? `Failed to delete products: ${message}` : 'Failed to delete products',
+        );
       },
     });
   }

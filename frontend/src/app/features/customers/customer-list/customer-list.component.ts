@@ -28,6 +28,7 @@ import {
 import { ExpiryBadgeComponent } from '@/shared/components/expiry-badge';
 import { PaginationControlsComponent } from '@/shared/components/pagination-controls';
 import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
+import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 
 @Component({
   selector: 'app-customer-list',
@@ -186,8 +187,11 @@ export class CustomerListComponent implements OnInit {
         this.toast.success('Customer deleted');
         this.loadCustomers();
       },
-      error: () => {
-        this.toast.error('Failed to delete customer');
+      error: (error) => {
+        const message = extractServerErrorMessage(error);
+        this.toast.error(
+          message ? `Failed to delete customer: ${message}` : 'Failed to delete customer',
+        );
       },
     });
   }
@@ -226,8 +230,11 @@ export class CustomerListComponent implements OnInit {
           this.bulkDeleteContext.set(null);
           this.loadCustomers();
         },
-        error: () => {
-          this.toast.error('Failed to delete customers');
+        error: (error) => {
+          const message = extractServerErrorMessage(error);
+          this.toast.error(
+            message ? `Failed to delete customers: ${message}` : 'Failed to delete customers',
+          );
         },
       });
   }

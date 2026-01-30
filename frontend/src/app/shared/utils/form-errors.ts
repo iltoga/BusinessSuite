@@ -186,6 +186,7 @@ export const extractServerErrorMessage = (errorResponse: unknown): string | null
   if (!payload || typeof payload !== 'object') return null;
 
   const direct = (payload as any).error;
+  const detail = (payload as any).detail;
   const errorsRoot = (payload as any).errors;
   const details = (payload as any).details;
 
@@ -204,6 +205,8 @@ export const extractServerErrorMessage = (errorResponse: unknown): string | null
       if (message) return message;
     }
   }
+
+  if (typeof detail === 'string') return detail;
 
   if (typeof direct === 'string') return direct;
 

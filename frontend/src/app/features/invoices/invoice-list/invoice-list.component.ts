@@ -33,6 +33,7 @@ import {
 } from '@/shared/components/invoice-delete-dialog/invoice-delete-dialog.component';
 import { PaginationControlsComponent } from '@/shared/components/pagination-controls';
 import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
+import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 
 @Component({
   selector: 'app-invoice-list',
@@ -249,8 +250,11 @@ export class InvoiceListComponent implements OnInit {
           this.bulkDeleteContext.set(null);
           this.loadInvoices();
         },
-        error: () => {
-          this.toast.error('Failed to delete invoices');
+        error: (error) => {
+          const message = extractServerErrorMessage(error);
+          this.toast.error(
+            message ? `Failed to delete invoices: ${message}` : 'Failed to delete invoices',
+          );
         },
       });
   }
@@ -334,8 +338,11 @@ export class InvoiceListComponent implements OnInit {
           this.pendingInvoiceId.set(null);
           this.loadInvoices();
         },
-        error: () => {
-          this.toast.error('Failed to delete invoice');
+        error: (error) => {
+          const message = extractServerErrorMessage(error);
+          this.toast.error(
+            message ? `Failed to delete invoice: ${message}` : 'Failed to delete invoice',
+          );
         },
       });
   }
