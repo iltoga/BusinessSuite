@@ -19,7 +19,16 @@
   </div>
 
   @if (isLoading()) {
-    <div class="text-muted-foreground">Loading...</div>
+    <div class="space-y-6">
+      <app-card-skeleton [lines]="5" />
+      <app-card-skeleton [lines]="4" />
+      <z-card class="p-5">
+        <div class="mb-4">
+          <z-skeleton class="h-6 w-1/4" />
+        </div>
+        <app-table-skeleton [rows]="5" [columns]="5" />
+      </z-card>
+    </div>
   } @else if (product()) {
     <div class="grid gap-6 lg:grid-cols-3">
       <z-card class="p-5 lg:col-span-2">

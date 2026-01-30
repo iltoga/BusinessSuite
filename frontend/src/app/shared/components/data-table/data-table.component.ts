@@ -9,6 +9,7 @@ import {
   type TemplateRef,
 } from '@angular/core';
 
+import { ZardSkeletonComponent } from '@/shared/components/skeleton';
 import { ZardTableImports } from '@/shared/components/table';
 
 export interface ColumnConfig<T = any> {
@@ -33,7 +34,7 @@ export interface SortEvent {
 @Component({
   selector: 'app-data-table',
   standalone: true,
-  imports: [CommonModule, ...ZardTableImports],
+  imports: [CommonModule, ...ZardTableImports, ZardSkeletonComponent],
   templateUrl: './data-table.component.html',
   styleUrls: ['./data-table.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -43,6 +44,7 @@ export class DataTableComponent<T = Record<string, any>> {
   columns = input.required<readonly ColumnConfig<T>[]>();
   totalItems = input<number>(0);
   isLoading = input<boolean>(false);
+  skeletonRows = input<number>(10);
 
   pageChange = output<PageEvent>();
   sortChange = output<SortEvent>();

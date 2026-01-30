@@ -24,6 +24,8 @@
 | PdfViewerHost       | app-pdf-viewer-host       | src/app/shared/components/pdf-viewer-host       | ngx-extended-pdf-viewer | ✅ Ready (lazy) |
 | SortableMultiSelect | app-sortable-multi-select | src/app/shared/components/sortable-multi-select | DragDrop                | ✅ Ready        |
 | CustomerSelect      | app-customer-select       | src/app/shared/components/customer-select       | Combobox                | ✅ Ready        |
+| TableSkeleton       | app-table-skeleton        | src/app/shared/components/skeleton              | Table, Skeleton         | ✅ Ready        |
+| CardSkeleton        | app-card-skeleton         | src/app/shared/components/skeleton              | Card, Skeleton          | ✅ Ready        |
 
 ## Component Details
 
@@ -291,8 +293,43 @@ export class CustomerSelectComponent {
 }
 ````
 
+### TableSkeletonComponent
+
+**Location:** `src/app/shared/components/skeleton/table-skeleton.component.ts`
+
+**Interface:**
+
+```typescript
+@Component({
+  selector: "app-table-skeleton",
+  standalone: true,
+})
+export class TableSkeletonComponent {
+  columns = input<number>(5);
+  rows = input<number>(5);
+}
+```
+
+### CardSkeletonComponent
+
+**Location:** `src/app/shared/components/skeleton/card-skeleton.component.ts`
+
+**Interface:**
+
+```typescript
+@Component({
+  selector: "app-card-skeleton",
+  standalone: true,
+})
+export class CardSkeletonComponent {
+  showHeader = input<boolean>(true);
+  lines = input<number>(3);
+}
+```
+
 ## Updates
 
+- **2026-01-30:** Added `TableSkeletonComponent` and `CardSkeletonComponent` to handle loading states in list and detail views.
 - **2026-01-29:** Letters (Surat Permohonan) feature reused existing shared components; no new shared components added.
 - **2026-01-29:** Invoices & Payments feature added new invoice screens; no new shared components added.
 

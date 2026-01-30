@@ -11,6 +11,11 @@ import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
+import {
+  CardSkeletonComponent,
+  TableSkeletonComponent,
+  ZardSkeletonComponent,
+} from '@/shared/components/skeleton';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 
@@ -23,6 +28,9 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
     ZardButtonComponent,
     ZardCardComponent,
     ZardBadgeComponent,
+    CardSkeletonComponent,
+    TableSkeletonComponent,
+    ZardSkeletonComponent,
     AppDatePipe,
   ],
   templateUrl: './customer-detail.component.html',

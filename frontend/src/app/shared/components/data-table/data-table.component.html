@@ -30,15 +30,15 @@
   </thead>
   <tbody z-table-body>
     @if (isLoading()) {
-      <tr z-table-row>
-        <td
-          z-table-cell
-          [attr.colspan]="columns().length"
-          class="text-center text-muted-foreground"
-        >
-          Loading...
-        </td>
-      </tr>
+      @for (i of [].constructor(skeletonRows()); track $index) {
+        <tr z-table-row>
+          @for (column of columns(); track column.key) {
+            <td z-table-cell>
+              <z-skeleton class="h-8 w-full" />
+            </td>
+          }
+        </tr>
+      }
     } @else {
       @if (data().length === 0) {
         <tr z-table-row>

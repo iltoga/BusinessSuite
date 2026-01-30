@@ -26,6 +26,11 @@ import {
   DataTableComponent,
   type ColumnConfig,
 } from '@/shared/components/data-table/data-table.component';
+import {
+  CardSkeletonComponent,
+  TableSkeletonComponent,
+  ZardSkeletonComponent,
+} from '@/shared/components/skeleton';
 
 @Component({
   selector: 'app-product-detail',
@@ -37,6 +42,9 @@ import {
     ZardCardComponent,
     ZardBadgeComponent,
     DataTableComponent,
+    CardSkeletonComponent,
+    TableSkeletonComponent,
+    ZardSkeletonComponent,
   ],
   templateUrl: './product-detail.component.html',
   styleUrls: ['./product-detail.component.css'],

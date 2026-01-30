@@ -1,5 +1,31 @@
 @if (isLoading()) {
-  <div class="text-muted-foreground">Loading application...</div>
+  <div class="space-y-6">
+    <!-- Header Skeleton -->
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <div class="space-y-2">
+        <z-skeleton class="h-8 w-64" />
+        <z-skeleton class="h-4 w-48" />
+      </div>
+      <div class="flex gap-2">
+        <z-skeleton class="h-10 w-24" />
+        <z-skeleton class="h-10 w-24" />
+      </div>
+    </div>
+
+    <!-- Info Card Skeleton -->
+    <app-card-skeleton [lines]="4" />
+
+    <!-- Workflow Card Skeleton -->
+    <app-card-skeleton [lines]="6" />
+
+    <!-- Documents Card Skeleton -->
+    <z-card class="p-6">
+      <div class="mb-4">
+        <z-skeleton class="h-6 w-1/4" />
+      </div>
+      <app-table-skeleton [rows]="5" [columns]="6" />
+    </z-card>
+  </div>
 } @else if (!application()) {
   <div class="text-muted-foreground">Application not found.</div>
 } @else {

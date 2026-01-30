@@ -29,6 +29,11 @@ import { FileUploadComponent } from '@/shared/components/file-upload';
 import { ZardIconComponent } from '@/shared/components/icon';
 import { ZardInputDirective } from '@/shared/components/input';
 import { ZardPopoverComponent, ZardPopoverDirective } from '@/shared/components/popover';
+import {
+  CardSkeletonComponent,
+  TableSkeletonComponent,
+  ZardSkeletonComponent,
+} from '@/shared/components/skeleton';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 
 @Component({
@@ -48,6 +53,9 @@ import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
     ZardInputDirective,
     ZardPopoverComponent,
     ZardPopoverDirective,
+    CardSkeletonComponent,
+    TableSkeletonComponent,
+    ZardSkeletonComponent,
     AppDatePipe,
   ],
   templateUrl: './application-detail.component.html',
