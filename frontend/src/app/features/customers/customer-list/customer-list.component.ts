@@ -235,6 +235,9 @@ export class CustomerListComponent implements OnInit {
           this.toast.error(
             message ? `Failed to delete customers: ${message}` : 'Failed to delete customers',
           );
+          this.bulkDeleteOpen.set(false);
+          this.bulkDeleteData.set(null);
+          this.bulkDeleteContext.set(null);
         },
       });
   }

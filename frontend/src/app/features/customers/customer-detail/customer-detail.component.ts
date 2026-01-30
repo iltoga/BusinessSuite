@@ -12,6 +12,7 @@ import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
+import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 
 @Component({
   selector: 'app-customer-detail',
@@ -83,7 +84,12 @@ export class CustomerDetailComponent implements OnInit {
         this.toast.success('Customer deleted');
         this.router.navigate(['/customers']);
       },
-      error: () => this.toast.error('Failed to delete customer'),
+      error: (error) => {
+        const message = extractServerErrorMessage(error);
+        this.toast.error(
+          message ? `Failed to delete customer: ${message}` : 'Failed to delete customer',
+        );
+      },
     });
   }
 

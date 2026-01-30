@@ -352,7 +352,7 @@ class DocApplication(models.Model):
     def can_be_deleted(self):
         # Block deletion if related invoices exist
         if self.invoice_applications.exists():
-            return False, "Cannot delete application: related invoices exist."
+            return False, "Related invoices exist. You must delete the invoices first."
         return True, None
 
     def delete(self, *args, **kwargs):

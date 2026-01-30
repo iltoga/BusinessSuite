@@ -255,6 +255,9 @@ export class InvoiceListComponent implements OnInit {
           this.toast.error(
             message ? `Failed to delete invoices: ${message}` : 'Failed to delete invoices',
           );
+          this.bulkDeleteOpen.set(false);
+          this.bulkDeleteData.set(null);
+          this.bulkDeleteContext.set(null);
         },
       });
   }
@@ -343,6 +346,9 @@ export class InvoiceListComponent implements OnInit {
           this.toast.error(
             message ? `Failed to delete invoice: ${message}` : 'Failed to delete invoice',
           );
+          this.invoiceDeleteOpen.set(false);
+          this.invoiceDeleteData.set(null);
+          this.pendingInvoiceId.set(null);
         },
       });
   }

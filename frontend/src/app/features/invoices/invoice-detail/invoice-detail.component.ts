@@ -22,6 +22,7 @@ import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
 import { ConfirmDialogComponent } from '@/shared/components/confirm-dialog/confirm-dialog.component';
+import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 import { PaymentModalComponent } from '../payment-modal/payment-modal.component';
 
 @Component({
@@ -146,9 +147,14 @@ export class InvoiceDetailComponent implements OnInit {
           this.loadInvoice(id);
         }
       },
-      error: () => {
-        this.toast.error('Failed to delete payment');
+      error: (error) => {
+        const message = extractServerErrorMessage(error);
+        this.toast.error(
+          message ? `Failed to delete payment: ${message}` : 'Failed to delete payment',
+        );
         this.isDeletingPayment.set(false);
+        this.paymentDeleteOpen.set(false);
+        this.paymentToDelete.set(null);
       },
     });
   }

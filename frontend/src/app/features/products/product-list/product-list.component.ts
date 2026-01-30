@@ -191,6 +191,8 @@ export class ProductListComponent implements OnInit {
         this.toast.error(
           message ? `Failed to delete product: ${message}` : 'Failed to delete product',
         );
+        this.confirmOpen.set(false);
+        this.pendingDelete.set(null);
       },
     });
   }
@@ -236,6 +238,8 @@ export class ProductListComponent implements OnInit {
         this.toast.error(
           message ? `Failed to delete products: ${message}` : 'Failed to delete products',
         );
+        this.bulkDeleteOpen.set(false);
+        this.bulkDeleteData.set(null);
       },
     });
   }

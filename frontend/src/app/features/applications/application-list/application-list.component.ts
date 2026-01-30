@@ -190,6 +190,8 @@ export class ApplicationListComponent implements OnInit {
         this.toast.error(
           message ? `Failed to delete application: ${message}` : 'Failed to delete application',
         );
+        this.confirmOpen.set(false);
+        this.pendingDelete.set(null);
       },
     });
   }
@@ -261,6 +263,8 @@ export class ApplicationListComponent implements OnInit {
           this.toast.error(
             message ? `Failed to delete applications: ${message}` : 'Failed to delete applications',
           );
+          this.bulkDeleteOpen.set(false);
+          this.bulkDeleteData.set(null);
         },
       });
   }
