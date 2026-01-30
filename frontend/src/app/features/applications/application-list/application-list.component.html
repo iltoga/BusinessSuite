@@ -73,9 +73,23 @@
             }
 
             @if (isSuperuser()) {
-              <z-button zType="destructive" zSize="sm" (click)="confirmDelete(row)"
-                >Delete</z-button
+              <span
+                [zTooltip]="
+                  row.hasInvoice
+                    ? 'This application cannot be deleted because it has related invoices. You must delete the invoices first.'
+                    : ''
+                "
+                zPosition="top"
               >
+                <z-button
+                  zType="destructive"
+                  zSize="sm"
+                  [zDisabled]="row.hasInvoice"
+                  (click)="confirmDelete(row)"
+                >
+                  Delete
+                </z-button>
+              </span>
             }
           </div>
         </ng-template>

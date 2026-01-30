@@ -29,6 +29,7 @@ import {
 } from '@/shared/components/data-table/data-table.component';
 import { PaginationControlsComponent } from '@/shared/components/pagination-controls';
 import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
+import { ZardTooltipImports } from '@/shared/components/tooltip';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 
 @Component({
@@ -44,6 +45,7 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
     ConfirmDialogComponent,
     ZardBadgeComponent,
     BulkDeleteDialogComponent,
+    ...ZardTooltipImports,
   ],
   templateUrl: './product-list.component.html',
   styleUrls: ['./product-list.component.css'],

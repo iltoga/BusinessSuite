@@ -56,7 +56,8 @@
       -webkit-box-orient: vertical;
       overflow: hidden;
     "
-    [attr.title]="row.description || ''"
+    [zTooltip]="row.description || ''"
+    zPosition="top"
   >
     {{ row.description }}
   </div>

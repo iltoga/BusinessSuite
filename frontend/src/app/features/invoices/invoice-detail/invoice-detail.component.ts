@@ -22,6 +22,7 @@ import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
 import { ConfirmDialogComponent } from '@/shared/components/confirm-dialog/confirm-dialog.component';
+import { ZardTooltipImports } from '@/shared/components/tooltip';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 import { PaymentModalComponent } from '../payment-modal/payment-modal.component';
 
@@ -36,6 +37,7 @@ import { PaymentModalComponent } from '../payment-modal/payment-modal.component'
     ZardCardComponent,
     ConfirmDialogComponent,
     PaymentModalComponent,
+    ...ZardTooltipImports,
   ],
   templateUrl: './invoice-detail.component.html',
   styleUrls: ['./invoice-detail.component.css'],
