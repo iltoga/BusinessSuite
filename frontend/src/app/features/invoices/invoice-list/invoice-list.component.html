@@ -96,9 +96,14 @@
 
 <ng-template #amountsTemplate let-row>
   <div class="flex flex-col text-sm">
-    <span>Total: {{ formatCurrency(row.totalAmount) }}</span>
-    <span>Paid: {{ formatCurrency(row.totalPaidAmount) }}</span>
-    <span>Due: {{ formatCurrency(row.totalDueAmount) }}</span>
+    <ng-container *ngIf="isFullyPaid(row); else partialTpl">
+      <span class="font-medium">{{ formatCurrency(row.totalPaidAmount) }}</span>
+    </ng-container>
+    <ng-template #partialTpl>
+      <span>Total: {{ formatCurrency(row.totalAmount) }}</span>
+      <span>Paid: {{ formatCurrency(row.totalPaidAmount) }}</span>
+      <span>Due: {{ formatCurrency(row.totalDueAmount) }}</span>
+    </ng-template>
   </div>
 </ng-template>
 

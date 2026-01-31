@@ -189,6 +189,19 @@ export class InvoiceListComponent implements OnInit {
     }).format(n);
   }
 
+  /**
+   * Returns true when the invoice should be considered fully paid and we only
+   * want to display the paid amount. We prefer checking the explicit status
+   * first ("paid") and fall back to totalDueAmount <= 0 which covers cases
+   * where rounding or write-offs made due amount zero.
+   */
+  isFullyPaid(row: InvoiceList): boolean {
+    if (row.status === 'paid') return true;
+    const due = Number(row.totalDueAmount ?? 0);
+    if (!Number.isNaN(due) && due <= 0) return true;
+    return false;
+  }
+
   statusVariant(
     status?: string | null,
   ): 'default' | 'secondary' | 'success' | 'warning' | 'destructive' {
