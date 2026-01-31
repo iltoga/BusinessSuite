@@ -1,5 +1,7 @@
+import json
 import mimetypes
 import os
+import time
 import uuid
 from datetime import datetime
 from io import BytesIO
@@ -8,7 +10,7 @@ from django.conf import settings
 from django.core.files.storage import default_storage
 from django.db.models import Count, DecimalField, F, OuterRef, Prefetch, Q, Subquery, Sum, Value
 from django.db.models.functions import Coalesce
-from django.http import FileResponse
+from django.http import FileResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.utils import timezone
@@ -62,8 +64,10 @@ from core.utils.dateutils import calculate_due_date
 from core.utils.pdf_converter import PDFConverter, PDFConverterError
 from customer_applications.models import DocApplication, Document
 from customers.models import Customer
+from invoices.models import InvoiceDownloadJob
 from invoices.models.invoice import Invoice, InvoiceApplication
 from invoices.services.InvoiceService import InvoiceService
+from invoices.tasks.download_jobs import run_invoice_download_job
 from letters.services.LetterService import LetterService
 from payments.models import Payment
 from products.models import Product
@@ -607,6 +611,152 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         except PDFConverterError as e:
             return self.error_response(f"PDF conversion failed: {str(e)}", status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)
+    @action(detail=True, methods=["post"], url_path="download-async")
+    def download_async(self, request, pk=None):
+        format_type = (
+            request.data.get("file_format")
+            or request.data.get("format")
+            or request.query_params.get("file_format")
+            or "pdf"
+        ).lower()
+
+        if format_type not in [InvoiceDownloadJob.FORMAT_DOCX, InvoiceDownloadJob.FORMAT_PDF]:
+            return self.error_response("Invalid format. Use 'docx' or 'pdf'.", status.HTTP_400_BAD_REQUEST)
+
+        invoice = self.get_object()
+
+        job = InvoiceDownloadJob.objects.create(
+            invoice=invoice,
+            status=InvoiceDownloadJob.STATUS_QUEUED,
+            progress=0,
+            format_type=format_type,
+            created_by=request.user,
+            request_params={"format": format_type},
+        )
+
+        run_invoice_download_job(str(job.id))
+
+        return Response(
+            {
+                "job_id": str(job.id),
+                "status": job.status,
+                "progress": job.progress,
+                "status_url": request.build_absolute_uri(
+                    reverse("invoices-download-async-status", kwargs={"job_id": str(job.id)})
+                ),
+                "stream_url": request.build_absolute_uri(
+                    reverse("invoices-download-async-stream", kwargs={"job_id": str(job.id)})
+                ),
+                "download_url": request.build_absolute_uri(
+                    reverse("invoices-download-async-file", kwargs={"job_id": str(job.id)})
+                ),
+            },
+            status=status.HTTP_202_ACCEPTED,
+        )
+
+    @extend_schema(responses=OpenApiTypes.OBJECT)
+    @action(detail=False, methods=["get"], url_path=r"download-async/status/(?P<job_id>[^/.]+)")
+    def download_async_status(self, request, job_id=None):
+        try:
+            job = InvoiceDownloadJob.objects.select_related("invoice").get(id=job_id)
+        except InvoiceDownloadJob.DoesNotExist:
+            return self.error_response("Job not found", status.HTTP_404_NOT_FOUND)
+
+        payload = {
+            "job_id": str(job.id),
+            "status": job.status,
+            "progress": job.progress,
+            "download_url": request.build_absolute_uri(
+                reverse("invoices-download-async-file", kwargs={"job_id": str(job.id)})
+            ),
+        }
+
+        if job.status == InvoiceDownloadJob.STATUS_FAILED:
+            payload["error"] = job.error_message or "Job failed"
+
+        return Response(payload)
+
+    @action(detail=False, methods=["get"], url_path=r"download-async/stream/(?P<job_id>[^/.]+)")
+    def download_async_stream(self, request, job_id=None):
+        response = StreamingHttpResponse(self._stream_download_job(job_id), content_type="text/event-stream")
+        response["Cache-Control"] = "no-cache"
+        response["X-Accel-Buffering"] = "no"
+        return response
+
+    def _stream_download_job(self, job_id):
+        last_progress = None
+        try:
+            job = InvoiceDownloadJob.objects.get(id=job_id)
+        except InvoiceDownloadJob.DoesNotExist:
+            yield self._send_download_event("error", {"message": "Job not found"})
+            return
+
+        yield self._send_download_event(
+            "start", {"message": "Starting invoice generation...", "progress": job.progress}
+        )
+
+        while True:
+            job.refresh_from_db()
+
+            if last_progress != job.progress:
+                yield self._send_download_event(
+                    "progress",
+                    {"progress": job.progress, "status": job.status},
+                )
+                last_progress = job.progress
+
+            if job.status == InvoiceDownloadJob.STATUS_COMPLETED:
+                yield self._send_download_event(
+                    "complete",
+                    {
+                        "message": "Invoice ready",
+                        "download_url": reverse("invoices-download-async-file", kwargs={"job_id": str(job.id)}),
+                        "status": job.status,
+                    },
+                )
+                break
+
+            if job.status == InvoiceDownloadJob.STATUS_FAILED:
+                yield self._send_download_event(
+                    "error",
+                    {"message": job.error_message or "Invoice generation failed", "status": job.status},
+                )
+                break
+
+            yield ": keep-alive\n\n"
+            time.sleep(0.5)
+
+    @staticmethod
+    def _send_download_event(event_type, data):
+        return f"event: {event_type}\ndata: {json.dumps(data)}\n\n"
+
+    @action(detail=False, methods=["get"], url_path=r"download-async/file/(?P<job_id>[^/.]+)")
+    def download_async_file(self, request, job_id=None):
+        try:
+            job = InvoiceDownloadJob.objects.select_related("invoice", "invoice__customer").get(id=job_id)
+        except InvoiceDownloadJob.DoesNotExist:
+            return self.error_response("Job not found", status.HTTP_404_NOT_FOUND)
+
+        if job.status != InvoiceDownloadJob.STATUS_COMPLETED or not job.output_path:
+            return self.error_response("Job not completed yet", status.HTTP_400_BAD_REQUEST)
+
+        invoice = job.invoice
+        raw_name = f"{invoice.invoice_no_display}_{invoice.customer.full_name}"
+        safe_name = slugify(raw_name, allow_unicode=False).replace("-", "_") or f"Invoice_{invoice.pk}"
+        safe_name = safe_name[:200]
+        extension = "pdf" if job.format_type == InvoiceDownloadJob.FORMAT_PDF else "docx"
+
+        file_handle = default_storage.open(job.output_path, "rb")
+        content_type = (
+            "application/pdf"
+            if extension == "pdf"
+            else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+        response = FileResponse(file_handle, content_type=content_type)
+        response["Content-Disposition"] = f'attachment; filename="{safe_name}.{extension}"'
+        return response
+
     @extend_schema(
         parameters=[
             OpenApiParameter(
@@ -1098,11 +1248,6 @@ class DocumentViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
         Expects JSON: {"document_ids": [1, 2, 3]}
         """
-        import logging
-
-        logger = logging.getLogger(__name__)
-        logger.info(f"DEBUG: merge_pdf called with data: {request.data}")
-
         serializer = DocumentMergeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         document_ids = serializer.validated_data.get("document_ids", [])
@@ -1119,14 +1264,12 @@ class DocumentViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         }
 
         if not documents_dict:
-            logger.warning("DEBUG: No valid documents found")
             return self.error_response("No valid documents found.", status.HTTP_404_NOT_FOUND)
 
         ordered_documents = [documents_dict[doc_id] for doc_id in document_ids if doc_id in documents_dict]
         documents_with_files = [doc for doc in ordered_documents if doc.file and doc.file.name]
 
         if not documents_with_files:
-            logger.warning("DEBUG: Selected documents have no uploaded files")
             return self.error_response("Selected documents have no uploaded files.", status.HTTP_400_BAD_REQUEST)
 
         # Get filename info from first doc
@@ -1134,9 +1277,7 @@ class DocumentViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         customer_name = application.customer.full_name if application and application.customer else "documents"
 
         try:
-            logger.info("DEBUG: Calling DocumentMerger")
             merged_pdf = DocumentMerger.merge_document_models(ordered_documents)
-            logger.info(f"DEBUG: Merged PDF size: {len(merged_pdf)}")
 
             safe_customer_name = slugify(customer_name, allow_unicode=False).replace("-", "_")
             filename = f"documents_{safe_customer_name}_{application.pk if application else 'merged'}.pdf"
@@ -1148,15 +1289,14 @@ class DocumentViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             response["Content-Disposition"] = f'attachment; filename="{filename}"'
             response["Content-Length"] = len(merged_pdf)
 
-            logger.info(f"Successfully merged {len(documents_with_files)} documents")
-
             return response
 
         except DocumentMergerError as e:
-            logger.error(f"DEBUG: DocumentMergerError: {str(e)}")
             return self.error_response(f"Failed to merge documents: {str(e)}", status.HTTP_500_INTERNAL_SERVER_ERROR)
         except Exception as e:
-            logger.exception("Unexpected error merging documents")
+            import logging
+
+            logging.getLogger(__name__).exception("Unexpected error merging documents")
             return self.error_response("An unexpected error occurred", status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -1579,11 +1719,10 @@ def customer_application_quick_create(request):
 
     except Exception as e:
         # Handle validation errors
-        import traceback
+        import logging
 
         error_msg = str(e)
-        print(f"Error in customer_application_quick_create: {error_msg}")
-        print(traceback.format_exc())
+        logging.getLogger(__name__).exception(f"Error in customer_application_quick_create: {error_msg}")
 
         if hasattr(e, "message_dict"):
             # Django ValidationError

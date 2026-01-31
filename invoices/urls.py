@@ -23,6 +23,26 @@ urlpatterns = [
     path("mark-as-paid/<int:pk>/", views.InvoiceMarkAsPaidView.as_view(), name="invoice-mark-as-paid"),
     path("delete-all/", views.InvoiceDeleteAllView.as_view(), name="invoice-delete-all"),
     path("download/<int:pk>", views.InvoiceDownloadView.as_view(), name="invoice-download"),
+    path(
+        "download/async/<int:pk>/",
+        views.InvoiceDownloadAsyncStartView.as_view(),
+        name="invoice-download-async-start",
+    ),
+    path(
+        "download/async/status/<uuid:job_id>/",
+        views.InvoiceDownloadAsyncStatusView.as_view(),
+        name="invoice-download-async-status",
+    ),
+    path(
+        "download/async/stream/<uuid:job_id>/",
+        views.InvoiceDownloadAsyncStreamView.as_view(),
+        name="invoice-download-async-stream",
+    ),
+    path(
+        "download/async/file/<uuid:job_id>/",
+        views.InvoiceDownloadAsyncFileView.as_view(),
+        name="invoice-download-async-file",
+    ),
     path("download/bulk/", views.InvoiceBulkDocumentCreateView.as_view(), name="invoice-bulk-download"),
     path(
         "download/bulk/status/<uuid:job_id>/",

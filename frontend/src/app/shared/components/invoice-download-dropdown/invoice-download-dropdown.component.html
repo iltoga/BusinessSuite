@@ -22,3 +22,15 @@
     Download PDF
   </button>
 </z-dropdown-menu-content>
+
+@if (progress() !== null) {
+  <div class="mt-2 space-y-1">
+    <div class="flex items-center justify-between text-xs text-muted-foreground">
+      <span>Preparing PDF</span>
+      <span>{{ progress() }}%</span>
+    </div>
+    <div class="h-2 w-full rounded-full bg-muted">
+      <div class="h-2 rounded-full bg-primary" [style.width.%]="progress()"></div>
+    </div>
+  </div>
+}
