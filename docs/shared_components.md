@@ -365,6 +365,7 @@ export class CardSkeletonComponent {
 - **2026-01-29:** Invoices & Payments feature added new invoice screens; no new shared components added.
 - **2026-01-31:** Added `InvoiceDownloadDropdownComponent` to handle multi-format invoice downloads (DOCX/PDF) across list and detail views. Fixed ZardUI component property names (zType/zSize) and added missing icons (download, file-code) to `icons.ts`.
 - **2026-01-31:** Applications feature reused existing shared components; specifically: `SortableMultiSelect` (used for ordered document selection), `DocumentPreview`, `FileUpload`, and `PdfViewerHost`. No new shared components were created for this task. Note: several AI-dependent invoice import tests were removed because they were environment-dependent and flaky in CI (`invoices/tests/test_invoice_import_multimodal.py`).
+- **2026-01-31:** Added Invoice Import feature with `InvoiceImportModalComponent` (feature-specific, not shared). Uses SSE for real-time progress updates, LLM-based invoice parsing, and batch import support. Added `upload` icon to `icons.ts`. Backend endpoints added to `InvoiceViewSet`: `import_config`, `import_single`, `import_batch`, `import_status`, `import_stream`.
 
 ```
 

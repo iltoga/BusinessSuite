@@ -1070,6 +1070,37 @@ paths:
               schema:
                 $ref: '#/components/schemas/Document'
           description: ''
+  /api/documents/merge-pdf/:
+    post:
+      operationId: documentsMergePdfCreate
+      description: |-
+        Merge selected documents into a single PDF.
+
+        Expects JSON: {"document_ids": [1, 2, 3]}
+      tags:
+      - documents
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocumentMerge'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DocumentMerge'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentMerge'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+          description: ''
   /api/invoices/:
     get:
       operationId: invoicesList
@@ -1270,6 +1301,76 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/invoices/{id}/download/:
+    get:
+      operationId: invoicesDownloadRetrieve
+      parameters:
+      - in: query
+        name: file_format
+        schema:
+          type: string
+          enum:
+          - docx
+          - pdf
+        description: The format of the downloaded invoice (docx or pdf).
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this invoice.
+        required: true
+      tags:
+      - invoices
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+          description: ''
+  /api/invoices/{id}/download-async/:
+    post:
+      operationId: invoicesDownloadAsyncCreate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this invoice.
+        required: true
+      tags:
+      - invoices
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+          '*/*':
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/invoices/{id}/force-delete/:
     post:
       operationId: invoicesForceDeleteCreate
@@ -1382,6 +1483,67 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/invoices/download-async/file/{jobId}/:
+    get:
+      operationId: invoicesDownloadAsyncFileRetrieve
+      parameters:
+      - in: path
+        name: jobId
+        schema:
+          type: string
+        required: true
+      tags:
+      - invoices
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceList'
+          description: ''
+  /api/invoices/download-async/status/{jobId}/:
+    get:
+      operationId: invoicesDownloadAsyncStatusRetrieve
+      parameters:
+      - in: path
+        name: jobId
+        schema:
+          type: string
+        required: true
+      tags:
+      - invoices
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/invoices/download-async/stream/{jobId}/:
+    get:
+      operationId: invoicesDownloadAsyncStreamRetrieve
+      parameters:
+      - in: path
+        name: jobId
+        schema:
+          type: string
+        required: true
+      tags:
+      - invoices
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceList'
+          description: ''
   /api/invoices/get_customer_applications/{customerId}/:
     get:
       operationId: invoicesGetCustomerApplicationsList
@@ -1450,6 +1612,133 @@ paths:
         name: invoiceApplicationId
         schema:
           type: integer
+        required: true
+      tags:
+      - invoices
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceList'
+          description: ''
+  /api/invoices/import/batch/:
+    post:
+      operationId: invoicesImportBatchCreate
+      description: Import multiple invoice files with SSE progress streaming.
+      tags:
+      - invoices
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                paid_status:
+                  type: array
+                  items:
+                    type: string
+                llm_provider:
+                  type: string
+                llm_model:
+                  type: string
+              required:
+              - files
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/invoices/import/config/:
+    get:
+      operationId: invoicesImportConfigRetrieve
+      description: Get LLM configuration and supported formats for invoice import.
+      tags:
+      - invoices
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/invoices/import/single/:
+    post:
+      operationId: invoicesImportSingleCreate
+      description: Import a single invoice file using AI parsing.
+      tags:
+      - invoices
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                llm_provider:
+                  type: string
+                llm_model:
+                  type: string
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/invoices/import/status/{jobId}/:
+    get:
+      operationId: invoicesImportStatusRetrieve
+      description: Get status of an invoice import job.
+      parameters:
+      - in: path
+        name: jobId
+        schema:
+          type: string
+        required: true
+      tags:
+      - invoices
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/invoices/import/stream/{jobId}/:
+    get:
+      operationId: invoicesImportStreamRetrieve
+      description: Stream SSE updates for a running import job.
+      parameters:
+      - in: path
+        name: jobId
+        schema:
+          type: string
         required: true
       tags:
       - invoices
@@ -1532,6 +1821,16 @@ paths:
                 type: string
                 format: binary
           description: ''
+  /api/mock-auth-config/:
+    get:
+      operationId: mockAuthConfigRetrieve
+      tags:
+      - mock-auth-config
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
   /api/ocr/check/:
     post:
       operationId: ocrCheckCreate
@@ -2658,6 +2957,18 @@ components:
       - icon
       - label
       - name
+    DocumentMerge:
+      type: object
+      description: Serializer for merging documents.
+      properties:
+        document_ids:
+          type: array
+          items:
+            type: integer
+          description: Ordered list of document IDs to merge.
+          minItems: 1
+      required:
+      - document_ids
     DocumentType:
       type: object
       properties:

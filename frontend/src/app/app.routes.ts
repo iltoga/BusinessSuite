@@ -10,6 +10,7 @@ import { CustomerListComponent } from './features/customers/customer-list/custom
 import { DashboardComponent } from './features/dashboard/dashboard.component';
 import { InvoiceDetailComponent } from './features/invoices/invoice-detail/invoice-detail.component';
 import { InvoiceFormComponent } from './features/invoices/invoice-form/invoice-form.component';
+import { InvoiceImportComponent } from './features/invoices/invoice-import/invoice-import.component';
 import { InvoiceListComponent } from './features/invoices/invoice-list/invoice-list.component';
 import { SuratPermohonanComponent } from './features/letters/surat-permohonan/surat-permohonan.component';
 import { ProductDetailComponent } from './features/products/product-detail/product-detail.component';
@@ -44,6 +45,7 @@ export const routes: Routes = [
       { path: 'applications/:id/edit', component: ApplicationFormComponent },
       { path: 'applications/:id', component: ApplicationDetailComponent },
       { path: 'invoices', component: InvoiceListComponent },
+      { path: 'invoices/import', component: InvoiceImportComponent },
       { path: 'invoices/new', component: InvoiceFormComponent },
       { path: 'invoices/:id/edit', component: InvoiceFormComponent },
       { path: 'invoices/:id', component: InvoiceDetailComponent },

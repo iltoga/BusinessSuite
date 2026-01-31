@@ -1,9 +1,14 @@
 <div class="h-full flex flex-col gap-6">
   <div class="flex justify-between items-center">
     <h1 class="text-3xl font-bold tracking-tight">Invoices</h1>
-    <a routerLink="/invoices/new">
-      <z-button zType="default" zSize="default">New Invoice</z-button>
-    </a>
+    <div class="flex items-center gap-2">
+      <a routerLink="/invoices/import">
+        <z-button zType="secondary" zSize="default">Import Invoice</z-button>
+      </a>
+      <a routerLink="/invoices/new">
+        <z-button zType="default" zSize="default">New Invoice</z-button>
+      </a>
+    </div>
   </div>
 
   <div class="bg-card rounded-lg border shadow-sm">

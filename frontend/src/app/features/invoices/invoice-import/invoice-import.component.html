@@ -1,0 +1,307 @@
+<div class="h-full flex flex-col gap-6">
+  <div class="flex items-center gap-4">
+    <z-button zType="ghost" zSize="sm" (click)="goBack()" [zDisabled]="isImporting()">
+      <z-icon zType="arrow-left" class="mr-2 h-4 w-4" />
+      Back
+    </z-button>
+    <h1 class="text-3xl font-bold tracking-tight">Import Invoices</h1>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Main Content -->
+    <div class="lg:col-span-2 space-y-6">
+      <!-- Drop Zone -->
+      @if (!showResults()) {
+        <div
+          [class]="getDropzoneClasses()"
+          (click)="fileInput.click()"
+          (drop)="onDrop($event)"
+          (dragover)="onDragOver($event)"
+          (dragleave)="onDragLeave($event)"
+        >
+          <input
+            #fileInput
+            type="file"
+            class="hidden"
+            multiple
+            accept=".pdf,.xlsx,.xls,.docx,.doc"
+            (change)="onFileSelect($event)"
+            [disabled]="isImporting()"
+          />
+          <z-icon zType="upload" class="h-12 w-12 text-muted-foreground mb-2" />
+          <div class="text-xl font-semibold">Drag & Drop Invoice Files Here</div>
+          <p class="text-muted-foreground">or click to browse your computer</p>
+          <p class="text-xs text-muted-foreground mt-4">
+            Supported formats:
+            <span class="font-medium text-foreground">{{
+              llmConfig()?.supportedFormats?.join(', ') || '.pdf, .xlsx, .xls, .docx, .doc'
+            }}</span>
+          </p>
+        </div>
+      }
+
+      <!-- Progress Message -->
+      @if (isImporting()) {
+        <div class="rounded-lg bg-primary/10 border border-primary/20 p-6">
+          <div class="flex items-center gap-4">
+            <z-icon zType="loader-circle" class="h-6 w-6 animate-spin text-primary" />
+            <div>
+              <div class="font-semibold text-primary">{{ importProgress() }}</div>
+              <div class="text-sm text-primary/70">
+                Please don't close this page until the process is complete.
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- File List -->
+      @if (hasFiles()) {
+        <div class="bg-card rounded-lg border shadow-sm overflow-hidden">
+          <div class="p-4 border-b bg-muted/30 flex items-center justify-between">
+            <h3 class="font-semibold">Files to Import ({{ files().length }})</h3>
+            @if (!isImporting() && !showResults()) {
+              <z-button
+                zType="ghost"
+                zSize="sm"
+                (click)="clearFiles()"
+                class="text-destructive hover:text-destructive hover:bg-destructive/10"
+              >
+                <z-icon zType="trash" class="mr-2 h-4 w-4" />
+                Clear All
+              </z-button>
+            }
+          </div>
+
+          <div class="divide-y overflow-y-auto max-h-[500px]">
+            @for (item of files(); track $index) {
+              <div
+                class="flex items-center justify-between gap-4 p-4 transition-colors"
+                [class.bg-success/5]="item.status === 'success'"
+                [class.bg-warning/5]="item.status === 'duplicate'"
+                [class.bg-destructive/5]="item.status === 'error'"
+              >
+                <div class="flex items-center gap-4 min-w-0 flex-1">
+                  <div class="h-10 w-10 rounded bg-muted flex items-center justify-center shrink-0">
+                    <z-icon zType="file-text" class="h-6 w-6 text-muted-foreground" />
+                  </div>
+                  <div class="min-w-0">
+                    <div class="font-medium truncate">{{ item.file.name }}</div>
+                    <div class="text-xs text-muted-foreground flex items-center gap-2 mt-1">
+                      <span>{{ formatFileSize(item.file.size) }}</span>
+                      @if (item.result?.invoice) {
+                        <span class="text-success font-medium">
+                          → {{ item.result!.invoice!.invoiceNo }} |
+                          {{ item.result!.invoice!.customerName }}
+                        </span>
+                      }
+                      @if (item.result?.errors?.length) {
+                        <span class="text-destructive font-medium">
+                          {{ item.result!.errors![0] }}
+                        </span>
+                      }
+                    </div>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-3 shrink-0">
+                  <z-badge [zType]="getStatusBadgeVariant(item.status)">
+                    <div class="flex items-center gap-1">
+                      @if (item.status === 'processing' || item.status === 'parsing') {
+                        <z-icon zType="loader-circle" class="h-3 w-3 animate-spin" />
+                      }
+                      {{ item.statusMessage }}
+                    </div>
+                  </z-badge>
+
+                  @if (!isImporting() && !showResults()) {
+                    <div class="flex items-center gap-4 border-l pl-4">
+                      <label class="flex items-center gap-2 cursor-pointer group">
+                        <input
+                          type="checkbox"
+                          [checked]="item.isPaid"
+                          (change)="togglePaid($index)"
+                          class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary transition cursor-pointer"
+                        />
+                        <span
+                          class="text-sm font-medium text-success group-hover:opacity-80 transition"
+                          >Paid</span
+                        >
+                      </label>
+                      <z-button
+                        zType="ghost"
+                        zSize="sm"
+                        (click)="removeFile($index)"
+                        class="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      >
+                        <z-icon zType="x" class="h-4 w-4" />
+                      </z-button>
+                    </div>
+                  }
+
+                  @if (showResults() && item.result?.invoice) {
+                    <z-button
+                      zType="secondary"
+                      zSize="sm"
+                      (click)="viewInvoice(item.result!.invoice!.id)"
+                    >
+                      View Invoice
+                    </z-button>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- Results Summary -->
+      @if (showResults()) {
+        <div class="bg-card rounded-lg border shadow-sm p-6">
+          <h3 class="text-lg font-semibold mb-6">Import Summary</h3>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div
+              class="rounded-xl bg-muted/30 p-4 border border-border/50 transition-all hover:bg-muted/40"
+            >
+              <div class="text-3xl font-bold text-primary mb-1">{{ importSummary().total }}</div>
+              <div class="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                Total
+              </div>
+            </div>
+            <div
+              class="rounded-xl bg-success/10 p-4 border border-success/20 transition-all hover:bg-success/15"
+            >
+              <div class="text-3xl font-bold text-success mb-1">{{ importSummary().imported }}</div>
+              <div class="text-sm font-medium text-success/80 uppercase tracking-wider">
+                Success
+              </div>
+            </div>
+            <div
+              class="rounded-xl bg-warning/10 p-4 border border-warning/20 transition-all hover:bg-warning/15"
+            >
+              <div class="text-3xl font-bold text-warning mb-1">
+                {{ importSummary().duplicates }}
+              </div>
+              <div class="text-sm font-medium text-warning/80 uppercase tracking-wider">
+                Duplicates
+              </div>
+            </div>
+            <div
+              class="rounded-xl bg-destructive/10 p-4 border border-destructive/20 transition-all hover:bg-destructive/15"
+            >
+              <div class="text-3xl font-bold text-destructive mb-1">
+                {{ importSummary().errors }}
+              </div>
+              <div class="text-sm font-medium text-destructive/80 uppercase tracking-wider">
+                Errors
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-8 flex justify-center gap-3">
+            <z-button zType="secondary" (click)="goBack()"> Return to Invoice List </z-button>
+            <z-button zType="default" (click)="clearFiles()"> Import More Files </z-button>
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- Sidebar / Config -->
+    <div class="space-y-6">
+      <!-- Config -->
+      <div class="bg-card rounded-lg border shadow-sm p-6 space-y-6">
+        <h3 class="font-semibold text-lg flex items-center gap-2">
+          <z-icon zType="settings" class="h-5 w-5" />
+          Import Settings
+        </h3>
+
+        <div class="space-y-4">
+          <div class="space-y-2">
+            <label class="text-sm font-medium">AI Provider</label>
+            <select
+              class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              [ngModel]="selectedProvider()"
+              (ngModelChange)="onProviderChange($event)"
+              [disabled]="isImporting() || isLoadingConfig()"
+            >
+              <option value="">Use system default</option>
+              @for (provider of providerOptions(); track provider.id) {
+                <option [value]="provider.id">{{ provider.name }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-medium">Model</label>
+            <select
+              class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              [ngModel]="selectedModel()"
+              (ngModelChange)="onModelChange($event)"
+              [disabled]="
+                isImporting() ||
+                isLoadingConfig() ||
+                !selectedProvider() ||
+                modelOptions().length === 0
+              "
+            >
+              <option value="">Use system default</option>
+              @for (model of modelOptions(); track model.id) {
+                <option [value]="model.id">{{ model.name }}</option>
+              }
+            </select>
+          </div>
+
+          @if (llmConfig()) {
+            <div class="rounded bg-muted/50 p-3 text-xs text-muted-foreground">
+              <span class="font-semibold text-foreground/70">System default:</span>
+              {{ llmConfig()?.currentProvider }} / {{ llmConfig()?.currentModel }}
+            </div>
+          }
+        </div>
+
+        <div class="pt-4">
+          <z-button
+            zType="default"
+            class="w-full h-11"
+            (click)="startImport()"
+            [zDisabled]="!canImport()"
+          >
+            @if (isImporting()) {
+              <z-icon zType="loader-circle" class="h-4 w-4 animate-spin mr-2" />
+              Processing Import...
+            } @else {
+              <z-icon zType="play" class="mr-2 h-4 w-4" />
+              Start Batch Import
+            }
+          </z-button>
+        </div>
+      </div>
+
+      <!-- Instructions Card -->
+      <div class="bg-primary/5 rounded-lg border border-primary/10 p-6 space-y-4">
+        <h4 class="font-semibold flex items-center gap-2 text-primary">
+          <z-icon zType="info" class="h-5 w-5" />
+          Quick Guide
+        </h4>
+        <ul class="text-sm space-y-3 text-muted-foreground">
+          <li class="flex gap-2">
+            <span class="text-primary font-bold">1.</span>
+            Upload files (PDF, Excel, Word). Multiple files supported.
+          </li>
+          <li class="flex gap-2">
+            <span class="text-primary font-bold">2.</span>
+            The system extracts customer and invoice data using AI.
+          </li>
+          <li class="flex gap-2">
+            <span class="text-primary font-bold">3.</span>
+            Existing customers match automatically, new ones are created.
+          </li>
+          <li class="flex gap-2">
+            <span class="text-primary font-bold">4.</span>
+            Duplicates are detected to prevent double entry.
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>

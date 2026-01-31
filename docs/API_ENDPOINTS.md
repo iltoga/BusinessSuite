@@ -56,6 +56,36 @@ This document lists the main API endpoints exposed by the application in this re
   - **Input:** URL parameter `customer_id` (integer)
   - **Description:** Retrieve all applications for a particular customer, annotated with the count of related invoice applications.
 
+### Invoice Import (AI-Powered)
+
+- **GET `/api/invoices/import_config/`**
+  - **Input:** None
+  - **Description:** Retrieve available LLM providers for invoice import. Returns `providers` array with `id`, `name`, and `models` for each provider.
+
+- **POST `/api/invoices/import_single/`**
+  - **Input:** Multipart/form-data:
+    - `file`: File (required, invoice image or PDF)
+    - `provider`: String (required, LLM provider id, e.g., "openrouter")
+    - `model`: String (optional, specific model name)
+    - `mark_as_paid`: Boolean (optional, mark imported invoice as paid)
+  - **Description:** Import a single invoice using AI extraction. Returns parsed invoice data including customer info, items, and totals.
+
+- **POST `/api/invoices/import_batch/`**
+  - **Input:** Multipart/form-data:
+    - `files`: File[] (required, multiple invoice files)
+    - `provider`: String (required, LLM provider id)
+    - `model`: String (optional, specific model name)
+    - `mark_as_paid`: Boolean (optional, mark imported invoices as paid)
+  - **Description:** Start a batch import job for multiple invoices. Returns `job_id` for status polling and SSE streaming.
+
+- **GET `/api/invoices/import_status/<job_id>/`**
+  - **Input:** URL parameter `job_id` (UUID)
+  - **Description:** Poll batch import job status. Returns job status, progress counts (`total`, `processed`, `success`, `failed`, `duplicate`), and results array.
+
+- **GET `/api/invoices/import_stream/<job_id>/`**
+  - **Input:** URL parameter `job_id` (UUID)
+  - **Description:** Server-Sent Events (SSE) stream for real-time import progress updates. Emits events: `progress` (processing updates), `complete` (final results), `error` (job errors).
+
 ---
 
 ## OCR

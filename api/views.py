@@ -906,6 +906,371 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         )
         return Response({"created": len(created)}, status=status.HTTP_201_CREATED)
 
+    # --------------------------------------------------------------------- #
+    # Invoice Import Endpoints                                               #
+    # --------------------------------------------------------------------- #
+
+    @extend_schema(
+        responses=OpenApiTypes.OBJECT,
+        description="Get LLM configuration and supported formats for invoice import.",
+    )
+    @action(detail=False, methods=["get"], url_path="import/config")
+    def import_config(self, request):
+        """Return LLM configuration and import settings."""
+        import json as json_module
+
+        from django.conf import settings as django_settings
+        from django.contrib.staticfiles import finders
+
+        # Load LLM models config from static file
+        llm_config = {"providers": {}}
+        llm_config_path = finders.find("llm_models.json")
+        if not llm_config_path:
+            llm_config_path = django_settings.BASE_DIR / "business_suite" / "static" / "llm_models.json"
+
+        try:
+            with open(llm_config_path, "r") as f:
+                llm_config = json_module.load(f)
+        except Exception:
+            llm_config = {"providers": {}}
+
+        return Response(
+            {
+                "providers": llm_config.get("providers", {}),
+                "currentProvider": getattr(django_settings, "LLM_PROVIDER", "openrouter"),
+                "currentModel": getattr(django_settings, "LLM_DEFAULT_MODEL", "google/gemini-2.0-flash-001"),
+                "maxWorkers": getattr(django_settings, "INVOICE_IMPORT_MAX_WORKERS", 3),
+                "supportedFormats": [".pdf", ".xlsx", ".xls", ".docx", ".doc"],
+            }
+        )
+
+    @extend_schema(
+        request={
+            "multipart/form-data": {
+                "type": "object",
+                "properties": {
+                    "file": {"type": "string", "format": "binary"},
+                    "llm_provider": {"type": "string"},
+                    "llm_model": {"type": "string"},
+                },
+                "required": ["file"],
+            }
+        },
+        responses=OpenApiTypes.OBJECT,
+        description="Import a single invoice file using AI parsing.",
+    )
+    @action(detail=False, methods=["post"], url_path="import/single", parser_classes=[MultiPartParser, FormParser])
+    def import_single(self, request):
+        """Process single uploaded invoice file."""
+        if "file" not in request.FILES:
+            return self.error_response("No file uploaded", status.HTTP_400_BAD_REQUEST)
+
+        uploaded_file = request.FILES["file"]
+        llm_provider = request.POST.get("llm_provider") or request.data.get("llmProvider")
+        llm_model = request.POST.get("llm_model") or request.data.get("llmModel")
+
+        # Validate file extension
+        allowed_extensions = [".pdf", ".xlsx", ".xls", ".docx", ".doc"]
+        file_ext = uploaded_file.name.lower().split(".")[-1]
+        if f".{file_ext}" not in allowed_extensions:
+            return self.error_response(
+                f"Unsupported file format: .{file_ext}",
+                status.HTTP_400_BAD_REQUEST,
+                details={"filename": uploaded_file.name},
+            )
+
+        try:
+            from invoices.services.invoice_importer import InvoiceImporter
+
+            importer = InvoiceImporter(user=request.user, llm_provider=llm_provider, llm_model=llm_model)
+            result = importer.import_from_file(uploaded_file, uploaded_file.name)
+
+            response_data = {
+                "success": result.success,
+                "status": result.status,
+                "message": result.message,
+                "filename": uploaded_file.name,
+            }
+
+            if result.invoice:
+                response_data["invoice"] = {
+                    "id": result.invoice.pk,
+                    "invoiceNo": result.invoice.invoice_no_display,
+                    "customerName": result.invoice.customer.full_name,
+                    "totalAmount": str(result.invoice.total_amount),
+                    "invoiceDate": result.invoice.invoice_date.strftime("%Y-%m-%d"),
+                    "status": result.invoice.get_status_display(),
+                    "url": reverse("invoice-detail", kwargs={"pk": result.invoice.pk}),
+                }
+
+            if result.customer:
+                response_data["customer"] = {
+                    "id": result.customer.pk,
+                    "title": result.customer.title or "",
+                    "name": result.customer.full_name,
+                    "email": result.customer.email or "",
+                    "phone": result.customer.telephone or "",
+                    "address": result.customer.address_bali or "",
+                    "company": result.customer.company_name or "",
+                    "npwp": result.customer.npwp or "",
+                }
+
+            if result.errors:
+                response_data["errors"] = result.errors
+
+            status_code = 200 if result.success else (409 if result.status == "duplicate" else 400)
+            return Response(response_data, status=status_code)
+
+        except Exception as e:
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error processing upload: {str(e)}", exc_info=True)
+            return self.error_response(
+                f"Server error: {str(e)}",
+                status.HTTP_500_INTERNAL_SERVER_ERROR,
+                details={"filename": uploaded_file.name},
+            )
+
+    @extend_schema(
+        request={
+            "multipart/form-data": {
+                "type": "object",
+                "properties": {
+                    "files": {"type": "array", "items": {"type": "string", "format": "binary"}},
+                    "paid_status": {"type": "array", "items": {"type": "string"}},
+                    "llm_provider": {"type": "string"},
+                    "llm_model": {"type": "string"},
+                },
+                "required": ["files"],
+            }
+        },
+        responses=OpenApiTypes.OBJECT,
+        description="Import multiple invoice files with SSE progress streaming.",
+    )
+    @action(detail=False, methods=["post"], url_path="import/batch", parser_classes=[MultiPartParser, FormParser])
+    def import_batch(self, request):
+        """Process multiple uploaded invoice files with real-time progress streaming."""
+        from django.utils.text import get_valid_filename
+
+        from invoices.models import InvoiceImportItem, InvoiceImportJob
+        from invoices.tasks.import_jobs import run_invoice_import_item
+
+        files = request.FILES.getlist("files")
+        paid_status_list = request.POST.getlist("paid_status") or request.data.getlist("paidStatus")
+        llm_provider = request.POST.get("llm_provider") or request.data.get("llmProvider")
+        llm_model = request.POST.get("llm_model") or request.data.get("llmModel")
+
+        if not files:
+            return self.error_response("No files uploaded", status.HTTP_400_BAD_REQUEST)
+
+        job = InvoiceImportJob.objects.create(
+            status=InvoiceImportJob.STATUS_QUEUED,
+            progress=0,
+            total_files=len(files),
+            created_by=request.user,
+            request_params={"llm_provider": llm_provider, "llm_model": llm_model},
+        )
+
+        for index, uploaded_file in enumerate(files, 1):
+            filename = uploaded_file.name
+            is_paid = paid_status_list[index - 1].lower() == "true" if index - 1 < len(paid_status_list) else False
+            safe_name = get_valid_filename(os.path.basename(filename))
+            tmp_dir = os.path.join(settings.TMPFILES_FOLDER, "invoice_imports", str(job.id))
+            tmp_path = os.path.join(tmp_dir, safe_name)
+            file_path = default_storage.save(tmp_path, uploaded_file)
+
+            item = InvoiceImportItem.objects.create(
+                job=job,
+                sort_index=index,
+                filename=filename,
+                file_path=file_path,
+                is_paid=is_paid,
+                status=InvoiceImportItem.STATUS_QUEUED,
+            )
+            run_invoice_import_item(str(item.id))
+
+        # Return SSE stream
+        response = StreamingHttpResponse(
+            self._stream_import_job(job.id, request),
+            content_type="text/event-stream",
+        )
+        response["Cache-Control"] = "no-cache"
+        response["X-Accel-Buffering"] = "no"
+        return response
+
+    @extend_schema(
+        responses=OpenApiTypes.OBJECT,
+        description="Get status of an invoice import job.",
+    )
+    @action(detail=False, methods=["get"], url_path=r"import/status/(?P<job_id>[^/.]+)")
+    def import_job_status(self, request, job_id=None):
+        """Get status of an import job."""
+        from invoices.models import InvoiceImportJob
+
+        try:
+            job = InvoiceImportJob.objects.get(id=job_id)
+        except InvoiceImportJob.DoesNotExist:
+            return self.error_response("Job not found", status.HTTP_404_NOT_FOUND)
+
+        return Response(
+            {
+                "jobId": str(job.id),
+                "status": job.status,
+                "progress": job.progress,
+                "totalFiles": job.total_files,
+                "processedFiles": job.processed_files,
+                "importedCount": job.imported_count,
+                "duplicateCount": job.duplicate_count,
+                "errorCount": job.error_count,
+            }
+        )
+
+    @action(detail=False, methods=["get"], url_path=r"import/stream/(?P<job_id>[^/.]+)")
+    def import_job_stream(self, request, job_id=None):
+        """Stream SSE updates for a running import job."""
+        from invoices.models import InvoiceImportJob
+
+        try:
+            job = InvoiceImportJob.objects.get(id=job_id)
+        except InvoiceImportJob.DoesNotExist:
+            return self.error_response("Job not found", status.HTTP_404_NOT_FOUND)
+
+        response = StreamingHttpResponse(
+            self._stream_import_job(job.id, request),
+            content_type="text/event-stream",
+        )
+        response["Cache-Control"] = "no-cache"
+        response["X-Accel-Buffering"] = "no"
+        return response
+
+    def _stream_import_job(self, job_id, request=None):
+        """Stream SSE updates for a running Huey import job."""
+        from invoices.models import InvoiceImportJob
+
+        sent_states = {}
+        job = InvoiceImportJob.objects.get(id=job_id)
+        total_files = job.total_files
+
+        yield self._send_import_event(
+            "start",
+            {
+                "total": total_files,
+                "message": f"Starting background import of {total_files} file(s)...",
+            },
+        )
+
+        while True:
+            job.refresh_from_db()
+            items = list(job.items.all().order_by("sort_index"))
+
+            for item in items:
+                from invoices.models import InvoiceImportItem
+
+                state = sent_states.get(item.id, {"file_start": False, "parsing": False, "done": False})
+
+                if item.status == InvoiceImportItem.STATUS_PROCESSING and not state["file_start"]:
+                    yield self._send_import_event(
+                        "file_start",
+                        {
+                            "index": item.sort_index,
+                            "filename": item.filename,
+                            "message": f"Processing {item.filename}...",
+                        },
+                    )
+                    state["file_start"] = True
+
+                if (
+                    item.status == InvoiceImportItem.STATUS_PROCESSING
+                    and item.result
+                    and item.result.get("stage") == "parsing"
+                    and not state["parsing"]
+                ):
+                    yield self._send_import_event(
+                        "parsing",
+                        {
+                            "index": item.sort_index,
+                            "filename": item.filename,
+                            "message": f"Parsing {item.filename} with AI...",
+                        },
+                    )
+                    state["parsing"] = True
+
+                if (
+                    item.status
+                    in [
+                        InvoiceImportItem.STATUS_IMPORTED,
+                        InvoiceImportItem.STATUS_DUPLICATE,
+                        InvoiceImportItem.STATUS_ERROR,
+                    ]
+                    and not state["done"]
+                ):
+                    result_data = self._build_import_result(item)
+                    if item.status == InvoiceImportItem.STATUS_IMPORTED:
+                        event_type = "file_success"
+                        message = f"✓ Successfully imported {item.filename}"
+                    elif item.status == InvoiceImportItem.STATUS_DUPLICATE:
+                        event_type = "file_duplicate"
+                        message = f"⚠ Duplicate invoice detected: {item.filename}"
+                    else:
+                        event_type = "file_error"
+                        message = f"✗ Error processing {item.filename}: {result_data.get('message', 'Unknown error')}"
+
+                    yield self._send_import_event(
+                        event_type,
+                        {
+                            "index": item.sort_index,
+                            "filename": item.filename,
+                            "message": message,
+                            "result": result_data,
+                        },
+                    )
+                    state["done"] = True
+
+                sent_states[item.id] = state
+
+            if job.processed_files >= job.total_files and all(state["done"] for state in sent_states.values()):
+                summary = self._build_import_summary(job, items)
+                yield self._send_import_event(
+                    "complete",
+                    {
+                        "message": f"Import complete: {summary['summary']['imported']} imported, "
+                        f"{summary['summary']['duplicates']} duplicates, {summary['summary']['errors']} errors",
+                        **summary,
+                    },
+                )
+                break
+
+            yield ": keep-alive\n\n"
+            time.sleep(0.5)
+
+    def _build_import_result(self, item):
+        """Build result data for an import item."""
+        if item.result and isinstance(item.result, dict) and item.result.get("status"):
+            return item.result
+        return {
+            "success": item.status == "imported",
+            "status": item.status,
+            "message": item.error_message or "Processing",
+            "filename": item.filename,
+        }
+
+    def _build_import_summary(self, job, items):
+        """Build summary for completed import job."""
+        results = [self._build_import_result(item) for item in items]
+        summary = {
+            "total": job.total_files,
+            "imported": job.imported_count,
+            "duplicates": job.duplicate_count,
+            "errors": job.error_count,
+        }
+        return {"summary": summary, "results": results}
+
+    @staticmethod
+    def _send_import_event(event_type, data):
+        """Format and send an SSE event."""
+        return f"event: {event_type}\ndata: {json.dumps(data)}\n\n"
+
 
 class PaymentViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
@@ -1251,8 +1616,6 @@ class DocumentViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         serializer = DocumentMergeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         document_ids = serializer.validated_data.get("document_ids", [])
-
-        logger.info(f"DEBUG: document_ids: {document_ids}")
 
         # Get documents and preserve order
         documents_dict = {

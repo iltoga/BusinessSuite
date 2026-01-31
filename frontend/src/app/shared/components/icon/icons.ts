@@ -63,6 +63,7 @@ import {
   MoveRight,
   Palette,
   PanelLeft,
+  Play,
   Plus,
   Popcorn,
   Puzzle,
@@ -86,6 +87,7 @@ import {
   Trash2,
   TriangleAlert,
   Underline,
+  Upload,
   User,
   UserPlus,
   Users,
@@ -162,6 +164,7 @@ export const ZARD_ICONS = {
   heart: Heart,
   star: Star,
   zap: Zap,
+  play: Play,
   popcorn: Popcorn,
   shield: Shield,
   puzzle: Puzzle,
@@ -194,6 +197,7 @@ export const ZARD_ICONS = {
   'user-plus': UserPlus,
   'credit-card': CreditCard,
   activity: Activity,
+  upload: Upload,
 } as const satisfies Record<string, LucideIconData>;
 
 export declare type ZardIcon = keyof typeof ZARD_ICONS | LucideIconData;
