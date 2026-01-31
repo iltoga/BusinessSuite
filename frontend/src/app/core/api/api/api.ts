@@ -1,5 +1,7 @@
 export * from './api-token-auth.service';
 import { ApiTokenAuthService } from './api-token-auth.service';
+export * from './backups.service';
+import { BackupsService } from './backups.service';
 export * from './compute.service';
 import { ComputeService } from './compute.service';
 export * from './country-codes.service';
@@ -30,4 +32,6 @@ export * from './payments.service';
 import { PaymentsService } from './payments.service';
 export * from './products.service';
 import { ProductsService } from './products.service';
-export const APIS = [ApiTokenAuthService, ComputeService, CountryCodesService, CronService, CustomerApplicationsService, CustomersService, DashboardStatsService, DocumentOcrService, DocumentTypesService, DocumentsService, InvoicesService, LettersService, MockAuthConfigService, OcrService, PaymentsService, ProductsService];
+export * from './server-management.service';
+import { ServerManagementService } from './server-management.service';
+export const APIS = [ApiTokenAuthService, BackupsService, ComputeService, CountryCodesService, CronService, CustomerApplicationsService, CustomersService, DashboardStatsService, DocumentOcrService, DocumentTypesService, DocumentsService, InvoicesService, LettersService, MockAuthConfigService, OcrService, PaymentsService, ProductsService, ServerManagementService];

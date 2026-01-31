@@ -36,6 +36,143 @@ paths:
               schema:
                 $ref: '#/components/schemas/CustomTokenObtain'
           description: ''
+  /api/backups/:
+    get:
+      operationId: backupsRetrieve
+      description: List local backups with metadata.
+      summary: List available backups
+      tags:
+      - backups
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/backups/delete-all/:
+    delete:
+      operationId: backupsDeleteAllDestroy
+      description: Purge all backups.
+      summary: Delete all backups
+      tags:
+      - backups
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/backups/download/{filename}/:
+    get:
+      operationId: backupsDownloadRetrieve
+      description: Download backup file.
+      summary: Download backup file
+      parameters:
+      - in: path
+        name: filename
+        schema:
+          type: string
+          pattern: ^.+$
+        required: true
+      tags:
+      - backups
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/backups/restore/:
+    post:
+      operationId: backupsRestoreCreate
+      description: Trigger SSE restore stream.
+      summary: Restore from backup
+      parameters:
+      - in: query
+        name: file
+        schema:
+          type: string
+      - in: query
+        name: include_users
+        schema:
+          type: boolean
+      tags:
+      - backups
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/backups/start/:
+    get:
+      operationId: backupsStartRetrieve
+      description: Trigger SSE backup stream.
+      summary: Start backup process
+      parameters:
+      - in: query
+        name: include_users
+        schema:
+          type: boolean
+      tags:
+      - backups
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/backups/upload/:
+    post:
+      operationId: backupsUploadCreate
+      description: Multi-part upload for existing archives.
+      summary: Upload backup file
+      tags:
+      - backups
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/compute/doc_workflow_due_date/{taskId}/{startDate}/:
     get:
       operationId: computeDocWorkflowDueDateRetrieve
@@ -833,6 +970,34 @@ paths:
                 items:
                   $ref: '#/components/schemas/DocumentType'
           description: ''
+    post:
+      operationId: documentTypesCreate
+      tags:
+      - document-types
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentType'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DocumentType'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocumentType'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/DocumentType'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentType'
+          description: ''
   /api/document-types/{id}/:
     get:
       operationId: documentTypesRetrieve
@@ -853,6 +1018,116 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DocumentType'
+          description: ''
+    put:
+      operationId: documentTypesUpdate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this document type.
+        required: true
+      tags:
+      - document-types
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentType'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DocumentType'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocumentType'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/DocumentType'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentType'
+          description: ''
+    patch:
+      operationId: documentTypesPartialUpdate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this document type.
+        required: true
+      tags:
+      - document-types
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentType'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DocumentType'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocumentType'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/DocumentType'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentType'
+          description: ''
+    delete:
+      operationId: documentTypesDestroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this document type.
+        required: true
+      tags:
+      - document-types
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/document-types/{id}/can-delete/:
+    get:
+      operationId: documentTypesCanDeleteRetrieve
+      description: Check if document type can be safely deleted.
+      summary: Check if a document type can be deleted
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this document type.
+        required: true
+      tags:
+      - document-types
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/documents/:
     get:
@@ -2335,6 +2610,57 @@ paths:
       responses:
         '200':
           description: No response body
+  /api/server-management/clear-cache/:
+    post:
+      operationId: serverManagementClearCacheCreate
+      description: Global cache purge.
+      summary: Clear application cache
+      tags:
+      - server-management
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/server-management/media-diagnostic/:
+    get:
+      operationId: serverManagementMediaDiagnosticRetrieve
+      description: Comprehensive check of disk vs DB.
+      summary: Run media files diagnostic
+      tags:
+      - server-management
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/server-management/media-repair/:
+    post:
+      operationId: serverManagementMediaRepairCreate
+      description: Automated path fixing.
+      summary: Repair media file paths
+      tags:
+      - server-management
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
 components:
   schemas:
     BlankEnum:

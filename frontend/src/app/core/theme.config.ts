@@ -12,6 +12,7 @@
 
 export type ThemeName =
   | 'neutral'
+  | 'revis'
   | 'slate'
   | 'spaceGray'
   | 'silver'
@@ -22,6 +23,7 @@ export type ThemeName =
   | 'purple'
   | 'teal'
   | 'sakura'
+  | 'gundam'
   | 'legacy';
 
 export interface ThemeColors {
@@ -87,6 +89,132 @@ export interface ThemeColors {
 // ====================
 // ZARD UI BASE THEMES
 // ====================
+
+/**
+ * Revis Theme
+ * Based on www.revisbali.com screenshots.
+ * A premium "Black & Gold" aesthetic.
+ * Dark Mode: Pure black background with rich metallic gold accents.
+ * Light Mode: Clean white with high-contrast black and elegant gold branding.
+ * Best for: Luxury services, VIP consulting, high-end portfolios.
+ */
+export const revisLight: ThemeColors = {
+  background: 'oklch(1 0 0)', // Pure White
+  foreground: 'oklch(0.1 0 0)', // Sharp Black text
+  card: 'oklch(0.98 0 0)', // Off-white card
+  cardForeground: 'oklch(0.1 0 0)',
+  popover: 'oklch(1 0 0)',
+  popoverForeground: 'oklch(0.1 0 0)',
+  primary: 'oklch(0.6 0.16 85)', // Darker Antique Gold (for contrast on white)
+  primaryForeground: 'oklch(1 0 0)', // White text on gold button
+  secondary: 'oklch(0.96 0.02 85)', // Pale Gold/Beige background
+  secondaryForeground: 'oklch(0.6 0.16 85)',
+  muted: 'oklch(0.96 0 0)',
+  mutedForeground: 'oklch(0.45 0 0)',
+  accent: 'oklch(0.96 0.02 85)',
+  accentForeground: 'oklch(0.6 0.16 85)',
+  destructive: 'oklch(0.577 0.245 27.325)',
+  warning: 'oklch(0.75 0.16 80)',
+  success: 'oklch(0.6 0.16 150)',
+  border: 'oklch(0.9 0 0)',
+  input: 'oklch(0.9 0 0)',
+  ring: 'oklch(0.6 0.16 85)',
+  chart1: 'oklch(0.6 0.16 85)', // Gold
+  chart2: 'oklch(0.2 0 0)', // Black
+  chart3: 'oklch(0.5 0 0)', // Gray
+  chart4: 'oklch(0.7 0.12 80)', // Light Gold
+  chart5: 'oklch(0.4 0.1 30)', // Bronze
+};
+
+export const revisDark: ThemeColors = {
+  background: 'oklch(0 0 0)', // Pure Black (as seen in screenshots)
+  foreground: 'oklch(0.98 0 0)', // Pure White text
+  card: 'oklch(0.1 0 0)', // Very dark gray (almost black) for cards
+  cardForeground: 'oklch(0.98 0 0)',
+  popover: 'oklch(0.1 0 0)',
+  popoverForeground: 'oklch(0.98 0 0)',
+  primary: 'oklch(0.78 0.16 85)', // Vibrant Metallic Gold (Logo color)
+  primaryForeground: 'oklch(0 0 0)', // Black text on gold button
+  secondary: 'oklch(0.2 0.05 85)', // Dark Bronze
+  secondaryForeground: 'oklch(0.98 0 0)',
+  muted: 'oklch(0.15 0 0)',
+  mutedForeground: 'oklch(0.6 0 0)',
+  accent: 'oklch(0.2 0.05 85)', // Gold tint on hover
+  accentForeground: 'oklch(0.78 0.16 85)',
+  destructive: 'oklch(0.6 0.2 25)',
+  warning: 'oklch(0.78 0.16 85)', // Gold serves as warning color too
+  success: 'oklch(0.6 0.16 150)',
+  border: 'oklch(0.2 0 0)', // Subtle dark gray border
+  input: 'oklch(0.2 0 0)',
+  ring: 'oklch(0.78 0.16 85)', // Gold focus ring
+  chart1: 'oklch(0.78 0.16 85)', // Gold
+  chart2: 'oklch(0.98 0 0)', // White
+  chart3: 'oklch(0.5 0 0)', // Gray
+  chart4: 'oklch(0.6 0.1 30)', // Bronze
+  chart5: 'oklch(0.85 0.1 90)', // Pale Gold
+};
+
+/**
+ * gundam Theme
+ * Inspired by gundam Bali (Business & Visa Consulting).
+ * A professional blend of Deep Royal Blue (Trust/Ocean) and Golden Sand (Prosperity/Bali).
+ * Best for: Corporate services, travel agencies, legal/consulting firms.
+ */
+export const gundamLight: ThemeColors = {
+  background: 'oklch(0.99 0.002 250)', // Crisp White with tiny cool tint
+  foreground: 'oklch(0.15 0.06 260)', // Deep Navy Text
+  card: 'oklch(1 0 0)',
+  cardForeground: 'oklch(0.15 0.06 260)',
+  popover: 'oklch(1 0 0)',
+  popoverForeground: 'oklch(0.15 0.06 260)',
+  primary: 'oklch(0.42 0.16 260)', // gundam Royal Blue (Trust & Authority)
+  primaryForeground: 'oklch(0.98 0 0)',
+  secondary: 'oklch(0.95 0.04 85)', // Pale Golden Sand (Warmth)
+  secondaryForeground: 'oklch(0.42 0.16 260)',
+  muted: 'oklch(0.96 0.01 260)',
+  mutedForeground: 'oklch(0.5 0.05 260)',
+  accent: 'oklch(0.95 0.04 85)', // Golden accent background
+  accentForeground: 'oklch(0.42 0.16 260)',
+  destructive: 'oklch(0.577 0.245 27.325)', // Standard Red
+  warning: 'oklch(0.75 0.16 80)', // Temple Gold
+  success: 'oklch(0.6 0.16 150)', // Tropical Green
+  border: 'oklch(0.9 0.02 260)',
+  input: 'oklch(0.9 0.02 260)',
+  ring: 'oklch(0.42 0.16 260)',
+  chart1: 'oklch(0.42 0.16 260)', // Royal Blue
+  chart2: 'oklch(0.75 0.16 80)', // Gold
+  chart3: 'oklch(0.6 0.16 150)', // Green
+  chart4: 'oklch(0.5 0.1 30)', // Terra Cotta
+  chart5: 'oklch(0.3 0.1 260)', // Dark Blue
+};
+
+export const gundamDark: ThemeColors = {
+  background: 'oklch(0.12 0.06 260)', // Deep Ocean Navy
+  foreground: 'oklch(0.98 0.01 260)',
+  card: 'oklch(0.16 0.06 260)', // Lighter Navy Card
+  cardForeground: 'oklch(0.98 0.01 260)',
+  popover: 'oklch(0.16 0.06 260)',
+  popoverForeground: 'oklch(0.98 0.01 260)',
+  primary: 'oklch(0.6 0.18 260)', // Vibrant Blue (Visible on dark)
+  primaryForeground: 'oklch(0.98 0 0)',
+  secondary: 'oklch(0.25 0.05 85)', // Muted Bronze/Gold
+  secondaryForeground: 'oklch(0.98 0.01 260)',
+  muted: 'oklch(0.2 0.04 260)',
+  mutedForeground: 'oklch(0.7 0.04 260)',
+  accent: 'oklch(0.25 0.05 85)',
+  accentForeground: 'oklch(0.98 0.01 260)',
+  destructive: 'oklch(0.6 0.2 25)',
+  warning: 'oklch(0.75 0.16 80)',
+  success: 'oklch(0.6 0.16 150)',
+  border: 'oklch(0.25 0.06 260)',
+  input: 'oklch(0.25 0.06 260)',
+  ring: 'oklch(0.6 0.18 260)',
+  chart1: 'oklch(0.6 0.18 260)',
+  chart2: 'oklch(0.75 0.16 80)',
+  chart3: 'oklch(0.6 0.16 150)',
+  chart4: 'oklch(0.5 0.1 30)',
+  chart5: 'oklch(0.8 0.1 260)',
+};
 
 /**
  * Neutral Theme
@@ -859,6 +987,7 @@ export const legacyDark: ThemeColors = {
  */
 export const THEMES = {
   neutral: { light: neutralLight, dark: neutralDark },
+  revis: { light: revisLight, dark: revisDark },
   slate: { light: slateLight, dark: slateDark },
   spaceGray: { light: spaceGrayLight, dark: spaceGrayDark },
   silver: { light: silverLight, dark: silverDark },
@@ -869,6 +998,7 @@ export const THEMES = {
   purple: { light: purpleLight, dark: purpleDark },
   teal: { light: tealLight, dark: tealDark },
   sakura: { light: sakuraLight, dark: sakuraDark },
+  gundam: { light: gundamLight, dark: gundamDark },
   legacy: { light: legacyLight, dark: legacyDark },
 } as const;
 

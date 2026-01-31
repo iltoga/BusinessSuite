@@ -1537,13 +1537,13 @@
 
 ### 10.0 UX Research & Design
 
-- [x] **10.0.1** Research UX standards for profile sections using ZardUI component documentation:
+- [ ] **10.0.1** Research UX standards for profile sections using ZardUI component documentation:
   - Profile icon in top-right header (MatIconButton pattern)
   - Dropdown menu for profile actions (logout, settings)
   - Profile view with avatar, personal info, and edit functionality
   - Form fields with proper spacing and validation
 
-- [x] **10.0.2** Define profile data structure:
+- [ ] **10.0.2** Define profile data structure:
   - Display: full name, email, role, last login
   - Editable: first name, last name, email, phone, avatar upload
   - Security: password change (separate modal)

@@ -3,6 +3,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, Spec
 from rest_framework.routers import DefaultRouter
 
 from . import views
+from .views_admin import BackupsViewSet, ServerManagementViewSet, backup_restore_sse, backup_start_sse
 
 router = DefaultRouter()
 router.register(r"customers", views.CustomerViewSet, basename="customers")
@@ -18,6 +19,9 @@ router.register(r"ocr", views.OCRViewSet, basename="ocr")
 router.register(r"document-ocr", views.DocumentOCRViewSet, basename="document-ocr")
 router.register(r"compute", views.ComputeViewSet, basename="compute")
 router.register(r"dashboard-stats", views.DashboardStatsView, basename="dashboard-stats")
+# Admin tools (superuser only)
+router.register(r"backups", BackupsViewSet, basename="backups")
+router.register(r"server-management", ServerManagementViewSet, basename="server-management")
 
 urlpatterns = [
     path("schema/", SpectacularAPIView.as_view(), name="schema"),
@@ -26,6 +30,9 @@ urlpatterns = [
     path("api-token-auth/", views.TokenAuthView.as_view(), name="api-token-auth"),
     path("mock-auth-config/", views.mock_auth_config, name="api-mock-auth-config"),
     path("session-auth/", include("rest_framework.urls", namespace="rest_framework")),
+    # SSE endpoints (plain Django views, bypass DRF content negotiation)
+    path("backups/start/", backup_start_sse, name="api-backup-start-sse"),
+    path("backups/restore/", backup_restore_sse, name="api-backup-restore-sse"),
     path("ocr/check/", views.OCRViewSet.as_view({"post": "check"}), name="api-ocr-check"),
     path("ocr/status/<uuid:job_id>/", views.OCRViewSet.as_view({"get": "status"}), name="api-ocr-status"),
     path(

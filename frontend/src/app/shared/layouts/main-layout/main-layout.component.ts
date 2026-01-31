@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
+import { AuthService } from '@/core/services/auth.service';
 import { ThemeService } from '@/core/services/theme.service';
 import { ZardAvatarComponent } from '@/shared/components/avatar';
 import { ZardIconComponent } from '@/shared/components/icon';
@@ -114,6 +115,47 @@ import { ThemeSwitcherComponent } from '@/shared/components/theme-switcher/theme
                 </a>
               </div>
             </div>
+
+            <!-- Admin Section - Only visible for superusers -->
+            <div *ngIf="isAdminUser()" class="pt-4 pb-1">
+              <button
+                (click)="toggleAdmin()"
+                class="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
+              >
+                <div class="flex items-center gap-3">
+                  <z-icon zType="settings" class="h-4 w-4" />
+                  <span>Admin</span>
+                </div>
+                <z-icon
+                  [zType]="adminExpanded() ? 'chevron-down' : 'chevron-right'"
+                  class="h-3 w-3"
+                />
+              </button>
+
+              <div *ngIf="adminExpanded()" class="mt-1 space-y-1 pl-7">
+                <a
+                  routerLink="/admin/document-types"
+                  routerLinkActive="bg-accent text-foreground"
+                  class="block rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
+                >
+                  Document Types
+                </a>
+                <a
+                  routerLink="/admin/backups"
+                  routerLinkActive="bg-accent text-foreground"
+                  class="block rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
+                >
+                  Backups
+                </a>
+                <a
+                  routerLink="/admin/server"
+                  routerLinkActive="bg-accent text-foreground"
+                  class="block rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
+                >
+                  Server Management
+                </a>
+              </div>
+            </div>
           </nav>
         </div>
       </aside>
@@ -158,8 +200,11 @@ import { ThemeSwitcherComponent } from '@/shared/components/theme-switcher/theme
 export class MainLayoutComponent {
   sidebarOpen = true;
   lettersExpanded = signal(true);
+  adminExpanded = signal(false);
 
   private themeService = inject(ThemeService);
+  private authService = inject(AuthService);
+
   logoSrc = computed(() =>
     // Use assets path to ensure the dev-server and production builds serve the images reliably
     this.themeService.isDarkMode()
@@ -167,11 +212,17 @@ export class MainLayoutComponent {
       : '/assets/logo_transparent.png',
   );
 
+  isAdminUser = computed(() => this.authService.isSuperuser());
+
   toggleSidebar() {
     this.sidebarOpen = !this.sidebarOpen;
   }
 
   toggleLetters() {
     this.lettersExpanded.update((v) => !v);
+  }
+
+  toggleAdmin() {
+    this.adminExpanded.update((v) => !v);
   }
 }

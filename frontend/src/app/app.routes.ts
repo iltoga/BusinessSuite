@@ -50,6 +50,10 @@ export const routes: Routes = [
       { path: 'invoices/:id/edit', component: InvoiceFormComponent },
       { path: 'invoices/:id', component: InvoiceDetailComponent },
       { path: 'letters/surat-permohonan', component: SuratPermohonanComponent },
+      {
+        path: 'admin',
+        loadChildren: () => import('./features/admin/admin.routes').then((m) => m.adminRoutes),
+      },
       { path: '', redirectTo: '/dashboard', pathMatch: 'full' },
     ],
   },

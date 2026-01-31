@@ -4,6 +4,7 @@ api.base.service.ts
 api.module.ts
 api/api-token-auth.service.ts
 api/api.ts
+api/backups.service.ts
 api/compute.service.ts
 api/country-codes.service.ts
 api/cron.service.ts
@@ -19,6 +20,7 @@ api/mock-auth-config.service.ts
 api/ocr.service.ts
 api/payments.service.ts
 api/products.service.ts
+api/server-management.service.ts
 configuration.ts
 encoder.ts
 git_push.sh

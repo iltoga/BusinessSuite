@@ -225,7 +225,7 @@ class LettersViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
         return Response(response_serializer.data)
 
 
-class DocumentTypeViewSet(ApiErrorHandlingMixin, viewsets.ReadOnlyModelViewSet):
+class DocumentTypeViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     queryset = DocumentType.objects.all()
     serializer_class = DocumentTypeSerializer
@@ -233,6 +233,49 @@ class DocumentTypeViewSet(ApiErrorHandlingMixin, viewsets.ReadOnlyModelViewSet):
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["name", "description"]
     ordering = ["name"]
+
+    def get_permissions(self):
+        """Only superusers can create/update/delete document types."""
+        if self.action in ["create", "update", "partial_update", "destroy"]:
+            from django.contrib.auth.decorators import user_passes_test
+            from rest_framework.permissions import BasePermission
+
+            class IsSuperuser(BasePermission):
+                def has_permission(self, request, view):
+                    return request.user and request.user.is_superuser
+
+            return [IsAuthenticated(), IsSuperuser()]
+        return super().get_permissions()
+
+    @extend_schema(summary="Check if a document type can be deleted", responses={200: OpenApiTypes.OBJECT})
+    @action(detail=True, methods=["get"], url_path="can-delete")
+    def can_delete(self, request, pk=None):
+        """Check if document type can be safely deleted."""
+        from django.db.models import Q
+
+        from products.models.product import Product
+
+        document_type = self.get_object()
+
+        # Check if any product uses this document type
+        products = Product.objects.filter(
+            Q(required_documents__icontains=document_type.name) | Q(optional_documents__icontains=document_type.name)
+        )
+
+        # Double check to avoid partial matches
+        for product in products:
+            req = [d.strip() for d in product.required_documents.split(",") if d.strip()]
+            opt = [d.strip() for d in product.optional_documents.split(",") if d.strip()]
+            if document_type.name in req or document_type.name in opt:
+                return Response(
+                    {
+                        "canDelete": False,
+                        "message": f"Cannot delete '{document_type.name}' because it is used in one or more products.",
+                        "warning": None,
+                    }
+                )
+
+        return Response({"canDelete": True, "message": None, "warning": None})
 
 
 class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
