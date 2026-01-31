@@ -14,13 +14,14 @@ export type ThemeName =
   | 'neutral'
   | 'slate'
   | 'spaceGray'
+  | 'silver'
+  | 'starlight'
   | 'zinc'
   | 'stone'
   | 'blue'
   | 'purple'
   | 'teal'
   | 'sakura'
-  | 'starlight'
   | 'legacy';
 
 export interface ThemeColors {
@@ -269,6 +270,68 @@ export const spaceGrayDark: ThemeColors = {
   chart3: 'oklch(0.5 0.02 260)',
   chart4: 'oklch(0.3 0.02 260)',
   chart5: 'oklch(0.6 0.02 260)',
+};
+
+/**
+ * Silver Theme (New!)
+ * Inspired by the MacBook Pro (2021) Silver finish.
+ * A classic, bright, and raw aluminum aesthetic. Lighter and crisper than Space Gray.
+ * Best for: Clean, minimalistic interfaces, "Apple-native" feel.
+ */
+export const silverLight: ThemeColors = {
+  background: 'oklch(0.99 0.001 240)', // Pure, bright silver-white
+  foreground: 'oklch(0.12 0.01 240)', // High contrast black (Keys)
+  card: 'oklch(1 0 0)',
+  cardForeground: 'oklch(0.12 0.01 240)',
+  popover: 'oklch(1 0 0)',
+  popoverForeground: 'oklch(0.12 0.01 240)',
+  primary: 'oklch(0.2 0.01 240)', // Deep black-gray (Keyboard well contrast)
+  primaryForeground: 'oklch(1 0 0)',
+  secondary: 'oklch(0.96 0.002 240)', // Very light aluminum
+  secondaryForeground: 'oklch(0.2 0.01 240)',
+  muted: 'oklch(0.96 0.002 240)',
+  mutedForeground: 'oklch(0.5 0.01 240)',
+  accent: 'oklch(0.95 0.005 240)', // Subtle metallic shimmer
+  accentForeground: 'oklch(0.2 0.01 240)',
+  destructive: 'oklch(0.577 0.245 27.325)',
+  warning: 'oklch(0.754 0.149 83.317)',
+  success: 'oklch(0.596 0.163 155.825)',
+  border: 'oklch(0.92 0.002 240)', // Crisp border
+  input: 'oklch(0.92 0.002 240)',
+  ring: 'oklch(0.2 0.01 240)',
+  chart1: 'oklch(0.2 0.01 240)',
+  chart2: 'oklch(0.4 0.01 240)',
+  chart3: 'oklch(0.6 0.01 240)',
+  chart4: 'oklch(0.8 0.01 240)',
+  chart5: 'oklch(0.5 0.01 240)',
+};
+
+export const silverDark: ThemeColors = {
+  background: 'oklch(0.14 0.01 240)', // Cool, medium-dark gray (Silver in shadow)
+  foreground: 'oklch(0.99 0.001 240)',
+  card: 'oklch(0.18 0.015 240)', // Lighter cool gray
+  cardForeground: 'oklch(0.99 0.001 240)',
+  popover: 'oklch(0.18 0.015 240)',
+  popoverForeground: 'oklch(0.99 0.001 240)',
+  primary: 'oklch(0.98 0.002 240)', // Bright Silver (Contrast against dark)
+  primaryForeground: 'oklch(0.14 0.01 240)',
+  secondary: 'oklch(0.25 0.02 240)',
+  secondaryForeground: 'oklch(0.99 0.001 240)',
+  muted: 'oklch(0.22 0.02 240)',
+  mutedForeground: 'oklch(0.65 0.01 240)',
+  accent: 'oklch(0.25 0.02 240)',
+  accentForeground: 'oklch(0.99 0.001 240)',
+  destructive: 'oklch(0.6 0.2 25)',
+  warning: 'oklch(0.75 0.15 80)',
+  success: 'oklch(0.6 0.16 155)',
+  border: 'oklch(0.25 0.02 240)',
+  input: 'oklch(0.25 0.02 240)',
+  ring: 'oklch(0.9 0.01 240)',
+  chart1: 'oklch(0.98 0.002 240)',
+  chart2: 'oklch(0.8 0.01 240)',
+  chart3: 'oklch(0.6 0.01 240)',
+  chart4: 'oklch(0.4 0.01 240)',
+  chart5: 'oklch(0.7 0.01 240)',
 };
 
 /**
@@ -797,14 +860,15 @@ export const legacyDark: ThemeColors = {
 export const THEMES = {
   neutral: { light: neutralLight, dark: neutralDark },
   slate: { light: slateLight, dark: slateDark },
-  spaceGray: { light: spaceGrayLight, dark: spaceGrayDark }, // Updated
+  spaceGray: { light: spaceGrayLight, dark: spaceGrayDark },
+  silver: { light: silverLight, dark: silverDark },
+  starlight: { light: starlightLight, dark: starlightDark }, // Added
   zinc: { light: zincLight, dark: zincDark },
   stone: { light: stoneLight, dark: stoneDark },
   blue: { light: blueLight, dark: blueDark },
   purple: { light: purpleLight, dark: purpleDark },
   teal: { light: tealLight, dark: tealDark },
   sakura: { light: sakuraLight, dark: sakuraDark },
-  starlight: { light: starlightLight, dark: starlightDark }, // Added
   legacy: { light: legacyLight, dark: legacyDark },
 } as const;
 
