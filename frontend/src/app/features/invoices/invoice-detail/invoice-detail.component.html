@@ -25,6 +25,13 @@
         </p>
       </div>
       <div class="flex items-center gap-2">
+        <app-invoice-download-dropdown
+          [invoiceId]="invoice()!.id"
+          [invoiceNumber]="(invoice()!.invoiceNoDisplay || invoice()!.invoiceNo).toString()"
+          [customerName]="invoice()!.customer.fullNameWithCompany || invoice()!.customer.fullName"
+          zType="secondary"
+          zSize="sm"
+        />
         <a [routerLink]="['/invoices', invoice()!.id, 'edit']">
           <z-button zType="warning">Edit</z-button>
         </a>

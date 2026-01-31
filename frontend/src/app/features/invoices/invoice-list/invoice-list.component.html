@@ -110,6 +110,15 @@
     <a [routerLink]="['/invoices', row.id, 'edit']">
       <z-button zType="warning" zSize="sm">Edit</z-button>
     </a>
+
+    <app-invoice-download-dropdown
+      [invoiceId]="row.id"
+      [invoiceNumber]="(row.invoiceNoDisplay || row.invoiceNo || '—').toString()"
+      [customerName]="row.customer?.fullNameWithCompany || row.customer?.fullName || '—'"
+      zType="secondary"
+      zSize="sm"
+    />
+
     @if (isSuperuser()) {
       <z-button zType="destructive" zSize="sm" (click)="openInvoiceDeleteDialog(row)"
         >Delete</z-button

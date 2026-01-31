@@ -10,22 +10,23 @@
 
 > **UI note:** Prefer using `z-combobox` (searchable combobox) for long/static lists where typeahead improves UX (e.g., country, customer, product selections). Use the standard select only for short, non-searchable lists. This helps provide consistent keyboard navigation, search filtering, and accessibility across forms.
 
-| Component Name      | Selector                  | Location                                        | ZardUI Deps             | Status          | Used In      |
-| ------------------- | ------------------------- | ----------------------------------------------- | ----------------------- | --------------- | ------------ |
-| DataTable           | app-data-table            | src/app/shared/components/data-table            | Table                   | ✅ Ready        |              |
-| ConfirmDialog       | app-confirm-dialog        | src/app/shared/components/confirm-dialog        | Dialog, Button          | ✅ Ready        |              |
-| SearchToolbar       | app-search-toolbar        | src/app/shared/components/search-toolbar        | Input, Button           | ✅ Ready        |              |
-| Pagination          | app-pagination-controls   | src/app/shared/components/pagination-controls   | Button, Icon            | ✅ Ready        |              |
-| ExpiryBadge         | app-expiry-badge          | src/app/shared/components/expiry-badge          | Badge                   | ✅ Ready        |              |
-| BulkDeleteDialog    | app-bulk-delete-dialog    | src/app/shared/components/bulk-delete-dialog    | Dialog, Button          | ✅ Ready        |              |
-| InvoiceDeleteDialog | app-invoice-delete-dialog | src/app/shared/components/invoice-delete-dialog | Dialog, Button          | ✅ Ready        |              |
-| FileUpload          | app-file-upload           | src/app/shared/components/file-upload           | Button                  | ✅ Ready        | Applications |
-| DocumentPreview     | app-document-preview      | src/app/shared/components/document-preview      | Popover, Icon           | ✅ Ready        | Applications |
-| PdfViewerHost       | app-pdf-viewer-host       | src/app/shared/components/pdf-viewer-host       | ngx-extended-pdf-viewer | ✅ Ready (lazy) | Applications |
-| SortableMultiSelect | app-sortable-multi-select | src/app/shared/components/sortable-multi-select | DragDrop                | ✅ Ready        | Applications |
-| CustomerSelect      | app-customer-select       | src/app/shared/components/customer-select       | Combobox                | ✅ Ready        |              |
-| TableSkeleton       | app-table-skeleton        | src/app/shared/components/skeleton              | Table, Skeleton         | ✅ Ready        |              |
-| CardSkeleton        | app-card-skeleton         | src/app/shared/components/skeleton              | Card, Skeleton          | ✅ Ready        |              |
+| Component Name      | Selector                      | Location                                            | ZardUI Deps             | Status          | Used In      |
+| ------------------- | ----------------------------- | --------------------------------------------------- | ----------------------- | --------------- | ------------ |
+| DataTable           | app-data-table                | src/app/shared/components/data-table                | Table                   | ✅ Ready        |              |
+| ConfirmDialog       | app-confirm-dialog            | src/app/shared/components/confirm-dialog            | Dialog, Button          | ✅ Ready        |              |
+| SearchToolbar       | app-search-toolbar            | src/app/shared/components/search-toolbar            | Input, Button           | ✅ Ready        |              |
+| Pagination          | app-pagination-controls       | src/app/shared/components/pagination-controls       | Button, Icon            | ✅ Ready        |              |
+| ExpiryBadge         | app-expiry-badge              | src/app/shared/components/expiry-badge              | Badge                   | ✅ Ready        |              |
+| BulkDeleteDialog    | app-bulk-delete-dialog        | src/app/shared/components/bulk-delete-dialog        | Dialog, Button          | ✅ Ready        |              |
+| InvoiceDeleteDialog | app-invoice-delete-dialog     | src/app/shared/components/invoice-delete-dialog     | Dialog, Button          | ✅ Ready        |              |
+| FileUpload          | app-file-upload               | src/app/shared/components/file-upload               | Button                  | ✅ Ready        | Applications |
+| DocumentPreview     | app-document-preview          | src/app/shared/components/document-preview          | Popover, Icon           | ✅ Ready        | Applications |
+| PdfViewerHost       | app-pdf-viewer-host           | src/app/shared/components/pdf-viewer-host           | ngx-extended-pdf-viewer | ✅ Ready (lazy) | Applications |
+| SortableMultiSelect | app-sortable-multi-select     | src/app/shared/components/sortable-multi-select     | DragDrop                | ✅ Ready        | Applications |
+| CustomerSelect      | app-customer-select           | src/app/shared/components/customer-select           | Combobox                | ✅ Ready        |              |
+| TableSkeleton       | app-table-skeleton            | src/app/shared/components/skeleton                  | Table, Skeleton         | ✅ Ready        |              |
+| CardSkeleton        | app-card-skeleton             | src/app/shared/components/skeleton                  | Card, Skeleton          | ✅ Ready        |              |
+| InvoiceDownload     | app-invoice-download-dropdown | src/app/shared/components/invoice-download-dropdown | Dropdown, Button, Icon  | ✅ Ready        | Invoices     |
 
 ## Component Details
 
@@ -259,6 +260,30 @@ export class PdfViewerHostComponent {
 
 **Used In:** Applications (used to display uploaded application PDFs from the Application detail view).
 
+### InvoiceDownloadDropdownComponent
+
+**Location:** `src/app/shared/components/invoice-download-dropdown/invoice-download-dropdown.component.ts`
+
+**Interface:**
+
+```typescript
+@Component({
+  selector: "app-invoice-download-dropdown",
+  standalone: true,
+})
+export class InvoiceDownloadDropdownComponent {
+  invoiceId = input.required<number>();
+  invoiceNumber = input.required<string>();
+  customerName = input.required<string>();
+  zType = input<"secondary" | "outline" | "ghost" | "default">("secondary");
+  zSize = input<"default" | "sm" | "lg">("sm");
+}
+```
+
+**Behavior:** Displays a dropdown button that allows the user to download the invoice in DOCX or PDF format. It handles the download request and file saving automatically.
+
+**Used In:** Invoices (List and Detail views).
+
 **Important (server config):** Ensure the ngx-extended-pdf-viewer assets are available under `/assets/` (avoid SPA fallback to index.html). This project copies `node_modules/ngx-extended-pdf-viewer/assets/` into `/assets/` via `angular.json` and configures `pdfDefaultOptions.assetsFolder = 'assets'` and `pdfDefaultOptions.workerSrc = () => '/assets/pdf.worker-5.4.1105.min.mjs'`. This prevents the "Expected a JavaScript-or-Wasm module script but the server responded with a MIME type of 'text/html'" error when the dev server returns `index.html` for missing asset paths.
 
 ### SortableMultiSelectComponent
@@ -338,6 +363,7 @@ export class CardSkeletonComponent {
 - **2026-01-30:** Added `TableSkeletonComponent` and `CardSkeletonComponent` to handle loading states in list and detail views.
 - **2026-01-29:** Letters (Surat Permohonan) feature reused existing shared components; no new shared components added.
 - **2026-01-29:** Invoices & Payments feature added new invoice screens; no new shared components added.
+- **2026-01-31:** Added `InvoiceDownloadDropdownComponent` to handle multi-format invoice downloads (DOCX/PDF) across list and detail views. Fixed ZardUI component property names (zType/zSize) and added missing icons (download, file-code) to `icons.ts`.
 - **2026-01-31:** Applications feature reused existing shared components; specifically: `SortableMultiSelect` (used for ordered document selection), `DocumentPreview`, `FileUpload`, and `PdfViewerHost`. No new shared components were created for this task. Note: several AI-dependent invoice import tests were removed because they were environment-dependent and flaky in CI (`invoices/tests/test_invoice_import_multimodal.py`).
 
 ```

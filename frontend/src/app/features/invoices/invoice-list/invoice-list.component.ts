@@ -31,6 +31,7 @@ import {
   type InvoiceDeleteDialogResult,
   type InvoiceDeletePreviewData,
 } from '@/shared/components/invoice-delete-dialog/invoice-delete-dialog.component';
+import { InvoiceDownloadDropdownComponent } from '@/shared/components/invoice-download-dropdown/invoice-download-dropdown.component';
 import { PaginationControlsComponent } from '@/shared/components/pagination-controls';
 import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
@@ -48,6 +49,7 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
     ZardButtonComponent,
     BulkDeleteDialogComponent,
     InvoiceDeleteDialogComponent,
+    InvoiceDownloadDropdownComponent,
   ],
   templateUrl: './invoice-list.component.html',
   styleUrls: ['./invoice-list.component.css'],

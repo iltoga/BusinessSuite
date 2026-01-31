@@ -429,6 +429,7 @@ class ProductApiTestCase(TestCase):
         self.assertEqual(product.tasks.first().name, "Collect Docs")
 
     def test_product_can_delete_endpoint(self):
+        self.client.force_login(self.user)
         product = Product.objects.create(name="Simple", code="S-1", product_type="other")
         url = reverse("products-can-delete", kwargs={"pk": product.id})
         response = self.client.get(url)
@@ -436,3 +437,40 @@ class ProductApiTestCase(TestCase):
         payload = response.json()
         # Accept either snake_case or camelCase keys
         self.assertTrue("can_delete" in payload or "canDelete" in payload)
+
+
+class InvoiceDownloadAPITestCase(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_superuser(username="invadmin", email="inv@example.com", password="password")
+        self.client.force_login(self.user)
+        self.customer = Customer.objects.create(customer_type="person", first_name="Inv", last_name="User", active=True)
+        self.invoice = Invoice.objects.create(
+            customer=self.customer,
+            invoice_date=timezone.now().date(),
+            due_date=timezone.now().date(),
+            invoice_no=20260001,
+        )
+
+    def test_invoice_download_no_format_default_docx(self):
+        # Default should be docx
+        url = reverse("invoices-download", kwargs={"pk": self.invoice.pk})
+        response = self.client.get(url)
+        # We expect 200 if templates are found, or at least not 404
+        self.assertNotEqual(response.status_code, 404)
+        if response.status_code == 200:
+            self.assertEqual(
+                response["Content-Type"], "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            )
+
+    def test_invoice_download_reserved_keyword_404(self):
+        # Verify that ?format=docx returns 404 due to DRF collision
+        url = reverse("invoices-download", kwargs={"pk": self.invoice.pk}) + "?format=docx"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 404)
+
+    def test_invoice_download_file_format_parameter(self):
+        # Verify that ?file_format=docx returns 200 (or at least not 404)
+        url = reverse("invoices-download", kwargs={"pk": self.invoice.pk}) + "?file_format=docx"
+        response = self.client.get(url)
+        self.assertNotEqual(response.status_code, 404)

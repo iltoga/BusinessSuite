@@ -1,3 +1,4 @@
+testfiles/
 frontend/test-results/
 nginx/
 .playwright-mcp

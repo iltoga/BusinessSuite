@@ -2,6 +2,7 @@ import mimetypes
 import os
 import uuid
 from datetime import datetime
+from io import BytesIO
 
 from django.conf import settings
 from django.core.files.storage import default_storage
@@ -58,9 +59,11 @@ from core.tasks.cron_jobs import run_clear_cache_now, run_full_backup_now
 from core.tasks.document_ocr import run_document_ocr_job
 from core.tasks.ocr import run_ocr_job
 from core.utils.dateutils import calculate_due_date
+from core.utils.pdf_converter import PDFConverter, PDFConverterError
 from customer_applications.models import DocApplication, Document
 from customers.models import Customer
 from invoices.models.invoice import Invoice, InvoiceApplication
+from invoices.services.InvoiceService import InvoiceService
 from letters.services.LetterService import LetterService
 from payments.models import Payment
 from products.models import Product
@@ -542,6 +545,67 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         )
 
         return Response(result)
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="file_format",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="The format of the downloaded invoice (docx or pdf).",
+                enum=["docx", "pdf"],
+            )
+        ],
+        responses={
+            200: OpenApiTypes.BINARY,
+        },
+    )
+    @action(detail=True, methods=["get"], url_path="download")
+    def download(self, request, pk=None):
+        format_type = request.query_params.get("file_format", "docx").lower()
+
+        # Validate format parameter
+        if format_type not in ["docx", "pdf"]:
+            return self.error_response("Invalid format. Use 'docx' or 'pdf'.", status.HTTP_400_BAD_REQUEST)
+
+        invoice = self.get_object()
+        invoice_service = InvoiceService(invoice)
+
+        # Logic for determining invoice document content (matches legacy view)
+        if invoice.total_paid_amount == 0 or invoice.is_payment_complete:
+            data, items = invoice_service.generate_invoice_data()
+            buf = invoice_service.generate_invoice_document(data, items)
+        else:
+            data, items, payments = invoice_service.generate_partial_invoice_data()
+            buf = invoice_service.generate_invoice_document(data, items, payments)
+
+        # Build filename
+        raw_name = f"{invoice.invoice_no_display}_{invoice.customer.full_name}"
+        safe_name = slugify(raw_name, allow_unicode=False).replace("-", "_") or f"Invoice_{pk}"
+        safe_name = safe_name[:200]
+
+        if format_type == "docx":
+            return FileResponse(
+                buf,
+                as_attachment=True,
+                filename=f"{safe_name}.docx",
+                content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+
+        # Convert to PDF
+        try:
+            pdf_bytes = PDFConverter.docx_buffer_to_pdf(buf)
+            pdf_buf = BytesIO(pdf_bytes)
+            response = FileResponse(
+                pdf_buf,
+                as_attachment=True,
+                filename=f"{safe_name}.pdf",
+                content_type="application/pdf",
+            )
+            return response
+        except PDFConverterError as e:
+            return self.error_response(f"PDF conversion failed: {str(e)}", status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @extend_schema(
         parameters=[
