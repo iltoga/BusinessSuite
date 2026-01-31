@@ -20,7 +20,7 @@ def _ordered_document_names(document_ids):
     return ",".join(documents_by_id[doc_id] for doc_id in document_ids)
 
 
-def _ordered_document_types(names):
+def ordered_document_types(names):
     if not names:
         return []
     name_list = [name.strip() for name in names.split(",") if name.strip()]
@@ -93,12 +93,12 @@ class ProductDetailSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(DocumentTypeSerializer(many=True))
     def get_required_document_types(self, instance):
-        documents = _ordered_document_types(instance.required_documents)
+        documents = ordered_document_types(instance.required_documents)
         return DocumentTypeSerializer(documents, many=True).data
 
     @extend_schema_field(DocumentTypeSerializer(many=True))
     def get_optional_document_types(self, instance):
-        documents = _ordered_document_types(instance.optional_documents)
+        documents = ordered_document_types(instance.optional_documents)
         return DocumentTypeSerializer(documents, many=True).data
 
 

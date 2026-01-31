@@ -123,7 +123,7 @@ class DocApplicationInvoiceSerializer(serializers.ModelSerializer):
 class DocApplicationDetailSerializer(serializers.ModelSerializer):
     product = ProductSerializer(read_only=True)
     customer = CustomerSerializer(read_only=True)
-    documents = DocumentSerializer(many=True, read_only=True)
+    documents = DocumentSerializer(many=True, read_only=True, source="ordered_documents")
     workflows = DocWorkflowSerializer(many=True, read_only=True)
     str_field = serializers.SerializerMethodField()
     is_document_collection_completed = serializers.BooleanField(read_only=True)

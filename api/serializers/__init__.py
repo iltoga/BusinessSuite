@@ -17,7 +17,12 @@ from .invoice_serializer import (
     PaymentSerializer,
 )
 from .letters_serializer import SuratPermohonanCustomerDataSerializer, SuratPermohonanRequestSerializer
-from .product_serializer import ProductCreateUpdateSerializer, ProductDetailSerializer, ProductSerializer
+from .product_serializer import (
+    ProductCreateUpdateSerializer,
+    ProductDetailSerializer,
+    ProductSerializer,
+    ordered_document_types,
+)
 from .quick_create_serializer import (
     CustomerApplicationQuickCreateSerializer,
     CustomerQuickCreateSerializer,

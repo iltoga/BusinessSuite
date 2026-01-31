@@ -47,6 +47,7 @@ from api.serializers import (
     ProductSerializer,
     SuratPermohonanCustomerDataSerializer,
     SuratPermohonanRequestSerializer,
+    ordered_document_types,
 )
 from api.serializers.auth_serializer import CustomTokenObtainSerializer
 from business_suite.authentication import JwtOrMockAuthentication
@@ -343,15 +344,14 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             product = Product.objects.get(id=product_id)
         except Product.DoesNotExist:
             return self.error_response("Product does not exist", status.HTTP_404_NOT_FOUND)
-        required_document_types_str = product.required_documents.split(",")
-        required_document_types_str = [document.strip() for document in required_document_types_str]
-        required_document_types = DocumentType.objects.filter(name__in=required_document_types_str)
+
+        required_document_types = ordered_document_types(product.required_documents)
+        optional_document_types = ordered_document_types(product.optional_documents)
+
         serialized_product = ProductSerializer(product, many=False)
         serialzed_document_types = DocumentTypeSerializer(required_document_types, many=True)
-        optional_document_types_str = product.optional_documents.split(",")
-        optional_document_types_str = [document.strip() for document in optional_document_types_str]
-        optional_document_types = DocumentType.objects.filter(name__in=optional_document_types_str)
         serialzed_optional_document_types = DocumentTypeSerializer(optional_document_types, many=True)
+
         return Response(
             {
                 "product": serialized_product.data,

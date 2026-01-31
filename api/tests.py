@@ -233,9 +233,51 @@ class CustomerApplicationDetailAPITestCase(TestCase):
         self.assertEqual(self.document.doc_number, "A123456")
         self.assertEqual(self.document.metadata.get("number"), "A123456")
 
+    def test_application_detail_documents_ordering(self):
+        # Create a product with specific document order
+        product = Product.objects.create(
+            name="Ordered Product",
+            code="ORD-1",
+            product_type="visa",
+            required_documents="Passport, ID Card",
+            optional_documents="Photo",
+        )
+
+        doc_type_id_card = DocumentType.objects.create(name="ID Card")
+        doc_type_photo = DocumentType.objects.create(name="Photo")
+        doc_type_other = DocumentType.objects.create(name="Other")
+
+        app = DocApplication.objects.create(
+            customer=self.customer,
+            product=product,
+            doc_date=timezone.now().date(),
+            created_by=self.user,
+        )
+
+        # Create docs in wrong order
+        Document.objects.create(doc_application=app, doc_type=doc_type_other, created_by=self.user)
+        Document.objects.create(doc_application=app, doc_type=doc_type_photo, created_by=self.user)
+        Document.objects.create(doc_application=app, doc_type=doc_type_id_card, created_by=self.user)
+        Document.objects.create(doc_application=app, doc_type=self.doc_type, created_by=self.user)  # Passport
+
+        url = reverse("customer-applications-detail", kwargs={"pk": app.pk})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+
+        docs = data["documents"]
+        self.assertEqual(len(docs), 4)
+        self.assertEqual(docs[0]["docType"]["name"], "Passport")
+        self.assertEqual(docs[1]["docType"]["name"], "ID Card")
+        self.assertEqual(docs[2]["docType"]["name"], "Photo")
+        self.assertEqual(docs[3]["docType"]["name"], "Other")
+
 
 class ProductApiTestCase(TestCase):
     def setUp(self):
+        from django.core.cache import cache
+
+        cache.clear()
         User = get_user_model()
         self.user = User.objects.create_superuser(
             username="productadmin", email="product@example.com", password="password"
@@ -247,7 +289,7 @@ class ProductApiTestCase(TestCase):
         # Ensure the propose endpoint returns the next invoice number for a given date
         self.client.force_login(self.user)
         year = 2026
-        proposed = Invoice.get_next_invoice_no_for_year(year)
+        # The API call itself increments the sequence in cache
         url = reverse("invoices-propose") + f"?invoice_date={year}-01-01"
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
@@ -255,7 +297,8 @@ class ProductApiTestCase(TestCase):
         # Accept camelCase or snake_case
         self.assertTrue("invoice_no" in data or "invoiceNo" in data)
         value = data.get("invoice_no") or data.get("invoiceNo")
-        self.assertEqual(value, proposed)
+        # Since cache was cleared in setUp, the first call should return 20260001
+        self.assertEqual(value, 20260001)
 
     def test_create_invoice_via_api(self):
         # Test that creating an invoice via the API with an application works

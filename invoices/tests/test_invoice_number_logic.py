@@ -7,6 +7,9 @@ from invoices.models.invoice import Invoice
 
 class InvoiceNumberLogicTestCase(TestCase):
     def setUp(self):
+        from django.core.cache import cache
+
+        cache.clear()
         Invoice.objects.all().delete()
         self.customer = Customer.objects.create(
             customer_type="person",
