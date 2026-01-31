@@ -16,6 +16,16 @@ class DocumentActionSerializer(serializers.Serializer):
     css_class = serializers.CharField()
 
 
+class DocumentMergeSerializer(serializers.Serializer):
+    """Serializer for merging documents."""
+
+    document_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        min_length=1,
+        help_text="Ordered list of document IDs to merge.",
+    )
+
+
 class DocumentSerializer(serializers.ModelSerializer):
     doc_type = DocumentTypeSerializer(read_only=True)
     doc_type_id = serializers.PrimaryKeyRelatedField(

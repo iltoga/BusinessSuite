@@ -183,16 +183,38 @@
     </z-card>
 
     <z-card class="p-6">
-      <div class="flex items-center justify-between mb-4">
+      <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
         <h3 class="text-lg font-semibold">Uploaded Documents</h3>
+        <div class="flex flex-wrap gap-2">
+          @if (selectedDocumentIds().size > 0) {
+            <button
+              z-button
+              zType="success"
+              (click)="mergeAndDownloadSelected()"
+              [disabled]="isMerging()"
+            >
+              @if (isMerging()) {
+                <span class="mr-2 inline-block animate-spin">⏳</span>
+                Merging...
+              } @else {
+                Merge & Download PDF ({{ selectedDocumentIds().size }})
+              }
+            </button>
+            <button z-button zType="outline" (click)="deselectAllDocuments()">Deselect All</button>
+          } @else {
+            <button z-button zType="outline" (click)="selectAllDocuments()">Select All</button>
+          }
+        </div>
       </div>
-      @if (uploadedDocuments().length === 0) {
+      @if (localUploadedDocuments().length === 0) {
         <div class="text-sm text-muted-foreground">No uploaded documents yet.</div>
       } @else {
         <div class="overflow-x-auto">
           <table class="w-full border-collapse">
             <thead>
               <tr class="border-b text-sm text-muted-foreground">
+                <th class="w-10"></th>
+                <th class="w-10"></th>
                 <th class="text-left py-2">Document</th>
                 <th class="text-left py-2">Doc Number</th>
                 <th class="text-left py-2">Expiration</th>
@@ -201,9 +223,26 @@
                 <th class="text-left py-2">Actions</th>
               </tr>
             </thead>
-            <tbody>
-              @for (doc of uploadedDocuments(); track doc.id) {
-                <tr class="border-b">
+            <tbody cdkDropList (cdkDropListDropped)="onDocumentDrop($event)">
+              @for (doc of localUploadedDocuments(); track doc.id) {
+                <tr class="border-b bg-card" cdkDrag>
+                  <td class="py-3 px-2">
+                    <div
+                      class="cursor-move text-muted-foreground"
+                      cdkDragHandle
+                      title="Drag to reorder"
+                    >
+                      <z-icon zType="ellipsis" zSize="sm" class="rotate-90" />
+                    </div>
+                  </td>
+                  <td class="py-3 px-2">
+                    <input
+                      type="checkbox"
+                      [checked]="selectedDocumentIds().has(doc.id)"
+                      (change)="toggleDocumentSelection(doc.id)"
+                      class="h-4 w-4 rounded border text-primary"
+                    />
+                  </td>
                   <td class="py-3">{{ doc.docType.name }}</td>
                   <td class="py-3">{{ doc.docNumber || '—' }}</td>
                   <td class="py-3">{{ doc.expirationDate | appDate }}</td>

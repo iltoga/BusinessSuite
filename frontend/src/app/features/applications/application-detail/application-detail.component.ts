@@ -1,11 +1,14 @@
+import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { CommonModule, Location } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
   computed,
+  effect,
   inject,
   signal,
+  untracked,
   type OnInit,
 } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
@@ -35,6 +38,7 @@ import {
   ZardSkeletonComponent,
 } from '@/shared/components/skeleton';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
+import { downloadBlob } from '@/shared/utils/file-download';
 
 @Component({
   selector: 'app-application-detail',
@@ -43,6 +47,7 @@ import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
     CommonModule,
     RouterLink,
     ReactiveFormsModule,
+    DragDropModule,
     ZardBadgeComponent,
     ZardButtonComponent,
     ZardCardComponent,
@@ -89,6 +94,11 @@ export class ApplicationDetailComponent implements OnInit {
   readonly actionLoading = signal<string | null>(null);
   readonly workflowAction = signal<string | null>(null);
 
+  // PDF Merge and Selection
+  readonly localUploadedDocuments = signal<ApplicationDocument[]>([]);
+  readonly selectedDocumentIds = signal<Set<number>>(new Set());
+  readonly isMerging = signal(false);
+
   readonly workflowStatusOptions: ZardComboboxOption[] = [
     { value: 'pending', label: 'Pending' },
     { value: 'processing', label: 'Processing' },
@@ -126,6 +136,27 @@ export class ApplicationDetailComponent implements OnInit {
     expirationDate: [''],
     details: [''],
   });
+
+  constructor() {
+    effect(() => {
+      const docs = this.uploadedDocuments();
+      untracked(() => {
+        const current = this.localUploadedDocuments();
+
+        // Sync local list only if the SET of documents changed (new upload, deletion, etc.)
+        // but preserve the local order if it's just a reorder.
+        const currentIds = new Set(current.map((d) => d.id));
+        const docsIds = new Set(docs.map((d) => d.id));
+
+        const needsSync =
+          currentIds.size !== docsIds.size || [...docsIds].some((id) => !currentIds.has(id));
+
+        if (needsSync) {
+          this.localUploadedDocuments.set([...docs]);
+        }
+      });
+    });
+  }
 
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
@@ -317,6 +348,61 @@ export class ApplicationDetailComponent implements OnInit {
           return;
         }
         this.toast.error('Failed to open document');
+      },
+    });
+  }
+
+  toggleDocumentSelection(id: number): void {
+    const selected = new Set(this.selectedDocumentIds());
+    if (selected.has(id)) {
+      selected.delete(id);
+    } else {
+      selected.add(id);
+    }
+    this.selectedDocumentIds.set(selected);
+  }
+
+  selectAllDocuments(): void {
+    const allIds = this.localUploadedDocuments().map((d) => d.id);
+    this.selectedDocumentIds.set(new Set(allIds));
+  }
+
+  deselectAllDocuments(): void {
+    this.selectedDocumentIds.set(new Set());
+  }
+
+  onDocumentDrop(event: CdkDragDrop<ApplicationDocument[]>): void {
+    const docs = [...this.localUploadedDocuments()];
+    moveItemInArray(docs, event.previousIndex, event.currentIndex);
+    this.localUploadedDocuments.set(docs);
+  }
+
+  mergeAndDownloadSelected(): void {
+    const selectedIds = this.selectedDocumentIds();
+    if (selectedIds.size < 1) {
+      this.toast.error('Select at least one document to merge');
+      return;
+    }
+
+    // Preserve the order from the local reorderable list
+    const orderedIds = this.localUploadedDocuments()
+      .filter((d) => selectedIds.has(d.id))
+      .map((d) => d.id);
+
+    this.isMerging.set(true);
+    this.documentsService.mergePdf(orderedIds).subscribe({
+      next: (blob: Blob) => {
+        const app = this.application();
+        const customerName = app?.customer.fullName || 'documents';
+        const filename = `merged_${customerName.toLowerCase().replace(/\s+/g, '_')}_${app?.id ?? 'export'}.pdf`;
+        downloadBlob(blob, filename);
+        this.isMerging.set(false);
+        this.toast.success('PDF merged and downloaded');
+      },
+      error: (err: any) => {
+        const errorMsg = err?.error?.error || 'Failed to merge documents';
+        this.toast.error(errorMsg);
+        this.isMerging.set(false);
       },
     });
   }

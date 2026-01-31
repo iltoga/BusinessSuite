@@ -10,6 +10,7 @@ export * from './doc-application-serializer-with-relations';
 export * from './doc-workflow';
 export * from './document';
 export * from './document-action';
+export * from './document-merge';
 export * from './document-type';
 export * from './gender-enum';
 export * from './invoice-application-detail';

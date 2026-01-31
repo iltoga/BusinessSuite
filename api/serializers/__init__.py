@@ -8,7 +8,7 @@ from .doc_application_serializer import (
     DocApplicationSerializerWithRelations,
 )
 from .doc_workflow_serializer import DocWorkflowSerializer, TaskSerializer
-from .document_serializer import DocumentSerializer
+from .document_serializer import DocumentMergeSerializer, DocumentSerializer
 from .document_type_serializer import DocumentTypeSerializer
 from .invoice_serializer import (
     InvoiceCreateUpdateSerializer,

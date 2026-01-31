@@ -15,6 +15,7 @@ api/document-types.service.ts
 api/documents.service.ts
 api/invoices.service.ts
 api/letters.service.ts
+api/mock-auth-config.service.ts
 api/ocr.service.ts
 api/payments.service.ts
 api/products.service.ts
@@ -33,6 +34,7 @@ model/doc-application-invoice.ts
 model/doc-application-serializer-with-relations.ts
 model/doc-workflow.ts
 model/document-action.ts
+model/document-merge.ts
 model/document-type.ts
 model/document.ts
 model/gender-enum.ts

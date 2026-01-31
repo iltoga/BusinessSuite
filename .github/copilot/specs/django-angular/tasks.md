@@ -1463,129 +1463,94 @@
 
 ---
 
-## Phase 9: Integration, Testing, and Cutover (CURRENT)
-
-- [ ] **9.1 Feature Flagging**
-  - [ ] Install `django-waffle`
-  - [ ] Create `ENABLE_ANGULAR_FRONTEND` flag
-  - [ ] Conditional routing based on flag
-
-- [ ] **9.2 Production Build & Deployment**
-  - [ ] Configure Nginx routing (API vs Angular routes). currently in `/nginx/conf.d/default.conf` (this is my production server, currently serving only Django. you will nned to create a new config file for the new server using angular frontend and django backend. django backend won't need to be exposed anymore because the frontend will handle routing. I will switch the config files manually when ready to cutover)
-  - [ ] Deploy Angular build to `staticfiles/`
-  - [ ] Configure CSP headers
-
-- [ ] **9.3 Final Validation**
-  - [ ] End-to-end testing all modules
-  - [ ] Performance testing (N+1 queries audit)
-  - [ ] Accessibility audit
-  - [ ] Update `docs/implementation_feedback.md`
-  - [ ] Complete feedback log
-
----
-
-## Phase 10: Admin & Maintenance Tools (CRITICAL - RECENTLY ADDED)
+## Phase 9: Admin & Maintenance Tools (CURRENT)
 
 **Goal:** Migrate system administration, maintenance, and backup/restore tools from legacy Django UI, preserving superuser-only access and real-time feedback.
 
-### 10.0 Legacy UI & Logic Audit
+### 9.0 Legacy UI & Logic Audit
 
 - [ ] Review `admin_tools/views.py` and `admin_tools/services.py` for backup/restore mechanics (tar.zst, SQL dumpdata, media collection).
 - [ ] Audit `admin_tools/components/document_type_list.py` (Unicorn) for document type CRUD rules.
 - [ ] Review `admin_tools/templates/admin_tools/` for UI specifics: SSE logging, diagnostic result rendering.
 - [ ] Audit `admin_tools/services.py` for media diagnostic vs repair logic.
 
-### 10.1 Backend API Modernization (Security & Performance)
+### 9.1 Backend API Modernization (Security & Performance)
 
-- [ ] **10.1.1 Enhance Auth Response**: Update `TokenAuthView` in `api/views.py` to include `isSuperuser` and `fullName` in token response.
-- [ ] **10.1.2 Rebuild DocumentType API**:
+- [ ] **9.1.1 Enhance Auth Response**: Update `TokenAuthView` in `api/views.py` to include `isSuperuser` and `fullName` in token response.
+- [ ] **9.1.2 Rebuild DocumentType API**:
   - Update `DocumentTypeSerializer` to include `validationRuleRegex`.
   - Convert `DocumentTypeViewSet` from `ReadOnlyModelViewSet` to `ModelViewSet`.
   - Add search/ordering by name/description.
-- [ ] **10.1.3 Implement BackupsViewSet**:
+- [ ] **9.1.3 Implement BackupsViewSet**:
   - `GET /api/backups/`: List local backups with metadata.
   - `POST /api/backups/start/`: Trigger SSE backup stream (using `services.backup_all`).
   - `GET /api/backups/{filename}/download/`: Secure download for backup archives.
   - `POST /api/backups/upload/`: Multi-part upload for existing archives.
   - `POST /api/backups/restore/`: Trigger SSE restore stream (using `services.restore_from_file`).
   - `DELETE /api/backups/`: Purge all backups (with secondary confirmation).
-- [ ] **10.1.4 Implement ServerManagementViewSet**:
+- [ ] **9.1.4 Implement ServerManagementViewSet**:
   - `POST /api/server-management/clear-cache/`: Global cache purge.
   - `GET /api/server-management/media-diagnostic/`: Comprehensive check of disk vs DB.
   - `POST /api/server-management/media-repair/`: Automated path fixing.
-- [ ] **10.1.5 Schema Generation**: Run `bun run generate:api` to sync TypeScript clients.
+- [ ] **9.1.5 Schema Generation**: Run `bun run generate:api` to sync TypeScript clients.
 
-### 10.2 Angular Admin Foundations
+### 9.2 Angular Admin Foundations
 
-- [ ] **10.2.1 Superuser Authorization**:
+- [ ] **9.2.1 Superuser Authorization**:
   - Update `AuthService` to track `isSuperuser` status via signals.
   - Create `superuser.guard.ts` to protect `/admin/**` routes.
-- [ ] **10.2.2 Admin Layout**: Add an "Admin" sidebar section with sub-links: Document Types, Backup/Restore, Server.
+- [ ] **9.2.2 Admin Layout**: Add an "Admin" sidebar section with sub-links: Document Types, Backup/Restore, Server.
 
-### 10.3 Document Types Management
+### 9.3 Document Types Management
 
-- [ ] **10.3.1 Feature Module**: Create `features/admin/document-types/`.
-- [ ] **10.3.2 CRUD Interface**: Replicate the Unicorn component behavior using `DataTableComponent`.
-- [ ] **10.3.3 Integrity Enforcement**: Implement frontend validation to prevent deletion of document types referenced by products (using `can_be_deleted` endpoint).
+- [ ] **9.3.1 Feature Module**: Create `features/admin/document-types/`.
+- [ ] **9.3.2 CRUD Interface**: Replicate the Unicorn component behavior using `DataTableComponent`.
+- [ ] **9.3.3 Integrity Enforcement**: Implement frontend validation to prevent deletion of document types referenced by products (using `can_be_deleted` endpoint).
 
-### 10.4 Backup & Restore Module
+### 9.4 Backup & Restore Module
 
-- [ ] **10.4.1 Feature Module**: Create `features/admin/backups/`.
-- [ ] **10.4.2 Dashboard View**: Cards for available backups with size/type badges (e.g., "Full" for backups with users).
-- [ ] **10.4.3 Real-time SSE Log**: Create a terminal-style component to display the backup/restore log using `SseService`.
-- [ ] **10.4.4 Restore Workflow**: Implementation of "Include Users" toggle and file upload zone.
+- [ ] **9.4.1 Feature Module**: Create `features/admin/backups/`.
+- [ ] **9.4.2 Dashboard View**: Cards for available backups with size/type badges (e.g., "Full" for backups with users).
+- [ ] **9.4.3 Real-time SSE Log**: Create a terminal-style component to display the backup/restore log using `SseService`.
+- [ ] **9.4.4 Restore Workflow**: Implementation of "Include Users" toggle and file upload zone.
 
-### 10.5 Server Management Dashboard
+### 9.5 Server Management Dashboard
 
-- [ ] **10.5.1 Feature Module**: Create `features/admin/server-management/`.
-- [ ] **10.5.2 Actions Bar**: Clean ZardUI buttons for cache and media maintenance.
-- [ ] **10.5.3 Diagnostic View**: JSON/Table viewer for media diagnostic results, highlighting discrepancies (e.g., "Missing on disk").
+- [ ] **9.5.1 Feature Module**: Create `features/admin/server-management/`.
+- [ ] **9.5.2 Actions Bar**: Clean ZardUI buttons for cache and media maintenance.
+- [ ] **9.5.3 Diagnostic View**: JSON/Table viewer for media diagnostic results, highlighting discrepancies (e.g., "Missing on disk").
 
-### 10.6 Privileged Actions in Feature Modules
+### 9.6 Privileged Actions in Feature Modules
 
-- [ ] **10.6.1 Bulk Deletion in Products**:
+- [ ] **9.6.1 Bulk Deletion in Products**:
   - Add "Delete All" / "Delete Selected" button to `ProductListComponent` (visible only to superusers).
   - Implement `products/delete-all` API endpoint integration.
-- [ ] **10.6.2 Force Delete Invoice**:
+- [ ] **9.6.2 Force Delete Invoice**:
   - Implement a "Force Delete" option in Invoice deletion workflow for superusers.
   - Implement cascade deletion flag for associated Customer Applications as seen in legacy `InvoiceDeleteView`.
-
-### 10.7 Navigation & UX
-
-- [ ] Update `app.routes.ts` with lazy-loaded admin routes: - Implement `products/delete-all` API endpoint integration.
-- [ ] **10.6.2 Force Delete Invoice**:
-  - Implement a "Force Delete" option in Invoice deletion workflow for superusers.
-  - Implement cascade deletion flag for associated Customer Applications as seen in legacy `InvoiceDeleteView`.
-
-### 10.7 Navigation & UX
-
-- [ ] Update `app.routes.ts` with lazy-loaded admin routes:
-      `{ path: 'admin', canActivate: [superuserGuard], children: [...] }`
-- [ ] Add sidebar icons (Settings, Database, Server) for admin sections.
-- [ ] Ensure superuser-only elements are conditionally rendered across the entire SPA using a `directive` or `signal`.
 
 ---
 
-## Phase 11: User Profile View (NEW FEATURE - ANGULAR EXCLUSIVE)
+## Phase 10: User Profile View (NEW FEATURE - ANGULAR EXCLUSIVE)
 
 **Goal:** Add a user profile view accessible from the top-right profile icon, allowing users to view and edit their profile information using ZardUI components and following UX standards.
 
-### 11.0 UX Research & Design
+### 10.0 UX Research & Design
 
-- [x] **11.0.1** Research UX standards for profile sections using ZardUI component documentation:
+- [x] **10.0.1** Research UX standards for profile sections using ZardUI component documentation:
   - Profile icon in top-right header (MatIconButton pattern)
   - Dropdown menu for profile actions (logout, settings)
   - Profile view with avatar, personal info, and edit functionality
   - Form fields with proper spacing and validation
 
-- [x] **11.0.2** Define profile data structure:
+- [x] **10.0.2** Define profile data structure:
   - Display: full name, email, role, last login
   - Editable: first name, last name, email, phone, avatar upload
   - Security: password change (separate modal)
 
-### 11.1 Backend API Preparation
+### 10.1 Backend API Preparation
 
-- [ ] **11.1.1** Extend `TokenAuthView` to include user profile data in auth response:
+- [ ] **10.1.1** Extend `TokenAuthView` to include user profile data in auth response:
 
   ```python
   # api/views.py
@@ -1609,7 +1574,7 @@
           return response
   ```
 
-- [ ] **11.1.2** Create `UserProfileViewSet` for profile management:
+- [ ] **10.1.2** Create `UserProfileViewSet` for profile management:
 
   ```python
   class UserProfileViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
@@ -1651,7 +1616,7 @@
           return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
   ```
 
-- [ ] **11.1.3** Create serializers:
+- [ ] **10.1.3** Create serializers:
 
   ```python
   class UserProfileUpdateSerializer(serializers.ModelSerializer):
@@ -1672,17 +1637,17 @@
           return data
   ```
 
-- [ ] **11.1.4** Add routes to `api/urls.py`:
+- [ ] **10.1.4** Add routes to `api/urls.py`:
 
   ```python
   router.register(r'user-profile', UserProfileViewSet, basename='user-profile')
   ```
 
-- [ ] **11.1.5** Run `bun run generate:api`
+- [ ] **10.1.5** Run `bun run generate:api`
 
-### 11.2 Angular Profile Implementation
+### 10.2 Angular Profile Implementation
 
-- [ ] **11.2.1** Update `AuthService` to store user profile data:
+- [ ] **10.2.1** Update `AuthService` to store user profile data:
 
   ```typescript
   // core/services/auth.service.ts
@@ -1698,7 +1663,7 @@
   }
   ```
 
-- [ ] **11.2.2** Update `MainLayoutComponent` to add profile icon:
+- [ ] **10.2.2** Update `MainLayoutComponent` to add profile icon:
 
   ```typescript
   // shared/layouts/main-layout.component.ts
@@ -1726,7 +1691,7 @@
   }
   ```
 
-- [ ] **11.2.3** Create `features/profile/profile.component.ts`:
+- [ ] **10.2.3** Create `features/profile/profile.component.ts`:
 
   ```typescript
   @Component({
@@ -1794,21 +1759,13 @@
   }
   ```
 
-- [ ] **11.2.4** Add route `/profile` to `app.routes.ts`
+- [ ] **10.2.4** Add route `/profile` to `app.routes.ts`
 
-- [ ] **11.2.5** Add `ProfileComponent` to `docs/shared_components.md`
+- [ ] **10.2.5** Add `ProfileComponent` to `docs/shared_components.md`
 
-### 11.3 Password Change Modal
+### 10.3 Password Change Modal
 
-- [ ] **11.3.1** Create `ChangePasswordModalComponent`:
-
-- [ ] **11.2.4** Add route `/profile` to `app.routes.ts`
-
-- [ ] **11.2.5** Add `ProfileComponent` to `docs/shared_components.md`
-
-### 11.3 Password Change Modal
-
-- [ ] **11.3.1** Create `ChangePasswordModalComponent`:
+- [ ] **10.3.1** Create `ChangePasswordModalComponent`:
 
   ```typescript
   @Component({
@@ -1842,17 +1799,38 @@
   }
   ```
 
-- [ ] **11.3.2** Integrate modal into `ProfileComponent`
+- [ ] **10.3.2** Integrate modal into `ProfileComponent`
 
-### 11.4 Avatar Upload (Optional Enhancement)
+### 10.4 Avatar Upload (Optional Enhancement)
 
-- [ ] **11.4.1** Add avatar field to user model and API
-- [ ] **11.4.2** Implement file upload in profile component
-- [ ] **11.4.3** Display avatar in header and profile view
+- [ ] **10.4.1** Add avatar field to user model and API
+- [ ] **10.4.2** Implement file upload in profile component
+- [ ] **10.4.3** Display avatar in header and profile view
 
-### 11.5 Testing & Validation
+### 10.5 Testing & Validation
 
-- [ ] **11.5.1** Add unit tests for profile component
-- [ ] **11.5.2** Test profile editing workflow
-- [ ] **11.5.3** Validate password change security
-- [ ] **11.5.4** Update `docs/implementation_feedback.md` with UX learnings
+- [ ] **10.5.1** Add unit tests for profile component
+- [ ] **10.5.2** Test profile editing workflow
+- [ ] **10.5.3** Validate password change security
+- [ ] **10.5.4** Update `docs/implementation_feedback.md` with UX learnings
+
+---
+
+## Phase 11: Integration, Testing, and Cutover
+
+- [ ] **11.1 Feature Flagging**
+  - [ ] Install `django-waffle`
+  - [ ] Create `ENABLE_ANGULAR_FRONTEND` flag
+  - [ ] Conditional routing based on flag
+
+- [ ] **11.2 Production Build & Deployment**
+  - [ ] Configure Nginx routing (API vs Angular routes). currently in `/nginx/conf.d/default.conf` (this is my production server, currently serving only Django. you will nned to create a new config file for the new server using angular frontend and django backend. django backend won't need to be exposed anymore because the frontend will handle routing. I will switch the config files manually when ready to cutover)
+  - [ ] Deploy Angular build to `staticfiles/`
+  - [ ] Configure CSP headers
+
+- [ ] **11.3 Final Validation**
+  - [ ] End-to-end testing all modules
+  - [ ] Performance testing (N+1 queries audit)
+  - [ ] Accessibility audit
+  - [ ] Update `docs/implementation_feedback.md`
+  - [ ] Complete feedback log

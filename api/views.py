@@ -33,6 +33,7 @@ from api.serializers import (
     DocApplicationDetailSerializer,
     DocApplicationInvoiceSerializer,
     DocApplicationSerializerWithRelations,
+    DocumentMergeSerializer,
     DocumentSerializer,
     DocumentTypeSerializer,
     DocWorkflowSerializer,
@@ -50,6 +51,7 @@ from api.serializers import (
 from api.serializers.auth_serializer import CustomTokenObtainSerializer
 from business_suite.authentication import JwtOrMockAuthentication
 from core.models import CountryCode, DocumentOCRJob, OCRJob
+from core.services.document_merger import DocumentMerger, DocumentMergerError
 from core.services.quick_create import create_quick_customer, create_quick_customer_application, create_quick_product
 from core.tasks.cron_jobs import run_clear_cache_now, run_full_backup_now
 from core.tasks.document_ocr import run_document_ocr_job
@@ -1024,6 +1026,74 @@ class DocumentViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             "completed": document.completed,
         }
         return Response(data)
+
+    @extend_schema(request=DocumentMergeSerializer, responses={200: OpenApiTypes.BINARY})
+    @action(detail=False, methods=["post"], url_path="merge-pdf")
+    def merge_pdf(self, request):
+        """Merge selected documents into a single PDF.
+
+        Expects JSON: {"document_ids": [1, 2, 3]}
+        """
+        import logging
+
+        logger = logging.getLogger(__name__)
+        logger.info(f"DEBUG: merge_pdf called with data: {request.data}")
+
+        serializer = DocumentMergeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        document_ids = serializer.validated_data.get("document_ids", [])
+
+        logger.info(f"DEBUG: document_ids: {document_ids}")
+
+        # Get documents and preserve order
+        documents_dict = {
+            doc.pk: doc
+            for doc in Document.objects.filter(
+                pk__in=document_ids,
+                completed=True,
+            ).select_related("doc_type", "doc_application__customer")
+        }
+
+        if not documents_dict:
+            logger.warning("DEBUG: No valid documents found")
+            return self.error_response("No valid documents found.", status.HTTP_404_NOT_FOUND)
+
+        ordered_documents = [documents_dict[doc_id] for doc_id in document_ids if doc_id in documents_dict]
+        documents_with_files = [doc for doc in ordered_documents if doc.file and doc.file.name]
+
+        if not documents_with_files:
+            logger.warning("DEBUG: Selected documents have no uploaded files")
+            return self.error_response("Selected documents have no uploaded files.", status.HTTP_400_BAD_REQUEST)
+
+        # Get filename info from first doc
+        application = documents_with_files[0].doc_application
+        customer_name = application.customer.full_name if application and application.customer else "documents"
+
+        try:
+            logger.info("DEBUG: Calling DocumentMerger")
+            merged_pdf = DocumentMerger.merge_document_models(ordered_documents)
+            logger.info(f"DEBUG: Merged PDF size: {len(merged_pdf)}")
+
+            safe_customer_name = slugify(customer_name, allow_unicode=False).replace("-", "_")
+            filename = f"documents_{safe_customer_name}_{application.pk if application else 'merged'}.pdf"
+            filename = filename[:200]
+
+            from django.http import HttpResponse
+
+            response = HttpResponse(merged_pdf, content_type="application/pdf")
+            response["Content-Disposition"] = f'attachment; filename="{filename}"'
+            response["Content-Length"] = len(merged_pdf)
+
+            logger.info(f"Successfully merged {len(documents_with_files)} documents")
+
+            return response
+
+        except DocumentMergerError as e:
+            logger.error(f"DEBUG: DocumentMergerError: {str(e)}")
+            return self.error_response(f"Failed to merge documents: {str(e)}", status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            logger.exception("Unexpected error merging documents")
+            return self.error_response("An unexpected error occurred", status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):

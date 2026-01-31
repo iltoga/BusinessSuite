@@ -68,4 +68,19 @@ export class DocumentsService {
       responseType: 'blob',
     });
   }
+
+  mergePdf(documentIds: number[]): Observable<Blob> {
+    const url = '/api/documents/merge-pdf/';
+    const token = this.auth.getToken();
+    const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+
+    return this.http.post(
+      url,
+      { document_ids: documentIds },
+      {
+        headers,
+        responseType: 'blob',
+      },
+    );
+  }
 }
