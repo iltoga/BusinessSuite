@@ -402,9 +402,6 @@ DOCUMENTS_FOLDER = "documents"
 APPLICATION_DEFAULT_FILES_FOLDER = "application_default_files"
 TMPFILES_FOLDER = "tmpfiles"
 
-# Settings for django-dbbackup
-DBBACKUP_STORAGE = "storages.backends.dropbox.DropBoxStorage"
-
 
 def get_dropbox_token():
     # Skip token refresh in development to avoid network issues
@@ -425,10 +422,22 @@ def get_dropbox_token():
         return None
 
 
-DBBACKUP_STORAGE_OPTIONS = {
-    "oauth2_access_token": get_dropbox_token(),
-    "app_key": os.getenv("DROPBOX_APP_KEY"),
-    "app_secret": os.getenv("DROPBOX_APP_SECRET"),
+# Storage configuration
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+    "dbbackup": {
+        "BACKEND": "storages.backends.dropbox.DropBoxStorage",
+        "OPTIONS": {
+            "oauth2_access_token": get_dropbox_token(),
+            "app_key": os.getenv("DROPBOX_APP_KEY"),
+            "app_secret": os.getenv("DROPBOX_APP_SECRET"),
+        },
+    },
 }
 
 # Folders to exclude from media backup
