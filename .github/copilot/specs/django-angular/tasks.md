@@ -1446,24 +1446,24 @@
 
 ---
 
-## Phase 8: Invoices & Payments (CURRENT)
+## Phase 8: Invoices & Payments (COMPLETED)
 
 **Goal:** Invoice management with line items, payments recording, and balance tracking.
 
-- [ ] **8.1 Invoice Management**
-  - [ ] Dynamic FormArray for line items (applications + amounts)
-  - [ ] Computed totals using signals
-  - [ ] Status badges (paid, partial, unpaid, overdue)
-  - [ ] Customer application selection (exclude already invoiced)
+- [x] **8.1 Invoice Management**
+  - [x] Dynamic FormArray for line items (applications + amounts)
+  - [x] Computed totals using signals
+  - [x] Status badges (paid, partial, unpaid, overdue)
+  - [x] Customer application selection (exclude already invoiced)
 
-- [ ] **8.2 Payment Recording**
-  - [ ] Payment modal component
-  - [ ] Validation against balance due (cannot overpay)
-  - [ ] Payment history list
+- [x] **8.2 Payment Recording**
+  - [x] Payment modal component
+  - [x] Validation against balance due (cannot overpay)
+  - [x] Payment history list
 
 ---
 
-## Phase 9: Integration, Testing, and Cutover
+## Phase 9: Integration, Testing, and Cutover (CURRENT)
 
 - [ ] **9.1 Feature Flagging**
   - [ ] Install `django-waffle`
@@ -1471,7 +1471,7 @@
   - [ ] Conditional routing based on flag
 
 - [ ] **9.2 Production Build & Deployment**
-  - [ ] Configure Nginx routing (API vs Angular routes)
+  - [ ] Configure Nginx routing (API vs Angular routes). currently in `/nginx/conf.d/default.conf` (this is my production server, currently serving only Django. you will nned to create a new config file for the new server using angular frontend and django backend. django backend won't need to be exposed anymore because the frontend will handle routing. I will switch the config files manually when ready to cutover)
   - [ ] Deploy Angular build to `staticfiles/`
   - [ ] Configure CSP headers
 
