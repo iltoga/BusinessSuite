@@ -1,5 +1,4 @@
 import { CommonModule } from '@angular/common';
-import { HttpClient, HttpEventType } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -186,7 +185,6 @@ export class BackupsComponent implements OnInit, OnDestroy {
   @ViewChild('createdAtTemplate', { static: true }) createdAtTemplate!: TemplateRef<any>;
 
   private backupsApi = inject(BackupsService);
-  private http = inject(HttpClient);
   private authService = inject(AuthService);
   private sseService = inject(SseService);
   private toast = inject(GlobalToastService);
@@ -373,41 +371,53 @@ export class BackupsComponent implements OnInit, OnDestroy {
     this.uploadProgress.set(0);
 
     this.isOperationRunning.set(true);
-    this.http
-      .post<{ ok: boolean; error?: string; filename?: string }>('/api/backups/upload/', formData, {
-        reportProgress: true,
-        observe: 'events',
-      })
-      .pipe(
-        catchError(() => {
-          this.toast.error('Failed to upload backup');
-          this.uploadProgress.set(null);
-          this.uploadHelperText.set(null);
-          return EMPTY;
-        }),
-        finalize(() => this.isOperationRunning.set(false)),
-      )
-      .subscribe((event) => {
-        if (event.type === HttpEventType.UploadProgress && event.total) {
-          const percent = Math.round((event.loaded / event.total) * 100);
-          this.uploadProgress.set(percent);
-        }
 
-        if (event.type === HttpEventType.Response) {
-          const response = event.body as { ok: boolean; error?: string; filename?: string } | null;
-          if (response?.ok) {
-            this.uploadProgress.set(100);
-            this.uploadHelperText.set('Upload complete');
-            this.toast.success('Backup uploaded successfully');
-            this.loadBackups();
-            setTimeout(() => this.uploadProgress.set(null), 1500);
-          } else {
-            this.uploadProgress.set(null);
-            this.uploadHelperText.set(null);
-            this.toast.error(response?.error || 'Upload failed');
-          }
-        }
-      });
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/backups/upload/', true);
+    xhr.responseType = 'json';
+
+    const token = this.authService.getToken();
+    if (token) {
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    }
+    xhr.setRequestHeader('ngsw-bypass', 'true');
+
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable && event.total > 0) {
+        const percent = Math.round((event.loaded / event.total) * 100);
+        this.uploadProgress.set(percent);
+      }
+    };
+
+    xhr.onload = () => {
+      this.isOperationRunning.set(false);
+      const response = (xhr.response || {}) as {
+        ok?: boolean;
+        error?: string;
+        filename?: string;
+      };
+
+      if (xhr.status >= 200 && xhr.status < 300 && response.ok) {
+        this.uploadProgress.set(100);
+        this.uploadHelperText.set('Upload complete');
+        this.toast.success('Backup uploaded successfully');
+        this.loadBackups();
+        setTimeout(() => this.uploadProgress.set(null), 1500);
+      } else {
+        this.uploadProgress.set(null);
+        this.uploadHelperText.set(null);
+        this.toast.error(response.error || 'Upload failed');
+      }
+    };
+
+    xhr.onerror = () => {
+      this.isOperationRunning.set(false);
+      this.uploadProgress.set(null);
+      this.uploadHelperText.set(null);
+      this.toast.error('Failed to upload backup');
+    };
+
+    xhr.send(formData);
   }
 
   clearUploadSelection(): void {
