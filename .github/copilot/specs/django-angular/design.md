@@ -107,7 +107,7 @@ graph TB
 
 The backend will transition from a "View" provider to a "Data" provider.
 
-- **Authentication:** Token-based auth (`/api/api-token-auth/`). Session auth retained for Admin panel only.
+- **Authentication:** Token-based auth (`/api/api-token-auth/`). Session auth retained for Django Admin panel at `/django-admin/` only.
 - **Endpoints:**
   - `ModelViewSets` for standard CRUD (Customers, Products, Invoices).
   - `APIView` for specific actions (OCR trigger, Document Generation).
