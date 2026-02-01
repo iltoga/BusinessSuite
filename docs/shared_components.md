@@ -10,23 +10,24 @@
 
 > **UI note:** Prefer using `z-combobox` (searchable combobox) for long/static lists where typeahead improves UX (e.g., country, customer, product selections). Use the standard select only for short, non-searchable lists. This helps provide consistent keyboard navigation, search filtering, and accessibility across forms.
 
-| Component Name      | Selector                      | Location                                            | ZardUI Deps             | Status          | Used In      |
-| ------------------- | ----------------------------- | --------------------------------------------------- | ----------------------- | --------------- | ------------ |
-| DataTable           | app-data-table                | src/app/shared/components/data-table                | Table                   | ✅ Ready        |              |
-| ConfirmDialog       | app-confirm-dialog            | src/app/shared/components/confirm-dialog            | Dialog, Button          | ✅ Ready        |              |
-| SearchToolbar       | app-search-toolbar            | src/app/shared/components/search-toolbar            | Input, Button           | ✅ Ready        |              |
-| Pagination          | app-pagination-controls       | src/app/shared/components/pagination-controls       | Button, Icon            | ✅ Ready        |              |
-| ExpiryBadge         | app-expiry-badge              | src/app/shared/components/expiry-badge              | Badge                   | ✅ Ready        |              |
-| BulkDeleteDialog    | app-bulk-delete-dialog        | src/app/shared/components/bulk-delete-dialog        | Dialog, Button          | ✅ Ready        |              |
-| InvoiceDeleteDialog | app-invoice-delete-dialog     | src/app/shared/components/invoice-delete-dialog     | Dialog, Button          | ✅ Ready        |              |
-| FileUpload          | app-file-upload               | src/app/shared/components/file-upload               | Button                  | ✅ Ready        | Applications |
-| DocumentPreview     | app-document-preview          | src/app/shared/components/document-preview          | Popover, Icon           | ✅ Ready        | Applications |
-| PdfViewerHost       | app-pdf-viewer-host           | src/app/shared/components/pdf-viewer-host           | ngx-extended-pdf-viewer | ✅ Ready (lazy) | Applications |
-| SortableMultiSelect | app-sortable-multi-select     | src/app/shared/components/sortable-multi-select     | DragDrop                | ✅ Ready        | Applications |
-| CustomerSelect      | app-customer-select           | src/app/shared/components/customer-select           | Combobox                | ✅ Ready        |              |
-| TableSkeleton       | app-table-skeleton            | src/app/shared/components/skeleton                  | Table, Skeleton         | ✅ Ready        |              |
-| CardSkeleton        | app-card-skeleton             | src/app/shared/components/skeleton                  | Card, Skeleton          | ✅ Ready        |              |
-| InvoiceDownload     | app-invoice-download-dropdown | src/app/shared/components/invoice-download-dropdown | Dropdown, Button, Icon  | ✅ Ready        | Invoices     |
+| Component Name      | Selector                      | Location                                            | ZardUI Deps             | Status          | Used In         |
+| ------------------- | ----------------------------- | --------------------------------------------------- | ----------------------- | --------------- | --------------- |
+| DataTable           | app-data-table                | src/app/shared/components/data-table                | Table                   | ✅ Ready        |                 |
+| ConfirmDialog       | app-confirm-dialog            | src/app/shared/components/confirm-dialog            | Dialog, Button          | ✅ Ready        |                 |
+| SearchToolbar       | app-search-toolbar            | src/app/shared/components/search-toolbar            | Input, Button           | ✅ Ready        |                 |
+| Pagination          | app-pagination-controls       | src/app/shared/components/pagination-controls       | Button, Icon            | ✅ Ready        |                 |
+| ExpiryBadge         | app-expiry-badge              | src/app/shared/components/expiry-badge              | Badge                   | ✅ Ready        |                 |
+| Checkbox            | z-checkbox                    | src/app/shared/components/checkbox                  | Icon                    | ✅ Ready        | Admin (Backups) |
+| BulkDeleteDialog    | app-bulk-delete-dialog        | src/app/shared/components/bulk-delete-dialog        | Dialog, Button          | ✅ Ready        |                 |
+| InvoiceDeleteDialog | app-invoice-delete-dialog     | src/app/shared/components/invoice-delete-dialog     | Dialog, Button          | ✅ Ready        |                 |
+| FileUpload          | app-file-upload               | src/app/shared/components/file-upload               | Button                  | ✅ Ready        | Applications    |
+| DocumentPreview     | app-document-preview          | src/app/shared/components/document-preview          | Popover, Icon           | ✅ Ready        | Applications    |
+| PdfViewerHost       | app-pdf-viewer-host           | src/app/shared/components/pdf-viewer-host           | ngx-extended-pdf-viewer | ✅ Ready (lazy) | Applications    |
+| SortableMultiSelect | app-sortable-multi-select     | src/app/shared/components/sortable-multi-select     | DragDrop                | ✅ Ready        | Applications    |
+| CustomerSelect      | app-customer-select           | src/app/shared/components/customer-select           | Combobox                | ✅ Ready        |                 |
+| TableSkeleton       | app-table-skeleton            | src/app/shared/components/skeleton                  | Table, Skeleton         | ✅ Ready        |                 |
+| CardSkeleton        | app-card-skeleton             | src/app/shared/components/skeleton                  | Card, Skeleton          | ✅ Ready        |                 |
+| InvoiceDownload     | app-invoice-download-dropdown | src/app/shared/components/invoice-download-dropdown | Dropdown, Button, Icon  | ✅ Ready        | Invoices        |
 
 ## Component Details
 
@@ -209,7 +210,35 @@ export class FileUploadComponent {
 }
 ```
 
-**Used In:** Applications (used to upload application documents — also used by the auto-passport import flow).`
+**Used In:** Applications (used to upload application documents — also used by the auto-passport import flow).
+
+
+### Checkbox (ZardCheckboxComponent)
+
+**Location:** `src/app/shared/components/checkbox`
+
+**Selector:** `z-checkbox`
+
+**Interface / Behavior:**
+
+```typescript
+@Component({
+  selector: 'z-checkbox',
+  standalone: true,
+})
+export class ZardCheckboxComponent implements ControlValueAccessor {
+  // Supports reactive forms/ngModel via ControlValueAccessor
+  // Project content for the checkbox label: <z-checkbox>Label</z-checkbox>
+  // Accepts disabled state through ControlValueAccessor API
+}
+```
+
+**ZardUI Deps:** `z-icon` (uses check icon), accessible keyboard support, aria attributes
+
+**Status:** ✅ Ready
+
+**Used In:** Admin Backups (and available for reuse in forms)
+
 
 ### DocumentPreviewComponent
 
@@ -366,3 +395,4 @@ export class CardSkeletonComponent {
 - **2026-01-31:** Added `InvoiceDownloadDropdownComponent` to handle multi-format invoice downloads (DOCX/PDF) across list and detail views. Fixed ZardUI component property names (zType/zSize) and added missing icons (download, file-code) to `icons.ts`.
 - **2026-01-31:** Applications feature reused existing shared components; specifically: `SortableMultiSelect` (used for ordered document selection), `DocumentPreview`, `FileUpload`, and `PdfViewerHost`. No new shared components were created for this task. Note: several AI-dependent invoice import tests were removed because they were environment-dependent and flaky in CI (`invoices/tests/test_invoice_import_multimodal.py`).
 - **2026-01-31:** Added Invoice Import feature with `InvoiceImportModalComponent` (feature-specific, not shared). Uses SSE for real-time progress updates, LLM-based invoice parsing, and batch import support. Added `upload` icon to `icons.ts`. Backend endpoints added to `InvoiceViewSet`: `import_config`, `import_single`, `import_batch`, `import_status`, `import_stream`.
+- **2026-02-01:** Added `Checkbox` component (`z-checkbox`) as a reusable standalone component implementing `ControlValueAccessor` (location: `src/app/shared/components/checkbox`). The Main Layout now shows **Admin** links to superusers for discoverability. Also added new UI themes and minor frontend UX tweaks to improve admin discoverability and consistency.

@@ -382,13 +382,13 @@ Located in `copilot/specs/django-angular/`:
 - [x] Phase 4: Application Detail & OCR
 - [x] Phase 5: Products Management
 - [x] Phase 6: Customer Applications List & CRUD
-- [x] Phase 7: Letters (Surat Permohonan) (COMPLETED)
-- [ ] Phase 8: Invoices & Payments (CURRENT)
-- [ ] Phase 9: Integration & Cutover
-- [ ] Phase 10: Admin & Maintenance Tools
-- [ ] Phase 11: User Profile View (NEW FEATURE - ANGULAR EXCLUSIVE)
+- [x] Phase 7: Letters (Surat Permohonan)
+- [x] Phase 8: Invoices & Payments
+- [x] Phase 9: Admin & Maintenance Tools (COMPLETED)
+- [ ] Phase 10: User Profile View (NEW FEATURE - ANGULAR EXCLUSIVE) (CURRENT)
+- [ ] Phase 11: Integration & Cutover
 
-**Current focus:** Invoices & Payments (see [tasks.md](copilot/specs/django-angular/tasks.md) Phase 8)
+**Current focus:** User Profile View (Phase 10)
 
 ---
 
