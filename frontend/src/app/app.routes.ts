@@ -16,6 +16,7 @@ import { SuratPermohonanComponent } from './features/letters/surat-permohonan/su
 import { ProductDetailComponent } from './features/products/product-detail/product-detail.component';
 import { ProductFormComponent } from './features/products/product-form/product-form.component';
 import { ProductListComponent } from './features/products/product-list/product-list.component';
+import { ProfileComponent } from './features/profile/profile.component';
 import { AuthLayoutComponent } from './shared/layouts/auth-layout/auth-layout.component';
 import { MainLayoutComponent } from './shared/layouts/main-layout/main-layout.component';
 
@@ -50,6 +51,7 @@ export const routes: Routes = [
       { path: 'invoices/:id/edit', component: InvoiceFormComponent },
       { path: 'invoices/:id', component: InvoiceDetailComponent },
       { path: 'letters/surat-permohonan', component: SuratPermohonanComponent },
+      { path: 'profile', component: ProfileComponent },
       {
         path: 'admin',
         loadChildren: () => import('./features/admin/admin.routes').then((m) => m.adminRoutes),

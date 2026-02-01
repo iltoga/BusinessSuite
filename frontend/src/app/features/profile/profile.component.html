@@ -1,0 +1,189 @@
+<div class="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-3xl font-bold tracking-tight">User Profile</h1>
+      <p class="text-muted-foreground">Manage your account settings and preferences.</p>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+    <!-- Sidebar/Avatar Card -->
+    <div class="space-y-6">
+      <z-card class="overflow-hidden border-none shadow-md bg-card">
+        <div class="h-24 bg-linear-to-r from-primary/10 to-primary/30"></div>
+        <div class="px-6 pb-6 text-center -mt-12">
+          <div class="relative inline-block group cursor-pointer" (click)="avatarInput.click()">
+            <z-avatar
+              [zSrc]="profile()?.avatar"
+              [zFallback]="userInitials()"
+              class="h-24 w-24 border-4 border-card shadow-lg text-2xl font-bold transition-opacity group-hover:opacity-80"
+            />
+            <div
+              class="absolute bottom-0 right-0 p-1.5 bg-primary text-primary-foreground rounded-full shadow-sm"
+            >
+              <z-icon zType="camera" class="h-3 w-3" />
+            </div>
+            <input
+              #avatarInput
+              type="file"
+              class="hidden"
+              accept="image/*"
+              (change)="onAvatarSelected($event)"
+            />
+          </div>
+          <div class="mt-4">
+            <h2 class="text-xl font-bold">{{ profile()?.fullName }}</h2>
+            <z-badge variant="secondary" class="mt-1">{{ profile()?.role }}</z-badge>
+          </div>
+          <div class="mt-6 flex flex-col gap-2 text-sm text-muted-foreground">
+            <div class="flex items-center gap-2 justify-center">
+              <z-icon zType="mail" class="h-4 w-4" />
+              <span>{{ profile()?.email }}</span>
+            </div>
+            <div class="flex items-center gap-2 justify-center">
+              <z-icon zType="calendar" class="h-4 w-4" />
+              <span class="text-xs md:text-sm whitespace-nowrap"
+                >Last login {{ (profile()?.lastLogin | date: 'MMM d, y, h:mm a') || 'Never' }}</span
+              >
+            </div>
+          </div>
+        </div>
+      </z-card>
+
+      <z-card class="p-4 space-y-4">
+        <h3 class="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          Quick Actions
+        </h3>
+        <button
+          z-button
+          variant="outline"
+          class="w-full justify-start text-destructive hover:bg-destructive/5 hover:text-destructive"
+          (click)="openChangePasswordModal()"
+        >
+          <z-icon zType="key" class="mr-2 h-4 w-4" />
+          Change Password
+        </button>
+      </z-card>
+    </div>
+
+    <!-- Main Settings Area -->
+    <div class="md:col-span-2 space-y-6">
+      <z-card class="shadow-sm">
+        <div class="p-6 border-b">
+          <h3 class="text-lg font-medium">General Information</h3>
+          <p class="text-sm text-muted-foreground">Update your personal details below.</p>
+        </div>
+        <div class="p-6">
+          <form [formGroup]="profileForm" (ngSubmit)="onUpdateProfile()" class="space-y-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div class="space-y-2">
+                <label for="firstName" class="text-sm font-medium">First Name</label>
+                <input
+                  z-input
+                  id="firstName"
+                  formControlName="firstName"
+                  placeholder="First Name"
+                />
+              </div>
+              <div class="space-y-2">
+                <label for="lastName" class="text-sm font-medium">Last Name</label>
+                <input z-input id="lastName" formControlName="lastName" placeholder="Last Name" />
+              </div>
+            </div>
+
+            <div class="space-y-2">
+              <label for="email" class="text-sm font-medium">Email Address</label>
+              <input
+                z-input
+                id="email"
+                formControlName="email"
+                type="email"
+                placeholder="email@example.com"
+              />
+              <p class="text-xs text-muted-foreground">
+                This email will be used for notifications and account recovery.
+              </p>
+            </div>
+
+            <div class="flex justify-end pt-4">
+              <button
+                z-button
+                type="submit"
+                [zDisabled]="profileForm.invalid || isSaving()"
+                [zLoading]="isSaving()"
+              >
+                Save Changes
+              </button>
+            </div>
+          </form>
+        </div>
+      </z-card>
+
+      <z-card class="shadow-sm border-destructive/20">
+        <div class="p-6">
+          <h3 class="text-lg font-medium text-destructive">Danger Zone</h3>
+          <p class="text-sm text-muted-foreground">Sensitive account actions.</p>
+          <div
+            class="mt-4 p-4 border rounded-md border-destructive/10 bg-destructive/5 flex items-center justify-between"
+          >
+            <div>
+              <p class="font-medium">Logout from all devices</p>
+              <p class="text-xs text-muted-foreground">Force all active sessions to expire.</p>
+            </div>
+            <button
+              z-button
+              variant="outline"
+              size="sm"
+              class="text-destructive border-destructive hover:bg-destructive hover:text-white"
+            >
+              Logout All
+            </button>
+          </div>
+        </div>
+      </z-card>
+    </div>
+  </div>
+</div>
+
+<!-- Change Password Modal Template -->
+<ng-template #passwordModalTemplate>
+  <form [formGroup]="passwordForm" (ngSubmit)="onChangePassword()" class="space-y-4 py-4">
+    <div class="space-y-2">
+      <label for="oldPassword" class="text-sm font-medium">Current Password</label>
+      <input z-input id="oldPassword" formControlName="oldPassword" type="password" />
+      @if (passwordForm.get('oldPassword')?.errors?.['backend']) {
+        <p class="text-sm text-destructive">
+          {{ passwordForm.get('oldPassword')?.errors?.['backend'] }}
+        </p>
+      }
+    </div>
+
+    <div class="space-y-2">
+      <label for="newPassword" class="text-sm font-medium">New Password</label>
+      <input z-input id="newPassword" formControlName="newPassword" type="password" />
+      <p class="text-xs text-muted-foreground">Minimum 8 characters.</p>
+    </div>
+
+    <div class="space-y-2">
+      <label for="confirmPassword" class="text-sm font-medium">Confirm New Password</label>
+      <input z-input id="confirmPassword" formControlName="confirmPassword" type="password" />
+      @if (passwordForm.hasError('notSame')) {
+        <p class="text-sm text-destructive">Passwords do not match.</p>
+      }
+    </div>
+
+    <div class="mt-6 flex gap-2 justify-end">
+      <button z-button type="button" variant="ghost" (click)="closeChangePasswordModal()">
+        Cancel
+      </button>
+      <button
+        z-button
+        type="submit"
+        [zDisabled]="passwordForm.invalid || isSaving()"
+        [zLoading]="isSaving()"
+      >
+        Update Password
+      </button>
+    </div>
+  </form>
+</ng-template>

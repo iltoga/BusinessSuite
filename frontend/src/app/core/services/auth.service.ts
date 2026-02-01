@@ -13,6 +13,8 @@ export interface AuthToken {
 export interface AuthClaims {
   sub?: string;
   email?: string | null;
+  fullName?: string | null;
+  avatar?: string | null;
   roles?: string[];
   groups?: string[];
   isSuperuser?: boolean;
@@ -123,6 +125,10 @@ export class AuthService {
   }
 
   logout(): void {
+    // Record logout event in Django
+    this.http.post(`${this.API_URL}/user-profile/logout/`, {}).subscribe({
+      error: (err) => console.error('Failed to record logout in backend', err),
+    });
     this.clearToken();
     this.router.navigate(['/login']);
   }
@@ -159,6 +165,16 @@ export class AuthService {
     return this._token() ?? this.getStoredToken();
   }
 
+  /**
+   * Update current claims. Useful when user updates their profile (e.g. avatar).
+   */
+  updateClaims(partialClaims: Partial<AuthClaims>): void {
+    const current = this._claims();
+    if (current) {
+      this._claims.set({ ...current, ...partialClaims });
+    }
+  }
+
   private buildClaimsFromToken(token: string | null): AuthClaims | null {
     if (!token) {
       return null;
@@ -176,6 +192,8 @@ export class AuthService {
     return {
       sub: payload['sub'],
       email: payload['email'] ?? null,
+      fullName: payload['full_name'] ?? payload['fullName'] ?? null,
+      avatar: payload['avatar'] ?? null,
       roles: payload['roles'] ?? payload['groups'] ?? [],
       groups: payload['groups'] ?? payload['roles'] ?? [],
       isSuperuser: payload['is_superuser'] ?? payload['isSuperuser'] ?? false,
@@ -188,6 +206,7 @@ export class AuthService {
     return {
       sub: 'mock-user',
       email: 'mock@example.com',
+      fullName: 'Mock User',
       roles: ['admin'],
       groups: ['admin'],
       isSuperuser: true,

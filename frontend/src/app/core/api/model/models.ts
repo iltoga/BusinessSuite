@@ -1,4 +1,5 @@
 export * from './blank-enum';
+export * from './change-password';
 export * from './country-code';
 export * from './custom-token-obtain';
 export * from './customer';
@@ -41,3 +42,4 @@ export * from './surat-permohonan-request';
 export * from './task';
 export * from './task-nested';
 export * from './title-enum';
+export * from './user-profile';

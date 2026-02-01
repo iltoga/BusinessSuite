@@ -34,3 +34,4 @@ from .quick_create_serializer import (
     CustomerQuickCreateSerializer,
     ProductQuickCreateSerializer,
 )
+from .user_serializer import AvatarUploadSerializer, ChangePasswordSerializer, UserProfileSerializer

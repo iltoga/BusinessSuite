@@ -30,6 +30,27 @@ This document lists the main API endpoints exposed by the application in this re
 
 ---
 
+## User Profile ✅
+
+- **GET `/api/user-profile/me/`**
+  - **Description:** Retrieve current user profile details.
+
+- **PATCH `/api/user-profile/update_profile/`**
+  - **Description:** Partially update user profile (email, first name, last name).
+
+- **POST `/api/user-profile/upload_avatar/`**
+  - **Input:** `avatar` (file)
+  - **Description:** Upload user profile image.
+
+- **POST `/api/user-profile/change_password/`**
+  - **Input:** `{ "old_password": string, "new_password": string }`
+  - **Description:** Change current user password.
+
+- **POST `/api/user-profile/logout/`**
+  - **Description:** Logout current user and record event in Django.
+
+---
+
 ## Country Codes 🌐
 
 - **GET `/api/country-codes/`**

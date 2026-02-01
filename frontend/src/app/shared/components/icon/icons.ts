@@ -13,6 +13,7 @@ import {
   BookOpenText,
   Calendar,
   CalendarPlus,
+  Camera,
   Check,
   ChevronDown,
   ChevronLeft,
@@ -47,6 +48,7 @@ import {
   Inbox,
   Info,
   Italic,
+  Key,
   Layers,
   Layers2,
   LayoutDashboard,
@@ -190,6 +192,7 @@ export const ZARD_ICONS = {
   'list-filter-plus': ListFilterPlus,
   trash: Trash2,
   tag: Tag,
+  key: Key,
   'sun-moon': SunMoon,
   'dark-mode': DarkMode,
   square: Square,
@@ -197,6 +200,7 @@ export const ZARD_ICONS = {
   'user-plus': UserPlus,
   'credit-card': CreditCard,
   activity: Activity,
+  camera: Camera,
   upload: Upload,
 } as const satisfies Record<string, LucideIconData>;
 

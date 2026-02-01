@@ -7,6 +7,7 @@ from datetime import datetime
 from io import BytesIO
 
 from django.conf import settings
+from django.contrib.auth import logout as django_logout
 from django.core.files.storage import default_storage
 from django.db.models import Count, DecimalField, F, OuterRef, Prefetch, Q, Subquery, Sum, Value
 from django.db.models.functions import Coalesce
@@ -17,7 +18,7 @@ from django.utils import timezone
 from django.utils.text import slugify
 from django.views.decorators.csrf import csrf_exempt
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import OpenApiParameter, extend_schema
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
 from rest_framework import filters, pagination, status, viewsets
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.decorators import action, api_view, authentication_classes, permission_classes, throttle_classes
@@ -29,6 +30,8 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 from api.serializers import (
+    AvatarUploadSerializer,
+    ChangePasswordSerializer,
     CountryCodeSerializer,
     CustomerApplicationQuickCreateSerializer,
     CustomerQuickCreateSerializer,
@@ -50,11 +53,12 @@ from api.serializers import (
     ProductSerializer,
     SuratPermohonanCustomerDataSerializer,
     SuratPermohonanRequestSerializer,
+    UserProfileSerializer,
     ordered_document_types,
 )
 from api.serializers.auth_serializer import CustomTokenObtainSerializer
 from business_suite.authentication import JwtOrMockAuthentication
-from core.models import CountryCode, DocumentOCRJob, OCRJob
+from core.models import CountryCode, DocumentOCRJob, OCRJob, UserProfile
 from core.services.document_merger import DocumentMerger, DocumentMergerError
 from core.services.quick_create import create_quick_customer, create_quick_customer_application, create_quick_product
 from core.tasks.cron_jobs import run_clear_cache_now, run_full_backup_now
@@ -125,6 +129,74 @@ class TokenAuthView(TokenObtainPairView):
     authentication_classes = []
     permission_classes = [AllowAny]
     serializer_class = CustomTokenObtainSerializer
+
+
+class UserProfileViewSet(ApiErrorHandlingMixin, viewsets.GenericViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class = UserProfileSerializer
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    @extend_schema(responses={200: UserProfileSerializer})
+    @action(detail=False, methods=["get"])
+    def me(self, request):
+        """Retrieve current user profile."""
+        serializer = self.get_serializer(request.user)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["post"])
+    def logout(self, request):
+        """Logout current user and record it in Django."""
+        django_logout(request)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @extend_schema(request=UserProfileSerializer, responses={200: UserProfileSerializer})
+    @action(detail=False, methods=["patch"], url_path="update_profile")
+    def update_profile(self, request):
+        serializer = self.get_serializer(request.user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+    @extend_schema(
+        request={
+            "multipart/form-data": {
+                "type": "object",
+                "properties": {"avatar": {"type": "string", "format": "binary"}},
+                "required": ["avatar"],
+            },
+        },
+        responses={200: UserProfileSerializer},
+    )
+    @action(detail=False, methods=["post"], url_path="upload_avatar")
+    def upload_avatar(self, request):
+        """Upload user profile picture."""
+        serializer = AvatarUploadSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = request.user
+        profile, _ = UserProfile.objects.get_or_create(user=user)
+
+        validated_data = serializer.validated_data
+        if validated_data is not None:
+            profile.avatar = validated_data.get("avatar")
+        profile.save()
+
+        serializer = self.get_serializer(user)
+        return Response(serializer.data)
+
+    @extend_schema(
+        request=ChangePasswordSerializer, responses={204: OpenApiResponse(description="Password updated successfully")}
+    )
+    @action(detail=False, methods=["post"], url_path="change_password")
+    def change_password(self, request):
+        serializer = ChangePasswordSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        # Ensure we have a valid dict and handle the subscripting safely for Pylance
+        validated_data = serializer.validated_data
+        if validated_data is not None:
+            request.user.set_password(validated_data.get("new_password"))
+            request.user.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class CountryCodeViewSet(viewsets.ReadOnlyModelViewSet):

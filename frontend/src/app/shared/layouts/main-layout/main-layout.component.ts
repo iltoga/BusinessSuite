@@ -5,6 +5,8 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '@/core/services/auth.service';
 import { ThemeService } from '@/core/services/theme.service';
 import { ZardAvatarComponent } from '@/shared/components/avatar';
+import { ZardButtonComponent } from '@/shared/components/button';
+import { ZardDropdownImports } from '@/shared/components/dropdown';
 import { ZardIconComponent } from '@/shared/components/icon';
 import { ThemeSwitcherComponent } from '@/shared/components/theme-switcher/theme-switcher.component';
 
@@ -17,7 +19,9 @@ import { ThemeSwitcherComponent } from '@/shared/components/theme-switcher/theme
     RouterLink,
     RouterLinkActive,
     ZardAvatarComponent,
+    ZardButtonComponent,
     ZardIconComponent,
+    ZardDropdownImports,
     // Expose theme switcher in header
     ThemeSwitcherComponent,
   ],
@@ -184,8 +188,34 @@ import { ThemeSwitcherComponent } from '@/shared/components/theme-switcher/theme
             <!-- Theme switcher visible in header -->
             <app-theme-switcher />
 
-            <span class="text-sm text-muted-foreground">revisadmin</span>
-            <z-avatar class="h-8 w-8" zFallback="RA" />
+            <button
+              z-dropdown
+              [zDropdownMenu]="userMenu"
+              z-button
+              variant="ghost"
+              class="h-9 w-9 p-0 hover:bg-accent rounded-full overflow-hidden"
+            >
+              <z-avatar class="h-full w-full" [zSrc]="userAvatar()" [zFallback]="userInitials()" />
+            </button>
+
+            <z-dropdown-menu-content #userMenu class="min-w-56 max-w-sm">
+              <div class="px-2 py-1.5 border-b mb-1">
+                <p class="text-sm font-semibold">{{ userFullName() }}</p>
+                <p class="text-xs text-muted-foreground break-all">{{ userEmail() }}</p>
+              </div>
+              <a routerLink="/profile" z-dropdown-menu-item>
+                <z-icon zType="user" class="mr-2 h-4 w-4" />
+                <span>Profile</span>
+              </a>
+              <button
+                (click)="logout()"
+                z-dropdown-menu-item
+                class="text-destructive focus:text-destructive"
+              >
+                <z-icon zType="log-out" class="mr-2 h-4 w-4" />
+                <span>Logout</span>
+              </button>
+            </z-dropdown-menu-content>
           </div>
         </header>
 
@@ -213,6 +243,19 @@ export class MainLayoutComponent {
   );
 
   isAdminUser = computed(() => this.authService.isSuperuser());
+  userFullName = computed(() => this.authService.claims()?.fullName || 'User');
+  userEmail = computed(() => this.authService.claims()?.email || '');
+  userAvatar = computed(() => this.authService.claims()?.avatar || undefined);
+  userInitials = computed(() => {
+    const fullName = this.userFullName();
+    if (!fullName) return 'U';
+    return fullName
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase()
+      .substring(0, 2);
+  });
 
   toggleSidebar() {
     this.sidebarOpen = !this.sidebarOpen;
@@ -224,5 +267,9 @@ export class MainLayoutComponent {
 
   toggleAdmin() {
     this.adminExpanded.update((v) => !v);
+  }
+
+  logout() {
+    this.authService.logout();
   }
 }

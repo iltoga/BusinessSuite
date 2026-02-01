@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.contrib.auth.models import Group, User
+from django.contrib.auth.models import Group, User, update_last_login
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
 
@@ -56,6 +56,7 @@ class JwtOrMockAuthentication(JWTAuthentication):
                     token_value = raw_token.decode() if isinstance(raw_token, bytes) else str(raw_token)
                     if token_value == "mock-token":
                         user = ensure_mock_user()
+                        update_last_login(None, user)
                         return (user, None)
 
         return super().authenticate(request)

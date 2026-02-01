@@ -21,11 +21,13 @@ api/ocr.service.ts
 api/payments.service.ts
 api/products.service.ts
 api/server-management.service.ts
+api/user-profile.service.ts
 configuration.ts
 encoder.ts
 git_push.sh
 index.ts
 model/blank-enum.ts
+model/change-password.ts
 model/country-code.ts
 model/custom-token-obtain.ts
 model/customer-type-enum.ts
@@ -69,6 +71,7 @@ model/surat-permohonan-request.ts
 model/task-nested.ts
 model/task.ts
 model/title-enum.ts
+model/user-profile.ts
 param.ts
 provide-api.ts
 query.params.ts
