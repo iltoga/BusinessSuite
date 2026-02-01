@@ -33,3 +33,12 @@
 - SortableMultiSelect simplifies ordered document selection for products and future formsets
 - CustomerSelect centralizes async customer lookup, reducing duplicated combobox logic
 - Invoice totals remain accurate when using annotated paid/due amounts from API
+
+## Fixes
+
+- **2026-02-01: Full Backup restore fix** ✅
+  - Problem: Restoring a "Full Backup" (data + media + users) sometimes failed with a duplicate key error on `django_content_type` during `loaddata` because `post_migrate` re-created `ContentType`/`Permission` rows after a `flush`.
+  - Fix: When a backup includes system/user tables, the restore now deletes `ContentType` and `Permission` rows after `flush` and before `loaddata`. Also, `dumpdata` now uses `--natural-foreign` and `--natural-primary` to make future fixtures resilient to contenttype collisions.
+  - Files changed: `admin_tools/services.py`
+  - How to verify: Take a full backup (include users), restore it to a clean database; verify `loaddata` completes and media files are restored and models reference correct file paths.
+  - Note: This prevents regressions caused by automatic `post_migrate` behavior.

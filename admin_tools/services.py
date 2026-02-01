@@ -37,7 +37,7 @@ def backup_all(include_users=False):
 
     # Build dumpdata args
     tmp_path = os.path.join(BACKUPS_DIR, f"tmp-{ts}.json")
-    dump_args = ["dumpdata"]
+    dump_args = ["dumpdata", "--natural-foreign", "--natural-primary"]
     excluded_prefixes = ("auth", "admin", "sessions", "contenttypes", "debug_toolbar")
     if not include_users:
         for prefix in excluded_prefixes:
@@ -161,7 +161,7 @@ def backup_all(include_users=False):
 
 def restore_from_file(path, include_users=False):
     """Restore DB from a gzipped dumpdata file (Django JSON). If include_users is False, do not flush system/user tables.
-    Returns a generator of progress messages.
+    Returns a generator of progress messages. Wrapped in atomic transaction with rollback on error.
     """
     if not os.path.exists(path):
         raise FileNotFoundError(path)
@@ -169,17 +169,22 @@ def restore_from_file(path, include_users=False):
     import json
 
     from django.apps import apps
-    from django.db import connection
+    from django.contrib.auth.models import User
+    from django.db import connection, transaction
+    from django.db.models.signals import post_save
+
+    # Import the signal handlers so we can disconnect them
+    from core.models.user_profile import UserProfile, create_user_profile, save_user_profile
 
     tmp_path = None
     extracted_tmp = None
-    # temp dir for extracted files
     extracted_media_tmpdir = None
+    signals_disconnected = False
+
     try:
         # Handle tar backed up archives that include files (gz or zst for Python 3.14+)
         if path.endswith((".tar.gz", ".tar.zst")):
             yield "Extracting archive..."
-            # Extract tar to a temp dir and set fixture_path to extracted data.json
             comp = "zst" if path.endswith(".tar.zst") else "gz"
             extracted_tmp = tempfile.mkdtemp(prefix="restore-")
             extracted_media_tmpdir = os.path.join(extracted_tmp, "media")
@@ -188,8 +193,6 @@ def restore_from_file(path, include_users=False):
                 tar.extractall(path=extracted_tmp)
             fixture_path = os.path.join(extracted_tmp, "data.json")
         elif path.endswith((".gz", ".zst")):
-            import gzip
-
             try:
                 import compression.zstd as zstd
             except ImportError:
@@ -211,10 +214,8 @@ def restore_from_file(path, include_users=False):
         # --- Automatic detection of user/system tables in backup ---
         user_system_prefixes = ("auth.", "admin.", "sessions.", "contenttypes.", "debug_toolbar.")
         includes_users = False
-        # Only scan the first 1000 objects for performance
         try:
             with open(fixture_path, "r") as f:
-                # The file is a JSON array of objects
                 objs = json.load(f)
                 for obj in objs[:1000]:
                     if "model" in obj and obj["model"].startswith(user_system_prefixes):
@@ -241,25 +242,64 @@ def restore_from_file(path, include_users=False):
             yield "Flushing database (only data tables, users/groups/permissions preserved)..."
 
         excluded_prefixes = ("auth", "admin", "sessions", "contenttypes", "debug_toolbar")
-        if includes_users:
-            call_command("flush", "--noinput")
-        else:
-            # Only flush non-system tables
-            tables_to_flush = []
-            for model in apps.get_models():
-                label = model._meta.label_lower
-                if not label.startswith(excluded_prefixes):
-                    tables_to_flush.append(model._meta.db_table)
-            if tables_to_flush:
-                with connection.cursor() as cursor:
-                    for table in tables_to_flush:
-                        cursor.execute(f'TRUNCATE TABLE "{table}" RESTART IDENTITY CASCADE;')
 
-        yield "Loading data via loaddata (this may take a few minutes)..."
-        call_command("loaddata", fixture_path)
-        yield "Data loading complete."
+        # Use a savepoint for atomic rollback capability
+        sid = transaction.savepoint()
+        try:
+            if includes_users:
+                call_command("flush", "--noinput")
+                try:
+                    from django.contrib.auth import get_user_model
+                    from django.contrib.auth.models import Permission
+                    from django.contrib.contenttypes.models import ContentType
 
-        # If archive included media files, use default_storage to restore them (overwrite existing)
+                    yield "Clearing content types, permissions, users, and profiles..."
+                    # Delete in order to respect FK constraints
+                    UserProfile.objects.all().delete()
+                    Permission.objects.all().delete()
+                    get_user_model().objects.all().delete()
+                    ContentType.objects.all().delete()
+                except Exception as e:
+                    yield f"Warning: Could not clear content types/permissions/users: {e}"
+
+                # Disconnect UserProfile signals to prevent auto-creation during loaddata
+                yield "Disconnecting UserProfile signals for clean restore..."
+                post_save.disconnect(create_user_profile, sender=User)
+                post_save.disconnect(save_user_profile, sender=User)
+                signals_disconnected = True
+            else:
+                # Only flush non-system tables
+                tables_to_flush = []
+                for model in apps.get_models():
+                    label = model._meta.label_lower
+                    if not label.startswith(excluded_prefixes):
+                        tables_to_flush.append(model._meta.db_table)
+                if tables_to_flush:
+                    with connection.cursor() as cursor:
+                        for table in tables_to_flush:
+                            cursor.execute(f'TRUNCATE TABLE "{table}" RESTART IDENTITY CASCADE;')
+
+            yield "Loading data via loaddata (this may take a few minutes)..."
+            call_command("loaddata", fixture_path)
+            yield "Data loading complete."
+
+            # Commit the savepoint
+            transaction.savepoint_commit(sid)
+
+        except Exception as e:
+            # Rollback to savepoint on any error
+            yield f"Error during restore, rolling back: {e}"
+            transaction.savepoint_rollback(sid)
+            raise
+
+        finally:
+            # Reconnect signals regardless of success/failure
+            if signals_disconnected:
+                yield "Reconnecting UserProfile signals..."
+                post_save.connect(create_user_profile, sender=User)
+                post_save.connect(save_user_profile, sender=User)
+
+        # If archive included media files, restore them (outside transaction since it's filesystem)
         if extracted_media_tmpdir and os.path.exists(extracted_media_tmpdir):
             from django.core.files import File
 
@@ -271,16 +311,13 @@ def restore_from_file(path, include_users=False):
             total_files = len(all_files)
             yield f"Restoring {total_files} media files..."
 
-            # Map original relative path -> actual saved path (in case storage renames files)
             saved_path_map = {}
 
             for i, src in enumerate(all_files):
-                # relative path under extracted_media_tmpdir
                 rel = os.path.relpath(src, extracted_media_tmpdir)
                 try:
                     with open(src, "rb") as fsrc:
                         django_file = File(fsrc)
-                        # Ensure existing file is removed to allow overwrite
                         if default_storage.exists(rel):
                             try:
                                 default_storage.delete(rel)
@@ -297,12 +334,9 @@ def restore_from_file(path, include_users=False):
                 except Exception as e:
                     yield f"Warning: could not restore media file {rel}: {e}"
 
-            # If storage renamed files, sync FileField paths in the DB
+            # Sync renamed media paths in DB
             if saved_path_map:
                 try:
-                    from django.apps import apps
-                    from django.db import transaction
-
                     yield f"Syncing {len(saved_path_map)} renamed media paths..."
                     with transaction.atomic():
                         for model in apps.get_models():
@@ -340,7 +374,7 @@ def restore_from_file(path, include_users=False):
                 elif engine == "postgresql":
                     cursor.execute("SET session_replication_role = DEFAULT;")
         except Exception:
-            yield "Warning: Could not re-enable foreign key checks."
+            pass
         if tmp_path and os.path.exists(tmp_path):
             try:
                 os.unlink(tmp_path)
