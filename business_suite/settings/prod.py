@@ -12,7 +12,14 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 from .base import *
 
-ALLOWED_HOSTS = [APP_DOMAIN, f"www.{APP_DOMAIN}", f"{APP_DOMAIN}", "bs-cron", "bs-core"]
+ALLOWED_HOSTS = [
+    f"www.{APP_DOMAIN}",
+    f"{APP_DOMAIN}",
+    f"www.admin.{APP_DOMAIN}",
+    f"admin.{APP_DOMAIN}",
+    "bs-cron",
+    "bs-core",
+]
 
 MEDIA_ROOT = "/media/"
 MEDIA_URL = "/media/"
