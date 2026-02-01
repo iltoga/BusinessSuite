@@ -126,6 +126,23 @@ services:
         target: /staticfiles
     command: python manage.py run_huey
 
+  bs-frontend:
+    container_name: bs-frontend
+    depends_on:
+      - bs-core
+    image: bs-frontend:web
+    build:
+      context: ./
+      dockerfile: Dockerfile.frontend
+    restart: unless-stopped
+    environment:
+      PORT: 4000
+      BACKEND_URL: http://bs-core:8000
+    ports:
+      - 4200:4000
+    networks:
+      - dockernet
+
 networks:
   dockernet:
     driver: bridge

@@ -82,7 +82,7 @@ jobs:
             echo "🔍  Detecting dependency-file changes …"
             DEP_CHANGED=false
             if [ "$OLD_COMMIT" != none ] && [ "$OLD_COMMIT" != "$NEW_COMMIT" ]; then
-              if git diff --name-only $OLD_COMMIT $NEW_COMMIT | grep -E '(pyproject\.toml|requirements\.txt|Dockerfile|locale/|.*\\.po$)' >/dev/null; then
+              if git diff --name-only $OLD_COMMIT $NEW_COMMIT | grep -E '(pyproject\.toml|requirements\.txt|Dockerfile|Dockerfile\.frontend|frontend/|locale/|.*\\.po$)' >/dev/null; then
                 DEP_CHANGED=true
                 echo "📦  Dependencies or Dockerfile changed — full rebuild needed."
               else
@@ -109,7 +109,7 @@ jobs:
             if [ "$DEP_CHANGED" = true ]; then
               docker compose build --pull
             fi
-            docker compose up -d --remove-orphans
+            docker compose up -d --remove-orphans bs-core bs-worker bs-frontend
 
             echo "🧹  Cleaning up unused data …"
             docker system prune -f
