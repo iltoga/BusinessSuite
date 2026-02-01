@@ -16,7 +16,7 @@ const angularApp = new AngularNodeAppEngine();
 /**
  * Proxy API requests to the backend
  */
-const backendUrl = 'http://127.0.0.1:8000';
+const backendUrl = process.env['BACKEND_URL'] || 'http://127.0.0.1:8000';
 console.log(`[SSR Server] Proxying API to: ${backendUrl}`);
 
 app.use(
