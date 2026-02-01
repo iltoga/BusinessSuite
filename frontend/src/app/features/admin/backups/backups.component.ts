@@ -9,7 +9,7 @@ import {
   TemplateRef,
   ViewChild,
 } from '@angular/core';
-import { catchError, EMPTY, finalize, Subscription } from 'rxjs';
+import { catchError, EMPTY, finalize, Subscription, forkJoin, of } from 'rxjs';
 
 import { BackupsService } from '@/core/api';
 import { AuthService } from '@/core/services/auth.service';
@@ -52,7 +52,21 @@ interface Backup {
     <div class="space-y-6">
       <div class="flex items-center justify-between">
         <h1 class="text-2xl font-bold tracking-tight">Backup & Restore</h1>
-        <div class="flex gap-2">
+        <div class="flex gap-4 items-center">
+          <label class="flex items-center gap-2">
+            <input type="checkbox" [checked]="selectAll()" (change)="toggleSelectAll($event)" />
+            <span class="text-sm">Select all</span>
+          </label>
+
+          <button
+            z-button
+            zType="destructive"
+            (click)="deleteSelectedBackups()"
+            [zDisabled]="isOperationRunning() || selectedFiles().length === 0"
+          >
+            Delete Selected
+          </button>
+
           <button
             z-button
             zType="outline"
@@ -61,6 +75,7 @@ interface Backup {
           >
             Delete All
           </button>
+
           <button z-button (click)="startBackup()" [zDisabled]="isOperationRunning()">
             Start Backup
           </button>
@@ -131,6 +146,16 @@ interface Backup {
     </div>
 
     <!-- Created At Template -->
+    <ng-template #selectTemplate let-item>
+      <input
+        type="checkbox"
+        aria-label="Select backup"
+        [checked]="isSelected(item.filename)"
+        (click)="toggleSelect(item.filename, $event)"
+      />
+    </ng-template>
+
+    <!-- Created At Template -->
     <ng-template #createdAtTemplate let-item>
       {{ item.createdAt | appDate: 'datetime' }}
     </ng-template>
@@ -173,12 +198,22 @@ interface Backup {
         >
           Restore
         </button>
+        <button
+          z-button
+          zType="destructive"
+          zSize="sm"
+          (click)="deleteBackup(item.filename)"
+          [zDisabled]="isOperationRunning()"
+        >
+          Delete
+        </button>
       </div>
     </ng-template>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class BackupsComponent implements OnInit, OnDestroy {
+  @ViewChild('selectTemplate', { static: true }) selectTemplate!: TemplateRef<any>;
   @ViewChild('statusTemplate', { static: true }) statusTemplate!: TemplateRef<any>;
   @ViewChild('sizeTemplate', { static: true }) sizeTemplate!: TemplateRef<any>;
   @ViewChild('actionsTemplate', { static: true }) actionsTemplate!: TemplateRef<any>;
@@ -199,10 +234,13 @@ export class BackupsComponent implements OnInit, OnDestroy {
   readonly uploadHelperText = signal<string | null>(null);
   readonly operationProgress = signal<number | null>(null);
   readonly operationLabel = signal<string>('Operation progress');
+  readonly selectedFiles = signal<string[]>([]);
+  readonly selectAll = signal(false);
 
   private sseSubscription: Subscription | null = null;
 
   columns: ColumnConfig[] = [
+    { key: 'select', header: '', sortable: false },
     { key: 'filename', header: 'Filename', sortable: true },
     { key: 'createdAt', header: 'Created', sortable: true },
     { key: 'type', header: 'Type', sortable: true },
@@ -213,10 +251,11 @@ export class BackupsComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     // Set templates after view init
-    this.columns[1].template = this.createdAtTemplate;
-    this.columns[3].template = this.sizeTemplate;
-    this.columns[4].template = this.statusTemplate;
-    this.columns[5].template = this.actionsTemplate;
+    this.columns[0].template = this.selectTemplate;
+    this.columns[2].template = this.createdAtTemplate;
+    this.columns[4].template = this.sizeTemplate;
+    this.columns[5].template = this.statusTemplate;
+    this.columns[6].template = this.actionsTemplate;
 
     this.loadBackups();
   }
@@ -448,6 +487,91 @@ export class BackupsComponent implements OnInit, OnDestroy {
         } else {
           this.toast.error(response.error || 'Delete failed');
         }
+      });
+  }
+
+  deleteBackup(filename: string): void {
+    if (!confirm(`Are you sure you want to delete "${filename}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    this.isOperationRunning.set(true);
+    this.backupsApi
+      .backupsDeleteFileDestroy(filename)
+      .pipe(
+        catchError(() => {
+          this.toast.error('Failed to delete backup');
+          return EMPTY;
+        }),
+        finalize(() => this.isOperationRunning.set(false)),
+      )
+      .subscribe((response: any) => {
+        if (response.ok) {
+          this.toast.success(`Deleted ${response.deleted}`);
+          this.loadBackups();
+          // remove from selectedFiles if present
+          this.selectedFiles.set(this.selectedFiles().filter((f) => f !== filename));
+        } else {
+          this.toast.error(response.error || 'Delete failed');
+        }
+      });
+  }
+
+  isSelected(filename: string): boolean {
+    return this.selectedFiles().includes(filename);
+  }
+
+  toggleSelect(filename: string, event: Event): void {
+    event.stopPropagation();
+    const current = this.selectedFiles();
+    if (current.includes(filename)) {
+      this.selectedFiles.set(current.filter((f) => f !== filename));
+    } else {
+      this.selectedFiles.set([...current, filename]);
+    }
+    // Keep selectAll flag in sync
+    const allVisible = this.backups().map((b) => b.filename);
+    this.selectAll.set(allVisible.length > 0 && allVisible.every((f) => this.selectedFiles().includes(f)));
+  }
+
+  toggleSelectAll(event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    this.selectAll.set(checked);
+    if (checked) {
+      this.selectedFiles.set(this.backups().map((b) => b.filename));
+    } else {
+      this.selectedFiles.set([]);
+    }
+  }
+
+  deleteSelectedBackups(): void {
+    if (!this.selectedFiles().length) return;
+    if (!confirm(`Are you sure you want to delete ${this.selectedFiles().length} selected backups? This action cannot be undone.`)) {
+      return;
+    }
+
+    this.isOperationRunning.set(true);
+
+    const observables = this.selectedFiles().map((filename) =>
+      this.backupsApi.backupsDeleteFileDestroy(filename).pipe(
+        catchError((err) => of({ ok: false, error: err?.message || 'Failed' })),
+      ),
+    );
+
+    forkJoin(observables)
+      .pipe(
+        finalize(() => this.isOperationRunning.set(false)),
+      )
+      .subscribe((results: any[]) => {
+        const failed = results.filter((r) => !r?.ok);
+        if (failed.length === 0) {
+          this.toast.success(`Deleted ${results.length} backup(s)`);
+        } else {
+          this.toast.error(`${failed.length} deletions failed`);
+        }
+        this.selectedFiles.set([]);
+        this.selectAll.set(false);
+        this.loadBackups();
       });
   }
 

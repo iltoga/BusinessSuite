@@ -247,6 +247,26 @@ class BackupsViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             return Response({"error": "File not found"}, status=404)
         return FileResponse(open(path, "rb"), as_attachment=True, filename=safe_filename)
 
+    @extend_schema(summary="Delete a backup file", responses={200: OpenApiTypes.OBJECT, 404: OpenApiTypes.OBJECT})
+    @action(detail=False, methods=["delete"], url_path="delete/(?P<filename>.+)")
+    def delete_backup(self, request, filename=None):
+        """Delete a single backup file."""
+        backups_dir = services.BACKUPS_DIR
+        safe_filename = os.path.basename(filename) if filename else None
+        if not safe_filename:
+            return Response({"ok": False, "error": "Invalid filename"}, status=400)
+        path = os.path.join(backups_dir, safe_filename)
+        if not os.path.exists(path):
+            return Response({"ok": False, "error": "File not found"}, status=404)
+        try:
+            if os.path.isfile(path):
+                os.unlink(path)
+            elif os.path.isdir(path):
+                shutil.rmtree(path)
+            return Response({"ok": True, "deleted": safe_filename})
+        except Exception as e:
+            return Response({"ok": False, "error": str(e)}, status=500)
+
     @extend_schema(
         summary="Start backup process",
         parameters=[OpenApiParameter("include_users", OpenApiTypes.BOOL, location=OpenApiParameter.QUERY)],
