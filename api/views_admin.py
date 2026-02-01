@@ -7,18 +7,19 @@ import shutil
 import tarfile
 
 from django.conf import settings
-from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth import get_user_model
 from django.http import FileResponse, JsonResponse, StreamingHttpResponse
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import permissions, viewsets
-from rest_framework.authtoken.models import Token
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from admin_tools import services
 from api.views import ApiErrorHandlingMixin
+
+User = get_user_model()
 
 
 def is_superuser(user):
@@ -36,23 +37,43 @@ def sse_token_auth_required(view_func):
     """
     Decorator for SSE endpoints that need token auth.
     EventSource cannot send Authorization headers, so we accept token via query param.
+    Supports both JWT tokens (rest_framework_simplejwt) and DRF Token auth.
     Falls back to session auth if no token provided.
     """
 
     @functools.wraps(view_func)
     def wrapper(request, *args, **kwargs):
         # Check for token in query param first (for EventSource)
-        token_key = request.GET.get("token")
-        if token_key:
-            try:
-                token = Token.objects.select_related("user").get(key=token_key)
-                if token.user.is_active and token.user.is_superuser:
-                    request.user = token.user
-                    return view_func(request, *args, **kwargs)
-                else:
-                    return JsonResponse({"error": "Unauthorized"}, status=403)
-            except Token.DoesNotExist:
-                return JsonResponse({"error": "Invalid token"}, status=401)
+        token_str = request.GET.get("token")
+        if token_str:
+            # Try JWT token first (starts with eyJ for base64-encoded JSON)
+            if token_str.startswith("eyJ"):
+                try:
+                    from rest_framework_simplejwt.tokens import AccessToken
+
+                    access_token = AccessToken(token_str)
+                    user_id = access_token.get("user_id")
+                    user = User.objects.get(pk=user_id)
+                    if user.is_active and user.is_superuser:
+                        request.user = user
+                        return view_func(request, *args, **kwargs)
+                    else:
+                        return JsonResponse({"error": "Unauthorized"}, status=403)
+                except Exception:
+                    return JsonResponse({"error": "Invalid JWT token"}, status=401)
+            else:
+                # Try DRF Token auth
+                try:
+                    from rest_framework.authtoken.models import Token
+
+                    token = Token.objects.select_related("user").get(key=token_str)
+                    if token.user.is_active and token.user.is_superuser:
+                        request.user = token.user
+                        return view_func(request, *args, **kwargs)
+                    else:
+                        return JsonResponse({"error": "Unauthorized"}, status=403)
+                except Exception:
+                    return JsonResponse({"error": "Invalid token"}, status=401)
 
         # Fall back to session auth
         if request.user.is_authenticated and request.user.is_superuser:
