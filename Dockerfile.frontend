@@ -1,4 +1,6 @@
-FROM oven/bun:1.3.6 AS builder
+FROM oven/bun:1.3.6 AS bun
+
+FROM node:20-slim AS builder
 
 WORKDIR /app
 
@@ -7,6 +9,8 @@ ARG NG_BUILD_MAX_WORKERS=1
 ENV NODE_OPTIONS=$NODE_OPTIONS
 ENV NG_BUILD_MAX_WORKERS=$NG_BUILD_MAX_WORKERS
 
+COPY --from=bun /usr/local/bin/bun /usr/local/bin/bun
+
 # Install dependencies separately for better caching
 COPY frontend/package.json frontend/bun.lock ./
 RUN bun install --frozen-lockfile
@@ -14,8 +18,8 @@ RUN bun install --frozen-lockfile
 # Copy the rest of the frontend files
 COPY frontend/ ./
 
-# Run Angular CLI directly to avoid Bun shim resolution issues
-RUN bun ./node_modules/@angular/cli/bin/ng.js build --configuration production --progress=false
+# Run Angular CLI via Node to avoid Bun's ESM loader limitations during build
+RUN node ./node_modules/@angular/cli/bin/ng.js build --configuration production --progress=false
 
 FROM oven/bun:1.3.6 AS runner
 
