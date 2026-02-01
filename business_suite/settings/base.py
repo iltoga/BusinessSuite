@@ -260,7 +260,8 @@ SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_DOMAIN = APP_DOMAIN
 SESSION_COOKIE_DOMAIN = APP_DOMAIN
 CSRF_TRUSTED_ORIGINS = [
-    f"https://{APP_DOMAIN}",
+    f"https://www.admin.{APP_DOMAIN}",
+    f"https://admin.{APP_DOMAIN}",
     f"https://www.{APP_DOMAIN}",
     f"https://{APP_DOMAIN}",
     "https://localhost",
