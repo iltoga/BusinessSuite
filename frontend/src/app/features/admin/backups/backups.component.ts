@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpEventType } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -10,9 +10,10 @@ import {
   TemplateRef,
   ViewChild,
 } from '@angular/core';
-import { catchError, EMPTY, finalize } from 'rxjs';
+import { catchError, EMPTY, finalize, Subscription } from 'rxjs';
 
 import { BackupsService } from '@/core/api';
+import { SseService } from '@/core/services/sse.service';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
@@ -81,11 +82,30 @@ interface Backup {
         <app-file-upload
           accept=".json,.gz,.tar.gz,.tgz,.tar.zst,.zst"
           [disabled]="isOperationRunning()"
+          [progress]="uploadProgress()"
+          [fileName]="uploadFileName()"
+          [helperText]="uploadHelperText()"
           (fileSelected)="uploadBackup($event)"
+          (cleared)="clearUploadSelection()"
         >
           Drop backup files here or click to select
         </app-file-upload>
       </z-card>
+
+      <!-- Progress Bar -->
+      @if (operationProgress() !== null) {
+        <z-card class="p-4">
+          <div class="space-y-1">
+            <div class="flex items-center justify-between text-xs text-muted-foreground">
+              <span>{{ operationLabel() }}</span>
+              <span>{{ operationProgress() }}%</span>
+            </div>
+            <div class="h-2 w-full rounded-full bg-muted">
+              <div class="h-2 rounded-full bg-primary" [style.width.%]="operationProgress()"></div>
+            </div>
+          </div>
+        </z-card>
+      }
 
       <!-- Live Log -->
       @if (logMessages().length > 0) {
@@ -166,6 +186,7 @@ export class BackupsComponent implements OnInit, OnDestroy {
 
   private backupsApi = inject(BackupsService);
   private http = inject(HttpClient);
+  private sseService = inject(SseService);
   private toast = inject(GlobalToastService);
 
   readonly backups = signal<Backup[]>([]);
@@ -173,8 +194,13 @@ export class BackupsComponent implements OnInit, OnDestroy {
   readonly isOperationRunning = signal(false);
   readonly logMessages = signal<string[]>([]);
   readonly includeUsers = signal(false);
+  readonly uploadProgress = signal<number | null>(null);
+  readonly uploadFileName = signal<string | null>(null);
+  readonly uploadHelperText = signal<string | null>(null);
+  readonly operationProgress = signal<number | null>(null);
+  readonly operationLabel = signal<string>('Operation progress');
 
-  private eventSource: EventSource | null = null;
+  private sseSubscription: Subscription | null = null;
 
   columns: ColumnConfig[] = [
     { key: 'filename', header: 'Filename', sortable: true },
@@ -196,7 +222,7 @@ export class BackupsComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.closeEventSource();
+    this.clearSseSubscription();
   }
 
   toggleIncludeUsers(): void {
@@ -220,30 +246,45 @@ export class BackupsComponent implements OnInit, OnDestroy {
   }
 
   startBackup(): void {
+    if (this.isOperationRunning()) {
+      return;
+    }
     this.isOperationRunning.set(true);
     this.logMessages.set([]);
+    this.operationProgress.set(null);
+    this.operationLabel.set('Backup progress');
 
-    // Use SSE for real-time backup progress
-    this.eventSource = new EventSource(`/api/backups/start/?include_users=${this.includeUsers()}`);
-
-    this.eventSource.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.message) {
-        this.logMessages.update((msgs) => [...msgs, data.message]);
-      }
-      if (data.message?.includes('Backup finished')) {
-        this.closeEventSource();
-        this.isOperationRunning.set(false);
-        this.toast.success('Backup completed successfully');
-        this.loadBackups(); // Refresh list
-      }
-    };
-
-    this.eventSource.onerror = () => {
-      this.closeEventSource();
-      this.isOperationRunning.set(false);
-      this.toast.error('Backup failed');
-    };
+    this.clearSseSubscription();
+    this.sseSubscription = this.sseService
+      .connect<{
+        message?: string;
+        progress?: number;
+      }>(`/api/backups/start/?include_users=${this.includeUsers()}`)
+      .subscribe({
+        next: (data) => {
+          const message = data.message;
+          if (message) {
+            this.logMessages.update((msgs) => [...msgs, message]);
+          }
+          if (typeof data.progress === 'number') {
+            this.operationProgress.set(data.progress);
+          }
+          if (data.message?.includes('Backup finished')) {
+            this.isOperationRunning.set(false);
+            this.operationProgress.set(100);
+            this.toast.success('Backup completed successfully');
+            this.loadBackups();
+            this.clearSseSubscription();
+            setTimeout(() => this.operationProgress.set(null), 1500);
+          }
+        },
+        error: () => {
+          this.isOperationRunning.set(false);
+          this.operationProgress.set(null);
+          this.toast.error('Backup failed');
+          this.clearSseSubscription();
+        },
+      });
   }
 
   restoreBackup(filename: string): void {
@@ -257,32 +298,43 @@ export class BackupsComponent implements OnInit, OnDestroy {
 
     this.isOperationRunning.set(true);
     this.logMessages.set([]);
+    this.operationProgress.set(0);
+    this.operationLabel.set('Restore progress');
 
-    // Use SSE for real-time restore progress
-    this.eventSource = new EventSource(
-      `/api/backups/restore/?file=${filename}&include_users=${this.includeUsers()}`,
-    );
-
-    this.eventSource.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.message) {
-        this.logMessages.update((msgs) => [...msgs, data.message]);
-      }
-      if (data.progress) {
-        this.logMessages.update((msgs) => [...msgs, `Progress: ${data.progress}%`]);
-      }
-      if (data.message?.includes('Restore finished')) {
-        this.closeEventSource();
-        this.isOperationRunning.set(false);
-        this.toast.success('Restore completed successfully');
-      }
-    };
-
-    this.eventSource.onerror = () => {
-      this.closeEventSource();
-      this.isOperationRunning.set(false);
-      this.toast.error('Restore failed');
-    };
+    this.clearSseSubscription();
+    this.sseSubscription = this.sseService
+      .connect<{
+        message?: string;
+        progress?: string | number;
+      }>(`/api/backups/restore/?file=${filename}&include_users=${this.includeUsers()}`)
+      .subscribe({
+        next: (data) => {
+          const message = data.message;
+          if (message) {
+            this.logMessages.update((msgs) => [...msgs, message]);
+          }
+          if (data.progress !== undefined) {
+            const progress =
+              typeof data.progress === 'number' ? data.progress : Number.parseFloat(data.progress);
+            if (!Number.isNaN(progress)) {
+              this.operationProgress.set(progress);
+            }
+          }
+          if (data.message?.includes('Restore finished')) {
+            this.isOperationRunning.set(false);
+            this.operationProgress.set(100);
+            this.toast.success('Restore completed successfully');
+            this.clearSseSubscription();
+            setTimeout(() => this.operationProgress.set(null), 1500);
+          }
+        },
+        error: () => {
+          this.isOperationRunning.set(false);
+          this.operationProgress.set(null);
+          this.toast.error('Restore failed');
+          this.clearSseSubscription();
+        },
+      });
   }
 
   downloadBackup(filename: string): void {
@@ -310,25 +362,52 @@ export class BackupsComponent implements OnInit, OnDestroy {
     const formData = new FormData();
     formData.append('backup_file', file);
 
+    this.uploadFileName.set(file.name);
+    this.uploadHelperText.set('Uploading backup...');
+    this.uploadProgress.set(0);
+
     this.isOperationRunning.set(true);
-    // Use HttpClient directly since generated API doesn't support FormData uploads correctly
     this.http
-      .post<{ ok: boolean; error?: string; filename?: string }>('/api/backups/upload/', formData)
+      .post<{ ok: boolean; error?: string; filename?: string }>('/api/backups/upload/', formData, {
+        reportProgress: true,
+        observe: 'events',
+      })
       .pipe(
         catchError(() => {
           this.toast.error('Failed to upload backup');
+          this.uploadProgress.set(null);
+          this.uploadHelperText.set(null);
           return EMPTY;
         }),
         finalize(() => this.isOperationRunning.set(false)),
       )
-      .subscribe((response: any) => {
-        if (response.ok) {
-          this.toast.success('Backup uploaded successfully');
-          this.loadBackups();
-        } else {
-          this.toast.error(response.error || 'Upload failed');
+      .subscribe((event) => {
+        if (event.type === HttpEventType.UploadProgress && event.total) {
+          const percent = Math.round((event.loaded / event.total) * 100);
+          this.uploadProgress.set(percent);
+        }
+
+        if (event.type === HttpEventType.Response) {
+          const response = event.body as { ok: boolean; error?: string; filename?: string } | null;
+          if (response?.ok) {
+            this.uploadProgress.set(100);
+            this.uploadHelperText.set('Upload complete');
+            this.toast.success('Backup uploaded successfully');
+            this.loadBackups();
+            setTimeout(() => this.uploadProgress.set(null), 1500);
+          } else {
+            this.uploadProgress.set(null);
+            this.uploadHelperText.set(null);
+            this.toast.error(response?.error || 'Upload failed');
+          }
         }
       });
+  }
+
+  clearUploadSelection(): void {
+    this.uploadFileName.set(null);
+    this.uploadProgress.set(null);
+    this.uploadHelperText.set(null);
   }
 
   deleteAllBackups(): void {
@@ -368,10 +447,10 @@ export class BackupsComponent implements OnInit, OnDestroy {
     return `${Math.round(size * 100) / 100} ${units[unitIndex]}`;
   }
 
-  private closeEventSource(): void {
-    if (this.eventSource) {
-      this.eventSource.close();
-      this.eventSource = null;
+  private clearSseSubscription(): void {
+    if (this.sseSubscription) {
+      this.sseSubscription.unsubscribe();
+      this.sseSubscription = null;
     }
   }
 }

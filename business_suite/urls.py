@@ -23,7 +23,7 @@ from django.views.generic import TemplateView
 
 # Base URL patterns
 base_urlpatterns = [
-    path("django-admin/", admin.site.urls),
+    path("admin/", admin.site.urls),
     path("", include("landing.urls")),
     path("customers/", include("customers.urls")),
     path("products/", include("products.urls")),

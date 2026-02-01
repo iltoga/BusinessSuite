@@ -3,6 +3,7 @@
   "index": "/index.html",
   "navigationUrls": [
     "/**",
+    "!/api/**",
     "!/media/**",
     "!/static/**"
   ],
