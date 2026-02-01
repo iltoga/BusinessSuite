@@ -13,6 +13,7 @@ import {
 import { catchError, EMPTY, finalize, Subscription } from 'rxjs';
 
 import { BackupsService } from '@/core/api';
+import { AuthService } from '@/core/services/auth.service';
 import { SseService } from '@/core/services/sse.service';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardBadgeComponent } from '@/shared/components/badge';
@@ -186,6 +187,7 @@ export class BackupsComponent implements OnInit, OnDestroy {
 
   private backupsApi = inject(BackupsService);
   private http = inject(HttpClient);
+  private authService = inject(AuthService);
   private sseService = inject(SseService);
   private toast = inject(GlobalToastService);
 
@@ -255,11 +257,13 @@ export class BackupsComponent implements OnInit, OnDestroy {
     this.operationLabel.set('Backup progress');
 
     this.clearSseSubscription();
+    const token = this.authService.getToken();
+    const tokenParam = token ? `&token=${token}` : '';
     this.sseSubscription = this.sseService
       .connect<{
         message?: string;
         progress?: number;
-      }>(`/api/backups/start/?include_users=${this.includeUsers()}`)
+      }>(`/api/backups/start/?include_users=${this.includeUsers()}${tokenParam}`)
       .subscribe({
         next: (data) => {
           const message = data.message;
@@ -302,11 +306,13 @@ export class BackupsComponent implements OnInit, OnDestroy {
     this.operationLabel.set('Restore progress');
 
     this.clearSseSubscription();
+    const token = this.authService.getToken();
+    const tokenParam = token ? `&token=${token}` : '';
     this.sseSubscription = this.sseService
       .connect<{
         message?: string;
         progress?: string | number;
-      }>(`/api/backups/restore/?file=${filename}&include_users=${this.includeUsers()}`)
+      }>(`/api/backups/restore/?file=${filename}&include_users=${this.includeUsers()}${tokenParam}`)
       .subscribe({
         next: (data) => {
           const message = data.message;

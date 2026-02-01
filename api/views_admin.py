@@ -1,5 +1,6 @@
 # Admin Tools API ViewSets
 import datetime
+import functools
 import json
 import os
 import shutil
@@ -11,6 +12,7 @@ from django.http import FileResponse, JsonResponse, StreamingHttpResponse
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import permissions, viewsets
+from rest_framework.authtoken.models import Token
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -30,13 +32,43 @@ class IsSuperuser(permissions.BasePermission):
         return request.user and request.user.is_superuser
 
 
+def sse_token_auth_required(view_func):
+    """
+    Decorator for SSE endpoints that need token auth.
+    EventSource cannot send Authorization headers, so we accept token via query param.
+    Falls back to session auth if no token provided.
+    """
+
+    @functools.wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        # Check for token in query param first (for EventSource)
+        token_key = request.GET.get("token")
+        if token_key:
+            try:
+                token = Token.objects.select_related("user").get(key=token_key)
+                if token.user.is_active and token.user.is_superuser:
+                    request.user = token.user
+                    return view_func(request, *args, **kwargs)
+                else:
+                    return JsonResponse({"error": "Unauthorized"}, status=403)
+            except Token.DoesNotExist:
+                return JsonResponse({"error": "Invalid token"}, status=401)
+
+        # Fall back to session auth
+        if request.user.is_authenticated and request.user.is_superuser:
+            return view_func(request, *args, **kwargs)
+
+        return JsonResponse({"error": "Authentication required"}, status=401)
+
+    return wrapper
+
+
 # ============================================================================
 # Plain Django views for SSE endpoints (bypass DRF content negotiation)
 # ============================================================================
 
 
-@login_required
-@user_passes_test(is_superuser)
+@sse_token_auth_required
 def backup_start_sse(request):
     """SSE endpoint for backup - bypasses DRF content negotiation."""
     include_users = request.GET.get("include_users", "0") in ("1", "true", "True")
@@ -63,8 +95,7 @@ def backup_start_sse(request):
     return response
 
 
-@login_required
-@user_passes_test(is_superuser)
+@sse_token_auth_required
 def backup_restore_sse(request):
     """SSE endpoint for restore - bypasses DRF content negotiation."""
     filename = request.GET.get("file")
