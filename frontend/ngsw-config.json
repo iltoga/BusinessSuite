@@ -3,9 +3,6 @@
   "index": "/index.html",
   "navigationUrls": [
     "/**",
-    "!/api/**",
-    "!/django-admin/**",
-    "!/nested_admin/**",
     "!/media/**",
     "!/static/**"
   ],
