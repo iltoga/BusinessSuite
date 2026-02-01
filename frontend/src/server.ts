@@ -25,7 +25,7 @@ app.use(
     changeOrigin: true,
     secure: false,
     logger: console,
-    pathFilter: ['/api', '/media', '/staticfiles'],
+    pathFilter: ['/api', '/media', '/staticfiles', '/django-admin', '/nested_admin'],
   }),
 );
 

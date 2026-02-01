@@ -1,6 +1,14 @@
 {
   "$schema": "./node_modules/@angular/service-worker/config/schema.json",
   "index": "/index.html",
+  "navigationUrls": [
+    "/**",
+    "!/api/**",
+    "!/django-admin/**",
+    "!/nested_admin/**",
+    "!/media/**",
+    "!/static/**"
+  ],
   "assetGroups": [
     {
       "name": "app",
