@@ -153,6 +153,9 @@ services:
     build:
       context: ./
       dockerfile: Dockerfile.frontend
+      args:
+        NODE_OPTIONS: --max-old-space-size=2048
+        NG_BUILD_MAX_WORKERS: 1
     networks:
       dockernet:
         ipv4_address: 192.168.2.61

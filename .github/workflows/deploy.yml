@@ -105,7 +105,7 @@ jobs:
             export DOCKER_BUILDKIT=1
             export COMPOSE_DOCKER_CLI_BUILD=1
 
-            echo "🛠️  Building and starting containers …"
+            echo "�️  Building and starting containers …"
             if [ "$DEP_CHANGED" = true ]; then
               docker compose build --pull
             fi
