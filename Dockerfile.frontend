@@ -9,8 +9,8 @@ RUN bun install --frozen-lockfile
 # Copy the rest of the frontend files
 COPY frontend/ ./
 
-# Use bun x ng build as it is more robust for finding the ng binary in some environments
-RUN bun x ng build
+# Run Angular CLI directly to avoid Bun shim resolution issues
+RUN bun ./node_modules/@angular/cli/bin/ng.js build
 
 FROM oven/bun:1.3.6 AS runner
 
