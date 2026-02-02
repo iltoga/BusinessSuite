@@ -27,12 +27,8 @@ import {
 @Component({
   selector: 'z-button, button[z-button], a[z-button]',
   imports: [ZardIconComponent],
-  template: `
-    @if (zLoading()) {
-      <z-icon zType="loader-circle" class="animate-spin duration-2000" />
-    }
-    <ng-content />
-  `,
+  templateUrl: './button.component.html',
+  styleUrls: ['./button.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   host: {

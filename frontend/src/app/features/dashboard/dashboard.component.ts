@@ -17,29 +17,8 @@ import { ZardCardComponent } from '@/shared/components/card';
   selector: 'app-dashboard',
   standalone: true,
   imports: [CommonModule, ZardButtonComponent, ZardCardComponent],
-  template: `
-    <div class="space-y-6">
-      <div class="flex items-center justify-between">
-        <h1 class="text-2xl font-semibold">Dashboard</h1>
-        <button z-button zType="outline" (click)="logout()">Logout</button>
-      </div>
-
-      <div class="grid gap-4 md:grid-cols-3">
-        <z-card class="p-4">
-          <div class="text-sm text-muted-foreground">Total Customers</div>
-          <div class="text-3xl font-semibold">{{ stats().customers }}</div>
-        </z-card>
-        <z-card class="p-4">
-          <div class="text-sm text-muted-foreground">Active Applications</div>
-          <div class="text-3xl font-semibold">{{ stats().applications }}</div>
-        </z-card>
-        <z-card class="p-4">
-          <div class="text-sm text-muted-foreground">Pending Invoices</div>
-          <div class="text-3xl font-semibold">{{ stats().invoices }}</div>
-        </z-card>
-      </div>
-    </div>
-  `,
+  templateUrl: './dashboard.component.html',
+  styleUrls: ['./dashboard.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DashboardComponent implements OnInit {

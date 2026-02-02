@@ -1,4 +1,10 @@
-import { ChangeDetectionStrategy, Component, computed, input, ViewEncapsulation } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  input,
+  ViewEncapsulation,
+} from '@angular/core';
 
 import type { ClassValue } from 'clsx';
 
@@ -17,9 +23,8 @@ import { mergeClasses } from '@/shared/utils/merge-classes';
 
 @Component({
   selector: 'table[z-table]',
-  template: `
-    <ng-content />
-  `,
+  templateUrl: './table.component.html',
+  styleUrls: ['./table.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   host: {
@@ -45,9 +50,8 @@ export class ZardTableComponent {
 
 @Component({
   selector: 'thead[z-table-header]',
-  template: `
-    <ng-content />
-  `,
+  templateUrl: './table.component.html',
+  styleUrls: ['./table.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   host: {
@@ -63,9 +67,8 @@ export class ZardTableHeaderComponent {
 
 @Component({
   selector: 'tbody[z-table-body]',
-  template: `
-    <ng-content />
-  `,
+  templateUrl: './table.component.html',
+  styleUrls: ['./table.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   host: {
@@ -81,9 +84,8 @@ export class ZardTableBodyComponent {
 
 @Component({
   selector: 'tr[z-table-row]',
-  template: `
-    <ng-content />
-  `,
+  templateUrl: './table.component.html',
+  styleUrls: ['./table.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   host: {
@@ -99,9 +101,8 @@ export class ZardTableRowComponent {
 
 @Component({
   selector: 'th[z-table-head]',
-  template: `
-    <ng-content />
-  `,
+  templateUrl: './table.component.html',
+  styleUrls: ['./table.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   host: {
@@ -117,9 +118,8 @@ export class ZardTableHeadComponent {
 
 @Component({
   selector: 'td[z-table-cell]',
-  template: `
-    <ng-content />
-  `,
+  templateUrl: './table.component.html',
+  styleUrls: ['./table.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   host: {
@@ -135,9 +135,8 @@ export class ZardTableCellComponent {
 
 @Component({
   selector: 'caption[z-table-caption]',
-  template: `
-    <ng-content />
-  `,
+  templateUrl: './table.component.html',
+  styleUrls: ['./table.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   host: {

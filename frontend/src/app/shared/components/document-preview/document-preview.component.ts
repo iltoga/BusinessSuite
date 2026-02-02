@@ -33,74 +33,8 @@ import { ZardPopoverComponent, ZardPopoverDirective } from '@/shared/components/
     ZardPopoverComponent,
     ZardPopoverDirective,
   ],
-  template: `
-    @if (fileLink()) {
-      <button
-        z-button
-        [zType]="zType()"
-        [zSize]="zSize()"
-        type="button"
-        zPopover
-        #popover="zPopover"
-        [zContent]="previewContent"
-        zTrigger="click"
-        zPlacement="top"
-        (zVisibleChange)="onPopoverToggle($event)"
-      >
-        {{ label() }}
-      </button>
-
-      <ng-template #previewContent>
-        <z-popover class="p-2 w-72 sm:w-80">
-          <div class="space-y-2">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-medium text-muted-foreground truncate">
-                {{ fileName() }}
-              </span>
-            </div>
-            <div
-              class="overflow-hidden rounded border bg-muted/20 min-h-25 flex items-center justify-center"
-            >
-              @if (isLoading()) {
-                <div class="text-xs text-muted-foreground animate-pulse">Loading preview...</div>
-              } @else if (previewUrl()) {
-                @if (isPdf()) {
-                  @if (isPdfImage()) {
-                    <img
-                      [src]="previewUrl()"
-                      alt="PDF Preview"
-                      class="max-h-60 w-full object-contain"
-                    />
-                  } @else {
-                    <div class="w-full h-60">
-                      <iframe [src]="sanitizedPreview()" class="w-full h-full border-0"></iframe>
-                    </div>
-                  }
-                } @else {
-                  <img
-                    [src]="previewUrl()"
-                    alt="Document Preview"
-                    class="max-h-60 w-full object-contain"
-                  />
-                }
-              } @else {
-                <div class="text-xs text-muted-foreground text-center p-4">
-                  Preview not available.
-                </div>
-              }
-            </div>
-            <div class="flex justify-end">
-              <button z-button zType="ghost" zSize="sm" class="h-7 text-xs" (click)="onViewFull()">
-                View Full
-              </button>
-            </div>
-          </div>
-        </z-popover>
-      </ng-template>
-
-      <ng-template #overlayContainer></ng-template>
-    }
-  `,
+  templateUrl: './document-preview.component.html',
+  styleUrls: ['./document-preview.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DocumentPreviewComponent {
