@@ -12,7 +12,13 @@
         routerLink="/dashboard"
         class="flex h-full w-full items-center justify-center rounded-md bg-card transition-transform hover:scale-[1.02] dark:bg-accent/20 overflow-hidden"
       >
-        <img [src]="logoSrc()" alt="BusinessSuite Logo" class="h-full w-full object-contain" />
+        <!-- Mark the brand image so it can be hidden until the correct asset is ready -->
+        <img
+          data-app-logo
+          [src]="logoSrc()"
+          alt="BusinessSuite Logo"
+          class="h-full w-full object-contain"
+        />
       </a>
     </div>
 

@@ -105,7 +105,11 @@ app.use(async (req, res, next) => {
         );
 
         // Inject a small script with the server's logo choices (script must use nonce when CSP is enabled)
-        const logoScript = `<script nonce="${nonce}">window.APP_BRAND={logo:'/assets/${logoFilename}',logoInverted:'/assets/${logoInverted}'};</script>`;
+        // Also add a quick class so CSS can show the correct logo immediately and avoid a flash
+        const logoScript = `<script nonce="${nonce}">(function(){
+          window.APP_BRAND={logo:'/assets/${logoFilename}',logoInverted:'/assets/${logoInverted}'};
+          try{document.documentElement.classList.add('app-brand-ready')}catch(e){}
+        })();</script>`;
         modifiedBody = modifiedBody.replace(/<head(\s|>)/i, `<head$1\n${logoScript}`);
 
         // Build a modified response object (avoid mutating readonly properties)
@@ -119,7 +123,11 @@ app.use(async (req, res, next) => {
         return;
       } else {
         // Non-CSP path: inject script without nonce
-        const logoScript = `<script>window.APP_BRAND={logo:'/assets/${logoFilename}',logoInverted:'/assets/${logoInverted}'};</script>`;
+        // Non-CSP path: inject script and add a quick class so CSS shows the correct logo ASAP
+        const logoScript = `<script>(function(){
+          window.APP_BRAND={logo:'/assets/${logoFilename}',logoInverted:'/assets/${logoInverted}'};
+          try{document.documentElement.classList.add('app-brand-ready')}catch(e){}
+        })();</script>`;
         const modifiedBody = String(response.body).replace(
           /<head(\s|>)/i,
           `<head$1\n${logoScript}`,

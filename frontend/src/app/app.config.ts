@@ -44,6 +44,13 @@ export const appConfig: ApplicationConfig = {
       return configService.loadConfig().then(() => {
         themeService.initializeTheme(configService.settings.theme);
         authService.initMockAuth();
+
+        // Ensure SPA-only loads also reveal the correct brand once config is loaded
+        try {
+          document.documentElement.classList.add('app-brand-ready');
+        } catch (e) {
+          /* ignore on non-browser platforms */
+        }
       });
     }),
 

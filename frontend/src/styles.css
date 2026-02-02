@@ -168,3 +168,16 @@ aside nav a.active {
   border-radius: 5px;
   background: var(--muted);
 }
+
+/* Hide app logo until the runtime brand is known to avoid a flash of the default logo ⚠️ */
+img[data-app-logo] {
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 160ms ease-in-out;
+}
+
+/* When the server or client indicates the brand is ready, show the logo */
+html.app-brand-ready img[data-app-logo] {
+  visibility: visible;
+  opacity: 1;
+}
