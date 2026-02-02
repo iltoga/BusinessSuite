@@ -41,6 +41,49 @@ class CustomerQuickCreateAPITestCase(TestCase):
         self.assertEqual(str(cust.passport_issue_date), "2018-05-10")
         self.assertEqual(str(cust.passport_expiration_date), "2028-05-10")
 
+    def test_customer_quick_create_rejects_duplicate_passport(self):
+        # Existing customer with passport
+        existing = Customer.objects.create(
+            customer_type="person", first_name="A", last_name="User", passport_number="DUP123"
+        )
+        url = reverse("api-customer-quick-create")
+        data = {"customer_type": "person", "first_name": "B", "last_name": "User", "passport_number": "DUP123"}
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, 400)
+        payload = response.json()
+        # Quick create returns errors under `errors`
+        self.assertIn("errors", payload)
+        errors = payload["errors"]
+        self.assertIn("passport_number", errors)
+        messages = (
+            errors["passport_number"] if isinstance(errors["passport_number"], list) else [errors["passport_number"]]
+        )
+        self.assertIn("This passport number is already used by another customer.", messages)
+
+    def test_customer_create_rejects_duplicate_passport_via_api(self):
+        url = reverse("customers-list")
+        data1 = {"customer_type": "person", "first_name": "X", "last_name": "One", "passport_number": "P-DUP-1"}
+        response1 = self.client.post(url, data1)
+        self.assertEqual(response1.status_code, 201)
+
+        data2 = {"customer_type": "person", "first_name": "Y", "last_name": "Two", "passport_number": "P-DUP-1"}
+        response2 = self.client.post(url, data2)
+        self.assertEqual(response2.status_code, 400)
+        payload = response2.json()
+        # DRF returns field errors at root
+        self.assertIn("passport_number", payload)
+        self.assertIn("This passport number is already used by another customer.", payload["passport_number"])
+
+    def test_customer_update_rejects_duplicate_passport(self):
+        c1 = Customer.objects.create(customer_type="person", first_name="C", last_name="One", passport_number="P-1")
+        c2 = Customer.objects.create(customer_type="person", first_name="D", last_name="Two", passport_number="P-2")
+        url = reverse("customers-detail", args=[c2.id])
+        response = self.client.patch(url, {"passport_number": "P-1"}, content_type="application/json")
+        self.assertEqual(response.status_code, 400)
+        payload = response.json()
+        self.assertIn("passport_number", payload)
+        self.assertIn("This passport number is already used by another customer.", payload["passport_number"])
+
     def test_customer_detail_returns_gender_display(self):
         from django.urls import reverse
 

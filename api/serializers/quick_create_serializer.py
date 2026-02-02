@@ -82,6 +82,14 @@ class CustomerQuickCreateSerializer(serializers.Serializer):
         else:
             attrs.pop(field_name, None)
 
+    def validate_passport_number(self, value):
+        """Ensure passport number is unique when present for quick-create."""
+        if not value:
+            return value
+        if Customer.objects.filter(passport_number=value).exists():
+            raise serializers.ValidationError("This passport number is already used by another customer.")
+        return value
+
 
 class CustomerApplicationQuickCreateSerializer(serializers.Serializer):
     customer = serializers.PrimaryKeyRelatedField(queryset=Customer.objects.all())

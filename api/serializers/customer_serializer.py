@@ -84,3 +84,15 @@ class CustomerSerializer(serializers.ModelSerializer):
 
     def get_nationality_code(self, obj):
         return obj.nationality.alpha3_code if obj.nationality else ""
+
+    def validate_passport_number(self, value):
+        """Ensure passport number is unique when present."""
+        if not value:
+            return value
+        qs = Customer.objects.filter(passport_number=value)
+        # exclude self if updating
+        if getattr(self, "instance", None):
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError("This passport number is already used by another customer.")
+        return value
