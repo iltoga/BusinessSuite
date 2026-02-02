@@ -11,16 +11,31 @@ except Exception:  # pragma: no cover - fallback in CI if waffle isn't installed
 
 
 # Prefixes that should continue to be served even when Django views are disabled
+# Values are prefix roots (no trailing slash). Matching allows either the exact
+# prefix or the prefix followed by a slash (e.g., 'admin' or 'admin/').
 EXEMPT_PREFIXES = (
-    "admin/",
-    "nested_admin/",
-    "api/",
-    "unicorn/",
-    "admin-tools/",
-    "__debug__/",
-    "static/",
-    "media/",
+    "admin",
+    "nested_admin",
+    "api",
+    "__debug__",
+    "static",
+    "media",
+    # Keep auth routes available even when Django views are disabled
+    "login",
+    "logout",
 )
+
+
+def _is_exempt_path(path: str) -> bool:
+    """Return True if the incoming path belongs to an exempt prefix.
+
+    This matches both the root prefix (e.g., 'admin') and any nested
+    paths (e.g., 'admin/' and 'admin/users').
+    """
+    for p in EXEMPT_PREFIXES:
+        if path == p or path.startswith(p + "/"):
+            return True
+    return False
 
 
 class DisableDjangoViewsMiddleware:
@@ -46,7 +61,15 @@ class DisableDjangoViewsMiddleware:
         should_disable = bool(disable_setting or waffle_flag)
         path = (request.path_info or "").lstrip("/")
 
-        if should_disable and not any(path.startswith(p) for p in EXEMPT_PREFIXES):
+        # If views are disabled, allow the root path to redirect to admin
+        # instead of returning 403. This ensures a safe default route exists
+        # that stays accessible even when the rest of the Django views are off.
+        if should_disable and path == "":
+            from django.shortcuts import redirect
+
+            return redirect("/admin/")
+
+        if should_disable and not _is_exempt_path(path):
             return HttpResponseForbidden("Django views are currently disabled")
 
         return self.get_response(request)

@@ -63,6 +63,12 @@ GLOBAL_SETTINGS = {
 # Can be toggled via env var DISABLE_DJANGO_VIEWS or managed via a waffle flag named "disable_django_views"
 DISABLE_DJANGO_VIEWS = _parse_bool(os.getenv("DISABLE_DJANGO_VIEWS", "False"))
 
+# If Django views are disabled, it's safer to redirect logins to the admin
+# interface (which is exempt). This prevents users from being redirected to
+# the site root ("/") which may be blocked by the DisableDjangoViewsMiddleware.
+if DISABLE_DJANGO_VIEWS:
+    LOGIN_REDIRECT_URL = "/admin/"
+
 # Invoice Import Settings
 INVOICE_IMPORT_MAX_WORKERS = int(os.getenv("INVOICE_IMPORT_MAX_WORKERS", "3"))  # Max parallel imports
 
