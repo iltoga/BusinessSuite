@@ -19,6 +19,7 @@ ALLOWED_HOSTS = [
     f"admin.{APP_DOMAIN}",
     "bs-cron",
     "bs-core",
+    "176.126.78.153",  # Server IP address
 ]
 
 MEDIA_ROOT = "/media/"
