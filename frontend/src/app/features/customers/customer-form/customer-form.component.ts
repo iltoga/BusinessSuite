@@ -20,6 +20,7 @@ import { OcrService, type OcrStatusResponse } from '@/core/services/ocr.service'
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
+import { ZardCheckboxComponent } from '@/shared/components/checkbox';
 import { ZardComboboxComponent, type ZardComboboxOption } from '@/shared/components/combobox';
 import { ZardDateInputComponent } from '@/shared/components/date-input';
 import { FileUploadComponent } from '@/shared/components/file-upload';
@@ -43,6 +44,7 @@ import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/uti
     FileUploadComponent,
     ZardIconComponent,
     FormErrorSummaryComponent,
+    ZardCheckboxComponent,
   ],
   templateUrl: './customer-form.component.html',
   styleUrls: ['./customer-form.component.css'],
@@ -81,7 +83,7 @@ export class CustomerFormComponent implements OnInit {
     {
       customer_type: ['person'],
       title: [''],
-      first_name: [''],
+      first_name: ['', [Validators.pattern('^([A-Z][a-zA-Z\\s\\-]*)$')]],
       last_name: [''],
       company_name: [''],
       gender: [''],
@@ -106,7 +108,11 @@ export class CustomerFormComponent implements OnInit {
       active: [true],
     },
     {
-      validators: [this.passportDatesValidator.bind(this), this.birthDateValidator.bind(this)],
+      validators: [
+        this.passportDatesValidator.bind(this),
+        this.birthDateValidator.bind(this),
+        this.notificationValidator.bind(this),
+      ],
     },
   );
 
@@ -193,30 +199,20 @@ export class CustomerFormComponent implements OnInit {
     this.form.get('birthdate')?.valueChanges.subscribe(() => {
       this.form.updateValueAndValidity({ onlySelf: false, emitEvent: false });
     });
+    this.form.get('notify_documents_expiration')?.valueChanges.subscribe(() => {
+      this.form.updateValueAndValidity({ onlySelf: false, emitEvent: false });
+    });
+    this.form.get('notify_by')?.valueChanges.subscribe(() => {
+      this.form.updateValueAndValidity({ onlySelf: false, emitEvent: false });
+    });
 
     // Set up conditional validation based on customer_type changes
     this.form.get('customer_type')?.valueChanges.subscribe((customerType) => {
-      // Update isPerson signal
-      this.isPerson.set(customerType === 'person');
-
-      const firstNameControl = this.form.get('first_name');
-      const lastNameControl = this.form.get('last_name');
-      const companyNameControl = this.form.get('company_name');
-
-      if (customerType === 'person') {
-        firstNameControl?.setValidators([Validators.required]);
-        lastNameControl?.setValidators([Validators.required]);
-        companyNameControl?.clearValidators();
-      } else if (customerType === 'company') {
-        firstNameControl?.clearValidators();
-        lastNameControl?.clearValidators();
-        companyNameControl?.setValidators([Validators.required]);
-      }
-
-      firstNameControl?.updateValueAndValidity({ emitEvent: false });
-      lastNameControl?.updateValueAndValidity({ emitEvent: false });
-      companyNameControl?.updateValueAndValidity({ emitEvent: false });
+      this.updateConditionalValidators(customerType ?? 'person');
     });
+
+    // Initial validation setup
+    this.updateConditionalValidators(this.form.get('customer_type')?.value ?? 'person');
 
     // Load customer data if in edit mode
     const idParam = this.route.snapshot.paramMap.get('id');
@@ -575,6 +571,68 @@ export class CustomerFormComponent implements OnInit {
     }
 
     return null;
+  }
+
+  private notificationValidator(
+    group: import('@angular/forms').AbstractControl,
+  ): import('@angular/forms').ValidationErrors | null {
+    const notify = group.get('notify_documents_expiration')?.value;
+    const notifyBy = group.get('notify_by')?.value;
+
+    const notifyByControl = group.get('notify_by');
+    if (notify && !notifyBy) {
+      notifyByControl?.setErrors({ ...notifyByControl.errors, notifyByRequired: true });
+      return { notifyByRequired: true };
+    }
+
+    // Only clear error if it was set by this validator
+    if (notifyByControl?.hasError('notifyByRequired')) {
+      const errors = { ...notifyByControl.errors };
+      delete errors['notifyByRequired'];
+      notifyByControl.setErrors(Object.keys(errors).length ? errors : null);
+    }
+
+    return null;
+  }
+
+  private updateConditionalValidators(customerType: string): void {
+    // Update isPerson signal
+    this.isPerson.set(customerType === 'person');
+
+    const firstNameControl = this.form.get('first_name');
+    const lastNameControl = this.form.get('last_name');
+    const companyNameControl = this.form.get('company_name');
+
+    if (customerType === 'person') {
+      firstNameControl?.setValidators([
+        Validators.required,
+        Validators.pattern('^([A-Z][a-zA-Z\\s\\-]*)$'),
+      ]);
+      lastNameControl?.setValidators([Validators.required]);
+      companyNameControl?.clearValidators();
+    } else if (customerType === 'company') {
+      firstNameControl?.clearValidators();
+      firstNameControl?.setValidators([Validators.pattern('^([A-Z][a-zA-Z\\s\\-]*)$')]);
+      lastNameControl?.clearValidators();
+      companyNameControl?.setValidators([Validators.required]);
+    }
+
+    firstNameControl?.updateValueAndValidity({ emitEvent: false });
+    lastNameControl?.updateValueAndValidity({ emitEvent: false });
+    companyNameControl?.updateValueAndValidity({ emitEvent: false });
+  }
+
+  formatName(controlName: 'first_name' | 'last_name'): void {
+    const control = this.form.get(controlName);
+    const value = control?.value;
+    if (value && typeof value === 'string' && value.trim().length > 0) {
+      const trimmed = value.trim();
+      const formatted = trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+      if (formatted !== value) {
+        control.setValue(formatted, { emitEvent: false });
+        control.updateValueAndValidity();
+      }
+    }
   }
 
   onSubmit(): void {
