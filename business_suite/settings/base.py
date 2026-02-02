@@ -75,6 +75,11 @@ INVOICE_IMPORT_MAX_WORKERS = int(os.getenv("INVOICE_IMPORT_MAX_WORKERS", "3"))  
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Ensure logs directory exists
+LOGS_DIR = os.path.join(BASE_DIR, "logs")
+if not os.path.exists(LOGS_DIR):
+    os.makedirs(LOGS_DIR, exist_ok=True)
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
@@ -132,6 +137,7 @@ INSTALLED_APPS = [
     "django_cleanup.apps.CleanupConfig",
     "django_user_agents",
     "huey.contrib.djhuey",
+    "easy_audit",
 ]
 
 MIDDLEWARE = [
@@ -153,6 +159,7 @@ MIDDLEWARE = [
     # it merge all changes of object per request
     "django_user_agents.middleware.UserAgentMiddleware",
     "core.middleware.performance_logger.PerformanceLoggingMiddleware",
+    "easy_audit.middleware.EasyAuditMiddleware",
 ]
 
 # Optionally enable django-waffle (feature flags) if the package is installed in the environment.
@@ -171,7 +178,6 @@ else:
         MIDDLEWARE.append("waffle.middleware.WaffleMiddleware")
     else:
         MIDDLEWARE.insert(idx, "waffle.middleware.WaffleMiddleware")
-
 
 ROOT_URLCONF = "business_suite.urls"
 
@@ -539,6 +545,22 @@ DBBACKUP_EXCLUDE_MEDIA_FODERS = ["tmpfiles"]
 FULL_BACKUP_SCHEDULE = "02:00"
 CLEAR_CACHE_SCHEDULE = ["03:00"]
 
+# OTLP & Audit defaults
+OTLP_ENDPOINT = os.getenv("OTLP_ENDPOINT", "http://grafana-agent:4318/v1/logs")
+OTLP_TIMEOUT = float(os.getenv("OTLP_TIMEOUT", "5.0"))
+
+# Use the EasyAudit adapter by default so `django-easy-audit` integrates with our
+# PersistentOTLPBackend automatically. Override with an env var to use a different backend.
+DJANGO_EASY_AUDIT_LOGGING_BACKEND = os.getenv(
+    "DJANGO_EASY_AUDIT_LOGGING_BACKEND", "core.signals.EasyAuditBackendAdapter"
+)
+DJANGO_EASY_AUDIT_PURGE_AFTER_DAYS = int(os.getenv("DJANGO_EASY_AUDIT_PURGE_AFTER_DAYS", "90"))
+DJANGO_EASY_AUDIT_WATCH_AUTH_EVENTS = _parse_bool(os.getenv("DJANGO_EASY_AUDIT_WATCH_AUTH_EVENTS", "True"))
+DJANGO_EASY_AUDIT_WATCH_REQUEST_EVENTS = _parse_bool(os.getenv("DJANGO_EASY_AUDIT_WATCH_REQUEST_EVENTS", "True"))
+DJANGO_EASY_AUDIT_WATCH_CRUD_EVENTS = _parse_bool(os.getenv("DJANGO_EASY_AUDIT_WATCH_CRUD_EVENTS", "True"))
+# Avoid logging request events for static/media files
+DJANGO_EASY_AUDIT_URL_SKIP_LIST = ["/static/", "/media/", "/favicon.ico"]
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -566,7 +588,12 @@ LOGGING = {
         "file": {
             "level": "DEBUG",
             "class": "logging.FileHandler",
-            "filename": os.path.join(BASE_DIR, "logs") + "debug.log",
+            "filename": os.path.join(BASE_DIR, "logs", "debug.log"),
+        },
+        "fail_safe_otlp": {
+            "level": "INFO",
+            "()": "core.audit_handlers.FailSafeOTLPHandler",
+            "endpoint": OTLP_ENDPOINT,
         },
         # "mail_admins": {
         #     "level": "ERROR",
@@ -587,6 +614,18 @@ LOGGING = {
         "passport_ocr": {
             "handlers": ["console", "file"],
             "level": "DEBUG",
+            "propagate": False,
+        },
+        # Audit logger - persists to DB and sends to Loki (with failover)
+        "audit": {
+            "handlers": ["fail_safe_otlp", "console", "file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        # Logger for frontend logs proxied via Django
+        "angular_frontend": {
+            "handlers": ["fail_safe_otlp", "console", "file"],
+            "level": "INFO",
             "propagate": False,
         },
         # "django.request": {

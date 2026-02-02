@@ -1,3 +1,4 @@
+from .audit import CRUDEvent, LoginEvent, RequestEvent
 from .country_code import CountryCode
 from .document_ocr_job import DocumentOCRJob
 from .holiday import Holiday

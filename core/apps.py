@@ -7,4 +7,6 @@ class CoreConfig(AppConfig):
 
     def ready(self):
         # Ensure Huey tasks are registered
+        # Register audit signals
+        import core.signals  # noqa: F401
         from core.tasks import cron_jobs, document_ocr, ocr  # noqa: F401

@@ -9,8 +9,7 @@ from io import BytesIO
 from django.conf import settings
 from django.contrib.auth import logout as django_logout
 from django.core.files.storage import default_storage
-from django.db.models import (Count, DecimalField, F, OuterRef, Prefetch, Q,
-                              Subquery, Sum, Value)
+from django.db.models import Count, DecimalField, F, OuterRef, Prefetch, Q, Subquery, Sum, Value
 from django.db.models.functions import Coalesce
 from django.http import FileResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404
@@ -19,13 +18,10 @@ from django.utils import timezone
 from django.utils.text import slugify
 from django.views.decorators.csrf import csrf_exempt
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import (OpenApiParameter, OpenApiResponse,
-                                   extend_schema)
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
 from rest_framework import filters, pagination, status, viewsets
 from rest_framework.authentication import SessionAuthentication
-from rest_framework.decorators import (action, api_view,
-                                       authentication_classes,
-                                       permission_classes, throttle_classes)
+from rest_framework.decorators import action, api_view, authentication_classes, permission_classes, throttle_classes
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -33,32 +29,42 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from api.serializers import (AvatarUploadSerializer, ChangePasswordSerializer,
-                             CountryCodeSerializer,
-                             CustomerApplicationQuickCreateSerializer,
-                             CustomerQuickCreateSerializer, CustomerSerializer,
-                             DocApplicationDetailSerializer,
-                             DocApplicationInvoiceSerializer,
-                             DocApplicationSerializerWithRelations,
-                             DocumentMergeSerializer, DocumentSerializer,
-                             DocumentTypeSerializer, DocWorkflowSerializer,
-                             InvoiceCreateUpdateSerializer,
-                             InvoiceDetailSerializer, InvoiceListSerializer,
-                             PaymentSerializer, ProductCreateUpdateSerializer,
-                             ProductDetailSerializer,
-                             ProductQuickCreateSerializer, ProductSerializer,
-                             SuratPermohonanCustomerDataSerializer,
-                             SuratPermohonanRequestSerializer,
-                             UserProfileSerializer, UserSettingsSerializer,
-                             ordered_document_types)
+from api.serializers import (
+    AvatarUploadSerializer,
+    ChangePasswordSerializer,
+    CountryCodeSerializer,
+    CustomerApplicationQuickCreateSerializer,
+    CustomerQuickCreateSerializer,
+    CustomerSerializer,
+    DocApplicationDetailSerializer,
+    DocApplicationInvoiceSerializer,
+    DocApplicationSerializerWithRelations,
+    DocumentMergeSerializer,
+    DocumentSerializer,
+    DocumentTypeSerializer,
+    DocWorkflowSerializer,
+    InvoiceCreateUpdateSerializer,
+    InvoiceDetailSerializer,
+    InvoiceListSerializer,
+    PaymentSerializer,
+    ProductCreateUpdateSerializer,
+    ProductDetailSerializer,
+    ProductQuickCreateSerializer,
+    ProductSerializer,
+    SuratPermohonanCustomerDataSerializer,
+    SuratPermohonanRequestSerializer,
+    UserProfileSerializer,
+    UserSettingsSerializer,
+    ordered_document_types,
+)
 from api.serializers.auth_serializer import CustomTokenObtainSerializer
+
+# Observability serializer for proxying frontend logs
+from api.serializers.observability import ObservabilityLogSerializer
 from business_suite.authentication import JwtOrMockAuthentication
-from core.models import (CountryCode, DocumentOCRJob, OCRJob, UserProfile,
-                         UserSettings)
+from core.models import CountryCode, DocumentOCRJob, OCRJob, UserProfile, UserSettings
 from core.services.document_merger import DocumentMerger, DocumentMergerError
-from core.services.quick_create import (create_quick_customer,
-                                        create_quick_customer_application,
-                                        create_quick_product)
+from core.services.quick_create import create_quick_customer, create_quick_customer_application, create_quick_product
 from core.tasks.cron_jobs import run_clear_cache_now, run_full_backup_now
 from core.tasks.document_ocr import run_document_ocr_job
 from core.tasks.ocr import run_ocr_job
@@ -127,6 +133,41 @@ class TokenAuthView(TokenObtainPairView):
     authentication_classes = []
     permission_classes = [AllowAny]
     serializer_class = CustomTokenObtainSerializer
+
+
+class ObservabilityLogView(ApiErrorHandlingMixin, viewsets.ViewSet):
+    """Proxy endpoint to receive frontend logs from Angular and forward them into Django's logging pipeline.
+
+    POST /api/v1/observability/log/
+    Payload (JSON): { timestamp?, level, message, stack?, metadata? }
+    Requires: Authentication (IsAuthenticated)
+    """
+
+    permission_classes = [IsAuthenticated]
+    parser_classes = [JSONParser]
+
+    @extend_schema(request=ObservabilityLogSerializer, responses={202: OpenApiTypes.OBJECT})
+    def create(self, request):
+        """Accepts an observability log and writes to the `angular_frontend` logger."""
+        import logging
+
+        serializer = ObservabilityLogSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        payload = {
+            "timestamp": str(data.get("timestamp") or timezone.now().isoformat()),
+            "level": data.get("level"),
+            "message": data.get("message"),
+            "stack": data.get("stack"),
+            "metadata": data.get("metadata", {}),
+        }
+
+        logger = logging.getLogger("angular_frontend")
+        # Use structured JSON to make it easier to query in Loki
+        logger.info(json.dumps(payload), extra={"source": "angular_frontend"})
+
+        return Response({"received": True}, status=status.HTTP_202_ACCEPTED)
 
 
 class UserProfileViewSet(ApiErrorHandlingMixin, viewsets.GenericViewSet):
@@ -624,8 +665,7 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
         invoice = self.get_object()
 
-        from invoices.services.invoice_deletion import \
-            build_invoice_delete_preview
+        from invoices.services.invoice_deletion import build_invoice_delete_preview
 
         preview = build_invoice_delete_preview(invoice)
 
@@ -1490,8 +1530,7 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     def get_serializer_class(self):
         # Use specialized serializer for create/update actions
         if self.action in ["create", "update", "partial_update"]:
-            from api.serializers.doc_application_serializer import \
-                DocApplicationCreateUpdateSerializer
+            from api.serializers.doc_application_serializer import DocApplicationCreateUpdateSerializer
 
             return DocApplicationCreateUpdateSerializer
         if self.action == "retrieve":
@@ -1584,8 +1623,7 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         workflow.doc_application.updated_by = request.user
         workflow.doc_application.save()
 
-        from api.serializers.doc_workflow_serializer import \
-            DocWorkflowSerializer
+        from api.serializers.doc_workflow_serializer import DocWorkflowSerializer
 
         return Response(DocWorkflowSerializer(workflow).data)
 

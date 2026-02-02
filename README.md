@@ -50,9 +50,9 @@ To get started with the application, you will need to have Python, Django, and a
 1. 📥 Clone the repository.
 2. 📦 Install the required dependencies using [uv](https://github.com/astral-sh/uv) and `pyproject.toml`:
 
-    ```sh
-    uv pip install --editable .
-    ```
+   ```sh
+   uv pip install --editable .
+   ```
 
 3. ⚙️ Configure the database settings in the `.env` file.
 4. 🛠️ Run the database migrations using `python manage.py migrate`.
@@ -62,14 +62,13 @@ For a production environment, it is recommended to use the provided Docker setup
 
 ## Development Utilities
 
-- **Detect inline <script> tags**: To help centralize JavaScript and avoid inline scripts in templates, run:
-  - `scripts/check_inline_script_tags.py` — scans `templates/` for inline `<script>` tags and exits with non-zero code if any are found.
+- **Detect inline script tags**: To help centralize JavaScript and avoid inline scripts in templates, run:
+  - `scripts/check_inline_script_tags.py` — scans `templates/` for inline script tags (e.g., `<script>...</script>`) and exits with non-zero code if any are found.
   - You can add this to CI or as a git pre-commit hook to prevent regressions.
 
   ## Internationalization (i18n)
 
   To enable translations and generate compiled message files used by Django, follow these steps:
-
   1. Create or edit translation files under `locale/<lang>/LC_MESSAGES/django.po`.
   2. Compile translations to binary `.mo` files with:
 
@@ -81,12 +80,53 @@ For a production environment, it is recommended to use the provided Docker setup
 
   We include a minimal Indonesian translation for the `Male` and `Female` labels in `locale/id/LC_MESSAGES/django.po`. Run `compilemessages` to generate `django.mo` and have Django display the translated labels during runtime and tests.
 
-
 ## API Usage
 
 ## 📡 API Usage
 
 The application exposes a RESTful API for interacting with its various modules. To use the API, you will need to obtain an authentication token. The API endpoints are documented and can be explored using the browsable API feature of Django REST Framework.
+
+---
+
+## 📣 Observability — django-easy-audit (optional)
+
+You can enable Django Easy Audit to capture CRUD, authentication and request events and have them recorded in the DB and forwarded to our OTLP pipeline (Grafana Agent → Loki/Grafana).
+
+Quick steps:
+
+1. Install the package (using uv):
+
+   ```sh
+   uv pip install django-easy-audit
+   ```
+
+2. Add the app and middleware to your `settings.py` (use the package name `easy_audit`):
+
+   ```py
+   INSTALLED_APPS.append('easy_audit')
+   MIDDLEWARE.insert(0, 'easy_audit.middleware.easyaudit.EasyAuditMiddleware')
+   ```
+
+3. Run migrations for the easy_audit tables:
+
+   ```sh
+   python manage.py migrate easy_audit
+   ```
+
+4. Backend integration (recommended):
+   - The project includes `core.signals.EasyAuditBackendAdapter` which maps django-easy-audit's backend API (`login`, `crud`, `request`) to our `PersistentOTLPBackend` (persists DB events and emits OTLP structured logs).
+   - By default the project already sets `DJANGO_EASY_AUDIT_LOGGING_BACKEND = "core.signals.EasyAuditBackendAdapter"` in `business_suite/settings/base.py`, so no additional configuration is required. To override, set the `DJANGO_EASY_AUDIT_LOGGING_BACKEND` env var to a dotted path of your own backend.
+
+5. Optional settings you can tweak in `settings.py`:
+   - `DJANGO_EASY_AUDIT_WATCH_MODEL_EVENTS` (default: True)
+   - `DJANGO_EASY_AUDIT_WATCH_AUTH_EVENTS` (default: True)
+   - `DJANGO_EASY_AUDIT_WATCH_REQUEST_EVENTS` (default: True)
+   - `DJANGO_EASY_AUDIT_URL_SKIP_LIST` (defaults include `/static/`, `/media/`, `/favicon.ico`)
+
+Notes:
+
+- We try both `easy_audit` and `easy_audit` import paths for compatibility; if the package isn't installed, the project will continue to run without the audit integration.
+- The adapter forwards audit events to the OTLP endpoint (default `http://grafana-agent:4318/v1/logs`) and persists them to the local models for querying via Django admin.
 
 ---
 

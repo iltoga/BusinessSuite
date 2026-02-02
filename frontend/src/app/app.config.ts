@@ -1,7 +1,9 @@
+import { GlobalErrorHandler } from '@/core/handlers/global-error.handler';
 import { isPlatformBrowser } from '@angular/common';
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import {
   ApplicationConfig,
+  ErrorHandler,
   inject,
   isDevMode,
   PLATFORM_ID,
@@ -87,5 +89,11 @@ export const appConfig: ApplicationConfig = {
       enabled: !isDevMode(),
       registrationStrategy: 'registerWhenStable:30000',
     }),
+
+    // Global application error handler that sends uncaught errors to the observability proxy
+    {
+      provide: ErrorHandler,
+      useClass: GlobalErrorHandler,
+    },
   ],
 };

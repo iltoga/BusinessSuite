@@ -143,6 +143,55 @@ services:
     networks:
       - dockernet
 
+  loki:
+    container_name: loki
+    image: grafana/loki:latest
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    volumes:
+      - loki-data:/loki
+    networks:
+      - dockernet
+
+  grafana:
+    container_name: grafana
+    image: grafana/grafana:latest
+    restart: unless-stopped
+    depends_on:
+      - loki
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+      - grafana-storage:/var/lib/grafana
+    networks:
+      - dockernet
+
+  grafana-agent:
+    container_name: grafana-agent
+    image: grafana/agent:latest
+    restart: unless-stopped
+    depends_on:
+      - loki
+    environment:
+      - "GF_AGENT_CONFIG_NAME=agent"
+    ports:
+      - "4318:4318"
+    volumes:
+      - ./grafana/agent-config.yaml:/etc/agent/agent-config.yaml:ro
+    command: ["--config.file=/etc/agent/agent-config.yaml"]
+    networks:
+      - dockernet
+
 networks:
   dockernet:
     driver: bridge
+
+volumes:
+  loki-data:
+  grafana-storage:

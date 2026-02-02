@@ -20,6 +20,7 @@ ALLOWED_HOSTS = [
     "bs-cron",
     "bs-core",
     "176.126.78.153",  # Server IP address
+    "pg-admin.revisbali.com ",
 ]
 
 MEDIA_ROOT = "/media/"

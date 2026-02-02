@@ -1,0 +1,59 @@
+{
+    "annotations": {
+        "list": []
+    },
+    "description": "Full stack observability dashboard: backend CRUD events, frontend exceptions, and logs",
+    "title": "Full Stack Observability",
+    "panels": [
+        {
+            "type": "table",
+            "title": "Recent CRUD Events",
+            "gridPos": {
+                "x": 0,
+                "y": 0,
+                "w": 12,
+                "h": 8
+            },
+            "targets": [
+                {
+                    "expr": "{app=\"django\", source=\"audit\"}",
+                    "refId": "A"
+                }
+            ]
+        },
+        {
+            "type": "timeseries",
+            "title": "Angular Exceptions (count)",
+            "gridPos": {
+                "x": 12,
+                "y": 0,
+                "w": 12,
+                "h": 8
+            },
+            "targets": [
+                {
+                    "expr": "sum by (level) (count_over_time({app=\"django\", source=\"angular_frontend\"} [5m]))",
+                    "refId": "B"
+                }
+            ]
+        },
+        {
+            "type": "logs",
+            "title": "Frontend Logs (stream)",
+            "gridPos": {
+                "x": 0,
+                "y": 8,
+                "w": 24,
+                "h": 8
+            },
+            "targets": [
+                {
+                    "expr": "{app=\"django\", source=\"angular_frontend\"}",
+                    "refId": "C"
+                }
+            ]
+        }
+    ],
+    "schemaVersion": 36,
+    "version": 1
+}

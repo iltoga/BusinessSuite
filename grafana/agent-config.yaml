@@ -1,0 +1,17 @@
+server:
+  http_listen_port: 12345
+
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+metrics:
+  wal-directory: /tmp/agent/wal
+
+loki:
+  configs:
+    - name: default
+      clients:
+        - url: http://loki:3100/loki/api/v1/push
