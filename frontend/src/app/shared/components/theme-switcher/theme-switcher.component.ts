@@ -1,3 +1,5 @@
+import { UserSettingsApiService } from '@/core/api/user-settings.service';
+import { AuthService } from '@/core/services/auth.service';
 import { ThemeService } from '@/core/services/theme.service';
 import { ThemeName } from '@/core/theme.config';
 import { ZardButtonComponent } from '@/shared/components/button';
@@ -23,22 +25,6 @@ import { Component, inject } from '@angular/core';
   imports: [ZardButtonComponent, ZardIconComponent],
   template: `
     <div class="flex gap-4 items-center">
-      <!-- Theme Selector -->
-      <label class="flex items-center gap-2">
-        <span class="text-sm font-medium">Theme:</span>
-        <select
-          [value]="currentTheme()"
-          (change)="onThemeChange($event)"
-          class="border border-input rounded-md px-3 py-1.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-        >
-          @for (theme of availableThemes; track theme) {
-            <option [value]="theme">
-              {{ formatThemeName(theme) }}
-            </option>
-          }
-        </select>
-      </label>
-
       <!-- Dark Mode Toggle -->
       <button
         z-button
@@ -62,6 +48,8 @@ import { Component, inject } from '@angular/core';
 })
 export class ThemeSwitcherComponent {
   private themeService = inject(ThemeService);
+  private auth = inject(AuthService);
+  private userSettingsApi = inject(UserSettingsApiService);
 
   // Reactive signals from theme service
   currentTheme = this.themeService.currentTheme;
@@ -83,7 +71,16 @@ export class ThemeSwitcherComponent {
    * Toggle between light and dark mode
    */
   toggleDarkMode(): void {
-    this.themeService.toggleDarkMode();
+    // Toggle locally first for instant feedback
+    const newValue = !this.isDarkMode();
+    this.themeService.setDarkMode(newValue);
+
+    // If authenticated, persist to server
+    if (this.auth.isAuthenticated()) {
+      this.userSettingsApi.patchMe({ dark_mode: newValue }).subscribe({
+        error: (err) => console.warn('Failed to persist dark_mode', err),
+      });
+    }
   }
 
   /**

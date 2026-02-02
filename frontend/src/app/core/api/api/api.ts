@@ -36,4 +36,6 @@ export * from './server-management.service';
 import { ServerManagementService } from './server-management.service';
 export * from './user-profile.service';
 import { UserProfileService } from './user-profile.service';
-export const APIS = [ApiTokenAuthService, BackupsService, ComputeService, CountryCodesService, CronService, CustomerApplicationsService, CustomersService, DashboardStatsService, DocumentOcrService, DocumentTypesService, DocumentsService, InvoicesService, LettersService, MockAuthConfigService, OcrService, PaymentsService, ProductsService, ServerManagementService, UserProfileService];
+export * from './user-settings.service';
+import { UserSettingsService } from './user-settings.service';
+export const APIS = [ApiTokenAuthService, BackupsService, ComputeService, CountryCodesService, CronService, CustomerApplicationsService, CustomersService, DashboardStatsService, DocumentOcrService, DocumentTypesService, DocumentsService, InvoicesService, LettersService, MockAuthConfigService, OcrService, PaymentsService, ProductsService, ServerManagementService, UserProfileService, UserSettingsService];

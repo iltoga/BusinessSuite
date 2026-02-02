@@ -44,3 +44,4 @@ export * from './task';
 export * from './task-nested';
 export * from './title-enum';
 export * from './user-profile';
+export * from './user-settings';

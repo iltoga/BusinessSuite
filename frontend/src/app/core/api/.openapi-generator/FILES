@@ -22,6 +22,7 @@ api/payments.service.ts
 api/products.service.ts
 api/server-management.service.ts
 api/user-profile.service.ts
+api/user-settings.service.ts
 configuration.ts
 encoder.ts
 git_push.sh
@@ -73,6 +74,7 @@ model/task-nested.ts
 model/task.ts
 model/title-enum.ts
 model/user-profile.ts
+model/user-settings.ts
 param.ts
 provide-api.ts
 query.params.ts

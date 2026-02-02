@@ -14,7 +14,9 @@ import { finalize } from 'rxjs';
 
 import { UserProfileService } from '@/core/api/api/user-profile.service';
 import { UserProfile } from '@/core/api/model/user-profile';
+import { UserSettingsApiService } from '@/core/api/user-settings.service';
 import { AuthService } from '@/core/services/auth.service';
+import { ThemeService } from '@/core/services/theme.service';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardAvatarComponent } from '@/shared/components/avatar';
 import { ZardBadgeComponent } from '@/shared/components/badge';
@@ -53,6 +55,12 @@ export class ProfileComponent implements OnInit {
   isLoading = signal(true);
   isSaving = signal(false);
 
+  // Theme related
+  private themeService = inject(ThemeService);
+  private userSettingsApi = inject(UserSettingsApiService);
+  availableThemes = this.themeService.getAvailableThemes();
+  currentTheme = this.themeService.currentTheme;
+
   private dialogRef: any = null;
 
   profileForm = this.fb.nonNullable.group({
@@ -86,6 +94,24 @@ export class ProfileComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadProfile();
+    // Also attempt to load and apply user settings for display
+    if (this.authService.isAuthenticated()) {
+      this.userSettingsApi.getMe().subscribe({
+        next: (s) => {
+          if (s?.theme) {
+            this.themeService.setTheme(s.theme as any);
+          }
+          // Accept either snake_case or camelCase keys from server
+          const serverDark = (s as any)?.dark_mode ?? (s as any)?.darkMode;
+          if (typeof serverDark === 'boolean') {
+            this.themeService.setDarkMode(!!serverDark);
+          }
+        },
+        error: () => {
+          // non-blocking: ignore
+        },
+      });
+    }
   }
 
   loadProfile(): void {
@@ -205,6 +231,30 @@ export class ProfileComponent implements OnInit {
           this.toast.error(err.error?.detail || 'Failed to change password');
         },
       });
+  }
+
+  onThemeChange(event: Event): void {
+    const select = event.target as HTMLSelectElement;
+    const theme = (select.value as any) || (this.currentTheme() as any);
+
+    // Optimistic UI update
+    this.themeService.setTheme(theme as any);
+
+    // Persist to server if authenticated
+    if (this.authService.isAuthenticated()) {
+      this.userSettingsApi.patchMe({ theme }).subscribe({
+        next: () => {
+          this.toast.success('Theme updated');
+        },
+        error: (err) => {
+          this.toast.error('Failed to save theme');
+        },
+      });
+    }
+  }
+
+  formatThemeName(theme: string): string {
+    return theme.charAt(0).toUpperCase() + theme.slice(1);
   }
 
   openChangePasswordModal(): void {

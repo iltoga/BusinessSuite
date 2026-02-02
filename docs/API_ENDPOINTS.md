@@ -49,6 +49,15 @@ This document lists the main API endpoints exposed by the application in this re
 - **POST `/api/user-profile/logout/`**
   - **Description:** Logout current user and record event in Django.
 
+## User Settings 🎛️
+
+- **GET `/api/user-settings/me/`**
+  - **Description:** Retrieve current user's settings (theme, dark_mode, preferences). Requires authentication.
+
+- **PATCH `/api/user-settings/me/`**
+  - **Input:** Partial `{ "theme": string, "dark_mode": boolean, "preferences": object }`
+  - **Description:** Partially update current user's settings (only applies to the authenticated user).
+
 ---
 
 ## Country Codes 🌐

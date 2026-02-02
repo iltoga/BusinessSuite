@@ -1,5 +1,4 @@
-import { isPlatformBrowser } from '@angular/common';
-import { inject, Injectable, PLATFORM_ID, signal } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 import { getTheme, ThemeColors, ThemeName, THEMES } from '../theme.config';
 
 /**
@@ -25,7 +24,7 @@ import { getTheme, ThemeColors, ThemeName, THEMES } from '../theme.config';
   providedIn: 'root',
 })
 export class ThemeService {
-  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  // Avoid capturing platform at construction time; check runtime environment when needed.
   private readonly _currentTheme = signal<ThemeName>('neutral');
   private readonly _isDarkMode = signal<boolean>(false);
 
@@ -104,8 +103,9 @@ export class ThemeService {
    * Initialize theme from localStorage or default
    */
   initializeTheme(defaultTheme: ThemeName = 'neutral'): void {
-    if (!this.isBrowser) {
-      // Server-side rendering or non-browser environment
+    // If not running in a browser, apply the default theme without attempting to
+    // read/write localStorage.
+    if (typeof window === 'undefined') {
       this.setTheme(defaultTheme, false);
       return;
     }
@@ -145,7 +145,7 @@ export class ThemeService {
    * Apply theme colors to CSS variables
    */
   private applyThemeColors(): void {
-    if (!this.isBrowser || typeof document === 'undefined') {
+    if (typeof document === 'undefined') {
       return;
     }
 
@@ -227,12 +227,14 @@ export class ThemeService {
    * Safe access to localStorage (browser only)
    */
   private getStorage(): Storage | null {
-    if (!this.isBrowser) {
+    // Determine browser availability dynamically so the service works even when
+    // instantiated during SSR and later reused in the browser (hydration).
+    if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {
       return null;
     }
 
     try {
-      const storage = (globalThis as any)?.localStorage as Storage | undefined;
+      const storage = window.localStorage as Storage | undefined;
       if (!storage || typeof storage.getItem !== 'function') {
         return null;
       }

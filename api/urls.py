@@ -22,11 +22,13 @@ Do not confuse with legacy Django views in templates/ directories that use Djang
 """
 
 from django.urls import include, path
-from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
+from drf_spectacular.views import (SpectacularAPIView, SpectacularRedocView,
+                                   SpectacularSwaggerView)
 from rest_framework.routers import DefaultRouter
 
 from . import views
-from .views_admin import BackupsViewSet, ServerManagementViewSet, backup_restore_sse, backup_start_sse
+from .views_admin import (BackupsViewSet, ServerManagementViewSet,
+                          backup_restore_sse, backup_start_sse)
 
 # DRF Router for RESTful API endpoints
 # These ViewSets provide CRUD operations for Angular frontend consumption
@@ -41,6 +43,7 @@ router.register(r"invoices", views.InvoiceViewSet, basename="invoices")
 router.register(r"payments", views.PaymentViewSet, basename="payments")
 router.register(r"letters", views.LettersViewSet, basename="letters")
 router.register(r"user-profile", views.UserProfileViewSet, basename="user-profile")
+router.register(r"user-settings", views.UserSettingsViewSet, basename="user-settings")
 router.register(r"ocr", views.OCRViewSet, basename="ocr")
 router.register(r"document-ocr", views.DocumentOCRViewSet, basename="document-ocr")
 router.register(r"compute", views.ComputeViewSet, basename="compute")
