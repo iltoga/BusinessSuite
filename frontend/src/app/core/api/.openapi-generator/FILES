@@ -32,6 +32,7 @@ model/country-code.ts
 model/custom-token-obtain.ts
 model/customer-type-enum.ts
 model/customer.ts
+model/delete-multiple-backups.ts
 model/doc-application-create-update.ts
 model/doc-application-detail.ts
 model/doc-application-invoice.ts

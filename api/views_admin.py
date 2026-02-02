@@ -10,8 +10,8 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.http import FileResponse, JsonResponse, StreamingHttpResponse
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import OpenApiParameter, extend_schema
-from rest_framework import permissions, viewsets
+from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
+from rest_framework import permissions, serializers, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -266,6 +266,45 @@ class BackupsViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             return Response({"ok": True, "deleted": safe_filename})
         except Exception as e:
             return Response({"ok": False, "error": str(e)}, status=500)
+
+    @extend_schema(
+        summary="Delete multiple backup files",
+        request=inline_serializer(
+            name="DeleteMultipleBackupsSerializer",
+            fields={"filenames": serializers.ListField(child=serializers.CharField())},
+        ),
+        responses={200: OpenApiTypes.OBJECT, 400: OpenApiTypes.OBJECT},
+    )
+    @action(detail=False, methods=["post"], url_path="delete-multiple")
+    def delete_multiple(self, request):
+        """Delete multiple backup files."""
+        filenames = request.data.get("filenames", [])
+        if not filenames:
+            return Response({"ok": False, "error": "No filenames provided"}, status=400)
+
+        backups_dir = services.BACKUPS_DIR
+        deleted = []
+        errors = []
+
+        for filename in filenames:
+            safe_filename = os.path.basename(filename)
+            if not safe_filename:
+                errors.append({"filename": filename, "error": "Invalid filename"})
+                continue
+            path = os.path.join(backups_dir, safe_filename)
+            if not os.path.exists(path):
+                errors.append({"filename": filename, "error": "File not found"})
+                continue
+            try:
+                if os.path.isfile(path):
+                    os.unlink(path)
+                elif os.path.isdir(path):
+                    shutil.rmtree(path)
+                deleted.append(safe_filename)
+            except Exception as e:
+                errors.append({"filename": filename, "error": str(e)})
+
+        return Response({"ok": True, "deleted": deleted, "errors": errors})
 
     @extend_schema(
         summary="Start backup process",

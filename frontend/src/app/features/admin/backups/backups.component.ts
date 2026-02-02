@@ -9,7 +9,8 @@ import {
   TemplateRef,
   ViewChild,
 } from '@angular/core';
-import { catchError, EMPTY, finalize, Subscription, forkJoin, of } from 'rxjs';
+import { FormsModule } from '@angular/forms';
+import { catchError, EMPTY, finalize, of, Subscription } from 'rxjs';
 
 import { BackupsService } from '@/core/api';
 import { AuthService } from '@/core/services/auth.service';
@@ -24,6 +25,7 @@ import {
   DataTableComponent,
 } from '@/shared/components/data-table/data-table.component';
 import { FileUploadComponent } from '@/shared/components/file-upload/file-upload.component';
+import { ZardIconComponent } from '@/shared/components/icon';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 
 interface Backup {
@@ -33,6 +35,7 @@ interface Backup {
   includedFiles: number | null;
   hasUsers: boolean;
   createdAt: string | null;
+  selected?: boolean;
 }
 
 @Component({
@@ -40,176 +43,18 @@ interface Backup {
   standalone: true,
   imports: [
     CommonModule,
+    FormsModule,
     ZardCardComponent,
     ZardButtonComponent,
     ZardBadgeComponent,
     ZardCheckboxComponent,
+    ZardIconComponent,
     DataTableComponent,
     FileUploadComponent,
     AppDatePipe,
   ],
-  template: `
-    <div class="space-y-6">
-      <div class="flex items-center justify-between">
-        <h1 class="text-2xl font-bold tracking-tight">Backup & Restore</h1>
-        <div class="flex gap-4 items-center">
-          <label class="flex items-center gap-2">
-            <input type="checkbox" [checked]="selectAll()" (change)="toggleSelectAll($event)" />
-            <span class="text-sm">Select all</span>
-          </label>
-
-          <button
-            z-button
-            zType="destructive"
-            (click)="deleteSelectedBackups()"
-            [zDisabled]="isOperationRunning() || selectedFiles().length === 0"
-          >
-            Delete Selected
-          </button>
-
-          <button
-            z-button
-            zType="outline"
-            (click)="deleteAllBackups()"
-            [zDisabled]="isOperationRunning()"
-          >
-            Delete All
-          </button>
-
-          <button z-button (click)="startBackup()" [zDisabled]="isOperationRunning()">
-            Start Backup
-          </button>
-        </div>
-      </div>
-
-      <!-- Backup Options -->
-      <z-card class="p-4">
-        <div class="flex items-center gap-4">
-          <z-checkbox [checked]="includeUsers()" (click)="toggleIncludeUsers()">
-            <span class="text-sm">Include users/groups/permissions (full backup)</span>
-          </z-checkbox>
-        </div>
-      </z-card>
-
-      <!-- File Upload -->
-      <z-card class="p-4">
-        <h3 class="text-lg font-medium mb-4">Upload Backup</h3>
-        <app-file-upload
-          accept=".json,.gz,.tar.gz,.tgz,.tar.zst,.zst"
-          [disabled]="isOperationRunning()"
-          [progress]="uploadProgress()"
-          [fileName]="uploadFileName()"
-          [helperText]="uploadHelperText()"
-          (fileSelected)="uploadBackup($event)"
-          (cleared)="clearUploadSelection()"
-        >
-          Drop backup files here or click to select
-        </app-file-upload>
-      </z-card>
-
-      <!-- Progress Bar -->
-      @if (operationProgress() !== null) {
-        <z-card class="p-4">
-          <div class="space-y-1">
-            <div class="flex items-center justify-between text-xs text-muted-foreground">
-              <span>{{ operationLabel() }}</span>
-              <span>{{ operationProgress() }}%</span>
-            </div>
-            <div class="h-2 w-full rounded-full bg-muted">
-              <div class="h-2 rounded-full bg-primary" [style.width.%]="operationProgress()"></div>
-            </div>
-          </div>
-        </z-card>
-      }
-
-      <!-- Live Log -->
-      @if (logMessages().length > 0) {
-        <z-card class="p-0">
-          <div class="p-4 border-b">
-            <h3 class="text-lg font-medium">Live Log</h3>
-          </div>
-          <div class="p-4 bg-slate-950 text-green-400 font-mono text-sm max-h-80 overflow-auto">
-            @for (msg of logMessages(); track $index) {
-              <div>{{ msg }}</div>
-            }
-          </div>
-        </z-card>
-      }
-
-      <!-- Available Backups -->
-      <z-card class="p-0">
-        <div class="p-4 border-b">
-          <h3 class="text-lg font-medium">Available Backups</h3>
-        </div>
-        <app-data-table [data]="backups()" [columns]="columns" [isLoading]="isLoading()" />
-      </z-card>
-    </div>
-
-    <!-- Created At Template -->
-    <ng-template #selectTemplate let-item>
-      <input
-        type="checkbox"
-        aria-label="Select backup"
-        [checked]="isSelected(item.filename)"
-        (click)="toggleSelect(item.filename, $event)"
-      />
-    </ng-template>
-
-    <!-- Created At Template -->
-    <ng-template #createdAtTemplate let-item>
-      {{ item.createdAt | appDate: 'datetime' }}
-    </ng-template>
-
-    <!-- Status Template -->
-    <ng-template #statusTemplate let-item>
-      <div class="flex gap-1">
-        @if (item.hasUsers) {
-          <z-badge zType="default">Full</z-badge>
-        }
-        @if (item.includedFiles !== null && item.includedFiles > 0) {
-          <z-badge zType="secondary">Files: {{ item.includedFiles }}</z-badge>
-        }
-      </div>
-    </ng-template>
-
-    <!-- Size Template -->
-    <ng-template #sizeTemplate let-item>
-      {{ formatFileSize(item.size) }}
-    </ng-template>
-
-    <!-- Actions Template -->
-    <ng-template #actionsTemplate let-item>
-      <div class="flex gap-2">
-        <button
-          z-button
-          zType="ghost"
-          zSize="sm"
-          (click)="downloadBackup(item.filename)"
-          [zDisabled]="isOperationRunning()"
-        >
-          Download
-        </button>
-        <button
-          z-button
-          zType="ghost"
-          zSize="sm"
-          (click)="restoreBackup(item.filename)"
-          [zDisabled]="isOperationRunning()"
-        >
-          Restore
-        </button>
-        <button
-          z-button
-          zType="destructive"
-          zSize="sm"
-          (click)="deleteBackup(item.filename)"
-          [zDisabled]="isOperationRunning()"
-        >
-          Delete
-        </button>
-      </div>
-    </ng-template>
-  `,
+  templateUrl: './backups.component.html',
+  styleUrls: ['./backups.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class BackupsComponent implements OnInit, OnDestroy {
@@ -234,10 +79,27 @@ export class BackupsComponent implements OnInit, OnDestroy {
   readonly uploadHelperText = signal<string | null>(null);
   readonly operationProgress = signal<number | null>(null);
   readonly operationLabel = signal<string>('Operation progress');
+
+  // Selection state
   readonly selectedFiles = signal<string[]>([]);
-  readonly selectAll = signal(false);
+  readonly selectAllValue = signal(false);
+
+  // Live log accordion open by default
+  readonly logOpen = signal(true);
+
+  // bridge property for ngModel two-way binding on <z-checkbox>
+  get selectAllFlag(): boolean {
+    return this.selectAllValue();
+  }
+  set selectAllFlag(val: boolean) {
+    this.onSelectAllChange(val);
+  }
 
   private sseSubscription: Subscription | null = null;
+
+  toggleLogOpen(): void {
+    this.logOpen.update((v) => !v);
+  }
 
   columns: ColumnConfig[] = [
     { key: 'select', header: '', sortable: false },
@@ -280,7 +142,7 @@ export class BackupsComponent implements OnInit, OnDestroy {
         finalize(() => this.isLoading.set(false)),
       )
       .subscribe((response: any) => {
-        this.backups.set(response?.backups || []);
+        this.backups.set(response?.backups?.map((b: Backup) => ({ ...b, selected: false })) || []);
       });
   }
 
@@ -497,7 +359,7 @@ export class BackupsComponent implements OnInit, OnDestroy {
 
     this.isOperationRunning.set(true);
     this.backupsApi
-      .backupsDeleteFileDestroy(filename)
+      .backupsDeleteDestroy(filename)
       .pipe(
         catchError(() => {
           this.toast.error('Failed to delete backup');
@@ -511,67 +373,72 @@ export class BackupsComponent implements OnInit, OnDestroy {
           this.loadBackups();
           // remove from selectedFiles if present
           this.selectedFiles.set(this.selectedFiles().filter((f) => f !== filename));
+          // update "Select all" flag
+          const allSelected = this.backups().every((b) => b.selected);
+          this.selectAllValue.set(allSelected);
         } else {
           this.toast.error(response.error || 'Delete failed');
         }
       });
   }
 
-  isSelected(filename: string): boolean {
-    return this.selectedFiles().includes(filename);
+  onSelectAllChange(checked: boolean): void {
+    this.selectAllValue.set(checked);
+    this.backups.update((backups) => backups.map((b) => ({ ...b, selected: checked })));
+    this.selectedFiles.set(checked ? this.backups().map((b) => b.filename) : []);
   }
 
-  toggleSelect(filename: string, event: Event): void {
-    event.stopPropagation();
-    const current = this.selectedFiles();
-    if (current.includes(filename)) {
-      this.selectedFiles.set(current.filter((f) => f !== filename));
+  onItemSelectChange(item: Backup, selected: boolean): void {
+    item.selected = selected;
+    if (selected) {
+      if (!this.selectedFiles().includes(item.filename)) {
+        this.selectedFiles.set([...this.selectedFiles(), item.filename]);
+      }
     } else {
-      this.selectedFiles.set([...current, filename]);
+      this.selectedFiles.set(this.selectedFiles().filter((f) => f !== item.filename));
     }
-    // Keep selectAll flag in sync
-    const allVisible = this.backups().map((b) => b.filename);
-    this.selectAll.set(allVisible.length > 0 && allVisible.every((f) => this.selectedFiles().includes(f)));
-  }
-
-  toggleSelectAll(event: Event): void {
-    const checked = (event.target as HTMLInputElement).checked;
-    this.selectAll.set(checked);
-    if (checked) {
-      this.selectedFiles.set(this.backups().map((b) => b.filename));
-    } else {
-      this.selectedFiles.set([]);
-    }
+    // update "Select all" flag
+    const allSelected = this.backups().every((b) => b.selected);
+    this.selectAllValue.set(allSelected);
   }
 
   deleteSelectedBackups(): void {
-    if (!this.selectedFiles().length) return;
-    if (!confirm(`Are you sure you want to delete ${this.selectedFiles().length} selected backups? This action cannot be undone.`)) {
+    const selectedFilenames = this.backups()
+      .filter((b) => b.selected)
+      .map((b) => b.filename);
+    if (!selectedFilenames.length) return;
+    if (
+      !confirm(
+        `Are you sure you want to delete ${selectedFilenames.length} selected backups? This action cannot be undone.`,
+      )
+    ) {
       return;
     }
 
     this.isOperationRunning.set(true);
-
-    const observables = this.selectedFiles().map((filename) =>
-      this.backupsApi.backupsDeleteFileDestroy(filename).pipe(
-        catchError((err) => of({ ok: false, error: err?.message || 'Failed' })),
-      ),
-    );
-
-    forkJoin(observables)
+    this.backupsApi
+      .backupsDeleteMultipleCreate({ filenames: selectedFilenames })
       .pipe(
+        catchError((err) => {
+          this.toast.error('Failed to delete selected backups');
+          return of(null);
+        }),
         finalize(() => this.isOperationRunning.set(false)),
       )
-      .subscribe((results: any[]) => {
-        const failed = results.filter((r) => !r?.ok);
-        if (failed.length === 0) {
-          this.toast.success(`Deleted ${results.length} backup(s)`);
-        } else {
-          this.toast.error(`${failed.length} deletions failed`);
+      .subscribe((response: any) => {
+        if (response) {
+          const deletedCount = response.deleted?.length || 0;
+          const errorCount = response.errors?.length || 0;
+          if (errorCount === 0) {
+            this.toast.success(`Deleted ${deletedCount} backup(s)`);
+          } else {
+            this.toast.info(`Deleted ${deletedCount} backup(s), ${errorCount} failed`);
+          }
+          this.backups.update((backups) => backups.map((b) => ({ ...b, selected: false })));
+          this.selectedFiles.set([]);
+          this.selectAllValue.set(false);
+          this.loadBackups();
         }
-        this.selectedFiles.set([]);
-        this.selectAll.set(false);
-        this.loadBackups();
       });
   }
 

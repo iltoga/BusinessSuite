@@ -4,6 +4,7 @@ export * from './country-code';
 export * from './custom-token-obtain';
 export * from './customer';
 export * from './customer-type-enum';
+export * from './delete-multiple-backups';
 export * from './doc-application-create-update';
 export * from './doc-application-detail';
 export * from './doc-application-invoice';

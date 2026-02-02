@@ -8,7 +8,9 @@ import {
   signal,
   type TemplateRef,
 } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 
+import { ZardCheckboxComponent } from '@/shared/components/checkbox';
 import { ZardSkeletonComponent } from '@/shared/components/skeleton';
 import { ZardTableImports } from '@/shared/components/table';
 
@@ -34,7 +36,13 @@ export interface SortEvent {
 @Component({
   selector: 'app-data-table',
   standalone: true,
-  imports: [CommonModule, ...ZardTableImports, ZardSkeletonComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    ...ZardTableImports,
+    ZardSkeletonComponent,
+    ZardCheckboxComponent,
+  ],
   templateUrl: './data-table.component.html',
   styleUrls: ['./data-table.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

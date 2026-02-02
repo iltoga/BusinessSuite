@@ -1,0 +1,6 @@
+/* Styles specific to the Backups component. Keep minimal and component-scoped. */
+
+/* Ensure the live log monospace area behaves predictably */
+.p-4.bg-slate-950 {
+  /* no-op: styles come mostly from utility classes; add overrides here if needed */
+}
