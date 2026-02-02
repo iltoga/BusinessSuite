@@ -1,5 +1,6 @@
-testfiles/
 frontend/test-results/
+frontend/src/assets/logo_revis*
+testfiles/
 nginx/
 .playwright-mcp
 .kiro
