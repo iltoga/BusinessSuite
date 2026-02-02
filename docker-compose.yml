@@ -162,6 +162,8 @@ services:
     environment:
       PORT: 4000
       BACKEND_URL: http://bs-core:8000
+      CSP_ENABLED: ${CSP_ENABLED}
+      CSP_MODE: ${CSP_MODE}
     restart: unless-stopped
 
 networks:

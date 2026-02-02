@@ -7,6 +7,7 @@ import {
 import express from 'express';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import { join } from 'node:path';
+import { generateNonce } from './csp';
 
 const browserDistFolder = join(import.meta.dirname, '../browser');
 
@@ -42,12 +43,78 @@ app.use(
 
 /**
  * Handle all other requests by rendering the Angular application.
+ * Adds optional CSP nonce generation and injection when `CSP_ENABLED=true`.
  */
-app.use((req, res, next) => {
-  angularApp
-    .handle(req)
-    .then((response) => (response ? writeResponseToNodeResponse(response, res) : next()))
-    .catch(next);
+app.use(async (req, res, next) => {
+  try {
+    const response = await angularApp.handle(req);
+    if (!response) return next();
+
+    // Access env vars with bracket notation to satisfy TS index signature typing
+    const cspEnabled = (process.env['CSP_ENABLED'] || '').toLowerCase() === 'true';
+    const cspMode = process.env['CSP_MODE'] || 'report-only'; // report-only|enforce
+
+    // Read content-type from Headers if available
+    let contentType = '';
+    if (response.headers && typeof (response.headers as any).get === 'function') {
+      contentType =
+        (response.headers as any).get('content-type') ??
+        (response.headers as any).get('Content-Type') ??
+        '';
+    } else if (response.headers && typeof response.headers === 'object') {
+      // Fallback for plain object headers
+      contentType =
+        (response.headers as any)['content-type'] ??
+        (response.headers as any)['Content-Type'] ??
+        '';
+    }
+
+    if (cspEnabled && typeof response.body === 'string' && contentType.includes('text/html')) {
+      const nonce = generateNonce();
+
+      // Prepare a modified Headers instance based on existing headers
+      let modifiedHeaders: Headers;
+      if (response.headers && typeof (response.headers as any).forEach === 'function') {
+        modifiedHeaders = new Headers();
+        // copy existing headers
+        (response.headers as any).forEach((value: string, key: string) =>
+          modifiedHeaders.set(key, value),
+        );
+      } else if (response.headers && typeof response.headers === 'object') {
+        modifiedHeaders = new Headers(Object.entries(response.headers as any));
+      } else {
+        modifiedHeaders = new Headers();
+      }
+
+      modifiedHeaders.set('x-csp-nonce', nonce);
+      modifiedHeaders.set('x-csp-mode', cspMode);
+
+      // Also set headers on the Node response (ensures nginx sees them when proxied)
+      res.setHeader('X-CSP-Nonce', nonce);
+      res.setHeader('X-CSP-Mode', cspMode);
+
+      // Inject Angular root attribute so Angular uses the nonce without requiring index.html rewrites
+      const modifiedBody = String(response.body).replace(
+        /<app(\s|>)/,
+        `<app ngCspNonce="${nonce}"$1`,
+      );
+
+      // Build a modified response object (avoid mutating readonly properties)
+      const modifiedResponse = {
+        ...response,
+        headers: modifiedHeaders,
+        body: modifiedBody,
+      } as any;
+
+      writeResponseToNodeResponse(modifiedResponse, res);
+      return;
+    }
+
+    // Default: forward original response
+    writeResponseToNodeResponse(response, res);
+  } catch (err) {
+    next(err);
+  }
 });
 
 /**
