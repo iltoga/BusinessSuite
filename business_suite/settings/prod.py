@@ -131,6 +131,15 @@ SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
 SESSION_COOKIE_AGE = 60 * 20  # 20 minutes
 SESSION_SAVE_EVERY_REQUEST = False  # Only save session if modified (better performance)
 
+# When Django is behind a reverse proxy (nginx) that terminates SSL, use the
+# `X-Forwarded-Proto` header to detect the original request scheme so
+# `request.build_absolute_uri()` returns the correct https:// URLs.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+# Honor X-Forwarded-Host when constructing absolute URIs
+USE_X_FORWARDED_HOST = True
+# Redirect plain HTTP requests to HTTPS (recommended in production)
+SECURE_SSL_REDIRECT = True
+
 # OpenRouter / OpenAI API Configuration
 # Timeout settings for LLM API calls (vision models can take 60-120 seconds)
 OPENROUTER_TIMEOUT = float(os.getenv("OPENROUTER_TIMEOUT", "120.0"))  # seconds
