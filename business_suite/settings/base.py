@@ -402,6 +402,16 @@ else:
     CORS_ALLOW_HEADERS = list(default_headers) + ["authorization"]
 
 CORS_ALLOW_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+# Expose Content-Disposition so the frontend can read filename from responses
+try:
+    from corsheaders.defaults import default_headers as _default_cors_headers
+except Exception:  # pragma: no cover - optional package
+    CORS_EXPOSE_HEADERS = ["Content-Disposition"]
+else:
+    # combine and ensure uniqueness
+    CORS_EXPOSE_HEADERS = list(
+        {*(getattr(globals().get("CORS_EXPOSE_HEADERS", []), "copy", lambda: [])()), *["Content-Disposition"]}
+    )
 
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"

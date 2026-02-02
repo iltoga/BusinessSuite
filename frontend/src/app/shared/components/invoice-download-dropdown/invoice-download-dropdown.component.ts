@@ -145,7 +145,11 @@ export class InvoiceDownloadDropdownComponent {
         this.loading.set(false);
         const finalUrl = data.download_url || data.downloadUrl || downloadUrl;
         if (finalUrl) {
-          window.location.assign(finalUrl);
+          // Use authenticated fetch to download the file so Authorization header is included
+          // (window.location.assign would not include the Bearer token and may return 401)
+          this.fetchAndDownloadFile(finalUrl).catch((err) => {
+            console.error('Failed to download file after completion', err);
+          });
         }
         // Hide progress bar after a short delay
         setTimeout(() => this.progress.set(null), 2000);
@@ -158,5 +162,39 @@ export class InvoiceDownloadDropdownComponent {
         setTimeout(() => this.progress.set(null), 3000);
         break;
     }
+  }
+
+  private async fetchAndDownloadFile(url: string) {
+    const token = this.authService.getToken();
+    const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+
+    const response = await fetch(url, {
+      headers,
+      credentials: 'same-origin',
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to download file: ${response.status} ${response.statusText}`);
+    }
+
+    const blob = await response.blob();
+
+    // try to parse filename from Content-Disposition header
+    const contentDisposition = response.headers.get('Content-Disposition') || '';
+    let filename = `${this.invoiceNumber()}_${this.customerName()}`.replace(/\s+/g, '_');
+    const match = /filename\*?=(?:UTF-8'')?"?([^";]*)"?/.exec(contentDisposition);
+    if (match && match[1]) {
+      try {
+        filename = decodeURIComponent(match[1]);
+      } catch (e) {
+        filename = match[1];
+      }
+    } else {
+      // fallback to PDF extension
+      const ext = url.endsWith('.pdf') ? 'pdf' : url.endsWith('.docx') ? 'docx' : 'bin';
+      filename = `${filename}.${ext}`;
+    }
+
+    downloadBlob(blob, filename);
   }
 }
