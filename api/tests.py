@@ -484,6 +484,24 @@ class ProductApiTestCase(TestCase):
         # Accept either snake_case or camelCase keys
         self.assertTrue("can_delete" in payload or "canDelete" in payload)
 
+    def test_product_search_includes_description(self):
+        """Ensure the API search endpoint also matches text found in the product description."""
+        # Create a product with a distinctive word in the description
+        product = Product.objects.create(
+            name="Desc Search",
+            code="DESC-1",
+            product_type="visa",
+            description="This description contains the uniquephrase123 for testing",
+        )
+        url = reverse("products-list") + "?search=uniquephrase123"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        # Should find at least one product and it should be our product
+        results = data.get("results", [])
+        self.assertGreater(len(results), 0)
+        self.assertTrue(any(item.get("code") == "DESC-1" for item in results))
+
 
 class UserSettingsApiTestCase(TestCase):
     def setUp(self):
