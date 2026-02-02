@@ -186,6 +186,8 @@ businesssuite/
 3. If creating new:
    - Make it reusable (accept inputs, emit outputs)
    - Add to `docs/shared_components.md` immediately
+   - File separation guidance: extract templates/styles into separate files (`.ts`, `.html`, `.css`) **only for app-specific components and views (pages)** that contain non-trivial markup or represent distinct views. **Do not** extract templates/styles for third-party library components (e.g., ZardUI), small UI-only components, or trivial templates—keep those inline to avoid unnecessary churn.
+   - When extraction is needed, do it in small, reviewable batches (2–3 components per PR) and document the change in `docs/shared_components.md` to keep the codebase consistent and reviewable.
 
 #### API Integration
 
