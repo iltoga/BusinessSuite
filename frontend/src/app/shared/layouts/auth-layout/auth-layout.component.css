@@ -1,0 +1,4 @@
+/* Styles for auth layout (kept minimal on purpose) */
+:host {
+  display: block;
+}

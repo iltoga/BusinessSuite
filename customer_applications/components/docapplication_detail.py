@@ -3,6 +3,7 @@ from customer_applications.models import DocApplication, DocWorkflow
 
 
 class DocapplicationDetailView(UnicornModelView):
+    # TO BE REMOVED WHEN ANGULAR FRONTEND IS COMPLETE
     docapplication_pk: int | None = None
     docapplication: DocApplication | None = None
 

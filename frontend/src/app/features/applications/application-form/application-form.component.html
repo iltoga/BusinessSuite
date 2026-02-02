@@ -1,0 +1,155 @@
+<div class="max-w-4xl mx-auto space-y-8">
+  <h1 class="text-3xl font-bold mb-4">
+    {{ isEditMode() ? 'Edit Application' : 'New Application' }}
+  </h1>
+
+  @if (isLoading()) {
+    <div class="text-muted-foreground">Loading application...</div>
+  } @else {
+    <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-8">
+      <app-form-error-summary [form]="form" [labels]="formErrorLabels" />
+
+      <!-- Step 1: Application Details -->
+      <z-card>
+        <div class="flex items-center gap-3 mb-6">
+          <z-icon zType="file-text" class="h-6 w-6 text-primary"></z-icon>
+          <h2 class="text-xl font-semibold">Application Details</h2>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <app-customer-select
+              formControlName="customer"
+              [label]="'Customer'"
+              [placeholder]="'Select a customer...'"
+              [searchPlaceholder]="'Search customers...'"
+              [zStatus]="
+                form.get('customer')?.invalid && form.get('customer')?.touched ? 'error' : undefined
+              "
+            />
+            <div
+              *ngIf="form.get('customer')?.invalid && form.get('customer')?.touched"
+              class="text-xs text-destructive mt-1"
+            >
+              Customer is required
+            </div>
+          </div>
+
+          <div>
+            <label class="text-sm font-medium block mb-1">Product</label>
+            <z-combobox
+              formControlName="product"
+              [options]="productOptions()"
+              [searchable]="true"
+              placeholder="Select a product..."
+              searchPlaceholder="Search products..."
+              [zWidth]="'full'"
+              [zStatus]="
+                form.get('product')?.invalid && form.get('product')?.touched ? 'error' : undefined
+              "
+            />
+            <div
+              *ngIf="form.get('product')?.invalid && form.get('product')?.touched"
+              class="text-xs text-destructive mt-1"
+            >
+              Product is required
+            </div>
+          </div>
+
+          <div>
+            <label class="text-sm font-medium">Doc Date</label>
+            <z-date-input formControlName="docDate" placeholder="DD-MM-YYYY"></z-date-input>
+          </div>
+
+          <div class="md:col-span-2">
+            <label class="text-sm font-medium">Notes</label>
+            <textarea
+              formControlName="notes"
+              class="block w-full mt-1 p-2 border rounded"
+              rows="4"
+            ></textarea>
+          </div>
+        </div>
+      </z-card>
+
+      <!-- Step 2: Application Documents -->
+      <z-card>
+        <div class="flex items-center gap-3 mb-6">
+          <z-icon zType="folder" class="h-6 w-6 text-primary"></z-icon>
+          <h2 class="text-xl font-semibold">Application Documents</h2>
+        </div>
+
+        <div formArrayName="documents" class="space-y-4">
+          @for (docGroup of documentsArray.controls; track $index) {
+            <div
+              [formGroupName]="$index"
+              class="p-4 border rounded-lg bg-card text-card-foreground shadow-sm"
+            >
+              <div class="flex items-end gap-4">
+                <div class="grow">
+                  <label class="text-sm font-medium block mb-1">Document Type</label>
+                  <z-combobox
+                    formControlName="docTypeId"
+                    [options]="getFilteredDocumentTypes($index)"
+                    [searchable]="true"
+                    placeholder="Select document type..."
+                    [zWidth]="'full'"
+                  />
+                </div>
+
+                <div class="flex items-center space-x-2 pb-2">
+                  <input
+                    type="checkbox"
+                    id="doc-req-{{ $index }}"
+                    formControlName="required"
+                    class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                  />
+                  <label [for]="'doc-req-' + $index" class="text-sm font-medium">Required</label>
+                </div>
+
+                <div class="pb-1">
+                  <button
+                    z-button
+                    zType="destructive"
+                    zSize="sm"
+                    type="button"
+                    (click)="removeDocument($index)"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="mt-4 flex justify-center">
+          <button
+            z-button
+            zType="secondary"
+            type="button"
+            (click)="addDocument()"
+            [zDisabled]="!form.get('product')?.value"
+          >
+            Add Required Document
+          </button>
+        </div>
+      </z-card>
+
+      <div class="flex items-center gap-3">
+        <button z-button zType="default" type="submit" [zDisabled]="form.invalid || isSubmitting()">
+          {{
+            isSubmitting()
+              ? isEditMode()
+                ? 'Saving...'
+                : 'Creating...'
+              : isEditMode()
+                ? 'Save'
+                : 'Create'
+          }}
+        </button>
+        <z-button zType="ghost" (click)="goBack()">Cancel</z-button>
+      </div>
+    </form>
+  }
+</div>

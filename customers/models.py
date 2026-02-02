@@ -144,6 +144,14 @@ class Customer(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        # Ensure passport_number is unique when present (allow multiple null/blank values)
+        constraints = [
+            models.UniqueConstraint(
+                fields=["passport_number"],
+                name="unique_customer_passport",
+                condition=(models.Q(passport_number__isnull=False) & ~models.Q(passport_number="")),
+            )
+        ]
 
     def __str__(self):
         return self.full_name

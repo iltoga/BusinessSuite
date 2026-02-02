@@ -10,11 +10,18 @@ import logging
 from pathlib import Path
 from typing import Any, Optional, Union
 
+import openai
 from django.conf import settings
 from django.core.files.uploadedfile import UploadedFile
 from openai import OpenAI
 
 logger = logging.getLogger(__name__)
+
+
+class AIConnectionError(Exception):
+    """Exception raised when a connection error occurs with the AI provider."""
+
+    pass
 
 
 class AIClient:
@@ -128,8 +135,49 @@ class AIClient:
         if response_format:
             request_kwargs["response_format"] = response_format
 
-        response = self.client.chat.completions.create(**request_kwargs)
-        return response.choices[0].message.content
+        try:
+            response = self.client.chat.completions.create(**request_kwargs)
+            return response.choices[0].message.content
+        except openai.APITimeoutError as e:
+            msg = f"{self.provider_name} API Timeout Error: The request timed out after {self.timeout}s. This often happens with large images or during peak usage. Details: {str(e)}"
+            logger.error(msg)
+            raise AIConnectionError(msg)
+        except openai.APIConnectionError as e:
+            msg = f"{self.provider_name} API Connection Error: Could not connect to the server. Check your internet connection or proxy settings. Original error: {str(e)}"
+            if e.__cause__:
+                msg += f" (Cause: {str(e.__cause__)})"
+            logger.error(msg)
+            raise AIConnectionError(msg)
+        except openai.RateLimitError as e:
+            msg = f"{self.provider_name} API Rate Limit Error: You have exceeded your rate limit or quota. Details: {str(e)}"
+            logger.error(msg)
+            raise Exception(msg)
+        except openai.AuthenticationError as e:
+            msg = (
+                f"{self.provider_name} API Authentication Error: Your API key is invalid or expired. Details: {str(e)}"
+            )
+            logger.error(msg)
+            raise Exception(msg)
+        except openai.BadRequestError as e:
+            msg = f"{self.provider_name} API Bad Request: The request was invalid (e.g., malformed parameters, image too large, or invalid model). Details: {str(e)}"
+            logger.error(msg)
+            raise Exception(msg)
+        except openai.NotFoundError as e:
+            msg = f"{self.provider_name} API Not Found: The requested resource (model or endpoint) was not found. Details: {str(e)}"
+            logger.error(msg)
+            raise Exception(msg)
+        except openai.InternalServerError as e:
+            msg = f"{self.provider_name} API Internal Server Error: The {self.provider_name} service is currently experiencing issues. Details: {str(e)}"
+            logger.error(msg)
+            raise Exception(msg)
+        except openai.APIStatusError as e:
+            msg = f"{self.provider_name} API Status Error (HTTP {e.status_code}): An error occurred with status code {e.status_code}. Details: {str(e)}"
+            logger.error(msg)
+            raise Exception(msg)
+        except Exception as e:
+            msg = f"Unexpected error in {self.provider_name} AI Client: {str(e)}"
+            logger.error(msg)
+            raise Exception(msg)
 
     def chat_completion_json(
         self,

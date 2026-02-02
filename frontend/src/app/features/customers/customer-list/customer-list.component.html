@@ -1,0 +1,112 @@
+<div class="h-full flex flex-col gap-6">
+  <div class="flex justify-between items-center">
+    <h1 class="text-3xl font-bold tracking-tight">Customer List</h1>
+    <a routerLink="/customers/new">
+      <z-button zType="default" zSize="default"> New Customer </z-button>
+    </a>
+  </div>
+
+  <div class="bg-card rounded-lg border shadow-sm">
+    <div class="p-4 border-b">
+      <app-search-toolbar
+        [query]="query()"
+        [placeholder]="'Search Customers...'"
+        (queryChange)="onQueryChange($event)"
+      >
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="hideDisabled"
+              [checked]="hideDisabled()"
+              (change)="onToggleHideDisabled($event)"
+              class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+            />
+            <label
+              for="hideDisabled"
+              class="text-sm font-medium leading-none cursor-pointer select-none"
+            >
+              Hide Disabled
+            </label>
+          </div>
+          @if (isSuperuser() && totalItems() > 0) {
+            <z-button zType="destructive" zSize="sm" (click)="openBulkDeleteDialog()">
+              {{ bulkDeleteLabel() }}
+            </z-button>
+          }
+        </div>
+      </app-search-toolbar>
+    </div>
+
+    <div class="p-0">
+      <app-data-table
+        [columns]="columns()"
+        [data]="customers()"
+        [isLoading]="isLoading()"
+        (sortChange)="onSortChange($event)"
+      />
+    </div>
+
+    <div class="p-4 border-t bg-muted/20">
+      <app-pagination-controls
+        [page]="page()"
+        [totalPages]="totalPages()"
+        (pageChange)="onPageChange($event)"
+      />
+    </div>
+  </div>
+</div>
+
+<ng-template #customerTemplate let-row>
+  <a [routerLink]="['/customers', row.id]" class="font-medium hover:underline">
+    {{ row.fullNameWithCompany }}
+  </a>
+</ng-template>
+
+<ng-template #passportTemplate let-row>
+  <div class="flex flex-col gap-1">
+    <div class="flex items-center gap-2">
+      <span class="font-mono text-base font-medium">{{ row.passportNumber || '—' }}</span>
+    </div>
+    @if (row.passportExpirationDate) {
+      <app-expiry-badge [date]="row.passportExpirationDate" />
+    } @else {
+      <span class="text-xs text-muted-foreground">—</span>
+    }
+  </div>
+</ng-template>
+
+<ng-template #emailTemplate let-row>
+  <span>{{ row.email || '—' }}</span>
+</ng-template>
+
+<ng-template #telephoneTemplate let-row>
+  <span>{{ row.telephone || '—' }}</span>
+</ng-template>
+
+<ng-template #actionsTemplate let-row>
+  <div class="flex items-center gap-1.5">
+    <a [routerLink]="['/customers', row.id]">
+      <z-button zType="default" zSize="sm">View</z-button>
+    </a>
+    <a [routerLink]="['/customers', row.id, 'edit']">
+      <z-button zType="warning" zSize="sm">Edit</z-button>
+    </a>
+    <z-button [zType]="row.active ? 'secondary' : 'ghost'" zSize="sm" (click)="onToggleActive(row)">
+      {{ row.active ? 'Disable' : 'Enable' }}
+    </z-button>
+    @if (isSuperuser()) {
+      <z-button zType="destructive" zSize="sm" (click)="onDelete(row)">Delete</z-button>
+    }
+    <a [routerLink]="['/customers', row.id, 'applications', 'new']">
+      <z-button zType="success" zSize="sm">New Application</z-button>
+    </a>
+  </div>
+</ng-template>
+
+<app-bulk-delete-dialog
+  [isOpen]="bulkDeleteOpen()"
+  [data]="bulkDeleteData()"
+  (confirmed)="onBulkDeleteConfirmed()"
+  (cancelled)="onBulkDeleteCancelled()"
+/>

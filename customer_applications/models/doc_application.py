@@ -257,7 +257,7 @@ class DocApplication(models.Model):
             )
         return due_date
 
-    def _get_document_order_list(self, required=None):
+    def get_document_order_list(self, required=None):
         """
         Get ordered list of document type names from product configuration.
         Returns list of document type names in the order they should appear.
@@ -271,12 +271,12 @@ class DocApplication(models.Model):
             order_list.extend([name.strip() for name in optional_docs.split(",") if name.strip()])
         return order_list
 
-    def _order_documents_by_product(self, documents, required=None):
+    def order_documents_by_product(self, documents, required=None):
         """
         Order documents based on the product's document list order.
         Documents not in the order list will appear at the end.
         """
-        order_list = self._get_document_order_list(required)
+        order_list = self.get_document_order_list(required)
         if not order_list:
             return documents
 
@@ -288,6 +288,13 @@ class DocApplication(models.Model):
         docs_list.sort(key=lambda d: (order_map.get(d.doc_type.name, 9999), d.doc_type.name))
         return docs_list
 
+    @property
+    def ordered_documents(self):
+        """
+        Returns all documents for this application, ordered by the product's document list.
+        """
+        return self.order_documents_by_product(self.documents.all())
+
     def get_completed_documents(self, type="all"):
         """
         Gets completed documents by type, ordered by product's document list.
@@ -298,7 +305,7 @@ class DocApplication(models.Model):
             required = True if type == "required" else False
             filters["required"] = required
         documents = self.documents.filter(**filters).select_related("doc_type")
-        return self._order_documents_by_product(documents, required)
+        return self.order_documents_by_product(documents, required)
 
     def get_incomplete_documents(self, type="all"):
         """
@@ -310,7 +317,7 @@ class DocApplication(models.Model):
             required = True if type == "required" else False
             filters["required"] = required
         documents = self.documents.filter(**filters).select_related("doc_type")
-        return self._order_documents_by_product(documents, required)
+        return self.order_documents_by_product(documents, required)
 
     def has_invoice(self):
         """
@@ -324,10 +331,35 @@ class DocApplication(models.Model):
         """
         return self.invoice_applications.first().invoice if self.has_invoice() else None
 
+    def reopen(self, user) -> bool:
+        """
+        Re-open a completed application and reset the last workflow step to processing.
+        """
+        if self.status != self.STATUS_COMPLETED:
+            return False
+
+        self.status = self.STATUS_PROCESSING
+        self.updated_by = user
+
+        try:
+            from customer_applications.models.doc_workflow import DocWorkflow
+
+            last_workflow = self.workflows.order_by("-task__step").first()
+            if last_workflow and last_workflow.status == DocWorkflow.STATUS_COMPLETED:
+                last_workflow.status = DocWorkflow.STATUS_PROCESSING
+                last_workflow.updated_by = user
+                last_workflow.save()
+        except Exception:
+            # Allow application status change even if workflow update fails
+            pass
+
+        self.save(skip_status_calculation=True)
+        return True
+
     def can_be_deleted(self):
         # Block deletion if related invoices exist
         if self.invoice_applications.exists():
-            return False, "Cannot delete application: related invoices exist."
+            return False, "Related invoices exist. You must delete the invoices first."
         return True, None
 
     def delete(self, *args, **kwargs):

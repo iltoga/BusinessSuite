@@ -1,0 +1,168 @@
+<div class="space-y-6">
+  <div class="flex items-center justify-between">
+    <h1 class="text-2xl font-bold tracking-tight">Backup & Restore</h1>
+    <div class="flex gap-4 items-center">
+      <label class="flex items-center gap-2">
+        <z-checkbox
+          [(ngModel)]="selectAllFlag"
+          [ngModelOptions]="{ standalone: true }"
+        ></z-checkbox>
+        <span class="text-sm">Select all</span>
+      </label>
+
+      <button
+        z-button
+        zType="destructive"
+        (click)="deleteSelectedBackups()"
+        [zDisabled]="isOperationRunning() || selectedFiles().length === 0"
+      >
+        Delete Selected
+      </button>
+
+      <button
+        z-button
+        zType="outline"
+        (click)="deleteAllBackups()"
+        [zDisabled]="isOperationRunning()"
+      >
+        Delete All
+      </button>
+
+      <button z-button (click)="startBackup()" [zDisabled]="isOperationRunning()">
+        Start Backup
+      </button>
+    </div>
+  </div>
+
+  <!-- Backup Options -->
+  <z-card class="p-4">
+    <div class="flex items-center gap-4">
+      <z-checkbox [checked]="includeUsers()" (click)="toggleIncludeUsers()">
+        <span class="text-sm">Include users/groups/permissions (full backup)</span>
+      </z-checkbox>
+    </div>
+  </z-card>
+
+  <!-- File Upload -->
+  <z-card class="p-4">
+    <h3 class="text-lg font-medium mb-4">Upload Backup</h3>
+    <app-file-upload
+      accept=".json,.gz,.tar.gz,.tgz,.tar.zst,.zst"
+      [disabled]="isOperationRunning()"
+      [progress]="uploadProgress()"
+      [fileName]="uploadFileName()"
+      [helperText]="uploadHelperText()"
+      (fileSelected)="uploadBackup($event)"
+      (cleared)="clearUploadSelection()"
+    >
+      Drop backup files here or click to select
+    </app-file-upload>
+  </z-card>
+
+  <!-- Progress Bar -->
+  @if (operationProgress() !== null) {
+    <z-card class="p-4">
+      <div class="space-y-1">
+        <div class="flex items-center justify-between text-xs text-muted-foreground">
+          <span>{{ operationLabel() }}</span>
+          <span>{{ operationProgress() }}%</span>
+        </div>
+        <div class="h-2 w-full rounded-full bg-muted">
+          <div class="h-2 rounded-full bg-primary" [style.width.%]="operationProgress()"></div>
+        </div>
+      </div>
+    </z-card>
+  }
+
+  <!-- Live Log (accordion, open by default) -->
+  @if (logMessages().length > 0) {
+    <z-card class="p-0">
+      <div class="p-4 border-b flex items-center justify-between">
+        <h3 class="text-lg font-medium">Live Log</h3>
+        <button z-button zType="ghost" zSize="sm" (click)="toggleLogOpen()">
+          <z-icon [zType]="logOpen() ? 'chevron-down' : 'chevron-right'" class="h-4 w-4" />
+        </button>
+      </div>
+
+      @if (logOpen()) {
+        <div class="p-4 bg-slate-950 text-green-400 font-mono text-sm max-h-80 overflow-auto">
+          @for (msg of logMessages(); track $index) {
+            <div>{{ msg }}</div>
+          }
+        </div>
+      }
+    </z-card>
+  }
+
+  <!-- Available Backups -->
+  <z-card class="p-0">
+    <div class="p-4 border-b">
+      <h3 class="text-lg font-medium">Available Backups</h3>
+    </div>
+    <app-data-table [data]="backups()" [columns]="columns" [isLoading]="isLoading()" />
+  </z-card>
+</div>
+
+<!-- Created At Template -->
+<ng-template #selectTemplate let-item>
+  <z-checkbox
+    [(ngModel)]="item.selected"
+    [ngModelOptions]="{ standalone: true }"
+    (ngModelChange)="onItemSelectChange(item, $event)"
+  ></z-checkbox>
+</ng-template>
+
+<!-- Created At Template -->
+<ng-template #createdAtTemplate let-item>
+  {{ item.createdAt | appDate: 'datetime' }}
+</ng-template>
+
+<!-- Status Template -->
+<ng-template #statusTemplate let-item>
+  <div class="flex gap-1">
+    @if (item.hasUsers) {
+      <z-badge zType="default">Full</z-badge>
+    }
+    @if (item.includedFiles !== null && item.includedFiles > 0) {
+      <z-badge zType="secondary">Files: {{ item.includedFiles }}</z-badge>
+    }
+  </div>
+</ng-template>
+
+<!-- Size Template -->
+<ng-template #sizeTemplate let-item>
+  {{ formatFileSize(item.size) }}
+</ng-template>
+
+<!-- Actions Template -->
+<ng-template #actionsTemplate let-item>
+  <div class="flex gap-2">
+    <button
+      z-button
+      zType="ghost"
+      zSize="sm"
+      (click)="downloadBackup(item.filename)"
+      [zDisabled]="isOperationRunning()"
+    >
+      Download
+    </button>
+    <button
+      z-button
+      zType="ghost"
+      zSize="sm"
+      (click)="restoreBackup(item.filename)"
+      [zDisabled]="isOperationRunning()"
+    >
+      Restore
+    </button>
+    <button
+      z-button
+      zType="destructive"
+      zSize="sm"
+      (click)="deleteBackup(item.filename)"
+      [zDisabled]="isOperationRunning()"
+    >
+      Delete
+    </button>
+  </div>
+</ng-template>

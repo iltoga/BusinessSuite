@@ -1,0 +1,4310 @@
+openapi: 3.0.3
+info:
+  title: BusinessSuite API
+  version: 1.0.0
+  description: API for BusinessSuite ERP/CRM
+paths:
+  /api/api-token-auth/:
+    post:
+      operationId: apiTokenAuthCreate
+      description: |-
+        Takes a set of user credentials and returns an access and refresh JSON web
+        token pair to prove the authentication of those credentials.
+      tags:
+      - api-token-auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomTokenObtain'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CustomTokenObtain'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CustomTokenObtain'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/CustomTokenObtain'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomTokenObtain'
+          description: ''
+  /api/backups/:
+    get:
+      operationId: backupsRetrieve
+      description: List local backups with metadata.
+      summary: List available backups
+      tags:
+      - backups
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/backups/delete-all/:
+    delete:
+      operationId: backupsDeleteAllDestroy
+      description: Purge all backups.
+      summary: Delete all backups
+      tags:
+      - backups
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/backups/download/{filename}/:
+    get:
+      operationId: backupsDownloadRetrieve
+      description: Download backup file.
+      summary: Download backup file
+      parameters:
+      - in: path
+        name: filename
+        schema:
+          type: string
+          pattern: ^.+$
+        required: true
+      tags:
+      - backups
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/backups/restore/:
+    post:
+      operationId: backupsRestoreCreate
+      description: Trigger SSE restore stream.
+      summary: Restore from backup
+      parameters:
+      - in: query
+        name: file
+        schema:
+          type: string
+      - in: query
+        name: include_users
+        schema:
+          type: boolean
+      tags:
+      - backups
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/backups/start/:
+    get:
+      operationId: backupsStartRetrieve
+      description: Trigger SSE backup stream.
+      summary: Start backup process
+      parameters:
+      - in: query
+        name: include_users
+        schema:
+          type: boolean
+      tags:
+      - backups
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/backups/upload/:
+    post:
+      operationId: backupsUploadCreate
+      description: Multi-part upload for existing archives.
+      summary: Upload backup file
+      tags:
+      - backups
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/compute/doc_workflow_due_date/{taskId}/{startDate}/:
+    get:
+      operationId: computeDocWorkflowDueDateRetrieve
+      parameters:
+      - in: path
+        name: startDate
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: taskId
+        schema:
+          type: integer
+        required: true
+      tags:
+      - compute
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/country-codes/:
+    get:
+      operationId: countryCodesList
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - country-codes
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CountryCode'
+          description: ''
+  /api/country-codes/{alpha3Code}/:
+    get:
+      operationId: countryCodesRetrieve
+      parameters:
+      - in: path
+        name: alpha3Code
+        schema:
+          type: string
+        description: A unique value identifying this country code.
+        required: true
+      tags:
+      - country-codes
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CountryCode'
+          description: ''
+  /api/cron/exec_cron_jobs/:
+    get:
+      operationId: cronExecCronJobsRetrieve
+      description: Execute cron jobs via Huey
+      tags:
+      - cron
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/customer-applications/:
+    get:
+      operationId: customerApplicationsList
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - customer-applications
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedDocApplicationSerializerWithRelationsList'
+          description: ''
+    post:
+      operationId: customerApplicationsCreate
+      tags:
+      - customer-applications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocApplicationCreateUpdate'
+          description: ''
+  /api/customer-applications/{id}/:
+    get:
+      operationId: customerApplicationsRetrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this doc application.
+        required: true
+      tags:
+      - customer-applications
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocApplicationDetail'
+          description: ''
+    put:
+      operationId: customerApplicationsUpdate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this doc application.
+        required: true
+      tags:
+      - customer-applications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocApplicationCreateUpdate'
+          description: ''
+    patch:
+      operationId: customerApplicationsPartialUpdate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this doc application.
+        required: true
+      tags:
+      - customer-applications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/DocApplicationCreateUpdate'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocApplicationCreateUpdate'
+          description: ''
+    delete:
+      operationId: customerApplicationsDestroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this doc application.
+        required: true
+      tags:
+      - customer-applications
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/customer-applications/{id}/advance-workflow/:
+    post:
+      operationId: customerApplicationsAdvanceWorkflowCreate
+      description: Complete current workflow and create next step.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this doc application.
+        required: true
+      tags:
+      - customer-applications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+          description: ''
+  /api/customer-applications/{id}/force-close/:
+    post:
+      operationId: customerApplicationsForceCloseCreate
+      description: |-
+        Force close an application by setting its status to completed.
+
+        This mirrors the legacy Django view behavior and bypasses automatic
+        status recalculation by saving with skip_status_calculation=True.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this doc application.
+        required: true
+      tags:
+      - customer-applications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocApplicationDetail'
+          description: ''
+  /api/customer-applications/{id}/reopen/:
+    post:
+      operationId: customerApplicationsReopenCreate
+      description: Re-open a completed application.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this doc application.
+        required: true
+      tags:
+      - customer-applications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/customer-applications/{id}/workflows/{workflowId}/status/:
+    post:
+      operationId: customerApplicationsWorkflowsStatusCreate
+      description: Update the status of a workflow step for an application.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this doc application.
+        required: true
+      - in: path
+        name: workflowId
+        schema:
+          type: string
+        required: true
+      tags:
+      - customer-applications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+          '*/*':
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocWorkflow'
+          description: ''
+  /api/customer-applications/bulk-delete/:
+    post:
+      operationId: customerApplicationsBulkDeleteCreate
+      tags:
+      - customer-applications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+          description: ''
+  /api/customer-applications/quick-create/:
+    post:
+      operationId: customerApplicationsQuickCreateCreate
+      description: Quick create a customer application with documents and workflows
+      tags:
+      - customer-applications
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/customers/:
+    get:
+      operationId: customersList
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - customers
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCustomerList'
+          description: ''
+    post:
+      operationId: customersCreate
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Customer'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Customer'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Customer'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/Customer'
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+          description: ''
+  /api/customers/{id}/:
+    get:
+      operationId: customersRetrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - customers
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+          description: ''
+    put:
+      operationId: customersUpdate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Customer'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Customer'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Customer'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/Customer'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+          description: ''
+    patch:
+      operationId: customersPartialUpdate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Customer'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Customer'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Customer'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/Customer'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+          description: ''
+    delete:
+      operationId: customersDestroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - customers
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/customers/{id}/toggle-active/:
+    post:
+      operationId: customersToggleActiveCreate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this customer.
+        required: true
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Customer'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Customer'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Customer'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/Customer'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+          description: ''
+  /api/customers/bulk-delete/:
+    post:
+      operationId: customersBulkDeleteCreate
+      tags:
+      - customers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Customer'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Customer'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Customer'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/Customer'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+          description: ''
+  /api/customers/quick-create/:
+    post:
+      operationId: customersQuickCreateCreate
+      description: Quick create a customer with minimal required fields
+      tags:
+      - customers
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/customers/search/:
+    get:
+      operationId: customersSearchRetrieve
+      tags:
+      - customers
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+          description: ''
+  /api/dashboard-stats/:
+    get:
+      operationId: dashboardStatsRetrieve
+      description: |-
+        API endpoint for dashboard statistics.
+        TO BE REMOVED WHEN ANGULAR FRONTEND IS COMPLETE
+      tags:
+      - dashboard-stats
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/document-ocr/check/:
+    post:
+      operationId: documentOcrCheckCreate
+      description: |-
+        API endpoint for document OCR text extraction.
+
+        POST Parameters:
+            - file: The document file (PDF, Excel, Word)
+
+        Returns:
+            - text: Extracted text when completed
+      tags:
+      - document-ocr
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/document-ocr/status/{jobId}/:
+    get:
+      operationId: documentOcrStatusRetrieve
+      description: |-
+        API endpoint for document OCR text extraction.
+
+        POST Parameters:
+            - file: The document file (PDF, Excel, Word)
+
+        Returns:
+            - text: Extracted text when completed
+      parameters:
+      - in: path
+        name: jobId
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - document-ocr
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/document-types/:
+    get:
+      operationId: documentTypesList
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - document-types
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DocumentType'
+          description: ''
+    post:
+      operationId: documentTypesCreate
+      tags:
+      - document-types
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentType'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DocumentType'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocumentType'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/DocumentType'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentType'
+          description: ''
+  /api/document-types/{id}/:
+    get:
+      operationId: documentTypesRetrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this document type.
+        required: true
+      tags:
+      - document-types
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentType'
+          description: ''
+    put:
+      operationId: documentTypesUpdate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this document type.
+        required: true
+      tags:
+      - document-types
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentType'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DocumentType'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocumentType'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/DocumentType'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentType'
+          description: ''
+    patch:
+      operationId: documentTypesPartialUpdate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this document type.
+        required: true
+      tags:
+      - document-types
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentType'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DocumentType'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocumentType'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/DocumentType'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentType'
+          description: ''
+    delete:
+      operationId: documentTypesDestroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this document type.
+        required: true
+      tags:
+      - document-types
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/document-types/{id}/can-delete/:
+    get:
+      operationId: documentTypesCanDeleteRetrieve
+      description: Check if document type can be safely deleted.
+      summary: Check if a document type can be deleted
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this document type.
+        required: true
+      tags:
+      - document-types
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/documents/:
+    get:
+      operationId: documentsList
+      tags:
+      - documents
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Document'
+          description: ''
+    post:
+      operationId: documentsCreate
+      tags:
+      - documents
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Document'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Document'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Document'
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+          description: ''
+  /api/documents/{id}/:
+    get:
+      operationId: documentsRetrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this document.
+        required: true
+      tags:
+      - documents
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+          description: ''
+    put:
+      operationId: documentsUpdate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this document.
+        required: true
+      tags:
+      - documents
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Document'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Document'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Document'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+          description: ''
+    patch:
+      operationId: documentsPartialUpdate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this document.
+        required: true
+      tags:
+      - documents
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Document'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Document'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Document'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+          description: ''
+  /api/documents/{id}/actions/{actionName}/:
+    post:
+      operationId: documentsActionsCreate
+      description: |-
+        Execute a document type hook action.
+
+        Args:
+            pk: The document ID.
+            action_name: The name of the action to execute.
+
+        Returns:
+            JSON response with success status and message or error.
+      parameters:
+      - in: path
+        name: actionName
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this document.
+        required: true
+      tags:
+      - documents
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Document'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Document'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Document'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+          description: ''
+  /api/documents/{id}/download/:
+    get:
+      operationId: documentsDownloadRetrieve
+      description: Download the document file with authentication.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this document.
+        required: true
+      tags:
+      - documents
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+          description: ''
+  /api/documents/{id}/print/:
+    get:
+      operationId: documentsPrintRetrieve
+      description: |-
+        Get document data for print view.
+
+        Returns the document with nested doc_application data including customer info.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this document.
+        required: true
+      tags:
+      - documents
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+          description: ''
+  /api/documents/merge-pdf/:
+    post:
+      operationId: documentsMergePdfCreate
+      description: |-
+        Merge selected documents into a single PDF.
+
+        Expects JSON: {"document_ids": [1, 2, 3]}
+      tags:
+      - documents
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocumentMerge'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DocumentMerge'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentMerge'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+          description: ''
+  /api/invoices/:
+    get:
+      operationId: invoicesList
+      parameters:
+      - in: query
+        name: hide_paid
+        schema:
+          type: boolean
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - invoices
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedInvoiceListList'
+          description: ''
+    post:
+      operationId: invoicesCreate
+      tags:
+      - invoices
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoiceCreateUpdate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/InvoiceCreateUpdate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/InvoiceCreateUpdate'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/InvoiceCreateUpdate'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceCreateUpdate'
+          description: ''
+  /api/invoices/{id}/:
+    get:
+      operationId: invoicesRetrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this invoice.
+        required: true
+      tags:
+      - invoices
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceDetail'
+          description: ''
+    put:
+      operationId: invoicesUpdate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this invoice.
+        required: true
+      tags:
+      - invoices
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoiceCreateUpdate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/InvoiceCreateUpdate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/InvoiceCreateUpdate'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/InvoiceCreateUpdate'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceCreateUpdate'
+          description: ''
+    patch:
+      operationId: invoicesPartialUpdate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this invoice.
+        required: true
+      tags:
+      - invoices
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoiceCreateUpdate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/InvoiceCreateUpdate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/InvoiceCreateUpdate'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/InvoiceCreateUpdate'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceCreateUpdate'
+          description: ''
+    delete:
+      operationId: invoicesDestroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this invoice.
+        required: true
+      tags:
+      - invoices
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/invoices/{id}/delete-preview/:
+    get:
+      operationId: invoicesDeletePreviewRetrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this invoice.
+        required: true
+      tags:
+      - invoices
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/invoices/{id}/download/:
+    get:
+      operationId: invoicesDownloadRetrieve
+      parameters:
+      - in: query
+        name: file_format
+        schema:
+          type: string
+          enum:
+          - docx
+          - pdf
+        description: The format of the downloaded invoice (docx or pdf).
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this invoice.
+        required: true
+      tags:
+      - invoices
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+          description: ''
+  /api/invoices/{id}/download-async/:
+    post:
+      operationId: invoicesDownloadAsyncCreate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this invoice.
+        required: true
+      tags:
+      - invoices
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+          '*/*':
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/invoices/{id}/force-delete/:
+    post:
+      operationId: invoicesForceDeleteCreate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this invoice.
+        required: true
+      tags:
+      - invoices
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+          '*/*':
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/invoices/{id}/mark-as-paid/:
+    post:
+      operationId: invoicesMarkAsPaidCreate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this invoice.
+        required: true
+      tags:
+      - invoices
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+          '*/*':
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceList'
+          description: ''
+  /api/invoices/bulk-delete/:
+    post:
+      operationId: invoicesBulkDeleteCreate
+      tags:
+      - invoices
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+          '*/*':
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/invoices/download-async/file/{jobId}/:
+    get:
+      operationId: invoicesDownloadAsyncFileRetrieve
+      parameters:
+      - in: path
+        name: jobId
+        schema:
+          type: string
+        required: true
+      tags:
+      - invoices
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceList'
+          description: ''
+  /api/invoices/download-async/status/{jobId}/:
+    get:
+      operationId: invoicesDownloadAsyncStatusRetrieve
+      parameters:
+      - in: path
+        name: jobId
+        schema:
+          type: string
+        required: true
+      tags:
+      - invoices
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/invoices/download-async/stream/{jobId}/:
+    get:
+      operationId: invoicesDownloadAsyncStreamRetrieve
+      parameters:
+      - in: path
+        name: jobId
+        schema:
+          type: string
+        required: true
+      tags:
+      - invoices
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceList'
+          description: ''
+  /api/invoices/get_customer_applications/{customerId}/:
+    get:
+      operationId: invoicesGetCustomerApplicationsList
+      parameters:
+      - in: query
+        name: current_invoice_id
+        schema:
+          type: integer
+      - in: path
+        name: customerId
+        schema:
+          type: integer
+        required: true
+      - in: query
+        name: exclude_incomplete_document_collection
+        schema:
+          type: boolean
+      - in: query
+        name: exclude_statuses
+        schema:
+          type: string
+      - in: query
+        name: exclude_with_invoices
+        schema:
+          type: boolean
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - invoices
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedDocApplicationInvoiceList'
+          description: ''
+  /api/invoices/get_invoice_application_due_amount/{invoiceApplicationId}/:
+    get:
+      operationId: invoicesGetInvoiceApplicationDueAmountRetrieve
+      parameters:
+      - in: path
+        name: invoiceApplicationId
+        schema:
+          type: integer
+        required: true
+      tags:
+      - invoices
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceList'
+          description: ''
+  /api/invoices/import/batch/:
+    post:
+      operationId: invoicesImportBatchCreate
+      description: Import multiple invoice files with SSE progress streaming.
+      tags:
+      - invoices
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                paid_status:
+                  type: array
+                  items:
+                    type: string
+                llm_provider:
+                  type: string
+                llm_model:
+                  type: string
+              required:
+              - files
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/invoices/import/config/:
+    get:
+      operationId: invoicesImportConfigRetrieve
+      description: Get LLM configuration and supported formats for invoice import.
+      tags:
+      - invoices
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/invoices/import/single/:
+    post:
+      operationId: invoicesImportSingleCreate
+      description: Import a single invoice file using AI parsing.
+      tags:
+      - invoices
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                llm_provider:
+                  type: string
+                llm_model:
+                  type: string
+              required:
+              - file
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/invoices/import/status/{jobId}/:
+    get:
+      operationId: invoicesImportStatusRetrieve
+      description: Get status of an invoice import job.
+      parameters:
+      - in: path
+        name: jobId
+        schema:
+          type: string
+        required: true
+      tags:
+      - invoices
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/invoices/import/stream/{jobId}/:
+    get:
+      operationId: invoicesImportStreamRetrieve
+      description: Stream SSE updates for a running import job.
+      parameters:
+      - in: path
+        name: jobId
+        schema:
+          type: string
+        required: true
+      tags:
+      - invoices
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceList'
+          description: ''
+  /api/invoices/propose/:
+    get:
+      operationId: invoicesProposeRetrieve
+      description: Propose the next available invoice number for a given invoice_date.
+      parameters:
+      - in: query
+        name: invoice_date
+        schema:
+          type: string
+      tags:
+      - invoices
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceList'
+          description: ''
+  /api/letters/customer-data/{customerId}/:
+    get:
+      operationId: lettersCustomerDataRetrieve
+      parameters:
+      - in: path
+        name: customerId
+        schema:
+          type: integer
+        required: true
+      tags:
+      - letters
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuratPermohonanCustomerData'
+          description: ''
+  /api/letters/surat-permohonan/:
+    post:
+      operationId: lettersSuratPermohonanCreate
+      tags:
+      - letters
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SuratPermohonanRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SuratPermohonanRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SuratPermohonanRequest'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/SuratPermohonanRequest'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+          description: ''
+  /api/mock-auth-config/:
+    get:
+      operationId: mockAuthConfigRetrieve
+      tags:
+      - mock-auth-config
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/ocr/check/:
+    post:
+      operationId: ocrCheckCreate
+      description: |-
+        API endpoint for passport OCR extraction.
+
+        Supports hybrid extraction mode with AI vision for enhanced data extraction.
+
+        POST Parameters:
+            - file: The passport image or PDF file
+            - doc_type: Document type (e.g., 'passport')
+            - use_ai: (optional) Set to 'true' to enable AI-enhanced extraction (default: false)
+            - save_session: (optional) Save file and data to session
+            - img_preview: (optional) Return base64 preview image
+            - resize: (optional) Resize the image
+            - width: (optional) Target width for resize
+
+        Returns:
+            - mrz_data: Extracted passport data (enhanced with AI data if use_ai=true)
+            - b64_resized_image: Base64 encoded preview (if img_preview=true)
+      tags:
+      - ocr
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/ocr/status/{jobId}/:
+    get:
+      operationId: ocrStatusRetrieve
+      description: |-
+        API endpoint for passport OCR extraction.
+
+        Supports hybrid extraction mode with AI vision for enhanced data extraction.
+
+        POST Parameters:
+            - file: The passport image or PDF file
+            - doc_type: Document type (e.g., 'passport')
+            - use_ai: (optional) Set to 'true' to enable AI-enhanced extraction (default: false)
+            - save_session: (optional) Save file and data to session
+            - img_preview: (optional) Return base64 preview image
+            - resize: (optional) Resize the image
+            - width: (optional) Target width for resize
+
+        Returns:
+            - mrz_data: Extracted passport data (enhanced with AI data if use_ai=true)
+            - b64_resized_image: Base64 encoded preview (if img_preview=true)
+      parameters:
+      - in: path
+        name: jobId
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - ocr
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/payments/:
+    get:
+      operationId: paymentsList
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - payments
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPaymentList'
+          description: ''
+    post:
+      operationId: paymentsCreate
+      tags:
+      - payments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Payment'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Payment'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Payment'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/Payment'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+          description: ''
+  /api/payments/{id}/:
+    get:
+      operationId: paymentsRetrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this payment.
+        required: true
+      tags:
+      - payments
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+          description: ''
+    put:
+      operationId: paymentsUpdate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this payment.
+        required: true
+      tags:
+      - payments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Payment'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Payment'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Payment'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/Payment'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+          description: ''
+    patch:
+      operationId: paymentsPartialUpdate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this payment.
+        required: true
+      tags:
+      - payments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Payment'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Payment'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Payment'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/Payment'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+          description: ''
+    delete:
+      operationId: paymentsDestroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this payment.
+        required: true
+      tags:
+      - payments
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/products/:
+    get:
+      operationId: productsList
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - products
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedProductList'
+          description: ''
+    post:
+      operationId: productsCreate
+      tags:
+      - products
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductCreateUpdate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProductCreateUpdate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProductCreateUpdate'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/ProductCreateUpdate'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductCreateUpdate'
+          description: ''
+  /api/products/{id}/:
+    get:
+      operationId: productsRetrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this product.
+        required: true
+      tags:
+      - products
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductDetail'
+          description: ''
+    put:
+      operationId: productsUpdate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this product.
+        required: true
+      tags:
+      - products
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductCreateUpdate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProductCreateUpdate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProductCreateUpdate'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/ProductCreateUpdate'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductCreateUpdate'
+          description: ''
+    patch:
+      operationId: productsPartialUpdate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this product.
+        required: true
+      tags:
+      - products
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductCreateUpdate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ProductCreateUpdate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ProductCreateUpdate'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/ProductCreateUpdate'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductCreateUpdate'
+          description: ''
+    delete:
+      operationId: productsDestroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this product.
+        required: true
+      tags:
+      - products
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/products/{id}/can-delete/:
+    get:
+      operationId: productsCanDeleteRetrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this product.
+        required: true
+      tags:
+      - products
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+          description: ''
+  /api/products/bulk-delete/:
+    post:
+      operationId: productsBulkDeleteCreate
+      tags:
+      - products
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Product'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Product'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Product'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/Product'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+          description: ''
+  /api/products/get_product_by_id/{productId}/:
+    get:
+      operationId: productsGetProductByIdRetrieve
+      parameters:
+      - in: path
+        name: productId
+        schema:
+          type: integer
+        required: true
+      tags:
+      - products
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+          description: ''
+  /api/products/get_products_by_product_type/{productType}/:
+    get:
+      operationId: productsGetProductsByProductTypeRetrieve
+      parameters:
+      - in: path
+        name: productType
+        schema:
+          enum:
+          - visa
+          - other
+          type: string
+          description: |-
+            * `visa` - Visa
+            * `other` - Other
+        required: true
+      tags:
+      - products
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+          description: ''
+  /api/products/quick-create/:
+    post:
+      operationId: productsQuickCreateCreate
+      description: Quick create a product with minimal required fields
+      tags:
+      - products
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/server-management/clear-cache/:
+    post:
+      operationId: serverManagementClearCacheCreate
+      description: Global cache purge.
+      summary: Clear application cache
+      tags:
+      - server-management
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/server-management/media-diagnostic/:
+    get:
+      operationId: serverManagementMediaDiagnosticRetrieve
+      description: Comprehensive check of disk vs DB.
+      summary: Run media files diagnostic
+      tags:
+      - server-management
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/server-management/media-repair/:
+    post:
+      operationId: serverManagementMediaRepairCreate
+      description: Automated path fixing.
+      summary: Repair media file paths
+      tags:
+      - server-management
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/user-profile/change_password/:
+    post:
+      operationId: userProfileChangePasswordCreate
+      tags:
+      - user-profile
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ChangePassword'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ChangePassword'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePassword'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '204':
+          description: Password updated successfully
+  /api/user-profile/me/:
+    get:
+      operationId: userProfileMeRetrieve
+      description: Retrieve current user profile.
+      tags:
+      - user-profile
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+          description: ''
+  /api/user-profile/update_profile/:
+    patch:
+      operationId: userProfileUpdateProfilePartialUpdate
+      tags:
+      - user-profile
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserProfile'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserProfile'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserProfile'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+          description: ''
+  /api/user-profile/upload_avatar/:
+    post:
+      operationId: userProfileUploadAvatarCreate
+      description: Upload user profile picture.
+      tags:
+      - user-profile
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                avatar:
+                  type: string
+                  format: binary
+              required:
+              - avatar
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+          description: ''
+components:
+  schemas:
+    BlankEnum:
+      enum:
+      - ''
+    ChangePassword:
+      type: object
+      properties:
+        old_password:
+          type: string
+        new_password:
+          type: string
+      required:
+      - new_password
+      - old_password
+    CountryCode:
+      type: object
+      properties:
+        country:
+          type: string
+          maxLength: 100
+        country_idn:
+          type: string
+          nullable: true
+          maxLength: 128
+        alpha2_code:
+          type: string
+          maxLength: 2
+        alpha3_code:
+          type: string
+          maxLength: 3
+        numeric_code:
+          type: string
+          maxLength: 3
+      required:
+      - alpha2_code
+      - alpha3_code
+      - country
+      - numeric_code
+    CustomTokenObtain:
+      type: object
+      properties:
+        username:
+          type: string
+          writeOnly: true
+        password:
+          type: string
+          writeOnly: true
+      required:
+      - password
+      - username
+    Customer:
+      type: object
+      description: |-
+        Serializer for Customer model.
+
+        Note: This serializer exposes all model fields.
+        Keep `fields = '__all__'` to avoid missing fields from the model.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        title:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/TitleEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        customer_type:
+          $ref: '#/components/schemas/CustomerTypeEnum'
+        first_name:
+          type: string
+          nullable: true
+          maxLength: 50
+        last_name:
+          type: string
+          nullable: true
+          maxLength: 50
+        company_name:
+          type: string
+          nullable: true
+          maxLength: 100
+        email:
+          type: string
+          format: email
+          nullable: true
+          maxLength: 50
+        telephone:
+          type: string
+          nullable: true
+          maxLength: 50
+        whatsapp:
+          type: string
+          nullable: true
+          maxLength: 50
+        telegram:
+          type: string
+          nullable: true
+          maxLength: 50
+        facebook:
+          type: string
+          nullable: true
+          maxLength: 50
+        instagram:
+          type: string
+          nullable: true
+          maxLength: 50
+        twitter:
+          type: string
+          nullable: true
+          maxLength: 50
+        npwp:
+          type: string
+          nullable: true
+          title: NPWP (Indonesia)
+          maxLength: 30
+        nationality:
+          type: string
+          nullable: true
+        birthdate:
+          type: string
+          format: date
+          nullable: true
+        birth_place:
+          type: string
+          nullable: true
+          maxLength: 100
+        passport_number:
+          type: string
+          nullable: true
+          maxLength: 50
+        passport_issue_date:
+          type: string
+          format: date
+          nullable: true
+        passport_expiration_date:
+          type: string
+          format: date
+          nullable: true
+        passport_file:
+          type: string
+          format: uri
+          nullable: true
+        passport_metadata:
+          nullable: true
+        passport_expired:
+          type: string
+          readOnly: true
+        passport_expiring_soon:
+          type: string
+          readOnly: true
+        gender:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/GenderEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        gender_display:
+          type: string
+          readOnly: true
+        nationality_name:
+          type: string
+          readOnly: true
+        nationality_code:
+          type: string
+          readOnly: true
+        address_bali:
+          type: string
+          nullable: true
+        address_abroad:
+          type: string
+          nullable: true
+        notify_documents_expiration:
+          type: boolean
+        notify_by:
+          nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/NotifyByEnum'
+          - $ref: '#/components/schemas/BlankEnum'
+          - $ref: '#/components/schemas/NullEnum'
+        active:
+          type: boolean
+        full_name:
+          type: string
+          readOnly: true
+        full_name_with_company:
+          type: string
+          readOnly: true
+      required:
+      - created_at
+      - full_name
+      - full_name_with_company
+      - gender_display
+      - id
+      - nationality_code
+      - nationality_name
+      - passport_expired
+      - passport_expiring_soon
+      - updated_at
+    CustomerTypeEnum:
+      enum:
+      - person
+      - company
+      type: string
+      description: |-
+        * `person` - Person
+        * `company` - Company
+    DocApplicationCreateUpdate:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        customer:
+          type: integer
+        product:
+          type: integer
+        doc_date:
+          type: string
+          format: date
+        notes:
+          type: string
+          nullable: true
+        document_types:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          writeOnly: true
+      required:
+      - customer
+      - doc_date
+      - id
+      - product
+    DocApplicationDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        customer:
+          allOf:
+          - $ref: '#/components/schemas/Customer'
+          readOnly: true
+        product:
+          allOf:
+          - $ref: '#/components/schemas/Product'
+          readOnly: true
+        doc_date:
+          type: string
+          format: date
+          readOnly: true
+        due_date:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status519Enum'
+          readOnly: true
+        notes:
+          type: string
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+        updated_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        documents:
+          type: array
+          items:
+            $ref: '#/components/schemas/Document'
+          readOnly: true
+        workflows:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocWorkflow'
+          readOnly: true
+        is_document_collection_completed:
+          type: boolean
+          readOnly: true
+        is_application_completed:
+          type: boolean
+          readOnly: true
+        has_next_task:
+          type: boolean
+          readOnly: true
+        next_task:
+          allOf:
+          - $ref: '#/components/schemas/Task'
+          readOnly: true
+        has_invoice:
+          type: boolean
+          readOnly: true
+        invoice_id:
+          type: integer
+          nullable: true
+          readOnly: true
+        str_field:
+          type: string
+          readOnly: true
+        can_force_close:
+          type: boolean
+          readOnly: true
+      required:
+      - can_force_close
+      - created_at
+      - created_by
+      - customer
+      - doc_date
+      - documents
+      - due_date
+      - has_invoice
+      - has_next_task
+      - id
+      - invoice_id
+      - is_application_completed
+      - is_document_collection_completed
+      - next_task
+      - notes
+      - product
+      - status
+      - str_field
+      - updated_at
+      - updated_by
+      - workflows
+    DocApplicationInvoice:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        customer:
+          allOf:
+          - $ref: '#/components/schemas/Customer'
+          readOnly: true
+        product:
+          allOf:
+          - $ref: '#/components/schemas/Product'
+          readOnly: true
+        doc_date:
+          type: string
+          format: date
+          readOnly: true
+        due_date:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status519Enum'
+          readOnly: true
+        notes:
+          type: string
+          readOnly: true
+          nullable: true
+        str_field:
+          type: string
+          readOnly: true
+      required:
+      - customer
+      - doc_date
+      - due_date
+      - id
+      - notes
+      - product
+      - status
+      - str_field
+    DocApplicationSerializerWithRelations:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        customer:
+          type: integer
+        product:
+          type: integer
+        doc_date:
+          type: string
+          format: date
+        due_date:
+          type: string
+          format: date
+          nullable: true
+        status:
+          $ref: '#/components/schemas/Status519Enum'
+        notes:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+        updated_by:
+          type: integer
+          nullable: true
+        has_invoice:
+          type: boolean
+          description: Check if the application has an invoice.
+          readOnly: true
+        invoice_id:
+          type: integer
+          nullable: true
+          description: Get the invoice ID if it exists.
+          readOnly: true
+        ready_for_invoice:
+          type: boolean
+          description: |-
+            Check if application is ready for invoicing.
+
+            Ready if all required documents are completed OR if the application
+            has been marked as completed (e.g. force closed).
+          readOnly: true
+        can_force_close:
+          type: boolean
+          description: Return True if the current user can force close this application.
+          readOnly: true
+      required:
+      - can_force_close
+      - created_at
+      - created_by
+      - customer
+      - doc_date
+      - has_invoice
+      - id
+      - invoice_id
+      - product
+      - ready_for_invoice
+      - updated_at
+    DocWorkflow:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        task:
+          allOf:
+          - $ref: '#/components/schemas/Task'
+          readOnly: true
+        start_date:
+          type: string
+          format: date
+          readOnly: true
+        completion_date:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
+        due_date:
+          type: string
+          format: date
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status519Enum'
+          readOnly: true
+        notes:
+          type: string
+          readOnly: true
+        is_current_step:
+          type: boolean
+          readOnly: true
+        is_overdue:
+          type: boolean
+          readOnly: true
+        is_notification_date_reached:
+          type: boolean
+          readOnly: true
+        has_notes:
+          type: boolean
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+        updated_by:
+          type: integer
+          readOnly: true
+          nullable: true
+      required:
+      - completion_date
+      - created_at
+      - created_by
+      - due_date
+      - has_notes
+      - id
+      - is_current_step
+      - is_notification_date_reached
+      - is_overdue
+      - notes
+      - start_date
+      - status
+      - task
+      - updated_at
+      - updated_by
+    Document:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        doc_application:
+          type: integer
+          readOnly: true
+        doc_type:
+          allOf:
+          - $ref: '#/components/schemas/DocumentType'
+          readOnly: true
+        doc_type_id:
+          type: integer
+          writeOnly: true
+        doc_number:
+          type: string
+          maxLength: 50
+        expiration_date:
+          type: string
+          format: date
+          nullable: true
+        file:
+          type: string
+          format: uri
+        file_link:
+          type: string
+          readOnly: true
+        details:
+          type: string
+        completed:
+          type: boolean
+          readOnly: true
+        metadata:
+          nullable: true
+        ocr_check:
+          type: boolean
+          readOnly: true
+        required:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+        updated_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        updated_by_username:
+          type: string
+          nullable: true
+          description: Return the username of the user who last updated the document.
+          readOnly: true
+        created_by_username:
+          type: string
+          nullable: true
+          description: Return the username of the user who created the document.
+          readOnly: true
+        extra_actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentAction'
+          readOnly: true
+      required:
+      - completed
+      - created_at
+      - created_by
+      - created_by_username
+      - doc_application
+      - doc_type
+      - extra_actions
+      - file_link
+      - id
+      - ocr_check
+      - updated_at
+      - updated_by
+      - updated_by_username
+    DocumentAction:
+      type: object
+      description: Serializer for document hook actions.
+      properties:
+        name:
+          type: string
+        label:
+          type: string
+        icon:
+          type: string
+        css_class:
+          type: string
+      required:
+      - css_class
+      - icon
+      - label
+      - name
+    DocumentMerge:
+      type: object
+      description: Serializer for merging documents.
+      properties:
+        document_ids:
+          type: array
+          items:
+            type: integer
+          description: Ordered list of document IDs to merge.
+          minItems: 1
+      required:
+      - document_ids
+    DocumentType:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 50
+        description:
+          type: string
+          maxLength: 500
+        has_ocr_check:
+          type: boolean
+        has_expiration_date:
+          type: boolean
+        has_doc_number:
+          type: boolean
+        has_file:
+          type: boolean
+        has_details:
+          type: boolean
+        is_in_required_documents:
+          type: boolean
+      required:
+      - id
+      - name
+    GenderEnum:
+      enum:
+      - M
+      - F
+      type: string
+      description: |-
+        * `` - ---------
+        * `M` - Male
+        * `F` - Female
+    InvoiceApplicationDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        customer_application:
+          allOf:
+          - $ref: '#/components/schemas/DocApplicationInvoice'
+          readOnly: true
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        status:
+          $ref: '#/components/schemas/StatusD6bEnum'
+        paid_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        due_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        payments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Payment'
+          readOnly: true
+      required:
+      - amount
+      - customer_application
+      - due_amount
+      - id
+      - paid_amount
+      - payments
+    InvoiceApplicationSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        customer_application:
+          allOf:
+          - $ref: '#/components/schemas/DocApplicationInvoice'
+          readOnly: true
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        status:
+          $ref: '#/components/schemas/StatusD6bEnum'
+        paid_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        due_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+      required:
+      - amount
+      - customer_application
+      - due_amount
+      - id
+      - paid_amount
+    InvoiceApplicationWrite:
+      type: object
+      properties:
+        id:
+          type: integer
+        customer_application:
+          type: integer
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+      required:
+      - amount
+      - customer_application
+    InvoiceCreateUpdate:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        customer:
+          type: integer
+        invoice_no:
+          type: integer
+          nullable: true
+        invoice_date:
+          type: string
+          format: date
+        due_date:
+          type: string
+          format: date
+        notes:
+          type: string
+        sent:
+          type: boolean
+        invoice_applications:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoiceApplicationWrite'
+      required:
+      - customer
+      - due_date
+      - id
+      - invoice_applications
+      - invoice_date
+    InvoiceDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        customer:
+          allOf:
+          - $ref: '#/components/schemas/Customer'
+          readOnly: true
+        invoice_no:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        invoice_no_display:
+          type: string
+          readOnly: true
+        invoice_date:
+          type: string
+          format: date
+        due_date:
+          type: string
+          format: date
+        status:
+          $ref: '#/components/schemas/Status7a5Enum'
+        notes:
+          type: string
+        sent:
+          type: boolean
+        total_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        total_paid_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        total_due_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        is_expired:
+          type: boolean
+          readOnly: true
+        imported:
+          type: boolean
+        imported_from_file:
+          type: string
+          nullable: true
+          maxLength: 255
+        mobile_phone:
+          type: string
+          nullable: true
+          maxLength: 50
+        bank_details:
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        invoice_applications:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoiceApplicationDetail'
+          readOnly: true
+      required:
+      - created_at
+      - customer
+      - due_date
+      - id
+      - invoice_applications
+      - invoice_date
+      - invoice_no
+      - invoice_no_display
+      - is_expired
+      - total_due_amount
+      - total_paid_amount
+      - updated_at
+    InvoiceList:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        customer:
+          allOf:
+          - $ref: '#/components/schemas/Customer'
+          readOnly: true
+        invoice_no:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        invoice_no_display:
+          type: string
+          readOnly: true
+        invoice_date:
+          type: string
+          format: date
+        due_date:
+          type: string
+          format: date
+        status:
+          $ref: '#/components/schemas/Status7a5Enum'
+        total_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        total_paid_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        total_due_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+        is_expired:
+          type: boolean
+          readOnly: true
+        imported:
+          type: boolean
+        imported_from_file:
+          type: string
+          nullable: true
+          maxLength: 255
+        invoice_applications:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoiceApplicationSummary'
+          readOnly: true
+      required:
+      - customer
+      - due_date
+      - id
+      - invoice_applications
+      - invoice_date
+      - invoice_no
+      - invoice_no_display
+      - is_expired
+      - total_due_amount
+      - total_paid_amount
+    NotifyByEnum:
+      enum:
+      - Email
+      - SMS
+      - WhatsApp
+      - Telegram
+      - Telephone
+      type: string
+      description: |-
+        * `` - ---------
+        * `Email` - Email
+        * `SMS` - SMS
+        * `WhatsApp` - WhatsApp
+        * `Telegram` - Telegram
+        * `Telephone` - Telephone
+    NullEnum:
+      enum:
+      - null
+    PaginatedCustomerList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Customer'
+    PaginatedDocApplicationInvoiceList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocApplicationInvoice'
+    PaginatedDocApplicationSerializerWithRelationsList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocApplicationSerializerWithRelations'
+    PaginatedInvoiceListList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoiceList'
+    PaginatedPaymentList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Payment'
+    PaginatedProductList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+    Payment:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        invoice_application:
+          type: integer
+        from_customer:
+          type: integer
+        payment_date:
+          type: string
+          format: date
+        payment_type:
+          $ref: '#/components/schemas/PaymentTypeEnum'
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        notes:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+      required:
+      - amount
+      - created_at
+      - created_by
+      - id
+      - invoice_application
+    PaymentTypeEnum:
+      enum:
+      - cash
+      - credit_card
+      - wire_transfer
+      - crypto
+      - paypal
+      type: string
+      description: |-
+        * `cash` - Cash
+        * `credit_card` - Credit card
+        * `wire_transfer` - Wire transfer
+        * `crypto` - Crypto
+        * `paypal` - PayPal
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        code:
+          type: string
+          maxLength: 20
+        description:
+          type: string
+        immigration_id:
+          type: string
+          format: uuid
+          nullable: true
+        base_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+        product_type:
+          $ref: '#/components/schemas/ProductTypeEnum'
+        validity:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        required_documents:
+          type: string
+          maxLength: 1024
+        optional_documents:
+          type: string
+          maxLength: 1024
+        documents_min_validity:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+      required:
+      - code
+      - id
+      - name
+    ProductCreateUpdate:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        code:
+          type: string
+          maxLength: 20
+        description:
+          type: string
+        immigration_id:
+          type: string
+          format: uuid
+          nullable: true
+        base_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+        product_type:
+          $ref: '#/components/schemas/ProductTypeEnum'
+        validity:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        documents_min_validity:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        tasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskNested'
+        required_document_ids:
+          type: array
+          items:
+            type: integer
+          writeOnly: true
+        optional_document_ids:
+          type: array
+          items:
+            type: integer
+          writeOnly: true
+      required:
+      - code
+      - id
+      - name
+    ProductDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        code:
+          type: string
+          maxLength: 20
+        description:
+          type: string
+        immigration_id:
+          type: string
+          format: uuid
+          nullable: true
+        base_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          nullable: true
+        product_type:
+          $ref: '#/components/schemas/ProductTypeEnum'
+        validity:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        required_documents:
+          type: string
+          maxLength: 1024
+        optional_documents:
+          type: string
+          maxLength: 1024
+        documents_min_validity:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        tasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskNested'
+          readOnly: true
+        required_document_types:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentType'
+          readOnly: true
+        optional_document_types:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentType'
+          readOnly: true
+      required:
+      - code
+      - id
+      - name
+      - optional_document_types
+      - required_document_types
+      - tasks
+    ProductTypeEnum:
+      enum:
+      - visa
+      - other
+      type: string
+      description: |-
+        * `visa` - Visa
+        * `other` - Other
+    Status519Enum:
+      enum:
+      - pending
+      - processing
+      - completed
+      - rejected
+      type: string
+      description: |-
+        * `pending` - Pending
+        * `processing` - Processing
+        * `completed` - Completed
+        * `rejected` - Rejected
+    Status7a5Enum:
+      enum:
+      - created
+      - pending_payment
+      - partial_payment
+      - paid
+      - overdue
+      - disputed
+      - cancelled
+      - partially_refunded
+      - refunded
+      - write_off
+      type: string
+      description: |-
+        * `created` - Created
+        * `pending_payment` - Pending Payment
+        * `partial_payment` - Partial Payment
+        * `paid` - Paid
+        * `overdue` - Overdue
+        * `disputed` - Disputed
+        * `cancelled` - Cancelled
+        * `partially_refunded` - Partially Refunded
+        * `refunded` - Refunded
+        * `write_off` - Write Off
+    StatusD6bEnum:
+      enum:
+      - pending
+      - partial_payment
+      - paid
+      - overdue
+      - disputed
+      - cancelled
+      - refunded
+      - write_off
+      type: string
+      description: |-
+        * `pending` - Pending
+        * `partial_payment` - Partial Payment
+        * `paid` - Paid
+        * `overdue` - Overdue
+        * `disputed` - Disputed
+        * `cancelled` - Cancelled
+        * `refunded` - Refunded
+        * `write_off` - Write Off
+    SuratPermohonanCustomerData:
+      type: object
+      properties:
+        name:
+          type: string
+        gender:
+          type: string
+        country:
+          type: string
+          nullable: true
+        birth_place:
+          type: string
+        birthdate:
+          type: string
+          nullable: true
+        passport_no:
+          type: string
+        passport_exp_date:
+          type: string
+          nullable: true
+        address_bali:
+          type: string
+      required:
+      - name
+    SuratPermohonanRequest:
+      type: object
+      properties:
+        customer_id:
+          type: integer
+        doc_date:
+          type: string
+        visa_type:
+          type: string
+        name:
+          type: string
+        gender:
+          type: string
+        country:
+          type: string
+        birth_place:
+          type: string
+        birthdate:
+          type: string
+        passport_no:
+          type: string
+        passport_exp_date:
+          type: string
+        address_bali:
+          type: string
+      required:
+      - customer_id
+    Task:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        step:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        duration:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        duration_is_business_days:
+          type: boolean
+        notify_days_before:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        last_step:
+          type: boolean
+      required:
+      - id
+      - name
+      - step
+    TaskNested:
+      type: object
+      properties:
+        id:
+          type: integer
+        step:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          nullable: true
+        cost:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        duration:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        duration_is_business_days:
+          type: boolean
+        notify_days_before:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+        last_step:
+          type: boolean
+      required:
+      - name
+      - step
+    TitleEnum:
+      enum:
+      - Mr
+      - Mrs
+      - Ms
+      - Miss
+      - Dr
+      - Prof
+      type: string
+      description: |-
+        * `` - ---------
+        * `Mr` - Mr
+        * `Mrs` - Mrs
+        * `Ms` - Ms
+        * `Miss` - Miss
+        * `Dr` - Dr
+        * `Prof` - Prof
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          readOnly: true
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+        email:
+          type: string
+          format: email
+          title: Email address
+          maxLength: 254
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        full_name:
+          type: string
+          readOnly: true
+        role:
+          type: string
+          readOnly: true
+        avatar:
+          type: string
+          readOnly: true
+        last_login:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        is_superuser:
+          type: boolean
+          readOnly: true
+          title: Superuser status
+          description: Designates that this user has all permissions without explicitly
+            assigning them.
+      required:
+      - avatar
+      - full_name
+      - id
+      - is_superuser
+      - last_login
+      - role
+      - username
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid

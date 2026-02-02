@@ -1,0 +1,23 @@
+<form (ngSubmit)="submitSearch()" class="flex flex-wrap items-center gap-3">
+  <div class="relative flex items-center">
+    <span class="absolute left-3 inset-y-0 flex items-center pointer-events-none">
+      <z-icon zType="search" class="text-muted-foreground" />
+    </span>
+    <input
+      z-input
+      class="w-72 pl-10"
+      [disabled]="disabled()"
+      [value]="searchValue()"
+      (input)="onInput($event)"
+      [placeholder]="placeholder()"
+      name="search"
+    />
+    @if (isLoading()) {
+      <span class="absolute right-3 inset-y-0 flex items-center">
+        <z-icon zType="loader-circle" class="animate-spin text-muted-foreground" />
+      </span>
+    }
+  </div>
+
+  <ng-content />
+</form>

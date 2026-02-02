@@ -1,0 +1,220 @@
+@if (isLoading()) {
+  <div class="text-center text-muted-foreground p-8">Loading document...</div>
+} @else if (error()) {
+  <div class="text-center text-destructive p-8">{{ error() }}</div>
+} @else if (document()) {
+  <div class="max-w-4xl mx-auto p-4 md:p-8">
+    <!-- Print controls - hidden when printing -->
+    <div class="print:hidden flex items-center justify-between mb-8">
+      <button z-button zType="ghost" (click)="goBack()">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-4 w-4 mr-2"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M10 19l-7-7m0 0l7-7m-7 7h18"
+          />
+        </svg>
+        Back to Application
+      </button>
+
+      <button z-button zType="default" (click)="print()">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-4 w-4 mr-2"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+          />
+        </svg>
+        Print Document
+      </button>
+    </div>
+
+    <z-card class="bg-card shadow-sm print:shadow-none print:border-none">
+      <div class="p-8">
+        <!-- Brand Header -->
+        <div class="brand-header flex items-center justify-between mb-10 border-b pb-6">
+          <img
+            [src]="logoSrc"
+            alt="BusinessSuite"
+            class="h-10 object-contain grayscale print:grayscale-0"
+            onerror="
+              this.onerror = null;
+              this.src = '/assets/logo.png';
+            "
+          />
+          <div class="text-right">
+            <h2 class="text-lg font-bold text-primary">BUSINESS SUITE</h2>
+            <p class="text-xs text-muted-foreground">Professional Visa Services</p>
+          </div>
+        </div>
+
+        <!-- Document Title -->
+        <div class="document-title text-center mb-10">
+          <h1 class="text-3xl font-bold tracking-tight">
+            {{ document()!.docType.name }}
+          </h1>
+          <div class="flex items-center justify-center gap-4 mt-3 text-sm text-muted-foreground">
+            <span
+              >Customer:
+              <strong class="text-foreground">{{
+                document()!.docApplication.customer.fullName
+              }}</strong></span
+            >
+            <span class="w-1 h-1 rounded-full bg-border"></span>
+            <span
+              >Application:
+              <strong class="text-foreground">#{{ document()!.docApplication.id }}</strong></span
+            >
+          </div>
+        </div>
+
+        <!-- Details Grid -->
+        <div class="details-grid space-y-6 mb-10">
+          <h3
+            class="text-sm font-semibold uppercase tracking-wider text-muted-foreground border-b pb-2"
+          >
+            Document Details
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8">
+            @if (document()!.docNumber) {
+              <div class="flex flex-col gap-1">
+                <span class="text-xs text-muted-foreground">Document Number</span>
+                <span class="font-medium">{{ document()!.docNumber }}</span>
+              </div>
+            }
+            @if (document()!.expirationDate) {
+              <div class="flex flex-col gap-1">
+                <span class="text-xs text-muted-foreground">Expiration Date</span>
+                <span class="font-medium">{{ document()!.expirationDate | appDate }}</span>
+              </div>
+            }
+            <div class="flex flex-col gap-1">
+              <span class="text-xs text-muted-foreground">Status</span>
+              <div>
+                @if (document()!.completed) {
+                  <span class="inline-flex items-center text-green-600 font-medium">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M5 13l4 4L19 7"
+                      ></path>
+                    </svg>
+                    Completed
+                  </span>
+                } @else {
+                  <span class="inline-flex items-center text-yellow-600 font-medium">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                      ></path>
+                    </svg>
+                    Pending
+                  </span>
+                }
+              </div>
+            </div>
+            @if (document()!.docType.hasOcrCheck) {
+              <div class="flex flex-col gap-1">
+                <span class="text-xs text-muted-foreground">OCR Verification</span>
+                <span class="font-medium">{{
+                  document()!.ocrCheck ? 'Verified' : 'Not Verified'
+                }}</span>
+              </div>
+            }
+          </div>
+
+          @if (document()!.details) {
+            <div class="flex flex-col gap-1 mt-6">
+              <span class="text-xs text-muted-foreground">Additional Details</span>
+              <p class="text-sm border rounded-md p-3 bg-muted/30">{{ document()!.details }}</p>
+            </div>
+          }
+        </div>
+
+        <!-- File Attachment Section -->
+        @if (document()!.fileLink) {
+          <div class="attachment-wrapper mt-8 pt-8 border-t">
+            <h3
+              class="attachment-header text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-6"
+            >
+              File Attachment
+            </h3>
+
+            @if (isPdf(document()!.fileLink!)) {
+              <div
+                class="attachment-container border-2 border-dashed rounded-xl p-6 bg-muted/10 print:bg-transparent"
+              >
+                <div class="flex flex-col">
+                  @if (isPreviewLoading()) {
+                    <div class="text-center py-8 text-muted-foreground">Loading PDF preview...</div>
+                  } @else if (previewError()) {
+                    <div class="text-center py-8">
+                      <div class="font-semibold text-lg text-destructive">
+                        Unable to preview PDF
+                      </div>
+                      <div class="text-sm text-muted-foreground mt-2">{{ previewError() }}</div>
+                      <div class="mt-6">
+                        <a [href]="document()!.fileLink" target="_blank" z-button zType="outline"
+                          >Open Original PDF</a
+                        >
+                      </div>
+                    </div>
+                  } @else if (sanitizedPreview()) {
+                    <div class="w-full h-[80vh] rounded overflow-hidden border">
+                      <iframe [src]="sanitizedPreview()" class="w-full h-full border-0"></iframe>
+                    </div>
+                    <div class="mt-4 print:hidden">
+                      <a [href]="document()!.fileLink" target="_blank" z-button zType="outline"
+                        >Open Original PDF</a
+                      >
+                    </div>
+                  } @else {
+                    <div class="text-center py-8 text-muted-foreground">Preview not available.</div>
+                  }
+                </div>
+              </div>
+            } @else {
+              <div
+                class="attachment-container bg-muted/10 rounded-xl p-2 print:bg-transparent print:p-0"
+              >
+                <img
+                  [src]="document()!.fileLink"
+                  alt="Document preview"
+                  class="max-w-full h-auto mx-auto rounded-lg shadow-sm print:shadow-none"
+                />
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Print Footer -->
+        <div
+          class="print-footer hidden print:flex justify-between items-center mt-12 pt-8 border-t text-[10px] text-muted-foreground"
+        >
+          <span>Printed on: {{ today | date: 'medium' }}</span>
+          <span>BusinessSuite Automation System</span>
+          <span>Page 1 of 1</span>
+        </div>
+      </div>
+    </z-card>
+  </div>
+}

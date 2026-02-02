@@ -30,5 +30,18 @@ class AuthLoginRequiredMiddleware(MiddlewareMixin):
 
         if not request.user.is_authenticated:
             path = request.path_info.lstrip("/")
+
+            # Avoid injecting a mock user for admin/api and other critical paths
+            # that must require real authentication. This prevents a logout from
+            # being effectively bypassed by mock authentication.
+            MOCK_AWAY_PREFIXES = ("admin", "nested_admin", "api", "admin-tools", "unicorn")
+            is_protected_for_mock = any(path == p or path.startswith(p + "/") for p in MOCK_AWAY_PREFIXES)
+
+            if getattr(settings, "MOCK_AUTH_ENABLED", False) and not is_protected_for_mock:
+                from business_suite.authentication import ensure_mock_user
+
+                request.user = ensure_mock_user()
+                return None
+
             if not any(m.match(path) for m in EXEMPT_URLS):
                 return redirect(settings.LOGIN_URL)

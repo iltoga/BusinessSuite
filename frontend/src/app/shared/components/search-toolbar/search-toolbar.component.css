@@ -1,0 +1,14 @@
+:host {
+  display: block;
+}
+
+/* Ensure search icon is properly positioned and visible */
+form .relative z-icon[zType='search'] {
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* Adjust input padding to accommodate icon */
+form input[z-input] {
+  padding-left: 2.5rem;
+}

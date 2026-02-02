@@ -1,0 +1,119 @@
+<div class="flex flex-col gap-6">
+  <div class="flex items-center justify-between">
+    <h1 class="text-3xl font-bold tracking-tight">
+      {{ isEditMode() ? 'Edit Invoice' : 'New Invoice' }}
+    </h1>
+    <a routerLink="/invoices">
+      <z-button zType="ghost" zSize="sm">Back to list</z-button>
+    </a>
+  </div>
+
+  <form [formGroup]="form" class="space-y-6">
+    <app-form-error-summary [form]="form" [labels]="formErrorLabels" />
+
+    <z-card class="p-6">
+      <div class="grid gap-4 md:grid-cols-2">
+        <div class="flex flex-col gap-2">
+          <app-customer-select
+            formControlName="customer"
+            [zStatus]="
+              form.get('customer')?.invalid && form.get('customer')?.touched ? 'error' : undefined
+            "
+          />
+        </div>
+        <div class="flex flex-col gap-2">
+          <label class="text-sm font-medium">Invoice No</label>
+          <input
+            z-input
+            type="number"
+            formControlName="invoiceNo"
+            [zStatus]="
+              form.get('invoiceNo')?.invalid && form.get('invoiceNo')?.touched ? 'error' : undefined
+            "
+          />
+        </div>
+        <div class="flex flex-col gap-2">
+          <label class="text-sm font-medium">Invoice Date</label>
+          <z-date-input formControlName="invoiceDate" />
+        </div>
+        <div class="flex flex-col gap-2">
+          <label class="text-sm font-medium">Due Date</label>
+          <z-date-input formControlName="dueDate" />
+        </div>
+        <div class="md:col-span-2 flex flex-col gap-2">
+          <label class="text-sm font-medium">Notes</label>
+          <textarea
+            z-input
+            rows="3"
+            formControlName="notes"
+            placeholder="Internal notes..."
+          ></textarea>
+        </div>
+        <div class="flex items-center gap-2">
+          <input type="checkbox" formControlName="sent" class="h-4 w-4 rounded border" />
+          <label class="text-sm">Sent to customer</label>
+        </div>
+      </div>
+    </z-card>
+
+    <z-card class="p-6">
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg font-semibold">Invoice Applications</h2>
+        <z-button
+          zType="secondary"
+          zSize="sm"
+          (click)="addLineItem()"
+          [zDisabled]="!form.get('customer')?.value"
+        >
+          Add Application
+        </z-button>
+      </div>
+
+      <div class="mt-4 space-y-4" formArrayName="invoiceApplications">
+        @for (group of invoiceApplications.controls; track group; let i = $index) {
+          <div [formGroupName]="i" class="grid gap-3 rounded-lg border p-4 md:grid-cols-3">
+            <div class="md:col-span-2">
+              <label class="text-sm font-medium">Application</label>
+              <select
+                class="mt-1 w-full rounded border border-input bg-background px-3 py-2 text-sm"
+                formControlName="customerApplication"
+              >
+                <option [ngValue]="null">Select application...</option>
+                @for (
+                  app of availableApplications(group.get('customerApplication')?.value);
+                  track app.id
+                ) {
+                  <option [ngValue]="app.id">
+                    {{ app.product.code }} - {{ app.product.name }} ({{ app.customer.fullName }})
+                  </option>
+                }
+              </select>
+            </div>
+            <div>
+              <label class="text-sm font-medium">Amount</label>
+              <input z-input type="number" formControlName="amount" class="mt-1 w-full" />
+            </div>
+            <div class="flex items-center justify-end md:col-span-3">
+              <z-button zType="destructive" zSize="sm" (click)="removeLineItem(i)">
+                Remove
+              </z-button>
+            </div>
+          </div>
+        }
+      </div>
+
+      <div class="mt-4 text-sm text-muted-foreground">
+        Total: {{ formatCurrency(totalAmount()) }}
+      </div>
+    </z-card>
+
+    <div class="flex items-center gap-3">
+      <z-button zType="default" (click)="save()" [zDisabled]="isSaving()">
+        {{ isEditMode() ? 'Update Invoice' : 'Create Invoice' }}
+      </z-button>
+      <a routerLink="/invoices">
+        <z-button zType="ghost">Cancel</z-button>
+      </a>
+    </div>
+  </form>
+</div>

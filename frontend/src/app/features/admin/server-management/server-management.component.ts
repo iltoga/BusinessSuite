@@ -1,0 +1,156 @@
+import { CommonModule } from '@angular/common';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  OnInit,
+  signal,
+} from '@angular/core';
+import { catchError, EMPTY, finalize } from 'rxjs';
+
+import { ServerManagementService } from '@/core/api';
+import { GlobalToastService } from '@/core/services/toast.service';
+import { ZardBadgeComponent } from '@/shared/components/badge';
+import { ZardButtonComponent } from '@/shared/components/button';
+import { ZardCardComponent } from '@/shared/components/card';
+
+interface MediaDiagnosticResult {
+  model: string;
+  id: number;
+  field: string;
+  path: string;
+  absPath: string;
+  exists: boolean;
+  url: string;
+  fileLink?: string;
+  discrepancy: boolean;
+}
+
+interface ServerSettings {
+  mediaRoot: string;
+  mediaUrl: string;
+  debug: boolean;
+}
+
+@Component({
+  selector: 'app-server-management',
+  standalone: true,
+  imports: [CommonModule, ZardCardComponent, ZardButtonComponent, ZardBadgeComponent],
+  templateUrl: './server-management.component.html',
+  styleUrls: ['./server-management.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class ServerManagementComponent implements OnInit {
+  private serverManagementApi = inject(ServerManagementService);
+  private toast = inject(GlobalToastService);
+
+  readonly isLoading = signal(false);
+  readonly diagnosticResults = signal<MediaDiagnosticResult[]>([]);
+  readonly repairResults = signal<string[]>([]);
+  readonly serverSettings = signal<ServerSettings | null>(null);
+
+  readonly missingFilesCount = computed(
+    () => this.diagnosticResults().filter((r) => !r.exists).length,
+  );
+
+  readonly discrepancyCount = computed(
+    () => this.diagnosticResults().filter((r) => r.discrepancy).length,
+  );
+
+  ngOnInit(): void {
+    // Load initial diagnostic if needed
+  }
+
+  clearCache(): void {
+    this.isLoading.set(true);
+    this.serverManagementApi
+      .serverManagementClearCacheCreate()
+      .pipe(
+        catchError(() => {
+          this.toast.error('Failed to clear cache');
+          return EMPTY;
+        }),
+        finalize(() => this.isLoading.set(false)),
+      )
+      .subscribe((response: any) => {
+        if (response.ok) {
+          this.toast.success('Cache cleared successfully');
+        } else {
+          this.toast.error(response.message || 'Failed to clear cache');
+        }
+      });
+  }
+
+  runMediaDiagnostic(): void {
+    this.isLoading.set(true);
+    this.diagnosticResults.set([]);
+    this.repairResults.set([]);
+
+    this.serverManagementApi
+      .serverManagementMediaDiagnosticRetrieve()
+      .pipe(
+        catchError(() => {
+          this.toast.error('Failed to run media diagnostic');
+          return EMPTY;
+        }),
+        finalize(() => this.isLoading.set(false)),
+      )
+      .subscribe((response: any) => {
+        if (response.ok) {
+          this.diagnosticResults.set(response.results || []);
+          this.serverSettings.set(response.settings);
+
+          const missing = this.missingFilesCount();
+          const discrepancies = this.discrepancyCount();
+
+          let message = `Diagnostic complete: ${this.diagnosticResults().length} files checked`;
+          if (missing > 0) {
+            message += `, ${missing} missing`;
+          }
+          if (discrepancies > 0) {
+            message += `, ${discrepancies} with URL issues`;
+          }
+
+          this.toast.success(message);
+        } else {
+          this.toast.error(response.message || 'Diagnostic failed');
+        }
+      });
+  }
+
+  repairMediaPaths(): void {
+    if (this.diagnosticResults().length === 0) {
+      this.toast.error('Run diagnostic first to identify issues');
+      return;
+    }
+
+    this.isLoading.set(true);
+    this.repairResults.set([]);
+
+    this.serverManagementApi
+      .serverManagementMediaRepairCreate()
+      .pipe(
+        catchError(() => {
+          this.toast.error('Failed to repair media paths');
+          return EMPTY;
+        }),
+        finalize(() => this.isLoading.set(false)),
+      )
+      .subscribe((response: any) => {
+        if (response.ok) {
+          this.repairResults.set(response.repairs || []);
+
+          if (response.repairs?.length > 0) {
+            this.toast.success(`Repaired ${response.repairs.length} media file paths`);
+            // Re-run diagnostic to show updated status
+            setTimeout(() => this.runMediaDiagnostic(), 1000);
+          } else {
+            this.toast.info('No repairs were needed or possible');
+          }
+        } else {
+          this.toast.error(response.message || 'Repair failed');
+        }
+      });
+  }
+}

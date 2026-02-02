@@ -145,6 +145,31 @@ services:
     restart: unless-stopped
     command: python manage.py run_huey
 
+  bs-frontend:
+    container_name: bs-frontend
+    depends_on:
+      - bs-core
+    image: bs-frontend:web
+    build:
+      context: ./
+      dockerfile: Dockerfile.frontend
+      args:
+        NODE_OPTIONS: --max-old-space-size=2048
+        NG_BUILD_MAX_WORKERS: 1
+    networks:
+      dockernet:
+        ipv4_address: 192.168.2.61
+    environment:
+      PORT: 4000
+      BACKEND_URL: http://bs-core:8000
+      CSP_ENABLED: ${CSP_ENABLED}
+      CSP_MODE: ${CSP_MODE}
+      # Allow the frontend container to learn which logo assets to use.
+      # These can be set in your environment/.env and default to the original filenames.
+      LOGO_FILENAME: ${LOGO_FILENAME}
+      LOGO_INVERTED_FILENAME: ${LOGO_INVERTED_FILENAME}
+    restart: unless-stopped
+
 networks:
   dockernet:
     external: true

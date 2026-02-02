@@ -1,0 +1,218 @@
+<div class="max-w-4xl mx-auto space-y-8">
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div class="space-y-1">
+      <div class="flex items-center gap-2 text-muted-foreground mb-2">
+        <a routerLink="/products" class="flex items-center hover:text-foreground transition-colors">
+          <z-icon zType="arrow-left" class="h-4 w-4" />
+          <span class="text-xs font-medium uppercase tracking-wider">Back to list</span>
+        </a>
+      </div>
+      <h1 class="text-3xl font-extrabold tracking-tight">
+        {{ isEditMode() ? 'Edit Product' : 'New Product' }}
+      </h1>
+      <p class="text-sm text-muted-foreground">
+        Configure product details, document requirements, and workflow tasks.
+      </p>
+    </div>
+  </div>
+
+  @if (isLoading()) {
+    <div class="text-muted-foreground">Loading...</div>
+  } @else {
+    <form [formGroup]="form" (ngSubmit)="save()" class="space-y-6">
+      <app-form-error-summary [form]="form" [labels]="formErrorLabels" />
+
+      <z-card class="overflow-hidden">
+        <div class="bg-accent/30 px-6 py-4 border-b">
+          <h2 class="text-sm font-semibold uppercase tracking-wider flex items-center gap-2">
+            <z-icon zType="archive" class="h-4 w-4 text-primary" />
+            Product Details
+          </h2>
+        </div>
+        <div class="p-6">
+          <div class="grid gap-6 md:grid-cols-12">
+            <div class="md:col-span-6 space-y-2">
+              <label class="text-sm font-medium">Name</label>
+              <input
+                z-input
+                formControlName="name"
+                type="text"
+                placeholder="Product name"
+                [zStatus]="
+                  form.get('name')?.invalid && form.get('name')?.touched ? 'error' : undefined
+                "
+              />
+            </div>
+            <div class="md:col-span-6 space-y-2">
+              <label class="text-sm font-medium">Code</label>
+              <input
+                z-input
+                formControlName="code"
+                type="text"
+                placeholder="Product code"
+                [zStatus]="
+                  form.get('code')?.invalid && form.get('code')?.touched ? 'error' : undefined
+                "
+              />
+            </div>
+            <div class="md:col-span-4 space-y-2">
+              <label class="text-sm font-medium">Product type</label>
+              <select
+                class="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                formControlName="productType"
+              >
+                <option value="visa">Visa</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div class="md:col-span-4 space-y-2">
+              <label class="text-sm font-medium">Base price</label>
+              <input z-input formControlName="basePrice" type="number" min="0" />
+            </div>
+            <div class="md:col-span-4 space-y-2">
+              <label class="text-sm font-medium">Validity (days)</label>
+              <input z-input formControlName="validity" type="number" min="0" />
+            </div>
+
+            <div class="md:col-span-6 space-y-2">
+              <label class="text-sm font-medium">Documents min validity (days)</label>
+              <input z-input formControlName="documentsMinValidity" type="number" min="0" />
+            </div>
+
+            <div class="md:col-span-12 space-y-2">
+              <label class="text-sm font-medium">Description</label>
+              <textarea
+                z-input
+                formControlName="description"
+                rows="3"
+                placeholder="Description"
+              ></textarea>
+            </div>
+          </div>
+        </div>
+      </z-card>
+
+      <z-card class="overflow-hidden">
+        <div class="bg-accent/30 px-6 py-4 border-b">
+          <h2 class="text-sm font-semibold uppercase tracking-wider flex items-center gap-2">
+            <z-icon zType="file-text" class="h-4 w-4 text-primary" />
+            Documents
+          </h2>
+        </div>
+        <div class="p-6">
+          <div class="flex flex-col gap-4">
+            <app-sortable-multi-select
+              [label]="'Required documents'"
+              [options]="requiredOptions()"
+              [selectedIds]="form.get('requiredDocumentIds')?.value ?? []"
+              (selectedIdsChange)="onRequiredDocsChange($event)"
+            />
+            <app-sortable-multi-select
+              [label]="'Optional documents'"
+              [options]="optionalOptions()"
+              [selectedIds]="form.get('optionalDocumentIds')?.value ?? []"
+              (selectedIdsChange)="onOptionalDocsChange($event)"
+            />
+          </div>
+        </div>
+      </z-card>
+
+      <z-card class="overflow-hidden">
+        <div class="bg-accent/30 px-6 py-4 border-b">
+          <h2 class="text-sm font-semibold uppercase tracking-wider flex items-center gap-2">
+            <z-icon zType="layers" class="h-4 w-4 text-primary" />
+            Tasks
+          </h2>
+        </div>
+        <div class="p-6">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="text-base font-semibold">Define workflow steps</h3>
+              <p class="text-sm text-muted-foreground">Define workflow steps (max 10).</p>
+            </div>
+            <z-button type="button" zType="secondary" zSize="sm" (click)="addTask()"
+              >Add Task</z-button
+            >
+          </div>
+
+          @if (hasMultipleLastSteps()) {
+            <div
+              class="mb-3 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            >
+              Only one task can be marked as the last step.
+            </div>
+          }
+
+          <div class="flex flex-col gap-4">
+            @for (task of tasksArray.controls; track $index) {
+              <div class="rounded-lg border p-4" [formGroup]="task">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                  <h4 class="font-medium">Task {{ $index + 1 }}</h4>
+                  <z-button type="button" zType="ghost" zSize="sm" (click)="removeTask($index)"
+                    >Remove</z-button
+                  >
+                </div>
+
+                <div class="grid gap-3 md:grid-cols-2">
+                  <div class="flex flex-col gap-2">
+                    <label class="text-sm font-medium">Step</label>
+                    <input z-input formControlName="step" type="number" min="1" />
+                  </div>
+                  <div class="flex flex-col gap-2">
+                    <label class="text-sm font-medium">Task name</label>
+                    <input z-input formControlName="name" type="text" />
+                  </div>
+                  <div class="md:col-span-2 flex flex-col gap-2">
+                    <label class="text-sm font-medium">Description</label>
+                    <textarea z-input formControlName="description" rows="2"></textarea>
+                  </div>
+                  <div class="flex flex-col gap-2">
+                    <label class="text-sm font-medium">Cost</label>
+                    <input z-input formControlName="cost" type="number" min="0" />
+                  </div>
+                  <div class="flex flex-col gap-2">
+                    <label class="text-sm font-medium">Duration (days)</label>
+                    <input z-input formControlName="duration" type="number" min="0" />
+                  </div>
+                  <div class="flex flex-col gap-2">
+                    <label class="text-sm font-medium">Notify days before</label>
+                    <input z-input formControlName="notifyDaysBefore" type="number" min="0" />
+                  </div>
+                  <div class="flex flex-col gap-2">
+                    <label class="text-sm font-medium">Business days?</label>
+                    <input
+                      type="checkbox"
+                      class="h-4 w-4 rounded border-muted-foreground/40 text-primary"
+                      formControlName="durationIsBusinessDays"
+                    />
+                  </div>
+                  <div class="flex flex-col gap-2">
+                    <label class="text-sm font-medium">Last step</label>
+                    <input
+                      type="checkbox"
+                      class="h-4 w-4 rounded border-muted-foreground/40 text-primary"
+                      formControlName="lastStep"
+                      (change)="toggleLastStep($index)"
+                    />
+                  </div>
+                </div>
+                @if (task.errors?.['notifyBeforeDuration']) {
+                  <div class="mt-3 text-xs text-destructive">
+                    Notify days before cannot exceed duration.
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      </z-card>
+
+      <div class="flex justify-end">
+        <z-button type="submit" zType="default" [zDisabled]="isSaving()">{{
+          isEditMode() ? 'Save Changes' : 'Create Product'
+        }}</z-button>
+      </div>
+    </form>
+  }
+</div>

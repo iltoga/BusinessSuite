@@ -1,0 +1,25 @@
+:host {
+  display: block;
+}
+
+/* Ensure native selects align with z-input styled inputs */
+select {
+  min-height: 2.5rem;
+  padding-top: 0.45rem;
+  padding-bottom: 0.45rem;
+}
+
+.passport-preview {
+  max-width: 600px;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border, #e2e8f0);
+}
+
+.passport-clipboard {
+  min-height: 80px;
+  border: 2px dashed var(--border, #cbd5f5);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  font-size: 0.875rem;
+  color: var(--muted-foreground, #64748b);
+}

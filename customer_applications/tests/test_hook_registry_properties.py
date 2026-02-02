@@ -11,12 +11,13 @@ lifecycle signals correctly dispatch to registered hooks.
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.utils import timezone
-from hypothesis import given, settings, strategies as st, assume
+from hypothesis import assume, given, settings
+from hypothesis import strategies as st
 from hypothesis.extra.django import TestCase as HypothesisTestCase
 
+from customer_applications.hooks import signals  # noqa: F401 - Register signal handlers
 from customer_applications.hooks.base import BaseDocumentTypeHook
 from customer_applications.hooks.registry import HookRegistry, hook_registry
-from customer_applications.hooks import signals  # noqa: F401 - Register signal handlers
 from customer_applications.models import DocApplication, Document
 from customers.models import Customer
 from products.models import Product
@@ -65,14 +66,16 @@ document_type_name_strategy = st.text(
     ),
     min_size=1,
     max_size=100,
-).filter(lambda s: s.strip())  # Ensure non-whitespace-only strings
+).filter(
+    lambda s: s.strip()
+)  # Ensure non-whitespace-only strings
 
 
 # Strategy for lifecycle operations
 lifecycle_operation_strategy = st.sampled_from(["save_new", "save_existing", "delete"])
 
 
-class TestHookRegistryRoundTrip(TestCase):
+class TestHookRegistryRoundTrip(HypothesisTestCase):
     """Property-based tests for Hook Registry Round-Trip.
 
     **Feature: document-type-hooks, Property 1: Hook Registry Round-Trip**
@@ -107,9 +110,7 @@ class TestHookRegistryRoundTrip(TestCase):
         retrieved_hook = self.registry.get_hook(document_type_name)
 
         # Assert - Round-trip: registered hook should be retrievable
-        self.assertIs(retrieved_hook, hook,
-            f"Expected to retrieve the same hook instance for '{document_type_name}'"
-        )
+        self.assertIs(retrieved_hook, hook, f"Expected to retrieve the same hook instance for '{document_type_name}'")
 
     @given(document_type_name=document_type_name_strategy)
     @settings(max_examples=100)
@@ -128,9 +129,7 @@ class TestHookRegistryRoundTrip(TestCase):
         retrieved_hook = self.registry.get_hook(document_type_name)
 
         # Assert - Unregistered names should return None
-        self.assertIsNone(retrieved_hook,
-            f"Expected None for unregistered document type '{document_type_name}'"
-        )
+        self.assertIsNone(retrieved_hook, f"Expected None for unregistered document type '{document_type_name}'")
 
     @given(
         name1=document_type_name_strategy,
@@ -176,6 +175,7 @@ class TestLifecycleSignalDispatch(HypothesisTestCase):
     def setUp(self):
         """Set up test fixtures."""
         import uuid
+
         User = get_user_model()
 
         # Store hook_registry reference for use in tests
@@ -191,7 +191,7 @@ class TestLifecycleSignalDispatch(HypothesisTestCase):
             defaults={
                 "email": f"test_lifecycle_{unique_id}@example.com",
                 "password": "testpass123",
-            }
+            },
         )
 
         # Create test customer (no created_by field on Customer model)
@@ -200,7 +200,7 @@ class TestLifecycleSignalDispatch(HypothesisTestCase):
             defaults={
                 "first_name": "Test",
                 "last_name": "Customer",
-            }
+            },
         )
 
         # Create test product (no created_by field on Product model)
@@ -209,7 +209,7 @@ class TestLifecycleSignalDispatch(HypothesisTestCase):
             defaults={
                 "name": "Test Product Lifecycle",
                 "product_type": "other",
-            }
+            },
         )
 
         # Create test document type with a unique name for this test
@@ -219,7 +219,7 @@ class TestLifecycleSignalDispatch(HypothesisTestCase):
             defaults={
                 "has_file": False,
                 "has_details": True,
-            }
+            },
         )
 
         # Create test doc application
@@ -390,9 +390,9 @@ class TestLifecycleSignalDispatch(HypothesisTestCase):
 
             # The document passed to the hook should be the same instance
             received_doc = pre_save_calls[0][1]
-            assert received_doc.doc_type.name == doc_type_name, (
-                f"Hook should receive document with doc_type '{doc_type_name}'"
-            )
+            assert (
+                received_doc.doc_type.name == doc_type_name
+            ), f"Hook should receive document with doc_type '{doc_type_name}'"
 
             # Clean up
             document.delete()

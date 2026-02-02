@@ -1,5 +1,3 @@
-import os
-
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import FileResponse, HttpResponse, HttpResponseBadRequest, JsonResponse
@@ -91,13 +89,4 @@ class DownloadSuratPermohonanView(LoginRequiredMixin, View):
                 return JsonResponse({"error": msg}, status=500)
             return HttpResponse(msg, status=500)
         finally:
-            _cleanup_tmp_files(service.generated_temp_files)
-
-
-def _cleanup_tmp_files(paths):
-    for tmp_path in paths:
-        try:
-            if os.path.exists(tmp_path):
-                os.remove(tmp_path)
-        except OSError:
-            continue
+            service.cleanup_temp_files()

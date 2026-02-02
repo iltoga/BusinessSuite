@@ -45,8 +45,8 @@ class AdminToolsBackupRestoreTest(TransactionTestCase):
         backup_path = next(m.split(":", 1)[1] for m in messages if m.startswith("RESULT_PATH:"))
         self.assertTrue(os.path.exists(backup_path))
 
-        # Inspect tar contents
-        with tarfile.open(backup_path, "r:gz") as tar:
+        # Inspect tar contents (support gz or zst archives)
+        with tarfile.open(backup_path, "r:*") as tar:
             members = [m.name for m in tar.getmembers()]
             self.assertIn("data.json", members)
             self.assertIn("manifest.json", members)

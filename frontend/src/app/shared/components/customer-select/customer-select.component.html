@@ -1,0 +1,19 @@
+<div class="space-y-2">
+  @if (label()) {
+    <label class="text-sm font-medium">{{ label() }}</label>
+  }
+  <z-combobox
+    [value]="internalValue()"
+    [options]="options()"
+    [placeholder]="placeholder()"
+    [searchPlaceholder]="searchPlaceholder()"
+    [emptyText]="emptyMessage()"
+    [searchable]="true"
+    [disabled]="isDisabled()"
+    [zWidth]="'full'"
+    [zStatus]="zStatus()"
+    (zValueChange)="onValueChange($event)"
+    (searchChange)="onSearchChange($event)"
+    (blur)="onBlur()"
+  />
+</div>

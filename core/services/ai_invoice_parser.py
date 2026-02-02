@@ -216,6 +216,11 @@ class AIInvoiceParser:
         return self.ai_client.use_openrouter
 
     @property
+    def api_key(self) -> str | None:
+        """Expose API key for backward compatibility tests."""
+        return getattr(self.ai_client, "api_key", None)
+
+    @property
     def client(self):
         """Get the underlying OpenAI client for backward compatibility."""
         return self.ai_client.client

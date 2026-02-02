@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 import logging
 import os
+from datetime import timedelta
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -21,6 +22,31 @@ from core.utils.dropbox_refresh_token import refresh_dropbox_token
 
 # Load environment variables from .env file
 load_dotenv()
+
+
+# MOCK AUTH SETTINGS
+def _parse_bool(value, default=False):
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in {"true", "1", "yes", "y", "on"}
+
+
+def _parse_list(value, default=None):
+    if value is None:
+        return default if default is not None else []
+    items = [item.strip() for item in str(value).split(",")]
+    return [item for item in items if item]
+
+
+MOCK_AUTH_ENABLED = _parse_bool(os.getenv("MOCK_AUTH_ENABLED", "False"))
+MOCK_AUTH_USERNAME = os.getenv("MOCK_AUTH_USERNAME", "mockuser")
+MOCK_AUTH_EMAIL = os.getenv("MOCK_AUTH_EMAIL", "mock@example.com")
+MOCK_AUTH_IS_SUPERUSER = _parse_bool(os.getenv("MOCK_AUTH_IS_SUPERUSER", "True"))
+MOCK_AUTH_IS_STAFF = _parse_bool(os.getenv("MOCK_AUTH_IS_STAFF", "True"))
+MOCK_AUTH_GROUPS = _parse_list(os.getenv("MOCK_AUTH_GROUPS", "admin"))
+MOCK_AUTH_ROLES = _parse_list(os.getenv("MOCK_AUTH_ROLES", "admin"))
 
 GLOBAL_SETTINGS = {
     "SITE_NAME": os.getenv("SITE_NAME", "Business Suite"),
@@ -32,6 +58,16 @@ GLOBAL_SETTINGS = {
     "LOGO_FILENAME": os.getenv("LOGO_FILENAME", "logo_transparent.png"),
     "LOGO_INVERTED_FILENAME": os.getenv("LOGO_INVERTED_FILENAME", "logo_inverted_transparent.png"),
 }
+
+# When True, legacy Django views (non-admin, non-api) are disabled and return 403.
+# Can be toggled via env var DISABLE_DJANGO_VIEWS or managed via a waffle flag named "disable_django_views"
+DISABLE_DJANGO_VIEWS = _parse_bool(os.getenv("DISABLE_DJANGO_VIEWS", "False"))
+
+# If Django views are disabled, it's safer to redirect logins to the admin
+# interface (which is exempt). This prevents users from being redirected to
+# the site root ("/") which may be blocked by the DisableDjangoViewsMiddleware.
+if DISABLE_DJANGO_VIEWS:
+    LOGIN_REDIRECT_URL = "/admin/"
 
 # Invoice Import Settings
 INVOICE_IMPORT_MAX_WORKERS = int(os.getenv("INVOICE_IMPORT_MAX_WORKERS", "3"))  # Max parallel imports
@@ -79,6 +115,7 @@ INSTALLED_APPS = [
     "reports",
     "corsheaders",
     "rest_framework",
+    "drf_spectacular",
     "rest_framework.authtoken",
     "widget_tweaks",
     "nested_admin",
@@ -87,6 +124,8 @@ INSTALLED_APPS = [
     "django.contrib.humanize",
     "django_unicorn",
     "debug_toolbar",
+    # 'waffle' (django-waffle) is intentionally enabled only when the package is installed.
+    # This avoids failing imports in environments where the optional package is not present.
     "dbbackup",
     "storages",
     "admin_tools",
@@ -98,20 +137,40 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "debug_toolbar.middleware.DebugToolbarMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    # CORS middleware should be as high as possible so CORS headers are applied
+    # to all responses (see django-cors-headers docs).
+    "corsheaders.middleware.CorsMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",  # to serve static files
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     # 'business_suite.middleware.DisableCsrfCheck',  # Your custom middleware
+    "business_suite.middlewares.disable_django_views.DisableDjangoViewsMiddleware",
     "business_suite.middlewares.AuthLoginRequiredMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "corsheaders.middleware.CorsMiddleware",
     # it merge all changes of object per request
     "django_user_agents.middleware.UserAgentMiddleware",
     "core.middleware.performance_logger.PerformanceLoggingMiddleware",
 ]
+
+# Optionally enable django-waffle (feature flags) if the package is installed in the environment.
+try:
+    import waffle  # type: ignore
+except Exception:  # pragma: no cover - optional dependency
+    # waffle not installed; don't modify INSTALLED_APPS or MIDDLEWARE
+    pass
+else:
+    # Register waffle app and middleware so flags can be used when the package is available
+    INSTALLED_APPS.append("waffle")
+    # Insert waffle middleware before the custom disable middleware so requests are prepared
+    try:
+        idx = MIDDLEWARE.index("business_suite.middlewares.disable_django_views.DisableDjangoViewsMiddleware")
+    except ValueError:
+        MIDDLEWARE.append("waffle.middleware.WaffleMiddleware")
+    else:
+        MIDDLEWARE.insert(idx, "waffle.middleware.WaffleMiddleware")
 
 
 ROOT_URLCONF = "business_suite.urls"
@@ -233,30 +292,43 @@ SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_DOMAIN = APP_DOMAIN
 SESSION_COOKIE_DOMAIN = APP_DOMAIN
 CSRF_TRUSTED_ORIGINS = [
-    f"https://{APP_DOMAIN}",
+    f"https://www.admin.{APP_DOMAIN}",
+    f"https://admin.{APP_DOMAIN}",
     f"https://www.{APP_DOMAIN}",
     f"https://{APP_DOMAIN}",
     "https://localhost",
     "http://localhost",
+    "http://localhost:4200",
 ]
 SESSION_COOKIE_SAMESITE = "Lax"  # Changed from "None" - use Lax for same-site Django apps
 CSRF_COOKIE_SAMESITE = "Lax"  # Changed from "None"
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
+        "business_suite.authentication.JwtOrMockAuthentication",
         "rest_framework.authentication.SessionAuthentication",
-        "business_suite.authentication.BearerAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         # 'rest_framework.permissions.IsAuthenticated', #the one below is more granular
         "rest_framework.permissions.DjangoModelPermissions",
     ],
+    "DEFAULT_RENDERER_CLASSES": [
+        "djangorestframework_camel_case.render.CamelCaseJSONRenderer",
+        "djangorestframework_camel_case.render.CamelCaseBrowsableAPIRenderer",
+        "rest_framework.renderers.JSONRenderer",
+        "rest_framework.renderers.BrowsableAPIRenderer",
+    ],
     "DEFAULT_PARSER_CLASSES": [
+        "djangorestframework_camel_case.parser.CamelCaseJSONParser",
+        "djangorestframework_camel_case.parser.CamelCaseFormParser",
+        "djangorestframework_camel_case.parser.CamelCaseMultiPartParser",
         "rest_framework.parsers.JSONParser",
         "rest_framework.parsers.FormParser",
         "rest_framework.parsers.MultiPartParser",
         "rest_framework.parsers.FileUploadParser",
     ],
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "EXCEPTION_HANDLER": "api.utils.exception_handler.custom_exception_handler",
     "DEFAULT_THROTTLE_CLASSES": [
         "rest_framework.throttling.AnonRateThrottle",
         "rest_framework.throttling.UserRateThrottle",
@@ -274,8 +346,72 @@ REST_FRAMEWORK = {
     },
 }
 
-# in case we want to try using nodejs for the frontend
-CORS_ORIGIN_WHITELIST = ["http://localhost:3000"]
+SPECTACULAR_SETTINGS = {
+    "TITLE": "BusinessSuite API",
+    "DESCRIPTION": "API for BusinessSuite ERP/CRM",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "CAMELIZE_NAMES": True,
+    "COMPONENT_SPLIT_PATCH": False,
+}
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=1),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": False,
+    "BLACKLIST_AFTER_ROTATION": False,
+    "UPDATE_LAST_LOGIN": True,
+    "ALGORITHM": "HS256",
+    "SIGNING_KEY": SECRET_KEY,
+    "VERIFYING_KEY": None,
+    "AUDIENCE": None,
+    "ISSUER": None,
+    "JWK_URL": None,
+    "LEEWAY": 0,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
+    "USER_ID_FIELD": "id",
+    "USER_ID_CLAIM": "user_id",
+    "USER_AUTHENTICATION_RULE": "rest_framework_simplejwt.authentication.default_user_authentication_rule",
+    "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
+    "TOKEN_TYPE_CLAIM": "token_type",
+    "TOKEN_USER_CLASS": "rest_framework_simplejwt.models.TokenUser",
+    "JTI_CLAIM": "jti",
+}
+
+# CORS configuration - read from environment in production
+# Preferred env var: CORS_ALLOWED_ORIGINS (comma separated list of origins)
+# Fallback defaults include localhost dev ports and the configured APP_DOMAIN
+_default_cors_origins = [
+    "http://localhost:3000",
+    "http://localhost:4200",
+]
+if APP_DOMAIN:
+    _default_cors_origins += [f"https://{APP_DOMAIN}", f"https://admin.{APP_DOMAIN}", f"https://www.{APP_DOMAIN}"]
+
+CORS_ALLOWED_ORIGINS = _parse_list(os.getenv("CORS_ALLOWED_ORIGINS", ",".join(_default_cors_origins)))
+# Allow credentials (cookies) only when explicitly enabled in env var (default False for safety)
+CORS_ALLOW_CREDENTIALS = _parse_bool(os.getenv("CORS_ALLOW_CREDENTIALS", "False"))
+# Ensure common headers (including Authorization) are allowed for preflight requests.
+# Use defaults from django-cors-headers and extend if needed.
+try:
+    from corsheaders.defaults import default_headers
+except Exception:  # pragma: no cover - optional package
+    CORS_ALLOW_HEADERS = None
+else:
+    CORS_ALLOW_HEADERS = list(default_headers) + ["authorization"]
+
+CORS_ALLOW_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+# Expose Content-Disposition so the frontend can read filename from responses
+try:
+    from corsheaders.defaults import default_headers as _default_cors_headers
+except Exception:  # pragma: no cover - optional package
+    CORS_EXPOSE_HEADERS = ["Content-Disposition"]
+else:
+    # combine and ensure uniqueness
+    CORS_EXPOSE_HEADERS = list(
+        {*(getattr(globals().get("CORS_EXPOSE_HEADERS", []), "copy", lambda: [])()), *["Content-Disposition"]}
+    )
 
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
@@ -308,6 +444,10 @@ CACHES = {
         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
     },
 }
+
+# Content Security Policy support: generate per-request nonces and expose mode
+CSP_ENABLED = _parse_bool(os.getenv("CSP_ENABLED", "False"))
+CSP_MODE = os.getenv("CSP_MODE", "report-only")  # report-only|enforce
 
 HUEY = {
     "huey_class": "huey.contrib.sql_huey.SqlHuey",
@@ -355,17 +495,42 @@ DOCUMENTS_FOLDER = "documents"
 APPLICATION_DEFAULT_FILES_FOLDER = "application_default_files"
 TMPFILES_FOLDER = "tmpfiles"
 
-# Settings for django-dbbackup
-DBBACKUP_STORAGE = "storages.backends.dropbox.DropBoxStorage"
 
-DBBACKUP_STORAGE_OPTIONS = {
-    "oauth2_access_token": refresh_dropbox_token(
-        os.getenv("DROPBOX_APP_KEY"),
-        os.getenv("DROPBOX_APP_SECRET"),
-        os.getenv("DROPBOX_OAUTH2_REFRESH_TOKEN"),
-    ),
-    "app_key": os.getenv("DROPBOX_APP_KEY"),
-    "app_secret": os.getenv("DROPBOX_APP_SECRET"),
+def get_dropbox_token():
+    # Skip token refresh in development to avoid network issues
+    if os.getenv("DJANGO_DEBUG", "False") == "True":
+        return None
+    try:
+        return refresh_dropbox_token(
+            os.getenv("DROPBOX_APP_KEY"),
+            os.getenv("DROPBOX_APP_SECRET"),
+            os.getenv("DROPBOX_OAUTH2_REFRESH_TOKEN"),
+        )
+    except Exception as e:
+        # Log the error and return None to allow Django to start
+        import logging
+
+        logger = logging.getLogger(__name__)
+        logger.error(f"Failed to refresh Dropbox token: {e}")
+        return None
+
+
+# Storage configuration
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+    "dbbackup": {
+        "BACKEND": "storages.backends.dropbox.DropBoxStorage",
+        "OPTIONS": {
+            "oauth2_access_token": get_dropbox_token(),
+            "app_key": os.getenv("DROPBOX_APP_KEY"),
+            "app_secret": os.getenv("DROPBOX_APP_SECRET"),
+        },
+    },
 }
 
 # Folders to exclude from media backup
@@ -379,7 +544,7 @@ LOGGING = {
     "disable_existing_loggers": False,
     "formatters": {
         "verbose": {
-            "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
+            "format": "{levelname} {asctime} {module} {process} {thread} {message}",
             "style": "{",
         },
         "simple": {

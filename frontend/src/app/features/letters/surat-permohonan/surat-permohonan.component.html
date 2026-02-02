@@ -1,0 +1,163 @@
+<div class="max-w-4xl mx-auto space-y-8">
+  <!-- Header Section -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div class="space-y-1">
+      <div class="flex items-center gap-2 text-muted-foreground mb-2">
+        <a routerLink="/letters" class="flex items-center hover:text-foreground transition-colors">
+          <z-icon zType="arrow-left" class="h-4 w-4" />
+          <span class="text-xs font-medium uppercase tracking-wider">Back to list</span>
+        </a>
+      </div>
+      <h1 class="text-3xl font-extrabold tracking-tight">Generate Surat Permohonan</h1>
+      <p class="text-sm text-muted-foreground">
+        Select a customer and preview/update details before generating the official document.
+      </p>
+    </div>
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="generateLetter()" class="space-y-6">
+    <app-form-error-summary [form]="form" [labels]="formErrorLabels" />
+
+    <!-- Step 1: Selection -->
+    <z-card class="overflow-hidden">
+      <div class="bg-accent/30 px-6 py-4 border-b">
+        <h2 class="text-sm font-semibold uppercase tracking-wider flex items-center gap-2">
+          <z-icon zType="users" class="h-4 w-4 text-primary" />
+          1. Select Customer & Configuration
+        </h2>
+      </div>
+      <div class="p-6">
+        <div class="grid gap-6 md:grid-cols-12">
+          <div class="md:col-span-12 lg:col-span-6 space-y-2">
+            <label class="text-sm font-semibold flex items-center gap-1.5">
+              Customer <span class="text-destructive">*</span>
+            </label>
+            <app-customer-select
+              formControlName="customerId"
+              [placeholder]="'Select a customer to auto-fill details...'"
+              [searchPlaceholder]="'Search by name or passport...'"
+            />
+          </div>
+
+          <div class="md:col-span-6 lg:col-span-3 space-y-2">
+            <label class="text-sm font-semibold">Document Date</label>
+            <z-date-input formControlName="docDate"></z-date-input>
+          </div>
+
+          <div class="md:col-span-6 lg:col-span-3 space-y-2">
+            <label class="text-sm font-semibold">Visa Type</label>
+            <select z-input formControlName="visaType" class="w-full">
+              @for (option of visaTypeOptions; track option.value) {
+                <option [value]="option.value">{{ option.label }}</option>
+              }
+            </select>
+          </div>
+        </div>
+      </div>
+    </z-card>
+
+    <!-- Step 2: Information Review -->
+    <z-card class="overflow-hidden">
+      <div class="bg-accent/30 px-6 py-4 border-b">
+        <h2 class="text-sm font-semibold uppercase tracking-wider flex items-center gap-2">
+          <z-icon zType="file-text" class="h-4 w-4 text-primary" />
+          2. Review & Edit Applicant Details
+        </h2>
+      </div>
+      <div class="p-6 space-y-8">
+        <!-- Personal Section -->
+        <div class="space-y-4">
+          <div class="border-l-2 border-primary/20 pl-4">
+            <h3 class="text-xs font-bold uppercase text-muted-foreground tracking-widest">
+              Personal Information
+            </h3>
+          </div>
+          <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div class="lg:col-span-2 space-y-2">
+              <label class="text-sm font-medium">Full Name</label>
+              <input z-input formControlName="name" type="text" placeholder="As per passport" />
+            </div>
+            <div class="space-y-2">
+              <label class="text-sm font-medium">Gender</label>
+              <input z-input formControlName="gender" type="text" placeholder="M/F" />
+            </div>
+            <div class="space-y-2">
+              <label class="text-sm font-medium">Nationality</label>
+              <z-combobox
+                formControlName="country"
+                [options]="countryOptions()"
+                [searchable]="true"
+                placeholder="Select nationality"
+                searchPlaceholder="Search country..."
+                [zWidth]="'full'"
+              />
+            </div>
+            <div class="space-y-2">
+              <label class="text-sm font-medium">Birth Place</label>
+              <input z-input formControlName="birthPlace" type="text" placeholder="City, Country" />
+            </div>
+            <div class="space-y-2">
+              <label class="text-sm font-medium">Birth Date</label>
+              <z-date-input formControlName="birthdate"></z-date-input>
+            </div>
+          </div>
+        </div>
+
+        <!-- Identity Section -->
+        <div class="space-y-4 pt-4 border-t border-dashed">
+          <div class="border-l-2 border-primary/20 pl-4">
+            <h3 class="text-xs font-bold uppercase text-muted-foreground tracking-widest">
+              Passport & Residence
+            </h3>
+          </div>
+          <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div class="space-y-2">
+              <label class="text-sm font-medium">Passport Number</label>
+              <input
+                z-input
+                formControlName="passportNo"
+                type="text"
+                placeholder="Passport ID"
+                class="uppercase"
+              />
+            </div>
+            <div class="space-y-2">
+              <label class="text-sm font-medium">Passport Expiration</label>
+              <z-date-input formControlName="passportExpDate"></z-date-input>
+            </div>
+            <div class="md:col-span-2 lg:col-span-3 space-y-2">
+              <label class="text-sm font-medium">Address in Bali</label>
+              <textarea
+                z-input
+                formControlName="addressBali"
+                rows="3"
+                placeholder="Full address in Bali (hotel, villa, etc.)"
+                class="resize-none"
+              ></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="bg-muted/30 px-6 py-4 border-t flex items-center justify-between gap-4">
+        <p class="text-xs text-muted-foreground max-w-md">
+          <span class="font-semibold italic">Note:</span> Changes made here only affect the
+          generated document and will not be saved to the customer's permanent profile.
+        </p>
+        <z-button
+          type="submit"
+          zSize="lg"
+          class="min-w-48 shadow-lg shadow-primary/20"
+          [zDisabled]="isGenerating()"
+        >
+          @if (isGenerating()) {
+            <z-icon zType="loader-circle" class="h-4 w-4 animate-spin mr-2" />
+            Generating...
+          } @else {
+            <z-icon zType="file-text" class="h-4 w-4 mr-2" />
+            Generate & Download
+          }
+        </z-button>
+      </div>
+    </z-card>
+  </form>
+</div>

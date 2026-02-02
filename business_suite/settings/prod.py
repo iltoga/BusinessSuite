@@ -12,7 +12,15 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 from .base import *
 
-ALLOWED_HOSTS = [APP_DOMAIN, f"www.{APP_DOMAIN}", f"{APP_DOMAIN}", "bs-cron", "bs-core"]
+ALLOWED_HOSTS = [
+    f"www.{APP_DOMAIN}",
+    f"{APP_DOMAIN}",
+    f"www.admin.{APP_DOMAIN}",
+    f"admin.{APP_DOMAIN}",
+    "bs-cron",
+    "bs-core",
+    "176.126.78.153",  # Server IP address
+]
 
 MEDIA_ROOT = "/media/"
 MEDIA_URL = "/media/"
@@ -26,7 +34,7 @@ LOGGING = {
     "disable_existing_loggers": False,
     "formatters": {
         "verbose": {
-            "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
+            "format": "{levelname} {asctime} {module} {process} {thread} {message}",
             "style": "{",
         },
         "simple": {
@@ -122,6 +130,15 @@ SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
 # When the cookie expires the user will be required to log in again (after 20 minutes of inactivity)
 SESSION_COOKIE_AGE = 60 * 20  # 20 minutes
 SESSION_SAVE_EVERY_REQUEST = False  # Only save session if modified (better performance)
+
+# When Django is behind a reverse proxy (nginx) that terminates SSL, use the
+# `X-Forwarded-Proto` header to detect the original request scheme so
+# `request.build_absolute_uri()` returns the correct https:// URLs.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+# Honor X-Forwarded-Host when constructing absolute URIs
+USE_X_FORWARDED_HOST = True
+# Redirect plain HTTP requests to HTTPS (recommended in production)
+SECURE_SSL_REDIRECT = True
 
 # OpenRouter / OpenAI API Configuration
 # Timeout settings for LLM API calls (vision models can take 60-120 seconds)

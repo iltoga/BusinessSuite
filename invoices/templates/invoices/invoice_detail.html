@@ -1,177 +1,312 @@
-{% extends "base_template.html" %}
-{% load static %}
-{% load filters %}
-{% load check_perms %}
-
-{% block title %}BusinessSuite - Invoice Detail{% endblock %}
-
-{% block content %}
-  <div class="my-4">
-    <div class="card">
-      <div class="card-header bg-primary text-white">
-        <h3>Invoice No. {{ object }}</h3>
+{% extends "base_template.html" %} {% load static %} {% load filters %} {% load
+check_perms %} {% block title %}BusinessSuite - Invoice Detail{% endblock %} {%
+block content %}
+<div class="my-4">
+  <div class="card">
+    <div class="card-header bg-primary text-white">
+      <h3>Invoice No. {{ object }}</h3>
+      {% if object.imported %}
+      <span class="badge bg-info ms-2">Imported</span>
+      {% endif %}
+    </div>
+    <table class="table">
+      <tbody>
+        <tr>
+          <th scope="row" class="text-start">Customer</th>
+          <td class="text-start">{{ object.customer }}</td>
+        </tr>
+        <tr>
+          <th scope="row" class="text-start">Invoice Number</th>
+          <td class="text-start">{{ object.invoice_no_display }}</td>
+        </tr>
+        <tr>
+          <th scope="row" class="text-start">Invoice Date</th>
+          <td class="text-start">{{ object.invoice_date }}</td>
+        </tr>
+        <tr>
+          <th scope="row" class="text-start">Due Date</th>
+          <td class="text-start">{{ object.due_date }}</td>
+        </tr>
+        <tr>
+          <th scope="row" class="text-start">Status</th>
+          <td class="text-start">
+            {% include "components/model_invoice_status_badge.html" with
+            status=object.status status_display=object.get_status_display %}
+          </td>
+        </tr>
+        <tr>
+          <th scope="row" class="text-start">Notes</th>
+          <td class="text-start">{{ object.notes }}</td>
+        </tr>
+        <tr>
+          <th scope="row" class="text-start">Total Amount</th>
+          <td class="text-start">{{ object.total_amount|as_currency }}</td>
+        </tr>
+        <tr>
+          <th scope="row" class="text-start">Total Paid</th>
+          <td class="text-start">{{ object.total_paid_amount|as_currency }}</td>
+        </tr>
+        <tr>
+          <th scope="row" class="text-start">Total Due</th>
+          <td class="text-start">{{ object.total_due_amount|as_currency }}</td>
+        </tr>
         {% if object.imported %}
-        <span class="badge bg-info ms-2">Imported</span>
-        {% endif %}
-      </div>
-      <table class="table">
-        <tbody>
-          <tr><th scope="row" class="text-start">Customer</th><td class="text-start">{{ object.customer }}</td></tr>
-          <tr><th scope="row" class="text-start">Invoice Number</th><td class="text-start">{{ object.invoice_no_display }}</td></tr>
-          <tr><th scope="row" class="text-start">Invoice Date</th><td class="text-start">{{ object.invoice_date }}</td></tr>
-          <tr><th scope="row" class="text-start">Due Date</th><td class="text-start">{{ object.due_date }}</td></tr>
-          <tr><th scope="row" class="text-start">Status</th><td class="text-start">{% include "components/model_invoice_status_badge.html" with status=object.status status_display=object.get_status_display %}</td></tr>
-          <tr><th scope="row" class="text-start">Notes</th><td class="text-start">{{ object.notes }}</td></tr>
-          <tr><th scope="row" class="text-start">Total Amount</th><td class="text-start">{{ object.total_amount|as_currency }}</td></tr>
-          <tr><th scope="row" class="text-start">Total Paid</th><td class="text-start">{{ object.total_paid_amount|as_currency }}</td></tr>
-          <tr><th scope="row" class="text-start">Total Due</th><td class="text-start">{{ object.total_due_amount|as_currency }}</td></tr>
-          {% if object.imported %}
-          <tr><th scope="row" class="text-start">Imported From</th><td class="text-start">{{ object.imported_from_file }}</td></tr>
-          {% if object.mobile_phone %}
-          <tr><th scope="row" class="text-start">Mobile Phone (from invoice)</th><td class="text-start">{{ object.mobile_phone }}</td></tr>
-          {% endif %}
-          {% endif %}
-        </tbody>
-      </table>
+        <tr>
+          <th scope="row" class="text-start">Imported From</th>
+          <td class="text-start">{{ object.imported_from_file }}</td>
+        </tr>
+        {% if object.mobile_phone %}
+        <tr>
+          <th scope="row" class="text-start">Mobile Phone (from invoice)</th>
+          <td class="text-start">{{ object.mobile_phone }}</td>
+        </tr>
+        {% endif %} {% endif %}
+      </tbody>
+    </table>
 
-      {% if object.invoice_applications.exists %}
-      <div class="card-header bg-secondary text-white">
-        <h3>{% if object.imported %}Imported Invoice Items{% else %}Customer Applications{% endif %}</h3>
-      </div>
-      <table class="table">
-        <thead>
-          <tr>
-            <th scope="col" class="text-start">Application</th>
-            <th scope="col" class="text-start">Product</th>
-            <th scope="col" class="text-start">Amount</th>
-            <th scope="col" class="text-start">Paid</th>
-            <th scope="col" class="text-start">Due</th>
-            <th scope="col" class="text-start">Payment Status</th>
-            <th scope="col" class="text-start">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for app in object.invoice_applications.all %}
-            <tr>
-              <td class="text-start">
-                <a href="{% url 'customer-application-detail' app.customer_application.pk %}">{{ app.customer_application }}</a>
-                {% if app.customer_application.notes %}
-                  <br><small class="text-muted">{{ app.customer_application.notes }}</small>
-                {% endif %}
-              </td>
-              <td class="text-start">{{ app.customer_application.product }}</td>
-              <td class="text-start">{{ app.amount|as_currency }}</td>
-              <td class="text-start">{{ app.paid_amount|as_currency }}</td>
-              <td class="text-start">{{ app.due_amount|as_currency }}</td>
-              <td class="text-start">
-                {% include "components/model_payment_status_badge.html" with status=app.status status_display=app.get_status_display %}
-              </td>
-              <td>
-                <div class="btn-group-sm" role="group">
-                  {% if user|has_perm:'payments,payment,add' and not app.is_payment_complete %}
-                    <a href="{% url 'payment-by-invoice-application-create' app.pk %}" class="btn btn-success me-1">Add Payment</a>
-                  {% endif %}
-                </div>
-              </td>
-            </tr>
-            <!-- payments breakdown (accordion) -->
-            <tr>
-              <td colspan="7">
-                <div class="accordion" id="accordionPayments{{ app.pk }}">
-                  <div class="accordion-item">
-                    <h2 class="accordion-header" id="headingPayments{{ app.pk }}">
-                      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePayments{{ app.pk }}" aria-expanded="false" aria-controls="collapsePayments{{ app.pk }}">
-                        View Payments
-                      </button>
-                    </h2>
-                    <div id="collapsePayments{{ app.pk }}" class="accordion-collapse collapse" aria-labelledby="headingPayments{{ app.pk }}" data-bs-parent="#accordionPayments{{ app.pk }}">
-                      <div class="accordion-body">
-                        <!-- payment details table -->
-                        <table class="table table-bordered">
-                          <thead>
-                            <tr>
-                              <th scope="col" class="text-start">Payment Date</th>
-                              <th scope="col" class="text-start">Amount</th>
-                              <th scope="col" class="text-start">Notes</th>
-                              <th scope="col" class="text-start">Created At</th>
-                              <th scope="col" class="text-start">Created By</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {% for payment in app.payments.all %}
-                              <tr>
-                                <td>{{ payment.payment_date }}</td>
-                                <td>{{ payment.amount|as_currency }}</td>
-                                <td>{{ payment.notes }}</td>
-                                <td>{{ payment.created_at }}</td>
-                                <td>{{ payment.created_by }}</td>
-                              </tr>
-                            {% empty %}
-                              <tr>
-                                <td colspan="5">No payments found for this application</td>
-                              </tr>
-                            {% endfor %}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
+    {% if object.invoice_applications.exists %}
+    <div class="card-header bg-secondary text-white">
+      <h3>
+        {% if object.imported %}Imported Invoice Items{% else %}Customer
+        Applications{% endif %}
+      </h3>
+    </div>
+    <table class="table">
+      <thead>
+        <tr>
+          <th scope="col" class="text-start">Application</th>
+          <th scope="col" class="text-start">Product</th>
+          <th scope="col" class="text-start">Amount</th>
+          <th scope="col" class="text-start">Paid</th>
+          <th scope="col" class="text-start">Due</th>
+          <th scope="col" class="text-start">Payment Status</th>
+          <th scope="col" class="text-start">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for app in object.invoice_applications.all %}
+        <tr>
+          <td class="text-start">
+            <a
+              href="{% url 'customer-application-detail' app.customer_application.pk %}"
+              >{{ app.customer_application }}</a
+            >
+            {% if app.customer_application.notes %}
+            <br /><small class="text-muted"
+              >{{ app.customer_application.notes }}</small
+            >
+            {% endif %}
+          </td>
+          <td class="text-start">{{ app.customer_application.product }}</td>
+          <td class="text-start">{{ app.amount|as_currency }}</td>
+          <td class="text-start">{{ app.paid_amount|as_currency }}</td>
+          <td class="text-start">{{ app.due_amount|as_currency }}</td>
+          <td class="text-start">
+            {% include "components/model_payment_status_badge.html" with
+            status=app.status status_display=app.get_status_display %}
+          </td>
+          <td>
+            <div class="btn-group-sm" role="group">
+              {% if user|has_perm:'payments,payment,add' and not
+              app.is_payment_complete %}
+              <a
+                href="{% url 'payment-by-invoice-application-create' app.pk %}"
+                class="btn btn-success me-1"
+                >Add Payment</a
+              >
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        <!-- payments breakdown (accordion) -->
+        <tr>
+          <td colspan="7">
+            <div class="accordion" id="accordionPayments{{ app.pk }}">
+              <div class="accordion-item">
+                <h2 class="accordion-header" id="headingPayments{{ app.pk }}">
+                  <button
+                    class="accordion-button collapsed"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#collapsePayments{{ app.pk }}"
+                    aria-expanded="false"
+                    aria-controls="collapsePayments{{ app.pk }}"
+                  >
+                    View Payments
+                  </button>
+                </h2>
+                <div
+                  id="collapsePayments{{ app.pk }}"
+                  class="accordion-collapse collapse"
+                  aria-labelledby="headingPayments{{ app.pk }}"
+                  data-bs-parent="#accordionPayments{{ app.pk }}"
+                >
+                  <div class="accordion-body">
+                    <!-- payment details table -->
+                    <table class="table table-bordered">
+                      <thead>
+                        <tr>
+                          <th scope="col" class="text-start">Payment Date</th>
+                          <th scope="col" class="text-start">Amount</th>
+                          <th scope="col" class="text-start">Notes</th>
+                          <th scope="col" class="text-start">Created At</th>
+                          <th scope="col" class="text-start">Created By</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% for payment in app.payments.all %}
+                        <tr>
+                          <td>{{ payment.payment_date }}</td>
+                          <td>{{ payment.amount|as_currency }}</td>
+                          <td>{{ payment.notes }}</td>
+                          <td>{{ payment.created_at }}</td>
+                          <td>{{ payment.created_by }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                          <td colspan="5">
+                            No payments found for this application
+                          </td>
+                        </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
-              </td>
-            </tr>
-          {% empty %}
-            <tr>
-              <td colspan="7">No applications found for this invoice</td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      {% endif %}
+              </div>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7">No applications found for this invoice</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
 
-      <div class="card-body">
-        <a href="javascript:history.back()" class="btn btn-primary">Back</a>
-        {% if user|has_perm:'invoices,invoice,change' %}
+    <div class="card-body">
+      <a href="javascript:history.back()" class="btn btn-primary">Back</a>
+      {% if user|has_perm:'invoices,invoice,change' %}
+      <div
+        data-invoice-download-container
+        data-start-url="{% url 'invoice-download-async-start' object.pk %}"
+      >
         <div class="btn-group me-1" role="group">
-          <button id="invoiceDownloadBtn" type="button" class="btn btn-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+          <button
+            id="invoiceDownloadBtn"
+            type="button"
+            class="btn btn-secondary dropdown-toggle"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+          >
             Download
           </button>
           <ul class="dropdown-menu" aria-labelledby="invoiceDownloadBtn">
-            <li><a class="dropdown-item" href="{% url 'invoice-download' object.pk %}?format=docx">Download DOCX</a></li>
-            <li><a class="dropdown-item" href="{% url 'invoice-download' object.pk %}?format=pdf">Download PDF</a></li>
+            <li>
+              <a
+                class="dropdown-item"
+                href="{% url 'invoice-download' object.pk %}?format=docx"
+                >Download DOCX</a
+              >
+            </li>
+            <li>
+              <button
+                type="button"
+                class="dropdown-item"
+                data-invoice-download-pdf
+              >
+                Download PDF
+              </button>
+            </li>
           </ul>
         </div>
-        {% endif %}
-        {% if user|has_perm:'payments,payment,add' and object.total_due_amount > 0 %}
-        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#markAsPaidModal">
-          Mark as Paid
-        </button>
-        {% endif %}
-        {% if user.is_superuser %}
-        <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteInvoiceModal">
-          Delete
-        </button>
-        {% endif %}
+        <div class="mt-2 d-none" data-invoice-download-progress>
+          <div class="progress" style="height: 4px">
+            <div
+              class="progress-bar"
+              role="progressbar"
+              style="width: 0%"
+              data-invoice-download-bar
+            ></div>
+          </div>
+          <small class="text-muted" data-invoice-download-text
+            >Preparing PDF...</small
+          >
+        </div>
       </div>
+      {% endif %} {% if user|has_perm:'payments,payment,add' and
+      object.total_due_amount > 0 %}
+      <button
+        type="button"
+        class="btn btn-success"
+        data-bs-toggle="modal"
+        data-bs-target="#markAsPaidModal"
+      >
+        Mark as Paid
+      </button>
+      {% endif %} {% if user.is_superuser %}
+      <button
+        type="button"
+        class="btn btn-danger"
+        data-bs-toggle="modal"
+        data-bs-target="#deleteInvoiceModal"
+      >
+        Delete
+      </button>
+      {% endif %}
     </div>
   </div>
+</div>
 
 <!-- Mark as Paid Modal -->
-<div class="modal fade" id="markAsPaidModal" tabindex="-1" aria-labelledby="markAsPaidModalLabel" aria-hidden="true">
+<div
+  class="modal fade"
+  id="markAsPaidModal"
+  tabindex="-1"
+  aria-labelledby="markAsPaidModalLabel"
+  aria-hidden="true"
+>
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="markAsPaidModalLabel">Mark Invoice as Paid</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <h5 class="modal-title" id="markAsPaidModalLabel">
+          Mark Invoice as Paid
+        </h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
       </div>
-      <form id="markAsPaidForm" method="post" action="{% url 'invoice-mark-as-paid' object.pk %}">
+      <form
+        id="markAsPaidForm"
+        method="post"
+        action="{% url 'invoice-mark-as-paid' object.pk %}"
+      >
         {% csrf_token %}
-        <input type="hidden" name="next" value="{% url 'invoice-detail' object.pk %}">
+        <input
+          type="hidden"
+          name="next"
+          value="{% url 'invoice-detail' object.pk %}"
+        />
         <div class="modal-body">
-          <p class="text-muted">This will create payments for all unpaid invoice applications.</p>
+          <p class="text-muted">
+            This will create payments for all unpaid invoice applications.
+          </p>
 
           <div class="mb-3">
-            <label for="payment_type" class="form-label">Payment Method *</label>
-            <select name="payment_type" id="payment_type" class="form-select" required>
+            <label for="payment_type" class="form-label"
+              >Payment Method *</label
+            >
+            <select
+              name="payment_type"
+              id="payment_type"
+              class="form-select"
+              required
+            >
               <option value="cash">Cash</option>
               <option value="credit_card">Credit card</option>
               <option value="wire_transfer">Wire transfer</option>
@@ -182,7 +317,14 @@
 
           <div class="mb-3">
             <label for="payment_date" class="form-label">Payment Date *</label>
-            <input type="date" name="payment_date" id="payment_date" class="form-control" required value="{{ today|date:'Y-m-d' }}">
+            <input
+              type="date"
+              name="payment_date"
+              id="payment_date"
+              class="form-control"
+              required
+              value="{{ today|date:'Y-m-d' }}"
+            />
           </div>
 
           <h6 class="mt-4 mb-3">Items to be paid:</h6>
@@ -196,27 +338,34 @@
                 </tr>
               </thead>
               <tbody>
-                {% for app in object.invoice_applications.all %}
-                  {% if app.due_amount > 0 %}
-                  <tr>
-                    <td>{{ app.customer_application }}</td>
-                    <td>{{ app.customer_application.product }}</td>
-                    <td class="text-end">{{ app.due_amount|as_currency }}</td>
-                  </tr>
-                  {% endif %}
-                {% endfor %}
+                {% for app in object.invoice_applications.all %} {% if
+                app.due_amount > 0 %}
+                <tr>
+                  <td>{{ app.customer_application }}</td>
+                  <td>{{ app.customer_application.product }}</td>
+                  <td class="text-end">{{ app.due_amount|as_currency }}</td>
+                </tr>
+                {% endif %} {% endfor %}
               </tbody>
               <tfoot>
                 <tr class="fw-bold">
                   <td colspan="2" class="text-end">Total:</td>
-                  <td class="text-end">{{ object.total_due_amount|as_currency }}</td>
+                  <td class="text-end">
+                    {{ object.total_due_amount|as_currency }}
+                  </td>
                 </tr>
               </tfoot>
             </table>
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button
+            type="button"
+            class="btn btn-secondary"
+            data-bs-dismiss="modal"
+          >
+            Cancel
+          </button>
           <button type="submit" class="btn btn-success">Create Payments</button>
         </div>
       </form>
@@ -225,64 +374,131 @@
 </div>
 
 <!-- Delete Invoice Modal -->
-<div class="modal fade" id="deleteInvoiceModal" tabindex="-1" aria-labelledby="deleteInvoiceModalLabel" aria-hidden="true">
+<div
+  class="modal fade"
+  id="deleteInvoiceModal"
+  tabindex="-1"
+  aria-labelledby="deleteInvoiceModalLabel"
+  aria-hidden="true"
+>
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header bg-danger text-white">
         <h5 class="modal-title" id="deleteInvoiceModalLabel">Delete Invoice</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        <button
+          type="button"
+          class="btn-close btn-close-white"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
       </div>
-      <form id="deleteInvoiceForm" method="post" action="{% url 'invoice-delete' object.pk %}">
+      <form
+        id="deleteInvoiceForm"
+        method="post"
+        action="{% url 'invoice-delete' object.pk %}"
+      >
         {% csrf_token %}
         <div class="modal-body">
           <div class="alert alert-danger" role="alert">
-            <h6 class="alert-heading"><i class="bi bi-exclamation-triangle-fill"></i> Warning: Force Delete</h6>
-            <p><strong>You are about to permanently delete this invoice and all related data!</strong></p>
+            <h6 class="alert-heading">
+              <i class="bi bi-exclamation-triangle-fill"></i> Warning: Force
+              Delete
+            </h6>
+            <p>
+              <strong
+                >You are about to permanently delete this invoice and all
+                related data!</strong
+              >
+            </p>
 
             <h6 class="mt-3">Invoice Details:</h6>
             <ul>
-              <li><strong>Invoice Number:</strong> {{ object.invoice_no_display }}</li>
-              <li><strong>Customer:</strong> {{ object.customer.full_name }}</li>
-              <li><strong>Total Amount:</strong> {{ object.total_amount|as_currency }}</li>
+              <li>
+                <strong>Invoice Number:</strong> {{ object.invoice_no_display }}
+              </li>
+              <li>
+                <strong>Customer:</strong> {{ object.customer.full_name }}
+              </li>
+              <li>
+                <strong>Total Amount:</strong> {{
+                object.total_amount|as_currency }}
+              </li>
             </ul>
 
             <h6 class="mt-3">The following will be CASCADE DELETED:</h6>
             <ul>
-              <li><strong>{{ invoice_applications_count }}</strong> Invoice Application(s)</li>
-              <li><strong>{{ customer_applications_count }}</strong> linked Customer Application(s)</li>
+              <li>
+                <strong>{{ invoice_applications_count }}</strong> Invoice
+                Application(s)
+              </li>
+              <li>
+                <strong>{{ customer_applications_count }}</strong> linked
+                Customer Application(s)
+              </li>
               <li><strong>{{ payments_count }}</strong> Payment(s)</li>
             </ul>
 
-            <hr>
+            <hr />
             <p class="mb-0"><strong>This action cannot be undone!</strong></p>
           </div>
 
           <div class="form-check mb-3">
-            <input class="form-check-input" type="checkbox" name="force_delete_confirmed" value="yes" id="force_delete_confirmed" required>
-            <label class="form-check-label text-danger" for="force_delete_confirmed">
-              <strong>I understand this will permanently delete the invoice and all related data</strong>
+            <input
+              class="form-check-input"
+              type="checkbox"
+              name="force_delete_confirmed"
+              value="yes"
+              id="force_delete_confirmed"
+              required
+            />
+            <label
+              class="form-check-label text-danger"
+              for="force_delete_confirmed"
+            >
+              <strong
+                >I understand this will permanently delete the invoice and all
+                related data</strong
+              >
             </label>
           </div>
 
           <div class="form-check mb-3">
-            <input class="form-check-input" type="checkbox" name="delete_customer_applications" value="yes" id="delete_customer_applications">
-            <label class="form-check-label text-danger" for="delete_customer_applications">
-              <strong>Also delete all corresponding customer applications (DocApplication) linked to this invoice</strong>
+            <input
+              class="form-check-input"
+              type="checkbox"
+              name="delete_customer_applications"
+              value="yes"
+              id="delete_customer_applications"
+            />
+            <label
+              class="form-check-label text-danger"
+              for="delete_customer_applications"
+            >
+              <strong
+                >Also delete all corresponding customer applications
+                (DocApplication) linked to this invoice</strong
+              >
             </label>
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-danger" id="confirmDeleteBtn">Force Delete Invoice</button>
+          <button
+            type="button"
+            class="btn btn-secondary"
+            data-bs-dismiss="modal"
+          >
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-danger" id="confirmDeleteBtn">
+            Force Delete Invoice
+          </button>
         </div>
       </form>
     </div>
   </div>
 </div>
 
-{% endblock %}
-
-{% block after-bootstrap-js %}
-  {{ block.super }}
-  <script src="{% static 'js/invoices/invoice_detail.js' %}"></script>
+{% endblock %} {% block after-bootstrap-js %} {{ block.super }}
+<script src="{% static 'js/invoices/invoice_detail.js' %}"></script>
+<script src="{% static 'js/invoices/invoice_download_async.js' %}"></script>
 {% endblock %}

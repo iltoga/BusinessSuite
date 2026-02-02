@@ -1,0 +1,14 @@
+/* minimal form spacing */
+:host {
+  display: block;
+}
+
+/* simple dropdown styling for typeahead */
+:host ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+:host li {
+  cursor: pointer;
+}

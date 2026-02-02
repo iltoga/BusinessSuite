@@ -1,0 +1,101 @@
+<div class="flex flex-col gap-6">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div class="flex flex-col gap-1">
+      <h1 class="text-3xl font-bold tracking-tight">Product Detail</h1>
+      @if (product()) {
+        <p class="text-sm text-muted-foreground">{{ product()?.code }} · {{ product()?.name }}</p>
+      }
+    </div>
+    <div class="flex items-center gap-2">
+      @if (product()) {
+        <a [routerLink]="['/products', product()?.id, 'edit']">
+          <z-button zType="warning" zSize="default">Edit</z-button>
+        </a>
+      }
+      <a routerLink="/products">
+        <z-button zType="outline" zSize="default">Back</z-button>
+      </a>
+    </div>
+  </div>
+
+  @if (isLoading()) {
+    <div class="space-y-6">
+      <app-card-skeleton [lines]="5" />
+      <app-card-skeleton [lines]="4" />
+      <z-card class="p-5">
+        <div class="mb-4">
+          <z-skeleton class="h-6 w-1/4" />
+        </div>
+        <app-table-skeleton [rows]="5" [columns]="5" />
+      </z-card>
+    </div>
+  } @else if (product()) {
+    <div class="grid gap-6 lg:grid-cols-3">
+      <z-card class="p-5 lg:col-span-2">
+        <div class="flex flex-col gap-4">
+          <div class="flex flex-wrap items-center gap-3">
+            <z-badge zType="secondary">{{ productTypeLabel(product()?.productType) }}</z-badge>
+            <span class="text-sm text-muted-foreground"
+              >Base price: {{ product()?.basePrice ?? '—' }}</span
+            >
+          </div>
+          <div class="text-sm text-muted-foreground">
+            {{ product()?.description || 'No description provided.' }}
+          </div>
+          <div class="grid gap-3 sm:grid-cols-2">
+            <div>
+              <p class="text-xs uppercase text-muted-foreground">Validity (days)</p>
+              <p class="text-sm font-medium">{{ product()?.validity ?? '—' }}</p>
+            </div>
+            <div>
+              <p class="text-xs uppercase text-muted-foreground">Docs min validity (days)</p>
+              <p class="text-sm font-medium">{{ product()?.documentsMinValidity ?? '—' }}</p>
+            </div>
+          </div>
+        </div>
+      </z-card>
+
+      <z-card class="p-5">
+        <div class="flex flex-col gap-4">
+          <div>
+            <p class="text-xs uppercase text-muted-foreground">Required documents</p>
+            <div class="mt-2 flex flex-wrap gap-2">
+              @if (requiredDocuments().length === 0) {
+                <span class="text-sm text-muted-foreground">—</span>
+              } @else {
+                @for (doc of requiredDocuments(); track doc.id) {
+                  <z-badge zType="outline">{{ doc.name }}</z-badge>
+                }
+              }
+            </div>
+          </div>
+          <div>
+            <p class="text-xs uppercase text-muted-foreground">Optional documents</p>
+            <div class="mt-2 flex flex-wrap gap-2">
+              @if (optionalDocuments().length === 0) {
+                <span class="text-sm text-muted-foreground">—</span>
+              } @else {
+                @for (doc of optionalDocuments(); track doc.id) {
+                  <z-badge zType="outline">{{ doc.name }}</z-badge>
+                }
+              }
+            </div>
+          </div>
+        </div>
+      </z-card>
+    </div>
+
+    <z-card class="p-5">
+      <h2 class="text-lg font-semibold mb-4">Tasks</h2>
+      <app-data-table [columns]="taskColumns()" [data]="tasks()" />
+    </z-card>
+  } @else {
+    <div class="text-muted-foreground">Product not found.</div>
+  }
+</div>
+
+<ng-template #lastStepTemplate let-row>
+  <z-badge [zType]="row.lastStep ? 'success' : 'secondary'">
+    {{ row.lastStep ? 'Yes' : 'No' }}
+  </z-badge>
+</ng-template>

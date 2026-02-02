@@ -1,0 +1,36 @@
+<button
+  z-dropdown
+  [zDropdownMenu]="menu"
+  z-button
+  [zType]="zType()"
+  [zSize]="zSize()"
+  [zLoading]="loading()"
+  type="button"
+>
+  <z-icon zType="download" class="mr-2" />
+  Download
+  <z-icon zType="chevron-down" class="ml-2" />
+</button>
+
+<z-dropdown-menu-content #menu>
+  <button z-dropdown-menu-item (click)="download('docx')">
+    <z-icon zType="file-text" class="mr-2" />
+    Download DOCX
+  </button>
+  <button z-dropdown-menu-item (click)="download('pdf')">
+    <z-icon zType="file-code" class="mr-2" />
+    Download PDF
+  </button>
+</z-dropdown-menu-content>
+
+@if (progress() !== null) {
+  <div class="mt-2 space-y-1">
+    <div class="flex items-center justify-between text-xs text-muted-foreground">
+      <span>Preparing PDF</span>
+      <span>{{ progress() }}%</span>
+    </div>
+    <div class="h-2 w-full rounded-full bg-muted">
+      <div class="h-2 rounded-full bg-primary" [style.width.%]="progress()"></div>
+    </div>
+  </div>
+}

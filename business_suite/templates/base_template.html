@@ -3,12 +3,16 @@
 {% load check_perms %}
 <!-- custom-css is in <head> -->
 {% block custom-css %}
+{% if not DISABLE_DJANGO_VIEWS %}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <link rel="stylesheet" type="text/css" href="{% static 'css/bootstrap.css' %}">
     <link rel="stylesheet" type="text/css" href="{% static 'css/styles.css' %}">
     <!-- Our project just needs Font Awesome Free's Solid and Brand files -->
     <link rel="manifest" href="{% static 'site.webmanifest' %}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" integrity="sha512-..." crossorigin="anonymous" referrerpolicy="no-referrer" />
+{% else %}
+    {# Minimal: include only bootstrap CSS from bootstrap_base (already loaded there), avoid extra styles #}
+{% endif %}
 {% endblock %}
 <!-- if overriding this one, remember to use {{ block.super}} at the beginning, otherwise jquery won't be loaded -->
 {% block head %}
@@ -17,6 +21,7 @@
     {% block head-extra %}
     {% endblock %}
     {% block head-scripts %}
+    {% if not DISABLE_DJANGO_VIEWS %}
         <script src="{% static 'js/utils.js' %}"></script>
         <script
             src="https://code.jquery.com/jquery-3.7.0.min.js"
@@ -28,6 +33,7 @@
         <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
         <!-- Mask -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.mask/1.14.16/jquery.mask.min.js"></script>
+    {% endif %}
     {% endblock %}
     {% block head-after-jquery %}
     {% endblock %}
@@ -48,6 +54,7 @@
 
 
 {% block navbar %}
+{% if not DISABLE_DJANGO_VIEWS %}
 <nav id="navbar-top" class="navbar navbar-expand-sm navbar-light w-100">
     <div class="container-fluid">
 
@@ -208,10 +215,12 @@
         {% endblock %}
     </div>
 </nav>
+{% endif %}
 {% endblock %}
 
 
 {% block sidebar %}
+{% if not DISABLE_DJANGO_VIEWS %}
     {% if request.user_agent.is_pc %}
     <nav id="sidebar">
         <div id="sidebar-header" class="text-center card-header bg-primary text-white">
@@ -425,6 +434,7 @@
 
     </nav>
     {% endif %}
+{% endif %}
 {% endblock %}
 
 {% block footer %}
@@ -437,5 +447,7 @@
 
 {% block after-bootstrap-js %}
 {{ block.super }}
+{% if not DISABLE_DJANGO_VIEWS %}
 <script src="{% static 'js/base/base_template.js' %}"></script>
+{% endif %}
 {% endblock %}

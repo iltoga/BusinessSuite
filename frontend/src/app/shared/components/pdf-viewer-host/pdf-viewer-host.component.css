@@ -1,0 +1,9 @@
+:host {
+  display: block;
+}
+
+/* Keeps the viewer full height and responsive */
+ngx-extended-pdf-viewer {
+  height: 100%;
+  width: 100%;
+}

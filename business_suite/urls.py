@@ -19,9 +19,17 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
-from django.views.generic import TemplateView
 
 # Base URL patterns
+# Home route can be a redirect to /admin/ when legacy Django views are disabled.
+from django.views.generic import RedirectView, TemplateView
+
+home_view = (
+    RedirectView.as_view(url="/admin/", permanent=False)
+    if getattr(settings, "DISABLE_DJANGO_VIEWS", False)
+    else TemplateView.as_view(template_name="base_template.html")
+)
+
 base_urlpatterns = [
     path("admin/", admin.site.urls),
     path("", include("landing.urls")),
@@ -32,7 +40,7 @@ base_urlpatterns = [
     path("payments/", include("payments.urls")),
     path("letters/", include("letters.urls")),
     path("reports/", include("reports.urls")),
-    path("", TemplateView.as_view(template_name="base_template.html"), name="home"),
+    path("", home_view, name="home"),
     path("api/", include("api.urls")),
     path("nested_admin/", include("nested_admin.urls")),
     path("unicorn/", include("django_unicorn.urls")),

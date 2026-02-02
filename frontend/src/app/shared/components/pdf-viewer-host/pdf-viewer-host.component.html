@@ -1,0 +1,48 @@
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+  <div class="bg-white rounded shadow-lg w-full max-w-4xl h-[90vh] overflow-hidden relative">
+    <div class="absolute top-2 right-2 z-50 flex gap-2">
+      <button
+        z-button
+        zType="outline"
+        class="h-7"
+        type="button"
+        (click)="print()"
+        aria-label="Print PDF"
+      >
+        Print
+      </button>
+
+      <button
+        class="bg-white border rounded px-3 py-1 text-sm h-7"
+        type="button"
+        (click)="close()"
+        aria-label="Close PDF preview"
+      >
+        Close
+      </button>
+    </div>
+
+    <div *ngIf="src" class="h-full">
+      <ngx-extended-pdf-viewer
+        [src]="src"
+        [height]="'100%'"
+        [showToolbar]="false"
+        [showSidebarButton]="false"
+        [showOpenFileButton]="false"
+        [showPrintButton]="false"
+        [showDownloadButton]="false"
+        [replaceBrowserPrint]="false"
+        (after-load-complete)="onAfterLoadComplete($event)"
+        (progress)="onProgress($event)"
+        (pdfLoaded)="onAfterLoadComplete($event)"
+        (error)="onLoadFailed($event)"
+      ></ngx-extended-pdf-viewer>
+
+      <div *ngIf="loadError" class="absolute inset-0 flex items-center justify-center p-6">
+        <div class="rounded bg-red-50 border border-red-200 p-4 text-sm text-red-900">
+          {{ loadError }} <a class="underline" target="_blank" [href]="href">Open in new tab</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

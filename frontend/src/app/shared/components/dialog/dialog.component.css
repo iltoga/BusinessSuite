@@ -1,0 +1,22 @@
+:host {
+  opacity: 1;
+  transform: scale(1);
+  transition:
+    opacity 150ms ease-out,
+    transform 150ms ease-out;
+}
+
+@starting-style {
+  :host {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+:host.dialog-leave {
+  opacity: 0;
+  transform: scale(0.9);
+  transition:
+    opacity 150ms ease-in,
+    transform 150ms ease-in;
+}
