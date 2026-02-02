@@ -11,6 +11,7 @@ import {
 import { DomSanitizer, type SafeResourceUrl } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
 
+import { ConfigService } from '@/core/services/config.service';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
@@ -61,6 +62,7 @@ export class DocumentPrintComponent implements OnInit {
   private http = inject(HttpClient);
   private sanitizer = inject(DomSanitizer);
   private destroyRef = inject(DestroyRef);
+  private configService = inject(ConfigService);
 
   readonly document = signal<DocumentPrintData | null>(null);
   readonly isLoading = signal(true);
@@ -103,6 +105,12 @@ export class DocumentPrintComponent implements OnInit {
 
   print(): void {
     window.print();
+  }
+
+  // Brand logo used in print view
+  get logoSrc(): string {
+    const cfg = this.configService.settings;
+    return `/assets/${cfg.logoFilename || 'logo_transparent.png'}`;
   }
 
   goBack(): void {

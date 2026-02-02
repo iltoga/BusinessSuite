@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
 import { AuthService } from '@/core/services/auth.service';
+import { ConfigService } from '@/core/services/config.service';
 import { ThemeService } from '@/core/services/theme.service';
 import { ZardAvatarComponent } from '@/shared/components/avatar';
 import { ZardButtonComponent } from '@/shared/components/button';
@@ -36,13 +37,15 @@ export class MainLayoutComponent {
 
   private themeService = inject(ThemeService);
   private authService = inject(AuthService);
+  private configService = inject(ConfigService);
 
-  logoSrc = computed(() =>
+  logoSrc = computed(() => {
     // Use assets path to ensure the dev-server and production builds serve the images reliably
-    this.themeService.isDarkMode()
-      ? '/assets/logo_inverted_transparent.png'
-      : '/assets/logo_transparent.png',
-  );
+    const cfg = this.configService.settings;
+    const normal = `/assets/${cfg.logoFilename || 'logo_transparent.png'}`;
+    const inverted = `/assets/${cfg.logoInvertedFilename || 'logo_inverted_transparent.png'}`;
+    return this.themeService.isDarkMode() ? inverted : normal;
+  });
 
   isAdminUser = computed(() => this.authService.isSuperuser());
   userFullName = computed(() => this.authService.claims()?.fullName || 'User');

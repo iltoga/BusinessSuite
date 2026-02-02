@@ -69,45 +69,70 @@ app.use(async (req, res, next) => {
         '';
     }
 
-    if (cspEnabled && typeof response.body === 'string' && contentType.includes('text/html')) {
-      const nonce = generateNonce();
+    // Inject server-provided brand variables into HTML so the client can pick them up
+    if (typeof response.body === 'string' && contentType.includes('text/html')) {
+      const logoFilename = process.env['LOGO_FILENAME'] || 'logo_transparent.png';
+      const logoInverted = process.env['LOGO_INVERTED_FILENAME'] || 'logo_inverted_transparent.png';
 
-      // Prepare a modified Headers instance based on existing headers
-      let modifiedHeaders: Headers;
-      if (response.headers && typeof (response.headers as any).forEach === 'function') {
-        modifiedHeaders = new Headers();
-        // copy existing headers
-        (response.headers as any).forEach((value: string, key: string) =>
-          modifiedHeaders.set(key, value),
+      if (cspEnabled) {
+        const nonce = generateNonce();
+
+        // Prepare a modified Headers instance based on existing headers
+        let modifiedHeaders: Headers;
+        if (response.headers && typeof (response.headers as any).forEach === 'function') {
+          modifiedHeaders = new Headers();
+          // copy existing headers
+          (response.headers as any).forEach((value: string, key: string) =>
+            modifiedHeaders.set(key, value),
+          );
+        } else if (response.headers && typeof response.headers === 'object') {
+          modifiedHeaders = new Headers(Object.entries(response.headers as any));
+        } else {
+          modifiedHeaders = new Headers();
+        }
+
+        modifiedHeaders.set('x-csp-nonce', nonce);
+        modifiedHeaders.set('x-csp-mode', cspMode);
+
+        // Also set headers on the Node response (ensures nginx sees them when proxied)
+        res.setHeader('X-CSP-Nonce', nonce);
+        res.setHeader('X-CSP-Mode', cspMode);
+
+        // Inject Angular root attribute so Angular uses the nonce without requiring index.html rewrites
+        let modifiedBody = String(response.body).replace(
+          /<app(\s|>)/,
+          `<app ngCspNonce="${nonce}"$1`,
         );
-      } else if (response.headers && typeof response.headers === 'object') {
-        modifiedHeaders = new Headers(Object.entries(response.headers as any));
+
+        // Inject a small script with the server's logo choices (script must use nonce when CSP is enabled)
+        const logoScript = `<script nonce="${nonce}">window.APP_BRAND={logo:'/assets/${logoFilename}',logoInverted:'/assets/${logoInverted}'};</script>`;
+        modifiedBody = modifiedBody.replace(/<head(\s|>)/i, `<head$1\n${logoScript}`);
+
+        // Build a modified response object (avoid mutating readonly properties)
+        const modifiedResponse = {
+          ...response,
+          headers: modifiedHeaders,
+          body: modifiedBody,
+        } as any;
+
+        writeResponseToNodeResponse(modifiedResponse, res);
+        return;
       } else {
-        modifiedHeaders = new Headers();
+        // Non-CSP path: inject script without nonce
+        const logoScript = `<script>window.APP_BRAND={logo:'/assets/${logoFilename}',logoInverted:'/assets/${logoInverted}'};</script>`;
+        const modifiedBody = String(response.body).replace(
+          /<head(\s|>)/i,
+          `<head$1\n${logoScript}`,
+        );
+
+        const modifiedResponse = {
+          ...response,
+          body: modifiedBody,
+        } as any;
+
+        writeResponseToNodeResponse(modifiedResponse, res);
+        return;
       }
-
-      modifiedHeaders.set('x-csp-nonce', nonce);
-      modifiedHeaders.set('x-csp-mode', cspMode);
-
-      // Also set headers on the Node response (ensures nginx sees them when proxied)
-      res.setHeader('X-CSP-Nonce', nonce);
-      res.setHeader('X-CSP-Mode', cspMode);
-
-      // Inject Angular root attribute so Angular uses the nonce without requiring index.html rewrites
-      const modifiedBody = String(response.body).replace(
-        /<app(\s|>)/,
-        `<app ngCspNonce="${nonce}"$1`,
-      );
-
-      // Build a modified response object (avoid mutating readonly properties)
-      const modifiedResponse = {
-        ...response,
-        headers: modifiedHeaders,
-        body: modifiedBody,
-      } as any;
-
-      writeResponseToNodeResponse(modifiedResponse, res);
-      return;
     }
 
     // Default: forward original response

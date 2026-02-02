@@ -18,10 +18,39 @@ export class ConfigService {
       this.http.get<AppConfig>('/assets/config.json').pipe(
         tap((data) => {
           this.config = { ...DEFAULT_APP_CONFIG, ...data };
+
+          // Merge any server-injected branding (SSR). window.APP_BRAND is injected by server.ts
+          const brand = (window as any).APP_BRAND;
+          if (brand) {
+            const normal = brand.logo ? String(brand.logo).replace(/^\/assets\//, '') : undefined;
+            const inverted = brand.logoInverted
+              ? String(brand.logoInverted).replace(/^\/assets\//, '')
+              : undefined;
+            this.config = {
+              ...this.config,
+              ...(normal ? { logoFilename: normal } : {}),
+              ...(inverted ? { logoInvertedFilename: inverted } : {}),
+            };
+          }
         }),
         catchError((error) => {
           console.warn('[ConfigService] Failed to load /assets/config.json.', error);
           this.config = DEFAULT_APP_CONFIG;
+
+          // Still allow server-injected branding to be used when assets config is missing
+          const brand = (window as any).APP_BRAND;
+          if (brand) {
+            const normal = brand.logo ? String(brand.logo).replace(/^\/assets\//, '') : undefined;
+            const inverted = brand.logoInverted
+              ? String(brand.logoInverted).replace(/^\/assets\//, '')
+              : undefined;
+            this.config = {
+              ...this.config,
+              ...(normal ? { logoFilename: normal } : {}),
+              ...(inverted ? { logoInvertedFilename: inverted } : {}),
+            };
+          }
+
           return of(this.config);
         }),
       ),
