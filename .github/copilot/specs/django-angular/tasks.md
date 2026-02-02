@@ -1820,17 +1820,14 @@
 
 - [ ] **11.1 Feature Flagging**
   - [ ] Install `django-waffle`
-  - [ ] Create `ENABLE_ANGULAR_FRONTEND` flag
-  - [ ] Conditional routing based on flag
+  - [ ] Create `DISABLE_DJANGO_VIEWS` flag django settings (base.py)
+  - [ ] Wrap legacy Django views with flag checks (all views in `urls.py` other than 'admin' and 'nested_admin' and all API views from `api/urls.py`). the flag should default to False (meaning django views are enabled). the goal is to disable django views when the flag is set to True, other than admin and api views.
+  - [ ] Add backend logic to prevent access to disabled views (403 Forbidden)
 
 - [ ] **11.2 Production Build & Deployment**
-  - [ ] Configure Nginx routing (API vs Angular routes). currently in `/nginx/conf.d/default.conf` (this is my production server, currently serving only Django. you will need to create a new config file for the new server using angular frontend and django backend. django backend won't need to be exposed anymore because the frontend will handle routing. I will switch the config files manually when ready to cutover)
-  - [ ] Deploy Angular build to `staticfiles/`
   - [ ] Configure CSP headers
 
 - [ ] **11.3 Final Validation**
-  - [ ] End-to-end testing all modules
-  - [ ] Performance testing (N+1 queries audit)
   - [ ] Accessibility audit
   - [ ] Update `docs/implementation_feedback.md`
   - [ ] Complete feedback log
