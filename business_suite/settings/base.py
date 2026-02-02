@@ -137,6 +137,9 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "debug_toolbar.middleware.DebugToolbarMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    # CORS middleware should be as high as possible so CORS headers are applied
+    # to all responses (see django-cors-headers docs).
+    "corsheaders.middleware.CorsMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",  # to serve static files
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -147,7 +150,6 @@ MIDDLEWARE = [
     "business_suite.middlewares.AuthLoginRequiredMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "corsheaders.middleware.CorsMiddleware",
     # it merge all changes of object per request
     "django_user_agents.middleware.UserAgentMiddleware",
     "core.middleware.performance_logger.PerformanceLoggingMiddleware",
@@ -377,8 +379,29 @@ SIMPLE_JWT = {
     "JTI_CLAIM": "jti",
 }
 
-# in case we want to try using nodejs for the frontend
-CORS_ORIGIN_WHITELIST = ["http://localhost:3000", "http://localhost:4200"]
+# CORS configuration - read from environment in production
+# Preferred env var: CORS_ALLOWED_ORIGINS (comma separated list of origins)
+# Fallback defaults include localhost dev ports and the configured APP_DOMAIN
+_default_cors_origins = [
+    "http://localhost:3000",
+    "http://localhost:4200",
+]
+if APP_DOMAIN:
+    _default_cors_origins += [f"https://{APP_DOMAIN}", f"https://admin.{APP_DOMAIN}", f"https://www.{APP_DOMAIN}"]
+
+CORS_ALLOWED_ORIGINS = _parse_list(os.getenv("CORS_ALLOWED_ORIGINS", ",".join(_default_cors_origins)))
+# Allow credentials (cookies) only when explicitly enabled in env var (default False for safety)
+CORS_ALLOW_CREDENTIALS = _parse_bool(os.getenv("CORS_ALLOW_CREDENTIALS", "False"))
+# Ensure common headers (including Authorization) are allowed for preflight requests.
+# Use defaults from django-cors-headers and extend if needed.
+try:
+    from corsheaders.defaults import default_headers
+except Exception:  # pragma: no cover - optional package
+    CORS_ALLOW_HEADERS = None
+else:
+    CORS_ALLOW_HEADERS = list(default_headers) + ["authorization"]
+
+CORS_ALLOW_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
 
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
