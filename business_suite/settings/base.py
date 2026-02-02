@@ -59,6 +59,10 @@ GLOBAL_SETTINGS = {
     "LOGO_INVERTED_FILENAME": os.getenv("LOGO_INVERTED_FILENAME", "logo_inverted_transparent.png"),
 }
 
+# When True, legacy Django views (non-admin, non-api) are disabled and return 403.
+# Can be toggled via env var DISABLE_DJANGO_VIEWS or managed via a waffle flag named "disable_django_views"
+DISABLE_DJANGO_VIEWS = _parse_bool(os.getenv("DISABLE_DJANGO_VIEWS", "False"))
+
 # Invoice Import Settings
 INVOICE_IMPORT_MAX_WORKERS = int(os.getenv("INVOICE_IMPORT_MAX_WORKERS", "3"))  # Max parallel imports
 
@@ -114,6 +118,8 @@ INSTALLED_APPS = [
     "django.contrib.humanize",
     "django_unicorn",
     "debug_toolbar",
+    # 'waffle' (django-waffle) is intentionally enabled only when the package is installed.
+    # This avoids failing imports in environments where the optional package is not present.
     "dbbackup",
     "storages",
     "admin_tools",
@@ -125,12 +131,14 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "debug_toolbar.middleware.DebugToolbarMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "core.middleware.csp.CSPNonceMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",  # to serve static files
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     # 'business_suite.middleware.DisableCsrfCheck',  # Your custom middleware
+    "business_suite.middlewares.disable_django_views.DisableDjangoViewsMiddleware",
     "business_suite.middlewares.AuthLoginRequiredMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -139,6 +147,23 @@ MIDDLEWARE = [
     "django_user_agents.middleware.UserAgentMiddleware",
     "core.middleware.performance_logger.PerformanceLoggingMiddleware",
 ]
+
+# Optionally enable django-waffle (feature flags) if the package is installed in the environment.
+try:
+    import waffle  # type: ignore
+except Exception:  # pragma: no cover - optional dependency
+    # waffle not installed; don't modify INSTALLED_APPS or MIDDLEWARE
+    pass
+else:
+    # Register waffle app and middleware so flags can be used when the package is available
+    INSTALLED_APPS.append("waffle")
+    # Insert waffle middleware before the custom disable middleware so requests are prepared
+    try:
+        idx = MIDDLEWARE.index("business_suite.middlewares.disable_django_views.DisableDjangoViewsMiddleware")
+    except ValueError:
+        MIDDLEWARE.append("waffle.middleware.WaffleMiddleware")
+    else:
+        MIDDLEWARE.insert(idx, "waffle.middleware.WaffleMiddleware")
 
 
 ROOT_URLCONF = "business_suite.urls"
@@ -381,6 +406,10 @@ CACHES = {
         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
     },
 }
+
+# Content Security Policy support: generate per-request nonces and expose mode
+CSP_ENABLED = _parse_bool(os.getenv("CSP_ENABLED", "False"))
+CSP_MODE = os.getenv("CSP_MODE", "report-only")  # report-only|enforce
 
 HUEY = {
     "huey_class": "huey.contrib.sql_huey.SqlHuey",

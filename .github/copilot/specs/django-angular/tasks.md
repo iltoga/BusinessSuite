@@ -1816,18 +1816,22 @@
 
 ---
 
-## Phase 11: Integration, Testing, and Cutover
+## Phase 11: Integration & Finalization
 
-- [ ] **11.1 Feature Flagging**
-  - [ ] Install `django-waffle`
-  - [ ] Create `DISABLE_DJANGO_VIEWS` flag django settings (base.py)
-  - [ ] Wrap legacy Django views with flag checks (all views in `urls.py` other than 'admin' and 'nested_admin' and all API views from `api/urls.py`). the flag should default to False (meaning django views are enabled). the goal is to disable django views when the flag is set to True, other than admin and api views.
-  - [ ] Add backend logic to prevent access to disabled views (403 Forbidden)
+- [x] **11.1 Feature Flagging**
+  - [x] Install `django-waffle`
+  - [x] Create `DISABLE_DJANGO_VIEWS` flag django settings (base.py)
+  - [x] Wrap legacy Django views with flag checks (all views in `urls.py` other than 'admin' and 'nested_admin' and all API views from `api/urls.py`). the flag should default to False (meaning django views are enabled). the goal is to disable django views when the flag is set to True, other than admin and api views.
+  - [x] Add backend logic to prevent access to disabled views (403 Forbidden)
 
-- [ ] **11.2 Production Build & Deployment**
-  - [ ] Configure CSP headers
+- [x] **11.2 Production Build & Deployment**
+  - [x] Configure CSP headers
 
-- [ ] **11.3 Final Validation**
-  - [ ] Accessibility audit
-  - [ ] Update `docs/implementation_feedback.md`
-  - [ ] Complete feedback log
+- [x] **11.3 Final Validation**
+  - [x] Accessibility audit (basic automated Playwright + axe checks added for key pages)
+  - [x] Update `docs/implementation_feedback.md`
+  - [x] Complete feedback log
+
+Note: Use agent mode when the task is straightforward and does not require step-by-step reasoning, otherwise plan mode first then implement.
+
+**Phase 11 status:** Completed on 2026-02-02

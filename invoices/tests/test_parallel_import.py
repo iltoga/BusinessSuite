@@ -8,12 +8,10 @@ import os
 import sys
 from pathlib import Path
 
-import django
+import pytest
 
-# Setup Django environment
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "business_suite.settings.dev")
-django.setup()
+# Use pytest-django database fixture for these concurrency tests
+pytestmark = pytest.mark.django_db(transaction=True)
 
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
