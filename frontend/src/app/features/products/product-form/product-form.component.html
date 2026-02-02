@@ -59,8 +59,11 @@
             <div class="md:col-span-4 space-y-2">
               <label class="text-sm font-medium">Product type</label>
               <select
-                class="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                class="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus:ring-2 focus:ring-ring focus:outline-none"
                 formControlName="productType"
+                [class.border-destructive]="
+                  form.get('productType')?.invalid && form.get('productType')?.touched
+                "
               >
                 <option value="visa">Visa</option>
                 <option value="other">Other</option>
@@ -68,16 +71,47 @@
             </div>
             <div class="md:col-span-4 space-y-2">
               <label class="text-sm font-medium">Base price</label>
-              <input z-input formControlName="basePrice" type="number" min="0" />
+              <input
+                z-input
+                formControlName="basePrice"
+                type="number"
+                min="0"
+                [zStatus]="
+                  form.get('basePrice')?.invalid && form.get('basePrice')?.touched
+                    ? 'error'
+                    : undefined
+                "
+              />
             </div>
             <div class="md:col-span-4 space-y-2">
               <label class="text-sm font-medium">Validity (days)</label>
-              <input z-input formControlName="validity" type="number" min="0" />
+              <input
+                z-input
+                formControlName="validity"
+                type="number"
+                min="0"
+                [zStatus]="
+                  form.get('validity')?.invalid && form.get('validity')?.touched
+                    ? 'error'
+                    : undefined
+                "
+              />
             </div>
 
             <div class="md:col-span-6 space-y-2">
               <label class="text-sm font-medium">Documents min validity (days)</label>
-              <input z-input formControlName="documentsMinValidity" type="number" min="0" />
+              <input
+                z-input
+                formControlName="documentsMinValidity"
+                type="number"
+                min="0"
+                [zStatus]="
+                  form.get('documentsMinValidity')?.invalid &&
+                  form.get('documentsMinValidity')?.touched
+                    ? 'error'
+                    : undefined
+                "
+              />
             </div>
 
             <div class="md:col-span-12 space-y-2">
@@ -136,6 +170,13 @@
             >
           </div>
 
+          @if (tasksArray.controls.length === 0) {
+            <div class="mt-4 text-sm text-muted-foreground">
+              No tasks defined. Click <span class="font-medium">Add Task</span> to add workflow
+              steps.
+            </div>
+          }
+
           @if (hasMultipleLastSteps()) {
             <div
               class="mb-3 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
@@ -157,11 +198,26 @@
                 <div class="grid gap-3 md:grid-cols-2">
                   <div class="flex flex-col gap-2">
                     <label class="text-sm font-medium">Step</label>
-                    <input z-input formControlName="step" type="number" min="1" />
+                    <input
+                      z-input
+                      formControlName="step"
+                      type="number"
+                      min="1"
+                      [zStatus]="
+                        task.get('step')?.invalid && task.get('step')?.touched ? 'error' : undefined
+                      "
+                    />
                   </div>
                   <div class="flex flex-col gap-2">
                     <label class="text-sm font-medium">Task name</label>
-                    <input z-input formControlName="name" type="text" />
+                    <input
+                      z-input
+                      formControlName="name"
+                      type="text"
+                      [zStatus]="
+                        task.get('name')?.invalid && task.get('name')?.touched ? 'error' : undefined
+                      "
+                    />
                   </div>
                   <div class="md:col-span-2 flex flex-col gap-2">
                     <label class="text-sm font-medium">Description</label>
@@ -173,11 +229,33 @@
                   </div>
                   <div class="flex flex-col gap-2">
                     <label class="text-sm font-medium">Duration (days)</label>
-                    <input z-input formControlName="duration" type="number" min="0" />
+                    <input
+                      z-input
+                      formControlName="duration"
+                      type="number"
+                      min="0"
+                      [zStatus]="
+                        task.get('duration')?.invalid && task.get('duration')?.touched
+                          ? 'error'
+                          : undefined
+                      "
+                    />
                   </div>
                   <div class="flex flex-col gap-2">
                     <label class="text-sm font-medium">Notify days before</label>
-                    <input z-input formControlName="notifyDaysBefore" type="number" min="0" />
+                    <input
+                      z-input
+                      formControlName="notifyDaysBefore"
+                      type="number"
+                      min="0"
+                      [zStatus]="
+                        (task.get('notifyDaysBefore')?.invalid ||
+                          task.errors?.['notifyBeforeDuration']) &&
+                        task.get('notifyDaysBefore')?.touched
+                          ? 'error'
+                          : undefined
+                      "
+                    />
                   </div>
                   <div class="flex flex-col gap-2">
                     <label class="text-sm font-medium">Business days?</label>
@@ -209,9 +287,9 @@
       </z-card>
 
       <div class="flex justify-end">
-        <z-button type="submit" zType="default" [zDisabled]="isSaving()">{{
-          isEditMode() ? 'Save Changes' : 'Create Product'
-        }}</z-button>
+        <button z-button type="submit" zType="default" [zDisabled]="isSaving()">
+          {{ isEditMode() ? 'Save Changes' : 'Create Product' }}
+        </button>
       </div>
     </form>
   }

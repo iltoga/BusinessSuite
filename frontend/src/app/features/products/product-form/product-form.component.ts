@@ -125,7 +125,7 @@ export class ProductFormComponent implements OnInit {
       const id = Number(idParam);
       this.loadProduct(id);
     } else {
-      this.addTask();
+      // Tasks are optional for new products. Do not add a default empty task here.
     }
   }
 
@@ -172,22 +172,65 @@ export class ProductFormComponent implements OnInit {
 
   save(): void {
     if (this.form.invalid || this.hasMultipleLastSteps()) {
-      this.toast.error('Please fix validation errors before saving.');
+      this.form.markAllAsTouched();
+      this.tasksArray.controls.forEach((group) => {
+        group.markAllAsTouched();
+        Object.values(group.controls).forEach((control) => control.markAsTouched());
+      });
+
+      console.group('Product Form Validation Errors');
+      Object.keys(this.form.controls).forEach((key) => {
+        const control = this.form.get(key);
+        if (control?.invalid) {
+          console.error(`Field "${key}" is invalid:`, control.errors);
+        }
+      });
+      this.tasksArray.controls.forEach((group, index) => {
+        if (group.invalid) {
+          console.error(`Task ${index + 1} is invalid:`, group.errors);
+          Object.keys(group.controls).forEach((key) => {
+            if (group.get(key)?.invalid) {
+              console.error(`  - Task field "${key}" is invalid:`, group.get(key)?.errors);
+            }
+          });
+        }
+      });
+      console.groupEnd();
+
+      if (this.hasMultipleLastSteps()) {
+        this.toast.error('Only one task can be marked as the last step.');
+      } else {
+        this.toast.error('Please fix validation errors in the form (check Tasks section).');
+      }
       return;
     }
 
     this.isSaving.set(true);
     const rawValue = this.form.getRawValue();
 
-    // Ensure types match ProductCreateUpdate (especially decimal strings)
+    // Ensure types match ProductCreateUpdate and map to snake_case for API
     const payload: ProductCreateUpdate = {
-      ...(rawValue as any),
-      basePrice: rawValue.basePrice !== null ? String(rawValue.basePrice) : null,
+      name: rawValue.name ?? '',
+      code: rawValue.code ?? '',
+      description: rawValue.description ?? '',
+      product_type: rawValue.productType as any,
+      base_price: rawValue.basePrice !== null ? String(rawValue.basePrice) : null,
+      validity: rawValue.validity,
+      documents_min_validity: rawValue.documentsMinValidity,
+      required_document_ids: rawValue.requiredDocumentIds,
+      optional_document_ids: rawValue.optionalDocumentIds,
       tasks: (rawValue.tasks || []).map((t: any) => ({
-        ...t,
+        id: t.id,
+        step: t.step,
+        name: t.name,
+        description: t.description,
         cost: t.cost !== null ? String(t.cost) : '0',
+        duration: t.duration,
+        duration_is_business_days: t.durationIsBusinessDays,
+        notify_days_before: t.notifyDaysBefore,
+        last_step: t.lastStep,
       })),
-    };
+    } as any;
 
     if (this.isEditMode() && this.product()) {
       this.productsApi.productsUpdate(this.product()!.id, payload).subscribe({
@@ -255,9 +298,7 @@ export class ProductFormComponent implements OnInit {
 
         this.tasksArray.clear();
         (product.tasks ?? []).forEach((task) => this.addTask(task));
-        if ((product.tasks ?? []).length === 0) {
-          this.addTask();
-        }
+        // Do not auto-add an empty task when the product has no tasks — tasks are optional.
 
         this.isLoading.set(false);
       },
