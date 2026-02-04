@@ -659,8 +659,8 @@ LOGGING = {
             "propagate": False,
         },
         # Audit logger - persists to DB and sends structured logs to Loki via `FailSafeLokiHandler`.
-        # CRITICAL: We avoid the 'console' handler here because Promtail already scrapes
-        # container stdout. Adding 'console' would cause all audit events to be duplicated in Loki.
+        # CRITICAL: We avoid the 'console' handler here because a Promtail-like scraper (if present)
+        # would duplicate events by scraping container stdout. Adding 'console' may cause duplicate events.
         "audit": {
             "handlers": ["fail_safe_loki", "file"],
             "level": "INFO",
@@ -679,6 +679,24 @@ LOGGING = {
         },
     },
 }
+
+# If Loki integration is enabled, attach the fail-safe Loki handler to top-level
+# loggers so application logs are forwarded to Loki. Deduplicate handler lists
+# to avoid accidental duplicates.
+if LOKI_ENABLED:
+    # Attach to root so most logs are forwarded
+    LOGGING['root']['handlers'] = list(dict.fromkeys(LOGGING['root'].get('handlers', []) + ['fail_safe_loki']))
+
+    # Ensure framework and common app loggers also forward to Loki even when propagate=False
+    LOGGING['loggers']['django']['handlers'] = list(
+        dict.fromkeys(LOGGING['loggers']['django'].get('handlers', []) + ['fail_safe_loki'])
+    )
+    LOGGING['loggers']['passport_ocr']['handlers'] = list(
+        dict.fromkeys(LOGGING['loggers']['passport_ocr'].get('handlers', []) + ['fail_safe_loki'])
+    )
+    LOGGING['loggers']['performance']['handlers'] = list(
+        dict.fromkeys(LOGGING['loggers']['performance'].get('handlers', []) + ['fail_safe_loki'])
+    )
 
 CURRENCY = "IDR"
 CURRENCY_SYMBOL = "Rp"
