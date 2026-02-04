@@ -67,28 +67,47 @@
                     "refId": "A"
                 }
             ],
+            "transformations": [
+                { "id": "labelsToFields" },
+                {
+                    "id": "organize",
+                    "options": {
+                        "excludeByName": false,
+                        "indexByName": false,
+                        "include": ["timestamp", "actor_username", "action_code", "object_type", "changes"],
+                        "order": ["timestamp", "actor_username", "action_code", "object_type", "changes"],
+                        "rename": [
+                            { "from": "timestamp", "to": "Date" },
+                            { "from": "actor_username", "to": "User" },
+                            { "from": "action_code", "to": "Action" },
+                            { "from": "object_type", "to": "Model" },
+                            { "from": "changes", "to": "Payload" }
+                        ]
+                    }
+                }
+            ],
             "options": {
                 "showHeader": true,
                 "columns": [
                     {
                         "text": "Date",
-                        "value": "timestamp"
+                        "value": "Date"
                     },
                     {
                         "text": "User",
-                        "value": "actor_username"
+                        "value": "User"
                     },
                     {
                         "text": "Action",
-                        "value": "action_code"
+                        "value": "Action"
                     },
                     {
                         "text": "Model",
-                        "value": "object_type"
+                        "value": "Model"
                     },
                     {
                         "text": "Payload",
-                        "value": "changes",
+                        "value": "Payload",
                         "type": "json"
                     }
                 ],
@@ -97,7 +116,9 @@
             "fieldConfig": {
                 "defaults": {
                     "custom": {
-                        "json": { "pretty": true }
+                        "json": {
+                            "pretty": true
+                        }
                     }
                 }
             }
