@@ -49,11 +49,22 @@
             },
             "targets": [
                 {
-                    "expr": "{application=~\".*\", audit=\"true\"} | json | line_format \"{{.timestamp}} | {{.actor_username}} | {{.action_code}} | {{.object_type}} | {{.changes}}\"",
+                    "expr": "{application=~\".*\", audit=\"true\"} | json",
                     "refId": "A"
                 }
-            ]
+            ],
+            "options": {
+                "showHeader": true,
+                "columns": [
+                    { "text": "Date", "value": "timestamp" },
+                    { "text": "User", "value": "actor_username" },
+                    { "text": "Action", "value": "action_code" },
+                    { "text": "Model", "value": "object_type" },
+                    { "text": "Payload", "value": "changes", "type": "json" }
+                ]
+            }
         },
+
         {
             "type": "logs",
             "title": "Django Core Console",
