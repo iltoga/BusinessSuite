@@ -16,7 +16,7 @@
             },
             "targets": [
                 {
-                    "expr": "sum(count_over_time({source=\"audit\"} [5m]))",
+                    "expr": "sum(count_over_time({application=~\".*\", audit=\"true\"} [5m]))",
                     "refId": "A"
                 }
             ]
@@ -32,7 +32,7 @@
             },
             "targets": [
                 {
-                    "expr": "sum by (level) (count_over_time({app=\"django\"} [1m]))",
+                    "expr": "sum by (level) (count_over_time({application=~\".*\"} [1m]))",
                     "legendFormat": "{{level}}",
                     "refId": "A"
                 }
@@ -49,7 +49,7 @@
             },
             "targets": [
                 {
-                    "expr": "{source=\"audit\"} | json",
+                    "expr": "{application=~\".*\", audit=\"true\"} | json",
                     "refId": "A"
                 }
             ]
@@ -65,7 +65,7 @@
             },
             "targets": [
                 {
-                    "expr": "{app=\"django\", source=\"core\"}",
+                    "expr": "{application=~\".*\", source=\"core\"}",
                     "refId": "A"
                 }
             ]
@@ -81,7 +81,7 @@
             },
             "targets": [
                 {
-                    "expr": "{app=\"django\", source=\"worker\"}",
+                    "expr": "{application=~\".*\", source=\"worker\"}",
                     "refId": "A"
                 }
             ]
