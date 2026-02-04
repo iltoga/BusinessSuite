@@ -163,7 +163,7 @@
             },
             "targets": [
                 {
-                    "expr": "{application=~\".*\", logger=~\"^(django|django\.server|performance)$\"}",
+                    "expr": "{application=~\".*\", logger=~\"^(django|django.server|performance)$\"}",
                     "refId": "A"
                 }
             ]
