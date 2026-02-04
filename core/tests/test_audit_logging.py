@@ -62,6 +62,8 @@ class AuditLoggingTests(TestCase):
         handler = FailSafeLokiHandler(fallback_filename="/tmp/test_audit_degraded.log")
         # Ensure there is no primary handler
         handler._primary = None
+        # Prevent lazy re-creation of the primary handler during the test
+        handler._allow_lazy_primary = False
         record = logging.LogRecord("test", logging.INFO, __file__, 1, "direct-push-test", (), None)
 
         # Ensure a requests module is present and patch its post method to observe the call
@@ -77,6 +79,34 @@ class AuditLoggingTests(TestCase):
         with patch("requests.post") as mock_post:
             handler.emit(record)
             self.assertTrue(mock_post.called)
+
+    def test_loki_handler_posts_dynamic_labels(self):
+        """When `extra` contains labels (e.g., source/audit), they should be sent as Loki labels."""
+        from core.audit_handlers import FailSafeLokiHandler
+
+        handler = FailSafeLokiHandler(fallback_filename="/tmp/test_audit_degraded.log")
+        handler._primary = None
+        record = logging.LogRecord("test", logging.INFO, __file__, 1, "dynamic-labels-test", (), None)
+        # Simulate extra labels set via logger.extra
+        record.__dict__.update({"source": "auditlog", "audit": True})
+
+        import requests
+
+        with patch("requests.post") as mock_post:
+            handler.emit(record)
+            self.assertTrue(mock_post.called)
+            # Extract the JSON payload passed to requests.post
+            args, kwargs = mock_post.call_args
+            payload = kwargs.get("json") if kwargs.get("json") is not None else (args[1] if len(args) > 1 else None)
+            self.assertIsNotNone(payload, "Expected JSON payload in requests.post call")
+            streams = payload.get("streams", [])
+            self.assertTrue(len(streams) >= 1, "Expected at least one stream in payload")
+            stream_labels = streams[0].get("stream", {})
+            # handler.tags should be present (application) and dynamic labels should be attached
+            self.assertIn("application", stream_labels)
+            self.assertEqual(stream_labels.get("source"), "auditlog")
+            # Booleans are normalized to lowercase strings
+            self.assertEqual(stream_labels.get("audit"), "true")
 
     def test_audit_disabled_via_setting(self):
         from django.test import override_settings

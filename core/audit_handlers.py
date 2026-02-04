@@ -148,6 +148,9 @@ class FailSafeLokiHandler(logging.Handler):
         self._console = logging.StreamHandler()
 
         # Initialize primary Loki handler lazily; keep as attribute for tests
+        # Tests can set `_allow_lazy_primary` to False to prevent lazy import/creation so
+        # behaviour when logging_loki is unavailable can be tested deterministically.
+        self._allow_lazy_primary = True
         self._primary = None
         try:
             from logging_loki import LokiHandler
@@ -161,7 +164,7 @@ class FailSafeLokiHandler(logging.Handler):
     def emit(self, record: logging.LogRecord) -> None:
         # Attempt to send to Loki, if fails write to file, else console
         try:
-            if self._primary is None:
+            if self._primary is None and getattr(self, "_allow_lazy_primary", True):
                 # try to create lazily
                 try:
                     from logging_loki import LokiHandler
@@ -171,14 +174,30 @@ class FailSafeLokiHandler(logging.Handler):
                 except Exception:
                     self._primary = None
 
-            if self._primary:
+            # Extract dynamic labels from the LogRecord so callers can set per-event labels
+            # via the `extra` parameter (e.g., extra={"source": "auditlog", "audit": True}).
+            dynamic_labels: dict = {}
+            try:
+                for key in ("source", "audit"):
+                    if key in record.__dict__ and record.__dict__[key] is not None:
+                        val = record.__dict__[key]
+                        # Normalize booleans to lowercase strings for label values
+                        if isinstance(val, bool):
+                            val = str(val).lower()
+                        else:
+                            val = str(val)
+                        dynamic_labels[key] = val
+            except Exception:
+                dynamic_labels = {}
+
+            # If we have no dynamic labels and a primary logging_loki handler is available,
+            # prefer it (efficient path). If dynamic labels are present, perform a direct
+            # POST so we can include them as Loki labels per-stream.
+            if self._primary and not dynamic_labels:
                 self._primary.emit(record)
                 return
 
-            # If a Loki handler implementation isn't available (e.g., logging_loki
-            # not installed), attempt a best-effort HTTP POST directly to the
-            # Loki push API using `requests`. This avoids hard dependency on
-            # logging_loki for environments where the package isn't installed.
+            # Attempt a best-effort HTTP POST directly to the Loki push API using `requests`.
             try:
                 import requests
 
@@ -188,9 +207,17 @@ class FailSafeLokiHandler(logging.Handler):
                     if str(self.url).endswith("/loki/api/v1/push")
                     else f"{str(self.url).rstrip('/')}/loki/api/v1/push"
                 )
+
+                # Build merged stream labels: static tags from handler + dynamic labels
+                stream_labels = dict(self.tags or {})
+                # Ensure label values are strings
+                for k, v in dynamic_labels.items():
+                    stream_labels[str(k)] = str(v)
+
                 ts = str(int(datetime.now(timezone.utc).timestamp() * 1e9))
                 message = self.format(record)
-                payload = {"streams": [{"stream": dict(self.tags or {}), "values": [[ts, message]]}]}
+                payload = {"streams": [{"stream": stream_labels, "values": [[ts, message]]}]}
+
                 # Best-effort POST with small timeout
                 try:
                     requests.post(push_endpoint, json=payload, timeout=2)
