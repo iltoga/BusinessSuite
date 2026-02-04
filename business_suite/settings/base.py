@@ -314,6 +314,9 @@ CSRF_TRUSTED_ORIGINS = [
 SESSION_COOKIE_SAMESITE = "Lax"  # Changed from "None" - use Lax for same-site Django apps
 CSRF_COOKIE_SAMESITE = "Lax"  # Changed from "None"
 
+# Read log level from DJANGO_LOG_LEVEL or fall back to generic LOG_LEVEL; default to INFO.
+DJANGO_LOG_LEVEL = os.getenv("DJANGO_LOG_LEVEL", os.getenv("LOG_LEVEL", "INFO"))
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "business_suite.authentication.JwtOrMockAuthentication",
@@ -650,7 +653,7 @@ LOGGING = {
     "loggers": {
         "django": {
             "handlers": ["console"],
-            "level": os.getenv("DJANGO_LOG_LEVEL", "INFO"),
+            "level": DJANGO_LOG_LEVEL,
             "propagate": False,
         },
         "passport_ocr": {
@@ -685,17 +688,17 @@ LOGGING = {
 # to avoid accidental duplicates.
 if LOKI_ENABLED:
     # Attach to root so most logs are forwarded
-    LOGGING['root']['handlers'] = list(dict.fromkeys(LOGGING['root'].get('handlers', []) + ['fail_safe_loki']))
+    LOGGING["root"]["handlers"] = list(dict.fromkeys(LOGGING["root"].get("handlers", []) + ["fail_safe_loki"]))
 
     # Ensure framework and common app loggers also forward to Loki even when propagate=False
-    LOGGING['loggers']['django']['handlers'] = list(
-        dict.fromkeys(LOGGING['loggers']['django'].get('handlers', []) + ['fail_safe_loki'])
+    LOGGING["loggers"]["django"]["handlers"] = list(
+        dict.fromkeys(LOGGING["loggers"]["django"].get("handlers", []) + ["fail_safe_loki"])
     )
-    LOGGING['loggers']['passport_ocr']['handlers'] = list(
-        dict.fromkeys(LOGGING['loggers']['passport_ocr'].get('handlers', []) + ['fail_safe_loki'])
+    LOGGING["loggers"]["passport_ocr"]["handlers"] = list(
+        dict.fromkeys(LOGGING["loggers"]["passport_ocr"].get("handlers", []) + ["fail_safe_loki"])
     )
-    LOGGING['loggers']['performance']['handlers'] = list(
-        dict.fromkeys(LOGGING['loggers']['performance'].get('handlers', []) + ['fail_safe_loki'])
+    LOGGING["loggers"]["performance"]["handlers"] = list(
+        dict.fromkeys(LOGGING["loggers"]["performance"].get("handlers", []) + ["fail_safe_loki"])
     )
 
 CURRENCY = "IDR"

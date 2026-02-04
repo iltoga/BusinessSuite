@@ -183,19 +183,6 @@ services:
     networks:
       - dockernet
 
-  bs-promtail:
-    container_name: bs-promtail
-    image: grafana/promtail:latest
-    restart: unless-stopped
-    ports:
-      - "3500:3500"
-    volumes:
-      - ${DATA_PATH}/logs:/app_logs:ro
-      - ./grafana/promtail-config-local.yaml:/etc/promtail/config.yml
-    command: -config.file=/etc/promtail/config.yml
-    networks:
-      - dockernet
-
 networks:
   dockernet:
     driver: bridge

@@ -35,6 +35,8 @@ You must strictly follow this sequence for every request:
 
 ## Behavior Guidelines
 
-- **Context Awareness:** Always prefer #context7 for library specific syntax over generic training data.
+- **Context Awareness:** Always prefer #context7 for library specific syntax over generic training data and websearch for information about error codes or best practices.
+- **Code Quality:** Prioritize readability, maintainability, and adherence to PEP 8
 - **Database:** Always use `select_related`/`prefetch_related` to avoid N+1 queries.
 - **Security:** Never hardcode credentials; use environment variables.
+- **Versioning:** NEVER use git commit, push or pull commands directly. unless explicitly instructed.

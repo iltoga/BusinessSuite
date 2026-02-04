@@ -16,7 +16,7 @@
             },
             "targets": [
                 {
-                    "expr": "sum(count_over_time({app=\"angular\", level=\"error\"} [5m]))",
+                    "expr": "sum(count_over_time({application=~\".*\", level=\"error\"} [5m]))",
                     "refId": "A"
                 }
             ],
@@ -52,7 +52,7 @@
             },
             "targets": [
                 {
-                    "expr": "sum(count_over_time({app=\"angular\", level=\"error\"} [1m]))",
+                    "expr": "sum(count_over_time({application=~\".*\", level=\"error\"} [1m]))",
                     "refId": "A"
                 }
             ]
@@ -68,7 +68,7 @@
             },
             "targets": [
                 {
-                    "expr": "{app=\"angular\"}",
+                    "expr": "{application=~\".*\"}",
                     "refId": "A"
                 }
             ]
@@ -84,7 +84,7 @@
             },
             "targets": [
                 {
-                    "expr": "sum by (user) (count_over_time({app=\"angular\"} [24h]))",
+                    "expr": "sum by (user) (count_over_time({application=~\".*\"} [24h]))",
                     "refId": "A"
                 }
             ]

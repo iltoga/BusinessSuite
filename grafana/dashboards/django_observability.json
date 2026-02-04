@@ -49,7 +49,7 @@
             },
             "targets": [
                 {
-                    "expr": "{application=~\".*\", audit=\"true\"} | json",
+                    "expr": "{application=~\".*\", audit=\"true\"} | json | line_format \"{{.timestamp}} | {{.actor_username}} | {{.action_code}} | {{.object_type}} | {{.changes}}\"",
                     "refId": "A"
                 }
             ]

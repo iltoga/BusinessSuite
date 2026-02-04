@@ -212,25 +212,6 @@ services:
     networks:
       - dockernet
 
-  bs-promtail:
-    container_name: bs-promtail
-    image: grafana/promtail:latest
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 128M
-          cpus: "0.20"
-        reservations:
-          memory: 64M
-    volumes:
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./grafana/promtail-config.yaml:/etc/promtail/config.yml
-    command: -config.file=/etc/promtail/config.yml
-    networks:
-      - dockernet
-
 networks:
   dockernet:
     external: true
