@@ -179,7 +179,7 @@
             },
             "targets": [
                 {
-                    "expr": "{application=~\".*\", source=\"worker\"}",
+                    "expr": "{application=~\".*\", logger=~\"^(celery|huey|worker)$\"}",
                     "refId": "A"
                 }
             ]
