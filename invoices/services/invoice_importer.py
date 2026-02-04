@@ -15,12 +15,13 @@ from django.db.models import Q
 from django.utils import timezone
 
 from core.services import AIInvoiceParser, ParsedInvoiceResult
+from core.services.logger_service import Logger
 from customer_applications.models import DocApplication
 from customers.models import Customer
 from invoices.models import Invoice, InvoiceApplication
 from products.models import Product
 
-logger = logging.getLogger(__name__)
+logger = Logger.get_logger(__name__)
 
 
 @dataclass

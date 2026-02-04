@@ -27,9 +27,10 @@ from typing import List, Optional, Union
 
 from django.core.files.storage import default_storage
 
+from core.services.logger_service import Logger
 from core.utils.pdf_converter import PDFConverter, PDFConverterError
 
-logger = logging.getLogger(__name__)
+logger = Logger.get_logger(__name__)
 
 
 class DocumentMergerError(Exception):

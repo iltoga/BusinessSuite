@@ -1,0 +1,92 @@
+{
+    "annotations": {
+        "list": []
+    },
+    "description": "Django Backend observability: Audit events, Core logs, and Worker tasks",
+    "title": "Django Observability",
+    "panels": [
+        {
+            "type": "stat",
+            "title": "Recent Audit Events (Total)",
+            "gridPos": {
+                "x": 0,
+                "y": 0,
+                "w": 6,
+                "h": 5
+            },
+            "targets": [
+                {
+                    "expr": "sum(count_over_time({source=\"audit\"} [5m]))",
+                    "refId": "A"
+                }
+            ]
+        },
+        {
+            "type": "timeseries",
+            "title": "Backend Log Levels",
+            "gridPos": {
+                "x": 6,
+                "y": 0,
+                "w": 18,
+                "h": 5
+            },
+            "targets": [
+                {
+                    "expr": "sum by (level) (count_over_time({app=\"django\"} [1m]))",
+                    "legendFormat": "{{level}}",
+                    "refId": "A"
+                }
+            ]
+        },
+        {
+            "type": "table",
+            "title": "Audit Trail (CRUD Events)",
+            "gridPos": {
+                "x": 0,
+                "y": 5,
+                "w": 24,
+                "h": 8
+            },
+            "targets": [
+                {
+                    "expr": "{source=\"audit\"} | json",
+                    "refId": "A"
+                }
+            ]
+        },
+        {
+            "type": "logs",
+            "title": "Django Core Console",
+            "gridPos": {
+                "x": 0,
+                "y": 13,
+                "w": 12,
+                "h": 10
+            },
+            "targets": [
+                {
+                    "expr": "{app=\"django\", source=\"core\"}",
+                    "refId": "A"
+                }
+            ]
+        },
+        {
+            "type": "logs",
+            "title": "Background Worker Logs",
+            "gridPos": {
+                "x": 12,
+                "y": 13,
+                "w": 12,
+                "h": 10
+            },
+            "targets": [
+                {
+                    "expr": "{app=\"django\", source=\"worker\"}",
+                    "refId": "A"
+                }
+            ]
+        }
+    ],
+    "schemaVersion": 36,
+    "version": 1
+}

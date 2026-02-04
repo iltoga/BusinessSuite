@@ -50,9 +50,9 @@ To get started with the application, you will need to have Python, Django, and a
 1. 📥 Clone the repository.
 2. 📦 Install the required dependencies using [uv](https://github.com/astral-sh/uv) and `pyproject.toml`:
 
-    ```sh
-    uv pip install --editable .
-    ```
+   ```sh
+   uv pip install --editable .
+   ```
 
 3. ⚙️ Configure the database settings in the `.env` file.
 4. 🛠️ Run the database migrations using `python manage.py migrate`.
@@ -62,14 +62,13 @@ For a production environment, it is recommended to use the provided Docker setup
 
 ## Development Utilities
 
-- **Detect inline <script> tags**: To help centralize JavaScript and avoid inline scripts in templates, run:
-  - `scripts/check_inline_script_tags.py` — scans `templates/` for inline `<script>` tags and exits with non-zero code if any are found.
+- **Detect inline script tags**: To help centralize JavaScript and avoid inline scripts in templates, run:
+  - `scripts/check_inline_script_tags.py` — scans `templates/` for inline script tags (e.g., `<script>...</script>`) and exits with non-zero code if any are found.
   - You can add this to CI or as a git pre-commit hook to prevent regressions.
 
   ## Internationalization (i18n)
 
   To enable translations and generate compiled message files used by Django, follow these steps:
-
   1. Create or edit translation files under `locale/<lang>/LC_MESSAGES/django.po`.
   2. Compile translations to binary `.mo` files with:
 
@@ -81,12 +80,57 @@ For a production environment, it is recommended to use the provided Docker setup
 
   We include a minimal Indonesian translation for the `Male` and `Female` labels in `locale/id/LC_MESSAGES/django.po`. Run `compilemessages` to generate `django.mo` and have Django display the translated labels during runtime and tests.
 
-
 ## API Usage
 
 ## 📡 API Usage
 
 The application exposes a RESTful API for interacting with its various modules. To use the API, you will need to obtain an authentication token. The API endpoints are documented and can be explored using the browsable API feature of Django REST Framework.
+
+---
+
+## 📣 Observability — django-auditlog (recommended)
+
+We use `django-auditlog` to record model changes (create/update/delete) and optionally record access events. Audit entries are persisted to the DB (viewable in Django Admin) and are forwarded to Loki for structured logging via our `PersistentLokiBackend`.
+
+Quick steps:
+
+1. Install the package (using uv):
+
+   ```sh
+   uv pip install django-auditlog
+   ```
+
+2. Add the app and middleware to your `settings.py`:
+
+   ```python
+   INSTALLED_APPS.append('auditlog')
+   # Place AuditlogMiddleware after AuthenticationMiddleware so actor can be set automatically
+   MIDDLEWARE.insert(MIDDLEWARE.index('django.contrib.auth.middleware.AuthenticationMiddleware') + 1, 'auditlog.middleware.AuditlogMiddleware')
+   ```
+
+3. Run migrations for auditlog tables:
+
+   ```bash
+   python manage.py migrate auditlog
+   ```
+
+4. Register models for auditing (we do this automatically for apps in `LOGGING_MODE`). You can also register manually:
+
+   ```python
+   from auditlog.registry import auditlog
+   auditlog.register(MyModel, exclude_fields=['sensitive_field'])
+   ```
+
+5. Optional settings you can tweak:
+   - `AUDIT_ENABLED` (default: `True`) — Use this env var / Django setting to enable/disable audit forwarding at application startup.
+   - `AUDIT_URL_SKIP_LIST` — a list of URL prefixes to ignore when forwarding request-related structured logs.
+   - `AUDIT_PURGE_AFTER_DAYS` — retention/fwd purge window for forwarded logs.
+
+Notes:
+
+- We will automatically register models listed in `LOGGING_MODE` for audit logging on app ready.
+- If you previously used `django-easy-audit`, run `python manage.py drop_easyaudit --yes` to remove easyaudit DB tables, then remove the package and its `INSTALLED_APPS` entry.
+- The project forwards new `auditlog.LogEntry` objects to Loki (structured logs) so you can continue using Loki/Grafana for observability.
 
 ---
 

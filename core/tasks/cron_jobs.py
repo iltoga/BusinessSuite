@@ -7,7 +7,9 @@ from django.core.management import call_command
 from huey import crontab
 from huey.contrib.djhuey import db_periodic_task, db_task
 
-logger = logging.getLogger(__name__)
+from core.services.logger_service import Logger
+
+logger = Logger.get_logger(__name__)
 
 
 def _parse_time(value: str) -> Tuple[int, int]:

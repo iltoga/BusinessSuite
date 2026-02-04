@@ -12,10 +12,11 @@ from django.dispatch import receiver
 from django.utils.translation import gettext_lazy as _
 
 from core.models import CountryCode
+from core.services.logger_service import Logger
 from core.utils.form_validators import validate_birthdate, validate_email, validate_phone_number
 from core.utils.helpers import whitespaces_to_underscores
 
-logger = logging.getLogger(__name__)
+logger = Logger.get_logger(__name__)
 
 
 # Moved out of Customer class to allow Django to serialize it for migrations

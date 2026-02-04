@@ -15,10 +15,14 @@ from passporteye import read_mrz
 from PIL import Image, ImageFilter, ImageOps, ImageStat
 from skimage import filters
 
+from core.services.logger_service import Logger
 from core.utils.check_country import check_country_by_code
 from core.utils.imgutils import convert_and_resize_image
 
 pytesseract.pytesseract.tesseract_cmd = settings.TESSERACT_CMD
+
+# Module logger for passport OCR
+logger = Logger.get_logger("passport_ocr")
 
 MRZ_FORMAT = {
     "mrz_type": "TD3",
@@ -38,7 +42,6 @@ MRZ_FORMAT = {
 
 
 def extract_mrz_data(file, check_expiration=True, expiration_days=180) -> dict:
-    logger = logging.getLogger("passport_ocr")
     converted_file_name = ""
     file_to_delete = ""
     file_name, file_ext = os.path.splitext(file.name)
@@ -234,7 +237,6 @@ def unit_extraction(image_path, mrz_format, attempt_label="original"):
     """
 
     # Process image
-    logger = logging.getLogger("passport_ocr")
     mrz = read_mrz(image_path)
     logger.debug("[%s] read_mrz result: %s", attempt_label, mrz)
     if mrz:
@@ -679,8 +681,6 @@ def extract_passport_with_ai(file, use_ai: bool = True) -> dict:
         dict: Combined passport data with fields from both MRZ and AI extraction.
               If AI extraction fails, includes 'ai_error' field with error message.
     """
-    logger = logging.getLogger("passport_ocr")
-
     # Step 1: Run MRZ extraction first (this validates the document)
     # We call the original extract_mrz_data but with check_expiration=False
     # to get the MRZ data regardless of expiration status
@@ -762,7 +762,6 @@ def _extract_with_ai(file) -> tuple[Optional[dict], Optional[str]]:
             - ai_data_dict: dict with AI-extracted passport data or None if extraction fails
             - error_message: error message if extraction failed, None otherwise
     """
-    logger = logging.getLogger("passport_ocr")
 
     try:
         # Import here to avoid circular imports

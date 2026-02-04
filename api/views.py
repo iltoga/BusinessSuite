@@ -1,4 +1,5 @@
 import json
+import logging
 import mimetypes
 import os
 import time
@@ -9,8 +10,7 @@ from io import BytesIO
 from django.conf import settings
 from django.contrib.auth import logout as django_logout
 from django.core.files.storage import default_storage
-from django.db.models import (Count, DecimalField, F, OuterRef, Prefetch, Q,
-                              Subquery, Sum, Value)
+from django.db.models import Count, DecimalField, F, OuterRef, Prefetch, Q, Subquery, Sum, Value
 from django.db.models.functions import Coalesce
 from django.http import FileResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404
@@ -19,13 +19,10 @@ from django.utils import timezone
 from django.utils.text import slugify
 from django.views.decorators.csrf import csrf_exempt
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import (OpenApiParameter, OpenApiResponse,
-                                   extend_schema)
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
 from rest_framework import filters, pagination, status, viewsets
 from rest_framework.authentication import SessionAuthentication
-from rest_framework.decorators import (action, api_view,
-                                       authentication_classes,
-                                       permission_classes, throttle_classes)
+from rest_framework.decorators import action, api_view, authentication_classes, permission_classes, throttle_classes
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -33,32 +30,39 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from api.serializers import (AvatarUploadSerializer, ChangePasswordSerializer,
-                             CountryCodeSerializer,
-                             CustomerApplicationQuickCreateSerializer,
-                             CustomerQuickCreateSerializer, CustomerSerializer,
-                             DocApplicationDetailSerializer,
-                             DocApplicationInvoiceSerializer,
-                             DocApplicationSerializerWithRelations,
-                             DocumentMergeSerializer, DocumentSerializer,
-                             DocumentTypeSerializer, DocWorkflowSerializer,
-                             InvoiceCreateUpdateSerializer,
-                             InvoiceDetailSerializer, InvoiceListSerializer,
-                             PaymentSerializer, ProductCreateUpdateSerializer,
-                             ProductDetailSerializer,
-                             ProductQuickCreateSerializer, ProductSerializer,
-                             SuratPermohonanCustomerDataSerializer,
-                             SuratPermohonanRequestSerializer,
-                             UserProfileSerializer, UserSettingsSerializer,
-                             ordered_document_types)
+from api.serializers import (
+    AvatarUploadSerializer,
+    ChangePasswordSerializer,
+    CountryCodeSerializer,
+    CustomerApplicationQuickCreateSerializer,
+    CustomerQuickCreateSerializer,
+    CustomerSerializer,
+    DocApplicationDetailSerializer,
+    DocApplicationInvoiceSerializer,
+    DocApplicationSerializerWithRelations,
+    DocumentMergeSerializer,
+    DocumentSerializer,
+    DocumentTypeSerializer,
+    DocWorkflowSerializer,
+    InvoiceCreateUpdateSerializer,
+    InvoiceDetailSerializer,
+    InvoiceListSerializer,
+    PaymentSerializer,
+    ProductCreateUpdateSerializer,
+    ProductDetailSerializer,
+    ProductQuickCreateSerializer,
+    ProductSerializer,
+    SuratPermohonanCustomerDataSerializer,
+    SuratPermohonanRequestSerializer,
+    UserProfileSerializer,
+    UserSettingsSerializer,
+    ordered_document_types,
+)
 from api.serializers.auth_serializer import CustomTokenObtainSerializer
 from business_suite.authentication import JwtOrMockAuthentication
-from core.models import (CountryCode, DocumentOCRJob, OCRJob, UserProfile,
-                         UserSettings)
+from core.models import CountryCode, DocumentOCRJob, OCRJob, UserProfile, UserSettings
 from core.services.document_merger import DocumentMerger, DocumentMergerError
-from core.services.quick_create import (create_quick_customer,
-                                        create_quick_customer_application,
-                                        create_quick_product)
+from core.services.quick_create import create_quick_customer, create_quick_customer_application, create_quick_product
 from core.tasks.cron_jobs import run_clear_cache_now, run_full_backup_now
 from core.tasks.document_ocr import run_document_ocr_job
 from core.tasks.ocr import run_ocr_job
@@ -75,6 +79,21 @@ from payments.models import Payment
 from products.models import Product
 from products.models.document_type import DocumentType
 from products.models.task import Task
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def observability_log(request):
+    """Proxy endpoint for frontend observability logs.
+
+    Accepts JSON payloads with 'level', 'message', and optional 'metadata'.
+    Forwards message to the Django logger and returns 202 Accepted.
+    """
+    payload = request.data
+    logger = logging.getLogger("observability")
+    # Log at info level; tests patch Logger.info
+    logger.info(payload.get("message", ""), extra={"level": payload.get("level"), "metadata": payload.get("metadata")})
+    return Response(status=202)
 
 
 def parse_bool(value, default=False):
@@ -550,7 +569,8 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         if hide_paid:
             queryset = queryset.exclude(status=Invoice.PAID)
 
-        return self._annotate_invoices(queryset)
+        include_payment_details = self.action == "retrieve"
+        return self._annotate_invoices(queryset, include_payment_details=include_payment_details)
 
     @extend_schema(
         parameters=[
@@ -565,7 +585,7 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
 
-    def _annotate_invoices(self, queryset):
+    def _annotate_invoices(self, queryset, include_payment_details: bool = False):
         payment_subquery = (
             Payment.objects.filter(invoice_application__invoice=OuterRef("pk"))
             .values("invoice_application__invoice")
@@ -580,18 +600,17 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             .values("total")
         )
 
-        invoice_applications_qs = (
-            InvoiceApplication.objects.select_related(
-                "customer_application__product",
-                "customer_application__customer",
-            )
-            .prefetch_related("payments")
-            .annotate(
-                annotated_paid_amount=Coalesce(Subquery(app_payment_subquery), Value(0), output_field=DecimalField()),
-                annotated_due_amount=F("amount")
-                - Coalesce(Subquery(app_payment_subquery), Value(0), output_field=DecimalField()),
-            )
+        invoice_applications_qs = InvoiceApplication.objects.select_related(
+            "customer_application__product",
+            "customer_application__customer",
+        ).annotate(
+            annotated_paid_amount=Coalesce(Subquery(app_payment_subquery), Value(0), output_field=DecimalField()),
+            annotated_due_amount=F("amount")
+            - Coalesce(Subquery(app_payment_subquery), Value(0), output_field=DecimalField()),
         )
+
+        if include_payment_details:
+            invoice_applications_qs = invoice_applications_qs.prefetch_related("payments")
 
         return (
             queryset.select_related("customer")
@@ -624,8 +643,7 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
         invoice = self.get_object()
 
-        from invoices.services.invoice_deletion import \
-            build_invoice_delete_preview
+        from invoices.services.invoice_deletion import build_invoice_delete_preview
 
         preview = build_invoice_delete_preview(invoice)
 
@@ -1490,8 +1508,7 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     def get_serializer_class(self):
         # Use specialized serializer for create/update actions
         if self.action in ["create", "update", "partial_update"]:
-            from api.serializers.doc_application_serializer import \
-                DocApplicationCreateUpdateSerializer
+            from api.serializers.doc_application_serializer import DocApplicationCreateUpdateSerializer
 
             return DocApplicationCreateUpdateSerializer
         if self.action == "retrieve":
@@ -1584,8 +1601,7 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         workflow.doc_application.updated_by = request.user
         workflow.doc_application.save()
 
-        from api.serializers.doc_workflow_serializer import \
-            DocWorkflowSerializer
+        from api.serializers.doc_workflow_serializer import DocWorkflowSerializer
 
         return Response(DocWorkflowSerializer(workflow).data)
 

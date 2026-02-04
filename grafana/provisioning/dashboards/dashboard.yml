@@ -1,0 +1,12 @@
+apiVersion: 1
+
+providers:
+  - name: "Application Dashboards"
+    orgId: 1
+    folder: ""
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      # This path must match the volume mapping in docker-compose
+      path: /var/lib/grafana/dashboards

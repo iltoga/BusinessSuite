@@ -1,0 +1,95 @@
+{
+    "annotations": {
+        "list": []
+    },
+    "description": "Angular Frontend observability: Errors, User activity, and Client-side logs",
+    "title": "Angular Observability",
+    "panels": [
+        {
+            "type": "stat",
+            "title": "Active Frontend Errors (5m)",
+            "gridPos": {
+                "x": 0,
+                "y": 0,
+                "w": 6,
+                "h": 5
+            },
+            "targets": [
+                {
+                    "expr": "sum(count_over_time({app=\"angular\", level=\"error\"} [5m]))",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "red",
+                                "value": 1
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        {
+            "type": "timeseries",
+            "title": "Frontend Error Frequency",
+            "gridPos": {
+                "x": 6,
+                "y": 0,
+                "w": 18,
+                "h": 5
+            },
+            "targets": [
+                {
+                    "expr": "sum(count_over_time({app=\"angular\", level=\"error\"} [1m]))",
+                    "refId": "A"
+                }
+            ]
+        },
+        {
+            "type": "logs",
+            "title": "Frontend Application Logs",
+            "gridPos": {
+                "x": 0,
+                "y": 5,
+                "w": 24,
+                "h": 10
+            },
+            "targets": [
+                {
+                    "expr": "{app=\"angular\"}",
+                    "refId": "A"
+                }
+            ]
+        },
+        {
+            "type": "table",
+            "title": "Unique Users Activity (Loki)",
+            "gridPos": {
+                "x": 0,
+                "y": 15,
+                "w": 24,
+                "h": 10
+            },
+            "targets": [
+                {
+                    "expr": "sum by (user) (count_over_time({app=\"angular\"} [24h]))",
+                    "refId": "A"
+                }
+            ]
+        }
+    ],
+    "schemaVersion": 36,
+    "version": 1
+}

@@ -3,7 +3,9 @@ import time
 
 from django.db import connection
 
-logger = logging.getLogger("performance")
+from core.services.logger_service import Logger
+
+logger = Logger.get_logger("performance")
 
 
 class PerformanceLoggingMiddleware:

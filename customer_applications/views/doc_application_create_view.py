@@ -14,14 +14,16 @@ from django.utils import timezone
 from django.views.generic import CreateView
 
 from core.models.country_code import CountryCode
+
+# File logger in prod and console in dev
+from core.services.logger_service import Logger
 from customer_applications.forms import DocApplicationForm, DocumentCreateFormSet
 from customer_applications.models import DocApplication
 from customer_applications.models.doc_workflow import DocWorkflow
 from customer_applications.models.document import Document
 from products.models import DocumentType, Task
 
-# File logger in prod and console in dev
-logger = logging.getLogger(__name__)
+logger = Logger.get_logger(__name__)
 
 
 class DocApplicationCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateView):

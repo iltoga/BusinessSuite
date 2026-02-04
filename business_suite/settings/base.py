@@ -75,6 +75,11 @@ INVOICE_IMPORT_MAX_WORKERS = int(os.getenv("INVOICE_IMPORT_MAX_WORKERS", "3"))  
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Ensure logs directory exists
+LOGS_DIR = os.path.join(BASE_DIR, "logs")
+if not os.path.exists(LOGS_DIR):
+    os.makedirs(LOGS_DIR, exist_ok=True)
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
@@ -124,8 +129,7 @@ INSTALLED_APPS = [
     "django.contrib.humanize",
     "django_unicorn",
     "debug_toolbar",
-    # 'waffle' (django-waffle) is intentionally enabled only when the package is installed.
-    # This avoids failing imports in environments where the optional package is not present.
+    "waffle",
     "dbbackup",
     "storages",
     "admin_tools",
@@ -145,7 +149,9 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
-    # 'business_suite.middleware.DisableCsrfCheck',  # Your custom middleware
+    # Waffle must be after AuthenticationMiddleware to access request.user
+    "waffle.middleware.WaffleMiddleware",
+    # Custom middlewares that might rely on Waffle flags or Auth
     "business_suite.middlewares.disable_django_views.DisableDjangoViewsMiddleware",
     "business_suite.middlewares.AuthLoginRequiredMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
@@ -154,24 +160,6 @@ MIDDLEWARE = [
     "django_user_agents.middleware.UserAgentMiddleware",
     "core.middleware.performance_logger.PerformanceLoggingMiddleware",
 ]
-
-# Optionally enable django-waffle (feature flags) if the package is installed in the environment.
-try:
-    import waffle  # type: ignore
-except Exception:  # pragma: no cover - optional dependency
-    # waffle not installed; don't modify INSTALLED_APPS or MIDDLEWARE
-    pass
-else:
-    # Register waffle app and middleware so flags can be used when the package is available
-    INSTALLED_APPS.append("waffle")
-    # Insert waffle middleware before the custom disable middleware so requests are prepared
-    try:
-        idx = MIDDLEWARE.index("business_suite.middlewares.disable_django_views.DisableDjangoViewsMiddleware")
-    except ValueError:
-        MIDDLEWARE.append("waffle.middleware.WaffleMiddleware")
-    else:
-        MIDDLEWARE.insert(idx, "waffle.middleware.WaffleMiddleware")
-
 
 ROOT_URLCONF = "business_suite.urls"
 
@@ -205,20 +193,33 @@ WSGI_APPLICATION = "business_suite.wsgi.application"
 #         "NAME": os.path.join(BASE_DIR, "files/db.sqlite3"),
 #     }
 # }
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("DB_NAME"),
-        "USER": os.getenv("DB_USER"),
-        "PASSWORD": os.getenv("DB_PASS"),
-        "HOST": os.getenv("DB_HOST"),
-        "PORT": os.getenv("DB_PORT"),
-        # Connection pooling - keep connections alive for 600 seconds
-        "CONN_MAX_AGE": 600,
-        # Connection pool size per worker
-        "CONN_HEALTH_CHECKS": True,
+# Use an in-memory SQLite DB when running tests to avoid requiring Postgres.
+import sys
+
+TESTING = any("pytest" in arg for arg in sys.argv) or os.getenv("PYTEST_CURRENT_TEST") is not None
+
+if TESTING:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": ":memory:",
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.getenv("DB_NAME"),
+            "USER": os.getenv("DB_USER"),
+            "PASSWORD": os.getenv("DB_PASS"),
+            "HOST": os.getenv("DB_HOST"),
+            "PORT": os.getenv("DB_PORT"),
+            # Connection pooling - keep connections alive for 600 seconds
+            "CONN_MAX_AGE": 600,
+            # Connection pool size per worker
+            "CONN_HEALTH_CHECKS": True,
+        }
+    }
 
 
 # Password validation
@@ -253,6 +254,16 @@ USE_TZ = True
 
 # Configure project locale path for translations (locale is at project root, one level up from BASE_DIR)
 LOCALE_PATHS = [os.path.join(BASE_DIR, "..", "locale")]
+
+# Loki/audit emitter configuration
+# Controls async emission to Loki and audit forwarding behavior.
+LOKI_EMITTER_POOL_SIZE = int(os.getenv("LOKI_EMITTER_POOL_SIZE", "4"))
+LOKI_EMITTER_QUEUE_MAXSIZE = int(os.getenv("LOKI_EMITTER_QUEUE_MAXSIZE", "4096"))
+LOKI_EMITTER_DROP_ON_FULL = _parse_bool(os.getenv("LOKI_EMITTER_DROP_ON_FULL", "True"))
+
+# When True, audit LogEntry objects are forwarded to Loki. Set to False to keep
+# DB audit entries but avoid forwarding to Loki (useful to avoid polluting Grafana/Loki).
+AUDIT_FORWARD_TO_LOKI = _parse_bool(os.getenv("AUDIT_FORWARD_TO_LOKI", "True"))
 
 
 # Static files (CSS, JavaScript, Images)
@@ -449,19 +460,32 @@ CACHES = {
 CSP_ENABLED = _parse_bool(os.getenv("CSP_ENABLED", "False"))
 CSP_MODE = os.getenv("CSP_MODE", "report-only")  # report-only|enforce
 
+# Configure Huey. Use an in-memory Sqlite DB while running tests to avoid connecting to
+# external Postgres at import time (pytest imports Django settings early).
+import sys
+
+TESTING = any("pytest" in arg for arg in sys.argv) or os.getenv("PYTEST_CURRENT_TEST") is not None
+
+if TESTING:
+    from peewee import SqliteDatabase
+
+    huey_database = SqliteDatabase(":memory:")
+else:
+    huey_database = PostgresqlDatabase(
+        os.getenv("DB_NAME"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASS"),
+        host=os.getenv("DB_HOST") or "localhost",
+        port=int(os.getenv("DB_PORT")) if os.getenv("DB_PORT") else 5432,
+    )
+
 HUEY = {
     "huey_class": "huey.contrib.sql_huey.SqlHuey",
     "name": "business_suite",
     "results": True,
     "store_errors": True,
     "immediate": False,
-    "database": PostgresqlDatabase(
-        os.getenv("DB_NAME"),
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASS"),
-        host=os.getenv("DB_HOST") or "localhost",
-        port=int(os.getenv("DB_PORT")) if os.getenv("DB_PORT") else 5432,
-    ),
+    "database": huey_database,
     "consumer": {
         "workers": int(os.getenv("HUEY_WORKERS", "2")),
         "worker_type": os.getenv("HUEY_WORKER_TYPE", "thread"),
@@ -539,6 +563,48 @@ DBBACKUP_EXCLUDE_MEDIA_FODERS = ["tmpfiles"]
 FULL_BACKUP_SCHEDULE = "02:00"
 CLEAR_CACHE_SCHEDULE = ["03:00"]
 
+# Loki & Audit defaults
+# Use Loki (via python-logging-loki) for audit logs. Configure using environment variables.
+LOKI_ENABLED = os.getenv("LOKI_ENABLED", "False").lower() == "true"
+LOKI_URL = os.getenv("LOKI_URL", "http://bs-loki:3100/loki/api/v1/push")
+LOKI_APPLICATION = os.getenv("LOKI_APPLICATION", "business_suite")
+LOKI_JOB = os.getenv("LOKI_JOB", "backend")
+
+# Audit settings (using django-auditlog)
+# Runtime toggles controlled by environment variables. Defaults to True when not set.
+# Global audit enable/disable at startup. When False, django-auditlog app and middleware are omitted.
+AUDIT_ENABLED = _parse_bool(os.getenv("AUDIT_ENABLED", "True"))
+# Per-event watch flags (control which events are recorded/forwarded)
+AUDIT_WATCH_CRUD_EVENTS = _parse_bool(
+    os.getenv("AUDIT_WATCH_CRUD_EVENTS", os.getenv("AUDIT_WATCH_MODEL_EVENTS", "True"))
+)
+AUDIT_WATCH_AUTH_EVENTS = _parse_bool(os.getenv("AUDIT_WATCH_AUTH_EVENTS", "True"))
+AUDIT_WATCH_REQUEST_EVENTS = _parse_bool(os.getenv("AUDIT_WATCH_REQUEST_EVENTS", "True"))
+# Avoid logging request events for static/media files when forwarding structured logs. Support comma-separated env var.
+AUDIT_URL_SKIP_LIST = _parse_list(os.getenv("AUDIT_URL_SKIP_LIST"), ["/static/", "/media/", "/favicon.ico"])
+# Purge retention for forwarded audit logs (not the DB retention of LogEntry)
+AUDIT_PURGE_AFTER_DAYS = int(os.getenv("AUDIT_PURGE_AFTER_DAYS", "90"))
+
+# Conditionally enable the `auditlog` app and its middleware (so the feature can be fully toggled at startup)
+if AUDIT_ENABLED:
+    # Add auditlog to installed apps if missing
+    if "auditlog" not in INSTALLED_APPS:
+        INSTALLED_APPS.append("auditlog")
+
+    # Insert middleware after our performance logger if present, otherwise append at the end
+    try:
+        idx = MIDDLEWARE.index("core.middleware.performance_logger.PerformanceLoggingMiddleware")
+        MIDDLEWARE.insert(idx + 1, "auditlog.middleware.AuditlogMiddleware")
+    except ValueError:
+        if "auditlog.middleware.AuditlogMiddleware" not in MIDDLEWARE:
+            MIDDLEWARE.append("auditlog.middleware.AuditlogMiddleware")
+else:
+    # Explicitly avoid leaving audit middleware or app configured
+    if "auditlog" in INSTALLED_APPS:
+        INSTALLED_APPS.remove("auditlog")
+    if "auditlog.middleware.AuditlogMiddleware" in MIDDLEWARE:
+        MIDDLEWARE.remove("auditlog.middleware.AuditlogMiddleware")
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -561,12 +627,15 @@ LOGGING = {
         "console": {
             "class": "logging.StreamHandler",
             "formatter": "simple",
-            "filters": ["require_debug_true"],
         },
         "file": {
             "level": "DEBUG",
             "class": "logging.FileHandler",
-            "filename": os.path.join(BASE_DIR, "logs") + "debug.log",
+            "filename": os.path.join(BASE_DIR, "logs", "debug.log"),
+        },
+        "fail_safe_loki": {
+            "level": "INFO",
+            "()": "core.audit_handlers.FailSafeLokiHandler",
         },
         # "mail_admins": {
         #     "level": "ERROR",
@@ -587,6 +656,14 @@ LOGGING = {
         "passport_ocr": {
             "handlers": ["console", "file"],
             "level": "DEBUG",
+            "propagate": False,
+        },
+        # Audit logger - persists to DB and sends structured logs to Loki via `FailSafeLokiHandler`.
+        # CRITICAL: We avoid the 'console' handler here because Promtail already scrapes
+        # container stdout. Adding 'console' would cause all audit events to be duplicated in Loki.
+        "audit": {
+            "handlers": ["fail_safe_loki", "file"],
+            "level": "INFO",
             "propagate": False,
         },
         # "django.request": {

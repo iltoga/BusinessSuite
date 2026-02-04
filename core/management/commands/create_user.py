@@ -4,7 +4,9 @@ from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 
 # file logger in prod and console in dev
-logger = logging.getLogger(__name__)
+from core.services.logger_service import Logger
+
+logger = Logger.get_logger(__name__)
 
 
 class Command(BaseCommand):

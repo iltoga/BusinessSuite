@@ -18,11 +18,12 @@ from django.utils.text import get_valid_filename
 from django.views import View
 from django.views.generic import TemplateView
 
+from core.services.logger_service import Logger
 from invoices.models import InvoiceImportItem, InvoiceImportJob
 from invoices.services.invoice_importer import InvoiceImporter
 from invoices.tasks.import_jobs import run_invoice_import_item
 
-logger = logging.getLogger(__name__)
+logger = Logger.get_logger(__name__)
 
 
 class InvoiceImportView(PermissionRequiredMixin, TemplateView):

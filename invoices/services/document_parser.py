@@ -7,13 +7,15 @@ import logging
 import os
 from typing import Optional
 
+from core.services.logger_service import Logger
+
+logger = Logger.get_logger(__name__)
+
 import openpyxl
 import pytesseract
 from docx import Document
 from pdf2image import convert_from_path
 from PIL import Image
-
-logger = logging.getLogger(__name__)
 
 
 class DocumentParser:

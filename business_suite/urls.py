@@ -42,6 +42,8 @@ base_urlpatterns = [
     path("reports/", include("reports.urls")),
     path("", home_view, name="home"),
     path("api/", include("api.urls")),
+    # Backwards compatible v1 namespace used by some tests and external clients
+    path("api/v1/", include("api.urls")),
     path("nested_admin/", include("nested_admin.urls")),
     path("unicorn/", include("django_unicorn.urls")),
     path("admin-tools/", include("admin_tools.urls")),

@@ -64,6 +64,9 @@ jobs:
             docker ps -a -q --filter "name=bs-worker" | xargs -r docker rm -f || true
             docker ps -a -q --filter "name=memcached" | xargs -r docker rm -f || true
             docker ps -a -q --filter "name=crmrevisbalicom" | xargs -r docker rm -f || true
+            docker ps -a -q --filter "name=bs-loki" | xargs -r docker rm -f || true
+            docker ps -a -q --filter "name=bs-grafana" | xargs -r docker rm -f || true
+            docker ps -a -q --filter "name=bs-promtail" | xargs -r docker rm -f || true
             echo "✅  All containers removed"
 
             echo "🧹  Resetting local state …"
@@ -109,7 +112,7 @@ jobs:
             if [ "$DEP_CHANGED" = true ]; then
               docker compose build --pull
             fi
-            docker compose up -d --remove-orphans bs-core bs-worker bs-frontend
+            docker compose up -d --remove-orphans bs-core bs-worker bs-frontend bs-loki bs-grafana promtail
 
             echo "🧹  Cleaning up unused data …"
             docker system prune -f

@@ -20,7 +20,6 @@ services:
     networks:
       - dockernet
     volumes:
-      # Preferred: bind to an absolute host path set in DB_PATH
       - type: bind
         source: ${DB_PATH}
         target: /usr/local/var/postgres
@@ -76,6 +75,10 @@ services:
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASS: ${DB_PASS}
+      LOKI_ENABLED: "true"
+      LOKI_URL: "http://bs-loki:3100/loki/api/v1/push"
+      LOKI_APPLICATION: "bs-backend"
+      LOKI_JOB: "web"
     volumes:
       - type: bind
         source: ./
@@ -108,6 +111,10 @@ services:
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASS: ${DB_PASS}
+      LOKI_ENABLED: "true"
+      LOKI_URL: "http://bs-loki:3100/loki/api/v1/push"
+      LOKI_APPLICATION: "bs-worker"
+      LOKI_JOB: "worker"
     volumes:
       - type: bind
         source: ./
@@ -138,11 +145,60 @@ services:
     environment:
       PORT: 4000
       BACKEND_URL: http://bs-core:8000
+      LOKI_URL: http://bs-loki:3100/loki/api/v1/push
     ports:
       - 4200:4000
+    networks:
+      - dockernet
+
+  bs-loki:
+    container_name: bs-loki
+    image: grafana/loki:3.5.1
+    user: "10001:10001"
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    volumes:
+      - ~/.loki:/loki
+      - ./grafana/loki-config.yaml:/etc/loki/local-config.yaml:ro
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - dockernet
+
+  bs-grafana:
+    container_name: bs-grafana
+    image: grafana/grafana:latest
+    restart: unless-stopped
+    depends_on:
+      - bs-loki
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+      - grafana-storage:/var/lib/grafana
+    networks:
+      - dockernet
+
+  bs-promtail:
+    container_name: bs-promtail
+    image: grafana/promtail:latest
+    restart: unless-stopped
+    ports:
+      - "3500:3500"
+    volumes:
+      - ${DATA_PATH}/logs:/app_logs:ro
+      - ./grafana/promtail-config-local.yaml:/etc/promtail/config.yml
+    command: -config.file=/etc/promtail/config.yml
     networks:
       - dockernet
 
 networks:
   dockernet:
     driver: bridge
+
+volumes:
+  grafana-storage:

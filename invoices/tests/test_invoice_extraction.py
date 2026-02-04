@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 import django
+import pytest
 
 # Setup Django environment
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -26,6 +27,12 @@ from invoices.services.llm_invoice_parser import LLMInvoiceParser
 # TEST_MODEL = "mistralai/mistral-small-3.2-24b-instruct" # good
 TEST_MODEL = "google/gemini-2.5-flash-lite"
 TEST_PROVIDER = None  # Set to "openrouter" or "openai" to override
+
+# Skip by default - LLM integration tests are opt-in to avoid accidental token usage
+pytestmark = pytest.mark.skipif(
+    os.getenv("RUN_LLM_TESTS") != "1",
+    reason="LLM integration tests are disabled by default; set RUN_LLM_TESTS=1 to run",
+)
 
 
 def test_invoice_extraction():

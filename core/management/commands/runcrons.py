@@ -8,7 +8,9 @@ import logging
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-logger = logging.getLogger(__name__)
+from core.services.logger_service import Logger
+
+logger = Logger.get_logger(__name__)
 
 
 class Command(BaseCommand):
