@@ -4,6 +4,20 @@
     },
     "description": "Django Backend observability: Audit events, Core logs, and Worker tasks",
     "title": "Django Observability",
+    "templating": {
+        "list": [
+            {
+                "name": "audit_user",
+                "type": "query",
+                "label": "User",
+                "hide": 0,
+                "datasource": "Loki",
+                "query": "label_values({application=~\".*\", audit=\"true\"}, actor_username)",
+                "includeAll": true,
+                "allValue": ".*"
+            }
+        ]
+    },
     "panels": [
         {
             "type": "stat",
@@ -49,22 +63,45 @@
             },
             "targets": [
                 {
-                    "expr": "{application=~\".*\", audit=\"true\"} | json",
+                    "expr": "{application=~\".*\", audit=\"true\", actor_username=~\"$audit_user\"} | json",
                     "refId": "A"
                 }
             ],
             "options": {
                 "showHeader": true,
                 "columns": [
-                    { "text": "Date", "value": "timestamp" },
-                    { "text": "User", "value": "actor_username" },
-                    { "text": "Action", "value": "action_code" },
-                    { "text": "Model", "value": "object_type" },
-                    { "text": "Payload", "value": "changes", "type": "json" }
-                ]
+                    {
+                        "text": "Date",
+                        "value": "timestamp"
+                    },
+                    {
+                        "text": "User",
+                        "value": "actor_username"
+                    },
+                    {
+                        "text": "Action",
+                        "value": "action_code"
+                    },
+                    {
+                        "text": "Model",
+                        "value": "object_type"
+                    },
+                    {
+                        "text": "Payload",
+                        "value": "changes",
+                        "type": "json"
+                    }
+                ],
+                "wrapMode": "auto"
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "custom": {
+                        "json": { "pretty": true }
+                    }
+                }
             }
         },
-
         {
             "type": "logs",
             "title": "Django Core Console",
