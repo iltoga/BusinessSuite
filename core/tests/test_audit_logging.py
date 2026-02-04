@@ -1,3 +1,4 @@
+import json
 import logging
 from unittest.mock import patch
 
@@ -31,6 +32,38 @@ class AuditLoggingTests(TestCase):
 
             # Structured logging was attempted (DB persistence removed in favor of django-auditlog)
             self.assertTrue(mock_emit.called)
+
+    def test_record_logentry_includes_actor_and_action_code(self):
+        from auditlog.models import LogEntry
+        from django.contrib.contenttypes.models import ContentType
+        from django.utils import timezone
+
+        # Create a LogEntry instance attributed to our test user (create directly)
+        LogEntry.objects.all().delete()
+        customer = Customer.objects.create(first_name="Audit", last_name="User", email="audit@user.com")
+        ct = ContentType.objects.get_for_model(Customer)
+        entry = LogEntry.objects.create(
+            content_type=ct,
+            object_pk=str(customer.pk),
+            object_id=customer.pk,
+            action=LogEntry.Action.CREATE,
+            changes={"first_name": [None, "Audit"]},
+            actor_id=self.user.pk,
+            timestamp=timezone.now(),
+        )
+
+        backend = PersistentLokiBackend()
+        with patch.object(backend, "_emit_async") as mock_emit:
+            backend.record_logentry(entry=entry)
+            self.assertTrue(mock_emit.called)
+            # Inspect the JSON message that would be emitted
+            args = mock_emit.call_args[0]
+            msg = args[1] if len(args) > 1 else args[0]
+            payload = json.loads(msg)
+            self.assertEqual(payload.get("actor"), self.user.pk)
+            self.assertEqual(payload.get("actor_username"), self.user.username)
+            self.assertEqual(payload.get("action_code"), "C")
+            self.assertIsNotNone(payload.get("timestamp"))
 
     def test_record_crud_handles_db_failure_and_still_logs(self):
         customer = Customer(first_name="Crash", last_name="Test", email="crash@example.com")

@@ -68,20 +68,49 @@
                 }
             ],
             "transformations": [
-                { "id": "labelsToFields" },
+                {
+                    "id": "labelsToFields"
+                },
                 {
                     "id": "organize",
                     "options": {
                         "excludeByName": false,
                         "indexByName": false,
-                        "include": ["timestamp", "actor_username", "action_code", "object_type", "changes"],
-                        "order": ["timestamp", "actor_username", "action_code", "object_type", "changes"],
+                        "include": [
+                            "timestamp",
+                            "actor_username",
+                            "action_code",
+                            "object_type",
+                            "changes"
+                        ],
+                        "order": [
+                            "timestamp",
+                            "actor_username",
+                            "action_code",
+                            "object_type",
+                            "changes"
+                        ],
                         "rename": [
-                            { "from": "timestamp", "to": "Date" },
-                            { "from": "actor_username", "to": "User" },
-                            { "from": "action_code", "to": "Action" },
-                            { "from": "object_type", "to": "Model" },
-                            { "from": "changes", "to": "Payload" }
+                            {
+                                "from": "timestamp",
+                                "to": "Date"
+                            },
+                            {
+                                "from": "actor_username",
+                                "to": "User"
+                            },
+                            {
+                                "from": "action_code",
+                                "to": "Action"
+                            },
+                            {
+                                "from": "object_type",
+                                "to": "Model"
+                            },
+                            {
+                                "from": "changes",
+                                "to": "Payload"
+                            }
                         ]
                     }
                 }
@@ -134,7 +163,7 @@
             },
             "targets": [
                 {
-                    "expr": "{application=~\".*\", source=\"core\"}",
+                    "expr": "{application=~\".*\", logger=~\"^(django|django\.server|performance)$\"}",
                     "refId": "A"
                 }
             ]

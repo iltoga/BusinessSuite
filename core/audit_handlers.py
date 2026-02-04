@@ -357,14 +357,56 @@ class PersistentLokiBackend:
             )
             return
 
+        # Enrich payload with actor username/email and human-friendly action codes
         payload = {
             "event_type": "auditlog",
+            # Raw action value (integer enum)
             "action": entry.action,
+            # Human friendly action code (C/U/D/A) and display name when available
+            "action_code": None,
+            "action_display": None,
             "object_type": f"{entry.content_type.app_label}.{entry.content_type.model}",
             "object_id": str(entry.object_pk) if entry.object_pk is not None else None,
             "actor": getattr(entry, "actor_id", None),
+            "actor_username": None,
+            "actor_email": getattr(entry, "actor_email", None),
             "changes": entry.changes if hasattr(entry, "changes") else {},
             "timestamp": entry.timestamp.isoformat() if hasattr(entry, "timestamp") else None,
         }
+
+        # Attempt to resolve human-friendly action code/display from auditlog model
+        try:
+            from auditlog.models import LogEntry as AL
+
+            action_map = {
+                AL.Action.CREATE: "C",
+                AL.Action.UPDATE: "U",
+                AL.Action.DELETE: "D",
+                AL.Action.ACCESS: "A",
+            }
+            payload["action_code"] = action_map.get(entry.action, str(entry.action))
+            # If LogEntry provides a display helper, use it; otherwise fallback to str()
+            try:
+                payload["action_display"] = entry.get_action_display()
+            except Exception:
+                payload["action_display"] = str(entry.action)
+        except Exception:
+            # auditlog not available or introspection failed; best-effort
+            try:
+                payload["action_code"] = str(entry.action)
+                payload["action_display"] = str(entry.action)
+            except Exception:
+                pass
+
+        # Resolve actor username when actor object is available
+        try:
+            actor_obj = getattr(entry, "actor", None)
+            if actor_obj is not None:
+                payload["actor_username"] = getattr(actor_obj, "username", None) or (
+                    getattr(actor_obj, "get_username", lambda: None)() if hasattr(actor_obj, "get_username") else None
+                )
+        except Exception:
+            payload["actor_username"] = None
+
         # Tag audit-specific events so they can be filtered in Grafana/Loki
         self._emit_async("info", json.dumps(payload), extra={"source": "auditlog", "audit": True})
