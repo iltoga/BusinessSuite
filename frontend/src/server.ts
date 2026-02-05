@@ -31,6 +31,42 @@ app.use(
 );
 
 /**
+ * Serve modified assets at runtime for environment-driven overrides
+ *
+ * This endpoint lets us override values in /assets/config.json using
+ * environment variables at container start time so the deployed image
+ * doesn't need to be rebuilt when changing branding.
+ */
+import { promises as fs } from 'node:fs';
+
+app.get('/assets/config.json', async (req, res, next) => {
+  try {
+    const cfgPath = join(browserDistFolder, 'assets', 'config.json');
+    const raw = await fs.readFile(cfgPath, 'utf8');
+    const cfg = JSON.parse(raw);
+
+    // Allow container env vars to override the static config.json values
+    const logoFilename = process.env['LOGO_FILENAME'];
+    const logoInverted = process.env['LOGO_INVERTED_FILENAME'];
+
+    const merged = {
+      ...cfg,
+      ...(logoFilename ? { logoFilename } : {}),
+      ...(logoInverted ? { logoInvertedFilename: logoInverted } : {}),
+    };
+
+    // Log what we're returning to help ops debugging
+    console.debug('[Server] /assets/config.json ->', merged);
+
+    // Cache for a short amount of time in case env changes (unlikely) but still safe
+    res.setHeader('Cache-Control', 'public, max-age=60');
+    res.json(merged);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
  * Serve static files from /browser
  */
 app.use(
@@ -73,6 +109,9 @@ app.use(async (req, res, next) => {
     if (typeof response.body === 'string' && contentType.includes('text/html')) {
       const logoFilename = process.env['LOGO_FILENAME'] || 'logo_transparent.png';
       const logoInverted = process.env['LOGO_INVERTED_FILENAME'] || 'logo_inverted_transparent.png';
+
+      // Log resolved runtime brand to make debugging in production easier
+      console.debug('[SSR] Resolved branding:', { logoFilename, logoInverted });
 
       if (cspEnabled) {
         const nonce = generateNonce();

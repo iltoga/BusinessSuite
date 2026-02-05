@@ -12,6 +12,27 @@ ng serve
 
 Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
 
+---
+
+## Runtime branding / logo via environment variables ✅
+
+When deployed in Docker the frontend server reads the `LOGO_FILENAME` and `LOGO_INVERTED_FILENAME` environment variables at runtime. These values are:
+
+- Injected into server-rendered HTML as `window.APP_BRAND` (SSR)
+- Served at `/assets/config.json` (overrides `assets/config.json` values)
+
+Set the variables in your `.env` and ensure `docker-compose.yml` passes them to the `bs-frontend` service. After changing the variables, restart the `bs-frontend` container so values take effect.
+
+Examples (docker-compose):
+
+```yaml
+services:
+  bs-frontend:
+    environment:
+      - LOGO_FILENAME=${LOGO_FILENAME}
+      - LOGO_INVERTED_FILENAME=${LOGO_INVERTED_FILENAME}
+```
+
 ## Code scaffolding
 
 Angular CLI includes powerful code scaffolding tools. To generate a new component, run:

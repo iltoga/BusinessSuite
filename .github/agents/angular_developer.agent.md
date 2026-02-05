@@ -110,3 +110,4 @@ You must strictly follow this sequence for every request:
 - **Error Handling:** Use the global error handler (`shared/utils/error-handler.ts`) instead of local `try/catch` blocks where possible.
 - **Tooling:** Never suggest `npm` or `node` commands; strictly enforce `bun`.
 - **Versioning:** NEVER use git commit, push or pull commands directly. unless explicitly instructed.
+- **Frontend root:** Assume the frontend root is `frontend/` and always operate within this directory.
