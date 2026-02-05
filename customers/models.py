@@ -187,7 +187,7 @@ class Customer(models.Model):
         from django.utils.translation import gettext as gettext_fn
 
         # Default to configured document language if none provided
-        lang = lang or settings.DEFAULT_DOCUMENT_LANGUAGE_CODE or "en"
+        lang = lang or getattr(settings, "DEFAULT_DOCUMENT_LANGUAGE_CODE", "en")
         current_lang = get_language()
         activate(lang)
         try:
