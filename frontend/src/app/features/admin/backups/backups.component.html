@@ -1,33 +1,7 @@
 <div class="space-y-6">
   <div class="flex items-center justify-between">
     <h1 class="text-2xl font-bold tracking-tight">Backup & Restore</h1>
-    <div class="flex gap-4 items-center">
-      <label class="flex items-center gap-2">
-        <z-checkbox
-          [(ngModel)]="selectAllFlag"
-          [ngModelOptions]="{ standalone: true }"
-        ></z-checkbox>
-        <span class="text-sm">Select all</span>
-      </label>
-
-      <button
-        z-button
-        zType="destructive"
-        (click)="deleteSelectedBackups()"
-        [zDisabled]="isOperationRunning() || selectedFiles().length === 0"
-      >
-        Delete Selected
-      </button>
-
-      <button
-        z-button
-        zType="outline"
-        (click)="deleteAllBackups()"
-        [zDisabled]="isOperationRunning()"
-      >
-        Delete All
-      </button>
-
+    <div>
       <button z-button (click)="startBackup()" [zDisabled]="isOperationRunning()">
         Start Backup
       </button>
@@ -96,8 +70,35 @@
 
   <!-- Available Backups -->
   <z-card class="p-0">
-    <div class="p-4 border-b">
+    <div class="p-4 border-b flex items-center">
       <h3 class="text-lg font-medium">Available Backups</h3>
+      <div class="ml-4 flex gap-4 items-center flex-wrap">
+        <label class="flex items-center gap-2">
+          <z-checkbox
+            [(ngModel)]="selectAllFlag"
+            [ngModelOptions]="{ standalone: true }"
+          ></z-checkbox>
+          <span class="text-sm">Select all</span>
+        </label>
+
+        <button
+          z-button
+          zType="destructive"
+          (click)="deleteSelectedBackups()"
+          [zDisabled]="isOperationRunning() || selectedFiles().length === 0"
+        >
+          Delete Selected
+        </button>
+
+        <button
+          z-button
+          zType="outline"
+          (click)="deleteAllBackups()"
+          [zDisabled]="isOperationRunning()"
+        >
+          Delete All
+        </button>
+      </div>
     </div>
     <app-data-table [data]="backups()" [columns]="columns" [isLoading]="isLoading()" />
   </z-card>
@@ -154,15 +155,6 @@
       [zDisabled]="isOperationRunning()"
     >
       Restore
-    </button>
-    <button
-      z-button
-      zType="destructive"
-      zSize="sm"
-      (click)="deleteBackup(item.filename)"
-      [zDisabled]="isOperationRunning()"
-    >
-      Delete
     </button>
   </div>
 </ng-template>
