@@ -13,11 +13,14 @@ import { ZardDateInputComponent } from '@/shared/components/date-input';
 import { FormErrorSummaryComponent } from '@/shared/components/form-error-summary/form-error-summary.component';
 import { ZardIconComponent } from '@/shared/components/icon';
 import { ZardInputDirective } from '@/shared/components/input';
+import { ProductSelectComponent } from '@/shared/components/product-select';
+import { TypeaheadComboboxComponent } from '@/shared/components/typeahead-combobox';
 import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/utils/form-errors';
 import { CommonModule, Location } from '@angular/common';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
   Component,
   computed,
   inject,
@@ -43,6 +46,8 @@ import { map, startWith, Subject, takeUntil } from 'rxjs';
     ZardInputDirective,
     ZardComboboxComponent,
     CustomerSelectComponent,
+    ProductSelectComponent,
+    TypeaheadComboboxComponent,
     ZardDateInputComponent,
     FormErrorSummaryComponent,
   ],
@@ -62,15 +67,18 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private location = inject(Location);
+  private cdr = inject(ChangeDetectorRef);
 
   private destroy$ = new Subject<void>();
 
   readonly selectedCustomer = signal<Customer | null>(null);
-  readonly products = signal<any[]>([]);
   readonly documentTypes = signal<any[]>([]);
   readonly isEditMode = signal(false);
   readonly applicationId = signal<number | null>(null);
   readonly isLoading = signal(false);
+  // Loading state and open/closed state for the Documents panel
+  readonly documentsLoading = signal(false);
+  readonly documentsPanelOpen = signal(false);
 
   readonly form = this.fb.group({
     customer: [null as string | null, Validators.required],
@@ -90,13 +98,6 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
   };
 
   readonly isSubmitting = signal(false);
-
-  readonly productOptions = computed<ZardComboboxOption[]>(() => {
-    return this.products().map((p) => ({
-      value: String(p.id),
-      label: `${p.name} (${p.code})`,
-    }));
-  });
 
   readonly documentTypeOptions = computed<ZardComboboxOption[]>(() => {
     return this.documentTypes().map((dt) => ({
@@ -184,7 +185,6 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
         });
     }
 
-    this.loadProducts();
     this.loadDocumentTypes();
   }
 
@@ -194,28 +194,30 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
       next: (app: any) => {
         const docDate = app.docDate ? new Date(app.docDate) : new Date();
         const customerId = Number(app.customer?.id ?? app.customer);
+        const productId = Number(app.product?.id ?? app.product);
         this.form.patchValue({
           customer: String(customerId),
-          product: String(app.product?.id ?? app.product),
+          product: productId ? String(productId) : null,
           docDate: docDate,
           notes: app.notes ?? '',
         });
         if (customerId) {
           this.loadCustomerDetail(customerId);
         }
+
+        // Ensure product documents are loaded when editing an application
+        if (productId) {
+          // open the documents panel and load documents
+          this.documentsPanelOpen.set(true);
+          this.loadProductDocuments(productId);
+        }
+
         this.isLoading.set(false);
       },
       error: () => {
         this.toast.error('Failed to load application');
         this.isLoading.set(false);
       },
-    });
-  }
-
-  private loadProducts() {
-    this.productsService.productsList(undefined, 1, 100).subscribe({
-      next: (res) => this.products.set(res.results ?? []),
-      error: () => this.toast.error('Failed to load products'),
     });
   }
 
@@ -234,6 +236,10 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
   }
 
   private loadProductDocuments(productId: number) {
+    // Show loader and ensure the documents panel is opened
+    this.documentsLoading.set(true);
+    this.documentsPanelOpen.set(true);
+
     this.productsService.productsGetProductByIdRetrieve(productId).subscribe({
       next: (data: any) => {
         this.documentsArray.clear();
@@ -256,8 +262,16 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
         if (passportAutoImported) {
           this.toast.info('Passport file automatically imported from Customer profile');
         }
+
+        this.documentsLoading.set(false);
+        // ensure template updates under OnPush
+        this.cdr.markForCheck();
       },
-      error: () => this.toast.error('Failed to load product documents'),
+      error: () => {
+        this.documentsLoading.set(false);
+        this.cdr.markForCheck();
+        this.toast.error('Failed to load product documents');
+      },
     });
   }
 
@@ -280,6 +294,9 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
   }
 
   addDocument(docTypeId: number | string = '', required = true) {
+    // Ensure panel is open when a document is added manually
+    this.documentsPanelOpen.set(true);
+
     const docGroup = this.fb.group({
       docTypeId: [String(docTypeId), Validators.required],
       required: [required],
@@ -289,6 +306,30 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
 
   removeDocument(index: number) {
     this.documentsArray.removeAt(index);
+  }
+
+  /**
+   * Called when the `Product` select emits a change. Ensure the product control
+   * is synchronized and immediately load the product's documents so they appear
+   * straight away in the UI.
+   */
+  onProductSelected(productId: number | null): void {
+    if (productId) {
+      const current = this.form.get('product')?.value;
+      // Keep the form value as a string (existing code uses strings elsewhere)
+      const asString = String(productId);
+      if (current !== asString) {
+        this.form.patchValue({ product: asString });
+      }
+      // Open panel and load documents immediately
+      this.documentsPanelOpen.set(true);
+      this.loadProductDocuments(Number(productId));
+    } else {
+      // Clear selection and any document rows and close panel
+      this.form.patchValue({ product: null });
+      this.documentsArray.clear();
+      this.documentsPanelOpen.set(false);
+    }
   }
 
   private setEditModeControls(disabled: boolean): void {

@@ -33,6 +33,11 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
           return throwError(() => err);
         }
 
+        // If backend returned 401 for the logout endpoint, do not try to refresh or call logout again
+        if (req.url?.includes('/user-profile/logout')) {
+          return throwError(() => err);
+        }
+
         // Try to refresh token and retry original request
         return authService.refreshToken().pipe(
           switchMap(() => {

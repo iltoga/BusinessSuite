@@ -103,6 +103,32 @@ You must strictly follow this sequence for every request:
     - Automatically remove unused imports, dead code, and `console.log` statements.
     - Update `docs/shared_components.md` if you created a reusable component.
 
+## Customizing ZardUI Components Without Losing Work
+
+To avoid losing customizations during future updates, use the following strategy:
+
+### 1. The Wrapper Pattern (Highly Recommended)
+
+**Do not edit** the source code in `components/ui/` directly. Instead, create a wrapper component in a separate folder.
+
+**Example:**
+
+```typescript
+// components/custom/my-button.component.ts
+import { ZardUIButton } from "components/ui/button";
+
+@Component({
+  selector: "custom-my-button",
+  template: ` <zard-ui-button [extraProp]="...">Custom</zard-ui-button> `,
+  // ...custom logic or styling...
+})
+export class MyButtonComponent {}
+```
+
+**Action:** Import the base ZardUI Button and apply your custom logic or extra styling inside this wrapper.
+
+**Benefit:** When you update the base component using the CLI, your wrapper remains untouched.
+
 ## Behavior Guidelines
 
 - **Context Awareness:** Rely on #context7 for ZardUI/Tailwind specific class names and component APIs.

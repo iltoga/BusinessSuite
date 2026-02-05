@@ -475,7 +475,7 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     queryset = Product.objects.prefetch_related("tasks").all()
     pagination_class = StandardResultsSetPagination
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ["name", "code", "product_type"]
+    search_fields = ["name", "code", "description", "product_type"]
     ordering_fields = ["name", "code", "product_type", "base_price"]
     ordering = ["name"]
 

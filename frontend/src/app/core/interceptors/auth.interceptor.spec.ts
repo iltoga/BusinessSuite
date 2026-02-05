@@ -100,6 +100,28 @@ describe('authInterceptor', () => {
     });
   });
 
+  it('does NOT call logout when logout endpoint returns 401', () => {
+    mockAuth.getToken.mockReturnValue('valid-token');
+    mockAuth.isTokenExpired.mockReturnValue(false);
+
+    mockAuth.refreshToken = vi.fn().mockReturnValue(throwError(() => new Error('no refresh')));
+
+    return new Promise<void>((resolve) => {
+      http.post('/api/user-profile/logout/', {}).subscribe({
+        next: () => {
+          throw new Error('should not succeed');
+        },
+        error: () => {
+          expect(mockAuth.logout).not.toHaveBeenCalled();
+          resolve();
+        },
+      });
+
+      const req = httpTestingController.expectOne('/api/user-profile/logout/');
+      req.flush(null, { status: 401, statusText: 'Unauthorized' });
+    });
+  });
+
   it('attempts refresh and retries the original request on 401', () => {
     mockAuth.getToken.mockReturnValue('old-token');
     mockAuth.isTokenExpired.mockReturnValue(false);

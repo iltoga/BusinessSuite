@@ -181,3 +181,9 @@ html.app-brand-ready img[data-app-logo] {
   visibility: visible;
   opacity: 1;
 }
+
+/* Make product description readable and match product code tone in combobox options */
+.z-command-option .product-select-description,
+.z-command-option .text-xs.opacity-60 {
+  opacity: 0.7; /* match opacity-70 */
+}

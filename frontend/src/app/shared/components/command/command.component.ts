@@ -17,7 +17,10 @@ import type { ClassValue } from 'clsx';
 
 import { ZardCommandInputComponent } from '@/shared/components/command/command-input.component';
 import { ZardCommandOptionComponent } from '@/shared/components/command/command-option.component';
-import { commandVariants, type ZardCommandSizeVariants } from '@/shared/components/command/command.variants';
+import {
+  commandVariants,
+  type ZardCommandSizeVariants,
+} from '@/shared/components/command/command.variants';
 import type { ZardIcon } from '@/shared/components/icon';
 import { mergeClasses } from '@/shared/utils/merge-classes';
 
@@ -82,6 +85,7 @@ export class ZardCommandComponent implements ControlValueAccessor {
 
   readonly size = input<ZardCommandSizeVariants>('default');
   readonly class = input<ClassValue>('');
+  readonly zRemote = input<boolean>(false);
 
   readonly zCommandChange = output<ZardCommandOption>();
   readonly zCommandSelected = output<ZardCommandOption>();
@@ -93,7 +97,9 @@ export class ZardCommandComponent implements ControlValueAccessor {
   // Signal to trigger updates when optionComponents change
   private readonly optionsUpdateTrigger = signal(0);
 
-  protected readonly classes = computed(() => mergeClasses(commandVariants({ size: this.size() }), this.class()));
+  protected readonly classes = computed(() =>
+    mergeClasses(commandVariants({ size: this.size() }), this.class()),
+  );
 
   // Computed signal for filtered options - this will automatically update when searchTerm or options change
   readonly filteredOptions = computed(() => {
@@ -105,12 +111,16 @@ export class ZardCommandComponent implements ControlValueAccessor {
       return [];
     }
 
+    if (this.zRemote()) {
+      return this.optionComponents();
+    }
+
     const lowerSearchTerm = searchTerm.toLowerCase().trim();
     if (!lowerSearchTerm) {
       return this.optionComponents();
     }
 
-    return this.optionComponents().filter(option => {
+    return this.optionComponents().filter((option) => {
       const label = option.zLabel().toLowerCase();
       const command = option.zCommand()?.toLowerCase() ?? '';
       return label.includes(lowerSearchTerm) || command.includes(lowerSearchTerm);
@@ -151,7 +161,7 @@ export class ZardCommandComponent implements ControlValueAccessor {
    * Trigger an update to the filteredOptions computed signal
    */
   private triggerOptionsUpdate(): void {
-    this.optionsUpdateTrigger.update(value => value + 1);
+    this.optionsUpdateTrigger.update((value) => value + 1);
   }
 
   onSearch(searchTerm: string) {

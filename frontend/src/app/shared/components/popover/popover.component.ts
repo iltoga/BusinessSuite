@@ -150,6 +150,13 @@ export class ZardPopoverDirective implements OnInit, OnDestroy {
 
     const templatePortal = new TemplatePortal(this.zContent(), this.viewContainerRef);
     this.overlayRef?.attach(templatePortal);
+
+    // Ensure overlay width matches origin width for dropdowns attached to inputs
+    this.updateOverlayWidth();
+
+    // Also update width on window resize while visible
+    this.listeners.push(this.renderer.listen('window', 'resize', () => this.updateOverlayWidth()));
+
     this.isVisible.set(true);
     this.zVisibleChange.emit(true);
   }
@@ -200,6 +207,21 @@ export class ZardPopoverDirective implements OnInit, OnDestroy {
         .outsidePointerEvents()
         .pipe(filter((event) => !this.nativeElement.contains(event.target)))
         .subscribe(() => this.hide());
+    }
+  }
+
+  private updateOverlayWidth(): void {
+    if (!this.overlayRef) return;
+
+    try {
+      const originRect = this.nativeElement.getBoundingClientRect();
+      const overlayEl = (this.overlayRef as OverlayRef).overlayElement;
+      if (overlayEl && originRect.width) {
+        // set explicit width so popover aligns with the trigger
+        overlayEl.style.width = `${Math.round(originRect.width)}px`;
+      }
+    } catch (e) {
+      // ignore errors
     }
   }
 

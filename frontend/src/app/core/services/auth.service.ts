@@ -144,12 +144,36 @@ export class AuthService {
   }
 
   logout(): void {
-    // Record logout event in Django
-    this.http.post(`${this.API_URL}/user-profile/logout/`, {}).subscribe({
-      error: (err) => console.error('Failed to record logout in backend', err),
-    });
+    // Clear local tokens and claims first to avoid recursive interceptor behavior
     this.clearToken();
+    this.clearRefreshToken();
     this.router.navigate(['/login']);
+
+    // If mock auth is enabled, there's no backend to record logout against
+    if (this.mockAuthEnabled) {
+      return;
+    }
+
+    // Attempt to record logout event in backend (best-effort).
+    // Treat 401 (already logged out / unauthorized) as success and swallow it.
+    this.http
+      .post(`${this.API_URL}/user-profile/logout/`, {})
+      .pipe(
+        catchError((err) => {
+          if (err?.status === 401) {
+            // Ignore 401 responses — user is effectively logged out already
+            return of(null);
+          }
+          // Log other errors so they can be investigated, but don't block logout flow
+          console.error('Failed to record logout in backend', err);
+          return throwError(() => err);
+        }),
+      )
+      .subscribe({
+        // No-op handlers: we've already handled logging above; keep subscription to fire the request
+        next: () => {},
+        error: () => {},
+      });
   }
 
   private setToken(token: string): void {
