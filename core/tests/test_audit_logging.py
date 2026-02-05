@@ -74,72 +74,66 @@ class AuditLoggingTests(TestCase):
             self.assertTrue(mock_emit.called)
 
     def test_loki_handler_fallback_to_file_on_failure(self):
-        # Create a FailSafeLokiHandler and simulate _primary emitting raising an exception
+        # Create a FailSafeLokiHandler and ensure fallback file is written
+        import os
+        import tempfile
+
         from core.audit_handlers import FailSafeLokiHandler
 
-        handler = FailSafeLokiHandler(fallback_filename="/tmp/test_audit_degraded.log")
-        # monkeypatch the primary to raise
-        handler._primary = type("X", (), {"emit": lambda self, r: (_ for _ in ()).throw(Exception("network"))})()
-        record = logging.LogRecord("test", logging.ERROR, __file__, 1, "msg", (), None)
+        tmpfile = os.path.join(tempfile.gettempdir(), "test_audit_degraded.log")
+        try:
+            os.remove(tmpfile)
+        except Exception:
+            pass
+
+        handler = FailSafeLokiHandler(fallback_filename=tmpfile)
+        record = logging.LogRecord("test", logging.ERROR, __file__, 1, "msg-fallback", (), None)
 
         # Ensure no exception is raised and fallback file write happens (file handler emits without error)
         try:
             handler.emit(record)
         except Exception as e:  # pragma: no cover - ensure handler absorbs exceptions
-            self.fail(f"Loki handler fallback raised exception: {e}")
+            self.fail(f"Handler raised exception: {e}")
 
-    def test_loki_handler_uses_requests_when_no_logging_loki(self):
-        """If logging_loki isn't available, FailSafeLokiHandler should POST directly to Loki via requests."""
+        # Ensure file now exists and contains the message
+        self.assertTrue(os.path.exists(tmpfile))
+        with open(tmpfile, "r", encoding="utf-8") as fh:
+            contents = fh.read()
+        self.assertIn("msg-fallback", contents)
+
+    def test_loki_handler_writes_json_with_dynamic_labels(self):
+        """When `extra` contains labels (e.g., source/audit), they should be written as JSON lines to the fallback file."""
+        import os
+        import tempfile
+
         from core.audit_handlers import FailSafeLokiHandler
 
-        handler = FailSafeLokiHandler(fallback_filename="/tmp/test_audit_degraded.log")
-        # Ensure there is no primary handler
-        handler._primary = None
-        # Prevent lazy re-creation of the primary handler during the test
-        handler._allow_lazy_primary = False
-        record = logging.LogRecord("test", logging.INFO, __file__, 1, "direct-push-test", (), None)
+        tmpfile = os.path.join(tempfile.gettempdir(), "test_audit_dynamic.log")
+        try:
+            os.remove(tmpfile)
+        except Exception:
+            pass
 
-        # Ensure a requests module is present and patch its post method to observe the call
-        import sys
-        import types
-        from unittest.mock import Mock, patch
-
-        if "requests" not in sys.modules:
-            mod = types.ModuleType("requests")
-            mod.post = Mock()
-            sys.modules["requests"] = mod
-
-        with patch("requests.post") as mock_post:
-            handler.emit(record)
-            self.assertTrue(mock_post.called)
-
-    def test_loki_handler_posts_dynamic_labels(self):
-        """When `extra` contains labels (e.g., source/audit), they should be sent as Loki labels."""
-        from core.audit_handlers import FailSafeLokiHandler
-
-        handler = FailSafeLokiHandler(fallback_filename="/tmp/test_audit_degraded.log")
-        handler._primary = None
+        handler = FailSafeLokiHandler(fallback_filename=tmpfile)
         record = logging.LogRecord("test", logging.INFO, __file__, 1, "dynamic-labels-test", (), None)
         # Simulate extra labels set via logger.extra
         record.__dict__.update({"source": "auditlog", "audit": True})
 
-        import requests
+        handler.emit(record)
 
-        with patch("requests.post") as mock_post:
-            handler.emit(record)
-            self.assertTrue(mock_post.called)
-            # Extract the JSON payload passed to requests.post
-            args, kwargs = mock_post.call_args
-            payload = kwargs.get("json") if kwargs.get("json") is not None else (args[1] if len(args) > 1 else None)
-            self.assertIsNotNone(payload, "Expected JSON payload in requests.post call")
-            streams = payload.get("streams", [])
-            self.assertTrue(len(streams) >= 1, "Expected at least one stream in payload")
-            stream_labels = streams[0].get("stream", {})
-            # handler.tags should be present (application) and dynamic labels should be attached
-            self.assertIn("application", stream_labels)
-            self.assertEqual(stream_labels.get("source"), "auditlog")
-            # Booleans are normalized to lowercase strings
-            self.assertEqual(stream_labels.get("audit"), "true")
+        # Ensure file contains a JSON line with labels
+        self.assertTrue(os.path.exists(tmpfile))
+        with open(tmpfile, "r", encoding="utf-8") as fh:
+            lines = [l.strip() for l in fh if l.strip()]
+        self.assertTrue(lines, "Expected at least one line in fallback file")
+        last = lines[-1]
+        data = None
+        try:
+            data = json.loads(last)
+        except Exception:
+            self.fail("Expected last line to be JSON")
+        self.assertEqual(data.get("labels", {}).get("source"), "auditlog")
+        self.assertEqual(data.get("labels", {}).get("audit"), "true")
 
     def test_audit_disabled_via_setting(self):
         from django.test import override_settings

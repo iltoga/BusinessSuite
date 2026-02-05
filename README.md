@@ -96,7 +96,7 @@ The application exposes a RESTful API for interacting with its various modules. 
 
 ## 📣 Observability — django-auditlog (recommended)
 
-We use `django-auditlog` to record model changes (create/update/delete) and optionally record access events. Audit entries are persisted to the DB (viewable in Django Admin) and are forwarded to Loki for structured logging via our `PersistentLokiBackend`.
+We use `django-auditlog` to record model changes (create/update/delete) and optionally record access events. Audit entries are persisted to the DB (viewable in Django Admin) and are also written as structured JSON lines to a local audit log file (by default `logs/audit.log`) via our `PersistentLokiBackend` so Grafana Alloy can scrape them.
 
 Quick steps:
 
@@ -137,6 +137,49 @@ Notes:
 - We will automatically register models listed in `LOGGING_MODE` for audit logging on app ready.
 - If you previously used `django-easy-audit`, run `python manage.py drop_easyaudit --yes` to remove easyaudit DB tables, then remove the package and its `INSTALLED_APPS` entry.
 - The project forwards new `auditlog.LogEntry` objects to Loki (structured logs) so you can continue using Loki/Grafana for observability.
+
+---
+
+## Grafana Alloy — scraping container logs & files 🔍
+
+We recommend using **Grafana Alloy** to collect logs from both Docker container stdout/stderr and host log files. This keeps the application from needing to push logs directly to Loki and centralizes collection in Alloy.
+
+Quick checklist:
+
+- Ensure Django writes per-module logs into `logs/` (the project's `Logger` does this by default).
+- Ensure the Angular frontend writes to `/logs/frontend.log` (the Dockerfile and compose mounts have been updated to do this).
+- Mount the host `${DATA_PATH}/logs` directory into Alloy as `/host_logs` so Alloy can scrape files.
+
+Example Alloy file source (add to `config-local.alloy` / `config-prod.alloy`):
+
+```alloy
+loki.source.file "host_logs" {
+  paths = ["/host_logs/*.log"]
+  forward_to = [loki.write.grafana_cloud.receiver]  # use loki.write.local.receiver for dev
+}
+```
+
+Example `docker-compose` mounts:
+
+```yaml
+services:
+  bs-frontend:
+    volumes:
+      - type: bind
+        source: ${DATA_PATH}/logs
+        target: /logs
+
+  bs-alloy:
+    volumes:
+      - type: bind
+        source: ${DATA_PATH}/logs
+        target: /host_logs:ro
+```
+
+Notes:
+
+- Make sure `${DATA_PATH}/logs` exists on the host and is writable by app containers; Alloy only needs read access.
+- Avoid duplicating logs: Alloy's Docker scraper collects container stdout, and the file source reads log files — do not add console handlers to the same logger that also writes the file unless you intentionally want duplicate records.
 
 ---
 

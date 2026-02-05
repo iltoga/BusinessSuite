@@ -1,4 +1,6 @@
-This is a comprehensive guide to setting up **Grafana Alloy** to ship logs from your Dockerized applications (`bs-core`, `bs-worker`, `bs-frontend`) directly to **Grafana Cloud**.
+# Grafana Cloud Setup Guide
+
+## This is a comprehensive guide to setting up **Grafana Alloy** to ship logs from your Dockerized applications (`bs-core`, `bs-worker`, `bs-frontend`) directly to **Grafana Cloud**
 
 ---
 
@@ -244,6 +246,43 @@ volumes:
 
 ---
 
+### Step 3a: Scrape host log files (Django & Angular)
+
+If your services write logs to files (recommended for persistence), mount the host logs directory into the Alloy container and configure a file source to pick them up. In this repository we mount `${DATA_PATH}/logs` into application containers at `/logs` (Django + workers) and into Alloy at `/host_logs`. The front-end has been updated to write its process logs to `/logs/frontend.log` so it will also be picked up.
+
+Example Alloy file source (add to `config-local.alloy` / `config-prod.alloy`):
+
+```alloy
+// Scrape host log files (Django & Angular)
+loki.source.file "host_logs" {
+  paths = ["/host_logs/*.log"]
+  forward_to = [loki.write.grafana_cloud.receiver]   # or loki.write.local.receiver for dev
+}
+```
+
+Example `docker-compose` mounts (bs-frontend and bs-alloy):
+
+```yaml
+bs-frontend:
+  volumes:
+    - type: bind
+      source: ${DATA_PATH}/logs
+      target: /logs
+
+bs-alloy:
+  volumes:
+    - type: bind
+      source: ${DATA_PATH}/logs
+      target: /host_logs:ro
+```
+
+Notes:
+
+- Make sure `${DATA_PATH}/logs` exists on the host and is writable by the app containers. Alloy only needs read access so the mount can be `:ro` for extra safety.
+- The Alloy config examples in this repo (`grafana/alloy/config-local.alloy` and `grafana/alloy/config-prod.alloy`) already include a `loki.source.file` block that points to `/host_logs/*.log`.
+
+---
+
 ### Step 4: Verification and Usage
 
 1. **Configure Environment**: Add the `GRAFANA_CLOUD_...` variables to your `.env` file on the VPS.
@@ -256,3 +295,14 @@ volumes:
    - Go to **Explore** (compass icon).
    - Select the **Loki** datasource.
    - Use the query `{service="bs-core"}` to see your Django application logs.
+
+### Dashboard tips & references
+
+- Use templating variables (e.g., `service`, `level`, `logger`, `actor_username`) to make dashboards interactive and filterable. Our provided dashboard JSONs (`grafana/dashboards/`) use `label_values()` to populate these dropdowns.
+- For textual logs, use the **Logs** panel and add multiple queries (one for container logs and one for host files) so you can see both sources in one place.
+- Useful LogQL snippets:
+  - Recent errors for a service: `{service="bs-frontend", level="error"}`
+  - Parse JSON lines in the log: `{application="business_suite"} | json`
+  - Count errors in the last 5 minutes: `sum(count_over_time({service="bs-core", level="error"}[5m]))`
+
+See Grafana Loki docs for LogQL examples and best practices: <https://grafana.com/docs/loki/latest/queries/>

@@ -28,6 +28,19 @@ loki.source.docker "bs_log_scraper" {
   forward_to = [loki.write.grafana_cloud.receiver]
 }
 
+// 3a. Scrape host log files (Django & Angular). Files are mounted from host into the Alloy container at `/host_logs`.
+local.file_match "host_log_files" {
+  path_targets = [
+    { "__path__" = "/var/log/django/django.log", "job" = "host_logs", "service" = "backend" },
+    { "__path__" = "/var/log/django/task_worker.log", "job" = "host_logs", "service" = "task_worker" },
+  ]
+}
+
+loki.source.file "host_logs" {
+  targets    = local.file_match.host_log_files.targets
+  forward_to = [loki.write.grafana_cloud.receiver]
+}
+
 // 4. Send logs to Grafana Cloud with optimized batching
 loki.write "grafana_cloud" {
   endpoint {

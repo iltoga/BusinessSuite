@@ -117,13 +117,20 @@ def _audit_enabled() -> bool:
 
 
 class FailSafeLokiHandler(logging.Handler):
-    """Logging handler that attempts to export logs via Loki (logging_loki) and falls back to local file/console."""
+    """Fallback logging handler that writes audit events to a local file.
+
+    We intentionally avoid external network calls (no dependency on `logging_loki` or
+    `requests`). Events are written as either raw formatted messages or JSON lines when
+    dynamic labels are present. This keeps audit emission resilient and easily
+    scrappable by Grafana Alloy.
+    """
 
     def __init__(
         self, url: str | None = None, tags: dict | None = None, fallback_filename: str | None = None, level=logging.INFO
     ):
         super().__init__(level)
-        self.url = url or getattr(settings, "LOKI_URL", "http://bs-loki:3100/loki/api/v1/push")
+        # Keep attributes for compatibility with previous interface
+        self.url = url
         self.tags = tags or {"application": getattr(settings, "LOKI_APPLICATION", "business_suite")}
 
         # Determine fallback filename safely
@@ -147,101 +154,53 @@ class FailSafeLokiHandler(logging.Handler):
         self._file_handler.setLevel(level)
         self._console = logging.StreamHandler()
 
-        # Initialize primary Loki handler lazily; keep as attribute for tests
-        # Tests can set `_allow_lazy_primary` to False to prevent lazy import/creation so
-        # behaviour when logging_loki is unavailable can be tested deterministically.
-        self._allow_lazy_primary = True
-        self._primary = None
-        try:
-            from logging_loki import LokiHandler
-
-            self._primary = LokiHandler(url=self.url, tags=self.tags, version="1")
-            self._primary.setLevel(level)
-        except Exception:
-            # If logging_loki isn't available at import, we'll lazily create it in emit
-            self._primary = None
-
     def emit(self, record: logging.LogRecord) -> None:
-        # Attempt to send to Loki, if fails write to file, else console
+        """Write the record to the fallback file. If `extra` contains dynamic labels
+        (e.g., `source` / `audit`), write a JSON line containing the message, timestamp,
+        and labels so it's easy to query in Grafana/Loki after Alloy ingestion.
+        """
         try:
-            if self._primary is None and getattr(self, "_allow_lazy_primary", True):
-                # try to create lazily
-                try:
-                    from logging_loki import LokiHandler
+            message = self.format(record)
 
-                    self._primary = LokiHandler(url=self.url, tags=self.tags, version="1")
-                    self._primary.setLevel(self.level)
-                except Exception:
-                    self._primary = None
-
-            # Extract dynamic labels from the LogRecord so callers can set per-event labels
-            # via the `extra` parameter (e.g., extra={"source": "auditlog", "audit": True}).
+            # Extract dynamic labels from the LogRecord
             dynamic_labels: dict = {}
             try:
                 for key in ("source", "audit"):
                     if key in record.__dict__ and record.__dict__[key] is not None:
                         val = record.__dict__[key]
-                        # Normalize booleans to lowercase strings for label values
-                        if isinstance(val, bool):
-                            val = str(val).lower()
-                        else:
-                            val = str(val)
                         dynamic_labels[key] = val
             except Exception:
                 dynamic_labels = {}
 
-            # If we have no dynamic labels and a primary logging_loki handler is available,
-            # prefer it (efficient path). If dynamic labels are present, perform a direct
-            # POST so we can include them as Loki labels per-stream.
-            if self._primary and not dynamic_labels:
-                self._primary.emit(record)
-                return
+            if dynamic_labels:
+                payload = {
+                    "ts": datetime.now(timezone.utc).isoformat(),
+                    "level": logging.getLevelName(record.levelno),
+                    "logger": record.name,
+                    "message": message,
+                    "labels": {
+                        k: (str(v).lower() if isinstance(v, bool) else str(v)) for k, v in dynamic_labels.items()
+                    },
+                }
+                line = json.dumps(payload)
+            else:
+                # Plain message line
+                line = f"{datetime.now(timezone.utc).isoformat()} {logging.getLevelName(record.levelno)} {record.name} {message}"
 
-            # Attempt a best-effort HTTP POST directly to the Loki push API using `requests`.
+            # Append line to fallback file
             try:
-                import requests
-
-                # Normalize URL: allow settings.LOKI_URL to include or omit the push path
-                push_endpoint = (
-                    self.url
-                    if str(self.url).endswith("/loki/api/v1/push")
-                    else f"{str(self.url).rstrip('/')}/loki/api/v1/push"
-                )
-
-                # Build merged stream labels: static tags from handler + dynamic labels
-                stream_labels = dict(self.tags or {})
-                # Ensure label values are strings
-                for k, v in dynamic_labels.items():
-                    stream_labels[str(k)] = str(v)
-
-                ts = str(int(datetime.now(timezone.utc).timestamp() * 1e9))
-                message = self.format(record)
-                payload = {"streams": [{"stream": stream_labels, "values": [[ts, message]]}]}
-
-                # Best-effort POST with small timeout
-                try:
-                    requests.post(push_endpoint, json=payload, timeout=2)
-                    return
-                except Exception:
-                    # Fall through to fallback handlers (file/console)
-                    pass
-            except Exception:
-                # requests unavailable or other import errors; fall back
-                pass
-
-            raise RuntimeError("Loki handler not initialized")
-        except Exception as exc:  # pragma: no cover - network/fallback behavior
-            try:
-                msg = self.format(record)
-                fallback_msg = f"[LOKI_SEND_FAILED] {datetime.now(timezone.utc).isoformat()} {msg} | exc={exc}"
+                # Use the underlying file handler to preserve permissions/rotation behaviour
                 self._file_handler.emit(
-                    logging.LogRecord(
-                        record.name, record.levelno, record.pathname, record.lineno, fallback_msg, (), None
-                    )
+                    logging.LogRecord(record.name, record.levelno, record.pathname, record.lineno, line, (), None)
                 )
             except Exception:
-                # Last resort: console
+                # Final fallback: emit to console
                 self._console.emit(record)
+        except Exception:
+            try:
+                self._console.emit(record)
+            except Exception:
+                pass
 
 
 class PersistentLokiBackend:
@@ -261,21 +220,51 @@ class PersistentLokiBackend:
         self._pool = DaemonThreadPool(size=pool_size, max_queue=max_queue, drop_on_full=drop_on_full)
 
     def _emit_async(self, level: str, message: str, extra: dict | None = None):
-        """Emit a log record asynchronously via the daemon thread pool.
+        """Emit a structured audit event asynchronously.
 
-        The pool handles enqueueing and worker execution; failures during emission
-        are logged at DEBUG level so the main Django process is never blocked.
+        Behaviour:
+        - Asynchronously append the event as a JSON line to `logs/audit.log` (or
+          configurable via `AUDIT_LOG_FILE` setting).
+        - Also emit via the configured `audit` logger for compatibility with
+          existing logging handlers.
         """
+
+        audit_file = getattr(settings, "AUDIT_LOG_FILE", None)
+        if not audit_file:
+            base_dir = getattr(settings, "BASE_DIR", None)
+            audit_file = os.path.join(str(base_dir) if base_dir else ".", "logs", "audit.log")
 
         def _worker():
             try:
-                level_fn = getattr(self.logger, level.lower(), self.logger.info)
-                if extra is None:
-                    level_fn(message)
-                else:
-                    level_fn(message, extra=extra)
+                # First: append to the audit file as a JSON line
+                try:
+                    record_payload = {
+                        "ts": datetime.now(timezone.utc).isoformat(),
+                        "level": level.upper(),
+                        "message": message,
+                        "extra": extra or {},
+                    }
+                    # Ensure directory exists
+                    try:
+                        os.makedirs(os.path.dirname(audit_file), exist_ok=True)
+                    except Exception:
+                        pass
+                    with open(audit_file, "a", encoding="utf-8") as fh:
+                        fh.write(json.dumps(record_payload) + "\n")
+                except Exception as exc:  # pragma: no cover - best-effort
+                    logging.getLogger(__name__).debug("Failed to write audit file: %s", exc)
+
+                # Second: emit via logger for compatibility
+                try:
+                    level_fn = getattr(self.logger, level.lower(), self.logger.info)
+                    if extra is None:
+                        level_fn(message)
+                    else:
+                        level_fn(message, extra=extra)
+                except Exception as exc:  # pragma: no cover - best-effort
+                    logging.getLogger(__name__).debug("Failed to emit via audit logger: %s", exc)
             except Exception as exc:  # pragma: no cover - best-effort
-                logging.getLogger(__name__).debug("Failed to emit to Loki (async): %s", exc)
+                logging.getLogger(__name__).debug("Error in audit worker: %s", exc)
 
         # Submit to the pool (non-blocking; pool will drop when full if configured)
         try:

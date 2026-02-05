@@ -75,19 +75,19 @@ try:
 
     @receiver(post_save, sender=LogEntry)
     def _forward_auditlog_to_loki(sender, instance, created, **kwargs):
-        """Forward django-auditlog LogEntry events to Loki for observability.
+        """Forward django-auditlog LogEntry events to our audit backend.
 
         This signal receiver ensures that when django-auditlog creates a LogEntry
-        in the database, a corresponding structured log is emitted to Loki via
-        the audit logger. This keeps observability in sync with persistent audit
-        records.
+        in the database, a corresponding structured log is emitted to the audit
+        backend (which writes structured JSON lines to `logs/audit.log`). This
+        keeps observability in sync with persistent audit records.
 
         Key behaviors:
         - Only processes newly created LogEntry instances (ignores updates).
         - Respects the global AUDIT_ENABLED setting: if audits are disabled at
           runtime, the LogEntry is deleted to prevent any persistent audit data.
-        - Builds a structured JSON payload with event details and forwards it
-          to Loki using the FailSafeLokiHandler.
+        - Builds a structured JSON payload with event details and writes it to
+          the audit log for Grafana Alloy ingestion.
 
         This function is registered automatically when django-auditlog is installed
         and the app is ready. It appears unused in static analysis because it's

@@ -1,190 +1,405 @@
 {
     "annotations": {
-        "list": []
-    },
-    "description": "Django Backend observability: Audit events, Core logs, and Worker tasks",
-    "title": "Django Observability",
-    "templating": {
         "list": [
             {
-                "name": "audit_user",
-                "type": "query",
-                "label": "User",
-                "hide": 0,
-                "datasource": "Loki",
-                "query": "label_values({application=~\".*\", audit=\"true\"}, actor_username)",
-                "includeAll": true,
-                "allValue": ".*"
+                "builtIn": 1,
+                "datasource": {
+                    "type": "grafana",
+                    "uid": "-- Grafana --"
+                },
+                "enable": true,
+                "hide": true,
+                "iconColor": "rgba(0, 211, 255, 1)",
+                "name": "Annotations & Alerts",
+                "type": "dashboard"
+            },
+            {
+                "datasource": {
+                    "type": "loki",
+                    "uid": "${DS_LOKI}"
+                },
+                "enable": true,
+                "expr": "{service=~\"$service\", service=~\".+\"} |~ \"(?i)error|critical|exception\"",
+                "iconColor": "#FF0000",
+                "name": "Error Markers",
+                "showIn": 0,
+                "tagKeys": "",
+                "textFormat": "{{content}}",
+                "titleFormat": "ERROR",
+                "type": "tags"
             }
         ]
     },
+    "editable": true,
+    "fiscalYearStartMonth": 0,
+    "graphTooltip": 2,
+    "links": [],
+    "liveNow": false,
     "panels": [
         {
-            "type": "stat",
-            "title": "Recent Audit Events (Total)",
-            "gridPos": {
-                "x": 0,
-                "y": 0,
-                "w": 6,
-                "h": 5
-            },
-            "targets": [
-                {
-                    "expr": "sum(count_over_time({application=~\".*\", audit=\"true\"} [5m]))",
-                    "refId": "A"
-                }
-            ]
-        },
-        {
-            "type": "timeseries",
-            "title": "Backend Log Levels",
-            "gridPos": {
-                "x": 6,
-                "y": 0,
-                "w": 18,
-                "h": 5
-            },
-            "targets": [
-                {
-                    "expr": "sum by (level) (count_over_time({application=~\".*\"} [1m]))",
-                    "legendFormat": "{{level}}",
-                    "refId": "A"
-                }
-            ]
-        },
-        {
-            "type": "table",
-            "title": "Audit Trail (CRUD Events)",
-            "gridPos": {
-                "x": 0,
-                "y": 5,
-                "w": 24,
-                "h": 8
-            },
-            "targets": [
-                {
-                    "expr": "{application=~\".*\", audit=\"true\", actor_username=~\"$audit_user\"} | json",
-                    "refId": "A"
-                }
-            ],
-            "transformations": [
-                {
-                    "id": "labelsToFields"
-                },
-                {
-                    "id": "organize",
-                    "options": {
-                        "excludeByName": false,
-                        "indexByName": false,
-                        "include": [
-                            "timestamp",
-                            "actor_username",
-                            "action_code",
-                            "object_type",
-                            "changes"
-                        ],
-                        "order": [
-                            "timestamp",
-                            "actor_username",
-                            "action_code",
-                            "object_type",
-                            "changes"
-                        ],
-                        "rename": [
-                            {
-                                "from": "timestamp",
-                                "to": "Date"
-                            },
-                            {
-                                "from": "actor_username",
-                                "to": "User"
-                            },
-                            {
-                                "from": "action_code",
-                                "to": "Action"
-                            },
-                            {
-                                "from": "object_type",
-                                "to": "Model"
-                            },
-                            {
-                                "from": "changes",
-                                "to": "Payload"
-                            }
-                        ]
-                    }
-                }
-            ],
-            "options": {
-                "showHeader": true,
-                "columns": [
-                    {
-                        "text": "Date",
-                        "value": "Date"
-                    },
-                    {
-                        "text": "User",
-                        "value": "User"
-                    },
-                    {
-                        "text": "Action",
-                        "value": "Action"
-                    },
-                    {
-                        "text": "Model",
-                        "value": "Model"
-                    },
-                    {
-                        "text": "Payload",
-                        "value": "Payload",
-                        "type": "json"
-                    }
-                ],
-                "wrapMode": "auto"
+            "datasource": {
+                "type": "loki",
+                "uid": "${DS_LOKI}"
             },
             "fieldConfig": {
                 "defaults": {
-                    "custom": {
-                        "json": {
-                            "pretty": true
-                        }
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "red",
+                                "value": 1
+                            }
+                        ]
                     }
-                }
-            }
-        },
-        {
-            "type": "logs",
-            "title": "Django Core Console",
+                },
+                "overrides": []
+            },
             "gridPos": {
+                "h": 4,
+                "w": 4,
                 "x": 0,
-                "y": 13,
-                "w": 12,
-                "h": 10
+                "y": 0
             },
+            "id": 4,
+            "options": {
+                "colorMode": "background",
+                "graphMode": "none",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "reduceOptions": {
+                    "calcs": [
+                        "sum"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "textMode": "auto",
+                "wideLayout": true
+            },
+            "pluginVersion": "10.0.0",
             "targets": [
                 {
-                    "expr": "{application=~\".*\", logger=~\"^(django|django.server|performance)$\"}",
+                    "datasource": {
+                        "type": "loki",
+                        "uid": "${DS_LOKI}"
+                    },
+                    "editorMode": "code",
+                    "expr": "sum(count_over_time({service=~\"$service\", service=~\".+\"} |~ \"(?i)error|critical|exception\" [$__interval]))",
                     "refId": "A"
                 }
-            ]
+            ],
+            "title": "Total Errors",
+            "type": "stat"
         },
         {
-            "type": "logs",
-            "title": "Background Worker Logs",
+            "datasource": {
+                "type": "loki",
+                "uid": "${DS_LOKI}"
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisCenteredZero": false,
+                        "axisColorMode": "text",
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "barAlignment": 0,
+                        "drawStyle": "line",
+                        "fillOpacity": 15,
+                        "gradientMode": "opacity",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineInterpolation": "linear",
+                        "lineWidth": 3,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "auto",
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "normal"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": []
+                },
+                "overrides": [
+                    {
+                        "matcher": {
+                            "id": "byRegexp",
+                            "options": "/.*ERROR.*/i"
+                        },
+                        "properties": [
+                            {
+                                "id": "color",
+                                "value": {
+                                    "fixedColor": "red",
+                                    "mode": "fixed"
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byRegexp",
+                            "options": "/.*INFO.*/i"
+                        },
+                        "properties": [
+                            {
+                                "id": "color",
+                                "value": {
+                                    "fixedColor": "green",
+                                    "mode": "fixed"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            },
             "gridPos": {
-                "x": 12,
-                "y": 13,
-                "w": 12,
-                "h": 10
+                "h": 4,
+                "w": 20,
+                "x": 4,
+                "y": 0
+            },
+            "id": 1,
+            "options": {
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": true
+                },
+                "tooltip": {
+                    "mode": "multi",
+                    "sort": "none"
+                }
             },
             "targets": [
                 {
-                    "expr": "{application=~\".*\", logger=~\"^(celery|huey|worker)$\"}",
+                    "datasource": {
+                        "type": "loki",
+                        "uid": "${DS_LOKI}"
+                    },
+                    "editorMode": "code",
+                    "expr": "sum by (level) (count_over_time({service=~\"$service\", service=~\".+\"} |~ \"(?i)$search\" [$__interval]))",
+                    "legendFormat": "{{level}}",
                     "refId": "A"
                 }
-            ]
+            ],
+            "title": "Log Volume by Level",
+            "type": "timeseries"
+        },
+        {
+            "datasource": {
+                "type": "loki",
+                "uid": "${DS_LOKI}"
+            },
+            "gridPos": {
+                "h": 12,
+                "w": 24,
+                "x": 0,
+                "y": 4
+            },
+            "id": 2,
+            "options": {
+                "dedupStrategy": "none",
+                "enableLogDetails": true,
+                "prettifyLogMessage": false,
+                "showCommonLabels": false,
+                "showLabels": false,
+                "showTime": true,
+                "sortOrder": "Descending",
+                "wrapLogMessage": true
+            },
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "loki",
+                        "uid": "${DS_LOKI}"
+                    },
+                    "editorMode": "code",
+                    "expr": "{service=~\"$service\", service=~\".+\"} | service!~\"(?i).*worker.*\" |~ \"(?i)$search\" |~ \"(?i)$level\"",
+                    "refId": "A"
+                }
+            ],
+            "title": "Backend Logs",
+            "type": "logs"
+        },
+        {
+            "datasource": {
+                "type": "loki",
+                "uid": "${DS_LOKI}"
+            },
+            "gridPos": {
+                "h": 12,
+                "w": 24,
+                "x": 0,
+                "y": 16
+            },
+            "id": 3,
+            "options": {
+                "dedupStrategy": "none",
+                "enableLogDetails": true,
+                "prettifyLogMessage": false,
+                "showCommonLabels": false,
+                "showLabels": false,
+                "showTime": true,
+                "sortOrder": "Descending",
+                "wrapLogMessage": true
+            },
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "loki",
+                        "uid": "${DS_LOKI}"
+                    },
+                    "editorMode": "code",
+                    "expr": "{service=~\"$service\", service=~\".+\"} | service=~\"(?i).*worker.*\" |~ \"(?i)$search\" |~ \"(?i)$level\"",
+                    "refId": "A"
+                }
+            ],
+            "title": "Task Worker Logs",
+            "type": "logs"
         }
     ],
-    "schemaVersion": 36,
-    "version": 1
+    "refresh": "10s",
+    "schemaVersion": 38,
+    "style": "dark",
+    "tags": [
+        "logs"
+    ],
+    "templating": {
+        "list": [
+            {
+                "current": {
+                    "selected": false,
+                    "text": "Loki",
+                    "value": "Loki"
+                },
+                "hide": 0,
+                "includeAll": false,
+                "label": "Datasource",
+                "multi": false,
+                "name": "DS_LOKI",
+                "options": [],
+                "query": "loki",
+                "refresh": 1,
+                "regex": "",
+                "skipUrlSync": false,
+                "type": "datasource"
+            },
+            {
+                "allValue": ".+",
+                "current": {
+                    "selected": true,
+                    "text": "All",
+                    "value": [
+                        "$__all"
+                    ]
+                },
+                "datasource": {
+                    "type": "loki",
+                    "uid": "${DS_LOKI}"
+                },
+                "definition": "label_values(service)",
+                "hide": 0,
+                "includeAll": true,
+                "label": "Service",
+                "multi": true,
+                "name": "service",
+                "options": [],
+                "query": "label_values(service)",
+                "refresh": 1,
+                "regex": "",
+                "skipUrlSync": false,
+                "sort": 1,
+                "type": "query"
+            },
+            {
+                "current": {
+                    "selected": false,
+                    "text": "",
+                    "value": ""
+                },
+                "hide": 0,
+                "label": "Search",
+                "name": "search",
+                "options": [],
+                "query": "",
+                "skipUrlSync": false,
+                "type": "textbox"
+            },
+            {
+                "current": {
+                    "selected": true,
+                    "text": "All",
+                    "value": "$__all"
+                },
+                "hide": 0,
+                "includeAll": true,
+                "label": "Level",
+                "multi": true,
+                "name": "level",
+                "options": [
+                    {
+                        "selected": false,
+                        "text": "INFO",
+                        "value": "INFO"
+                    },
+                    {
+                        "selected": false,
+                        "text": "WARNING",
+                        "value": "WARNING"
+                    },
+                    {
+                        "selected": false,
+                        "text": "ERROR",
+                        "value": "ERROR"
+                    },
+                    {
+                        "selected": false,
+                        "text": "CRITICAL",
+                        "value": "CRITICAL"
+                    },
+                    {
+                        "selected": false,
+                        "text": "DEBUG",
+                        "value": "DEBUG"
+                    }
+                ],
+                "query": "INFO,WARNING,ERROR,CRITICAL,DEBUG",
+                "skipUrlSync": false,
+                "type": "custom"
+            }
+        ]
+    },
+    "time": {
+        "from": "now-6h",
+        "to": "now"
+    },
+    "timepicker": {},
+    "timezone": "browser",
+    "title": "Django Logs (Provisioned)",
+    "version": 1,
+    "weekStart": ""
 }

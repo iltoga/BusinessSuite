@@ -218,7 +218,7 @@ python-docx==1.2.0
     # via business-suite (pyproject.toml)
 python-dotenv==1.2.1
     # via business-suite (pyproject.toml)
-python-logging-loki==0.3.1
+
     # via business-suite (pyproject.toml)
 python-monkey-business==1.1.0
     # via django-nested-admin

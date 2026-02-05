@@ -105,56 +105,45 @@ class Logger:
     def _create_logger(name: str) -> logging.Logger:
         logger = logging.getLogger(name)
 
-        logging_level = getattr(settings, "LOGGING_LEVEL", "INFO")
-        log_dir = getattr(settings, "LOG_DIR", "./logs")
-        os.makedirs(log_dir, exist_ok=True)
-        log_file_name = f"{log_dir}/{name}.log"
+        # Get log directory from settings or environment
+        # When called during settings initialization, django.conf.settings might not be ready.
+        log_dir = getattr(settings, "LOG_DIR", None)
 
+        # If LOG_DIR is not in settings (yet), try to find it relative to this file's project root
+        if not log_dir:
+            # core/services/logger_service.py -> ../../ -> root/
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            project_root = os.path.abspath(os.path.join(current_dir, "..", ".."))
+            log_dir = os.path.join(project_root, "logs")
+
+        os.makedirs(log_dir, exist_ok=True)
+        log_file_name = os.path.join(log_dir, f"{name}.log")
+
+        logging_level = getattr(settings, "LOGGING_LEVEL", "INFO")
         logger.setLevel(logging_level.upper())
 
         # Create formatter for log messages
         formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
         # Create console handler and file handler
-        if not any(isinstance(h, logging.StreamHandler) for h in logger.handlers):
+        # We also check if we already have a ConcurrentRotatingFileHandler to avoid duplicates
+        has_console = any(
+            isinstance(h, logging.StreamHandler) and not isinstance(h, logging.FileHandler) for h in logger.handlers
+        )
+        has_file = any(isinstance(h, ConcurrentRotatingFileHandler) for h in logger.handlers)
+
+        if not has_console:
             console_handler = logging.StreamHandler()
-            file_handler = ConcurrentRotatingFileHandler(log_file_name, "a", 1 * 1024 * 1024, 10)
-
             console_handler.setLevel(logging_level.upper())
-            file_handler.setLevel(logging_level.upper())
-
-            # Add formatter to the handlers
             console_handler.setFormatter(formatter)
-            file_handler.setFormatter(formatter)
-
-            # Exclude HTTP Request logs from being logged
-            http_request_filter = NoHttpRequestFilter()
-            console_handler.addFilter(http_request_filter)
-            file_handler.addFilter(http_request_filter)
-
-            # Add handlers to logger
+            console_handler.addFilter(NoHttpRequestFilter())
             logger.addHandler(console_handler)
+
+        if not has_file:
+            file_handler = ConcurrentRotatingFileHandler(log_file_name, "a", 1 * 1024 * 1024, 10)
+            file_handler.setLevel(logging_level.upper())
+            file_handler.setFormatter(formatter)
+            file_handler.addFilter(NoHttpRequestFilter())
             logger.addHandler(file_handler)
-
-        # Add Loki handler if enabled
-        if getattr(settings, "LOKI_ENABLED", False) and not any(
-            h.__class__.__name__ == "LokiHandler" for h in logger.handlers
-        ):
-            try:
-                from logging_loki import LokiHandler
-
-                loki_url = getattr(settings, "LOKI_URL", "http://loki:3100/loki/api/v1/push")
-                loki_application = getattr(settings, "LOKI_APPLICATION", "business_suite")
-                loki_job = getattr(settings, "LOKI_JOB", "backend") if not name else name
-
-                loki_handler = LokiHandler(
-                    url=loki_url, tags={"application": loki_application, "job": loki_job}, version="1"
-                )
-                loki_handler.setLevel(logging.DEBUG)
-                loki_handler.setFormatter(formatter)
-                logger.addHandler(loki_handler)
-            except Exception:
-                # Don't break if Loki is unavailable at import time
-                pass
 
         return logger

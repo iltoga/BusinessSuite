@@ -75,10 +75,17 @@ INVOICE_IMPORT_MAX_WORKERS = int(os.getenv("INVOICE_IMPORT_MAX_WORKERS", "3"))  
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Ensure logs directory exists
-LOGS_DIR = os.path.join(BASE_DIR, "logs")
-if not os.path.exists(LOGS_DIR):
-    os.makedirs(LOGS_DIR, exist_ok=True)
+# Ensure logs directory exists at the project root (one level up from BASE_DIR)
+# This ensures that Grafana Alloy can consistently scrape them from a single location.
+ROOT_DIR = BASE_DIR.parent
+LOG_DIR = os.path.join(ROOT_DIR, "logs")
+if not os.path.exists(LOG_DIR):
+    os.makedirs(LOG_DIR, exist_ok=True)
+LOGS_DIR = LOG_DIR  # Alias for backward compatibility
+
+# Logging level configuration
+DJANGO_LOG_LEVEL = os.getenv("DJANGO_LOG_LEVEL", os.getenv("LOG_LEVEL", "INFO"))
+LOGGING_LEVEL = DJANGO_LOG_LEVEL
 
 
 # Quick-start development settings - unsuitable for production
@@ -315,7 +322,8 @@ SESSION_COOKIE_SAMESITE = "Lax"  # Changed from "None" - use Lax for same-site D
 CSRF_COOKIE_SAMESITE = "Lax"  # Changed from "None"
 
 # Read log level from DJANGO_LOG_LEVEL or fall back to generic LOG_LEVEL; default to INFO.
-DJANGO_LOG_LEVEL = os.getenv("DJANGO_LOG_LEVEL", os.getenv("LOG_LEVEL", "INFO"))
+# Logging level configuration
+# DJANGO_LOG_LEVEL = os.getenv("DJANGO_LOG_LEVEL", os.getenv("LOG_LEVEL", "INFO"))
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
@@ -482,6 +490,7 @@ else:
         port=int(os.getenv("DB_PORT")) if os.getenv("DB_PORT") else 5432,
     )
 
+_HUEY_WORKERS = int(os.getenv("HUEY_WORKERS", "2"))
 HUEY = {
     "huey_class": "huey.contrib.sql_huey.SqlHuey",
     "name": "business_suite",
@@ -490,7 +499,7 @@ HUEY = {
     "immediate": False,
     "database": huey_database,
     "consumer": {
-        "workers": int(os.getenv("HUEY_WORKERS", "2")),
+        "workers": _HUEY_WORKERS,
         "worker_type": os.getenv("HUEY_WORKER_TYPE", "thread"),
         "scheduler_interval": 1,
         "check_worker_health": True,
@@ -566,12 +575,9 @@ DBBACKUP_EXCLUDE_MEDIA_FODERS = ["tmpfiles"]
 FULL_BACKUP_SCHEDULE = "02:00"
 CLEAR_CACHE_SCHEDULE = ["03:00"]
 
-# Loki & Audit defaults
-# Use Loki (via python-logging-loki) for audit logs. Configure using environment variables.
-LOKI_ENABLED = os.getenv("LOKI_ENABLED", "False").lower() == "true"
-LOKI_URL = os.getenv("LOKI_URL", "http://bs-loki:3100/loki/api/v1/push")
-LOKI_APPLICATION = os.getenv("LOKI_APPLICATION", "business_suite")
-LOKI_JOB = os.getenv("LOKI_JOB", "backend")
+# Audit defaults
+# Audit events are written to a persistent DB (via `auditlog`) and to a structured
+# audit log file (default: `logs/audit.log`) to be scraped by Grafana Alloy.
 
 # Audit settings (using django-auditlog)
 # Runtime toggles controlled by environment variables. Defaults to True when not set.
@@ -608,6 +614,18 @@ else:
     if "auditlog.middleware.AuditlogMiddleware" in MIDDLEWARE:
         MIDDLEWARE.remove("auditlog.middleware.AuditlogMiddleware")
 
+# Determine if we are running as backend or task_worker
+# Default to 'backend' unless 'run_huey' is in command line or COMPONENT is set.
+COMPONENT = os.getenv("COMPONENT")
+if not COMPONENT:
+    if "run_huey" in sys.argv:
+        COMPONENT = "task_worker"
+    else:
+        COMPONENT = "backend"
+
+# Define the primary handler for this component
+PRIMARY_HANDLER = "backend_file" if COMPONENT == "backend" else "task_worker_file"
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -631,76 +649,68 @@ LOGGING = {
             "class": "logging.StreamHandler",
             "formatter": "simple",
         },
-        "file": {
-            "level": "DEBUG",
-            "class": "logging.FileHandler",
-            "filename": os.path.join(BASE_DIR, "logs", "debug.log"),
+        "backend_file": {
+            "level": "INFO",
+            "class": "concurrent_log_handler.ConcurrentRotatingFileHandler",
+            "filename": os.path.join(LOG_DIR, "django.log"),
+            "maxBytes": 10 * 1024 * 1024,
+            "backupCount": 10,
+            "formatter": "verbose",
         },
-        "fail_safe_loki": {
+        "task_worker_file": {
+            "level": "INFO",
+            "class": "concurrent_log_handler.ConcurrentRotatingFileHandler",
+            "filename": os.path.join(LOG_DIR, "task_worker.log"),
+            "maxBytes": 10 * 1024 * 1024,
+            "backupCount": 10,
+            "formatter": "verbose",
+        },
+        "fail_safe_audit": {
             "level": "INFO",
             "()": "core.audit_handlers.FailSafeLokiHandler",
         },
-        # "mail_admins": {
-        #     "level": "ERROR",
-        #     "class": "django.utils.log.AdminEmailHandler",
-        #     "filters": ["special"],
-        # },
     },
     "root": {
-        "handlers": ["console"],
+        "handlers": ["console", PRIMARY_HANDLER],
         "level": "WARNING",
     },
     "loggers": {
         "django": {
-            "handlers": ["console"],
+            "handlers": ["console", PRIMARY_HANDLER],
             "level": DJANGO_LOG_LEVEL,
             "propagate": False,
         },
-        "passport_ocr": {
-            "handlers": ["console", "file"],
-            "level": "DEBUG",
-            "propagate": False,
-        },
-        # Audit logger - persists to DB and sends structured logs to Loki via `FailSafeLokiHandler`.
-        # CRITICAL: We avoid the 'console' handler here because a Promtail-like scraper (if present)
-        # would duplicate events by scraping container stdout. Adding 'console' may cause duplicate events.
-        "audit": {
-            "handlers": ["fail_safe_loki", "file"],
+        "huey": {
+            "handlers": ["console", PRIMARY_HANDLER],
             "level": "INFO",
             "propagate": False,
         },
-        # "django.request": {
-        #     "handlers": ["mail_admins"],
-        #     "level": "ERROR",
-        #     "propagate": False,
-        # },
-        # requires the PerformanceLoggingMiddleware to be added to MIDDLEWARE
         "performance": {
-            "handlers": ["console", "file"],
+            "handlers": ["console", PRIMARY_HANDLER],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "audit": {
+            "handlers": ["fail_safe_audit"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "core": {
+            "handlers": ["console", PRIMARY_HANDLER],
             "level": "INFO",
             "propagate": False,
         },
     },
 }
 
-# If Loki integration is enabled, attach the fail-safe Loki handler to top-level
-# loggers so application logs are forwarded to Loki. Deduplicate handler lists
-# to avoid accidental duplicates.
-if LOKI_ENABLED:
-    # Attach to root so most logs are forwarded
-    LOGGING["root"]["handlers"] = list(dict.fromkeys(LOGGING["root"].get("handlers", []) + ["fail_safe_loki"]))
+# Remove the manual loop and use the standard Django logging configuration.
+# The Logger service can still be used for ad-hoc loggers.
+from core.services.logger_service import Logger
 
-    # Ensure framework and common app loggers also forward to Loki even when propagate=False
-    LOGGING["loggers"]["django"]["handlers"] = list(
-        dict.fromkeys(LOGGING["loggers"]["django"].get("handlers", []) + ["fail_safe_loki"])
-    )
-    LOGGING["loggers"]["passport_ocr"]["handlers"] = list(
-        dict.fromkeys(LOGGING["loggers"]["passport_ocr"].get("handlers", []) + ["fail_safe_loki"])
-    )
-    LOGGING["loggers"]["performance"]["handlers"] = list(
-        dict.fromkeys(LOGGING["loggers"]["performance"].get("handlers", []) + ["fail_safe_loki"])
-    )
-
+# Note: Loki-specific attachment of handlers has been removed. Grafana Alloy should
+# scrape container stdout/stderr or log files (e.g., `logs/`) to collect logs. If you
+# want additional loggers to forward audit events to the file-based fallback handler,
+# add "fail_safe_audit" to their handler lists here.
 CURRENCY = "IDR"
 CURRENCY_SYMBOL = "Rp"
 CURRENCY_DECIMAL_PLACES = 0

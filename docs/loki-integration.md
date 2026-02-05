@@ -1,8 +1,20 @@
-# Loki integration for Django (template)
+# Loki integration (DEPRECATED)
 
-✅ **Purpose**: document the project’s Loki + Django integration and provide a reusable template for other Django apps. Use this doc to implement Loki logging, local testing with Docker Compose, and examples of both dict-based Django `LOGGING` and programmatic `LokiHandler` usage.
+**Status:** Direct Loki emission has been removed from the codebase. We now rely on Grafana Alloy to collect logs from Docker container stdout/stderr and from files exposed to Alloy. This document is retained for historical reference only.
 
 ---
+
+## Deprecation note
+
+This document used to describe how to wire `logging_loki` to send logs directly to Loki. That approach has been removed from the codebase in favor of using Grafana Alloy to scrape Docker container logs and files.
+
+Key guidance:
+
+- Ensure Django writes its logs to `logs/` (the built-in `Logger` places per-module logs under `logs/` by default).
+- Audit events are written as JSON lines to `logs/audit.log` by `core.audit_handlers.PersistentLokiBackend` (kept for compatibility).
+- Configure Grafana Alloy (see `howtos/GRAFANA_CLOUD_SETUP.md`) to scrape Docker container stdout/stderr and any log files you choose to expose.
+
+If you still need direct push to Loki, consider reintroducing a tailored integration and update this document accordingly.
 
 ## Components & packages 🔧
 
@@ -16,18 +28,18 @@ In this repo Loki is run as a container in `docker-compose.yml` and `docker-comp
 
 ```yaml
 # docker-compose.yml (excerpt)
-  bs-loki:
-    container_name: bs-loki
-    image: grafana/loki:3.5.1
-    restart: unless-stopped
-    ports:
-      - "3100:3100"
-    volumes:
-      - loki-data:/loki
-      - ./grafana/loki-config.yaml:/etc/loki/local-config.yaml:ro
-    command: -config.file=/etc/loki/local-config.yaml
-    networks:
-      - dockernet
+bs-loki:
+  container_name: bs-loki
+  image: grafana/loki:3.5.1
+  restart: unless-stopped
+  ports:
+    - "3100:3100"
+  volumes:
+    - loki-data:/loki
+    - ./grafana/loki-config.yaml:/etc/loki/local-config.yaml:ro
+  command: -config.file=/etc/loki/local-config.yaml
+  networks:
+    - dockernet
 ```
 
 `./grafana/loki-config.yaml` in the repo configures storage, retention and server port (default 3100).

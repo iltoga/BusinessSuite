@@ -75,6 +75,7 @@ services:
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASS: ${DB_PASS}
+      COMPONENT: backend
       # Loki settings commented out; Alloy handles log collection via Docker socket
       LOKI_ENABLED: "false"
       # LOKI_URL: "http://bs-loki:3100/loki/api/v1/push"
@@ -110,6 +111,7 @@ services:
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASS: ${DB_PASS}
+      COMPONENT: task_worker
       # Loki settings commented out; Alloy handles log collection via Docker socket
       LOKI_ENABLED: "false"
       # LOKI_URL: "http://bs-loki:3100/loki/api/v1/push"
@@ -146,6 +148,10 @@ services:
       # LOKI_URL: http://bs-loki:3100/loki/api/v1/push
     ports:
       - 4200:4000
+    volumes:
+      - type: bind
+        source: ${DATA_PATH}/logs
+        target: /logs
     networks:
       - dockernet
 
@@ -158,6 +164,10 @@ services:
     volumes:
       - ./grafana/alloy/config-local.alloy:/etc/alloy/config.alloy:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - type: bind
+        source: ./logs
+        target: /host_logs
+        read_only: true
       - alloy-data:/var/lib/alloy/data
     environment:
       # Use local Loki for dev

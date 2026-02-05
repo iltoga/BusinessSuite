@@ -70,6 +70,7 @@ services:
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASS: ${DB_PASS}
+      COMPONENT: backend
     volumes:
       - type: bind
         source: ./
@@ -106,6 +107,7 @@ services:
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASS: ${DB_PASS}
+      COMPONENT: task_worker
     volumes:
       - type: bind
         source: ./
@@ -149,6 +151,10 @@ services:
       # These can be set in your environment/.env and default to the original filenames.
       LOGO_FILENAME: ${LOGO_FILENAME}
       LOGO_INVERTED_FILENAME: ${LOGO_INVERTED_FILENAME}
+    volumes:
+      - type: bind
+        source: ${DATA_PATH}/logs
+        target: /logs
     restart: unless-stopped
 
   bs-alloy:
@@ -158,6 +164,10 @@ services:
     volumes:
       - ./grafana/alloy/config-prod.alloy:/etc/alloy/config.alloy:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - type: bind
+        source: ${DATA_PATH}/logs
+        target: /host_logs
+        read_only: true
       - alloy-data:/var/lib/alloy/data
     environment:
       # --- Credentials ---

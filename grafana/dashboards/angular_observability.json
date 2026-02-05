@@ -3,7 +3,31 @@
         "list": []
     },
     "description": "Angular Frontend observability: Errors, User activity, and Client-side logs",
-    "title": "Angular Observability",
+    "title": "Angular Observability (provisioned)",
+    "templating": {
+        "list": [
+            {
+                "name": "service",
+                "type": "query",
+                "label": "Service",
+                "hide": 0,
+                "datasource": "Loki",
+                "query": "label_values({service=~\".*\"}, service)",
+                "includeAll": true,
+                "allValue": ".*"
+            },
+            {
+                "name": "level",
+                "type": "query",
+                "label": "Level",
+                "hide": 0,
+                "datasource": "Loki",
+                "query": "label_values({level=~\".*\"}, level)",
+                "includeAll": true,
+                "allValue": ".*"
+            }
+        ]
+    },
     "panels": [
         {
             "type": "stat",
@@ -16,7 +40,7 @@
             },
             "targets": [
                 {
-                    "expr": "sum(count_over_time({application=~\".*\", level=\"error\"} [5m]))",
+                    "expr": "sum(count_over_time({service=~\"$service\", level=\"error\"} [5m]))",
                     "refId": "A"
                 }
             ],
@@ -52,7 +76,7 @@
             },
             "targets": [
                 {
-                    "expr": "sum(count_over_time({application=~\".*\", level=\"error\"} [1m]))",
+                    "expr": "sum(count_over_time({service=~\"$service\", level=\"error\"} [1m]))",
                     "refId": "A"
                 }
             ]
@@ -68,8 +92,12 @@
             },
             "targets": [
                 {
-                    "expr": "{application=~\".*\"}",
+                    "expr": "{service=~\"$service\", level=~\"$level\"}",
                     "refId": "A"
+                },
+                {
+                    "expr": "{filename=~\"/host_logs/frontend.log\", level=~\"$level\"}",
+                    "refId": "B"
                 }
             ]
         },
