@@ -38,6 +38,12 @@ CORS_ALLOW_CREDENTIALS = True
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+MOCK_AUTH_ENABLED = True
+MOCK_AUTH_USERNAME = "stef"
+MOCK_AUTH_EMAIL = "stef@revisbali.com"
+MOCK_AUTH_IS_SUPERUSER = True
+MOCK_AUTH_IS_STAFF = True
+
 # Avoid exhausting Postgres connection limits during local refreshes.
 # Keep connections non-persistent in dev so they close at the end of each request.
 DATABASES["default"]["CONN_MAX_AGE"] = 0

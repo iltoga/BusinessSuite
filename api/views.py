@@ -120,9 +120,21 @@ class ApiErrorHandlingMixin:
 
         try:
             response = super().handle_exception(exc)
-        except Exception:
+        except Exception as e:
+            import traceback
+
+            logging.exception("Unhandled exception in API view")
+            if settings.DEBUG:
+                return self.error_response(
+                    f"Server error: {str(e)}",
+                    status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    details=traceback.format_exc(),
+                )
             return self.error_response("Server error", status.HTTP_500_INTERNAL_SERVER_ERROR)
+
         if response is None:
+            if settings.DEBUG:
+                return self.error_response("Server error: Response is None", status.HTTP_500_INTERNAL_SERVER_ERROR)
             return self.error_response("Server error", status.HTTP_500_INTERNAL_SERVER_ERROR)
         if isinstance(exc, ValidationError):
             data = response.data or {}

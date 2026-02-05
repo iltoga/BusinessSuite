@@ -23,6 +23,7 @@ api/products.service.ts
 api/server-management.service.ts
 api/user-profile.service.ts
 api/user-settings.service.ts
+api/v1.service.ts
 configuration.ts
 encoder.ts
 git_push.sh

@@ -22,13 +22,11 @@ Do not confuse with legacy Django views in templates/ directories that use Djang
 """
 
 from django.urls import include, path
-from drf_spectacular.views import (SpectacularAPIView, SpectacularRedocView,
-                                   SpectacularSwaggerView)
+from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 from rest_framework.routers import DefaultRouter
 
 from . import views
-from .views_admin import (BackupsViewSet, ServerManagementViewSet,
-                          backup_restore_sse, backup_start_sse)
+from .views_admin import BackupsViewSet, ServerManagementViewSet, backup_restore_sse, backup_start_sse
 
 # DRF Router for RESTful API endpoints
 # These ViewSets provide CRUD operations for Angular frontend consumption
@@ -60,7 +58,7 @@ urlpatterns = [
     # Authentication endpoints for Angular SPA
     path("api-token-auth/", views.TokenAuthView.as_view(), name="api-token-auth"),
     path("mock-auth-config/", views.mock_auth_config, name="api-mock-auth-config"),
-    path("session-auth/", include("rest_framework.urls", namespace="rest_framework")),
+    path("session-auth/", include("rest_framework.urls")),
     # SSE endpoints (plain Django views, bypass DRF content negotiation)
     # Used for real-time updates in Angular components
     path("backups/start/", backup_start_sse, name="api-backup-start-sse"),

@@ -588,13 +588,13 @@ export class CustomerFormComponent implements OnInit {
     const rawValue = this.form.getRawValue();
     const payload = {
       ...rawValue,
-      birthdate: rawValue.birthdate ? rawValue.birthdate.toISOString().split('T')[0] : '',
+      birthdate: rawValue.birthdate ? rawValue.birthdate.toISOString().split('T')[0] : null,
       passport_issue_date: rawValue.passport_issue_date
         ? rawValue.passport_issue_date.toISOString().split('T')[0]
-        : '',
+        : null,
       passport_expiration_date: rawValue.passport_expiration_date
         ? rawValue.passport_expiration_date.toISOString().split('T')[0]
-        : '',
+        : null,
       passport_metadata: this.passportMetadata(),
     };
     this.isLoading.set(true);
