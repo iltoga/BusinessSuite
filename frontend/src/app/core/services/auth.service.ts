@@ -2,12 +2,14 @@ import { isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { computed, Inject, Injectable, PLATFORM_ID, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { catchError, Observable, of, tap, throwError } from 'rxjs';
+import { catchError, finalize, map, Observable, of, shareReplay, tap, throwError } from 'rxjs';
 
 import { ConfigService } from './config.service';
 
 export interface AuthToken {
-  token: string;
+  token?: string;
+  access?: string;
+  refresh?: string;
 }
 
 export interface AuthClaims {
@@ -42,6 +44,7 @@ export interface LoginCredentials {
 })
 export class AuthService {
   private readonly TOKEN_KEY = 'auth_token';
+  private readonly REFRESH_KEY = 'auth_refresh_token';
   private readonly API_URL = '/api';
   private readonly MOCK_CLAIMS_URL = '/api/mock-auth-config/';
 
@@ -51,7 +54,17 @@ export class AuthService {
   private _isLoading = signal(false);
   private _error = signal<string | null>(null);
 
-  isAuthenticated = computed(() => !!this.getToken());
+  // Holds an in-flight refresh observable so concurrent requests wait for the same refresh
+  private refreshRequest$: import('rxjs').Observable<string> | null = null;
+
+  isAuthenticated = computed(() => {
+    const token = this.getToken();
+    if (!token) return false;
+    const claims = this.buildClaimsFromToken(token);
+    if (!claims) return false;
+    if (!claims.exp) return true; // token has no exp claim
+    return Date.now() / 1000 < claims.exp;
+  });
   claims = this._claims.asReadonly();
   isSuperuser = computed(() => this._claims()?.isSuperuser ?? false);
   isLoading = this._isLoading.asReadonly();
@@ -100,8 +113,11 @@ export class AuthService {
 
     // Short-circuit login for mock authentication
     if (this.mockAuthEnabled) {
-      const fake = { token: 'mock-token' } as AuthToken;
-      this.setToken(fake.token);
+      const fake = { token: 'mock-token', refresh: 'mock-refresh' } as AuthToken;
+      const access = fake.token ?? fake.access ?? null;
+      const refresh = fake.refresh ?? null;
+      if (access) this.setToken(access);
+      if (refresh) this.setRefreshToken(refresh);
       const fallback = this.buildFallbackMockClaims();
       this._mockClaims.set(fallback);
       this._claims.set(fallback);
@@ -112,8 +128,11 @@ export class AuthService {
 
     return this.http.post<AuthToken>(`${this.API_URL}/api-token-auth/`, credentials).pipe(
       tap((response) => {
-        this.setToken(response.token);
-        this._claims.set(this.buildClaimsFromToken(response.token));
+        const access = response.token ?? response.access ?? null;
+        const refresh = response.refresh ?? null;
+        if (access) this.setToken(access);
+        if (refresh) this.setRefreshToken(refresh);
+        this._claims.set(this.buildClaimsFromToken(access));
         this._isLoading.set(false);
       }),
       catchError((error) => {
@@ -161,8 +180,78 @@ export class AuthService {
     return null;
   }
 
+  private setRefreshToken(refresh: string | null): void {
+    if (isPlatformBrowser(this.platformId)) {
+      if (refresh) localStorage.setItem(this.REFRESH_KEY, refresh);
+      else localStorage.removeItem(this.REFRESH_KEY);
+    }
+  }
+
+  private clearRefreshToken(): void {
+    if (isPlatformBrowser(this.platformId)) {
+      localStorage.removeItem(this.REFRESH_KEY);
+    }
+  }
+
+  private getStoredRefreshToken(): string | null {
+    if (isPlatformBrowser(this.platformId)) {
+      try {
+        if (typeof localStorage?.getItem === 'function') {
+          return localStorage.getItem(this.REFRESH_KEY);
+        }
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }
+
   getToken(): string | null {
     return this._token() ?? this.getStoredToken();
+  }
+
+  getRefreshToken(): string | null {
+    return this.getStoredRefreshToken();
+  }
+
+  /**
+   * Attempt to refresh the access token using the stored refresh token.
+   * Ensures multiple concurrent callers share a single refresh call.
+   */
+  refreshToken(): Observable<string> {
+    const existing = this.refreshRequest$;
+    if (existing) return existing;
+
+    const refresh = this.getRefreshToken();
+    if (!refresh) {
+      return throwError(() => new Error('No refresh token'));
+    }
+
+    const obs$ = this.http.post<AuthToken>(`${this.API_URL}/token/refresh/`, { refresh }).pipe(
+      tap((response) => {
+        const access = response.access ?? response.token ?? null;
+        const newRefresh = response.refresh ?? null;
+        if (!access) {
+          throw new Error('No access token in refresh response');
+        }
+        this.setToken(access);
+        if (newRefresh) this.setRefreshToken(newRefresh);
+      }),
+      map((resp: any) => (resp.access ?? resp.token) as string),
+      finalize(() => {
+        this.refreshRequest$ = null;
+      }),
+      shareReplay(1),
+      catchError((err) => {
+        // On refresh failure, clear tokens and forward error
+        this.clearToken();
+        this.clearRefreshToken();
+        return throwError(() => err);
+      }),
+    );
+
+    this.refreshRequest$ = obs$ as Observable<string>;
+    return this.refreshRequest$;
   }
 
   /**
@@ -270,5 +359,17 @@ export class AuthService {
    */
   isMockEnabled(): boolean {
     return !!this.mockAuthEnabled;
+  }
+
+  /**
+   * Returns true if the provided token (or current token) is expired according to its `exp` claim.
+   * If the token cannot be decoded or has no `exp` claim, the function returns false.
+   */
+  isTokenExpired(token?: string): boolean {
+    const t = token ?? this.getToken();
+    const claims = this.buildClaimsFromToken(t);
+    if (!claims) return false;
+    if (!claims.exp) return false;
+    return Date.now() / 1000 >= claims.exp;
   }
 }
