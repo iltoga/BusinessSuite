@@ -48,6 +48,12 @@ def run_clear_cache_now() -> None:
     _perform_clear_cache()
 
 
+@db_task()
+def run_auditlog_prune_now() -> None:
+    """Immediate task to prune auditlog DB entries older than configured retention."""
+    _perform_prune_auditlog()
+
+
 def _register_full_backup() -> None:
     schedule = getattr(settings, "FULL_BACKUP_SCHEDULE", "02:00")
     try:
@@ -81,5 +87,44 @@ def _register_clear_cache() -> None:
         globals()[f"_clear_cache_{hour:02d}{minute:02d}"] = _clear_cache_scheduled
 
 
+def _perform_prune_auditlog() -> None:
+    """Prune `auditlog.LogEntry` rows older than `AUDITLOG_RETENTION_DAYS`.
+
+    This uses the built-in management command `auditlogflush --before-date` to delete
+    old log entries. If `AUDITLOG_RETENTION_DAYS` is <= 0 the pruning is skipped.
+    """
+    retention_days = getattr(settings, "AUDITLOG_RETENTION_DAYS", 14)
+    if retention_days <= 0:
+        logger.info("AUDITLOG_RETENTION_DAYS is <= 0; skipping audit log pruning.")
+        return
+
+    cutoff_date = datetime.date.today() - datetime.timedelta(days=retention_days)
+    try:
+        call_command("auditlogflush", before_date=cutoff_date.isoformat(), yes=True)
+        logger.info("Pruned auditlog LogEntry objects before %s", cutoff_date.isoformat())
+    except Exception as exc:
+        logger.error("Failed to prune auditlog entries: %s", str(exc), exc_info=True)
+
+
+def _register_auditlog_prune() -> None:
+    schedule = getattr(settings, "AUDITLOG_RETENTION_SCHEDULE", "04:00")
+    if not schedule:
+        # Explicitly disabled
+        return
+
+    try:
+        hour, minute = _parse_time(schedule)
+    except ValueError as exc:
+        logger.error(str(exc))
+        return
+
+    @db_periodic_task(crontab(hour=hour, minute=minute), name="core.auditlog_prune_daily")
+    def _auditlog_prune_daily() -> None:
+        _perform_prune_auditlog()
+
+    globals()["_auditlog_prune_daily"] = _auditlog_prune_daily
+
+
 _register_full_backup()
 _register_clear_cache()
+_register_auditlog_prune()

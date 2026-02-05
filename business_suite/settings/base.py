@@ -599,6 +599,12 @@ AUDIT_URL_SKIP_LIST = _parse_list(os.getenv("AUDIT_URL_SKIP_LIST"), ["/static/",
 # Purge retention for forwarded audit logs (not the DB retention of LogEntry)
 AUDIT_PURGE_AFTER_DAYS = int(os.getenv("AUDIT_PURGE_AFTER_DAYS", "90"))
 
+# Database retention for audit log DB `LogEntry` objects.
+# Default to 14 days; set to 0 or negative to disable automatic pruning.
+AUDITLOG_RETENTION_DAYS = int(os.getenv("AUDITLOG_RETENTION_DAYS", "14"))
+# Daily schedule for audit log pruning (HH:MM 24h). Set to empty string to disable scheduling.
+AUDITLOG_RETENTION_SCHEDULE = os.getenv("AUDITLOG_RETENTION_SCHEDULE", "04:00")
+
 # Conditionally enable the `auditlog` app and its middleware (so the feature can be fully toggled at startup)
 if AUDIT_ENABLED:
     # Add auditlog to installed apps if missing

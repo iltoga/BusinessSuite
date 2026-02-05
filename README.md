@@ -127,6 +127,8 @@ Quick steps:
    auditlog.register(MyModel, exclude_fields=['sensitive_field'])
    ```
 
+Note: Audit log DB retention is configured via the `AUDITLOG_RETENTION_DAYS` environment variable / Django setting (default: 14 days). A daily Huey cron job runs to prune `auditlog.LogEntry` rows older than this threshold; set `AUDITLOG_RETENTION_SCHEDULE` to change the daily run time or set it to an empty string to disable scheduling.
+
 5. Optional settings you can tweak:
    - `AUDIT_ENABLED` (default: `True`) — Use this env var / Django setting to enable/disable audit forwarding at application startup.
    - `AUDIT_URL_SKIP_LIST` — a list of URL prefixes to ignore when forwarding request-related structured logs.
