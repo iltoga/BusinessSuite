@@ -1,5 +1,9 @@
 from django.apps import AppConfig
 
+from core.services.logger_service import Logger
+
+logger = Logger.get_logger(__name__)
+
 
 class CoreConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
@@ -10,6 +14,7 @@ class CoreConfig(AppConfig):
         # and the problematic transaction atomic patch is not needed. If easyaudit is still
         # installed in an environment, admins should run `python manage.py migrate easyaudit zero`
         # before removing the package entirely.
+        logger.info("Core app is ready.")
         pass
 
         # Ensure Huey tasks are registered and we register our own signals after the patch

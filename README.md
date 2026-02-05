@@ -60,6 +60,12 @@ To get started with the application, you will need to have Python, Django, and a
 
 For a production environment, it is recommended to use the provided Docker setup.
 
+## 📚 Useful Knowledge
+
+This section provides links to detailed guides and how-tos for advanced setup and configuration:
+
+- **[GRAFANA_CLOUD_SETUP.md](howtos/GRAFANA_CLOUD_SETUP.md)**: Comprehensive guide to setting up Grafana Alloy for shipping logs from Docker containers (bs-core, bs-worker, bs-frontend) to Grafana Cloud, including credential setup, configuration, and verification steps.
+
 ## Development Utilities
 
 - **Detect inline script tags**: To help centralize JavaScript and avoid inline scripts in templates, run:

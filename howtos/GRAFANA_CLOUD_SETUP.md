@@ -1,3 +1,77 @@
+This is a comprehensive guide to setting up **Grafana Alloy** to ship logs from your Dockerized applications (`bs-core`, `bs-worker`, `bs-frontend`) directly to **Grafana Cloud**.
+
+---
+
+### Step 1: Obtain Grafana Cloud Credentials
+
+You must use the **Grafana Cloud Portal** (account management) rather than the Grafana dashboard itself to find your connection strings.
+
+1. Log in to [https://grafana.com/profile/org](https://grafana.com/profile/org).
+2. Locate your **Stack** (application, for instance `example`).
+3. Inside the stack overview, find the **Loki** card and click the **Details** button.
+4. Copy and save the following values for your `.env` file:
+   - **URL**: The remote write endpoint (e.g., `https://logs-prod-xxx.grafana.net/loki/api/v1/push`).
+   - **User**: The User ID (a 6-7 digit number).
+   - **Password/Token**: Click **Generate Token**, name it `alloy-production`, and copy the string immediately.
+
+---
+
+### Step 2: Create the Alloy Configuration
+
+Create a file at `./grafana/alloy/config.alloy`. This configuration tells Alloy to look at the Docker socket, find your specific containers, and send their logs to the cloud.
+
+```alloy
+// 1. Discover all Docker containers running on the host
+discovery.docker "docker_loader" {
+  host = "unix:///var/run/docker.sock"
+}
+
+// 2. Filter targets: Only keep bs-core, bs-worker, and bs-frontend
+discovery.relabel "bs_services" {
+  targets = discovery.docker.docker_loader.targets
+
+  // Filter: Only include containers matching our service names
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/?(bs-core|bs-worker|bs-frontend)"
+    action        = "keep"
+  }
+
+  // Labeling: Extract the container name as a clean 'service' label
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/?(.*)"
+    target_label  = "service"
+  }
+}
+
+// 3. Scrape logs from the filtered Docker containers
+loki.source.docker "bs_log_scraper" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.bs_services.output
+  forward_to = [loki.write.grafana_cloud.receiver]
+}
+
+// 4. Send logs to Grafana Cloud Loki
+loki.write "grafana_cloud" {
+  endpoint {
+    url = sys.env("GRAFANA_CLOUD_LOKI_URL")
+
+    basic_auth {
+      username = sys.env("GRAFANA_CLOUD_LOKI_USER")
+      password = sys.env("GRAFANA_CLOUD_LOKI_API_KEY")
+    }
+  }
+}
+```
+
+---
+
+### Step 3: Update Production `docker-compose.yml`
+
+This version removes the local Loki and Grafana containers, replacing them with a single `bs-alloy` service.
+
+```yaml
 services:
   db:
     container_name: postgres-srv
@@ -30,18 +104,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
-  # pgadmin:
-  #   container_name: pgadmin
-  #   image: dpage/pgadmin4:7
-  #   depends_on:
-  #     - db
-  #   restart: unless-stopped
-  #   environment:
-  #     PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
-  #     PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASS}
-  #   networks:
-  #     - dockernet
 
   memcached:
     container_name: memcached
@@ -134,9 +196,6 @@ services:
     build:
       context: ./
       dockerfile: Dockerfile.frontend
-      args:
-        NODE_OPTIONS: --max-old-space-size=2048
-        NG_BUILD_MAX_WORKERS: 1
     networks:
       dockernet:
         ipv4_address: 192.168.2.61
@@ -145,8 +204,6 @@ services:
       BACKEND_URL: http://bs-core:8000
       CSP_ENABLED: ${CSP_ENABLED}
       CSP_MODE: ${CSP_MODE}
-      # Allow the frontend container to learn which logo assets to use.
-      # These can be set in your environment/.env and default to the original filenames.
       LOGO_FILENAME: ${LOGO_FILENAME}
       LOGO_INVERTED_FILENAME: ${LOGO_INVERTED_FILENAME}
     restart: unless-stopped
@@ -156,19 +213,13 @@ services:
     image: grafana/alloy:latest
     restart: unless-stopped
     volumes:
-      - ./grafana/alloy/config-prod.alloy:/etc/alloy/config.alloy:ro
+      - ./grafana/alloy/config.alloy:/etc/alloy/config.alloy:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - alloy-data:/var/lib/alloy/data
     environment:
-      # --- Credentials ---
       GRAFANA_CLOUD_LOKI_URL: ${GRAFANA_CLOUD_LOKI_URL}
       GRAFANA_CLOUD_LOKI_USER: ${GRAFANA_CLOUD_LOKI_USER}
       GRAFANA_CLOUD_LOKI_API_KEY: ${GRAFANA_CLOUD_LOKI_API_KEY}
-
-      # --- Low-Resource Tuning ---
-      GOMEMLIMIT: 250MiB # Soft limit: triggers GC before hitting 250MB
-      GOGC: 50 # More aggressive garbage collection
-      GOMAXPROCS: 1 # Limit to 1 CPU core to prevent thrashing
     command:
       - run
       - --server.http.listen-addr=0.0.0.0:12345
@@ -178,11 +229,6 @@ services:
       - "12345:12345"
     networks:
       - dockernet
-    deploy:
-      resources:
-        limits:
-          cpus: "0.30" # Max 30% of a single core
-          memory: 350M # Hard cap to protect VPS stability
 
 networks:
   dockernet:
@@ -194,3 +240,19 @@ volumes:
     external: true
   alloy-data:
     name: alloy-data
+```
+
+---
+
+### Step 4: Verification and Usage
+
+1. **Configure Environment**: Add the `GRAFANA_CLOUD_...` variables to your `.env` file on the VPS.
+2. **Deploy**: Run `docker-compose up -d`.
+3. **Check Alloy UI**: Navigate to `http://example.com:12345`.
+   - Click on the **Graph** menu. You should see a visual path from `discovery.docker` -> `loki.write.grafana_cloud`.
+   - If a block is red, click it to see the error message (usually credential issues).
+4. **View Logs in Grafana Cloud**:
+   - Log back into your Grafana instance (`revis.grafana.net`).
+   - Go to **Explore** (compass icon).
+   - Select the **Loki** datasource.
+   - Use the query `{service="bs-core"}` to see your Django application logs.
