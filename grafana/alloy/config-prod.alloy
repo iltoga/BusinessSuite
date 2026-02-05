@@ -44,7 +44,8 @@ loki.source.file "host_logs" {
 // 4. Send logs to Grafana Cloud with optimized batching
 loki.write "grafana_cloud" {
   endpoint {
-    url = sys.env("GRAFANA_CLOUD_LOKI_URL")
+      // Ensure this is the full push endpoint; if you set only the base URL in env, we'll append the path
+      url = sys.env("GRAFANA_CLOUD_LOKI_URL") + "/loki/api/v1/push"
 
     basic_auth {
       username = sys.env("GRAFANA_CLOUD_LOKI_USER")
