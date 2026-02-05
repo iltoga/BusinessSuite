@@ -1,4 +1,3 @@
-import logging
 import os
 import shutil
 
@@ -183,10 +182,19 @@ class Customer(models.Model):
         We avoid relying on Django's dynamic get_FOO_display to keep behavior
         deterministic and to allow explicit language activation before translation.
         """
+        # Ensure Django settings are configured before accessing them,
+        # and default to 'en' if the specific setting is missing.
+        from django import setup as django_setup
         from django.utils.translation import activate, get_language
         from django.utils.translation import gettext as gettext_fn
 
-        # Default to configured document language if none provided
+        if not getattr(settings, "configured", True):
+            try:
+                django_setup()
+            except Exception:
+                # If setup fails (e.g., DJANGO_SETTINGS_MODULE not set),
+                # proceed and rely on defaults to avoid crashing.
+                pass
         lang = lang or getattr(settings, "DEFAULT_DOCUMENT_LANGUAGE_CODE", "en")
         current_lang = get_language()
         activate(lang)
