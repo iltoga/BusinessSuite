@@ -262,15 +262,20 @@ USE_TZ = True
 # Configure project locale path for translations (locale is at project root, one level up from BASE_DIR)
 LOCALE_PATHS = [os.path.join(BASE_DIR, "..", "locale")]
 
-# Loki/audit emitter configuration
-# Controls async emission to Loki and audit forwarding behavior.
-LOKI_EMITTER_POOL_SIZE = int(os.getenv("LOKI_EMITTER_POOL_SIZE", "4"))
-LOKI_EMITTER_QUEUE_MAXSIZE = int(os.getenv("LOKI_EMITTER_QUEUE_MAXSIZE", "4096"))
-LOKI_EMITTER_DROP_ON_FULL = _parse_bool(os.getenv("LOKI_EMITTER_DROP_ON_FULL", "True"))
-
-# When True, audit LogEntry objects are forwarded to Loki. Set to False to keep
-# DB audit entries but avoid forwarding to Loki (useful to avoid polluting Grafana/Loki).
-AUDIT_FORWARD_TO_LOKI = _parse_bool(os.getenv("AUDIT_FORWARD_TO_LOKI", "True"))
+# Audit configuration
+# Audits are persisted by `django-auditlog` (DB `LogEntry` objects). Local
+# forwarding to Loki or file-based emission has been removed — rely on your
+# log aggregation (Grafana Alloy) scraping stdout or DB exports when needed.
+# Keep the following runtime toggles for fine-grained control of what events are recorded.
+AUDIT_WATCH_CRUD_EVENTS = _parse_bool(
+    os.getenv("AUDIT_WATCH_CRUD_EVENTS", os.getenv("AUDIT_WATCH_MODEL_EVENTS", "True"))
+)
+AUDIT_WATCH_AUTH_EVENTS = _parse_bool(os.getenv("AUDIT_WATCH_AUTH_EVENTS", "True"))
+AUDIT_WATCH_REQUEST_EVENTS = _parse_bool(os.getenv("AUDIT_WATCH_REQUEST_EVENTS", "True"))
+# Avoid logging request events for static/media files when forwarding structured logs. Support comma-separated env var.
+AUDIT_URL_SKIP_LIST = _parse_list(os.getenv("AUDIT_URL_SKIP_LIST"), ["/static/", "/media/", "/favicon.ico"])
+# Purge retention for forwarded audit logs (not the DB retention of LogEntry)
+AUDIT_PURGE_AFTER_DAYS = int(os.getenv("AUDIT_PURGE_AFTER_DAYS", "90"))
 
 
 # Static files (CSS, JavaScript, Images)
@@ -665,10 +670,6 @@ LOGGING = {
             "backupCount": 10,
             "formatter": "verbose",
         },
-        "fail_safe_audit": {
-            "level": "INFO",
-            "()": "core.audit_handlers.FailSafeLokiHandler",
-        },
     },
     "root": {
         "handlers": ["console", PRIMARY_HANDLER],
@@ -687,11 +688,6 @@ LOGGING = {
         },
         "performance": {
             "handlers": ["console", PRIMARY_HANDLER],
-            "level": "INFO",
-            "propagate": False,
-        },
-        "audit": {
-            "handlers": ["fail_safe_audit"],
             "level": "INFO",
             "propagate": False,
         },

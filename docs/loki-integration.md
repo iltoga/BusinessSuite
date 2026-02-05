@@ -11,7 +11,7 @@ This document used to describe how to wire `logging_loki` to send logs directly 
 Key guidance:
 
 - Ensure Django writes its logs to `logs/` (the built-in `Logger` places per-module logs under `logs/` by default).
-- Audit events are written as JSON lines to `logs/audit.log` by `core.audit_handlers.PersistentLokiBackend` (kept for compatibility).
+- Audit events are persisted to the DB via `django-auditlog`. Direct pushing to Loki from the application code has been removed; rely on Grafana Alloy scraping container logs or DB exports for observability.
 - Configure Grafana Alloy (see `howtos/GRAFANA_CLOUD_SETUP.md`) to scrape Docker container stdout/stderr and any log files you choose to expose.
 
 If you still need direct push to Loki, consider reintroducing a tailored integration and update this document accordingly.

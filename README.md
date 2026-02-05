@@ -94,9 +94,9 @@ The application exposes a RESTful API for interacting with its various modules. 
 
 ---
 
-## 📣 Observability — django-auditlog (recommended)
+## 📣 Observability — django-auditlog (Recommended)
 
-We use `django-auditlog` to record model changes (create/update/delete) and optionally record access events. Audit entries are persisted to the DB (viewable in Django Admin) and are also written as structured JSON lines to a local audit log file (by default `logs/audit.log`) via our `PersistentLokiBackend` so Grafana Alloy can scrape them.
+We use `django-auditlog` to record model changes (create/update/delete) and optionally record access events. Audit entries are persisted to the database (viewable in Django Admin).
 
 Quick steps:
 

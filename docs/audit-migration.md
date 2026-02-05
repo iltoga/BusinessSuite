@@ -33,11 +33,11 @@ Migration steps for deploy:
 
 You can control and filter what gets forwarded to Loki and how it is tagged:
 
-- `AUDIT_FORWARD_TO_LOKI` (default: `True`): when set to `False` the backend will skip forwarding `auditlog.LogEntry` events to Loki (DB entries are still created by `django-auditlog`). Use this to avoid polluting Loki/Grafana with audit records while keeping persistent audit data in the database.
+- Forwarding to Loki has been removed from the application. Audit events are persisted to the DB by `django-auditlog`; use Grafana Alloy or other tooling to query `auditlog.LogEntry` rows if you need observability.
 - Tagging convention:
   - Audit LogEntry events are emitted with `extra={"source": "auditlog", "audit": True}` so they can be filtered in Grafana/Loki (e.g. by `source="auditlog"` or `audit=true`, depending on your label mapping).
   - Other structured audit events (CRUD/login/request emitted by the backend) use `extra={"source": "audit", "audit": False}` so they are distinguishable from LogEntry forwards.
-- Non-blocking forwarding: log emission to Loki is asynchronous and best-effort (daemon thread / thread-pool). Failures to forward are recorded at DEBUG level so they do not block or impact the main Django process.
+- Forwarding: log emission to Loki is performed synchronously in a small, robust emitter that writes structured JSON lines to `logs/audit.log` and emits via the `audit` logger. Failures to write the file or emit are logged at DEBUG level and do not raise exceptions to the caller.
 
 If you relied on persistent login/request records in the DB: you will need to implement explicit models and storage for those events if you require them beyond what `auditlog.LogEntry` provides.
 
