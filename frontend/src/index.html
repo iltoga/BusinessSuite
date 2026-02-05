@@ -1,15 +1,41 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>BusinessSuiteFrontend</title>
-  <base href="/">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="icon" type="image/x-icon" href="favicon.ico">
-  <link rel="manifest" href="manifest.webmanifest">
-</head>
-<body>
-  <app-root></app-root>
-  <noscript>Please enable JavaScript to continue using this application.</noscript>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <title>BusinessSuite</title>
+    <script>
+      (function () {
+        try {
+          if (window.APP_BRAND && window.APP_BRAND.title) {
+            document.title = window.APP_BRAND.title;
+            return;
+          }
+          fetch('/assets/config.json', { cache: 'no-store' })
+            .then(function (r) {
+              if (!r.ok) return null;
+              return r.json();
+            })
+            .then(function (cfg) {
+              if (cfg && cfg.title) {
+                document.title = String(cfg.title);
+                window.APP_BRAND = window.APP_BRAND || {};
+                window.APP_BRAND.title = cfg.title;
+                try {
+                  document.documentElement.classList.add('app-brand-ready');
+                } catch (e) {}
+              }
+            })
+            .catch(function () {});
+        } catch (e) {}
+      })();
+    </script>
+    <base href="/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <link rel="manifest" href="manifest.webmanifest" />
+  </head>
+  <body>
+    <app-root></app-root>
+    <noscript>Please enable JavaScript to continue using this application.</noscript>
+  </body>
 </html>
