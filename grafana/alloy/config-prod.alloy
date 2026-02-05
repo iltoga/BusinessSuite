@@ -52,7 +52,7 @@ loki.write "grafana_cloud" {
     }
 
     // Optimization: Batching reduces CPU/Network usage
-    batch_size = 524288 // 512KB
+    batch_size = "512KiB" // 512KB
     batch_wait = "5s"    // Wait up to 5s before pushing
   }
 }
