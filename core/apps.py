@@ -26,8 +26,10 @@ class CoreConfig(AppConfig):
         try:
             from auditlog.registry import auditlog
             from django.apps import apps as django_apps
+            from django.conf import settings
 
-            LOGGING_APPS = globals().get("LOGGING_MODE", ()) or ()
+            # Support existing setting name `LOGGING_MODELS` (plural) for backward compatibility
+            LOGGING_APPS = getattr(settings, "LOGGING_MODE", None) or getattr(settings, "LOGGING_MODELS", ()) or ()
             for app_label in LOGGING_APPS:
                 try:
                     app_config = django_apps.get_app_config(app_label)
