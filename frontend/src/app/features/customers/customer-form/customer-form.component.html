@@ -77,9 +77,20 @@
               <label class="text-sm font-medium"
                 >First Name <span class="text-destructive">*</span></label
               >
-              <input z-input formControlName="first_name" placeholder="First name" />
-              @if (form.get('first_name')?.invalid && form.get('first_name')?.touched) {
-                <p class="text-sm text-red-500">First name is required</p>
+              <input
+                z-input
+                formControlName="first_name"
+                placeholder="First name"
+                (blur)="formatName('first_name')"
+              />
+              @if (form.get('first_name')?.touched || submitted()) {
+                @if (form.get('first_name')?.hasError('required')) {
+                  <p class="text-sm text-red-500">First name is required</p>
+                } @else if (form.get('first_name')?.hasError('pattern')) {
+                  <p class="text-sm text-red-500">
+                    Must start with a capital letter (e.g. Stefano)
+                  </p>
+                }
               }
             </div>
 
@@ -87,9 +98,16 @@
               <label class="text-sm font-medium"
                 >Last Name <span class="text-destructive">*</span></label
               >
-              <input z-input formControlName="last_name" placeholder="Last name" />
-              @if (form.get('last_name')?.invalid && form.get('last_name')?.touched) {
-                <p class="text-sm text-red-500">Last name is required</p>
+              <input
+                z-input
+                formControlName="last_name"
+                placeholder="Last name"
+                (blur)="formatName('last_name')"
+              />
+              @if (form.get('last_name')?.touched || submitted()) {
+                @if (form.get('last_name')?.hasError('required')) {
+                  <p class="text-sm text-red-500">Last name is required</p>
+                }
               }
             </div>
           } @else {
@@ -98,8 +116,10 @@
                 >Company Name <span class="text-destructive">*</span></label
               >
               <input z-input formControlName="company_name" placeholder="Company name" />
-              @if (form.get('company_name')?.invalid && form.get('company_name')?.touched) {
-                <p class="text-sm text-red-500">Company name is required</p>
+              @if (form.get('company_name')?.touched || submitted()) {
+                @if (form.get('company_name')?.hasError('required')) {
+                  <p class="text-sm text-red-500">Company name is required</p>
+                }
               }
             </div>
           }
@@ -274,18 +294,148 @@
           </div>
         </div>
       </div>
-      <div class="bg-muted/30 px-6 py-4 border-t flex items-center justify-between gap-4">
-        <p class="text-xs text-muted-foreground max-w-md">
-          <span class="font-semibold italic">Note:</span> Changes made here only affect the
-          generated document and will not be saved to the customer's permanent profile.
-        </p>
-        <div class="flex gap-3">
-          <button type="submit" z-button zType="default" [zDisabled]="isLoading() || form.invalid">
-            {{ isEditMode() ? 'Save Changes' : 'Create Customer' }}
-          </button>
-          <button type="button" z-button zType="outline" routerLink="/customers">Cancel</button>
+    </z-card>
+
+    <!-- 4) Contact Information -->
+    <z-card class="overflow-hidden">
+      <div class="bg-accent/30 px-6 py-4 border-b">
+        <h2 class="text-sm font-semibold uppercase tracking-wider flex items-center gap-2">
+          <z-icon zType="mail" class="h-4 w-4 text-primary" />
+          4. Contact Information
+        </h2>
+      </div>
+      <div class="p-6">
+        <div class="grid gap-4 md:grid-cols-2">
+          <div class="space-y-2">
+            <label class="text-sm font-medium">Email</label>
+            <input z-input type="email" formControlName="email" placeholder="Email address" />
+            @if (form.get('email')?.errors?.['email'] && form.get('email')?.touched) {
+              <p class="text-sm text-red-500">Invalid email address</p>
+            }
+          </div>
+          <div class="space-y-2">
+            <label class="text-sm font-medium">Telephone</label>
+            <input z-input formControlName="telephone" placeholder="Phone number" />
+          </div>
+          <div class="space-y-2">
+            <label class="text-sm font-medium">WhatsApp</label>
+            <input z-input formControlName="whatsapp" placeholder="WhatsApp number" />
+          </div>
+          <div class="space-y-2">
+            <label class="text-sm font-medium">Telegram</label>
+            <input z-input formControlName="telegram" placeholder="Telegram username/number" />
+          </div>
         </div>
       </div>
     </z-card>
+
+    <!-- 5) Social Media -->
+    <z-card class="overflow-hidden">
+      <div class="bg-accent/30 px-6 py-4 border-b">
+        <h2 class="text-sm font-semibold uppercase tracking-wider flex items-center gap-2">
+          <z-icon zType="share-2" class="h-4 w-4 text-primary" />
+          5. Social Media
+        </h2>
+      </div>
+      <div class="p-6">
+        <div class="grid gap-4 md:grid-cols-3">
+          <div class="space-y-2">
+            <label class="text-sm font-medium">Facebook</label>
+            <input z-input formControlName="facebook" placeholder="Facebook profile" />
+          </div>
+          <div class="space-y-2">
+            <label class="text-sm font-medium">Instagram</label>
+            <input z-input formControlName="instagram" placeholder="Instagram handle" />
+          </div>
+          <div class="space-y-2">
+            <label class="text-sm font-medium">Twitter</label>
+            <input z-input formControlName="twitter" placeholder="Twitter handle" />
+          </div>
+        </div>
+      </div>
+    </z-card>
+
+    <!-- 6) Addresses -->
+    <z-card class="overflow-hidden">
+      <div class="bg-accent/30 px-6 py-4 border-b">
+        <h2 class="text-sm font-semibold uppercase tracking-wider flex items-center gap-2">
+          <z-icon zType="map-pin" class="h-4 w-4 text-primary" />
+          6. Addresses
+        </h2>
+      </div>
+      <div class="p-6">
+        <div class="grid gap-4 md:grid-cols-2">
+          <div class="space-y-2">
+            <label class="text-sm font-medium">Address Bali</label>
+            <textarea
+              z-input
+              formControlName="address_bali"
+              placeholder="Address in Bali"
+              rows="3"
+            ></textarea>
+          </div>
+          <div class="space-y-2">
+            <label class="text-sm font-medium">Address Abroad</label>
+            <textarea
+              z-input
+              formControlName="address_abroad"
+              placeholder="Address abroad"
+              rows="3"
+            ></textarea>
+          </div>
+        </div>
+      </div>
+    </z-card>
+
+    <!-- 7) Notification Preferences -->
+    <z-card class="overflow-hidden">
+      <div class="bg-accent/30 px-6 py-4 border-b">
+        <h2 class="text-sm font-semibold uppercase tracking-wider flex items-center gap-2">
+          <z-icon zType="bell" class="h-4 w-4 text-primary" />
+          7. Notification Preferences
+        </h2>
+      </div>
+      <div class="p-6">
+        <div class="grid gap-6 md:grid-cols-2">
+          <div class="flex items-center gap-2 pt-8">
+            <z-checkbox formControlName="notify_documents_expiration">
+              Notify documents expiration
+            </z-checkbox>
+          </div>
+          <div class="space-y-2">
+            <label class="text-sm font-medium">Notify By</label>
+            <select z-input formControlName="notify_by" class="w-full">
+              @for (option of notifyByOptions; track option.value) {
+                <option [value]="option.value">{{ option.label }}</option>
+              }
+            </select>
+            @if (
+              form.get('notify_documents_expiration')?.value &&
+              !form.get('notify_by')?.value &&
+              (form.get('notify_by')?.touched || submitted())
+            ) {
+              <p class="text-sm text-red-500">Notification method is required if enabled</p>
+            }
+          </div>
+        </div>
+      </div>
+    </z-card>
+
+    <!-- Form Actions -->
+    <div class="flex justify-end gap-3 pb-8">
+      <button
+        type="button"
+        z-button
+        zType="outline"
+        routerLink="/customers"
+        [zDisabled]="isLoading()"
+      >
+        Cancel
+      </button>
+      <button type="submit" z-button zType="default" [zDisabled]="isLoading() || form.invalid">
+        <z-icon *ngIf="isLoading()" zType="loader-circle" class="h-4 w-4 mr-2 animate-spin" />
+        {{ isEditMode() ? 'Save Changes' : 'Create Customer' }}
+      </button>
+    </div>
   </form>
 </div>
