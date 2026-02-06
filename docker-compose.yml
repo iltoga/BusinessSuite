@@ -147,10 +147,6 @@ services:
       BACKEND_URL: http://bs-core:8000
       CSP_ENABLED: ${CSP_ENABLED}
       CSP_MODE: ${CSP_MODE}
-      # Allow the frontend container to learn which logo assets to use.
-      # These can be set in your environment/.env and default to the original filenames.
-      LOGO_FILENAME: ${LOGO_FILENAME}
-      LOGO_INVERTED_FILENAME: ${LOGO_INVERTED_FILENAME}
     volumes:
       - type: bind
         source: ${DATA_PATH}/logs
