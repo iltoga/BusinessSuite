@@ -180,3 +180,6 @@ business_suite/static/reporting/partial_invoice_template_with_footer_revisbali.d
 business_suite/static/reporting/*permohonan_perpanjangan*
 business_suite/backups/*
 business_suite/static/logo_revis*.png
+
+frontend/src/assets/logo_transparent.png
+frontend/src/assets/logo_inverted_transparent.png
