@@ -262,16 +262,8 @@ USE_TZ = True
 # Configure project locale path for translations (locale is at project root, one level up from BASE_DIR)
 LOCALE_PATHS = [os.path.join(BASE_DIR, "..", "locale")]
 
-# Audit configuration
-# Audits are persisted by `django-auditlog` (DB `LogEntry` objects). Local
-# forwarding to Loki or file-based emission has been removed — rely on your
-# log aggregation (Grafana Alloy) scraping stdout or DB exports when needed.
-# Keep the following runtime toggles for fine-grained control of what events are recorded.
-AUDIT_WATCH_CRUD_EVENTS = _parse_bool(
-    os.getenv("AUDIT_WATCH_CRUD_EVENTS", os.getenv("AUDIT_WATCH_MODEL_EVENTS", "True"))
-)
+# Audit configuration: Audits are persisted by `django-auditlog` (DB `LogEntry` objects). Local
 AUDIT_WATCH_AUTH_EVENTS = _parse_bool(os.getenv("AUDIT_WATCH_AUTH_EVENTS", "True"))
-AUDIT_WATCH_REQUEST_EVENTS = _parse_bool(os.getenv("AUDIT_WATCH_REQUEST_EVENTS", "True"))
 # Avoid logging request events for static/media files when forwarding structured logs. Support comma-separated env var.
 AUDIT_URL_SKIP_LIST = _parse_list(os.getenv("AUDIT_URL_SKIP_LIST"), ["/static/", "/media/", "/favicon.ico"])
 # Purge retention for forwarded audit logs (not the DB retention of LogEntry)

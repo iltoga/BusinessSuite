@@ -155,6 +155,8 @@ services:
 
   bs-alloy:
     container_name: bs-alloy
+    profiles:
+      - alloy
     image: grafana/alloy:latest
     restart: unless-stopped
     volumes:
