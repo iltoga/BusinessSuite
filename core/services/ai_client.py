@@ -15,7 +15,9 @@ from django.conf import settings
 from django.core.files.uploadedfile import UploadedFile
 from openai import OpenAI
 
-logger = logging.getLogger(__name__)
+from core.services.logger_service import Logger
+
+logger = Logger.get_logger(__name__)
 
 
 class AIConnectionError(Exception):

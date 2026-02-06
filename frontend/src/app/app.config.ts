@@ -8,6 +8,7 @@ import {
   provideAppInitializer,
   provideBrowserGlobalErrorListeners,
 } from '@angular/core';
+import { Title } from '@angular/platform-browser';
 import { provideRouter } from '@angular/router';
 
 import { UserSettingsApiService } from '@/core/api/user-settings.service';
@@ -73,6 +74,17 @@ export const appConfig: ApplicationConfig = {
 
         // Run asynchronously so initialization doesn't block excessively
         applyFromServer();
+
+        // Set browser tab title from config if available
+        try {
+          const titleSvc = inject(Title);
+          const cfgTitle = (configService.settings as any).title;
+          if (cfgTitle) {
+            titleSvc.setTitle(String(cfgTitle));
+          }
+        } catch (e) {
+          /* ignore if Title is not available on this platform */
+        }
 
         // Ensure SPA-only loads also reveal the correct brand once config is loaded
         try {

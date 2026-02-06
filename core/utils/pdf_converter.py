@@ -45,7 +45,9 @@ from io import BytesIO
 from pathlib import Path
 from typing import Optional, Union
 
-logger = logging.getLogger(__name__)
+from core.services.logger_service import Logger
+
+logger = Logger.get_logger(__name__)
 
 
 class PDFConverterError(Exception):

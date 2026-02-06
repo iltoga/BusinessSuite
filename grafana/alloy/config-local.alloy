@@ -1,0 +1,50 @@
+// 1. Discover all Docker containers on the host
+discovery.docker "docker_loader" {
+  host = "unix:///var/run/docker.sock"
+}
+
+// 2. Filter targets: Only keep bs-core, bs-worker, and bs-frontend
+discovery.relabel "bs_services" {
+  targets = discovery.docker.docker_loader.targets
+
+  // Filter: Keep only if container name matches our apps
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/?(bs-core|bs-worker|bs-frontend)"
+    action        = "keep"
+  }
+
+  // Formatting: Create a clean 'service' label (e.g., 'bs-core')
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/?(.*)"
+    target_label  = "service"
+  }
+}
+
+// 3. Scrape logs from the filtered containers
+loki.source.docker "bs_log_scraper" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.bs_services.output
+  forward_to = [loki.write.local.receiver]
+}
+
+// 3a. Scrape host log files (Django & Angular). Files are mounted from host into the Alloy container at `/host_logs`.
+local.file_match "host_log_files" {
+  path_targets = [
+    { "__path__" = "/host_logs/django.log", "job" = "host_logs", "service" = "backend" },
+    { "__path__" = "/host_logs/task_worker.log", "job" = "host_logs", "service" = "task_worker" },
+  ]
+}
+
+loki.source.file "host_logs" {
+  targets    = local.file_match.host_log_files.targets
+  forward_to = [loki.write.local.receiver]
+}
+
+// 4. Send logs to your existing Loki instance
+loki.write "local" {
+  endpoint {
+    url = "http://bs-loki:3100/loki/api/v1/push"
+  }
+}

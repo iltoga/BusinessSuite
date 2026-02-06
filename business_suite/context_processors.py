@@ -11,4 +11,8 @@ def site_info(request):
         ),
         # Make the flag available to templates so they can switch layouts
         "DISABLE_DJANGO_VIEWS": getattr(settings, "DISABLE_DJANGO_VIEWS", False),
+        # Provide a base template variable to allow templates to switch layouts easily
+        "BASE_PARENT_TEMPLATE": (
+            "bootstrap_base.html" if getattr(settings, "DISABLE_DJANGO_VIEWS", False) else "base_template.html"
+        ),
     }

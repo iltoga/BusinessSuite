@@ -1,0 +1,13 @@
+<label class="text-sm font-medium block mb-1">{{ label() }}</label>
+<app-typeahead-combobox
+  [placeholder]="placeholder()"
+  [searchPlaceholder]="searchPlaceholder()"
+  [pageSize]="pageSize()"
+  [disabled]="isDisabled()"
+  [zStatus]="zStatus()"
+  [zWidth]="zWidth()"
+  [value]="internalValue()"
+  (valueChange)="onValueChange($event)"
+  [loadOptions]="productLoader"
+  [mapFn]="productMap"
+></app-typeahead-combobox>

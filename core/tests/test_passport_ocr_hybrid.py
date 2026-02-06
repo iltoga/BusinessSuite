@@ -52,9 +52,9 @@ class MergePassportDataTestCase(TestCase):
 
     def test_merge_adds_ai_only_fields(self):
         """Test that AI-only fields are added to merged result."""
-        import logging
+        from core.services.logger_service import Logger
 
-        logger = logging.getLogger("passport_ocr")
+        logger = Logger.get_logger("passport_ocr")
 
         merged = _merge_passport_data(self.mrz_data, self.ai_data, logger)
 
@@ -69,9 +69,9 @@ class MergePassportDataTestCase(TestCase):
 
     def test_merge_preserves_mrz_data(self):
         """Test that original MRZ data is preserved."""
-        import logging
+        from core.services.logger_service import Logger
 
-        logger = logging.getLogger("passport_ocr")
+        logger = Logger.get_logger("passport_ocr")
 
         merged = _merge_passport_data(self.mrz_data, self.ai_data, logger)
 
@@ -84,9 +84,9 @@ class MergePassportDataTestCase(TestCase):
 
     def test_merge_adds_extraction_method_flag(self):
         """Test that extraction method flag is added."""
-        import logging
+        from core.services.logger_service import Logger
 
-        logger = logging.getLogger("passport_ocr")
+        logger = Logger.get_logger("passport_ocr")
 
         merged = _merge_passport_data(self.mrz_data, self.ai_data, logger)
 
@@ -95,9 +95,9 @@ class MergePassportDataTestCase(TestCase):
 
     def test_merge_handles_empty_ai_fields(self):
         """Test handling of empty AI fields."""
-        import logging
+        from core.services.logger_service import Logger
 
-        logger = logging.getLogger("passport_ocr")
+        logger = Logger.get_logger("passport_ocr")
 
         # Remove some AI fields
         ai_data_partial = {
@@ -118,9 +118,9 @@ class MergePassportDataTestCase(TestCase):
 
     def test_merge_handles_nationality_mismatch(self):
         """Test handling of nationality mismatch between MRZ and AI."""
-        import logging
+        from core.services.logger_service import Logger
 
-        logger = logging.getLogger("passport_ocr")
+        logger = Logger.get_logger("passport_ocr")
 
         ai_data_mismatch = self.ai_data.copy()
         ai_data_mismatch["ai_nationality_code"] = "USA"  # Different from MRZ

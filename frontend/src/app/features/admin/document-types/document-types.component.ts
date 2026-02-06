@@ -23,6 +23,7 @@ import {
   ColumnConfig,
   DataTableComponent,
 } from '@/shared/components/data-table/data-table.component';
+import { ZardDialogService } from '@/shared/components/dialog';
 import { ZardInputDirective } from '@/shared/components/input';
 
 @Component({
@@ -45,14 +46,19 @@ import { ZardInputDirective } from '@/shared/components/input';
 })
 export class DocumentTypesComponent implements OnInit {
   @ViewChild('actionsTemplate', { static: true }) actionsTemplate!: TemplateRef<any>;
+  @ViewChild('documentTypeModalTemplate', { static: true })
+  documentTypeModalTemplate!: TemplateRef<any>;
 
   private fb = inject(FormBuilder);
   private documentTypesApi = inject(DocumentTypesService);
   private toast = inject(GlobalToastService);
+  private dialogService = inject(ZardDialogService);
+
+  private dialogRef: any = null;
 
   readonly documentTypes = signal<DocumentType[]>([]);
   readonly isLoading = signal(true);
-  readonly isFormOpen = signal(false);
+  readonly isDialogOpen = signal(false);
   readonly isSaving = signal(false);
   readonly editingDocumentType = signal<DocumentType | null>(null);
   readonly showConfirmDelete = signal(false);
@@ -112,7 +118,23 @@ export class DocumentTypesComponent implements OnInit {
       hasDetails: false,
       isInRequiredDocuments: false,
     });
-    this.isFormOpen.set(true);
+
+    this.dialogRef = this.dialogService.create({
+      zTitle: 'Add Document Type',
+      zContent: this.documentTypeModalTemplate,
+      zHideFooter: true,
+      zClosable: true,
+      // Custom sizing and border for clearer modal presentation
+      zCustomClasses: 'border-2 border-primary/30 sm:max-w-[760px]',
+      zWidth: '760px',
+      zOnCancel: () => {
+        // ensure internal state is reset when the dialog is closed via header X or backdrop
+        this.isDialogOpen.set(false);
+        this.editingDocumentType.set(null);
+        this.dialogRef = null;
+      },
+    });
+    this.isDialogOpen.set(true);
   }
 
   editDocumentType(documentType: DocumentType): void {
@@ -128,7 +150,23 @@ export class DocumentTypesComponent implements OnInit {
       hasDetails: documentType.hasDetails || false,
       isInRequiredDocuments: documentType.isInRequiredDocuments || false,
     });
-    this.isFormOpen.set(true);
+
+    this.dialogRef = this.dialogService.create({
+      zTitle: 'Edit Document Type',
+      zContent: this.documentTypeModalTemplate,
+      zHideFooter: true,
+      zClosable: true,
+      // Custom sizing and border for clearer modal presentation
+      zCustomClasses: 'border-2 border-primary/30 sm:max-w-[760px]',
+      zWidth: '760px',
+      zOnCancel: () => {
+        // ensure internal state is reset when the dialog is closed via header X or backdrop
+        this.isDialogOpen.set(false);
+        this.editingDocumentType.set(null);
+        this.dialogRef = null;
+      },
+    });
+    this.isDialogOpen.set(true);
   }
 
   saveDocumentType(): void {
@@ -215,7 +253,11 @@ export class DocumentTypesComponent implements OnInit {
   }
 
   closeForm(): void {
-    this.isFormOpen.set(false);
+    if (this.dialogRef) {
+      this.dialogRef.close();
+      this.dialogRef = null;
+    }
+    this.isDialogOpen.set(false);
     this.editingDocumentType.set(null);
   }
 }

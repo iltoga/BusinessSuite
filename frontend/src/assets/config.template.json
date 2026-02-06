@@ -1,5 +1,8 @@
 {
-    "mockAuthEnabled": null,
-    "theme": null,
-    "dateFormat": null
+    "mockAuthEnabled": false,
+    "theme": "neutral",
+    "dateFormat": "dd-MM-yyyy",
+    "title": "BusinessSuite",
+    "logoFilename": "logo_transparent.png",
+    "logoInvertedFilename": "logo_inverted_transparent.png"
 }

@@ -75,6 +75,18 @@ INVOICE_IMPORT_MAX_WORKERS = int(os.getenv("INVOICE_IMPORT_MAX_WORKERS", "3"))  
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Ensure logs directory exists at the project root (one level up from BASE_DIR)
+# This ensures that Grafana Alloy can consistently scrape them from a single location.
+ROOT_DIR = BASE_DIR.parent
+LOG_DIR = os.path.join(ROOT_DIR, "logs")
+if not os.path.exists(LOG_DIR):
+    os.makedirs(LOG_DIR, exist_ok=True)
+LOGS_DIR = LOG_DIR  # Alias for backward compatibility
+
+# Logging level configuration
+DJANGO_LOG_LEVEL = os.getenv("DJANGO_LOG_LEVEL", os.getenv("LOG_LEVEL", "INFO"))
+LOGGING_LEVEL = DJANGO_LOG_LEVEL
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
@@ -124,8 +136,7 @@ INSTALLED_APPS = [
     "django.contrib.humanize",
     "django_unicorn",
     "debug_toolbar",
-    # 'waffle' (django-waffle) is intentionally enabled only when the package is installed.
-    # This avoids failing imports in environments where the optional package is not present.
+    "waffle",
     "dbbackup",
     "storages",
     "admin_tools",
@@ -145,7 +156,9 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
-    # 'business_suite.middleware.DisableCsrfCheck',  # Your custom middleware
+    # Waffle must be after AuthenticationMiddleware to access request.user
+    "waffle.middleware.WaffleMiddleware",
+    # Custom middlewares that might rely on Waffle flags or Auth
     "business_suite.middlewares.disable_django_views.DisableDjangoViewsMiddleware",
     "business_suite.middlewares.AuthLoginRequiredMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
@@ -154,24 +167,6 @@ MIDDLEWARE = [
     "django_user_agents.middleware.UserAgentMiddleware",
     "core.middleware.performance_logger.PerformanceLoggingMiddleware",
 ]
-
-# Optionally enable django-waffle (feature flags) if the package is installed in the environment.
-try:
-    import waffle  # type: ignore
-except Exception:  # pragma: no cover - optional dependency
-    # waffle not installed; don't modify INSTALLED_APPS or MIDDLEWARE
-    pass
-else:
-    # Register waffle app and middleware so flags can be used when the package is available
-    INSTALLED_APPS.append("waffle")
-    # Insert waffle middleware before the custom disable middleware so requests are prepared
-    try:
-        idx = MIDDLEWARE.index("business_suite.middlewares.disable_django_views.DisableDjangoViewsMiddleware")
-    except ValueError:
-        MIDDLEWARE.append("waffle.middleware.WaffleMiddleware")
-    else:
-        MIDDLEWARE.insert(idx, "waffle.middleware.WaffleMiddleware")
-
 
 ROOT_URLCONF = "business_suite.urls"
 
@@ -205,20 +200,33 @@ WSGI_APPLICATION = "business_suite.wsgi.application"
 #         "NAME": os.path.join(BASE_DIR, "files/db.sqlite3"),
 #     }
 # }
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("DB_NAME"),
-        "USER": os.getenv("DB_USER"),
-        "PASSWORD": os.getenv("DB_PASS"),
-        "HOST": os.getenv("DB_HOST"),
-        "PORT": os.getenv("DB_PORT"),
-        # Connection pooling - keep connections alive for 600 seconds
-        "CONN_MAX_AGE": 600,
-        # Connection pool size per worker
-        "CONN_HEALTH_CHECKS": True,
+# Use an in-memory SQLite DB when running tests to avoid requiring Postgres.
+import sys
+
+TESTING = any("pytest" in arg for arg in sys.argv) or os.getenv("PYTEST_CURRENT_TEST") is not None
+
+if TESTING:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": ":memory:",
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.getenv("DB_NAME"),
+            "USER": os.getenv("DB_USER"),
+            "PASSWORD": os.getenv("DB_PASS"),
+            "HOST": os.getenv("DB_HOST"),
+            "PORT": os.getenv("DB_PORT"),
+            # Connection pooling - keep connections alive for 600 seconds
+            "CONN_MAX_AGE": 600,
+            # Connection pool size per worker
+            "CONN_HEALTH_CHECKS": True,
+        }
+    }
 
 
 # Password validation
@@ -253,6 +261,21 @@ USE_TZ = True
 
 # Configure project locale path for translations (locale is at project root, one level up from BASE_DIR)
 LOCALE_PATHS = [os.path.join(BASE_DIR, "..", "locale")]
+
+# Audit configuration
+# Audits are persisted by `django-auditlog` (DB `LogEntry` objects). Local
+# forwarding to Loki or file-based emission has been removed — rely on your
+# log aggregation (Grafana Alloy) scraping stdout or DB exports when needed.
+# Keep the following runtime toggles for fine-grained control of what events are recorded.
+AUDIT_WATCH_CRUD_EVENTS = _parse_bool(
+    os.getenv("AUDIT_WATCH_CRUD_EVENTS", os.getenv("AUDIT_WATCH_MODEL_EVENTS", "True"))
+)
+AUDIT_WATCH_AUTH_EVENTS = _parse_bool(os.getenv("AUDIT_WATCH_AUTH_EVENTS", "True"))
+AUDIT_WATCH_REQUEST_EVENTS = _parse_bool(os.getenv("AUDIT_WATCH_REQUEST_EVENTS", "True"))
+# Avoid logging request events for static/media files when forwarding structured logs. Support comma-separated env var.
+AUDIT_URL_SKIP_LIST = _parse_list(os.getenv("AUDIT_URL_SKIP_LIST"), ["/static/", "/media/", "/favicon.ico"])
+# Purge retention for forwarded audit logs (not the DB retention of LogEntry)
+AUDIT_PURGE_AFTER_DAYS = int(os.getenv("AUDIT_PURGE_AFTER_DAYS", "90"))
 
 
 # Static files (CSS, JavaScript, Images)
@@ -302,6 +325,10 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 SESSION_COOKIE_SAMESITE = "Lax"  # Changed from "None" - use Lax for same-site Django apps
 CSRF_COOKIE_SAMESITE = "Lax"  # Changed from "None"
+
+# Read log level from DJANGO_LOG_LEVEL or fall back to generic LOG_LEVEL; default to INFO.
+# Logging level configuration
+# DJANGO_LOG_LEVEL = os.getenv("DJANGO_LOG_LEVEL", os.getenv("LOG_LEVEL", "INFO"))
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
@@ -449,21 +476,35 @@ CACHES = {
 CSP_ENABLED = _parse_bool(os.getenv("CSP_ENABLED", "False"))
 CSP_MODE = os.getenv("CSP_MODE", "report-only")  # report-only|enforce
 
+# Configure Huey. Use an in-memory Sqlite DB while running tests to avoid connecting to
+# external Postgres at import time (pytest imports Django settings early).
+import sys
+
+TESTING = any("pytest" in arg for arg in sys.argv) or os.getenv("PYTEST_CURRENT_TEST") is not None
+
+if TESTING:
+    from peewee import SqliteDatabase
+
+    huey_database = SqliteDatabase(":memory:")
+else:
+    huey_database = PostgresqlDatabase(
+        os.getenv("DB_NAME"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASS"),
+        host=os.getenv("DB_HOST") or "localhost",
+        port=int(os.getenv("DB_PORT")) if os.getenv("DB_PORT") else 5432,
+    )
+
+_HUEY_WORKERS = int(os.getenv("HUEY_WORKERS", "2"))
 HUEY = {
     "huey_class": "huey.contrib.sql_huey.SqlHuey",
     "name": "business_suite",
     "results": True,
     "store_errors": True,
     "immediate": False,
-    "database": PostgresqlDatabase(
-        os.getenv("DB_NAME"),
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASS"),
-        host=os.getenv("DB_HOST") or "localhost",
-        port=int(os.getenv("DB_PORT")) if os.getenv("DB_PORT") else 5432,
-    ),
+    "database": huey_database,
     "consumer": {
-        "workers": int(os.getenv("HUEY_WORKERS", "2")),
+        "workers": _HUEY_WORKERS,
         "worker_type": os.getenv("HUEY_WORKER_TYPE", "thread"),
         "scheduler_interval": 1,
         "check_worker_health": True,
@@ -539,6 +580,63 @@ DBBACKUP_EXCLUDE_MEDIA_FODERS = ["tmpfiles"]
 FULL_BACKUP_SCHEDULE = "02:00"
 CLEAR_CACHE_SCHEDULE = ["03:00"]
 
+# Audit defaults
+# Audit events are written to a persistent DB (via `auditlog`) and to a structured
+# audit log file (default: `logs/audit.log`) to be scraped by Grafana Alloy.
+
+# Audit settings (using django-auditlog)
+# Runtime toggles controlled by environment variables. Defaults to True when not set.
+# Global audit enable/disable at startup. When False, django-auditlog app and middleware are omitted.
+AUDIT_ENABLED = _parse_bool(os.getenv("AUDIT_ENABLED", "True"))
+# Per-event watch flags (control which events are recorded/forwarded)
+AUDIT_WATCH_CRUD_EVENTS = _parse_bool(
+    os.getenv("AUDIT_WATCH_CRUD_EVENTS", os.getenv("AUDIT_WATCH_MODEL_EVENTS", "True"))
+)
+AUDIT_WATCH_AUTH_EVENTS = _parse_bool(os.getenv("AUDIT_WATCH_AUTH_EVENTS", "True"))
+AUDIT_WATCH_REQUEST_EVENTS = _parse_bool(os.getenv("AUDIT_WATCH_REQUEST_EVENTS", "True"))
+# Avoid logging request events for static/media files when forwarding structured logs. Support comma-separated env var.
+AUDIT_URL_SKIP_LIST = _parse_list(os.getenv("AUDIT_URL_SKIP_LIST"), ["/static/", "/media/", "/favicon.ico"])
+# Purge retention for forwarded audit logs (not the DB retention of LogEntry)
+AUDIT_PURGE_AFTER_DAYS = int(os.getenv("AUDIT_PURGE_AFTER_DAYS", "90"))
+
+# Database retention for audit log DB `LogEntry` objects.
+# Default to 14 days; set to 0 or negative to disable automatic pruning.
+AUDITLOG_RETENTION_DAYS = int(os.getenv("AUDITLOG_RETENTION_DAYS", "14"))
+# Daily schedule for audit log pruning (HH:MM 24h). Set to empty string to disable scheduling.
+AUDITLOG_RETENTION_SCHEDULE = os.getenv("AUDITLOG_RETENTION_SCHEDULE", "04:00")
+
+# Conditionally enable the `auditlog` app and its middleware (so the feature can be fully toggled at startup)
+if AUDIT_ENABLED:
+    # Add auditlog to installed apps if missing
+    if "auditlog" not in INSTALLED_APPS:
+        INSTALLED_APPS.append("auditlog")
+
+    # Insert middleware after our performance logger if present, otherwise append at the end
+    try:
+        idx = MIDDLEWARE.index("core.middleware.performance_logger.PerformanceLoggingMiddleware")
+        MIDDLEWARE.insert(idx + 1, "auditlog.middleware.AuditlogMiddleware")
+    except ValueError:
+        if "auditlog.middleware.AuditlogMiddleware" not in MIDDLEWARE:
+            MIDDLEWARE.append("auditlog.middleware.AuditlogMiddleware")
+else:
+    # Explicitly avoid leaving audit middleware or app configured
+    if "auditlog" in INSTALLED_APPS:
+        INSTALLED_APPS.remove("auditlog")
+    if "auditlog.middleware.AuditlogMiddleware" in MIDDLEWARE:
+        MIDDLEWARE.remove("auditlog.middleware.AuditlogMiddleware")
+
+# Determine if we are running as backend or task_worker
+# Default to 'backend' unless 'run_huey' is in command line or COMPONENT is set.
+COMPONENT = os.getenv("COMPONENT")
+if not COMPONENT:
+    if "run_huey" in sys.argv:
+        COMPONENT = "task_worker"
+    else:
+        COMPONENT = "backend"
+
+# Define the primary handler for this component
+PRIMARY_HANDLER = "backend_file" if COMPONENT == "backend" else "task_worker_file"
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -561,48 +659,60 @@ LOGGING = {
         "console": {
             "class": "logging.StreamHandler",
             "formatter": "simple",
-            "filters": ["require_debug_true"],
         },
-        "file": {
-            "level": "DEBUG",
-            "class": "logging.FileHandler",
-            "filename": os.path.join(BASE_DIR, "logs") + "debug.log",
+        "backend_file": {
+            "level": "INFO",
+            "class": "concurrent_log_handler.ConcurrentRotatingFileHandler",
+            "filename": os.path.join(LOG_DIR, "django.log"),
+            "maxBytes": 10 * 1024 * 1024,
+            "backupCount": 10,
+            "formatter": "verbose",
         },
-        # "mail_admins": {
-        #     "level": "ERROR",
-        #     "class": "django.utils.log.AdminEmailHandler",
-        #     "filters": ["special"],
-        # },
+        "task_worker_file": {
+            "level": "INFO",
+            "class": "concurrent_log_handler.ConcurrentRotatingFileHandler",
+            "filename": os.path.join(LOG_DIR, "task_worker.log"),
+            "maxBytes": 10 * 1024 * 1024,
+            "backupCount": 10,
+            "formatter": "verbose",
+        },
     },
     "root": {
-        "handlers": ["console"],
+        "handlers": ["console", PRIMARY_HANDLER],
         "level": "WARNING",
     },
     "loggers": {
         "django": {
-            "handlers": ["console"],
-            "level": os.getenv("DJANGO_LOG_LEVEL", "INFO"),
+            "handlers": ["console", PRIMARY_HANDLER],
+            "level": DJANGO_LOG_LEVEL,
             "propagate": False,
         },
-        "passport_ocr": {
-            "handlers": ["console", "file"],
-            "level": "DEBUG",
+        "huey": {
+            "handlers": ["console", PRIMARY_HANDLER],
+            "level": "INFO",
             "propagate": False,
         },
-        # "django.request": {
-        #     "handlers": ["mail_admins"],
-        #     "level": "ERROR",
-        #     "propagate": False,
-        # },
-        # requires the PerformanceLoggingMiddleware to be added to MIDDLEWARE
         "performance": {
-            "handlers": ["console", "file"],
+            "handlers": ["console", PRIMARY_HANDLER],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "core": {
+            "handlers": ["console", PRIMARY_HANDLER],
             "level": "INFO",
             "propagate": False,
         },
     },
 }
 
+# Remove the manual loop and use the standard Django logging configuration.
+# The Logger service can still be used for ad-hoc loggers.
+from core.services.logger_service import Logger
+
+# Note: Loki-specific attachment of handlers has been removed. Grafana Alloy should
+# scrape container stdout/stderr or log files (e.g., `logs/`) to collect logs. If you
+# want additional loggers to forward audit events to the file-based fallback handler,
+# add "fail_safe_audit" to their handler lists here.
 CURRENCY = "IDR"
 CURRENCY_SYMBOL = "Rp"
 CURRENCY_DECIMAL_PLACES = 0

@@ -7,10 +7,11 @@ from django.core.files import File
 from django.core.management.base import BaseCommand
 from storages.backends.dropbox import DropBoxStorage
 
+# file logger in prod and console in dev
+from core.services.logger_service import Logger
 from core.utils.dropbox_refresh_token import refresh_dropbox_token
 
-# file logger in prod and console in dev
-logger = logging.getLogger(__name__)
+logger = Logger.get_logger(__name__)
 
 
 class Command(BaseCommand):

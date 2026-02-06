@@ -9,11 +9,12 @@ from django.core.files.storage import default_storage
 from django.utils.text import slugify
 from huey.contrib.djhuey import db_task
 
+from core.services.logger_service import Logger
 from core.utils.pdf_converter import PDFConverter, PDFConverterError
 from invoices.models import InvoiceDocumentItem, InvoiceDocumentJob
 from invoices.services.InvoiceService import InvoiceService
 
-logger = logging.getLogger(__name__)
+logger = Logger.get_logger(__name__)
 
 
 @db_task()

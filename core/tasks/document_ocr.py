@@ -6,9 +6,10 @@ from django.core.files.storage import default_storage
 from huey.contrib.djhuey import db_task
 
 from core.models import DocumentOCRJob
+from core.services.logger_service import Logger
 from invoices.services.document_parser import DocumentParser
 
-logger = logging.getLogger(__name__)
+logger = Logger.get_logger(__name__)
 
 
 @db_task()

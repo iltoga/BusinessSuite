@@ -9,12 +9,13 @@ from django.urls import reverse
 from django.utils.text import slugify
 from django.views.generic import View
 
+from core.services.logger_service import Logger
 from core.utils.pdf_converter import PDFConverter, PDFConverterError
 from invoices.models import Invoice, InvoiceDownloadJob
 from invoices.services.InvoiceService import InvoiceService
 from invoices.tasks.download_jobs import run_invoice_download_job
 
-logger = logging.getLogger(__name__)
+logger = Logger.get_logger(__name__)
 
 
 class InvoiceDownloadView(View):

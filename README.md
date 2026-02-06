@@ -50,9 +50,9 @@ To get started with the application, you will need to have Python, Django, and a
 1. 📥 Clone the repository.
 2. 📦 Install the required dependencies using [uv](https://github.com/astral-sh/uv) and `pyproject.toml`:
 
-    ```sh
-    uv pip install --editable .
-    ```
+   ```sh
+   uv pip install --editable .
+   ```
 
 3. ⚙️ Configure the database settings in the `.env` file.
 4. 🛠️ Run the database migrations using `python manage.py migrate`.
@@ -60,16 +60,21 @@ To get started with the application, you will need to have Python, Django, and a
 
 For a production environment, it is recommended to use the provided Docker setup.
 
+## 📚 Useful Knowledge
+
+This section provides links to detailed guides and how-tos for advanced setup and configuration:
+
+- **[GRAFANA_CLOUD_SETUP.md](howtos/GRAFANA_CLOUD_SETUP.md)**: Comprehensive guide to setting up Grafana Alloy for shipping logs from Docker containers (bs-core, bs-worker, bs-frontend) to Grafana Cloud, including credential setup, configuration, and verification steps.
+
 ## Development Utilities
 
-- **Detect inline <script> tags**: To help centralize JavaScript and avoid inline scripts in templates, run:
-  - `scripts/check_inline_script_tags.py` — scans `templates/` for inline `<script>` tags and exits with non-zero code if any are found.
+- **Detect inline script tags**: To help centralize JavaScript and avoid inline scripts in templates, run:
+  - `scripts/check_inline_script_tags.py` — scans `templates/` for inline script tags (e.g., `<script>...</script>`) and exits with non-zero code if any are found.
   - You can add this to CI or as a git pre-commit hook to prevent regressions.
 
   ## Internationalization (i18n)
 
   To enable translations and generate compiled message files used by Django, follow these steps:
-
   1. Create or edit translation files under `locale/<lang>/LC_MESSAGES/django.po`.
   2. Compile translations to binary `.mo` files with:
 
@@ -81,12 +86,102 @@ For a production environment, it is recommended to use the provided Docker setup
 
   We include a minimal Indonesian translation for the `Male` and `Female` labels in `locale/id/LC_MESSAGES/django.po`. Run `compilemessages` to generate `django.mo` and have Django display the translated labels during runtime and tests.
 
-
 ## API Usage
 
 ## 📡 API Usage
 
 The application exposes a RESTful API for interacting with its various modules. To use the API, you will need to obtain an authentication token. The API endpoints are documented and can be explored using the browsable API feature of Django REST Framework.
+
+---
+
+## 📣 Observability — django-auditlog (Recommended)
+
+We use `django-auditlog` to record model changes (create/update/delete) and optionally record access events. Audit entries are persisted to the database (viewable in Django Admin).
+
+Quick steps:
+
+1. Install the package (using uv):
+
+   ```sh
+   uv pip install django-auditlog
+   ```
+
+2. Add the app and middleware to your `settings.py`:
+
+   ```python
+   INSTALLED_APPS.append('auditlog')
+   # Place AuditlogMiddleware after AuthenticationMiddleware so actor can be set automatically
+   MIDDLEWARE.insert(MIDDLEWARE.index('django.contrib.auth.middleware.AuthenticationMiddleware') + 1, 'auditlog.middleware.AuditlogMiddleware')
+   ```
+
+3. Run migrations for auditlog tables:
+
+   ```bash
+   python manage.py migrate auditlog
+   ```
+
+4. Register models for auditing (we do this automatically for apps in `LOGGING_MODE`). You can also register manually:
+
+   ```python
+   from auditlog.registry import auditlog
+   auditlog.register(MyModel, exclude_fields=['sensitive_field'])
+   ```
+
+Note: Audit log DB retention is configured via the `AUDITLOG_RETENTION_DAYS` environment variable / Django setting (default: 14 days). A daily Huey cron job runs to prune `auditlog.LogEntry` rows older than this threshold; set `AUDITLOG_RETENTION_SCHEDULE` to change the daily run time or set it to an empty string to disable scheduling.
+
+5. Optional settings you can tweak:
+   - `AUDIT_ENABLED` (default: `True`) — Use this env var / Django setting to enable/disable audit forwarding at application startup.
+   - `AUDIT_URL_SKIP_LIST` — a list of URL prefixes to ignore when forwarding request-related structured logs.
+   - `AUDIT_PURGE_AFTER_DAYS` — retention/fwd purge window for forwarded logs.
+
+Notes:
+
+- We will automatically register models listed in `LOGGING_MODE` for audit logging on app ready.
+- If you previously used `django-easy-audit`, run `python manage.py drop_easyaudit --yes` to remove easyaudit DB tables, then remove the package and its `INSTALLED_APPS` entry.
+- The project forwards new `auditlog.LogEntry` objects to Loki (structured logs) so you can continue using Loki/Grafana for observability.
+
+---
+
+## Grafana Alloy — scraping container logs & files 🔍
+
+We recommend using **Grafana Alloy** to collect logs from both Docker container stdout/stderr and host log files. This keeps the application from needing to push logs directly to Loki and centralizes collection in Alloy.
+
+Quick checklist:
+
+- Ensure Django writes per-module logs into `logs/` (the project's `Logger` does this by default).
+- Ensure the Angular frontend writes to `/logs/frontend.log` (the Dockerfile and compose mounts have been updated to do this).
+- Mount the host `${DATA_PATH}/logs` directory into Alloy as `/host_logs` so Alloy can scrape files.
+
+Example Alloy file source (add to `config-local.alloy` / `config-prod.alloy`):
+
+```alloy
+loki.source.file "host_logs" {
+  paths = ["/host_logs/*.log"]
+  forward_to = [loki.write.grafana_cloud.receiver]  # use loki.write.local.receiver for dev
+}
+```
+
+Example `docker-compose` mounts:
+
+```yaml
+services:
+  bs-frontend:
+    volumes:
+      - type: bind
+        source: ${DATA_PATH}/logs
+        target: /logs
+
+  bs-alloy:
+    volumes:
+      - type: bind
+        source: ${DATA_PATH}/logs
+        target: /host_logs:ro
+```
+
+Notes:
+
+- Make sure `${DATA_PATH}/logs` exists on the host and is writable by app containers; Alloy only needs read access.
+- Avoid duplicating logs: Alloy's Docker scraper collects container stdout, and the file source reads log files — do not add console handlers to the same logger that also writes the file unless you intentionally want duplicate records.
 
 ---
 

@@ -277,7 +277,19 @@ def restore_from_file(path, include_users=False):
                 if tables_to_flush:
                     with connection.cursor() as cursor:
                         for table in tables_to_flush:
-                            cursor.execute(f'TRUNCATE TABLE "{table}" RESTART IDENTITY CASCADE;')
+                            if engine == "sqlite":
+                                # SQLite does not support TRUNCATE; use DELETE
+                                cursor.execute(f'DELETE FROM "{table}";')
+                                # Reset sqlite sequence if present
+                                try:
+                                    cursor.execute(
+                                        "DELETE FROM sqlite_sequence WHERE name = ?;",
+                                        (table,),
+                                    )
+                                except Exception:
+                                    pass
+                            else:
+                                cursor.execute(f'TRUNCATE TABLE "{table}" RESTART IDENTITY CASCADE;')
 
             yield "Loading data via loaddata (this may take a few minutes)..."
             call_command("loaddata", fixture_path)

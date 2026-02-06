@@ -12,9 +12,17 @@ Usage:
 import os
 import sys
 
+import pytest
+
 # Add the project root to the path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
+
+# Skip by default - LLM integration tests are opt-in to avoid accidental token usage
+pytestmark = pytest.mark.skipif(
+    os.getenv("RUN_LLM_TESTS") != "1",
+    reason="LLM integration tests are disabled by default; set RUN_LLM_TESTS=1 to run",
+)
 
 # Setup Django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "business_suite.settings.dev")
@@ -196,6 +204,12 @@ if __name__ == "__main__":
     print("\n" + "#" * 60)
     print("# PASSPORT HYBRID OCR EXTRACTION - INTEGRATION TEST")
     print("#" * 60)
+
+    # Opt-in guard: do not run this integration script unless explicitly enabled.
+    # Integration tests that call real LLMs must be opt-in to avoid consuming tokens/credits.
+    if os.getenv("RUN_LLM_TESTS") != "1":
+        print("LLM integration script disabled by default. Set RUN_LLM_TESTS=1 to run it.")
+        sys.exit(0)
 
     # Run tests
     mrz_result = test_mrz_only_extraction()

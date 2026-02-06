@@ -31,6 +31,42 @@ app.use(
 );
 
 /**
+ * Serve modified assets at runtime for environment-driven overrides
+ *
+ * This endpoint lets us override values in /assets/config.json using
+ * environment variables at container start time so the deployed image
+ * doesn't need to be rebuilt when changing branding.
+ */
+import { promises as fs } from 'node:fs';
+
+app.get('/assets/config.json', async (req, res, next) => {
+  try {
+    const cfgPath = join(browserDistFolder, 'assets', 'config.json');
+    const raw = await fs.readFile(cfgPath, 'utf8');
+    const cfg = JSON.parse(raw);
+
+    // Allow container env vars to override the static config.json values
+    const logoFilename = process.env['LOGO_FILENAME'];
+    const logoInverted = process.env['LOGO_INVERTED_FILENAME'];
+
+    const merged = {
+      ...cfg,
+      ...(logoFilename ? { logoFilename } : {}),
+      ...(logoInverted ? { logoInvertedFilename: logoInverted } : {}),
+    };
+
+    // Log what we're returning to help ops debugging
+    console.debug('[Server] /assets/config.json ->', merged);
+
+    // Cache for a short amount of time in case env changes (unlikely) but still safe
+    res.setHeader('Cache-Control', 'public, max-age=60');
+    res.json(merged);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
  * Serve static files from /browser
  */
 app.use(
@@ -74,6 +110,40 @@ app.use(async (req, res, next) => {
       const logoFilename = process.env['LOGO_FILENAME'] || 'logo_transparent.png';
       const logoInverted = process.env['LOGO_INVERTED_FILENAME'] || 'logo_inverted_transparent.png';
 
+      // Try to read a runtime title from assets/config.json, falling back to env or default
+      let runtimeTitle = process.env['APP_TITLE'] || 'BusinessSuite';
+      try {
+        const cfgPath = join(browserDistFolder, 'assets', 'config.json');
+        const rawCfg = await fs.readFile(cfgPath, 'utf8');
+        const parsedCfg = JSON.parse(rawCfg);
+        if (parsedCfg && parsedCfg.title) runtimeTitle = String(parsedCfg.title);
+      } catch (e) {
+        /* ignore: missing or unreadable config.json */
+      }
+
+      // Simple HTML-escape for title insertion
+      const escapeHtml = (s: string) =>
+        s
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+
+      const escapedTitle = escapeHtml(runtimeTitle);
+
+      // Log resolved runtime brand to make debugging in production easier
+      console.debug('[SSR] Resolved branding:', {
+        logoFilename,
+        logoInverted,
+        title: runtimeTitle,
+      });
+
+      // Prepare HTML with replaced title (done once)
+      const responseHtml = String(response.body).replace(
+        /<title>.*?<\/title>/i,
+        `<title>${escapedTitle}</title>`,
+      );
+
       if (cspEnabled) {
         const nonce = generateNonce();
 
@@ -99,16 +169,14 @@ app.use(async (req, res, next) => {
         res.setHeader('X-CSP-Mode', cspMode);
 
         // Inject Angular root attribute so Angular uses the nonce without requiring index.html rewrites
-        let modifiedBody = String(response.body).replace(
-          /<app(\s|>)/,
-          `<app ngCspNonce="${nonce}"$1`,
-        );
+        let modifiedBody = responseHtml.replace(/<app(\s|>)/, `<app ngCspNonce="${nonce}"$1`);
 
         // Inject a small script with the server's logo choices (script must use nonce when CSP is enabled)
         // Also add a quick class so CSS can show the correct logo immediately and avoid a flash
         const logoScript = `<script nonce="${nonce}">(function(){
-          window.APP_BRAND={logo:'/assets/${logoFilename}',logoInverted:'/assets/${logoInverted}'};
+          window.APP_BRAND={logo:'/assets/${logoFilename}',logoInverted:'/assets/${logoInverted}',title:${JSON.stringify(runtimeTitle)}};
           try{document.documentElement.classList.add('app-brand-ready')}catch(e){}
+          try{document.title=${JSON.stringify(runtimeTitle)};}catch(e){}
         })();</script>`;
         modifiedBody = modifiedBody.replace(/<head(\s|>)/i, `<head$1\n${logoScript}`);
 
@@ -125,13 +193,11 @@ app.use(async (req, res, next) => {
         // Non-CSP path: inject script without nonce
         // Non-CSP path: inject script and add a quick class so CSS shows the correct logo ASAP
         const logoScript = `<script>(function(){
-          window.APP_BRAND={logo:'/assets/${logoFilename}',logoInverted:'/assets/${logoInverted}'};
+          window.APP_BRAND={logo:'/assets/${logoFilename}',logoInverted:'/assets/${logoInverted}',title:${JSON.stringify(runtimeTitle)}};
           try{document.documentElement.classList.add('app-brand-ready')}catch(e){}
+          try{document.title=${JSON.stringify(runtimeTitle)};}catch(e){}
         })();</script>`;
-        const modifiedBody = String(response.body).replace(
-          /<head(\s|>)/i,
-          `<head$1\n${logoScript}`,
-        );
+        let modifiedBody = responseHtml.replace(/<head(\s|>)/i, `<head$1\n${logoScript}`);
 
         const modifiedResponse = {
           ...response,
@@ -157,13 +223,24 @@ app.use(async (req, res, next) => {
 if (isMainModule(import.meta.url) || process.env['pm_id']) {
   const port = Number(process.env['PORT'] || 4000);
   const host = process.env['HOST'] || '0.0.0.0';
-  app.listen(port, host, (error) => {
+  // Capture the server instance so we can tune its EventEmitter listener limit.
+  const server = app.listen(port, host, (error) => {
     if (error) {
       throw error;
     }
 
     console.log(`Node Express server listening on http://${host}:${port}`);
   });
+
+  // Increase the max listeners to avoid "MaxListenersExceededWarning" when dev servers
+  // or tooling attach multiple listeners (e.g., hot-reload, PM2, test harnesses).
+  try {
+    // 0 = unlimited; prefer a reasonable cap like 20 to avoid hiding real leaks
+    (server as any).setMaxListeners?.(20);
+    console.debug('[Server] setMaxListeners(20) applied to Node server');
+  } catch (e) {
+    // No-op: best-effort fix
+  }
 }
 
 /**

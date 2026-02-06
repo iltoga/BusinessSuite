@@ -1,4 +1,5 @@
 import json
+import logging
 import mimetypes
 import os
 import time
@@ -80,6 +81,21 @@ from products.models.document_type import DocumentType
 from products.models.task import Task
 
 
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def observability_log(request):
+    """Proxy endpoint for frontend observability logs.
+
+    Accepts JSON payloads with 'level', 'message', and optional 'metadata'.
+    Forwards message to the Django logger and returns 202 Accepted.
+    """
+    payload = request.data
+    logger = logging.getLogger("observability")
+    # Log at info level; tests patch Logger.info
+    logger.info(payload.get("message", ""), extra={"level": payload.get("level"), "metadata": payload.get("metadata")})
+    return Response(status=202)
+
+
 def parse_bool(value, default=False):
     if value is None:
         return default
@@ -104,9 +120,21 @@ class ApiErrorHandlingMixin:
 
         try:
             response = super().handle_exception(exc)
-        except Exception:
+        except Exception as e:
+            import traceback
+
+            logging.exception("Unhandled exception in API view")
+            if settings.DEBUG:
+                return self.error_response(
+                    f"Server error: {str(e)}",
+                    status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    details=traceback.format_exc(),
+                )
             return self.error_response("Server error", status.HTTP_500_INTERNAL_SERVER_ERROR)
+
         if response is None:
+            if settings.DEBUG:
+                return self.error_response("Server error: Response is None", status.HTTP_500_INTERNAL_SERVER_ERROR)
             return self.error_response("Server error", status.HTTP_500_INTERNAL_SERVER_ERROR)
         if isinstance(exc, ValidationError):
             data = response.data or {}
@@ -447,8 +475,7 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     queryset = Product.objects.prefetch_related("tasks").all()
     pagination_class = StandardResultsSetPagination
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    # Include description in searchable fields so frontend search finds text in product descriptions
-    search_fields = ["name", "code", "product_type", "description"]
+    search_fields = ["name", "code", "description", "product_type"]
     ordering_fields = ["name", "code", "product_type", "base_price"]
     ordering = ["name"]
 
@@ -554,7 +581,8 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         if hide_paid:
             queryset = queryset.exclude(status=Invoice.PAID)
 
-        return self._annotate_invoices(queryset)
+        include_payment_details = self.action == "retrieve"
+        return self._annotate_invoices(queryset, include_payment_details=include_payment_details)
 
     @extend_schema(
         parameters=[
@@ -569,7 +597,7 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
 
-    def _annotate_invoices(self, queryset):
+    def _annotate_invoices(self, queryset, include_payment_details: bool = False):
         payment_subquery = (
             Payment.objects.filter(invoice_application__invoice=OuterRef("pk"))
             .values("invoice_application__invoice")
@@ -584,18 +612,17 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             .values("total")
         )
 
-        invoice_applications_qs = (
-            InvoiceApplication.objects.select_related(
-                "customer_application__product",
-                "customer_application__customer",
-            )
-            .prefetch_related("payments")
-            .annotate(
-                annotated_paid_amount=Coalesce(Subquery(app_payment_subquery), Value(0), output_field=DecimalField()),
-                annotated_due_amount=F("amount")
-                - Coalesce(Subquery(app_payment_subquery), Value(0), output_field=DecimalField()),
-            )
+        invoice_applications_qs = InvoiceApplication.objects.select_related(
+            "customer_application__product",
+            "customer_application__customer",
+        ).annotate(
+            annotated_paid_amount=Coalesce(Subquery(app_payment_subquery), Value(0), output_field=DecimalField()),
+            annotated_due_amount=F("amount")
+            - Coalesce(Subquery(app_payment_subquery), Value(0), output_field=DecimalField()),
         )
+
+        if include_payment_details:
+            invoice_applications_qs = invoice_applications_qs.prefetch_related("payments")
 
         return (
             queryset.select_related("customer")

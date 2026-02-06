@@ -20,7 +20,9 @@ if TYPE_CHECKING:
 
     from customer_applications.models import Document
 
-logger = logging.getLogger(__name__)
+from core.services.logger_service import Logger
+
+logger = Logger.get_logger(__name__)
 
 
 class SuratPermohonanHook(BaseDocumentTypeHook):

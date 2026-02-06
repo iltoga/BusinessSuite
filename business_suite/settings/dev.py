@@ -12,6 +12,9 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 from .base import *
 
+# Ensure a sane default for document language in development/testing
+DEFAULT_DOCUMENT_LANGUAGE_CODE = os.getenv("DEFAULT_DOCUMENT_LANGUAGE_CODE", "id")
+
 CSRF_COOKIE_SECURE = False
 SESSION_COOKIE_SECURE = False
 CSRF_COOKIE_DOMAIN = None
@@ -34,6 +37,12 @@ CORS_ALLOW_CREDENTIALS = True
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
+
+MOCK_AUTH_ENABLED = True
+MOCK_AUTH_USERNAME = "stef"
+MOCK_AUTH_EMAIL = "stef@revisbali.com"
+MOCK_AUTH_IS_SUPERUSER = True
+MOCK_AUTH_IS_STAFF = True
 
 # Avoid exhausting Postgres connection limits during local refreshes.
 # Keep connections non-persistent in dev so they close at the end of each request.

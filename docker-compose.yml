@@ -20,7 +20,6 @@ services:
     networks:
       - dockernet
     volumes:
-      # Preferred: bind to an absolute host path set in DB_PATH
       - type: bind
         source: ${DB_PATH}
         target: /var/lib/postgresql
@@ -71,6 +70,7 @@ services:
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASS: ${DB_PASS}
+      COMPONENT: backend
     volumes:
       - type: bind
         source: ./
@@ -80,23 +80,15 @@ services:
       - type: bind
         source: ${DATA_PATH}/media
         target: /media
-        bind:
-          propagation: rslave
       - type: bind
         source: ${DATA_PATH}/db
         target: /db
-        bind:
-          propagation: rslave
       - type: bind
         source: ${DATA_PATH}/logs
         target: /logs
-        bind:
-          propagation: rslave
       - type: bind
         source: ${DATA_PATH}/staticfiles
         target: /staticfiles
-        bind:
-          propagation: rslave
       - le-certs:/etc/letsencrypt
     restart: unless-stopped
 
@@ -115,32 +107,23 @@ services:
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASS: ${DB_PASS}
+      COMPONENT: task_worker
     volumes:
       - type: bind
         source: ./
         target: /usr/src/app
-        bind:
-          propagation: rslave
       - type: bind
         source: ${DATA_PATH}/media
         target: /media
-        bind:
-          propagation: rslave
       - type: bind
         source: ${DATA_PATH}/db
         target: /db
-        bind:
-          propagation: rslave
       - type: bind
         source: ${DATA_PATH}/logs
         target: /logs
-        bind:
-          propagation: rslave
       - type: bind
         source: ${DATA_PATH}/staticfiles
         target: /staticfiles
-        bind:
-          propagation: rslave
       - le-certs:/etc/letsencrypt
     restart: unless-stopped
     command: python manage.py run_huey
@@ -168,7 +151,48 @@ services:
       # These can be set in your environment/.env and default to the original filenames.
       LOGO_FILENAME: ${LOGO_FILENAME}
       LOGO_INVERTED_FILENAME: ${LOGO_INVERTED_FILENAME}
+    volumes:
+      - type: bind
+        source: ${DATA_PATH}/logs
+        target: /logs
     restart: unless-stopped
+
+  bs-alloy:
+    container_name: bs-alloy
+    image: grafana/alloy:latest
+    restart: unless-stopped
+    volumes:
+      - ./grafana/alloy/config-prod.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - type: bind
+        source: ${DATA_PATH}/logs
+        target: /host_logs
+        read_only: true
+      - alloy-data:/var/lib/alloy/data
+    environment:
+      # --- Credentials ---
+      GRAFANA_CLOUD_LOKI_URL: ${GRAFANA_CLOUD_LOKI_URL}
+      GRAFANA_CLOUD_LOKI_USER: ${GRAFANA_CLOUD_LOKI_USER}
+      GRAFANA_CLOUD_LOKI_API_KEY: ${GRAFANA_CLOUD_LOKI_API_KEY}
+
+      # --- Low-Resource Tuning ---
+      GOMEMLIMIT: 250MiB # Soft limit: triggers GC before hitting 250MB
+      GOGC: 50 # More aggressive garbage collection
+      GOMAXPROCS: 1 # Limit to 1 CPU core to prevent thrashing
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    ports:
+      - "12345:12345"
+    networks:
+      - dockernet
+    deploy:
+      resources:
+        limits:
+          cpus: "0.30" # Max 30% of a single core
+          memory: 350M # Hard cap to protect VPS stability
 
 networks:
   dockernet:
@@ -178,3 +202,5 @@ volumes:
   le-certs:
     name: le-certs
     external: true
+  alloy-data:
+    name: alloy-data

@@ -9,12 +9,13 @@ from django.db.models.signals import post_delete, pre_delete
 from django.dispatch import receiver
 from django.utils import timezone
 
+# Get an instance of a logger
+from core.services.logger_service import Logger
 from core.utils.dateutils import calculate_due_date
 from customers.models import Customer
 from products.models import Product
 
-# Get an instance of a logger
-logger = logging.getLogger(__name__)
+logger = Logger.get_logger(__name__)
 
 
 class DocApplicationQuerySet(models.QuerySet):

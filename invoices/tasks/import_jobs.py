@@ -8,11 +8,12 @@ from django.urls import reverse
 from django.utils import timezone
 from huey.contrib.djhuey import db_task
 
+from core.services.logger_service import Logger
 from invoices.models import InvoiceImportItem, InvoiceImportJob
 from invoices.services.invoice_importer import InvoiceImporter
 from payments.models import Payment
 
-logger = logging.getLogger(__name__)
+logger = Logger.get_logger(__name__)
 
 
 @db_task()

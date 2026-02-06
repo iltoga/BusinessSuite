@@ -13,10 +13,11 @@ from django.utils import timezone
 from django.views.generic.edit import CreateView
 
 from core.models.country_code import CountryCode
+from core.services.logger_service import Logger
 from customers.forms import CustomerForm
 from customers.models import Customer, get_passport_upload_to
 
-logger = logging.getLogger(__name__)
+logger = Logger.get_logger(__name__)
 
 
 class CustomerCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateView):

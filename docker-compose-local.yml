@@ -20,7 +20,6 @@ services:
     networks:
       - dockernet
     volumes:
-      # Preferred: bind to an absolute host path set in DB_PATH
       - type: bind
         source: ${DB_PATH}
         target: /usr/local/var/postgres
@@ -76,6 +75,10 @@ services:
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASS: ${DB_PASS}
+      COMPONENT: backend
+      # Loki settings commented out; Alloy handles log collection via Docker socket
+      LOKI_ENABLED: "false"
+      # LOKI_URL: "http://bs-loki:3100/loki/api/v1/push"
     volumes:
       - type: bind
         source: ./
@@ -108,6 +111,10 @@ services:
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASS: ${DB_PASS}
+      COMPONENT: task_worker
+      # Loki settings commented out; Alloy handles log collection via Docker socket
+      LOKI_ENABLED: "false"
+      # LOKI_URL: "http://bs-loki:3100/loki/api/v1/push"
     volumes:
       - type: bind
         source: ./
@@ -138,11 +145,89 @@ services:
     environment:
       PORT: 4000
       BACKEND_URL: http://bs-core:8000
+      # LOKI_URL: http://bs-loki:3100/loki/api/v1/push
     ports:
       - 4200:4000
+    volumes:
+      - type: bind
+        source: ${DATA_PATH}/logs
+        target: /logs
+    networks:
+      - dockernet
+
+  bs-alloy:
+    container_name: bs-alloy
+    image: grafana/alloy:latest
+    restart: unless-stopped
+    depends_on:
+      - bs-loki
+    volumes:
+      - ./grafana/alloy/config-local.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - type: bind
+        source: ./logs
+        target: /host_logs
+        read_only: true
+      - alloy-data:/var/lib/alloy/data
+    environment:
+      # Use local Loki for dev
+      GRAFANA_CLOUD_LOKI_URL: "http://bs-loki:3100/loki/api/v1/push"
+      GRAFANA_CLOUD_LOKI_USER: "local"
+      GRAFANA_CLOUD_LOKI_API_KEY: "local"
+
+      # Resource tuning
+      GOMEMLIMIT: 300MiB
+      GOMAXPROCS: 1
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    ports:
+      - "12345:12345"
+    networks:
+      - dockernet
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  bs-loki:
+    container_name: bs-loki
+    image: grafana/loki:3.5.1
+    user: "10001:10001"
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    volumes:
+      - ~/.loki:/loki
+      - ./grafana/loki-config.yaml:/etc/loki/local-config.yaml:ro
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - dockernet
+
+  bs-grafana:
+    container_name: bs-grafana
+    image: grafana/grafana:latest
+    restart: unless-stopped
+    depends_on:
+      - bs-loki
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+      - grafana-storage:/var/lib/grafana
     networks:
       - dockernet
 
 networks:
   dockernet:
     driver: bridge
+
+volumes:
+  grafana-storage:
+  alloy-data:

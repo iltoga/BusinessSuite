@@ -1,0 +1,74 @@
+// 1. Discover Docker containers - increased refresh interval to 60s to save CPU
+discovery.docker "docker_loader" {
+  host             = "unix:///var/run/docker.sock"
+  refresh_interval = "60s"
+}
+
+// 2. Filter targets
+discovery.relabel "bs_services" {
+  targets = discovery.docker.docker_loader.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/?(bs-core|bs-worker|bs-frontend)"
+    action        = "keep"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/?(.*)"
+    target_label  = "service"
+  }
+}
+
+// 3. LOG PROCESSING PIPELINE (Filters noise here)
+loki.process "filter_logs" {
+  forward_to = [loki.write.grafana_cloud.receiver]
+
+  // Drop Django "Invalid HTTP_HOST header" errors
+  stage.drop {
+    expression = ".*Invalid HTTP_HOST header.*"
+  }
+
+  // Drop general scanner noise (zgrab, Palo Alto, etc.) seen in your logs
+  stage.drop {
+    expression = "(?i).*(zgrab|Palo Alto Networks|Cortex-Xpanse|scanning).*"
+  }
+}
+
+// 4. Scrape logs from Docker
+loki.source.docker "bs_log_scraper" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.bs_services.output
+  // Forward to the filter instead of directly to cloud
+  forward_to = [loki.process.filter_logs.receiver]
+}
+
+// 5. Scrape host log files
+local.file_match "host_log_files" {
+  path_targets = [
+    { "__path__" = "/var/log/django/django.log", "job" = "host_logs", "service" = "backend" },
+    { "__path__" = "/var/log/django/task_worker.log", "job" = "host_logs", "service" = "task_worker" },
+  ]
+}
+
+loki.source.file "host_logs" {
+  targets    = local.file_match.host_log_files.targets
+  // Forward to the filter instead of directly to cloud
+  forward_to = [loki.process.filter_logs.receiver]
+}
+
+// 6. Send logs to Grafana Cloud
+loki.write "grafana_cloud" {
+  endpoint {
+    url = sys.env("GRAFANA_CLOUD_LOKI_URL") + "/loki/api/v1/push"
+
+    basic_auth {
+      username = sys.env("GRAFANA_CLOUD_LOKI_USER")
+      password = sys.env("GRAFANA_CLOUD_LOKI_API_KEY")
+    }
+
+    batch_size = "512KiB"
+    batch_wait = "5s"
+  }
+}

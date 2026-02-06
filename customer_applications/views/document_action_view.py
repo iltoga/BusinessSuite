@@ -6,10 +6,11 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 from django.http import JsonResponse
 from django.views import View
 
+from core.services.logger_service import Logger
 from customer_applications.hooks.registry import hook_registry
 from customer_applications.models import Document
 
-logger = logging.getLogger(__name__)
+logger = Logger.get_logger(__name__)
 
 
 class DocumentActionView(LoginRequiredMixin, PermissionRequiredMixin, View):
@@ -33,9 +34,7 @@ class DocumentActionView(LoginRequiredMixin, PermissionRequiredMixin, View):
             JsonResponse with success status and message or error.
         """
         try:
-            document = Document.objects.select_related(
-                "doc_type", "doc_application__customer"
-            ).get(pk=document_id)
+            document = Document.objects.select_related("doc_type", "doc_application__customer").get(pk=document_id)
         except Document.DoesNotExist:
             logger.warning(
                 "Document action requested for non-existent document: %s",

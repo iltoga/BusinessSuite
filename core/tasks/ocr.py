@@ -9,10 +9,11 @@ from huey.contrib.djhuey import db_task
 
 from core.models import OCRJob
 from core.services.ai_client import AIConnectionError
+from core.services.logger_service import Logger
 from core.utils.imgutils import convert_and_resize_image
 from core.utils.passport_ocr import extract_mrz_data, extract_passport_with_ai
 
-logger = logging.getLogger(__name__)
+logger = Logger.get_logger(__name__)
 
 
 @db_task(retries=2, retry_delay=10, context=True)

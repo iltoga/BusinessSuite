@@ -10,9 +10,10 @@ from django.utils.text import slugify
 from django.views import View
 
 from core.services.document_merger import DocumentMerger, DocumentMergerError
+from core.services.logger_service import Logger
 from customer_applications.models import DocApplication, Document
 
-logger = logging.getLogger(__name__)
+logger = Logger.get_logger(__name__)
 
 
 class DocumentMergeDownloadView(PermissionRequiredMixin, View):

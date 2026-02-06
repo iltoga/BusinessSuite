@@ -1,106 +1,99 @@
 <div class="space-y-6">
   <div class="flex items-center justify-between">
     <h1 class="text-2xl font-bold tracking-tight">Document Types</h1>
-    <button z-button (click)="createNew()" [zDisabled]="isFormOpen()">Add Document Type</button>
+    <button z-button (click)="createNew()" [zDisabled]="isDialogOpen()">Add Document Type</button>
   </div>
 
-  <!-- Create/Edit Form Card -->
-  @if (isFormOpen()) {
-    <z-card class="p-6">
+  <!-- Edit/Create Modal Template -->
+  <ng-template #documentTypeModalTemplate>
+    <form [formGroup]="documentTypeForm" (ngSubmit)="saveDocumentType()" class="space-y-4 py-4">
       <div class="space-y-4">
-        <div class="flex items-center justify-between">
-          <h2 class="text-lg font-semibold">
-            {{ editingDocumentType() ? 'Edit' : 'Add' }} Document Type
-          </h2>
-          <button z-button zType="ghost" zSize="sm" (click)="closeForm()">Cancel</button>
-        </div>
+        <div></div>
 
-        <form [formGroup]="documentTypeForm" (ngSubmit)="saveDocumentType()" class="space-y-4">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="space-y-2">
-              <label class="text-sm font-medium" for="name">Name *</label>
-              <input
-                z-input
-                id="name"
-                formControlName="name"
-                placeholder="Enter document type name"
-                [zStatus]="
-                  documentTypeForm.get('name')?.invalid && documentTypeForm.get('name')?.touched
-                    ? 'error'
-                    : undefined
-                "
-              />
-              @if (documentTypeForm.get('name')?.invalid && documentTypeForm.get('name')?.touched) {
-                <p class="text-sm text-destructive">Document type name is required</p>
-              }
-            </div>
-
-            <div class="space-y-2">
-              <label class="text-sm font-medium" for="validationRuleRegex"
-                >Validation Rule Regex</label
-              >
-              <input
-                z-input
-                id="validationRuleRegex"
-                formControlName="validationRuleRegex"
-                placeholder="Enter regex pattern"
-              />
-            </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="space-y-2">
+            <label class="text-sm font-medium" for="name">Name *</label>
+            <input
+              z-input
+              id="name"
+              formControlName="name"
+              placeholder="Enter document type name"
+              [zStatus]="
+                documentTypeForm.get('name')?.invalid && documentTypeForm.get('name')?.touched
+                  ? 'error'
+                  : undefined
+              "
+            />
+            @if (documentTypeForm.get('name')?.invalid && documentTypeForm.get('name')?.touched) {
+              <p class="text-sm text-destructive">Document type name is required</p>
+            }
           </div>
 
           <div class="space-y-2">
-            <label class="text-sm font-medium" for="description">Description</label>
-            <textarea
-              z-input
-              id="description"
-              formControlName="description"
-              placeholder="Enter description"
-              rows="3"
-            ></textarea>
-          </div>
-
-          <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" formControlName="hasOcrCheck" class="rounded" />
-              <span class="text-sm">Has OCR Check</span>
-            </label>
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" formControlName="hasExpirationDate" class="rounded" />
-              <span class="text-sm">Has Expiration Date</span>
-            </label>
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" formControlName="hasDocNumber" class="rounded" />
-              <span class="text-sm">Has Document Number</span>
-            </label>
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" formControlName="hasFile" class="rounded" />
-              <span class="text-sm">Has File</span>
-            </label>
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" formControlName="hasDetails" class="rounded" />
-              <span class="text-sm">Has Details</span>
-            </label>
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" formControlName="isInRequiredDocuments" class="rounded" />
-              <span class="text-sm">In Required Documents</span>
-            </label>
-          </div>
-
-          <div class="flex justify-end gap-2 pt-4">
-            <button z-button zType="outline" type="button" (click)="closeForm()">Cancel</button>
-            <button
-              z-button
-              type="submit"
-              [zDisabled]="documentTypeForm.invalid || isSaving()"
-              [zLoading]="isSaving()"
+            <label class="text-sm font-medium" for="validationRuleRegex"
+              >Validation Rule Regex</label
             >
-              {{ editingDocumentType() ? 'Update' : 'Create' }}
-            </button>
+            <input
+              z-input
+              id="validationRuleRegex"
+              formControlName="validationRuleRegex"
+              placeholder="Enter regex pattern"
+            />
           </div>
-        </form>
+        </div>
+
+        <div class="space-y-2">
+          <label class="text-sm font-medium" for="description">Description</label>
+          <textarea
+            z-input
+            id="description"
+            formControlName="description"
+            placeholder="Enter description"
+            rows="3"
+          ></textarea>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" formControlName="hasOcrCheck" class="rounded" />
+            <span class="text-sm">Has OCR Check</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" formControlName="hasExpirationDate" class="rounded" />
+            <span class="text-sm">Has Expiration Date</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" formControlName="hasDocNumber" class="rounded" />
+            <span class="text-sm">Has Document Number</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" formControlName="hasFile" class="rounded" />
+            <span class="text-sm">Has File</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" formControlName="hasDetails" class="rounded" />
+            <span class="text-sm">Has Details</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" formControlName="isInRequiredDocuments" class="rounded" />
+            <span class="text-sm">In Required Documents</span>
+          </label>
+        </div>
+
+        <div class="mt-6 flex gap-2 justify-end">
+          <button z-button type="button" variant="ghost" (click)="closeForm()">Cancel</button>
+          <button
+            z-button
+            type="submit"
+            [zDisabled]="documentTypeForm.invalid || isSaving()"
+            [zLoading]="isSaving()"
+          >
+            {{ editingDocumentType() ? 'Update' : 'Create' }}
+          </button>
+        </div>
       </div>
-    </z-card>
-  }
+    </form>
+  </ng-template>
 
   <!-- Table -->
   <z-card class="p-0">

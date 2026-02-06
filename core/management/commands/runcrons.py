@@ -8,7 +8,9 @@ import logging
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-logger = logging.getLogger(__name__)
+from core.services.logger_service import Logger
+
+logger = Logger.get_logger(__name__)
 
 
 class Command(BaseCommand):
@@ -24,13 +26,14 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         """Execute all cron jobs."""
-        from core.tasks.cron_jobs import run_clear_cache_now, run_full_backup_now
+        from core.tasks.cron_jobs import run_auditlog_prune_now, run_clear_cache_now, run_full_backup_now
 
         force = options.get("force", False)
 
         cron_jobs = [
             ("FullBackupJob", run_full_backup_now),
             ("ClearCacheJob", run_clear_cache_now),
+            ("AuditlogPruneJob", run_auditlog_prune_now),
         ]
 
         self.stdout.write(self.style.SUCCESS(f"Starting cron jobs execution at {timezone.now()}"))

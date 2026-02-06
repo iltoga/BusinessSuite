@@ -43,7 +43,11 @@ import { mergeClasses, transform } from '@/shared/utils/merge-classes';
             class="mr-2 flex shrink-0 items-center justify-center"
           ></div>
         }
-        <span class="flex-1">{{ zLabel() }}</span>
+        <span class="flex-1">
+          <ng-content></ng-content>
+          <!-- Keep label available to screen readers / fallback, but visually hidden so we can project a custom display -->
+          <span class="sr-only">{{ zLabel() }}</span>
+        </span>
         @if (zShortcut()) {
           <span [class]="shortcutClasses()">{{ zShortcut() }}</span>
         }

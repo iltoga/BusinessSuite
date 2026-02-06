@@ -14,10 +14,11 @@ from typing import Optional, Union
 from django.core.files.uploadedfile import UploadedFile
 
 from core.services.ai_client import AIClient
+from core.services.logger_service import Logger
 from core.utils.icao_validation import validate_passport_number_icao
 from core.utils.imgutils import convert_and_resize_image
 
-logger = logging.getLogger(__name__)
+logger = Logger.get_logger(__name__)
 
 
 @dataclass
