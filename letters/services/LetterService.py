@@ -21,9 +21,14 @@ class LetterService:
         "C1": "C1",
     }
 
-    def __init__(self, customer: Customer, template_name: str):
+    def __init__(self, customer: Customer, template_name: str = None):
         self.customer = customer
-        self.template_name = template_name
+        # Use getattr to avoid AttributeError if the setting is missing during initialization
+        self.template_name = template_name or getattr(
+            settings,
+            "DOCX_SURAT_PERMOHONAN_PERPANJANGAN_TEMPLATE_NAME",
+            "surat_permohonan_perpanjangan.docx",
+        )
         self.generated_temp_files: list[str] = []
 
     def _format_date_value(self, value, format_type="slash"):
@@ -170,7 +175,8 @@ class LetterService:
 
     def generate_letter_document(self, data):
         # Keep templates together with other DOCX templates under the 'reporting' folder
-        template_path = os.path.join(settings.STATIC_SOURCE_ROOT, "reporting", self.template_name)
+        static_source_root = getattr(settings, "STATIC_SOURCE_ROOT", "static")
+        template_path = os.path.join(static_source_root, "reporting", self.template_name)
 
         if not os.path.exists(template_path):
             raise FileNotFoundError(f"Letter template '{self.template_name}' was not found at {template_path}.")

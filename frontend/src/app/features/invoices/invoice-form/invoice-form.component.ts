@@ -29,6 +29,7 @@ import { ZardDateInputComponent } from '@/shared/components/date-input';
 import { FormErrorSummaryComponent } from '@/shared/components/form-error-summary/form-error-summary.component';
 import { ZardInputDirective } from '@/shared/components/input';
 import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/utils/form-errors';
+import { QuickApplicationModalComponent } from '../../applications/quick-application-modal/quick-application-modal.component';
 
 @Component({
   selector: 'app-invoice-form',
@@ -43,6 +44,7 @@ import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/uti
     ZardDateInputComponent,
     CustomerSelectComponent,
     FormErrorSummaryComponent,
+    QuickApplicationModalComponent,
   ],
   templateUrl: './invoice-form.component.html',
   styleUrls: ['./invoice-form.component.css'],
@@ -64,6 +66,7 @@ export class InvoiceFormComponent implements OnInit {
   readonly isEditMode = signal(false);
   readonly invoice = signal<InvoiceDetail | null>(null);
   readonly customerApplications = signal<DocApplicationInvoice[]>([]);
+  readonly isQuickAppModalOpen = signal(false);
 
   readonly form = this.fb.group({
     customer: [null as number | null, Validators.required],
@@ -183,6 +186,45 @@ export class InvoiceFormComponent implements OnInit {
         this.cdr.markForCheck();
       }
     }
+  }
+
+  openQuickAppModal(): void {
+    const customerId = this.form.get('customer')?.value;
+    if (!customerId) {
+      this.toast.error('Please select a customer first.');
+      return;
+    }
+    this.isQuickAppModalOpen.set(true);
+  }
+
+  onQuickAppSaved(newApp: any): void {
+    this.isQuickAppModalOpen.set(false);
+
+    // Add to customerApplications list so it can be selected in the form
+    this.customerApplications.update((apps) => [...apps, newApp]);
+
+    // Find first empty row or add new one
+    let targetGroup: FormGroup | null = null;
+    for (let i = 0; i < this.invoiceApplications.length; i++) {
+      const g = this.invoiceApplications.at(i);
+      if (!g.get('customerApplication')?.value) {
+        targetGroup = g;
+        break;
+      }
+    }
+
+    if (targetGroup) {
+      targetGroup.get('customerApplication')?.setValue(newApp.id);
+      const price = newApp.product?.basePrice ? Number(newApp.product.basePrice) : 0;
+      targetGroup.get('amount')?.setValue(Number.isNaN(price) ? 0 : price, { emitEvent: false });
+    } else {
+      this.addLineItem({
+        customerApplication: newApp.id,
+        amount: newApp.product?.basePrice ? Number(newApp.product.basePrice) : 0,
+      });
+    }
+
+    this.cdr.markForCheck();
   }
 
   removeLineItem(index: number): void {

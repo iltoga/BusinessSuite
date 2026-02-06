@@ -296,7 +296,8 @@ class LettersViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             "address_bali": payload.get("address_bali") or "",
         }
 
-        service = LetterService(customer, settings.DOCX_SURAT_PERMOHONAN_PERPANJANGAN_TEMPLATE_NAME)
+        # LetterService uses getattr(settings, 'DOCX_SURAT_PERMOHONAN_PERPANJANGAN_TEMPLATE_NAME') internally
+        service = LetterService(customer)
 
         try:
             data = service.generate_letter_data(extra_data)
@@ -849,12 +850,12 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], url_path=r"download-async/stream/(?P<job_id>[^/.]+)")
     def download_async_stream(self, request, job_id=None):
-        response = StreamingHttpResponse(self._stream_download_job(job_id), content_type="text/event-stream")
+        response = StreamingHttpResponse(self._stream_download_job(request, job_id), content_type="text/event-stream")
         response["Cache-Control"] = "no-cache"
         response["X-Accel-Buffering"] = "no"
         return response
 
-    def _stream_download_job(self, job_id):
+    def _stream_download_job(self, request, job_id):
         last_progress = None
         try:
             job = InvoiceDownloadJob.objects.get(id=job_id)
@@ -881,7 +882,9 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                     "complete",
                     {
                         "message": "Invoice ready",
-                        "download_url": reverse("invoices-download-async-file", kwargs={"job_id": str(job.id)}),
+                        "download_url": request.build_absolute_uri(
+                            reverse("invoices-download-async-file", kwargs={"job_id": str(job.id)})
+                        ),
                         "status": job.status,
                     },
                 )
@@ -1246,7 +1249,7 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             filename = uploaded_file.name
             is_paid = paid_status_list[index - 1].lower() == "true" if index - 1 < len(paid_status_list) else False
             safe_name = get_valid_filename(os.path.basename(filename))
-            tmp_dir = os.path.join(settings.TMPFILES_FOLDER, "invoice_imports", str(job.id))
+            tmp_dir = os.path.join(getattr(settings, "TMPFILES_FOLDER", "tmpfiles"), "invoice_imports", str(job.id))
             tmp_path = os.path.join(tmp_dir, safe_name)
             file_path = default_storage.save(tmp_path, uploaded_file)
 
@@ -1894,7 +1897,7 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
 
         try:
             safe_filename = get_valid_filename(os.path.basename(file.name))
-            tmp_file_path = os.path.join(settings.TMPFILES_FOLDER, safe_filename)
+            tmp_file_path = os.path.join(getattr(settings, "TMPFILES_FOLDER", "tmpfiles"), safe_filename)
             file_path = default_storage.save(tmp_file_path, file)
 
             job = OCRJob.objects.create(
@@ -2008,7 +2011,9 @@ class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
         try:
             safe_filename = get_valid_filename(os.path.basename(file.name))
             job_uuid = uuid.uuid4()
-            tmp_file_path = os.path.join(settings.TMPFILES_FOLDER, "document_ocr", str(job_uuid), safe_filename)
+            tmp_file_path = os.path.join(
+                getattr(settings, "TMPFILES_FOLDER", "tmpfiles"), "document_ocr", str(job_uuid), safe_filename
+            )
             file_path = default_storage.save(tmp_file_path, file)
 
             job = DocumentOCRJob.objects.create(

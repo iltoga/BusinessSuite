@@ -1,0 +1,55 @@
+<ng-template #contentTemplate>
+  <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-6 pt-4">
+    <app-form-error-summary [form]="form" [labels]="formErrorLabels" />
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div class="md:col-span-2 flex flex-col gap-2">
+        <app-product-select
+          formControlName="product"
+          [label]="'Product'"
+          [placeholder]="'Select a product...'"
+          [searchPlaceholder]="'Search products...'"
+          [zWidth]="'full'"
+          [zStatus]="
+            form.get('product')?.invalid && form.get('product')?.touched ? 'error' : undefined
+          "
+        ></app-product-select>
+        <div
+          *ngIf="form.get('product')?.invalid && form.get('product')?.touched"
+          class="text-xs text-destructive mt-1"
+        >
+          Product is required
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label class="text-sm font-medium">Doc Date</label>
+        <z-date-input formControlName="docDate" placeholder="DD-MM-YYYY"></z-date-input>
+        <div
+          *ngIf="form.get('docDate')?.invalid && form.get('docDate')?.touched"
+          class="text-xs text-destructive mt-1"
+        >
+          Document date is required
+        </div>
+      </div>
+
+      <div class="md:col-span-3 flex flex-col gap-2">
+        <label class="text-sm font-medium">Notes</label>
+        <textarea
+          z-input
+          formControlName="notes"
+          class="block w-full mt-1 p-2 border rounded"
+          rows="4"
+          placeholder="Optional notes..."
+        ></textarea>
+      </div>
+    </div>
+
+    <div class="flex justify-end gap-3 pt-4 border-t">
+      <z-button zType="ghost" type="button" (click)="close()"> Cancel </z-button>
+      <z-button zType="default" type="button" (click)="submit()" [zDisabled]="isSaving()">
+        {{ isSaving() ? 'Creating...' : 'Create & Add to Invoice' }}
+      </z-button>
+    </div>
+  </form>
+</ng-template>

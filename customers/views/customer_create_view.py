@@ -50,7 +50,7 @@ class CustomerCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateVie
         initial = super().get_initial()
         # Set default email if not provided
         if not initial.get("email"):
-            initial["email"] = getattr(settings, "DEFFAULT_CUSTOMER_EMAIL", None)
+            initial["email"] = getattr(settings, "DEFAULT_CUSTOMER_EMAIL", None)
         return initial
 
     def form_valid(self, form):

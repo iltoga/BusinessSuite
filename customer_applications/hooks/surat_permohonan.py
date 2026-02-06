@@ -90,14 +90,9 @@ class SuratPermohonanHook(BaseDocumentTypeHook):
                     "error": "Cannot generate document: Customer does not have a Bali address populated. Please update the customer's Bali address first.",
                 }
 
-            template_name = getattr(
-                settings,
-                "DOCX_SURAT_PERMOHONAN_PERPANJANGAN_TEMPLATE_NAME",
-                "surat_permohonan_perpanjangan.docx",
-            )
-
             # Generate the DOCX document
-            service = LetterService(customer, template_name)
+            # LetterService uses getattr(settings, 'DOCX_SURAT_PERMOHONAN_PERPANJANGAN_TEMPLATE_NAME') internally
+            service = LetterService(customer)
             data = service.generate_letter_data()
             doc_buffer = service.generate_letter_document(data)
 
