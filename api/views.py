@@ -417,9 +417,16 @@ class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             if query:
                 queryset = Customer.objects.search_customers(query).select_related("nationality")
 
-            hide_disabled = self.request.query_params.get("hide_disabled", "true").lower() == "true"
-            if hide_disabled:
-                queryset = queryset.filter(active=True)
+            status_param = self.request.query_params.get("status")
+            if status_param:
+                if status_param == "active":
+                    queryset = queryset.filter(active=True)
+                elif status_param == "disabled":
+                    queryset = queryset.filter(active=False)
+            else:
+                hide_disabled = self.request.query_params.get("hide_disabled", "true").lower() == "true"
+                if hide_disabled:
+                    queryset = queryset.filter(active=True)
 
         return queryset
 

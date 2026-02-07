@@ -1,9 +1,9 @@
 @if (status() === 'missing') {
   <span class="text-muted-foreground">{{ emptyLabel() }}</span>
 } @else if (status() === 'expired') {
-  <z-badge zType="destructive">{{ date() | appDate }}</z-badge>
+  <z-badge zType="destructive" zShape="square">{{ date() | appDate }}</z-badge>
 } @else if (status() === 'expiring-soon') {
-  <z-badge zType="secondary">{{ date() | appDate }}</z-badge>
+  <z-badge zType="default" zShape="square">{{ date() | appDate }}</z-badge>
 } @else {
   <span class="text-muted-foreground text-xs">{{ date() | appDate }}</span>
 }

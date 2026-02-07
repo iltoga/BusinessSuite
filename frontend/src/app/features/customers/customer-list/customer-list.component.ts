@@ -16,6 +16,7 @@ import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '@/core/services/auth.service';
 import { CustomersService, type CustomerListItem } from '@/core/services/customers.service';
 import { GlobalToastService } from '@/core/services/toast.service';
+import { ZardBadgeComponent } from '@/shared/components/badge/badge.component';
 import {
   BulkDeleteDialogComponent,
   type BulkDeleteDialogData,
@@ -30,6 +31,7 @@ import {
 import { ExpiryBadgeComponent } from '@/shared/components/expiry-badge';
 import { PaginationControlsComponent } from '@/shared/components/pagination-controls';
 import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
+import { ZardSelectImports } from '@/shared/components/select';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 
 @Component({
@@ -44,6 +46,8 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
     ExpiryBadgeComponent,
     ZardButtonComponent,
     BulkDeleteDialogComponent,
+    ...ZardSelectImports,
+    ZardBadgeComponent,
   ],
   templateUrl: './customer-list.component.html',
   styleUrls: ['./customer-list.component.css'],
@@ -75,21 +79,30 @@ export class CustomerListComponent implements OnInit {
     viewChild.required<
       TemplateRef<{ $implicit: CustomerListItem; value: any; row: CustomerListItem }>
     >('whatsappTemplate');
+  private readonly nationalityTemplate =
+    viewChild.required<
+      TemplateRef<{ $implicit: CustomerListItem; value: any; row: CustomerListItem }>
+    >('nationalityTemplate');
+  private readonly createdAtTemplate =
+    viewChild.required<
+      TemplateRef<{ $implicit: CustomerListItem; value: any; row: CustomerListItem }>
+    >('createdAtTemplate');
   readonly customers = signal<CustomerListItem[]>([]);
   readonly isLoading = signal(false);
   readonly query = signal('');
   readonly page = signal(1);
   readonly pageSize = signal(8);
   readonly totalItems = signal(0);
-  readonly hideDisabled = signal(true);
+  readonly statusFilter = signal<'all' | 'active' | 'disabled'>('active');
   readonly ordering = signal<string | undefined>('-created_at');
   readonly isSuperuser = this.authService.isSuperuser;
 
   readonly bulkDeleteOpen = signal(false);
   readonly bulkDeleteData = signal<BulkDeleteDialogData | null>(null);
-  private readonly bulkDeleteContext = signal<{ query: string; hideDisabled: boolean } | null>(
-    null,
-  );
+  private readonly bulkDeleteContext = signal<{
+    query: string;
+    status: 'all' | 'active' | 'disabled';
+  } | null>(null);
 
   readonly bulkDeleteLabel = computed(() =>
     this.query().trim() ? 'Delete Selected Customers' : 'Delete All Customers',
@@ -110,6 +123,13 @@ export class CustomerListComponent implements OnInit {
       template: this.passportTemplate(),
     },
     {
+      key: 'nationalityName',
+      header: 'Nationality',
+      sortable: true,
+      sortKey: 'nationality__country',
+      template: this.nationalityTemplate(),
+    },
+    {
       key: 'email',
       header: 'Email',
       sortable: true,
@@ -120,6 +140,13 @@ export class CustomerListComponent implements OnInit {
       key: 'whatsapp',
       header: 'WhatsApp',
       template: this.whatsappTemplate(),
+    },
+    {
+      key: 'createdAt',
+      header: 'Added/Updated',
+      sortable: true,
+      sortKey: 'created_at',
+      template: this.createdAtTemplate(),
     },
     {
       key: 'actions',
@@ -207,11 +234,12 @@ export class CustomerListComponent implements OnInit {
     this.loadCustomers();
   }
 
-  onToggleHideDisabled(event: Event): void {
-    const checked = (event.target as HTMLInputElement).checked;
-    this.hideDisabled.set(checked);
-    this.page.set(1);
-    this.loadCustomers();
+  onStatusChange(value: string | string[]): void {
+    if (typeof value === 'string') {
+      this.statusFilter.set(value as 'all' | 'active' | 'disabled');
+      this.page.set(1);
+      this.loadCustomers();
+    }
   }
 
   onPageChange(page: number): void {
@@ -271,7 +299,7 @@ export class CustomerListComponent implements OnInit {
       ? 'This will permanently remove all matching customer records, their applications, invoices, and associated data.'
       : 'This will permanently remove all customer records and their associated data from the database.';
 
-    this.bulkDeleteContext.set({ query, hideDisabled: this.hideDisabled() });
+    this.bulkDeleteContext.set({ query, status: this.statusFilter() });
     this.bulkDeleteData.set({
       entityLabel: 'Customers',
       totalCount: this.totalItems(),
@@ -289,7 +317,7 @@ export class CustomerListComponent implements OnInit {
     }
 
     this.customersService
-      .bulkDeleteCustomers(context.query || undefined, context.hideDisabled)
+      .bulkDeleteCustomers(context.query || undefined, context.status === 'active')
       .subscribe({
         next: (result) => {
           this.toast.success(`Deleted ${result.deletedCount} customer(s)`);
@@ -334,7 +362,7 @@ export class CustomerListComponent implements OnInit {
         pageSize: this.pageSize(),
         query: this.query() || undefined,
         ordering: this.ordering() || undefined,
-        hideDisabled: this.hideDisabled(),
+        status: this.statusFilter(),
       })
       .subscribe({
         next: (response) => {

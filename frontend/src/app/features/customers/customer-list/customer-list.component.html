@@ -15,21 +15,12 @@
         (tabOut)="onEnterSearch()"
       >
         <div class="flex items-center gap-3">
-          <div class="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="hideDisabled"
-              [checked]="hideDisabled()"
-              (change)="onToggleHideDisabled($event)"
-              class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
-            />
-            <label
-              for="hideDisabled"
-              class="text-sm font-medium leading-none cursor-pointer select-none"
-            >
-              Hide Disabled
-            </label>
-          </div>
+          <z-select class="w-40" [zValue]="statusFilter()" (zValueChange)="onStatusChange($event)">
+            <z-select-item zValue="all">Show All</z-select-item>
+            <z-select-item zValue="active">Enabled Only</z-select-item>
+            <z-select-item zValue="disabled">Disabled Only</z-select-item>
+          </z-select>
+
           @if (isSuperuser() && totalItems() > 0) {
             <z-button zType="destructive" zSize="sm" (click)="openBulkDeleteDialog()">
               {{ bulkDeleteLabel() }}
@@ -64,9 +55,14 @@
 </div>
 
 <ng-template #customerTemplate let-row>
-  <a [routerLink]="['/customers', row.id]" class="font-medium hover:underline">
-    {{ row.fullNameWithCompany }}
-  </a>
+  <div class="flex items-center gap-2">
+    <a [routerLink]="['/customers', row.id]" class="font-medium hover:underline">
+      {{ row.fullNameWithCompany }}
+    </a>
+    @if (!row.active) {
+      <z-badge variant="destructive" class="h-4 px-1 text-[10px] uppercase">Disabled</z-badge>
+    }
+  </div>
 </ng-template>
 
 <ng-template #passportTemplate let-row>
@@ -100,6 +96,28 @@
   } @else {
     <span>—</span>
   }
+</ng-template>
+
+<ng-template #nationalityTemplate let-row>
+  <div class="flex items-center gap-2">
+    <span>{{ row.nationalityName }}</span>
+    @if (row.nationalityCode) {
+      <span class="text-xs text-muted-foreground">({{ row.nationalityCode }})</span>
+    }
+  </div>
+</ng-template>
+
+<ng-template #createdAtTemplate let-row>
+  <div class="flex flex-col">
+    <span class="text-sm">{{
+      row.createdAt ? (row.createdAt | date: 'dd MMM yyyy HH:mm:ss') : ''
+    }}</span>
+    @if (row.updatedAt && row.updatedAt !== row.createdAt) {
+      <span class="text-xs text-muted-foreground">{{
+        row.updatedAt ? (row.updatedAt | date: 'dd MMM yyyy HH:mm:ss') : ''
+      }}</span>
+    }
+  </div>
 </ng-template>
 
 <app-bulk-delete-dialog

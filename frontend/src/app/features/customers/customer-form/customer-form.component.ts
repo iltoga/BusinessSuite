@@ -644,16 +644,33 @@ export class CustomerFormComponent implements OnInit {
     }
 
     const rawValue = this.form.getRawValue();
+
+    // Use a helper to format dates consistently in local time (YYYY-MM-DD)
+    const formatDate = (date: Date | null) => {
+      if (!date || isNaN(date.getTime())) return null;
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    // Construct payload with camelCase keys expected by the API
     const payload = {
       ...rawValue,
-      birthdate: rawValue.birthdate ? rawValue.birthdate.toISOString().split('T')[0] : null,
-      passport_issue_date: rawValue.passport_issue_date
-        ? rawValue.passport_issue_date.toISOString().split('T')[0]
-        : null,
-      passport_expiration_date: rawValue.passport_expiration_date
-        ? rawValue.passport_expiration_date.toISOString().split('T')[0]
-        : null,
-      passport_metadata: this.passportMetadata(),
+      customerType: rawValue.customer_type,
+      firstName: rawValue.first_name,
+      lastName: rawValue.last_name,
+      companyName: rawValue.company_name,
+      addressBali: rawValue.address_bali,
+      addressAbroad: rawValue.address_abroad,
+      birthdate: formatDate(rawValue.birthdate),
+      passportNumber: rawValue.passport_number,
+      passportIssueDate: formatDate(rawValue.passport_issue_date),
+      passportExpirationDate: formatDate(rawValue.passport_expiration_date),
+      birthPlace: rawValue.birth_place,
+      notifyDocumentsExpiration: rawValue.notify_documents_expiration,
+      notifyBy: rawValue.notify_by,
+      passportMetadata: this.passportMetadata(),
     };
     this.isLoading.set(true);
 

@@ -35,6 +35,7 @@ import {
   DollarSign,
   Download,
   Ellipsis,
+  EllipsisVertical,
   Eye,
   File,
   FileCode,
@@ -159,6 +160,8 @@ export const ZARD_ICONS = {
   copy: Copy,
   eye: Eye,
   ellipsis: Ellipsis,
+  'ellipsis-horizontal': Ellipsis, // alias
+  'ellipsis-vertical': EllipsisVertical,
   terminal: Terminal,
   clipboard: Clipboard,
   moon: Moon,

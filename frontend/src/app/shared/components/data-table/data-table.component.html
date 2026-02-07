@@ -14,13 +14,19 @@
             <button
               type="button"
               class="flex items-center gap-2"
+              [class.w-full]="column.key === 'actions'"
               tabindex="-1"
               [class.cursor-pointer]="column.sortable"
+              [class.justify-end]="column.key === 'actions'"
               [ngClass]="{ 'text-foreground/70': !column.sortable }"
               (click)="onSort(column)"
             >
-              <div class="flex flex-col items-start">
-                <span>{{ column.header }}</span>
+              <div
+                class="flex flex-col"
+                [class.items-end]="column.key === 'actions'"
+                [class.items-start]="column.key !== 'actions'"
+              >
+                <span [class.text-right]="column.key === 'actions'">{{ column.header }}</span>
                 @if (column.subtitle) {
                   <span class="text-xs font-normal text-foreground/70 normal-case">{{
                     column.subtitle
@@ -95,7 +101,7 @@
                         aria-label="Row actions"
                         aria-haspopup="menu"
                       >
-                        <z-icon zType="ellipsis" class="rotate-90" />
+                        <z-icon zType="ellipsis-horizontal" />
                       </button>
                       <z-dropdown-menu-content #rowActionsMenu class="z-50 min-w-48">
                         @for (action of actions() ?? []; track action.label) {

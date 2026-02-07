@@ -10,11 +10,16 @@ export interface CustomerListItem {
   fullName?: string;
   email: string | null;
   telephone: string | null;
+  whatsapp: string | null;
   passportNumber: string | null;
   passportExpirationDate: string | null;
   passportExpired: boolean;
   passportExpiringSoon: boolean;
   active: boolean;
+  nationalityName: string;
+  nationalityCode: string;
+  createdAt: string;
+  updatedAt: string | null;
 }
 
 export interface CustomerDetail extends CustomerListItem {
@@ -23,7 +28,6 @@ export interface CustomerDetail extends CustomerListItem {
   firstName?: string | null;
   lastName?: string | null;
   companyName?: string | null;
-  whatsapp?: string | null;
   telegram?: string | null;
   facebook?: string | null;
   instagram?: string | null;
@@ -83,7 +87,7 @@ export interface CustomerListQuery {
   pageSize: number;
   query?: string;
   ordering?: string;
-  hideDisabled?: boolean;
+  status?: 'all' | 'active' | 'disabled';
 }
 
 export interface BulkDeleteResult {
@@ -102,7 +106,7 @@ export class CustomersService {
     let params = new HttpParams()
       .set('page', query.page)
       .set('page_size', query.pageSize)
-      .set('hide_disabled', String(query.hideDisabled ?? true));
+      .set('status', query.status ?? 'active');
 
     if (query.query) {
       params = params.set('search', query.query).set('q', query.query);
@@ -151,7 +155,7 @@ export class CustomersService {
   ): Observable<CustomerDetail> {
     const headers = this.buildHeaders();
     return this.http
-      .put<any>(`${this.apiUrl}${customerId}/`, payload, { headers })
+      .patch<any>(`${this.apiUrl}${customerId}/`, payload, { headers })
       .pipe(map(this.mapCustomer));
   }
 
@@ -203,18 +207,22 @@ export class CustomersService {
     fullName: item.full_name ?? item.fullName ?? item.full_name_with_company ?? '',
     email: item.email ?? null,
     telephone: item.telephone ?? null,
+    whatsapp: item.whatsapp ?? null,
     passportNumber: item.passport_number ?? item.passportNumber ?? null,
     passportIssueDate: item.passport_issue_date ?? item.passportIssueDate ?? null,
     passportExpirationDate: item.passport_expiration_date ?? item.passportExpirationDate ?? null,
     passportExpired: item.passport_expired ?? item.passportExpired ?? false,
     passportExpiringSoon: item.passport_expiring_soon ?? item.passportExpiringSoon ?? false,
     active: item.active ?? true,
+    nationalityName: item.nationality_name ?? item.nationalityName ?? '',
+    nationalityCode: item.nationality_code ?? item.nationalityCode ?? '',
+    createdAt: item.created_at ?? item.createdAt ?? '',
+    updatedAt: item.updated_at ?? item.updatedAt ?? null,
     customerType: item.customer_type ?? item.customerType ?? null,
     title: item.title ?? null,
     firstName: item.first_name ?? item.firstName ?? null,
     lastName: item.last_name ?? item.lastName ?? null,
     companyName: item.company_name ?? item.companyName ?? null,
-    whatsapp: item.whatsapp ?? null,
     telegram: item.telegram ?? null,
     facebook: item.facebook ?? null,
     instagram: item.instagram ?? null,
