@@ -60,6 +60,7 @@ export interface DataTableAction<T = any> {
   shortcut?: string;
   isDestructive?: boolean;
   variant?: DataTableActionVariant;
+  isVisible?: (item: T) => boolean;
 }
 
 export interface SortEvent {
@@ -443,6 +444,9 @@ export class DataTableComponent<T = Record<string, any>> implements AfterViewIni
 
     const actions = this.actions() ?? [];
     for (const action of actions) {
+      if (action.isVisible && !action.isVisible(row)) {
+        continue;
+      }
       const first = (action.shortcut ?? (action.label || '').charAt(0)).toUpperCase();
       if (first === key) {
         event.preventDefault();

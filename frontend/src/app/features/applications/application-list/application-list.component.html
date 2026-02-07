@@ -27,6 +27,7 @@
         #dataTable
         [columns]="columns()"
         [data]="items()"
+        [actions]="actions()"
         [isLoading]="isLoading()"
         [currentPage]="page()"
         [totalPages]="totalPages()"
@@ -59,68 +60,6 @@
               <z-badge zType="outline">Pending</z-badge>
             }
           }
-        </ng-template>
-        <ng-template #columnActions let-row>
-          <div class="flex flex-wrap gap-1">
-            <a
-              [routerLink]="['/applications', row.id]"
-              [state]="{ from: 'applications', focusId: row.id }"
-            >
-              <z-button zType="secondary" zSize="sm">Manage</z-button>
-            </a>
-            @if (row.status !== 'completed') {
-              <a
-                [routerLink]="['/applications', row.id, 'edit']"
-                [state]="{ from: 'applications', focusId: row.id }"
-              >
-                <z-button zType="warning" zSize="sm">Edit</z-button>
-              </a>
-            }
-
-            @if (canForceClose(row)) {
-              <z-button zType="outline" zSize="sm" (click)="confirmForceClose(row)"
-                >Force Close</z-button
-              >
-            }
-
-            @if (isSuperuser()) {
-              <span
-                [zTooltip]="
-                  row.hasInvoice
-                    ? 'This application cannot be deleted because it has related invoices. You must delete the invoices first.'
-                    : ''
-                "
-                zPosition="top"
-              >
-                <z-button
-                  zType="destructive"
-                  zSize="sm"
-                  [zDisabled]="row.hasInvoice"
-                  (click)="confirmDelete(row)"
-                >
-                  Delete
-                </z-button>
-              </span>
-            }
-          </div>
-        </ng-template>
-        <ng-template #columnInvoiceActions let-row>
-          <div class="flex flex-wrap gap-1 items-center">
-            @if (row.hasInvoice && row.invoiceId) {
-              <a [routerLink]="['/invoices', row.invoiceId]">
-                <z-button zType="default" zSize="sm">View</z-button>
-              </a>
-              <a [routerLink]="['/invoices', row.invoiceId, 'edit']">
-                <z-button zType="warning" zSize="sm">Edit</z-button>
-              </a>
-            } @else if (row.readyForInvoice) {
-              <a [routerLink]="['/invoices', 'new']" [queryParams]="{ applicationId: row.id }">
-                <z-button zType="success" zSize="sm">Create</z-button>
-              </a>
-            } @else {
-              <z-badge zType="warning">Not Ready</z-badge>
-            }
-          </div>
         </ng-template>
       </app-data-table>
     </div>

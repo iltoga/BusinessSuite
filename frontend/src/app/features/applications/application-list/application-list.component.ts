@@ -27,11 +27,11 @@ import { ConfirmDialogComponent } from '@/shared/components/confirm-dialog/confi
 import {
   DataTableComponent,
   type ColumnConfig,
+  type DataTableAction,
   type SortEvent,
 } from '@/shared/components/data-table/data-table.component';
 import { PaginationControlsComponent } from '@/shared/components/pagination-controls';
 import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
-import { ZardTooltipImports } from '@/shared/components/tooltip';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 
 @Component({
@@ -47,7 +47,6 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
     ConfirmDialogComponent,
     BulkDeleteDialogComponent,
     ...ZardBadgeImports,
-    ...ZardTooltipImports,
   ],
   templateUrl: './application-list.component.html',
   styleUrls: ['./application-list.component.css'],
@@ -102,14 +101,6 @@ export class ApplicationListComponent implements OnInit {
     viewChild.required<
       TemplateRef<{ $implicit: DocApplicationSerializerWithRelations; value: any; row: any }>
     >('columnStatus');
-  private readonly actionsTemplate =
-    viewChild.required<
-      TemplateRef<{ $implicit: DocApplicationSerializerWithRelations; value: any; row: any }>
-    >('columnActions');
-  private readonly invoiceActionsTemplate =
-    viewChild.required<
-      TemplateRef<{ $implicit: DocApplicationSerializerWithRelations; value: any; row: any }>
-    >('columnInvoiceActions');
 
   // Access the data table for focus management
   private readonly dataTable = viewChild.required(DataTableComponent);
@@ -144,8 +135,66 @@ export class ApplicationListComponent implements OnInit {
       sortKey: 'status',
       template: this.statusTemplate(),
     },
-    { key: 'actions', header: 'Application Actions', template: this.actionsTemplate() },
-    { key: 'invoiceActions', header: 'Invoice Actions', template: this.invoiceActionsTemplate() },
+    { key: 'actions', header: 'Actions' },
+  ]);
+
+  readonly actions = computed<DataTableAction<DocApplicationSerializerWithRelations>[]>(() => [
+    {
+      label: 'Manage',
+      icon: 'eye',
+      variant: 'default',
+      action: (item) =>
+        this.router.navigate(['/applications', item.id], {
+          state: { from: 'applications', focusId: item.id },
+        }),
+    },
+    {
+      label: 'Edit Application',
+      icon: 'settings',
+      variant: 'warning',
+      isVisible: (item) => item.status !== 'completed',
+      action: (item) =>
+        this.router.navigate(['/applications', item.id, 'edit'], {
+          state: { from: 'applications', focusId: item.id },
+        }),
+    },
+    {
+      label: 'Force Close',
+      icon: 'ban',
+      variant: 'outline',
+      isVisible: (item) => this.canForceClose(item),
+      action: (item) => this.confirmForceClose(item),
+    },
+    {
+      label: 'Create Invoice',
+      icon: 'plus',
+      variant: 'success',
+      isVisible: (item) => Boolean(item.readyForInvoice),
+      action: (item) =>
+        this.router.navigate(['/invoices', 'new'], { queryParams: { applicationId: item.id } }),
+    },
+    {
+      label: 'View Invoice',
+      icon: 'eye',
+      variant: 'default',
+      isVisible: (item) => Boolean(item.hasInvoice && item.invoiceId),
+      action: (item) => this.router.navigate(['/invoices', item.invoiceId]),
+    },
+    {
+      label: 'Update Invoice',
+      icon: 'settings',
+      variant: 'warning',
+      isVisible: (item) => Boolean(item.hasInvoice && item.invoiceId),
+      action: (item) => this.router.navigate(['/invoices', item.invoiceId, 'edit']),
+    },
+    {
+      label: 'Delete',
+      icon: 'trash',
+      variant: 'destructive',
+      isDestructive: true,
+      isVisible: (item) => this.isSuperuser() && !item.hasInvoice,
+      action: (item) => this.confirmDelete(item),
+    },
   ]);
 
   readonly totalPages = computed(() => {

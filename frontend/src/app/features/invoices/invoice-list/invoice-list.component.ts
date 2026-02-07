@@ -25,8 +25,12 @@ import { ZardButtonComponent } from '@/shared/components/button';
 import {
   DataTableComponent,
   type ColumnConfig,
+  type DataTableAction,
   type SortEvent,
 } from '@/shared/components/data-table/data-table.component';
+import { ShortcutHighlightPipe } from '@/shared/components/data-table/shortcut-highlight.pipe';
+import { ZardDropdownImports } from '@/shared/components/dropdown/dropdown.imports';
+import { ZardIconComponent } from '@/shared/components/icon';
 import {
   InvoiceDeleteDialogComponent,
   type InvoiceDeleteDialogResult,
@@ -51,6 +55,9 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
     BulkDeleteDialogComponent,
     InvoiceDeleteDialogComponent,
     InvoiceDownloadDropdownComponent,
+    ZardIconComponent,
+    ShortcutHighlightPipe,
+    ...ZardDropdownImports,
   ],
   templateUrl: './invoice-list.component.html',
   styleUrls: ['./invoice-list.component.css'],
@@ -140,6 +147,29 @@ export class InvoiceListComponent implements OnInit {
     },
     { key: 'amounts', header: 'Totals', template: this.amountsTemplate() },
     { key: 'actions', header: 'Actions', template: this.actionsTemplate() },
+  ]);
+
+  readonly actions = computed<DataTableAction<InvoiceList>[]>(() => [
+    {
+      label: 'View',
+      icon: 'eye',
+      variant: 'default',
+      action: (item) => this.router.navigate(['/invoices', item.id]),
+    },
+    {
+      label: 'Edit',
+      icon: 'settings',
+      variant: 'warning',
+      action: (item) => this.router.navigate(['/invoices', item.id, 'edit']),
+    },
+    {
+      label: 'Delete',
+      icon: 'trash',
+      variant: 'destructive',
+      isDestructive: true,
+      isVisible: () => this.isSuperuser(),
+      action: (item) => this.openInvoiceDeleteDialog(item),
+    },
   ]);
 
   readonly totalPages = computed(() => {

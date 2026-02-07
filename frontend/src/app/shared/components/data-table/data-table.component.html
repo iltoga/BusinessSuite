@@ -105,17 +105,19 @@
                       </button>
                       <z-dropdown-menu-content #rowActionsMenu class="z-50 min-w-48">
                         @for (action of actions() ?? []; track action.label) {
-                          <button
-                            z-dropdown-menu-item
-                            type="button"
-                            [variant]="
-                              action.variant ?? (action.isDestructive ? 'destructive' : 'default')
-                            "
-                            (click)="onActionSelect(action, row, $event)"
-                          >
-                            <z-icon [zType]="action.icon" class="mr-2 h-4 w-4 stroke-current" />
-                            <span [innerHTML]="action.label | shortcutHighlight"></span>
-                          </button>
+                          @if (!action.isVisible || action.isVisible(row)) {
+                            <button
+                              z-dropdown-menu-item
+                              type="button"
+                              [variant]="
+                                action.variant ?? (action.isDestructive ? 'destructive' : 'default')
+                              "
+                              (click)="onActionSelect(action, row, $event)"
+                            >
+                              <z-icon [zType]="action.icon" class="mr-2 h-4 w-4 stroke-current" />
+                              <span [innerHTML]="action.label | shortcutHighlight"></span>
+                            </button>
+                          }
                         }
                       </z-dropdown-menu-content>
                     </div>

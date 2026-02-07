@@ -3,6 +3,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  HostListener,
   inject,
   PLATFORM_ID,
   signal,
@@ -10,7 +11,7 @@ import {
   type OnInit,
   type TemplateRef,
 } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import {
   ProductsService,
@@ -52,6 +53,7 @@ import {
 })
 export class ProductDetailComponent implements OnInit {
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
   private productsApi = inject(ProductsService);
   private toast = inject(GlobalToastService);
   private platformId = inject(PLATFORM_ID);
@@ -83,6 +85,37 @@ export class ProductDetailComponent implements OnInit {
     { key: 'notifyDaysBefore', header: 'Notify (days)' },
     { key: 'lastStep', header: 'Last step', template: this.lastStepTemplate() },
   ]);
+
+  @HostListener('window:keydown', ['$event'])
+  handleGlobalKeydown(event: KeyboardEvent): void {
+    const activeElement = document.activeElement;
+    const isInput =
+      activeElement instanceof HTMLInputElement ||
+      activeElement instanceof HTMLTextAreaElement ||
+      (activeElement instanceof HTMLElement && activeElement.isContentEditable);
+
+    if (isInput) return;
+
+    const product = this.product();
+    if (!product) return;
+
+    // E --> Edit
+    if (event.key === 'E' && !event.ctrlKey && !event.altKey && !event.metaKey) {
+      event.preventDefault();
+      this.router.navigate(['/products', product.id, 'edit']);
+    }
+
+    // B or Left Arrow --> Back to list
+    if (
+      (event.key === 'B' || event.key === 'ArrowLeft') &&
+      !event.ctrlKey &&
+      !event.altKey &&
+      !event.metaKey
+    ) {
+      event.preventDefault();
+      this.router.navigate(['/products']);
+    }
+  }
 
   ngOnInit(): void {
     if (!isPlatformBrowser(this.platformId)) {

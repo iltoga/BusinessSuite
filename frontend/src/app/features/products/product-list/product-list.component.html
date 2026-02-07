@@ -27,6 +27,7 @@
         #dataTable
         [columns]="columns()"
         [data]="products()"
+        [actions]="actions()"
         [isLoading]="isLoading()"
         [currentPage]="page()"
         [totalPages]="totalPages()"
@@ -74,20 +75,6 @@
 
 <ng-template #priceTemplate let-row>
   <span>{{ formatCurrency(row.basePrice) }}</span>
-</ng-template>
-
-<ng-template #actionsTemplate let-row>
-  <div class="flex items-center gap-2 flex-nowrap whitespace-nowrap">
-    <a [routerLink]="['/products', row.id]">
-      <z-button zType="default" zSize="sm">View</z-button>
-    </a>
-    <a [routerLink]="['/products', row.id, 'edit']">
-      <z-button zType="warning" zSize="sm">Edit</z-button>
-    </a>
-    @if (isSuperuser()) {
-      <z-button zType="destructive" zSize="sm" (click)="requestDelete(row)"> Delete </z-button>
-    }
-  </div>
 </ng-template>
 
 <app-confirm-dialog

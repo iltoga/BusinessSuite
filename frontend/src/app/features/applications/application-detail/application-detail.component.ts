@@ -6,6 +6,7 @@ import {
   DestroyRef,
   computed,
   effect,
+  HostListener,
   inject,
   signal,
   untracked,
@@ -107,6 +108,41 @@ export class ApplicationDetailComponent implements OnInit {
   ];
 
   private pollTimer: number | null = null;
+
+  @HostListener('window:keydown', ['$event'])
+  handleGlobalKeydown(event: KeyboardEvent): void {
+    const activeElement = document.activeElement;
+    const isInput =
+      activeElement instanceof HTMLInputElement ||
+      activeElement instanceof HTMLTextAreaElement ||
+      (activeElement instanceof HTMLElement && activeElement.isContentEditable);
+
+    if (isInput) return;
+
+    const application = this.application();
+    if (!application) return;
+
+    // E --> Edit
+    if (event.key === 'E' && !event.ctrlKey && !event.altKey && !event.metaKey) {
+      if (application.status !== 'completed') {
+        event.preventDefault();
+        this.router.navigate(['/applications', application.id, 'edit'], {
+          state: { from: 'applications', focusId: application.id },
+        });
+      }
+    }
+
+    // B or Left Arrow --> Back
+    if (
+      (event.key === 'B' || event.key === 'ArrowLeft') &&
+      !event.ctrlKey &&
+      !event.altKey &&
+      !event.metaKey
+    ) {
+      event.preventDefault();
+      this.goBack();
+    }
+  }
 
   readonly uploadedDocuments = computed(() =>
     (this.application()?.documents ?? []).filter((doc) => doc.completed),
