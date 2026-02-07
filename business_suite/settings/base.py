@@ -35,8 +35,9 @@ if not os.path.exists(LOG_DIR):
 LOGS_DIR = LOG_DIR  # Alias for backward compatibility
 
 # Static and Media paths - defined early as they are used by other settings and services
-MEDIA_ROOT = os.path.join(BASE_DIR, "files/media/")
-MEDIA_URL = "/uploads/"
+# Allow overriding via env var so production can point MEDIA_ROOT to a host-mounted path
+MEDIA_ROOT = os.getenv("MEDIA_ROOT", os.path.join(BASE_DIR, "files/media/"))
+MEDIA_URL = os.getenv("MEDIA_URL", "/uploads/")
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 STATIC_SOURCE_ROOT = os.path.join(BASE_DIR, "static")
 

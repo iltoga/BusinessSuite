@@ -71,6 +71,8 @@ services:
       DB_USER: ${DB_USER}
       DB_PASS: ${DB_PASS}
       COMPONENT: backend
+      MEDIA_ROOT: /media
+      MEDIA_URL: /media/
     volumes:
       - type: bind
         source: ./
@@ -108,6 +110,8 @@ services:
       DB_USER: ${DB_USER}
       DB_PASS: ${DB_PASS}
       COMPONENT: task_worker
+      MEDIA_ROOT: /media
+      MEDIA_URL: /media/
     volumes:
       - type: bind
         source: ./
