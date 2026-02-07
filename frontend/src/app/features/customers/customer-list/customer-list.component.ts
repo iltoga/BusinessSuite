@@ -140,7 +140,7 @@ export class CustomerListComponent implements OnInit {
       {
         label: 'Toggle Active',
         icon: 'ban',
-        variant: 'secondary',
+        variant: 'default',
         action: (item) => this.onToggleActive(item),
       },
       {
