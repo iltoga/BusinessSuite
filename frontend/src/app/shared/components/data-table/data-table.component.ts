@@ -11,6 +11,9 @@ import {
 import { FormsModule } from '@angular/forms';
 
 import { ZardCheckboxComponent } from '@/shared/components/checkbox';
+import { ZardButtonComponent } from '@/shared/components/button';
+import { ZardDropdownImports } from '@/shared/components/dropdown/dropdown.imports';
+import { ZardIconComponent, type ZardIcon } from '@/shared/components/icon';
 import { ZardSkeletonComponent } from '@/shared/components/skeleton';
 import { ZardTableImports } from '@/shared/components/table';
 
@@ -28,6 +31,13 @@ export interface PageEvent {
   pageSize: number;
 }
 
+export interface DataTableAction<T = any> {
+  label: string;
+  icon: ZardIcon;
+  action: (item: T) => void;
+  isDestructive?: boolean;
+}
+
 export interface SortEvent {
   column: string;
   direction: 'asc' | 'desc';
@@ -39,6 +49,9 @@ export interface SortEvent {
   imports: [
     CommonModule,
     FormsModule,
+    ZardButtonComponent,
+    ZardIconComponent,
+    ...ZardDropdownImports,
     ...ZardTableImports,
     ZardSkeletonComponent,
     ZardCheckboxComponent,
@@ -50,6 +63,7 @@ export interface SortEvent {
 export class DataTableComponent<T = Record<string, any>> {
   data = input.required<readonly T[]>();
   columns = input.required<readonly ColumnConfig<T>[]>();
+  actions = input<readonly DataTableAction<T>[] | null>(null);
   totalItems = input<number>(0);
   isLoading = input<boolean>(false);
   skeletonRows = input<number>(10);
@@ -80,5 +94,10 @@ export class DataTableComponent<T = Record<string, any>> {
 
   getRawValue(row: T, key: string): unknown {
     return (row as Record<string, unknown>)[key];
+  }
+
+  onActionSelect(action: DataTableAction<T>, row: T, event?: Event): void {
+    event?.stopPropagation();
+    action.action(row);
   }
 }

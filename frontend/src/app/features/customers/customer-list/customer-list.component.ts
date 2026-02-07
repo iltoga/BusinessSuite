@@ -10,7 +10,7 @@ import {
   type OnInit,
   type TemplateRef,
 } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 
 import { AuthService } from '@/core/services/auth.service';
 import { CustomersService, type CustomerListItem } from '@/core/services/customers.service';
@@ -23,6 +23,7 @@ import { ZardButtonComponent } from '@/shared/components/button';
 import {
   DataTableComponent,
   type ColumnConfig,
+  type DataTableAction,
   type SortEvent,
 } from '@/shared/components/data-table/data-table.component';
 import { ExpiryBadgeComponent } from '@/shared/components/expiry-badge';
@@ -52,6 +53,7 @@ export class CustomerListComponent implements OnInit {
   private authService = inject(AuthService);
   private toast = inject(GlobalToastService);
   private platformId = inject(PLATFORM_ID);
+  private router = inject(Router);
 
   private readonly customerTemplate =
     viewChild.required<
@@ -69,11 +71,6 @@ export class CustomerListComponent implements OnInit {
     viewChild.required<
       TemplateRef<{ $implicit: CustomerListItem; value: any; row: CustomerListItem }>
     >('telephoneTemplate');
-  private readonly actionsTemplate =
-    viewChild.required<
-      TemplateRef<{ $implicit: CustomerListItem; value: any; row: CustomerListItem }>
-    >('actionsTemplate');
-
   readonly customers = signal<CustomerListItem[]>([]);
   readonly isLoading = signal(false);
   readonly query = signal('');
@@ -123,9 +120,44 @@ export class CustomerListComponent implements OnInit {
     {
       key: 'actions',
       header: 'Actions',
-      template: this.actionsTemplate(),
     },
   ]);
+
+  readonly actions = computed<DataTableAction<CustomerListItem>[]>(() => {
+    const actions: DataTableAction<CustomerListItem>[] = [
+      {
+        label: 'View Detail',
+        icon: 'eye',
+        action: (item) => this.router.navigate(['/customers', item.id]),
+      },
+      {
+        label: 'Edit',
+        icon: 'settings',
+        action: (item) => this.router.navigate(['/customers', item.id, 'edit']),
+      },
+      {
+        label: 'Toggle Active',
+        icon: 'ban',
+        action: (item) => this.onToggleActive(item),
+      },
+      {
+        label: 'New Application',
+        icon: 'plus',
+        action: (item) => this.router.navigate(['/customers', item.id, 'applications', 'new']),
+      },
+    ];
+
+    if (this.isSuperuser()) {
+      actions.push({
+        label: 'Delete',
+        icon: 'trash',
+        action: (item) => this.onDelete(item),
+        isDestructive: true,
+      });
+    }
+
+    return actions;
+  });
 
   readonly totalPages = computed(() => {
     const total = this.totalItems();

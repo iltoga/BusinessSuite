@@ -62,6 +62,34 @@
                       context: { $implicit: row, value: getRawValue(row, column.key), row: row }
                     "
                   />
+                } @else if (column.key === 'actions' && actions()?.length) {
+                  <div class="flex items-center justify-end">
+                    <button
+                      z-dropdown
+                      [zDropdownMenu]="rowActionsMenu"
+                      z-button
+                      zType="ghost"
+                      zSize="sm"
+                      type="button"
+                      class="h-8 w-8 p-0"
+                      (click.stop)
+                    >
+                      <z-icon zType="ellipsis" class="rotate-90" />
+                    </button>
+                    <z-dropdown-menu-content #rowActionsMenu class="z-50 min-w-[12rem]">
+                      @for (action of actions() ?? []; track action.label) {
+                        <button
+                          z-dropdown-menu-item
+                          type="button"
+                          [variant]="action.isDestructive ? 'destructive' : 'default'"
+                          (click)="onActionSelect(action, row, $event)"
+                        >
+                          <z-icon [zType]="action.icon" class="mr-2" />
+                          {{ action.label }}
+                        </button>
+                      }
+                    </z-dropdown-menu-content>
+                  </div>
                 } @else {
                   {{ getCellValue(row, column.key) }}
                 }

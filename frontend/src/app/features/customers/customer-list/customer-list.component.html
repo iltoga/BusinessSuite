@@ -43,6 +43,7 @@
         [columns]="columns()"
         [data]="customers()"
         [isLoading]="isLoading()"
+        [actions]="actions()"
         (sortChange)="onSortChange($event)"
       />
     </div>
@@ -82,26 +83,6 @@
 
 <ng-template #telephoneTemplate let-row>
   <span>{{ row.telephone || '—' }}</span>
-</ng-template>
-
-<ng-template #actionsTemplate let-row>
-  <div class="flex items-center gap-1.5">
-    <a [routerLink]="['/customers', row.id]">
-      <z-button zType="default" zSize="sm">View</z-button>
-    </a>
-    <a [routerLink]="['/customers', row.id, 'edit']">
-      <z-button zType="warning" zSize="sm">Edit</z-button>
-    </a>
-    <z-button [zType]="row.active ? 'secondary' : 'ghost'" zSize="sm" (click)="onToggleActive(row)">
-      {{ row.active ? 'Disable' : 'Enable' }}
-    </z-button>
-    @if (isSuperuser()) {
-      <z-button zType="destructive" zSize="sm" (click)="onDelete(row)">Delete</z-button>
-    }
-    <a [routerLink]="['/customers', row.id, 'applications', 'new']">
-      <z-button zType="success" zSize="sm">New Application</z-button>
-    </a>
-  </div>
 </ng-template>
 
 <app-bulk-delete-dialog
