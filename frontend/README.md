@@ -14,12 +14,19 @@ Once the server is running, open your browser and navigate to `http://localhost:
 
 ---
 
-## Runtime branding / logo via environment variables ✅
+## Runtime configuration via environment variables ✅
 
-When deployed in Docker the frontend server reads the `LOGO_FILENAME` and `LOGO_INVERTED_FILENAME` environment variables at runtime. These values are:
+When deployed in Docker the frontend server reads several environment variables at runtime to override static configuration:
 
-- Injected into server-rendered HTML as `window.APP_BRAND` (SSR)
-- Served at `/assets/config.json` (overrides `assets/config.json` values)
+- `MOCK_AUTH_ENABLED`: Set to `"True"` or `"true"` (case-insensitive) to enable mock authentication (centralized with backend).
+- `LOGO_FILENAME`: Custom logo filename (placed under `assets/`).
+- `LOGO_INVERTED_FILENAME`: Custom inverted logo filename.
+- `APP_TITLE`: Custom browser tab title.
+
+These values are:
+
+- Injected into server-rendered HTML as `window.APP_BRAND` (for branding)
+- Served at `/assets/config.json` (overrides `assets/config.json` values for the client app)
 
 Set the variables in your `.env` and ensure `docker-compose.yml` passes them to the `bs-frontend` service. After changing the variables, restart the `bs-frontend` container so values take effect.
 
@@ -29,6 +36,7 @@ Examples (docker-compose):
 services:
   bs-frontend:
     environment:
+      - MOCK_AUTH_ENABLED=${MOCK_AUTH_ENABLED}
       - LOGO_FILENAME=${LOGO_FILENAME}
       - LOGO_INVERTED_FILENAME=${LOGO_INVERTED_FILENAME}
 ```
@@ -87,21 +95,27 @@ If you prefer Playwright to _not_ start the dev server, set `reuseExistingServer
 
 ## Mocked authentication for local development ✅
 
-You can enable a mocked authentication mode so you don't have to login repeatedly during local development. Steps:
+You can enable a mocked authentication mode so you don't have to login repeatedly during local development. This is centralized with the backend using the `MOCK_AUTH_ENABLED` environment variable.
 
-1. Open `src/app/core/config/app.config.ts` and set `mockAuthEnabled: true`:
+### Using environment variables (Recommended)
 
-```ts
-export const APP_CONFIG = {
-  mockAuthEnabled: true, // <-- Set to true
-} as const;
+Set the variable in your `.env` file (both backend and frontend will use it):
+
+```bash
+MOCK_AUTH_ENABLED=True
 ```
 
-2. Restart the Angular dev server (`bun run start`).
+### Local testing
 
-When enabled, `AuthService.login()` will immediately return a fake token (`mock-token`) and the app will auto-set a token on startup if none exists.
+**Use environment variables only.** `MOCK_AUTH_ENABLED` must be set via environment variables and should **not** be set in `src/assets/config.json` or `src/assets/config.template.json`. Changes made to the static configs are unsupported and may be overwritten by the server at runtime.
 
-3. Switch it back to `false` before testing real authentication flows or when running integration tests.
+For local development set the variable in your `.env` or export it in your shell:
+
+```bash
+export MOCK_AUTH_ENABLED=True
+```
+
+When using Docker, set it in `docker-compose.yml` as shown above.
 
 ---
 
@@ -115,10 +129,11 @@ The application uses a comprehensive theming system based on Zard UI with suppor
 2. Change the `theme` property:
 
 ```typescript
-export const APP_CONFIG = {
-  mockAuthEnabled: true,
+export const DEFAULT_APP_CONFIG: AppConfig = {
+  MOCK_AUTH_ENABLED: 'False',
   theme: 'blue', // <-- Change to: 'neutral', 'slate', 'gray', 'zinc', 'stone', 'blue', 'purple', or 'teal'
-} as const;
+  // ...
+};
 ```
 
 3. Restart the dev server to see changes

@@ -24,6 +24,9 @@ from django.urls import include, path
 # Home route can be a redirect to /admin/ when legacy Django views are disabled.
 from django.views.generic import RedirectView, TemplateView
 
+from api import views as api_views
+from core import views as core_views
+
 home_view = (
     RedirectView.as_view(url="/admin/", permanent=False)
     if getattr(settings, "DISABLE_DJANGO_VIEWS", False)
@@ -32,6 +35,7 @@ home_view = (
 
 base_urlpatterns = [
     path("admin/", admin.site.urls),
+    path("app-config/", core_views.public_app_config, name="public-app-config"),
     path("", include("landing.urls")),
     path("customers/", include("customers.urls")),
     path("products/", include("products.urls")),

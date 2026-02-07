@@ -331,6 +331,7 @@ LOGOUT_URL = "/logout/"
 LOGIN_EXEMPT_URLS = (
     r"^login/$",
     r"^logout/$",
+    r"^app-config/$",
     r"^api/.*$",  # match 'api/' and any subpaths
     r"^api-token-auth/$",
 )

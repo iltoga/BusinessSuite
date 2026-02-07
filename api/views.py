@@ -12,7 +12,7 @@ from django.contrib.auth import logout as django_logout
 from django.core.files.storage import default_storage
 from django.db.models import Count, DecimalField, F, OuterRef, Prefetch, Q, Subquery, Sum, Value
 from django.db.models.functions import Coalesce
-from django.http import FileResponse, StreamingHttpResponse
+from django.http import FileResponse, JsonResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.utils import timezone
@@ -2117,6 +2117,8 @@ class DashboardStatsView(ApiErrorHandlingMixin, viewsets.ViewSet):
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
+@api_view(["GET"])
+@permission_classes([AllowAny])
 @throttle_classes([ScopedRateThrottle])
 def exec_cron_jobs(request):
     """
@@ -2129,7 +2131,7 @@ def exec_cron_jobs(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def mock_auth_config(request):
     if not getattr(settings, "MOCK_AUTH_ENABLED", False):
         return Response(

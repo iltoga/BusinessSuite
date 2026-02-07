@@ -14,8 +14,16 @@ export class ConfigService {
   }
 
   loadConfig() {
+    // Check for server-injected config first (SSR or production inject)
+    const injectedConfig = (window as any).APP_CONFIG;
+    if (injectedConfig) {
+      this.config = { ...DEFAULT_APP_CONFIG, ...injectedConfig };
+      console.log('[ConfigService] Using server-injected config:', this.config);
+      return Promise.resolve(this.config);
+    }
+
     return firstValueFrom(
-      this.http.get<AppConfig>('/assets/config.json').pipe(
+      this.http.get<AppConfig>('/app-config/').pipe(
         tap((data) => {
           this.config = { ...DEFAULT_APP_CONFIG, ...data };
 
