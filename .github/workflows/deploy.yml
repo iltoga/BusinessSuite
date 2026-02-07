@@ -119,8 +119,8 @@ jobs:
               # Use `exec` to avoid creating a second container that could conflict on ports.
               ATTEMPTS=0
               MAX_ATTEMPTS=6
-              SLEEP_SECONDS=5
-              until docker compose exec -T bs-core bash -lc "bash /usr/src/app/scripts/init_db.sh"; do
+              SLEEP_SECONDS=10
+              until docker compose exec -T bs-core /bin/bash /usr/src/app/scripts/init_db.sh; do
                 ATTEMPTS=$((ATTEMPTS + 1))
                 if [ "$ATTEMPTS" -ge "$MAX_ATTEMPTS" ]; then
                   echo "❌ Failed to run init script after $ATTEMPTS attempts. Aborting."

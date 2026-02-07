@@ -29,21 +29,27 @@ if [ -n "$DB_HOST" ]; then
   echo "Database is up!"
 fi
 
+# Inside Docker, use the virtualenv python if available
+PYTHON_BIN="python"
+if [ -x "/opt/venv/bin/python" ]; then
+    PYTHON_BIN="/opt/venv/bin/python"
+fi
+
 # 4. Database Initialization
 if [[ "${RESET_DB_ON_STARTUP}" == "true" ]]; then
   echo "Clearing database as requested..."
-  python manage.py flush --noinput
+  $PYTHON_BIN manage.py flush --noinput
 fi
 
 # 5. Core Django Operations
 echo "Running migrations..."
-python manage.py migrate --noinput
+$PYTHON_BIN manage.py migrate --noinput
 
 echo "Collecting static files..."
-python manage.py collectstatic --noinput --clear
+$PYTHON_BIN manage.py collectstatic --noinput --clear
 
 echo "Compiling translations..."
-python manage.py compilemessages || echo "Warning: compilemessages skipped (msgfmt might be missing)"
+$PYTHON_BIN manage.py compilemessages || echo "Warning: compilemessages skipped (msgfmt might be missing)"
 
 # 6. Data Seeding & User Setup
 # NOTE: Database initialization logic has been moved to the deploy workflow
