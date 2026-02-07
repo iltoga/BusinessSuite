@@ -46,17 +46,22 @@ echo "Compiling translations..."
 python manage.py compilemessages || echo "Warning: compilemessages skipped (msgfmt might be missing)"
 
 # 6. Data Seeding & User Setup
-echo "Populating initial data..."
-python manage.py creategroups
-python manage.py populate_documenttypes
-python manage.py populate_products
-python manage.py populate_tasks
-python manage.py populatecountrycodes
-python manage.py populateholiday
+# Seeding is guarded by INITIALIZE_DB to avoid running on every deploy. Set INITIALIZE_DB=true when you want to run the full seeding step.
+if [ "${INITIALIZE_DB:-false}" = "true" ]; then
+  echo "INITIALIZE_DB=true — Populating initial data..."
+  python manage.py creategroups
+  python manage.py populate_documenttypes
+  python manage.py populate_products
+  python manage.py populate_tasks
+  python manage.py populatecountrycodes
+  python manage.py populateholiday
 
-echo "Setting up users..."
-python manage.py createsuperuserifnotexists
-python manage.py create_user system "$SYSTEM_USER_PASSWORD" --superuser --email="$SYSTEM_USER_EMAIL" || echo "System user already exists."
+  echo "Setting up users..."
+  python manage.py createsuperuserifnotexists
+  python manage.py create_user system "$SYSTEM_USER_PASSWORD" --superuser --email="$SYSTEM_USER_EMAIL" || echo "System user already exists."
+else
+  echo "Skipping initial data population (INITIALIZE_DB != true)."
+fi
 
 # 7. Start Gunicorn
 # Optimization: --worker-tmp-dir /dev/shm prevents heartbeat blocking on disk I/O
