@@ -81,10 +81,12 @@
                         <button
                           z-dropdown-menu-item
                           type="button"
-                          [variant]="action.isDestructive ? 'destructive' : 'default'"
+                          [variant]="
+                            action.variant ?? (action.isDestructive ? 'destructive' : 'default')
+                          "
                           (click)="onActionSelect(action, row, $event)"
                         >
-                          <z-icon [zType]="action.icon" class="mr-2" />
+                          <z-icon [zType]="action.icon" class="mr-2 h-4 w-4" />
                           {{ action.label }}
                         </button>
                       }

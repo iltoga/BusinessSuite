@@ -128,21 +128,25 @@ export class CustomerListComponent implements OnInit {
       {
         label: 'View Detail',
         icon: 'eye',
+        variant: 'default',
         action: (item) => this.router.navigate(['/customers', item.id]),
       },
       {
         label: 'Edit',
         icon: 'settings',
+        variant: 'warning',
         action: (item) => this.router.navigate(['/customers', item.id, 'edit']),
       },
       {
         label: 'Toggle Active',
         icon: 'ban',
+        variant: 'secondary',
         action: (item) => this.onToggleActive(item),
       },
       {
         label: 'New Application',
         icon: 'plus',
+        variant: 'success',
         action: (item) => this.router.navigate(['/customers', item.id, 'applications', 'new']),
       },
     ];
@@ -151,6 +155,7 @@ export class CustomerListComponent implements OnInit {
       actions.push({
         label: 'Delete',
         icon: 'trash',
+        variant: 'destructive',
         action: (item) => this.onDelete(item),
         isDestructive: true,
       });

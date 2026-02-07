@@ -10,8 +10,8 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
-import { ZardCheckboxComponent } from '@/shared/components/checkbox';
 import { ZardButtonComponent } from '@/shared/components/button';
+import { ZardCheckboxComponent } from '@/shared/components/checkbox';
 import { ZardDropdownImports } from '@/shared/components/dropdown/dropdown.imports';
 import { ZardIconComponent, type ZardIcon } from '@/shared/components/icon';
 import { ZardSkeletonComponent } from '@/shared/components/skeleton';
@@ -31,11 +31,21 @@ export interface PageEvent {
   pageSize: number;
 }
 
+export type DataTableActionVariant =
+  | 'default'
+  | 'secondary'
+  | 'destructive'
+  | 'warning'
+  | 'success'
+  | 'outline'
+  | 'ghost';
+
 export interface DataTableAction<T = any> {
   label: string;
   icon: ZardIcon;
   action: (item: T) => void;
   isDestructive?: boolean;
+  variant?: DataTableActionVariant;
 }
 
 export interface SortEvent {

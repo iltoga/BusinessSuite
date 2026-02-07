@@ -12,6 +12,15 @@ export const dropdownItemVariants = cva(
         default: '',
         destructive:
           'text-destructive hover:bg-destructive/10 focus:bg-destructive/10 dark:hover:bg-destructive/20 dark:focus:bg-destructive/20 focus:text-destructive',
+        warning:
+          'text-warning hover:bg-warning/10 focus:bg-warning/10 dark:hover:bg-warning/20 dark:focus:bg-warning/20 focus:text-warning',
+        success:
+          'text-success hover:bg-success/10 focus:bg-success/10 dark:hover:bg-success/20 dark:focus:bg-success/20 focus:text-success',
+        secondary:
+          'text-secondary hover:bg-secondary/10 focus:bg-secondary/10 focus:text-secondary',
+        outline:
+          'hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground',
+        ghost: 'hover:bg-accent hover:text-accent-foreground',
       },
       inset: {
         true: 'pl-8',
