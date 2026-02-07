@@ -91,7 +91,6 @@ class SuratPermohonanHook(BaseDocumentTypeHook):
                 }
 
             # Generate the DOCX document
-            # LetterService uses getattr(settings, 'DOCX_SURAT_PERMOHONAN_PERPANJANGAN_TEMPLATE_NAME') internally
             service = LetterService(customer)
             data = service.generate_letter_data()
             doc_buffer = service.generate_letter_document(data)
