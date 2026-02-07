@@ -27,7 +27,7 @@
       <nav class="space-y-1 text-sm">
         <a
           routerLink="/dashboard"
-          routerLinkActive="bg-accent"
+          routerLinkActive="border-l-2 border-accent/80 text-foreground"
           [routerLinkActiveOptions]="{ exact: true }"
           class="flex items-center gap-3 rounded-md px-3 py-2 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
         >
@@ -36,36 +36,36 @@
         </a>
         <a
           routerLink="/customers"
-          routerLinkActive="bg-accent"
+          routerLinkActive="bg-accent/90 text-accent-foreground"
           [routerLinkActiveOptions]="{ exact: true }"
-          class="flex items-center gap-3 rounded-md px-3 py-2 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
+          class="flex items-center gap-3 rounded-md px-3 py-2 text-foreground/70 transition-colors hover:text-foreground hover:bg-accent/50"
         >
           <z-icon zType="users" class="h-4 w-4" />
           Customers
         </a>
         <a
           routerLink="/applications"
-          routerLinkActive="bg-accent"
+          routerLinkActive="bg-accent/90 text-accent-foreground"
           [routerLinkActiveOptions]="{ exact: true }"
-          class="flex items-center gap-3 rounded-md px-3 py-2 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
+          class="flex items-center gap-3 rounded-md px-3 py-2 text-foreground/70 transition-colors hover:text-foreground hover:bg-accent/50"
         >
           <z-icon zType="folder" class="h-4 w-4" />
           Applications
         </a>
         <a
           routerLink="/products"
-          routerLinkActive="bg-accent"
+          routerLinkActive="bg-accent/90 text-accent-foreground"
           [routerLinkActiveOptions]="{ exact: true }"
-          class="flex items-center gap-3 rounded-md px-3 py-2 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
+          class="flex items-center gap-3 rounded-md px-3 py-2 text-foreground/70 transition-colors hover:text-foreground hover:bg-accent/50"
         >
           <z-icon zType="archive" class="h-4 w-4" />
           Products
         </a>
         <a
           routerLink="/invoices"
-          routerLinkActive="bg-accent"
+          routerLinkActive="bg-accent/90 text-accent-foreground"
           [routerLinkActiveOptions]="{ exact: true }"
-          class="flex items-center gap-3 rounded-md px-3 py-2 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
+          class="flex items-center gap-3 rounded-md px-3 py-2 text-foreground/70 transition-colors hover:text-foreground hover:bg-accent/50"
         >
           <z-icon zType="file-text" class="h-4 w-4" />
           Invoices
@@ -149,7 +149,13 @@
   <div class="flex flex-1 flex-col md:pl-0">
     <header class="flex h-16 items-center justify-between border-b bg-card px-6">
       <div class="flex items-center gap-3">
-        <button type="button" class="p-2 mr-2 rounded hover:bg-accent" (click)="toggleSidebar()">
+        <button
+          type="button"
+          class="p-2 mr-2 rounded hover:bg-accent"
+          (click)="toggleSidebar()"
+          aria-label="Toggle sidebar"
+          [attr.aria-expanded]="sidebarOpen"
+        >
           <z-icon [zType]="sidebarOpen ? 'chevron-left' : 'panel-left'" />
         </button>
         <div class="text-sm font-medium">Welcome back</div>
@@ -165,6 +171,8 @@
           z-button
           variant="ghost"
           class="h-9 w-9 p-0 hover:bg-accent rounded-full overflow-hidden"
+          aria-label="Open user menu"
+          aria-haspopup="menu"
         >
           <z-avatar class="h-full w-full" [zSrc]="userAvatar()" [zFallback]="userInitials()" />
         </button>

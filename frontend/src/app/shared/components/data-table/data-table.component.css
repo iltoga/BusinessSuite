@@ -9,3 +9,25 @@ button {
   font: inherit;
   color: inherit;
 }
+
+/* Selected / focused row styling for keyboard speed-dial */
+tr[tabindex='0']:focus,
+tr.selected {
+  background-color: rgba(59, 130, 246, 0.06); /* Tailwind blue-500 @ 6% */
+  outline: 2px solid rgba(59, 130, 246, 0.18);
+  outline-offset: -2px;
+}
+
+@media (prefers-color-scheme: dark) {
+  tr[tabindex='0']:focus,
+  tr.selected {
+    background-color: rgba(96, 165, 250, 0.04);
+    outline: 2px solid rgba(96, 165, 250, 0.12);
+  }
+}
+
+/* Styling for the highlighted shortcut letter in the menu */
+.dt-shortcut b {
+  font-weight: 700;
+  margin-right: 0.25rem;
+}

@@ -3,12 +3,14 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  effect,
   input,
   output,
   signal,
   type TemplateRef,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ShortcutHighlightPipe } from './shortcut-highlight.pipe';
 
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCheckboxComponent } from '@/shared/components/checkbox';
@@ -65,6 +67,8 @@ export interface SortEvent {
     ...ZardTableImports,
     ZardSkeletonComponent,
     ZardCheckboxComponent,
+    // shortcut pipe for highlighting first letter
+    ShortcutHighlightPipe,
   ],
   templateUrl: './data-table.component.html',
   styleUrls: ['./data-table.component.css'],
@@ -78,11 +82,25 @@ export class DataTableComponent<T = Record<string, any>> {
   isLoading = input<boolean>(false);
   skeletonRows = input<number>(10);
 
+  // Speed dial / selection
+  selectedRow = signal<T | null>(null);
+
   pageChange = output<PageEvent>();
   sortChange = output<SortEvent>();
 
   private sortState = signal<SortEvent | null>(null);
   currentSort = computed(() => this.sortState());
+
+  constructor() {
+    // If table has exactly one item, preselect it
+    // Note: runs every time `data` changes
+    effect(() => {
+      const d = this.data();
+      if (d && d.length === 1) {
+        this.selectedRow.set(d[0]);
+      }
+    });
+  }
 
   onSort(column: ColumnConfig<T>): void {
     if (!column.sortable) return;
@@ -109,5 +127,36 @@ export class DataTableComponent<T = Record<string, any>> {
   onActionSelect(action: DataTableAction<T>, row: T, event?: Event): void {
     event?.stopPropagation();
     action.action(row);
+  }
+
+  selectRow(row: T, event?: Event): void {
+    this.selectedRow.set(row);
+
+    // Try to focus the row element if available from the event
+    const target = (event?.currentTarget ?? event?.target) as HTMLElement | undefined;
+    if (target && typeof target.focus === 'function') {
+      target.focus();
+    }
+  }
+
+  handleRowKeydown(event: KeyboardEvent, row: T): void {
+    const tag = (event.target as HTMLElement)?.tagName ?? '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+    const key = (event.key || '').toUpperCase();
+
+    // Only handle if the row is selected or the table has a single row
+    if (this.selectedRow() !== row && this.data()?.length !== 1) return;
+
+    const actions = this.actions() ?? [];
+    for (const action of actions) {
+      const first = (action.label || '').charAt(0).toUpperCase();
+      if (first === key) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.onActionSelect(action, row, event as unknown as Event);
+        break;
+      }
+    }
   }
 }

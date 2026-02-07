@@ -7,13 +7,13 @@
             type="button"
             class="flex items-center gap-2"
             [class.cursor-pointer]="column.sortable"
-            [class.opacity-60]="!column.sortable"
+            [ngClass]="{ 'text-foreground/70': !column.sortable }"
             (click)="onSort(column)"
           >
             <div class="flex flex-col items-start">
               <span>{{ column.header }}</span>
               @if (column.subtitle) {
-                <span class="text-xs font-normal text-muted-foreground normal-case">{{
+                <span class="text-xs font-normal text-foreground/70 normal-case">{{
                   column.subtitle
                 }}</span>
               }
@@ -42,17 +42,19 @@
     } @else {
       @if (data().length === 0) {
         <tr z-table-row>
-          <td
-            z-table-cell
-            [attr.colspan]="columns().length"
-            class="text-center text-muted-foreground"
-          >
+          <td z-table-cell [attr.colspan]="columns().length" class="text-center text-foreground/70">
             No results
           </td>
         </tr>
       } @else {
         @for (row of data(); track $index) {
-          <tr z-table-row>
+          <tr
+            z-table-row
+            tabindex="0"
+            (click)="selectRow(row, $event)"
+            (keydown)="handleRowKeydown($event, row)"
+            [class.selected]="selectedRow() === row"
+          >
             @for (column of columns(); track column.key) {
               <td z-table-cell>
                 @if (column.template) {
@@ -73,10 +75,12 @@
                       type="button"
                       class="h-8 w-8 p-0"
                       (click)="$event.stopPropagation()"
+                      aria-label="Row actions"
+                      aria-haspopup="menu"
                     >
                       <z-icon zType="ellipsis" class="rotate-90" />
                     </button>
-                    <z-dropdown-menu-content #rowActionsMenu class="z-50 min-w-[12rem]">
+                    <z-dropdown-menu-content #rowActionsMenu class="z-50 min-w-48">
                       @for (action of actions() ?? []; track action.label) {
                         <button
                           z-dropdown-menu-item
@@ -87,7 +91,7 @@
                           (click)="onActionSelect(action, row, $event)"
                         >
                           <z-icon [zType]="action.icon" class="mr-2 h-4 w-4 stroke-current" />
-                          {{ action.label }}
+                          <span [innerHTML]="action.label | shortcutHighlight"></span>
                         </button>
                       }
                     </z-dropdown-menu-content>
