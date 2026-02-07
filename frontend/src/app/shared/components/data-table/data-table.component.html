@@ -72,7 +72,7 @@
                       zSize="sm"
                       type="button"
                       class="h-8 w-8 p-0"
-                      (click.stop)
+                      (click)="$event.stopPropagation()"
                     >
                       <z-icon zType="ellipsis" class="rotate-90" />
                     </button>
