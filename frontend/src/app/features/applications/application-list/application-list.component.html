@@ -1,7 +1,7 @@
 <div class="h-full flex flex-col gap-6">
   <div class="flex justify-between items-center">
     <h1 class="text-3xl font-bold tracking-tight">Applications</h1>
-    <a routerLink="/applications/new">
+    <a [routerLink]="'/applications/new'" [state]="{ from: 'applications', searchQuery: query() }">
       <z-button zType="default" zSize="default">New Application</z-button>
     </a>
   </div>
@@ -62,11 +62,17 @@
         </ng-template>
         <ng-template #columnActions let-row>
           <div class="flex flex-wrap gap-1">
-            <a [routerLink]="['/applications', row.id]">
+            <a
+              [routerLink]="['/applications', row.id]"
+              [state]="{ from: 'applications', focusId: row.id }"
+            >
               <z-button zType="secondary" zSize="sm">Manage</z-button>
             </a>
             @if (row.status !== 'completed') {
-              <a [routerLink]="['/applications', row.id, 'edit']">
+              <a
+                [routerLink]="['/applications', row.id, 'edit']"
+                [state]="{ from: 'applications', focusId: row.id }"
+              >
                 <z-button zType="warning" zSize="sm">Edit</z-button>
               </a>
             }

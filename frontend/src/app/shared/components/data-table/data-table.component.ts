@@ -53,6 +53,11 @@ export interface DataTableAction<T = any> {
   label: string;
   icon: ZardIcon;
   action: (item: T) => void;
+  /**
+   * Optional keyboard shortcut (single character). If provided, this overrides the default
+   * behavior of using the first letter of the label as the shortcut.
+   */
+  shortcut?: string;
   isDestructive?: boolean;
   variant?: DataTableActionVariant;
 }
@@ -110,6 +115,12 @@ export class DataTableComponent<T = Record<string, any>> implements AfterViewIni
    */
   private _refocusFirstRowAfterLoad = false;
 
+  /**
+   * If we need to focus a specific row by id but the table is still loading or the row is not present yet,
+   * store the id here and try again once the data has updated.
+   */
+  private _pendingFocusId: number | string | null = null;
+
   // references to row elements for focus management
   @ViewChildren('rowRef', { read: ElementRef })
   private rowElements!: QueryList<ElementRef<HTMLElement>>;
@@ -122,12 +133,22 @@ export class DataTableComponent<T = Record<string, any>> implements AfterViewIni
       const d = this.data();
       const loading = this.isLoading();
 
-      // Refocus logic after pagination/loading
-      if (!loading && this._refocusFirstRowAfterLoad) {
-        this._refocusFirstRowAfterLoad = false;
-        if (d.length > 0) {
-          // Delay to allow DOM update
-          setTimeout(() => this.focusRowByIndex(0), 10);
+      // If we have a pending focus id, try to find it after load finishes
+      if (!loading) {
+        if (this._pendingFocusId !== null) {
+          const id = this._pendingFocusId;
+          this._pendingFocusId = null;
+          const index = (d || []).findIndex((r: any) => r && (r.id === id || r.id === Number(id)));
+          if (index !== -1) {
+            // Delay to allow DOM update
+            setTimeout(() => this.focusRowByIndex(index), 10);
+          }
+        } else if (this._refocusFirstRowAfterLoad) {
+          this._refocusFirstRowAfterLoad = false;
+          if (d.length > 0) {
+            // Delay to allow DOM update
+            setTimeout(() => this.focusRowByIndex(0), 10);
+          }
         }
       }
 
@@ -196,6 +217,29 @@ export class DataTableComponent<T = Record<string, any>> implements AfterViewIni
     const selected = this.selectedRow();
     const index = selected ? data.indexOf(selected) : -1;
     this.focusRowByIndex(index !== -1 ? index : 0);
+  }
+
+  /**
+   * Focus a row by its id. If the table is still loading or the row isn't found yet, a pending
+   * focus will be stored and retried once the data updates.
+   */
+  focusRowById(id: number | string): void {
+    const data = this.data() ?? [];
+
+    // If loading, store pending id and return
+    if (this.isLoading()) {
+      this._pendingFocusId = id;
+      return;
+    }
+
+    const index = data.findIndex((r: any) => r && (r.id === id || r.id === Number(id)));
+    if (index !== -1) {
+      this.focusRowByIndex(index);
+      return;
+    }
+
+    // Not found yet; set as pending so we'll attempt after the next load
+    this._pendingFocusId = id;
   }
 
   private focusRowByIndex(index: number): void {
@@ -367,7 +411,28 @@ export class DataTableComponent<T = Record<string, any>> implements AfterViewIni
     // Only handle if no modifiers (except Shift, which we check separately)
     if (event.ctrlKey || event.altKey || event.metaKey) return;
 
-    const key = (event.key || '').toUpperCase();
+    const rawKey = event.key || '';
+    const key = rawKey.toUpperCase();
+
+    // Space: open row actions menu
+    if (
+      (rawKey === ' ' || rawKey === 'Space' || rawKey === 'Spacebar') &&
+      !event.ctrlKey &&
+      !event.altKey &&
+      !event.metaKey
+    ) {
+      // Only open when row is selected or single-row table
+      if (this.selectedRow() === row || this.data()?.length === 1) {
+        event.preventDefault();
+        event.stopPropagation();
+        const tr = event.currentTarget as HTMLElement | null;
+        const btn = tr?.querySelector('button[z-dropdown]') as HTMLElement | null;
+        if (btn) {
+          btn.click();
+        }
+      }
+      return;
+    }
 
     // If Shift is pressed, it might be a global shortcut (like Shift+N for New Customer)
     // so let it bubble. Speed dial shortcuts are plain letters.
@@ -378,7 +443,7 @@ export class DataTableComponent<T = Record<string, any>> implements AfterViewIni
 
     const actions = this.actions() ?? [];
     for (const action of actions) {
-      const first = (action.label || '').charAt(0).toUpperCase();
+      const first = (action.shortcut ?? (action.label || '').charAt(0)).toUpperCase();
       if (first === key) {
         event.preventDefault();
         event.stopPropagation();

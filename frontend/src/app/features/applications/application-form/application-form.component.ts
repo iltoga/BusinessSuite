@@ -23,6 +23,7 @@ import {
   ChangeDetectorRef,
   Component,
   computed,
+  HostListener,
   inject,
   OnDestroy,
   OnInit,
@@ -345,11 +346,6 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
     }
   }
 
-  ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
-  }
-
   submit(): void {
     if (this.form.invalid) {
       // mark fields as touched to show validation
@@ -435,18 +431,34 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
    */
   goBack(): void {
     const nav = this.router.getCurrentNavigation();
-    const stateFrom =
-      (nav && nav.extras && (nav.extras.state as any)?.from) ||
-      (history.state && (history.state as any).from);
-    if (stateFrom) {
-      if (typeof stateFrom === 'string') {
-        this.router.navigateByUrl(stateFrom);
-      } else {
-        this.router.navigate(stateFrom as any[]);
-      }
+    const st = (nav && nav.extras && (nav.extras.state as any)) || (history.state as any);
+
+    const stateFrom = st?.from;
+    const focusId = st?.focusId;
+
+    const focusState: Record<string, unknown> = { focusTable: true };
+    if (focusId) {
+      focusState['focusId'] = focusId;
+    } else if (this.applicationId()) {
+      focusState['focusId'] = this.applicationId();
+    }
+
+    // Preserve searchQuery from the original navigation state so the list restores the search box
+    if (st?.searchQuery) {
+      focusState['searchQuery'] = st.searchQuery;
+    }
+
+    // If source list is known, go back there with focus
+    if (stateFrom === 'customers') {
+      this.router.navigate(['/customers'], { state: focusState });
+      return;
+    }
+    if (stateFrom === 'applications') {
+      this.router.navigate(['/applications'], { state: focusState });
       return;
     }
 
+    // Fallback logic if from state is missing
     try {
       if (window.history.length > 1) {
         this.location.back();
@@ -468,7 +480,29 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.router.navigate(['/applications']);
+    this.router.navigate(['/applications'], { state: focusState });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  handleGlobalKeydown(event: KeyboardEvent): void {
+    const activeElement = document.activeElement;
+    const isInput =
+      activeElement instanceof HTMLInputElement ||
+      activeElement instanceof HTMLTextAreaElement ||
+      (activeElement instanceof HTMLElement && activeElement.isContentEditable);
+
+    if (isInput) return;
+
+    // Left Arrow -> Go back to list that opened the view and focus originating row
+    if (event.key === 'ArrowLeft' && !event.ctrlKey && !event.altKey && !event.metaKey) {
+      event.preventDefault();
+      this.goBack();
+    }
   }
 
   private buildAuthHeaders(): HttpHeaders | undefined {

@@ -70,6 +70,10 @@ export class ApplicationListComponent implements OnInit {
   readonly ordering = signal<string | undefined>('-id');
   readonly isSuperuser = this.authService.isSuperuser;
 
+  // When navigating back to the list we may want to focus a specific id or the table
+  private readonly focusTableOnInit = signal(false);
+  private readonly focusIdOnInit = signal<number | null>(null);
+
   readonly confirmOpen = signal(false);
   readonly confirmMessage = signal('');
   readonly pendingDelete = signal<DocApplicationSerializerWithRelations | null>(null);
@@ -106,6 +110,9 @@ export class ApplicationListComponent implements OnInit {
     viewChild.required<
       TemplateRef<{ $implicit: DocApplicationSerializerWithRelations; value: any; row: any }>
     >('columnInvoiceActions');
+
+  // Access the data table for focus management
+  private readonly dataTable = viewChild.required(DataTableComponent);
 
   readonly columns = computed<ColumnConfig[]>(() => [
     { key: 'id', header: 'ID', sortable: true, sortKey: 'id' },
@@ -168,6 +175,10 @@ export class ApplicationListComponent implements OnInit {
     if (!isPlatformBrowser(this.platformId)) {
       return;
     }
+    // Read navigation state (set by back-navigation) and remember whether we should focus the table or a specific id after load
+    const st = (window as any).history.state || {};
+    this.focusTableOnInit.set(Boolean(st.focusTable));
+    this.focusIdOnInit.set(st.focusId ? Number(st.focusId) : null);
     this.load();
   }
 
@@ -310,6 +321,19 @@ export class ApplicationListComponent implements OnInit {
           this.items.set(res.results ?? []);
           this.totalItems.set(res.count ?? 0);
           this.isLoading.set(false);
+
+          // Focus table or a specific row if requested by navigation state
+          const table = this.dataTable();
+          if (table) {
+            const focusId = this.focusIdOnInit();
+            if (focusId) {
+              this.focusIdOnInit.set(null);
+              table.focusRowById(focusId);
+            } else if (this.focusTableOnInit()) {
+              this.focusTableOnInit.set(false);
+              table.focusFirstRowIfNone();
+            }
+          }
         },
         error: () => {
           this.toast.error('Failed to load applications');

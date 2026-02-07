@@ -423,13 +423,7 @@
 
     <!-- Form Actions -->
     <div class="flex justify-end gap-3 pb-8">
-      <button
-        type="button"
-        z-button
-        zType="outline"
-        routerLink="/customers"
-        [zDisabled]="isLoading()"
-      >
+      <button type="button" z-button zType="outline" (click)="onCancel()" [zDisabled]="isLoading()">
         Cancel
       </button>
       <button type="submit" z-button zType="default" [zDisabled]="isLoading() || form.invalid">

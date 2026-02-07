@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, ViewEncapsulation } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  input,
+  ViewEncapsulation,
+} from '@angular/core';
 
 import type { ClassValue } from 'clsx';
 
@@ -9,18 +17,18 @@ import { mergeClasses, transform } from '@/shared/utils/merge-classes';
 
 @Component({
   selector: 'z-dropdown-menu-item, [z-dropdown-menu-item]',
-  template: `
-    <ng-content />
-  `,
+  template: ` <ng-content /> `,
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   host: {
     '[class]': 'classes()',
     '[attr.data-disabled]': 'disabled() || null',
+    '[attr.data-highlighted]': 'isHighlighted()',
     '[attr.data-variant]': 'variant()',
     '[attr.data-inset]': 'inset() || null',
     '[attr.aria-disabled]': 'disabled()',
     '(click.prevent-with-stop)': 'onClick()',
+    '(mouseenter)': 'onMouseEnter()',
     role: 'menuitem',
     tabindex: '-1',
   },
@@ -28,11 +36,27 @@ import { mergeClasses, transform } from '@/shared/utils/merge-classes';
 })
 export class ZardDropdownMenuItemComponent {
   private readonly dropdownService = inject(ZardDropdownService);
+  private readonly elementRef = inject(ElementRef);
 
   readonly variant = input<ZardDropdownItemVariants['variant']>('default');
   readonly inset = input(false, { transform });
   readonly disabled = input(false, { transform });
   readonly class = input<ClassValue>('');
+
+  protected readonly isHighlighted = computed(() => {
+    const items = this.dropdownService.getDropdownItems();
+    const index = items.indexOf(this.elementRef.nativeElement);
+    return this.dropdownService.focusedIndex() === index || null;
+  });
+
+  onMouseEnter() {
+    if (this.disabled()) return;
+    const items = this.dropdownService.getDropdownItems();
+    const index = items.indexOf(this.elementRef.nativeElement);
+    if (index !== -1) {
+      this.dropdownService.setFocusedIndex(index);
+    }
+  }
 
   onClick() {
     if (this.disabled()) {

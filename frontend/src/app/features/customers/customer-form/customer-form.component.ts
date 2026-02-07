@@ -3,6 +3,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  HostListener,
   OnInit,
   computed,
   inject,
@@ -76,6 +77,44 @@ export class CustomerFormComponent implements OnInit {
   readonly ocrMessageTone = signal<'success' | 'warning' | 'error' | 'info' | null>(null);
   readonly ocrData = signal<OcrStatusResponse | null>(null);
   readonly passportMetadata = signal<Record<string, unknown> | null>(null);
+
+  @HostListener('window:keydown', ['$event'])
+  handleGlobalKeydown(event: KeyboardEvent): void {
+    // Esc --> Cancel
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.onCancel();
+      return;
+    }
+
+    // cmd+s (mac) or ctrl+s (windows/linux) --> save
+    const isSaveKey = (event.ctrlKey || event.metaKey) && (event.key === 's' || event.key === 'S');
+    if (isSaveKey) {
+      event.preventDefault();
+      this.onSubmit();
+      return;
+    }
+
+    // Only trigger B/Left Arrow if no input is focused (to avoid interference with typing)
+    const activeElement = document.activeElement;
+    const isInput =
+      activeElement instanceof HTMLInputElement ||
+      activeElement instanceof HTMLTextAreaElement ||
+      (activeElement instanceof HTMLElement && activeElement.isContentEditable);
+
+    if (isInput) return;
+
+    // B or Left Arrow --> Back to list
+    if (
+      (event.key === 'B' || event.key === 'ArrowLeft') &&
+      !event.ctrlKey &&
+      !event.altKey &&
+      !event.metaKey
+    ) {
+      event.preventDefault();
+      this.onCancel();
+    }
+  }
 
   private ocrPollTimer: number | null = null;
 
@@ -633,6 +672,18 @@ export class CustomerFormComponent implements OnInit {
         control.updateValueAndValidity();
       }
     }
+  }
+
+  onCancel(): void {
+    const idParam = this.route.snapshot.paramMap.get('id');
+    const st = (history.state as any) || {};
+    const state: Record<string, unknown> = { focusTable: true };
+    if (idParam) {
+      const id = Number(idParam);
+      if (id) state['focusId'] = id;
+    }
+    if (st.searchQuery) state['searchQuery'] = st.searchQuery;
+    this.router.navigate(['/customers'], { state });
   }
 
   onSubmit(): void {

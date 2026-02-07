@@ -160,13 +160,19 @@ export class CustomerListComponent implements OnInit {
         label: 'View Detail',
         icon: 'eye',
         variant: 'default',
-        action: (item) => this.router.navigate(['/customers', item.id]),
+        action: (item) =>
+          this.router.navigate(['/customers', item.id], {
+            state: { from: 'customers', focusId: item.id, searchQuery: this.query() },
+          }),
       },
       {
         label: 'Edit',
         icon: 'settings',
         variant: 'warning',
-        action: (item) => this.router.navigate(['/customers', item.id, 'edit']),
+        action: (item) =>
+          this.router.navigate(['/customers', item.id, 'edit'], {
+            state: { from: 'customers', focusId: item.id, searchQuery: this.query() },
+          }),
       },
       {
         label: 'Toggle Active',
@@ -178,7 +184,11 @@ export class CustomerListComponent implements OnInit {
         label: 'New Application',
         icon: 'plus',
         variant: 'success',
-        action: (item) => this.router.navigate(['/customers', item.id, 'applications', 'new']),
+        shortcut: 'a',
+        action: (item) =>
+          this.router.navigate(['/customers', item.id, 'applications', 'new'], {
+            state: { from: 'customers', focusId: item.id, searchQuery: this.query() },
+          }),
       },
     ];
 
@@ -201,6 +211,10 @@ export class CustomerListComponent implements OnInit {
     return Math.max(1, Math.ceil(total / size));
   });
 
+  // When navigating back to the list we may want to focus a specific id or the table
+  private readonly focusTableOnInit = signal(false);
+  private readonly focusIdOnInit = signal<number | null>(null);
+
   @HostListener('window:keydown', ['$event'])
   handleGlobalKeydown(event: KeyboardEvent): void {
     // Only trigger if no input is focused
@@ -222,6 +236,13 @@ export class CustomerListComponent implements OnInit {
   ngOnInit(): void {
     if (!isPlatformBrowser(this.platformId)) {
       return;
+    }
+    // Read navigation state (set by back-navigation) and remember whether we should focus the table or a specific id after load
+    const st = (window as any).history.state || {};
+    this.focusTableOnInit.set(Boolean(st.focusTable));
+    this.focusIdOnInit.set(st.focusId ? Number(st.focusId) : null);
+    if (st.searchQuery) {
+      this.query.set(String(st.searchQuery));
     }
     this.loadCustomers();
   }
@@ -369,6 +390,19 @@ export class CustomerListComponent implements OnInit {
           this.customers.set(response.results ?? []);
           this.totalItems.set(response.count ?? 0);
           this.isLoading.set(false);
+
+          // Focus table or a specific row if requested by navigation state
+          const table = this.dataTable();
+          if (table) {
+            const focusId = this.focusIdOnInit();
+            if (focusId) {
+              this.focusIdOnInit.set(null);
+              table.focusRowById(focusId);
+            } else if (this.focusTableOnInit()) {
+              this.focusTableOnInit.set(false);
+              table.focusFirstRowIfNone();
+            }
+          }
         },
         error: () => {
           this.toast.error('Failed to load customers');

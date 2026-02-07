@@ -30,7 +30,7 @@ export class ZardDropdownService {
   private portal?: TemplatePortal;
   private triggerElement?: ElementRef;
   private renderer!: Renderer2;
-  private readonly focusedIndex = signal<number>(-1);
+  readonly focusedIndex = signal<number>(-1);
   private outsideClickSubscription!: Subscription;
   private unlisten: () => void = noopFn;
 
@@ -38,6 +38,16 @@ export class ZardDropdownService {
 
   constructor() {
     this.renderer = this.rendererFactory.createRenderer(null, null);
+  }
+
+  setFocusedIndex(index: number) {
+    this.focusedIndex.set(index);
+    const items = this.getDropdownItems();
+    if (index >= 0 && index < items.length) {
+      if (document.activeElement !== items[index]) {
+        items[index].focus();
+      }
+    }
   }
 
   toggle(
@@ -74,8 +84,11 @@ export class ZardDropdownService {
     // Setup keyboard navigation
     setTimeout(() => {
       this.setupKeyboardNavigation();
-      this.focusFirstItem();
-    }, 0);
+      // Ensure the overlay is fully rendered before focusing items
+      requestAnimationFrame(() => {
+        this.focusFirstItem();
+      });
+    }, 50);
 
     // Close on outside click
     this.outsideClickSubscription = this.overlayRef
@@ -163,42 +176,44 @@ export class ZardDropdownService {
       return;
     }
 
-    this.unlisten = this.renderer.listen(
-      dropdownElement,
-      'keydown.{arrowdown,arrowup,enter,space,escape,home,end}.prevent',
-      (event: KeyboardEvent) => {
-        const items = this.getDropdownItems();
+    this.unlisten = this.renderer.listen(dropdownElement, 'keydown', (event: KeyboardEvent) => {
+      const items = this.getDropdownItems();
 
-        switch (event.key) {
-          case 'ArrowDown':
-            this.navigateItems(1, items);
-            break;
-          case 'ArrowUp':
-            this.navigateItems(-1, items);
-            break;
-          case 'Enter':
-          case ' ':
-            this.selectFocusedItem(items);
-            break;
-          case 'Escape':
-            this.close();
-            this.triggerElement?.nativeElement.focus();
-            break;
-          case 'Home':
-            this.focusItemAtIndex(items, 0);
-            break;
-          case 'End':
-            this.focusItemAtIndex(items, items.length - 1);
-            break;
-        }
-      },
-    );
+      switch (event.key) {
+        case 'ArrowDown':
+          event.preventDefault();
+          this.navigateItems(1, items);
+          break;
+        case 'ArrowUp':
+          event.preventDefault();
+          this.navigateItems(-1, items);
+          break;
+        case 'Enter':
+        case ' ':
+          event.preventDefault();
+          this.selectFocusedItem(items);
+          break;
+        case 'Escape':
+          event.preventDefault();
+          this.close();
+          this.triggerElement?.nativeElement.focus();
+          break;
+        case 'Home':
+          event.preventDefault();
+          this.focusItemAtIndex(items, 0);
+          break;
+        case 'End':
+          event.preventDefault();
+          this.focusItemAtIndex(items, items.length - 1);
+          break;
+      }
+    });
 
     // Focus dropdown container
     dropdownElement.focus();
   }
 
-  private getDropdownItems(): HTMLElement[] {
+  public getDropdownItems(): HTMLElement[] {
     if (!this.overlayRef?.hasAttached()) {
       return [];
     }
@@ -227,8 +242,7 @@ export class ZardDropdownService {
 
   private focusItemAtIndex(items: HTMLElement[], index: number) {
     if (index >= 0 && index < items.length) {
-      this.focusedIndex.set(index);
-      this.updateItemFocus(items, index);
+      this.setFocusedIndex(index);
     }
   }
 
@@ -244,18 +258,6 @@ export class ZardDropdownService {
     if (currentIndex >= 0 && currentIndex < items.length) {
       const item = items[currentIndex];
       item.click();
-    }
-  }
-
-  private updateItemFocus(items: HTMLElement[], focusedIndex: number) {
-    for (let index = 0; index < items.length; index++) {
-      const item = items[index];
-      if (index === focusedIndex) {
-        item.focus();
-        item.dataset['highlighted'] = '';
-      } else {
-        delete item.dataset['highlighted'];
-      }
     }
   }
 }

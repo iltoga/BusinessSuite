@@ -1,7 +1,15 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  HostListener,
+  OnInit,
+  inject,
+  signal,
+} from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
+import { AuthService } from '@/core/services/auth.service';
 import {
   CustomersService,
   type CustomerDetail,
@@ -41,17 +49,74 @@ export class CustomerDetailComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private customersService = inject(CustomersService);
+  private authService = inject(AuthService);
   private toast = inject(GlobalToastService);
 
   readonly customer = signal<CustomerDetail | null>(null);
   readonly uninvoicedApplications = signal<UninvoicedApplication[]>([]);
   readonly isLoading = signal(true);
+  readonly isSuperuser = this.authService.isSuperuser;
+
+  @HostListener('window:keydown', ['$event'])
+  handleGlobalKeydown(event: KeyboardEvent): void {
+    // Only trigger if no input is focused
+    const activeElement = document.activeElement;
+    const isInput =
+      activeElement instanceof HTMLInputElement ||
+      activeElement instanceof HTMLTextAreaElement ||
+      (activeElement instanceof HTMLElement && activeElement.isContentEditable);
+
+    if (isInput) return;
+
+    const customer = this.customer();
+    if (!customer) return;
+
+    // E --> Edit
+    if (event.key === 'E' && !event.ctrlKey && !event.altKey && !event.metaKey) {
+      event.preventDefault();
+      this.router.navigate(['/customers', customer.id, 'edit']);
+    }
+
+    // D --> Delete (only for superusers)
+    if (event.key === 'D' && !event.ctrlKey && !event.altKey && !event.metaKey) {
+      if (this.isSuperuser()) {
+        event.preventDefault();
+        this.onDelete();
+      }
+    }
+
+    // B or Left Arrow --> Back to list
+    if (
+      (event.key === 'B' || event.key === 'ArrowLeft') &&
+      !event.ctrlKey &&
+      !event.altKey &&
+      !event.metaKey
+    ) {
+      event.preventDefault();
+      const customer = this.customer();
+      this.router.navigate(['/customers'], {
+        state: {
+          focusTable: true,
+          focusId: customer ? customer.id : undefined,
+          searchQuery: this.originSearchQuery(),
+        },
+      });
+    }
+  }
+
+  readonly originSearchQuery = signal<string | null>(null);
 
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
+    // capture searchQuery if navigated from a list
+    const st = (window as any).history.state || {};
+    this.originSearchQuery.set(st.searchQuery ?? null);
+
     if (!id) {
       this.toast.error('Customer not found');
-      this.router.navigate(['/customers']);
+      this.router.navigate(['/customers'], {
+        state: { focusTable: true, searchQuery: this.originSearchQuery() },
+      });
       return;
     }
 
@@ -90,7 +155,9 @@ export class CustomerDetailComponent implements OnInit {
     this.customersService.deleteCustomer(customer.id).subscribe({
       next: () => {
         this.toast.success('Customer deleted');
-        this.router.navigate(['/customers']);
+        this.router.navigate(['/customers'], {
+          state: { focusTable: true, focusId: customer.id, searchQuery: this.originSearchQuery() },
+        });
       },
       error: (error) => {
         const message = extractServerErrorMessage(error);
