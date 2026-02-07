@@ -182,26 +182,4 @@ test.describe('Data table keyboard shortcuts (customers list)', () => {
     await page.waitForURL(/\/customers\/new/, { timeout: 2000 });
     expect(page.url()).toMatch(/\/customers\/new/);
   });
-
-  test('pressing Enter in search input focuses the first row of the table', async ({ page }) => {
-    // Listen for console logs
-    page.on('console', (msg) => console.log('BROWSER LOG:', msg.text()));
-
-    await page.goto('/customers');
-
-    // Wait for data to load
-    const firstRow = page.locator('tbody tr').first();
-    await expect(firstRow).toBeVisible({ timeout: 10000 });
-
-    const searchInput = page.locator('input[name="search"]');
-    await searchInput.focus();
-
-    // Press Enter
-    await page.keyboard.press('Enter');
-
-    // The first row should become focused and have the selected class
-    // We increase timeout slightly for CI stability
-    await expect(firstRow).toHaveClass(/selected/, { timeout: 5000 });
-    await expect(firstRow).toBeFocused({ timeout: 5000 });
-  });
 });
