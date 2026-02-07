@@ -71,10 +71,10 @@ export class CustomerListComponent implements OnInit {
     viewChild.required<
       TemplateRef<{ $implicit: CustomerListItem; value: any; row: CustomerListItem }>
     >('emailTemplate');
-  private readonly telephoneTemplate =
+  private readonly whatsappTemplate =
     viewChild.required<
       TemplateRef<{ $implicit: CustomerListItem; value: any; row: CustomerListItem }>
-    >('telephoneTemplate');
+    >('whatsappTemplate');
   readonly customers = signal<CustomerListItem[]>([]);
   readonly isLoading = signal(false);
   readonly query = signal('');
@@ -117,9 +117,9 @@ export class CustomerListComponent implements OnInit {
       template: this.emailTemplate(),
     },
     {
-      key: 'telephone',
-      header: 'Telephone',
-      template: this.telephoneTemplate(),
+      key: 'whatsapp',
+      header: 'WhatsApp',
+      template: this.whatsappTemplate(),
     },
     {
       key: 'actions',
@@ -314,6 +314,12 @@ export class CustomerListComponent implements OnInit {
     this.bulkDeleteOpen.set(false);
     this.bulkDeleteData.set(null);
     this.bulkDeleteContext.set(null);
+  }
+
+  getWhatsAppHref(number: string | null): string | null {
+    if (!number) return null;
+    const digits = (number || '').replace(/\D/g, '');
+    return `https://wa.me/${digits}`;
   }
 
   private loadCustomers(): void {

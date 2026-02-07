@@ -86,8 +86,20 @@
   <span>{{ row.email || '—' }}</span>
 </ng-template>
 
-<ng-template #telephoneTemplate let-row>
-  <span>{{ row.telephone || '—' }}</span>
+<ng-template #whatsappTemplate let-row>
+  @if (row.whatsapp) {
+    <a
+      [href]="getWhatsAppHref(row.whatsapp)"
+      target="_blank"
+      rel="noopener noreferrer"
+      (click)="$event.stopPropagation()"
+      class="text-primary hover:underline"
+    >
+      {{ row.whatsapp }}
+    </a>
+  } @else {
+    <span>—</span>
+  }
 </ng-template>
 
 <app-bulk-delete-dialog
