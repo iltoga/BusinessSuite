@@ -1,7 +1,8 @@
 import { ThemeName } from '../theme.config';
 
 export interface AppConfig {
-  mockAuthEnabled: boolean;
+  // Accept either a boolean or a case-insensitive string ('True'|'False'|'true'|'false')
+  MOCK_AUTH_ENABLED: string | boolean;
   theme: ThemeName;
   dateFormat: string;
   // Optional: custom page title to show in the browser tab
@@ -12,7 +13,8 @@ export interface AppConfig {
 }
 
 export const DEFAULT_APP_CONFIG: AppConfig = {
-  mockAuthEnabled: false,
+  // Keep string for compatibility, but boolean is supported
+  MOCK_AUTH_ENABLED: 'False',
   theme: 'neutral',
   dateFormat: 'dd-MM-yyyy',
   title: 'BusinessSuite',

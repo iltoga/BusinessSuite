@@ -55,10 +55,9 @@ urlpatterns = [
     path("schema/", SpectacularAPIView.as_view(), name="schema"),
     path("schema/swagger-ui/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
     path("schema/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
-    # Authentication endpoints for Angular SPA
+    # Authentication endpoints
     path("api-token-auth/", views.TokenAuthView.as_view(), name="api-token-auth"),
-    path("mock-auth-config/", views.mock_auth_config, name="api-mock-auth-config"),
-    path("session-auth/", include("rest_framework.urls")),
+    path("session-auth/", include("rest_framework.urls", namespace="rest_framework")),
     # SSE endpoints (plain Django views, bypass DRF content negotiation)
     # Used for real-time updates in Angular components
     path("backups/start/", backup_start_sse, name="api-backup-start-sse"),
@@ -115,6 +114,8 @@ urlpatterns = [
         views.customer_application_quick_create,
         name="api-customer-application-quick-create",
     ),
+    # Mock auth configuration - used for local development and testing
+    path("mock-auth-config/", views.mock_auth_config, name="api-mock-auth-config"),
     # Include all router URLs - main REST API endpoints for Angular
     path("", include(router.urls)),
 ]

@@ -71,6 +71,8 @@ services:
       DB_USER: ${DB_USER}
       DB_PASS: ${DB_PASS}
       COMPONENT: backend
+      MEDIA_ROOT: /media
+      MEDIA_URL: /media/
     volumes:
       - type: bind
         source: ./
@@ -108,6 +110,8 @@ services:
       DB_USER: ${DB_USER}
       DB_PASS: ${DB_PASS}
       COMPONENT: task_worker
+      MEDIA_ROOT: /media
+      MEDIA_URL: /media/
     volumes:
       - type: bind
         source: ./
@@ -147,10 +151,6 @@ services:
       BACKEND_URL: http://bs-core:8000
       CSP_ENABLED: ${CSP_ENABLED}
       CSP_MODE: ${CSP_MODE}
-      # Allow the frontend container to learn which logo assets to use.
-      # These can be set in your environment/.env and default to the original filenames.
-      LOGO_FILENAME: ${LOGO_FILENAME}
-      LOGO_INVERTED_FILENAME: ${LOGO_INVERTED_FILENAME}
     volumes:
       - type: bind
         source: ${DATA_PATH}/logs
@@ -159,6 +159,8 @@ services:
 
   bs-alloy:
     container_name: bs-alloy
+    profiles:
+      - alloy
     image: grafana/alloy:latest
     restart: unless-stopped
     volumes:

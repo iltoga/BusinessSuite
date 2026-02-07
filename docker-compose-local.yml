@@ -76,6 +76,8 @@ services:
       DB_USER: ${DB_USER}
       DB_PASS: ${DB_PASS}
       COMPONENT: backend
+      MEDIA_ROOT: /media
+      MEDIA_URL: /media/
       # Loki settings commented out; Alloy handles log collection via Docker socket
       LOKI_ENABLED: "false"
       # LOKI_URL: "http://bs-loki:3100/loki/api/v1/push"
@@ -112,6 +114,8 @@ services:
       DB_USER: ${DB_USER}
       DB_PASS: ${DB_PASS}
       COMPONENT: task_worker
+      MEDIA_ROOT: /media
+      MEDIA_URL: /media/
       # Loki settings commented out; Alloy handles log collection via Docker socket
       LOKI_ENABLED: "false"
       # LOKI_URL: "http://bs-loki:3100/loki/api/v1/push"

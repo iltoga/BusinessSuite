@@ -23,6 +23,48 @@ from core.utils.dropbox_refresh_token import refresh_dropbox_token
 # Load environment variables from .env file
 load_dotenv()
 
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Ensure logs directory exists at the project root (one level up from BASE_DIR)
+# This ensures that Grafana Alloy can consistently scrape them from a single location.
+ROOT_DIR = BASE_DIR.parent
+LOG_DIR = os.path.join(ROOT_DIR, "logs")
+if not os.path.exists(LOG_DIR):
+    os.makedirs(LOG_DIR, exist_ok=True)
+LOGS_DIR = LOG_DIR  # Alias for backward compatibility
+
+# Static and Media paths - defined early as they are used by other settings and services
+# Allow overriding via env var so production can point MEDIA_ROOT to a host-mounted path
+MEDIA_ROOT = os.getenv("MEDIA_ROOT", os.path.join(BASE_DIR, "files/media/"))
+MEDIA_URL = os.getenv("MEDIA_URL", "/uploads/")
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+STATIC_SOURCE_ROOT = os.path.join(BASE_DIR, "static")
+
+DOCUMENTS_FOLDER = "documents"
+APPLICATION_DEFAULT_FILES_FOLDER = "application_default_files"
+TMPFILES_FOLDER = "tmpfiles"
+
+# Critical Document Template Settings - must be defined early to avoid circular import issues
+DOCX_INVOICE_TEMPLATE_NAME = os.getenv("DOCX_INVOICE_TEMPLATE_NAME", "invoice_template_with_footer.docx")
+DOCX_PARTIAL_INVOICE_TEMPLATE_NAME = os.getenv(
+    "DOCX_PARTIAL_INVOICE_TEMPLATE_NAME", "partial_invoice_template_with_footer.docx"
+)
+DOCX_SURAT_PERMOHONAN_PERPANJANGAN_TEMPLATE_NAME = os.getenv(
+    "DOCX_SURAT_PERMOHONAN_PERPANJANGAN_TEMPLATE_NAME", "surat_permohonan_perpanjangan.docx"
+)
+
+# Document Type Hooks Settings
+# Path to the default sponsor passport file (relative to MEDIA_ROOT)
+DEFAULT_SPONSOR_PASSPORT_FILE_PATH = os.getenv(
+    "DEFAULT_SPONSOR_PASSPORT_FILE_PATH", "default_documents/default_sponsor_document.pdf"
+)
+
+# default language for generated documents
+DEFAULT_DOCUMENT_LANGUAGE_CODE = os.getenv("DEFAULT_DOCUMENT_LANGUAGE_CODE", "id")
+
+DEFAULT_CUSTOMER_EMAIL = os.getenv("DEFAULT_CUSTOMER_EMAIL", "sample_email@gmail.com")
+
 
 # MOCK AUTH SETTINGS
 def _parse_bool(value, default=False):
@@ -71,17 +113,6 @@ if DISABLE_DJANGO_VIEWS:
 
 # Invoice Import Settings
 INVOICE_IMPORT_MAX_WORKERS = int(os.getenv("INVOICE_IMPORT_MAX_WORKERS", "3"))  # Max parallel imports
-
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
-
-# Ensure logs directory exists at the project root (one level up from BASE_DIR)
-# This ensures that Grafana Alloy can consistently scrape them from a single location.
-ROOT_DIR = BASE_DIR.parent
-LOG_DIR = os.path.join(ROOT_DIR, "logs")
-if not os.path.exists(LOG_DIR):
-    os.makedirs(LOG_DIR, exist_ok=True)
-LOGS_DIR = LOG_DIR  # Alias for backward compatibility
 
 # Logging level configuration
 DJANGO_LOG_LEVEL = os.getenv("DJANGO_LOG_LEVEL", os.getenv("LOG_LEVEL", "INFO"))
@@ -262,11 +293,12 @@ USE_TZ = True
 # Configure project locale path for translations (locale is at project root, one level up from BASE_DIR)
 LOCALE_PATHS = [os.path.join(BASE_DIR, "..", "locale")]
 
-# Audit configuration
-# Audits are persisted by `django-auditlog` (DB `LogEntry` objects). Local
-# forwarding to Loki or file-based emission has been removed — rely on your
-# log aggregation (Grafana Alloy) scraping stdout or DB exports when needed.
-# Keep the following runtime toggles for fine-grained control of what events are recorded.
+# Audit configuration: Audits are persisted by `django-auditlog` (DB `LogEntry` objects). Local
+# Audit settings (using django-auditlog)
+# Runtime toggles controlled by environment variables. Defaults to True when not set.
+# Global audit enable/disable at startup. When False, django-auditlog app and middleware are omitted.
+AUDIT_ENABLED = _parse_bool(os.getenv("AUDIT_ENABLED", "True"))
+# Per-event watch flags (control which events are recorded/forwarded)
 AUDIT_WATCH_CRUD_EVENTS = _parse_bool(
     os.getenv("AUDIT_WATCH_CRUD_EVENTS", os.getenv("AUDIT_WATCH_MODEL_EVENTS", "True"))
 )
@@ -299,6 +331,7 @@ LOGOUT_URL = "/logout/"
 LOGIN_EXEMPT_URLS = (
     r"^login/$",
     r"^logout/$",
+    r"^app-config/$",
     r"^api/.*$",  # match 'api/' and any subpaths
     r"^api-token-auth/$",
 )
@@ -478,10 +511,6 @@ CSP_MODE = os.getenv("CSP_MODE", "report-only")  # report-only|enforce
 
 # Configure Huey. Use an in-memory Sqlite DB while running tests to avoid connecting to
 # external Postgres at import time (pytest imports Django settings early).
-import sys
-
-TESTING = any("pytest" in arg for arg in sys.argv) or os.getenv("PYTEST_CURRENT_TEST") is not None
-
 if TESTING:
     from peewee import SqliteDatabase
 
@@ -527,14 +556,6 @@ TESSERACT_CMD = "/opt/homebrew/bin/tesseract"
 # Settings for Django static and media files
 DEFAULT_FILE_STORAGE = "django.core.files.storage.FileSystemStorage"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
-MEDIA_ROOT = os.path.join(BASE_DIR, "files/media/")
-MEDIA_URL = "/uploads/"
-STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
-STATIC_SOURCE_ROOT = os.path.join(BASE_DIR, "static")
-
-DOCUMENTS_FOLDER = "documents"
-APPLICATION_DEFAULT_FILES_FOLDER = "application_default_files"
-TMPFILES_FOLDER = "tmpfiles"
 
 
 def get_dropbox_token():
@@ -579,25 +600,6 @@ DBBACKUP_EXCLUDE_MEDIA_FODERS = ["tmpfiles"]
 
 FULL_BACKUP_SCHEDULE = "02:00"
 CLEAR_CACHE_SCHEDULE = ["03:00"]
-
-# Audit defaults
-# Audit events are written to a persistent DB (via `auditlog`) and to a structured
-# audit log file (default: `logs/audit.log`) to be scraped by Grafana Alloy.
-
-# Audit settings (using django-auditlog)
-# Runtime toggles controlled by environment variables. Defaults to True when not set.
-# Global audit enable/disable at startup. When False, django-auditlog app and middleware are omitted.
-AUDIT_ENABLED = _parse_bool(os.getenv("AUDIT_ENABLED", "True"))
-# Per-event watch flags (control which events are recorded/forwarded)
-AUDIT_WATCH_CRUD_EVENTS = _parse_bool(
-    os.getenv("AUDIT_WATCH_CRUD_EVENTS", os.getenv("AUDIT_WATCH_MODEL_EVENTS", "True"))
-)
-AUDIT_WATCH_AUTH_EVENTS = _parse_bool(os.getenv("AUDIT_WATCH_AUTH_EVENTS", "True"))
-AUDIT_WATCH_REQUEST_EVENTS = _parse_bool(os.getenv("AUDIT_WATCH_REQUEST_EVENTS", "True"))
-# Avoid logging request events for static/media files when forwarding structured logs. Support comma-separated env var.
-AUDIT_URL_SKIP_LIST = _parse_list(os.getenv("AUDIT_URL_SKIP_LIST"), ["/static/", "/media/", "/favicon.ico"])
-# Purge retention for forwarded audit logs (not the DB retention of LogEntry)
-AUDIT_PURGE_AFTER_DAYS = int(os.getenv("AUDIT_PURGE_AFTER_DAYS", "90"))
 
 # Database retention for audit log DB `LogEntry` objects.
 # Default to 14 days; set to 0 or negative to disable automatic pruning.
@@ -707,7 +709,6 @@ LOGGING = {
 
 # Remove the manual loop and use the standard Django logging configuration.
 # The Logger service can still be used for ad-hoc loggers.
-from core.services.logger_service import Logger
 
 # Note: Loki-specific attachment of handlers has been removed. Grafana Alloy should
 # scrape container stdout/stderr or log files (e.g., `logs/`) to collect logs. If you
@@ -726,25 +727,6 @@ OPENROUTER_API_BASE_URL = os.getenv("OPENROUTER_API_BASE_URL", "https://openrout
 # LLM Provider: "openrouter" for multi-provider access, "openai" for direct OpenAI API
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openrouter")
 LLM_DEFAULT_MODEL = os.getenv("LLM_DEFAULT_MODEL", "google/gemini-2.5-flash-lite")
-
-DOCX_INVOICE_TEMPLATE_NAME = os.getenv("DOCX_INVOICE_TEMPLATE_NAME", "invoice_template_with_footer.docx")
-DOCX_PARTIAL_INVOICE_TEMPLATE_NAME = os.getenv(
-    "DOCX_PARTIAL_INVOICE_TEMPLATE_NAME", "partial_invoice_template_with_footer.docx"
-)
-DOCX_SURAT_PERMOHONAN_PERPANJANGAN_TEMPLATE_NAME = os.getenv(
-    "DOCX_SURAT_PERMOHONAN_PERPANJANGAN_TEMPLATE_NAME", "surat_permohonan_perpanjangan.docx"
-)
-
-# Document Type Hooks Settings
-# Path to the default sponsor passport file (relative to MEDIA_ROOT)
-DEFAULT_SPONSOR_PASSPORT_FILE_PATH = os.getenv(
-    "DEFAULT_SPONSOR_PASSPORT_FILE_PATH", "default_documents/default_sponsor_document.pdf"
-)
-
-# default language for generated documents
-DEFAULT_DOCUMENT_LANGUAGE_CODE = os.getenv("DEFAULT_DOCUMENT_LANGUAGE_CODE", "id")
-
-DEFFAULT_CUSTOMER_EMAIL = os.getenv("DEFFAULT_CUSTOMER_EMAIL", "sample_email@gmail.com")
 
 # Python 3.14+ Logging Performance Optimizations
 # Disable gathering of thread, process, and asyncio information to reduce overhead

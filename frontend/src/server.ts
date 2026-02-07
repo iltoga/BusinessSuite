@@ -6,6 +6,7 @@ import {
 } from '@angular/ssr/node';
 import express from 'express';
 import { createProxyMiddleware } from 'http-proxy-middleware';
+import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
 import { generateNonce } from './csp';
 
@@ -29,42 +30,6 @@ app.use(
     pathFilter: ['/api', '/media', '/staticfiles'],
   }),
 );
-
-/**
- * Serve modified assets at runtime for environment-driven overrides
- *
- * This endpoint lets us override values in /assets/config.json using
- * environment variables at container start time so the deployed image
- * doesn't need to be rebuilt when changing branding.
- */
-import { promises as fs } from 'node:fs';
-
-app.get('/assets/config.json', async (req, res, next) => {
-  try {
-    const cfgPath = join(browserDistFolder, 'assets', 'config.json');
-    const raw = await fs.readFile(cfgPath, 'utf8');
-    const cfg = JSON.parse(raw);
-
-    // Allow container env vars to override the static config.json values
-    const logoFilename = process.env['LOGO_FILENAME'];
-    const logoInverted = process.env['LOGO_INVERTED_FILENAME'];
-
-    const merged = {
-      ...cfg,
-      ...(logoFilename ? { logoFilename } : {}),
-      ...(logoInverted ? { logoInvertedFilename: logoInverted } : {}),
-    };
-
-    // Log what we're returning to help ops debugging
-    console.debug('[Server] /assets/config.json ->', merged);
-
-    // Cache for a short amount of time in case env changes (unlikely) but still safe
-    res.setHeader('Cache-Control', 'public, max-age=60');
-    res.json(merged);
-  } catch (err) {
-    next(err);
-  }
-});
 
 /**
  * Serve static files from /browser
@@ -171,6 +136,17 @@ app.use(async (req, res, next) => {
         // Inject Angular root attribute so Angular uses the nonce without requiring index.html rewrites
         let modifiedBody = responseHtml.replace(/<app(\s|>)/, `<app ngCspNonce="${nonce}"$1`);
 
+        // Inject server config from .env into the page so the app picks it up immediately
+        const mockAuthEnv = (process.env['MOCK_AUTH_ENABLED'] || 'False').trim();
+        const appTitleEnv = process.env['APP_TITLE'] || 'BusinessSuite';
+        const configScript = `<script nonce="${nonce}">(function(){
+          window.APP_CONFIG={
+            MOCK_AUTH_ENABLED: ${JSON.stringify(mockAuthEnv)},
+            title: ${JSON.stringify(appTitleEnv)}
+          };
+        })();</script>`;
+        modifiedBody = modifiedBody.replace(/<head(\s|>)/i, `<head$1\n${configScript}`);
+
         // Inject a small script with the server's logo choices (script must use nonce when CSP is enabled)
         // Also add a quick class so CSS can show the correct logo immediately and avoid a flash
         const logoScript = `<script nonce="${nonce}">(function(){
@@ -198,6 +174,17 @@ app.use(async (req, res, next) => {
           try{document.title=${JSON.stringify(runtimeTitle)};}catch(e){}
         })();</script>`;
         let modifiedBody = responseHtml.replace(/<head(\s|>)/i, `<head$1\n${logoScript}`);
+
+        // Inject server config from .env into the page
+        const mockAuthEnv = (process.env['MOCK_AUTH_ENABLED'] || 'False').trim();
+        const appTitleEnv = process.env['APP_TITLE'] || 'BusinessSuite';
+        const configScript = `<script>(function(){
+          window.APP_CONFIG={
+            MOCK_AUTH_ENABLED: ${JSON.stringify(mockAuthEnv)},
+            title: ${JSON.stringify(appTitleEnv)}
+          };
+        })();</script>`;
+        modifiedBody = modifiedBody.replace(/<head(\s|>)/i, `<head$1\n${configScript}`);
 
         const modifiedResponse = {
           ...response,

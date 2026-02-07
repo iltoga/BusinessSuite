@@ -104,7 +104,10 @@ export class AuthService {
   }
 
   private get mockAuthEnabled(): boolean {
-    return this.configService.settings.mockAuthEnabled;
+    const v = this.configService.settings.MOCK_AUTH_ENABLED;
+    if (typeof v === 'boolean') return v;
+    if (typeof v === 'string') return v.toLowerCase() === 'true';
+    return false;
   }
 
   login(credentials: LoginCredentials): Observable<AuthToken> {
@@ -349,7 +352,7 @@ export class AuthService {
           this._mockClaims.set(claims);
           this._claims.set(claims);
         }),
-        catchError(() => {
+        catchError((error) => {
           const fallback = this.buildFallbackMockClaims();
           this._mockClaims.set(fallback);
           this._claims.set(fallback);

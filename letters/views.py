@@ -62,7 +62,7 @@ class DownloadSuratPermohonanView(LoginRequiredMixin, View):
             except Exception:
                 pass
 
-        service = LetterService(customer, settings.DOCX_SURAT_PERMOHONAN_PERPANJANGAN_TEMPLATE_NAME)
+        service = LetterService(customer)
 
         try:
             data = service.generate_letter_data(extra_data)

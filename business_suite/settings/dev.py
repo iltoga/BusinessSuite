@@ -36,11 +36,11 @@ CORS_ALLOWED_ORIGINS = [
 CORS_ALLOW_CREDENTIALS = True
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-MOCK_AUTH_ENABLED = True
-MOCK_AUTH_USERNAME = "stef"
-MOCK_AUTH_EMAIL = "stef@revisbali.com"
+# Respect MOCK_AUTH_ENABLED from .env (overriding base default only if explicitly set there)
+# If not set in .env, it defaults to what base.py determined.
+# We don't hardcode it here to True anymore to allow centralization via .env
+MOCK_AUTH_USERNAME = os.getenv("MOCK_AUTH_USERNAME", "stef")
+MOCK_AUTH_EMAIL = os.getenv("MOCK_AUTH_EMAIL", "stef@revisbali.com")
 MOCK_AUTH_IS_SUPERUSER = True
 MOCK_AUTH_IS_STAFF = True
 

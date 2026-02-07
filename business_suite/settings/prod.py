@@ -23,8 +23,17 @@ ALLOWED_HOSTS = [
     "pg-admin.revisbali.com ",
 ]
 
-MEDIA_ROOT = "/media/"
-MEDIA_URL = "/media/"
+from django.core.exceptions import ImproperlyConfigured
+
+MEDIA_ROOT = os.getenv("MEDIA_ROOT")
+if not MEDIA_ROOT:
+    raise ImproperlyConfigured(
+        "MEDIA_ROOT environment variable must be set in production and point to the host-mounted media directory (e.g., /media)"
+    )
+if not os.path.isabs(MEDIA_ROOT):
+    raise ImproperlyConfigured("MEDIA_ROOT must be an absolute path")
+
+MEDIA_URL = os.getenv("MEDIA_URL", "/media/")
 
 STATIC_ROOT = "/staticfiles/"
 

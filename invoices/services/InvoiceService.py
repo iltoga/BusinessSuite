@@ -91,8 +91,13 @@ class InvoiceService:
         return data, items, payments
 
     def generate_invoice_document(self, data, items, payments=None):
-        template_name = settings.DOCX_PARTIAL_INVOICE_TEMPLATE_NAME if payments else settings.DOCX_INVOICE_TEMPLATE_NAME
-        template_path = os.path.join(settings.STATIC_SOURCE_ROOT, "reporting", template_name)
+        template_name = (
+            getattr(settings, "DOCX_PARTIAL_INVOICE_TEMPLATE_NAME", "partial_invoice_template_with_footer.docx")
+            if payments
+            else getattr(settings, "DOCX_INVOICE_TEMPLATE_NAME", "invoice_template_with_footer.docx")
+        )
+        static_source_root = getattr(settings, "STATIC_SOURCE_ROOT", "static")
+        template_path = os.path.join(static_source_root, "reporting", template_name)
         with open(template_path, "rb") as template:
             doc = MailMerge(template)
             doc.merge(**data)
