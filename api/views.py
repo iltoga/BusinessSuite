@@ -296,7 +296,6 @@ class LettersViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             "address_bali": payload.get("address_bali") or "",
         }
 
-        # LetterService uses getattr(settings, 'DOCX_SURAT_PERMOHONAN_PERPANJANGAN_TEMPLATE_NAME') internally
         service = LetterService(customer)
 
         try:
