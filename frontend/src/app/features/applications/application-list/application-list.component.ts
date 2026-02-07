@@ -1,7 +1,9 @@
-import { CommonModule } from '@angular/common';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
+  HostListener,
+  PLATFORM_ID,
   computed,
   inject,
   signal,
@@ -9,7 +11,7 @@ import {
   type OnInit,
   type TemplateRef,
 } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 
 import { CustomerApplicationsService } from '@/core/api/api/customer-applications.service';
 import { DocApplicationSerializerWithRelations } from '@/core/api/model/doc-application-serializer-with-relations';
@@ -55,6 +57,8 @@ export class ApplicationListComponent implements OnInit {
   private service = inject(CustomerApplicationsService);
   private authService = inject(AuthService);
   private toast = inject(GlobalToastService);
+  private router = inject(Router);
+  private platformId = inject(PLATFORM_ID);
 
   readonly items = signal<DocApplicationSerializerWithRelations[]>([]);
   readonly isLoading = signal(false);
@@ -143,7 +147,27 @@ export class ApplicationListComponent implements OnInit {
     return Math.max(1, Math.ceil(total / size));
   });
 
+  @HostListener('window:keydown', ['$event'])
+  handleGlobalKeydown(event: KeyboardEvent): void {
+    const activeElement = document.activeElement;
+    const isInput =
+      activeElement instanceof HTMLInputElement ||
+      activeElement instanceof HTMLTextAreaElement ||
+      (activeElement instanceof HTMLElement && activeElement.isContentEditable);
+
+    if (isInput) return;
+
+    // Shift+N for New Application
+    if (event.key === 'N' && !event.ctrlKey && !event.altKey && !event.metaKey) {
+      event.preventDefault();
+      this.router.navigate(['/applications', 'new']);
+    }
+  }
+
   ngOnInit(): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
     this.load();
   }
 

@@ -12,6 +12,7 @@
         [query]="query()"
         [placeholder]="'Search Customers...'"
         (queryChange)="onQueryChange($event)"
+        (tabOut)="onEnterSearch()"
       >
         <div class="flex items-center gap-3">
           <div class="flex items-center gap-2">
@@ -40,10 +41,14 @@
 
     <div class="p-0">
       <app-data-table
+        #grid
         [columns]="columns()"
         [data]="customers()"
         [isLoading]="isLoading()"
         [actions]="actions()"
+        [currentPage]="page()"
+        [totalPages]="totalPages()"
+        (pageChange)="onPageChange($event)"
         (sortChange)="onSortChange($event)"
       />
     </div>

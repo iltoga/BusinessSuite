@@ -3,6 +3,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  HostListener,
   inject,
   PLATFORM_ID,
   signal,
@@ -54,6 +55,9 @@ export class CustomerListComponent implements OnInit {
   private toast = inject(GlobalToastService);
   private platformId = inject(PLATFORM_ID);
   private router = inject(Router);
+
+  /** Access the data table for focus management */
+  private readonly dataTable = viewChild.required(DataTableComponent);
 
   private readonly customerTemplate =
     viewChild.required<
@@ -170,6 +174,24 @@ export class CustomerListComponent implements OnInit {
     return Math.max(1, Math.ceil(total / size));
   });
 
+  @HostListener('window:keydown', ['$event'])
+  handleGlobalKeydown(event: KeyboardEvent): void {
+    // Only trigger if no input is focused
+    const activeElement = document.activeElement;
+    const isInput =
+      activeElement instanceof HTMLInputElement ||
+      activeElement instanceof HTMLTextAreaElement ||
+      (activeElement instanceof HTMLElement && activeElement.isContentEditable);
+
+    if (isInput) return;
+
+    // Shift+N for New Customer
+    if (event.key === 'N' && !event.ctrlKey && !event.altKey && !event.metaKey) {
+      event.preventDefault();
+      this.router.navigate(['/customers', 'new']);
+    }
+  }
+
   ngOnInit(): void {
     if (!isPlatformBrowser(this.platformId)) {
       return;
@@ -178,7 +200,9 @@ export class CustomerListComponent implements OnInit {
   }
 
   onQueryChange(value: string): void {
-    this.query.set(value.trim());
+    const trimmed = value.trim();
+    if (this.query() === trimmed) return;
+    this.query.set(trimmed);
     this.page.set(1);
     this.loadCustomers();
   }
@@ -200,6 +224,13 @@ export class CustomerListComponent implements OnInit {
     this.ordering.set(ordering);
     this.page.set(1);
     this.loadCustomers();
+  }
+
+  onEnterSearch(): void {
+    const table = this.dataTable();
+    if (table) {
+      table.focusFirstRowIfNone();
+    }
   }
 
   onToggleActive(customer: CustomerListItem): void {

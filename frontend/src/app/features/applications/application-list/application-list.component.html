@@ -12,6 +12,7 @@
         [query]="query()"
         [placeholder]="'Search Applications...'"
         (queryChange)="onQueryChange($event)"
+        (tabOut)="dataTable.focusFirstRowIfNone()"
       >
         @if (isSuperuser() && totalItems() > 0) {
           <z-button zType="destructive" zSize="sm" (click)="openBulkDeleteDialog()">
@@ -23,9 +24,13 @@
 
     <div class="p-0">
       <app-data-table
+        #dataTable
         [columns]="columns()"
         [data]="items()"
         [isLoading]="isLoading()"
+        [currentPage]="page()"
+        [totalPages]="totalPages()"
+        (pageChange)="onPageChange($event)"
         (sortChange)="onSortChange($event)"
       >
         <ng-template #columnCustomer let-row>

@@ -32,9 +32,14 @@ import { Component, inject } from '@angular/core';
         zSize="sm"
         (click)="toggleDarkMode()"
         class="flex items-center gap-2"
+        aria-label="Toggle theme"
+        [attr.aria-pressed]="isDarkMode()"
       >
-        <span>{{ isDarkMode() ? '🌙' : '☀️' }}</span>
-        <span>{{ isDarkMode() ? 'Dark' : 'Light' }}</span>
+        <span aria-hidden="true">{{ isDarkMode() ? '🌙' : '☀️' }}</span>
+        <span class="sr-only">{{
+          isDarkMode() ? 'Switch to light theme' : 'Switch to dark theme'
+        }}</span>
+        <span class="hidden md:inline">{{ isDarkMode() ? 'Dark' : 'Light' }}</span>
       </button>
     </div>
   `,

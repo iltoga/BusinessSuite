@@ -2,6 +2,7 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
+  HostListener,
   PLATFORM_ID,
   computed,
   inject,
@@ -10,7 +11,7 @@ import {
   type OnInit,
   type TemplateRef,
 } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 
 import { InvoicesService, type InvoiceList, type PaginatedInvoiceListList } from '@/core/api';
 import { AuthService } from '@/core/services/auth.service';
@@ -60,6 +61,7 @@ export class InvoiceListComponent implements OnInit {
   private authService = inject(AuthService);
   private toast = inject(GlobalToastService);
   private platformId = inject(PLATFORM_ID);
+  private router = inject(Router);
 
   private readonly numberTemplate =
     viewChild.required<TemplateRef<{ $implicit: InvoiceList; value: any; row: InvoiceList }>>(
@@ -145,6 +147,23 @@ export class InvoiceListComponent implements OnInit {
     const size = this.pageSize();
     return Math.max(1, Math.ceil(total / size));
   });
+
+  @HostListener('window:keydown', ['$event'])
+  handleGlobalKeydown(event: KeyboardEvent): void {
+    const activeElement = document.activeElement;
+    const isInput =
+      activeElement instanceof HTMLInputElement ||
+      activeElement instanceof HTMLTextAreaElement ||
+      (activeElement instanceof HTMLElement && activeElement.isContentEditable);
+
+    if (isInput) return;
+
+    // Shift+N for New Invoice
+    if (event.key === 'N' && !event.ctrlKey && !event.altKey && !event.metaKey) {
+      event.preventDefault();
+      this.router.navigate(['/invoices', 'new']);
+    }
+  }
 
   ngOnInit(): void {
     if (!isPlatformBrowser(this.platformId)) {

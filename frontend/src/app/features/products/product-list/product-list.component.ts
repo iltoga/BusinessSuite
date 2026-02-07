@@ -3,6 +3,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  HostListener,
   inject,
   PLATFORM_ID,
   signal,
@@ -10,7 +11,7 @@ import {
   type OnInit,
   type TemplateRef,
 } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 
 import { ProductsService, type PaginatedProductList, type Product } from '@/core/api';
 import { AuthService } from '@/core/services/auth.service';
@@ -56,6 +57,7 @@ export class ProductListComponent implements OnInit {
   private authService = inject(AuthService);
   private toast = inject(GlobalToastService);
   private platformId = inject(PLATFORM_ID);
+  private router = inject(Router);
 
   private readonly nameTemplate =
     viewChild.required<TemplateRef<{ $implicit: Product; value: any; row: Product }>>(
@@ -126,6 +128,23 @@ export class ProductListComponent implements OnInit {
     const size = this.pageSize();
     return Math.max(1, Math.ceil(total / size));
   });
+
+  @HostListener('window:keydown', ['$event'])
+  handleGlobalKeydown(event: KeyboardEvent): void {
+    const activeElement = document.activeElement as HTMLElement | null;
+    const isInput =
+      activeElement instanceof HTMLInputElement ||
+      activeElement instanceof HTMLTextAreaElement ||
+      (activeElement && activeElement.isContentEditable);
+
+    if (isInput) return;
+
+    // Shift+N for New Product
+    if (event.key === 'N' && !event.ctrlKey && !event.altKey && !event.metaKey) {
+      event.preventDefault();
+      this.router.navigate(['/products', 'new']);
+    }
+  }
 
   ngOnInit(): void {
     if (!isPlatformBrowser(this.platformId)) {

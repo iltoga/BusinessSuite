@@ -17,6 +17,7 @@
         [query]="query()"
         [placeholder]="'Search invoices...'"
         (queryChange)="onQueryChange($event)"
+        (tabOut)="dataTable.focusFirstRowIfNone()"
       >
         <div class="flex items-center gap-3">
           <div class="flex items-center gap-2">
@@ -45,9 +46,13 @@
 
     <div class="p-0">
       <app-data-table
+        #dataTable
         [columns]="columns()"
         [data]="invoices()"
         [isLoading]="isLoading()"
+        [currentPage]="page()"
+        [totalPages]="totalPages()"
+        (pageChange)="onPageChange($event)"
         (sortChange)="onSortChange($event)"
       />
     </div>

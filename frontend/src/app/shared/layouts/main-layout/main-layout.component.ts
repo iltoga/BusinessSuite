@@ -1,6 +1,18 @@
-import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
+import {
+  AfterViewInit,
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  OnDestroy,
+  PLATFORM_ID,
+  QueryList,
+  signal,
+  ViewChildren,
+} from '@angular/core';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
 import { AuthService } from '@/core/services/auth.service';
 import { ConfigService } from '@/core/services/config.service';
@@ -30,14 +42,21 @@ import { ThemeSwitcherComponent } from '@/shared/components/theme-switcher/theme
   styleUrls: ['./main-layout.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class MainLayoutComponent {
-  sidebarOpen = true;
+export class MainLayoutComponent implements AfterViewInit, OnDestroy {
+  private readonly platformId = inject(PLATFORM_ID);
+  private readonly isBrowser = isPlatformBrowser(this.platformId);
+
+  sidebarOpen = signal(true);
   lettersExpanded = signal(true);
   adminExpanded = signal(false);
+
+  @ViewChildren('sidebarItem', { read: ElementRef })
+  private sidebarItems!: QueryList<ElementRef<HTMLElement>>;
 
   private themeService = inject(ThemeService);
   private authService = inject(AuthService);
   private configService = inject(ConfigService);
+  private router = inject(Router);
 
   logoSrc = computed(() => {
     // Use assets path to ensure the dev-server and production builds serve the images reliably
@@ -62,8 +81,118 @@ export class MainLayoutComponent {
       .substring(0, 2);
   });
 
+  private _capturingKeydown = (event: KeyboardEvent) => {
+    if (!this.isBrowser) return;
+
+    if (event.key === 'Tab') {
+      const active = document.activeElement as HTMLElement | null;
+      const items = this.sidebarItems?.toArray() ?? [];
+      const isSidebarFocused = items.some((el) => el.nativeElement.contains(active as Node));
+
+      if (isSidebarFocused) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (event.shiftKey) {
+          // Shift+Tab from Sidebar -> Focus Table
+          const table = document.querySelector('.data-table-focus-trap') as HTMLElement;
+          table?.focus();
+        } else {
+          // Tab from Sidebar -> Focus Search
+          const search = document.querySelector('app-search-toolbar input') as HTMLElement;
+          search?.focus();
+        }
+        return;
+      }
+    }
+
+    // Shift+M for Menu
+    if (event.key === 'M' && !event.ctrlKey && !event.altKey && !event.metaKey) {
+      const active = document.activeElement as HTMLElement | null;
+      const tag = active?.tagName ?? '';
+      const isEditable =
+        tag === 'INPUT' || tag === 'TEXTAREA' || (active && active.isContentEditable);
+      if (isEditable) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (!this.sidebarOpen()) {
+        this.sidebarOpen.set(true);
+      }
+
+      // Focus first sidebar item on next tick to ensure visibility
+      setTimeout(() => {
+        const first = this.sidebarItems?.first?.nativeElement;
+        if (first) {
+          first.focus();
+        }
+      }, 0);
+      return;
+    }
+
+    // Shift+N -> Create new entity in list views (customers, applications, invoices, products)
+    if (event.key === 'N' && event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey) {
+      const active = document.activeElement as HTMLElement | null;
+      const tag = active?.tagName ?? '';
+      const isEditable =
+        tag === 'INPUT' || tag === 'TEXTAREA' || (active && active.isContentEditable);
+      if (isEditable) return;
+
+      try {
+        const path = window.location.pathname || '';
+        const mapping = ['/customers', '/applications', '/invoices', '/products'];
+        for (const base of mapping) {
+          if (path.startsWith(base)) {
+            event.preventDefault();
+            event.stopPropagation();
+            try {
+              // Use router to navigate to the new entity route
+              (this as any).router.navigate([base.replace(/^\//, ''), 'new']);
+            } catch {
+              // Fallback: change location directly
+              window.location.href = `${base}/new`;
+            }
+            return;
+          }
+        }
+      } catch {}
+    }
+
+    // Arrow navigation when sidebar item is focused
+    const active = document.activeElement as HTMLElement | null;
+    if (!active) return;
+
+    const items = this.sidebarItems?.toArray() ?? [];
+    const currentIndex = items.findIndex((el) => el.nativeElement === active);
+
+    if (currentIndex !== -1) {
+      if (event.key === 'ArrowDown' || event.key === 'Down') {
+        event.preventDefault();
+        const next = (currentIndex + 1) % items.length;
+        items[next].nativeElement.focus();
+      } else if (event.key === 'ArrowUp' || event.key === 'Up') {
+        event.preventDefault();
+        const prev = (currentIndex - 1 + items.length) % items.length;
+        items[prev].nativeElement.focus();
+      }
+    }
+  };
+
+  ngAfterViewInit(): void {
+    if (this.isBrowser) {
+      window.addEventListener('keydown', this._capturingKeydown, true);
+    }
+  }
+
+  ngOnDestroy(): void {
+    if (this.isBrowser) {
+      window.removeEventListener('keydown', this._capturingKeydown, true);
+    }
+  }
+
   toggleSidebar() {
-    this.sidebarOpen = !this.sidebarOpen;
+    this.sidebarOpen.update((v) => !v);
   }
 
   toggleLetters() {
