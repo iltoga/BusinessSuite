@@ -490,6 +490,21 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
 
   @HostListener('window:keydown', ['$event'])
   handleGlobalKeydown(event: KeyboardEvent): void {
+    // Esc --> Cancel
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.goBack();
+      return;
+    }
+
+    // cmd+s (mac) or ctrl+s (windows/linux) --> save
+    const isSaveKey = (event.ctrlKey || event.metaKey) && (event.key === 's' || event.key === 'S');
+    if (isSaveKey) {
+      event.preventDefault();
+      this.submit();
+      return;
+    }
+
     const activeElement = document.activeElement;
     const isInput =
       activeElement instanceof HTMLInputElement ||
@@ -498,8 +513,13 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
 
     if (isInput) return;
 
-    // Left Arrow -> Go back to list that opened the view and focus originating row
-    if (event.key === 'ArrowLeft' && !event.ctrlKey && !event.altKey && !event.metaKey) {
+    // B or Left Arrow -> Go back to list that opened the view and focus originating row
+    if (
+      (event.key === 'B' || event.key === 'ArrowLeft') &&
+      !event.ctrlKey &&
+      !event.altKey &&
+      !event.metaKey
+    ) {
       event.preventDefault();
       this.goBack();
     }

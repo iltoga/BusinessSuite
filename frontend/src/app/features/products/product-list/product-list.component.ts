@@ -26,6 +26,7 @@ import { ConfirmDialogComponent } from '@/shared/components/confirm-dialog/confi
 import {
   DataTableComponent,
   type ColumnConfig,
+  type DataTableAction,
   type SortEvent,
 } from '@/shared/components/data-table/data-table.component';
 import { PaginationControlsComponent } from '@/shared/components/pagination-controls';
@@ -75,10 +76,6 @@ export class ProductListComponent implements OnInit {
     viewChild.required<TemplateRef<{ $implicit: Product; value: any; row: Product }>>(
       'priceTemplate',
     );
-  private readonly actionsTemplate =
-    viewChild.required<TemplateRef<{ $implicit: Product; value: any; row: Product }>>(
-      'actionsTemplate',
-    );
 
   readonly products = signal<Product[]>([]);
   readonly isLoading = signal(false);
@@ -120,7 +117,30 @@ export class ProductListComponent implements OnInit {
       sortKey: 'base_price', // server uses snake_case for ordering
       template: this.priceTemplate(),
     },
-    { key: 'actions', header: 'Actions', template: this.actionsTemplate() },
+    { key: 'actions', header: 'Actions' },
+  ]);
+
+  readonly actions = computed<DataTableAction<Product>[]>(() => [
+    {
+      label: 'View',
+      icon: 'eye',
+      variant: 'default',
+      action: (item) => this.router.navigate(['/products', item.id]),
+    },
+    {
+      label: 'Edit',
+      icon: 'settings',
+      variant: 'warning',
+      action: (item) => this.router.navigate(['/products', item.id, 'edit']),
+    },
+    {
+      label: 'Delete',
+      icon: 'trash',
+      variant: 'destructive',
+      isDestructive: true,
+      isVisible: () => this.isSuperuser(),
+      action: (item) => this.requestDelete(item),
+    },
   ]);
 
   readonly totalPages = computed(() => {

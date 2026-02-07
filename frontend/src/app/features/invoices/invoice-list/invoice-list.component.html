@@ -49,6 +49,7 @@
         #dataTable
         [columns]="columns()"
         [data]="invoices()"
+        [actions]="actions()"
         [isLoading]="isLoading()"
         [currentPage]="page()"
         [totalPages]="totalPages()"
@@ -119,13 +120,6 @@
 
 <ng-template #actionsTemplate let-row>
   <div class="flex items-center gap-2">
-    <a [routerLink]="['/invoices', row.id]">
-      <z-button zType="default" zSize="sm">View</z-button>
-    </a>
-    <a [routerLink]="['/invoices', row.id, 'edit']">
-      <z-button zType="warning" zSize="sm">Edit</z-button>
-    </a>
-
     <app-invoice-download-dropdown
       [invoiceId]="row.id"
       [invoiceNumber]="(row.invoiceNoDisplay || row.invoiceNo || '—').toString()"
@@ -133,12 +127,38 @@
       zType="secondary"
       zSize="sm"
     />
-
-    @if (isSuperuser()) {
-      <z-button zType="destructive" zSize="sm" (click)="openInvoiceDeleteDialog(row)"
-        >Delete</z-button
+    <div class="flex items-center justify-end">
+      <button
+        z-dropdown
+        [zDropdownMenu]="rowActionsMenu"
+        z-button
+        zType="ghost"
+        zSize="sm"
+        type="button"
+        class="h-8 w-8 p-0"
+        tabindex="-1"
+        (click)="$event.stopPropagation()"
+        aria-label="Row actions"
+        aria-haspopup="menu"
       >
-    }
+        <z-icon zType="ellipsis-horizontal" />
+      </button>
+      <z-dropdown-menu-content #rowActionsMenu class="z-50 min-w-48">
+        @for (action of actions() ?? []; track action.label) {
+          @if (!action.isVisible || action.isVisible(row)) {
+            <button
+              z-dropdown-menu-item
+              type="button"
+              [variant]="action.variant ?? (action.isDestructive ? 'destructive' : 'default')"
+              (click)="action.action(row); $event.stopPropagation()"
+            >
+              <z-icon [zType]="action.icon" class="mr-2 h-4 w-4 stroke-current" />
+              <span [innerHTML]="action.label | shortcutHighlight"></span>
+            </button>
+          }
+        }
+      </z-dropdown-menu-content>
+    </div>
   </div>
 </ng-template>
 
