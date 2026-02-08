@@ -46,6 +46,7 @@ export class DocumentPreviewComponent {
   label = input<string>('Preview');
   zType = input<ZardButtonTypeVariants>('outline');
   zSize = input<ZardButtonSizeVariants>('sm');
+  previewSize = input<'sm' | 'md' | 'lg'>('sm');
 
   viewFull = output<void>();
 
@@ -53,6 +54,7 @@ export class DocumentPreviewComponent {
   previewBlob = signal<Blob | null>(null);
   previewUrl = signal<string | null>(null);
   sanitizedPreview = signal<SafeResourceUrl | null>(null);
+  previewMime = signal<string | null>(null);
 
   @ViewChild('overlayContainer', { read: ViewContainerRef, static: false })
   protected overlayContainer?: ViewContainerRef;
@@ -64,13 +66,60 @@ export class DocumentPreviewComponent {
   private viewerUrl: string | null = null;
 
   protected readonly fileName = computed(() => this.fileLink()?.split('/').pop() || 'Document');
-  protected readonly isPdf = computed(
-    () => this.fileLink()?.toLowerCase().endsWith('.pdf') || false,
-  );
+  protected readonly isPdf = computed(() => {
+    const link = this.fileLink()?.toLowerCase() || '';
+    const mime = this.previewMime();
+    return link.endsWith('.pdf') || mime === 'application/pdf';
+  });
+
+  protected readonly isImage = computed(() => {
+    const link = this.fileLink()?.toLowerCase() || '';
+    const mime = this.previewMime();
+    if (mime?.startsWith('image/')) {
+      return true;
+    }
+    return /\.(png|jpe?g)$/i.test(link);
+  });
 
   protected readonly isPdfImage = computed(() => {
     const url = this.previewUrl();
     return !!url && url.startsWith('data:image');
+  });
+
+  protected readonly popoverClasses = computed(() => {
+    switch (this.previewSize()) {
+      case 'lg':
+        return 'p-3 w-[28rem] sm:w-[34rem]';
+      case 'md':
+        return 'p-3 w-96 sm:w-[28rem]';
+      case 'sm':
+      default:
+        return 'p-2 w-72 sm:w-80';
+    }
+  });
+
+  protected readonly previewFrameClasses = computed(() => {
+    switch (this.previewSize()) {
+      case 'lg':
+        return 'w-full h-[26rem]';
+      case 'md':
+        return 'w-full h-80';
+      case 'sm':
+      default:
+        return 'w-full h-60';
+    }
+  });
+
+  protected readonly previewImageClasses = computed(() => {
+    switch (this.previewSize()) {
+      case 'lg':
+        return 'max-h-[26rem] w-full object-contain';
+      case 'md':
+        return 'max-h-80 w-full object-contain';
+      case 'sm':
+      default:
+        return 'max-h-60 w-full object-contain';
+    }
   });
 
   private sanitizer = inject(DomSanitizer);
@@ -114,6 +163,7 @@ export class DocumentPreviewComponent {
       next: async (blob) => {
         this.cleanup();
         this.previewBlob.set(blob);
+        this.previewMime.set(blob.type ?? null);
 
         // Try generate a thumbnail for PDF for popover preview. Don't block opening the viewer.
         if (this.isPdf()) {
@@ -139,6 +189,7 @@ export class DocumentPreviewComponent {
         this.isLoading.set(false);
         this.previewUrl.set(null);
         this.previewBlob.set(null);
+        this.previewMime.set(null);
       },
     });
   }
@@ -149,6 +200,7 @@ export class DocumentPreviewComponent {
       next: async (blob) => {
         this.cleanup();
         this.previewBlob.set(blob);
+        this.previewMime.set(blob.type ?? null);
 
         // Try to generate an inline image thumbnail for PDFs for a better preview
         if (this.isPdf()) {
@@ -174,6 +226,7 @@ export class DocumentPreviewComponent {
         this.isLoading.set(false);
         this.previewUrl.set(null);
         this.previewBlob.set(null);
+        this.previewMime.set(null);
       },
     });
   }
@@ -240,6 +293,7 @@ export class DocumentPreviewComponent {
     }
     this.previewUrl.set(null);
     this.sanitizedPreview.set(null);
+    this.previewMime.set(null);
     // keep previewBlob available for full-view until destroyed explicitly
   }
 

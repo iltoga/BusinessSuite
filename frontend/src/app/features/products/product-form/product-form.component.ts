@@ -201,7 +201,20 @@ export class ProductFormComponent implements OnInit {
   }
 
   goBack(): void {
-    this.router.navigate(['/products']);
+    const nav = this.router.getCurrentNavigation();
+    const st = (nav && nav.extras && (nav.extras.state as any)) || (history.state as any);
+
+    const focusState: Record<string, unknown> = { focusTable: true };
+    if (st?.focusId) {
+      focusState['focusId'] = st.focusId;
+    } else if (this.product()?.id) {
+      focusState['focusId'] = this.product()?.id;
+    }
+    if (st?.searchQuery) {
+      focusState['searchQuery'] = st.searchQuery;
+    }
+
+    this.router.navigate(['/products'], { state: focusState });
   }
 
   toggleLastStep(index: number): void {

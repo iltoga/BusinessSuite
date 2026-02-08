@@ -16,6 +16,7 @@ export class PaginationControlsComponent {
   page = input<number>(1);
   totalPages = input<number>(1);
   disabled = input<boolean>(false);
+  totalItems = input<number | null>(null);
 
   pageChange = output<number>();
 

@@ -24,7 +24,12 @@
     Previous
   </button>
 
-  <div class="px-3 text-sm text-muted-foreground">Page {{ page() }} of {{ totalPages() }}</div>
+  <div class="px-3 text-sm text-muted-foreground">
+    Page {{ page() }} of {{ totalPages() }}
+    @if (totalItems() !== null) {
+      <span>({{ totalItems() }})</span>
+    }
+  </div>
 
   <button
     type="button"

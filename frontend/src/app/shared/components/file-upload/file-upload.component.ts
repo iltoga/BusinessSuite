@@ -3,11 +3,15 @@ import {
   ChangeDetectionStrategy,
   Component,
   ElementRef,
+  computed,
+  inject,
   input,
   output,
   signal,
   viewChild,
 } from '@angular/core';
+
+import { DomSanitizer, type SafeResourceUrl } from '@angular/platform-browser';
 
 import { ZardButtonComponent } from '@/shared/components/button';
 import { mergeClasses } from '@/shared/utils/merge-classes';
@@ -27,12 +31,29 @@ export class FileUploadComponent {
   progress = input<number | null>(null);
   fileName = input<string | null>(null);
   helperText = input<string | null>(null);
+  previewUrl = input<string | null>(null);
+  previewType = input<'image' | 'pdf' | 'unknown'>('unknown');
 
   fileSelected = output<File>();
   cleared = output<void>();
 
   private readonly fileInput = viewChild.required<ElementRef<HTMLInputElement>>('fileInput');
   readonly isDragging = signal(false);
+  private sanitizer = inject(DomSanitizer);
+
+  readonly showPreview = computed(() => {
+    const url = this.previewUrl();
+    const type = this.previewType();
+    return Boolean(url) && (type === 'image' || type === 'pdf');
+  });
+
+  readonly sanitizedPreview = computed<SafeResourceUrl | null>(() => {
+    const url = this.previewUrl();
+    if (!url) {
+      return null;
+    }
+    return this.sanitizer.bypassSecurityTrustResourceUrl(url);
+  });
 
   onBrowseClick(): void {
     if (this.disabled()) {

@@ -1,7 +1,7 @@
 <div class="h-full flex flex-col gap-6">
   <div class="flex flex-wrap items-center justify-between gap-3">
     <h1 class="text-3xl font-bold tracking-tight">Products</h1>
-    <a routerLink="/products/new">
+    <a routerLink="/products/new" [state]="{ from: 'products', searchQuery: query() }">
       <z-button zType="default" zSize="default">New Product</z-button>
     </a>
   </div>
@@ -40,6 +40,7 @@
       <app-pagination-controls
         [page]="page()"
         [totalPages]="totalPages()"
+        [totalItems]="totalItems()"
         (pageChange)="onPageChange($event)"
       />
     </div>
@@ -47,7 +48,11 @@
 </div>
 
 <ng-template #nameTemplate let-row>
-  <a [routerLink]="['/products', row.id]" class="font-medium hover:underline">
+  <a
+    [routerLink]="['/products', row.id]"
+    [state]="{ from: 'products', focusId: row.id, searchQuery: query() }"
+    class="font-medium hover:underline"
+  >
     {{ row.name }}
   </a>
 </ng-template>
@@ -75,6 +80,19 @@
 
 <ng-template #priceTemplate let-row>
   <span>{{ formatCurrency(row.basePrice) }}</span>
+</ng-template>
+
+<ng-template #createdAtTemplate let-row>
+  <div class="flex flex-col">
+    <span class="text-sm">{{
+      $any(row).createdAt ? ($any(row).createdAt | date: 'dd MMM yyyy HH:mm:ss') : ''
+    }}</span>
+    @if ($any(row).updatedAt && $any(row).updatedAt !== $any(row).createdAt) {
+      <span class="text-xs text-muted-foreground">{{
+        $any(row).updatedAt ? ($any(row).updatedAt | date: 'dd MMM yyyy HH:mm:ss') : ''
+      }}</span>
+    }
+  </div>
 </ng-template>
 
 <app-confirm-dialog

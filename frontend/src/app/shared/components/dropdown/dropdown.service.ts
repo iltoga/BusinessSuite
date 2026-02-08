@@ -196,7 +196,21 @@ export class ZardDropdownService {
         case 'Escape':
           event.preventDefault();
           this.close();
-          this.triggerElement?.nativeElement.focus();
+          {
+            const trigger = this.triggerElement?.nativeElement as HTMLElement | undefined;
+            const row = trigger?.closest?.('tr[z-table-row], tr') as HTMLElement | null;
+            if (row) {
+              row.setAttribute('tabindex', '0');
+              try {
+                row.focus({ preventScroll: true });
+                row.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+              } catch (e) {
+                row.focus();
+              }
+            } else {
+              trigger?.focus();
+            }
+          }
           break;
         case 'Home':
           event.preventDefault();

@@ -141,7 +141,20 @@ export class InvoiceFormComponent implements OnInit {
   }
 
   goBack(): void {
-    this.router.navigate(['/invoices']);
+    const nav = this.router.getCurrentNavigation();
+    const st = (nav && nav.extras && (nav.extras.state as any)) || (history.state as any);
+
+    const focusState: Record<string, unknown> = { focusTable: true };
+    if (st?.focusId) {
+      focusState['focusId'] = st.focusId;
+    } else if (this.invoice()?.id) {
+      focusState['focusId'] = this.invoice()?.id;
+    }
+    if (st?.searchQuery) {
+      focusState['searchQuery'] = st.searchQuery;
+    }
+
+    this.router.navigate(['/invoices'], { state: focusState });
   }
 
   ngOnInit(): void {

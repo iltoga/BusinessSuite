@@ -64,6 +64,7 @@ export class InvoiceDetailComponent implements OnInit {
 
   readonly invoice = signal<InvoiceDetail | null>(null);
   readonly isLoading = signal(false);
+  readonly originSearchQuery = signal<string | null>(null);
   readonly paymentModalOpen = signal(false);
   readonly selectedApplication = signal<InvoiceApplicationDetail | null>(null);
   readonly selectedPayment = signal<Payment | null>(null);
@@ -99,7 +100,9 @@ export class InvoiceDetailComponent implements OnInit {
     // E --> Edit
     if (event.key === 'E' && !event.ctrlKey && !event.altKey && !event.metaKey) {
       event.preventDefault();
-      this.router.navigate(['/invoices', invoice.id, 'edit']);
+      this.router.navigate(['/invoices', invoice.id, 'edit'], {
+        state: { from: 'invoices', focusId: invoice.id, searchQuery: this.originSearchQuery() },
+      });
     }
 
     // B or Left Arrow --> Back to list
@@ -110,7 +113,13 @@ export class InvoiceDetailComponent implements OnInit {
       !event.metaKey
     ) {
       event.preventDefault();
-      this.router.navigate(['/invoices']);
+      this.router.navigate(['/invoices'], {
+        state: {
+          focusTable: true,
+          focusId: invoice.id,
+          searchQuery: this.originSearchQuery(),
+        },
+      });
     }
   }
 
@@ -143,6 +152,8 @@ export class InvoiceDetailComponent implements OnInit {
     if (!isPlatformBrowser(this.platformId)) {
       return;
     }
+    const st = (window as any).history.state || {};
+    this.originSearchQuery.set(st.searchQuery ?? null);
 
     const idParam = this.route.snapshot.paramMap.get('id');
     if (idParam) {

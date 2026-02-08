@@ -229,7 +229,9 @@ export class CustomerListComponent implements OnInit {
     // Shift+N for New Customer
     if (event.key === 'N' && !event.ctrlKey && !event.altKey && !event.metaKey) {
       event.preventDefault();
-      this.router.navigate(['/customers', 'new']);
+      this.router.navigate(['/customers', 'new'], {
+        state: { from: 'customers', searchQuery: this.query() },
+      });
     }
   }
 

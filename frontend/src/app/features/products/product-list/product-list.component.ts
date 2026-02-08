@@ -76,6 +76,13 @@ export class ProductListComponent implements OnInit {
     viewChild.required<TemplateRef<{ $implicit: Product; value: any; row: Product }>>(
       'priceTemplate',
     );
+  private readonly createdAtTemplate =
+    viewChild.required<TemplateRef<{ $implicit: Product; value: any; row: Product }>>(
+      'createdAtTemplate',
+    );
+
+  // Access the data table for focus management
+  private readonly dataTable = viewChild.required(DataTableComponent);
 
   readonly products = signal<Product[]>([]);
   readonly isLoading = signal(false);
@@ -98,6 +105,10 @@ export class ProductListComponent implements OnInit {
     this.query().trim() ? 'Delete Selected Products' : 'Delete All Products',
   );
 
+  // When navigating back to the list we may want to focus a specific id or the table
+  private readonly focusTableOnInit = signal(false);
+  private readonly focusIdOnInit = signal<number | null>(null);
+
   readonly columns = computed<ColumnConfig<Product>[]>(() => [
     { key: 'code', header: 'Code', sortable: true, sortKey: 'code' },
     { key: 'name', header: 'Name', sortable: true, sortKey: 'name', template: this.nameTemplate() },
@@ -117,6 +128,13 @@ export class ProductListComponent implements OnInit {
       sortKey: 'base_price', // server uses snake_case for ordering
       template: this.priceTemplate(),
     },
+    {
+      key: 'createdAt',
+      header: 'Added/Updated',
+      sortable: true,
+      sortKey: 'created_at',
+      template: this.createdAtTemplate(),
+    },
     { key: 'actions', header: 'Actions' },
   ]);
 
@@ -125,13 +143,19 @@ export class ProductListComponent implements OnInit {
       label: 'View',
       icon: 'eye',
       variant: 'default',
-      action: (item) => this.router.navigate(['/products', item.id]),
+      action: (item) =>
+        this.router.navigate(['/products', item.id], {
+          state: { from: 'products', focusId: item.id, searchQuery: this.query() },
+        }),
     },
     {
       label: 'Edit',
       icon: 'settings',
       variant: 'warning',
-      action: (item) => this.router.navigate(['/products', item.id, 'edit']),
+      action: (item) =>
+        this.router.navigate(['/products', item.id, 'edit'], {
+          state: { from: 'products', focusId: item.id, searchQuery: this.query() },
+        }),
     },
     {
       label: 'Delete',
@@ -162,13 +186,21 @@ export class ProductListComponent implements OnInit {
     // Shift+N for New Product
     if (event.key === 'N' && !event.ctrlKey && !event.altKey && !event.metaKey) {
       event.preventDefault();
-      this.router.navigate(['/products', 'new']);
+      this.router.navigate(['/products', 'new'], {
+        state: { from: 'products', searchQuery: this.query() },
+      });
     }
   }
 
   ngOnInit(): void {
     if (!isPlatformBrowser(this.platformId)) {
       return;
+    }
+    const st = (window as any).history.state || {};
+    this.focusTableOnInit.set(Boolean(st.focusTable));
+    this.focusIdOnInit.set(st.focusId ? Number(st.focusId) : null);
+    if (st.searchQuery) {
+      this.query.set(String(st.searchQuery));
     }
     this.loadProducts();
   }
@@ -323,6 +355,18 @@ export class ProductListComponent implements OnInit {
           this.products.set(response.results ?? []);
           this.totalItems.set(response.count ?? 0);
           this.isLoading.set(false);
+
+          const table = this.dataTable();
+          if (table) {
+            const focusId = this.focusIdOnInit();
+            if (focusId) {
+              this.focusIdOnInit.set(null);
+              table.focusRowById(focusId);
+            } else if (this.focusTableOnInit()) {
+              this.focusTableOnInit.set(false);
+              table.focusFirstRowIfNone();
+            }
+          }
         },
         error: () => {
           this.toast.error('Failed to load products');

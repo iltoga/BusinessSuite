@@ -5,7 +5,7 @@
       <a routerLink="/invoices/import">
         <z-button zType="secondary" zSize="default">Import Invoice</z-button>
       </a>
-      <a routerLink="/invoices/new">
+      <a routerLink="/invoices/new" [state]="{ from: 'invoices', searchQuery: query() }">
         <z-button zType="default" zSize="default">New Invoice</z-button>
       </a>
     </div>
@@ -62,6 +62,7 @@
       <app-pagination-controls
         [page]="page()"
         [totalPages]="totalPages()"
+        [totalItems]="totalItems()"
         (pageChange)="onPageChange($event)"
       />
     </div>
@@ -69,7 +70,11 @@
 </div>
 
 <ng-template #numberTemplate let-row>
-  <a [routerLink]="['/invoices', row.id]" class="font-medium hover:underline">
+  <a
+    [routerLink]="['/invoices', row.id]"
+    [state]="{ from: 'invoices', focusId: row.id, searchQuery: query() }"
+    class="font-medium hover:underline"
+  >
     {{ row.invoiceNoDisplay || row.invoiceNo || '—' }}
   </a>
 </ng-template>
@@ -115,6 +120,19 @@
       <span>Paid: {{ formatCurrency(row.totalPaidAmount) }}</span>
       <span>Due: {{ formatCurrency(row.totalDueAmount) }}</span>
     </ng-template>
+  </div>
+</ng-template>
+
+<ng-template #createdAtTemplate let-row>
+  <div class="flex flex-col">
+    <span class="text-sm">{{
+      $any(row).createdAt ? ($any(row).createdAt | date: 'dd MMM yyyy HH:mm:ss') : ''
+    }}</span>
+    @if ($any(row).updatedAt && $any(row).updatedAt !== $any(row).createdAt) {
+      <span class="text-xs text-muted-foreground">{{
+        $any(row).updatedAt ? ($any(row).updatedAt | date: 'dd MMM yyyy HH:mm:ss') : ''
+      }}</span>
+    }
   </div>
 </ng-template>
 

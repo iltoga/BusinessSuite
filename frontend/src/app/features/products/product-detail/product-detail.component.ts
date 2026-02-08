@@ -65,6 +65,7 @@ export class ProductDetailComponent implements OnInit {
 
   readonly product = signal<ProductDetail | null>(null);
   readonly isLoading = signal(false);
+  readonly originSearchQuery = signal<string | null>(null);
 
   readonly requiredDocuments = computed<DocumentType[]>(
     () => this.product()?.requiredDocumentTypes ?? [],
@@ -102,7 +103,9 @@ export class ProductDetailComponent implements OnInit {
     // E --> Edit
     if (event.key === 'E' && !event.ctrlKey && !event.altKey && !event.metaKey) {
       event.preventDefault();
-      this.router.navigate(['/products', product.id, 'edit']);
+      this.router.navigate(['/products', product.id, 'edit'], {
+        state: { from: 'products', focusId: product.id, searchQuery: this.originSearchQuery() },
+      });
     }
 
     // B or Left Arrow --> Back to list
@@ -113,7 +116,13 @@ export class ProductDetailComponent implements OnInit {
       !event.metaKey
     ) {
       event.preventDefault();
-      this.router.navigate(['/products']);
+      this.router.navigate(['/products'], {
+        state: {
+          focusTable: true,
+          focusId: product.id,
+          searchQuery: this.originSearchQuery(),
+        },
+      });
     }
   }
 
@@ -121,6 +130,8 @@ export class ProductDetailComponent implements OnInit {
     if (!isPlatformBrowser(this.platformId)) {
       return;
     }
+    const st = (window as any).history.state || {};
+    this.originSearchQuery.set(st.searchQuery ?? null);
     const idParam = this.route.snapshot.paramMap.get('id');
     if (!idParam) {
       return;

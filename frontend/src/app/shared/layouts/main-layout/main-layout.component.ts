@@ -10,6 +10,7 @@ import {
   PLATFORM_ID,
   QueryList,
   signal,
+  ViewChild,
   ViewChildren,
 } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
@@ -52,6 +53,8 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
 
   @ViewChildren('sidebarItem', { read: ElementRef })
   private sidebarItems!: QueryList<ElementRef<HTMLElement>>;
+  @ViewChild('lettersToggle', { read: ElementRef })
+  private lettersToggle?: ElementRef<HTMLElement>;
 
   private themeService = inject(ThemeService);
   private authService = inject(AuthService);
@@ -131,6 +134,44 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
       return;
     }
 
+    // Global navigation shortcuts (Shift + letter)
+    if (event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey) {
+      const active = document.activeElement as HTMLElement | null;
+      const tag = active?.tagName ?? '';
+      const isEditable =
+        tag === 'INPUT' || tag === 'TEXTAREA' || (active && active.isContentEditable);
+      if (isEditable) return;
+
+      const key = event.key.toUpperCase();
+      if (key === 'L') {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!this.sidebarOpen()) {
+          this.sidebarOpen.set(true);
+        }
+        this.lettersExpanded.set(true);
+        setTimeout(() => {
+          this.lettersToggle?.nativeElement?.focus();
+        }, 0);
+        return;
+      }
+
+      const routeMap: Record<string, string> = {
+        D: '/dashboard',
+        C: '/customers',
+        A: '/applications',
+        P: '/products',
+        I: '/invoices',
+      };
+      const target = routeMap[key];
+      if (target) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.router.navigate([target]);
+        return;
+      }
+    }
+
     // Shift+N -> Create new entity in list views (customers, applications, invoices, products)
     if (event.key === 'N' && event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey) {
       const active = document.activeElement as HTMLElement | null;
@@ -146,9 +187,16 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
           if (path.startsWith(base)) {
             event.preventDefault();
             event.stopPropagation();
+            const searchInput = document.querySelector('app-search-toolbar input') as
+              | HTMLInputElement
+              | null;
+            const searchQuery = searchInput?.value?.trim();
+            const from = base.replace(/^\//, '');
             try {
               // Use router to navigate to the new entity route
-              (this as any).router.navigate([base.replace(/^\//, ''), 'new']);
+              this.router.navigate([base.replace(/^\//, ''), 'new'], {
+                state: { from, searchQuery },
+              });
             } catch {
               // Fallback: change location directly
               window.location.href = `${base}/new`;
