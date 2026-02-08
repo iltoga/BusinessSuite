@@ -144,7 +144,7 @@
         <z-icon zType="ellipsis-horizontal" />
       </button>
       <z-dropdown-menu-content #rowActionsMenu class="z-50 min-w-48">
-        @for (action of actions() ?? []; track action.label) {
+        @for (action of actions(); track action.label) {
           @if (!action.isVisible || action.isVisible(row)) {
             <button
               z-dropdown-menu-item

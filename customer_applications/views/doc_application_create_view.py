@@ -305,10 +305,6 @@ class DocApplicationCreateView(PermissionRequiredMixin, SuccessMessageMixin, Cre
 
             doc_model.save()
 
-            messages.success(
-                self.request,
-                "Passport file automatically imported from Customer profile. Remember to always check that data are correct.",
-            )
             return True
 
         except Exception as e:

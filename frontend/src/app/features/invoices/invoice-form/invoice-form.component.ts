@@ -335,6 +335,10 @@ export class InvoiceFormComponent implements OnInit {
     });
   }
 
+  onSubmit(): void {
+    this.save();
+  }
+
   formatCurrency(value: number | null | undefined): string {
     if (value === null || value === undefined) return '—';
     return new Intl.NumberFormat('id-ID', {
