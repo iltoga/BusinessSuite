@@ -26,6 +26,16 @@ export interface InvoiceList {
     readonly isExpired: boolean;
     imported?: boolean;
     importedFromFile?: string | null;
+    readonly createdAt: string;
+    readonly updatedAt: string;
+    /**
+     * Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.
+     */
+    readonly createdBy: string;
+    /**
+     * Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.
+     */
+    readonly updatedBy: string;
     readonly invoiceApplications: Array<InvoiceApplicationSummary>;
 }
 export namespace InvoiceList {

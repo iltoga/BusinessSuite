@@ -50,6 +50,9 @@ class TaskNestedSerializer(serializers.ModelSerializer):
 
 
 class ProductSerializer(serializers.ModelSerializer):
+    created_by = serializers.SlugRelatedField(read_only=True, slug_field="username")
+    updated_by = serializers.SlugRelatedField(read_only=True, slug_field="username")
+
     class Meta:
         model = Product
         fields = [
@@ -64,6 +67,10 @@ class ProductSerializer(serializers.ModelSerializer):
             "required_documents",
             "optional_documents",
             "documents_min_validity",
+            "created_at",
+            "updated_at",
+            "created_by",
+            "updated_by",
         ]
 
 
@@ -71,6 +78,8 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     tasks = TaskNestedSerializer(many=True, read_only=True)
     required_document_types = serializers.SerializerMethodField()
     optional_document_types = serializers.SerializerMethodField()
+    created_by = serializers.SlugRelatedField(read_only=True, slug_field="username")
+    updated_by = serializers.SlugRelatedField(read_only=True, slug_field="username")
 
     class Meta:
         model = Product
@@ -89,6 +98,10 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "tasks",
             "required_document_types",
             "optional_document_types",
+            "created_at",
+            "updated_at",
+            "created_by",
+            "updated_by",
         ]
 
     @extend_schema_field(DocumentTypeSerializer(many=True))

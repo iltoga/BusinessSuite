@@ -68,6 +68,8 @@ class InvoiceListSerializer(serializers.ModelSerializer):
     total_due_amount = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
     is_expired = serializers.BooleanField(read_only=True)
     invoice_applications = InvoiceApplicationSummarySerializer(many=True, read_only=True)
+    created_by = serializers.SlugRelatedField(read_only=True, slug_field="username")
+    updated_by = serializers.SlugRelatedField(read_only=True, slug_field="username")
 
     class Meta:
         model = Invoice
@@ -85,6 +87,10 @@ class InvoiceListSerializer(serializers.ModelSerializer):
             "is_expired",
             "imported",
             "imported_from_file",
+            "created_at",
+            "updated_at",
+            "created_by",
+            "updated_by",
             "invoice_applications",
         ]
 
@@ -99,6 +105,8 @@ class InvoiceDetailSerializer(serializers.ModelSerializer):
     total_due_amount = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
     is_expired = serializers.BooleanField(read_only=True)
     invoice_applications = InvoiceApplicationDetailSerializer(many=True, read_only=True)
+    created_by = serializers.SlugRelatedField(read_only=True, slug_field="username")
+    updated_by = serializers.SlugRelatedField(read_only=True, slug_field="username")
 
     class Meta:
         model = Invoice
@@ -122,6 +130,8 @@ class InvoiceDetailSerializer(serializers.ModelSerializer):
             "bank_details",
             "created_at",
             "updated_at",
+            "created_by",
+            "updated_by",
             "invoice_applications",
         ]
 

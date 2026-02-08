@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 
 
@@ -30,6 +31,24 @@ class Product(models.Model):
     optional_documents = models.CharField(max_length=1024, blank=True)
     # Documents must be valid for this many days
     documents_min_validity = models.PositiveIntegerField(blank=True, null=True)
+
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True, db_index=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="created_by_product",
+        null=True,
+        blank=True,
+    )
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="updated_by_product",
+        null=True,
+        blank=True,
+    )
+
     objects = ProductManager()
 
     class Meta:

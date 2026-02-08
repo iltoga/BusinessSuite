@@ -10,7 +10,7 @@
     <thead z-table-header>
       <tr z-table-row>
         @for (column of columns(); track column.key) {
-          <th z-table-head>
+          <th z-table-head [class]="'col-' + (column.sortKey ?? column.key)">
             <button
               type="button"
               class="flex items-center gap-2"
@@ -78,7 +78,7 @@
               (keydown)="handleRowKeydown($event, row); handleRowNavigationKeydown($event)"
             >
               @for (column of columns(); track column.key) {
-                <td z-table-cell>
+                <td z-table-cell [class]="'col-' + (column.sortKey ?? column.key)">
                   @if (column.template) {
                     <ng-container
                       *ngTemplateOutlet="

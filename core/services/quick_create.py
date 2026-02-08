@@ -14,7 +14,10 @@ def create_quick_customer(*, validated_data) -> Customer:
     return Customer.objects.create(**validated_data)
 
 
-def create_quick_product(*, validated_data) -> Product:
+def create_quick_product(*, validated_data, user=None) -> Product:
+    if user:
+        validated_data["created_by"] = user
+        validated_data["updated_by"] = user
     return Product.objects.create(**validated_data)
 
 

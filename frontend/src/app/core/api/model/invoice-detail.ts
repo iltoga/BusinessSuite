@@ -32,6 +32,14 @@ export interface InvoiceDetail {
     bankDetails?: any | null;
     readonly createdAt: string;
     readonly updatedAt: string;
+    /**
+     * Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.
+     */
+    readonly createdBy: string;
+    /**
+     * Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.
+     */
+    readonly updatedBy: string;
     readonly invoiceApplications: Array<InvoiceApplicationDetail>;
 }
 export namespace InvoiceDetail {

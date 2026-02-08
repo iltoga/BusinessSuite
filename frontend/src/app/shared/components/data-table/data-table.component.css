@@ -31,3 +31,19 @@ tr.selected {
   font-weight: 700;
   margin-right: 0.25rem;
 }
+
+/* Make Added/Updated column wide enough for two datetime lines (createdAt / updatedAt)
+   Support both snake_case sortKey (created_at) and camelCase key (createdAt) */
+.col-created_at,
+.col-createdAt {
+  min-width: 11.5rem; /* ~184px */
+  width: 11.5rem;
+  white-space: normal;
+  word-break: break-word;
+}
+
+/* Ensure the two timestamps stack nicely */
+.col-created_at span,
+.col-createdAt span {
+  display: block;
+}

@@ -52,6 +52,26 @@
               <p class="text-sm font-medium">{{ product()?.documentsMinValidity ?? '—' }}</p>
             </div>
           </div>
+          <div class="pt-4 border-t grid gap-3 sm:grid-cols-2">
+            <div>
+              <p class="text-xs uppercase text-muted-foreground">Created</p>
+              <p class="text-sm">
+                {{ product()?.createdAt | date: 'dd MMM yyyy HH:mm:ss' }}
+                @if (product()?.createdBy) {
+                  <span class="text-xs text-muted-foreground">(by {{ product()?.createdBy }})</span>
+                }
+              </p>
+            </div>
+            <div>
+              <p class="text-xs uppercase text-muted-foreground">Last Updated</p>
+              <p class="text-sm">
+                {{ product()?.updatedAt | date: 'dd MMM yyyy HH:mm:ss' }}
+                @if (product()?.updatedBy) {
+                  <span class="text-xs text-muted-foreground">(by {{ product()?.updatedBy }})</span>
+                }
+              </p>
+            </div>
+          </div>
         </div>
       </z-card>
 
