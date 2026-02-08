@@ -1,12 +1,14 @@
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
-import { CommonModule, Location } from '@angular/common';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
-  DestroyRef,
   computed,
+  DestroyRef,
   effect,
+  HostListener,
   inject,
+  PLATFORM_ID,
   signal,
   untracked,
   type OnInit,
@@ -70,20 +72,41 @@ import { downloadBlob } from '@/shared/utils/file-download';
 export class ApplicationDetailComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
-  private location = inject(Location);
   private applicationsService = inject(ApplicationsService);
   private documentsService = inject(DocumentsService);
   private toast = inject(GlobalToastService);
   private fb = inject(FormBuilder);
   private destroyRef = inject(DestroyRef);
+  private platformId = inject(PLATFORM_ID);
+  private readonly isBrowser = isPlatformBrowser(this.platformId);
 
   readonly application = signal<ApplicationDetail | null>(null);
   readonly isLoading = signal(true);
   readonly isUploadOpen = signal(false);
   readonly selectedDocument = signal<ApplicationDocument | null>(null);
   readonly selectedFile = signal<File | null>(null);
+  readonly uploadPreviewUrl = signal<string | null>(null);
+  readonly uploadPreviewType = signal<'image' | 'pdf' | 'unknown'>('unknown');
   readonly uploadProgress = signal<number | null>(null);
   readonly isSaving = signal(false);
+  readonly inlinePreviewUrl = computed(() => {
+    const uploadUrl = this.uploadPreviewUrl();
+    if (uploadUrl) {
+      return uploadUrl;
+    }
+    const fileLink = this.selectedDocument()?.fileLink ?? null;
+    if (!fileLink) {
+      return null;
+    }
+    return this.getPreviewTypeFromUrl(fileLink) === 'unknown' ? null : fileLink;
+  });
+  readonly inlinePreviewType = computed(() => {
+    if (this.uploadPreviewUrl()) {
+      return this.uploadPreviewType();
+    }
+    const fileLink = this.selectedDocument()?.fileLink ?? null;
+    return this.getPreviewTypeFromUrl(fileLink);
+  });
 
   readonly ocrPolling = signal(false);
   readonly ocrStatus = signal<string | null>(null);
@@ -93,6 +116,7 @@ export class ApplicationDetailComponent implements OnInit {
   readonly ocrMetadata = signal<Record<string, unknown> | null>(null);
   readonly actionLoading = signal<string | null>(null);
   readonly workflowAction = signal<string | null>(null);
+  readonly originSearchQuery = signal<string | null>(null);
 
   // PDF Merge and Selection
   readonly localUploadedDocuments = signal<ApplicationDocument[]>([]);
@@ -107,6 +131,45 @@ export class ApplicationDetailComponent implements OnInit {
   ];
 
   private pollTimer: number | null = null;
+
+  @HostListener('window:keydown', ['$event'])
+  handleGlobalKeydown(event: KeyboardEvent): void {
+    const activeElement = document.activeElement;
+    const isInput =
+      activeElement instanceof HTMLInputElement ||
+      activeElement instanceof HTMLTextAreaElement ||
+      (activeElement instanceof HTMLElement && activeElement.isContentEditable);
+
+    if (isInput) return;
+
+    const application = this.application();
+    if (!application) return;
+
+    // E --> Edit
+    if (event.key === 'E' && !event.ctrlKey && !event.altKey && !event.metaKey) {
+      if (application.status !== 'completed') {
+        event.preventDefault();
+        this.router.navigate(['/applications', application.id, 'edit'], {
+          state: {
+            from: 'applications',
+            focusId: application.id,
+            searchQuery: this.originSearchQuery(),
+          },
+        });
+      }
+    }
+
+    // B or Left Arrow --> Back
+    if (
+      (event.key === 'B' || event.key === 'ArrowLeft') &&
+      !event.ctrlKey &&
+      !event.altKey &&
+      !event.metaKey
+    ) {
+      event.preventDefault();
+      this.goBack();
+    }
+  }
 
   readonly uploadedDocuments = computed(() =>
     (this.application()?.documents ?? []).filter((doc) => doc.completed),
@@ -160,6 +223,8 @@ export class ApplicationDetailComponent implements OnInit {
 
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
+    const st = this.isBrowser ? (window as any).history.state || {} : {};
+    this.originSearchQuery.set(st.searchQuery ?? null);
     if (!id) {
       this.toast.error('Invalid application ID');
       this.isLoading.set(false);
@@ -169,7 +234,9 @@ export class ApplicationDetailComponent implements OnInit {
 
     this.destroyRef.onDestroy(() => {
       if (this.pollTimer) {
-        window.clearTimeout(this.pollTimer);
+        if (this.isBrowser) {
+          window.clearTimeout(this.pollTimer);
+        }
       }
     });
   }
@@ -177,6 +244,7 @@ export class ApplicationDetailComponent implements OnInit {
   openUpload(document: ApplicationDocument): void {
     this.selectedDocument.set(document);
     this.selectedFile.set(null);
+    this.clearUploadPreview();
     this.uploadProgress.set(null);
     this.ocrPreviewImage.set(null);
     this.ocrReviewOpen.set(false);
@@ -194,6 +262,7 @@ export class ApplicationDetailComponent implements OnInit {
     this.isUploadOpen.set(false);
     this.selectedDocument.set(null);
     this.selectedFile.set(null);
+    this.clearUploadPreview();
     this.uploadProgress.set(null);
     this.ocrPolling.set(false);
     this.ocrStatus.set(null);
@@ -201,10 +270,12 @@ export class ApplicationDetailComponent implements OnInit {
 
   onFileSelected(file: File): void {
     this.selectedFile.set(file);
+    this.setUploadPreviewFromFile(file);
   }
 
   onFileCleared(): void {
     this.selectedFile.set(null);
+    this.clearUploadPreview();
   }
 
   onSaveDocument(): void {
@@ -507,7 +578,14 @@ export class ApplicationDetailComponent implements OnInit {
     const app = this.application();
     if (!app || !this.canCreateInvoice()) return;
     // Navigate to invoice creation page with applicationId pre-filled
-    this.router.navigate(['/invoices', 'new'], { queryParams: { applicationId: app.id } });
+    this.router.navigate(['/invoices', 'new'], {
+      queryParams: { applicationId: app.id },
+      state: {
+        from: 'applications',
+        focusId: app.id,
+        searchQuery: this.originSearchQuery(),
+      },
+    });
   }
 
   getWorkflowStatusVariant(
@@ -538,37 +616,30 @@ export class ApplicationDetailComponent implements OnInit {
    * 3. Fallback to the customer view
    */
   goBack(): void {
-    // If the navigation contained a 'from' value in state, use it
     const nav = this.router.getCurrentNavigation();
-    const stateFrom =
-      (nav && nav.extras && (nav.extras.state as any)?.from) ||
-      (history.state && (history.state as any).from);
-    if (stateFrom) {
-      if (typeof stateFrom === 'string') {
-        this.router.navigateByUrl(stateFrom);
-      } else {
-        this.router.navigate(stateFrom as any[]);
-      }
+    const st = (nav && nav.extras && (nav.extras.state as any)) || (history.state as any) || {};
+
+    const focusState: Record<string, unknown> = {
+      focusTable: true,
+    };
+    if (st.focusId) {
+      focusState['focusId'] = st.focusId;
+    }
+    if (st.searchQuery) {
+      focusState['searchQuery'] = st.searchQuery;
+    }
+
+    if (st.from === 'applications') {
+      this.router.navigate(['/applications'], { state: focusState });
+      return;
+    }
+    if (st.from === 'customers') {
+      this.router.navigate(['/customers'], { state: focusState });
       return;
     }
 
-    // Use browser history if available
-    try {
-      if (window.history.length > 1) {
-        this.location.back();
-        return;
-      }
-    } catch (e) {
-      // ignore and fallback
-    }
-
-    // Fallback to customer profile
-    const customerId = this.application()?.customer.id;
-    if (customerId) {
-      this.router.navigate(['/customers', customerId]);
-    } else {
-      this.router.navigate(['/customers']);
-    }
+    // Edge case: newly created applications should return to the list and focus the first row.
+    this.router.navigate(['/applications'], { state: { focusTable: true } });
   }
 
   private loadApplication(id: number): void {
@@ -640,6 +711,59 @@ export class ApplicationDetailComponent implements OnInit {
     const documents = application.documents.map((doc) =>
       doc.id === updated.id ? { ...doc, ...updated } : doc,
     );
-    this.application.set({ ...application, documents });
+    const requiredDocs = documents.filter((doc) => doc.required);
+    const allRequiredCompleted = requiredDocs.length
+      ? requiredDocs.every((doc) => doc.completed)
+      : Boolean(application.isDocumentCollectionCompleted);
+    this.application.set({
+      ...application,
+      documents,
+      status: allRequiredCompleted ? 'completed' : application.status,
+      isDocumentCollectionCompleted: allRequiredCompleted,
+    });
+  }
+
+  private setUploadPreviewFromFile(file: File): void {
+    this.clearUploadPreview();
+    const type = file.type.toLowerCase();
+    if (type.startsWith('image/')) {
+      this.uploadPreviewType.set('image');
+    } else if (type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+      this.uploadPreviewType.set('pdf');
+    } else if (/\.(png|jpe?g)$/i.test(file.name)) {
+      this.uploadPreviewType.set('image');
+    } else {
+      this.uploadPreviewType.set('unknown');
+      this.uploadPreviewUrl.set(null);
+      return;
+    }
+    this.uploadPreviewUrl.set(URL.createObjectURL(file));
+  }
+
+  private getPreviewTypeFromUrl(url?: string | null): 'image' | 'pdf' | 'unknown' {
+    if (!url) {
+      return 'unknown';
+    }
+    const lower = url.toLowerCase();
+    if (lower.endsWith('.pdf')) {
+      return 'pdf';
+    }
+    if (/\.(png|jpe?g)$/i.test(lower)) {
+      return 'image';
+    }
+    return 'unknown';
+  }
+
+  private clearUploadPreview(): void {
+    const url = this.uploadPreviewUrl();
+    if (url && url.startsWith('blob:')) {
+      try {
+        URL.revokeObjectURL(url);
+      } catch (e) {
+        // ignore
+      }
+    }
+    this.uploadPreviewUrl.set(null);
+    this.uploadPreviewType.set('unknown');
   }
 }

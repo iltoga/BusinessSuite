@@ -134,6 +134,17 @@ aside nav a.active {
   color: inherit;
 }
 
+/* Dropdown menu item hover/keyboard highlight (match sidebar hover) */
+z-dropdown-menu-item:hover,
+[z-dropdown-menu-item]:hover,
+z-dropdown-menu-item[data-highlighted],
+[z-dropdown-menu-item][data-highlighted],
+z-dropdown-menu-item[data-highlighted='true'],
+[z-dropdown-menu-item][data-highlighted='true'] {
+  background-color: color-mix(in oklab, var(--color-accent) 50%, transparent);
+  color: var(--color-foreground);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

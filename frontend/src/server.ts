@@ -16,6 +16,31 @@ const app = express();
 const angularApp = new AngularNodeAppEngine();
 
 /**
+ * Handle browser-side logs - Must be defined BEFORE proxy to avoid being forwarded to Django backend
+ */
+app.post('/api/client-logs', express.json(), (req, res) => {
+  const { level, message, details, url } = req.body;
+  const timestamp = new Date().toISOString();
+  // Prefix helps Grafana/Alloy filters
+  const logMessage = `[BROWSER] [${level?.toUpperCase() || 'INFO'}] [${timestamp}] ${url ? '(' + url + ') ' : ''}${message}${details ? ' ' + JSON.stringify(details) : ''}`;
+
+  switch (level) {
+    case 'error':
+      console.error(logMessage);
+      break;
+    case 'warn':
+      console.warn(logMessage);
+      break;
+    case 'debug':
+      console.debug(logMessage);
+      break;
+    default:
+      console.info(logMessage);
+  }
+  res.sendStatus(204);
+});
+
+/**
  * Proxy API requests to the backend
  */
 const backendUrl = process.env['BACKEND_URL'] || 'http://127.0.0.1:8000';

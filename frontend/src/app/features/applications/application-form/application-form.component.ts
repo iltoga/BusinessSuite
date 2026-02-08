@@ -23,6 +23,7 @@ import {
   ChangeDetectorRef,
   Component,
   computed,
+  HostListener,
   inject,
   OnDestroy,
   OnInit,
@@ -159,7 +160,24 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
         this.loadCustomerDetail(Number(customerIdParam));
       }
 
-      // Load product documents when product or customer changes (only in create mode)
+      // Load customer detail when customer ID changes
+      this.form
+        .get('customer')
+        ?.valueChanges.pipe(takeUntil(this.destroy$))
+        .subscribe((customerId) => {
+          if (customerId) {
+            this.loadCustomerDetail(Number(customerId));
+          } else {
+            this.selectedCustomer.set(null);
+            // If product is set, reload docs (to re-evaluate without customer)
+            const productId = this.form.get('product')?.value;
+            if (productId) {
+              this.loadProductDocuments(Number(productId));
+            }
+          }
+        });
+
+      // Load product documents when product changes
       this.form
         .get('product')
         ?.valueChanges.pipe(takeUntil(this.destroy$))
@@ -168,19 +186,6 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
             this.loadProductDocuments(Number(productId));
           } else {
             this.documentsArray.clear();
-          }
-        });
-
-      this.form
-        .get('customer')
-        ?.valueChanges.pipe(takeUntil(this.destroy$))
-        .subscribe((customerId) => {
-          if (customerId) {
-            this.loadCustomerDetail(Number(customerId));
-          }
-          const productId = this.form.get('product')?.value;
-          if (productId) {
-            this.loadProductDocuments(Number(productId));
           }
         });
     }
@@ -223,7 +228,14 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
 
   private loadCustomerDetail(customerId: number): void {
     this.customersService.customersRetrieve(customerId).subscribe({
-      next: (customer) => this.selectedCustomer.set(customer),
+      next: (customer) => {
+        this.selectedCustomer.set(customer);
+        // Refresh documents if product is already selected to re-check for auto-imports
+        const productId = this.form.get('product')?.value;
+        if (productId && !this.isEditMode()) {
+          this.loadProductDocuments(Number(productId));
+        }
+      },
       error: () => this.selectedCustomer.set(null),
     });
   }
@@ -258,10 +270,6 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
 
         processDocs(data.requiredDocuments, true);
         processDocs(data.optionalDocuments, false);
-
-        if (passportAutoImported) {
-          this.toast.info('Passport file automatically imported from Customer profile');
-        }
 
         this.documentsLoading.set(false);
         // ensure template updates under OnPush
@@ -321,9 +329,8 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
       if (current !== asString) {
         this.form.patchValue({ product: asString });
       }
-      // Open panel and load documents immediately
+      // Open panel - loading will be handled by valueChanges subscription
       this.documentsPanelOpen.set(true);
-      this.loadProductDocuments(Number(productId));
     } else {
       // Clear selection and any document rows and close panel
       this.form.patchValue({ product: null });
@@ -343,11 +350,6 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
       customerControl?.enable({ emitEvent: false });
       productControl?.enable({ emitEvent: false });
     }
-  }
-
-  ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
   }
 
   submit(): void {
@@ -435,18 +437,42 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
    */
   goBack(): void {
     const nav = this.router.getCurrentNavigation();
-    const stateFrom =
-      (nav && nav.extras && (nav.extras.state as any)?.from) ||
-      (history.state && (history.state as any).from);
-    if (stateFrom) {
-      if (typeof stateFrom === 'string') {
-        this.router.navigateByUrl(stateFrom);
-      } else {
-        this.router.navigate(stateFrom as any[]);
+    // Be safe under SSR by preferring router navigation state and guarding access to window.history
+    let st: any = (nav && nav.extras && (nav.extras.state as any)) || {};
+    try {
+      if (typeof window !== 'undefined' && history && (history as any).state) {
+        st = { ...(st || {}), ...((history as any).state || {}) };
       }
+    } catch {
+      // ignore (SSR or no history)
+    }
+
+    const stateFrom = st?.from;
+    const focusId = st?.focusId;
+
+    const focusState: Record<string, unknown> = { focusTable: true };
+    if (focusId) {
+      focusState['focusId'] = focusId;
+    } else if (this.applicationId()) {
+      focusState['focusId'] = this.applicationId();
+    }
+
+    // Preserve searchQuery from the original navigation state so the list restores the search box
+    if (st?.searchQuery) {
+      focusState['searchQuery'] = st.searchQuery;
+    }
+
+    // If source list is known, go back there with focus
+    if (stateFrom === 'customers') {
+      this.router.navigate(['/customers'], { state: focusState });
+      return;
+    }
+    if (stateFrom === 'applications') {
+      this.router.navigate(['/applications'], { state: focusState });
       return;
     }
 
+    // Fallback logic if from state is missing
     try {
       if (window.history.length > 1) {
         this.location.back();
@@ -468,7 +494,49 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.router.navigate(['/applications']);
+    this.router.navigate(['/applications'], { state: focusState });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  handleGlobalKeydown(event: KeyboardEvent): void {
+    // Esc --> Cancel
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.goBack();
+      return;
+    }
+
+    // cmd+s (mac) or ctrl+s (windows/linux) --> save
+    const isSaveKey = (event.ctrlKey || event.metaKey) && (event.key === 's' || event.key === 'S');
+    if (isSaveKey) {
+      event.preventDefault();
+      this.submit();
+      return;
+    }
+
+    const activeElement = document.activeElement;
+    const isInput =
+      activeElement instanceof HTMLInputElement ||
+      activeElement instanceof HTMLTextAreaElement ||
+      (activeElement instanceof HTMLElement && activeElement.isContentEditable);
+
+    if (isInput) return;
+
+    // B or Left Arrow -> Go back to list that opened the view and focus originating row
+    if (
+      (event.key === 'B' || event.key === 'ArrowLeft') &&
+      !event.ctrlKey &&
+      !event.altKey &&
+      !event.metaKey
+    ) {
+      event.preventDefault();
+      this.goBack();
+    }
   }
 
   private buildAuthHeaders(): HttpHeaders | undefined {

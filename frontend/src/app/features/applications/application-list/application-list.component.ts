@@ -1,7 +1,9 @@
-import { CommonModule } from '@angular/common';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
+  HostListener,
+  PLATFORM_ID,
   computed,
   inject,
   signal,
@@ -9,12 +11,16 @@ import {
   type OnInit,
   type TemplateRef,
 } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 
 import { CustomerApplicationsService } from '@/core/api/api/customer-applications.service';
 import { DocApplicationSerializerWithRelations } from '@/core/api/model/doc-application-serializer-with-relations';
 import { AuthService } from '@/core/services/auth.service';
 import { GlobalToastService } from '@/core/services/toast.service';
+import {
+  ApplicationDeleteDialogComponent,
+  type ApplicationDeleteDialogData,
+} from '@/shared/components/application-delete-dialog';
 import { ZardBadgeImports } from '@/shared/components/badge';
 import {
   BulkDeleteDialogComponent,
@@ -25,11 +31,11 @@ import { ConfirmDialogComponent } from '@/shared/components/confirm-dialog/confi
 import {
   DataTableComponent,
   type ColumnConfig,
+  type DataTableAction,
   type SortEvent,
 } from '@/shared/components/data-table/data-table.component';
 import { PaginationControlsComponent } from '@/shared/components/pagination-controls';
 import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
-import { ZardTooltipImports } from '@/shared/components/tooltip';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 
 @Component({
@@ -42,10 +48,10 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
     SearchToolbarComponent,
     PaginationControlsComponent,
     ZardButtonComponent,
+    ApplicationDeleteDialogComponent,
     ConfirmDialogComponent,
     BulkDeleteDialogComponent,
     ...ZardBadgeImports,
-    ...ZardTooltipImports,
   ],
   templateUrl: './application-list.component.html',
   styleUrls: ['./application-list.component.css'],
@@ -55,6 +61,8 @@ export class ApplicationListComponent implements OnInit {
   private service = inject(CustomerApplicationsService);
   private authService = inject(AuthService);
   private toast = inject(GlobalToastService);
+  private router = inject(Router);
+  private platformId = inject(PLATFORM_ID);
 
   readonly items = signal<DocApplicationSerializerWithRelations[]>([]);
   readonly isLoading = signal(false);
@@ -66,9 +74,15 @@ export class ApplicationListComponent implements OnInit {
   readonly ordering = signal<string | undefined>('-id');
   readonly isSuperuser = this.authService.isSuperuser;
 
+  // When navigating back to the list we may want to focus a specific id or the table
+  private readonly focusTableOnInit = signal(false);
+  private readonly focusIdOnInit = signal<number | null>(null);
+
   readonly confirmOpen = signal(false);
   readonly confirmMessage = signal('');
   readonly pendingDelete = signal<DocApplicationSerializerWithRelations | null>(null);
+  readonly deleteWithInvoiceOpen = signal(false);
+  readonly deleteWithInvoiceData = signal<ApplicationDeleteDialogData | null>(null);
 
   readonly bulkDeleteOpen = signal(false);
   readonly bulkDeleteData = signal<BulkDeleteDialogData | null>(null);
@@ -94,14 +108,13 @@ export class ApplicationListComponent implements OnInit {
     viewChild.required<
       TemplateRef<{ $implicit: DocApplicationSerializerWithRelations; value: any; row: any }>
     >('columnStatus');
-  private readonly actionsTemplate =
+  private readonly createdAtTemplate =
     viewChild.required<
       TemplateRef<{ $implicit: DocApplicationSerializerWithRelations; value: any; row: any }>
-    >('columnActions');
-  private readonly invoiceActionsTemplate =
-    viewChild.required<
-      TemplateRef<{ $implicit: DocApplicationSerializerWithRelations; value: any; row: any }>
-    >('columnInvoiceActions');
+    >('columnCreatedAt');
+
+  // Access the data table for focus management
+  private readonly dataTable = viewChild.required(DataTableComponent);
 
   readonly columns = computed<ColumnConfig[]>(() => [
     { key: 'id', header: 'ID', sortable: true, sortKey: 'id' },
@@ -133,8 +146,84 @@ export class ApplicationListComponent implements OnInit {
       sortKey: 'status',
       template: this.statusTemplate(),
     },
-    { key: 'actions', header: 'Application Actions', template: this.actionsTemplate() },
-    { key: 'invoiceActions', header: 'Invoice Actions', template: this.invoiceActionsTemplate() },
+    {
+      key: 'createdAt',
+      header: 'Added/Updated',
+      sortable: true,
+      sortKey: 'created_at',
+      template: this.createdAtTemplate(),
+    },
+    { key: 'actions', header: 'Actions' },
+  ]);
+
+  readonly actions = computed<DataTableAction<DocApplicationSerializerWithRelations>[]>(() => [
+    {
+      label: 'Manage',
+      icon: 'eye',
+      variant: 'default',
+      action: (item) =>
+        this.router.navigate(['/applications', item.id], {
+          state: { from: 'applications', focusId: item.id, searchQuery: this.query() },
+        }),
+    },
+    {
+      label: 'Edit Application',
+      icon: 'settings',
+      variant: 'warning',
+      isVisible: (item) => item.status !== 'completed',
+      action: (item) =>
+        this.router.navigate(['/applications', item.id, 'edit'], {
+          state: { from: 'applications', focusId: item.id, searchQuery: this.query() },
+        }),
+    },
+    {
+      label: 'Force Close',
+      icon: 'ban',
+      variant: 'outline',
+      isVisible: (item) => this.canForceClose(item),
+      action: (item) => this.confirmForceClose(item),
+    },
+    {
+      label: 'Create Invoice',
+      icon: 'plus',
+      variant: 'success',
+      shortcut: 'i',
+      isVisible: (item) => Boolean(item.readyForInvoice),
+      action: (item) =>
+        this.router.navigate(['/invoices', 'new'], {
+          queryParams: { applicationId: item.id },
+          state: { from: 'applications', focusId: item.id, searchQuery: this.query() },
+        }),
+    },
+    {
+      label: 'View Invoice',
+      icon: 'eye',
+      variant: 'default',
+      isVisible: (item) => Boolean(item.hasInvoice && item.invoiceId),
+      action: (item) =>
+        this.router.navigate(['/invoices', item.invoiceId], {
+          state: { from: 'applications', focusId: item.id, searchQuery: this.query() },
+        }),
+    },
+    {
+      label: 'Update Invoice',
+      icon: 'settings',
+      variant: 'warning',
+      isVisible: (item) => Boolean(item.hasInvoice && item.invoiceId),
+      action: (item) =>
+        this.router.navigate(['/invoices', item.invoiceId, 'edit'], {
+          state: { from: 'applications', focusId: item.id, searchQuery: this.query() },
+        }),
+    },
+    {
+      label: 'Delete',
+      icon: 'trash',
+      variant: 'destructive',
+      isDestructive: true,
+      isVisible: () => this.isSuperuser(),
+      action: (item) =>
+        item.hasInvoice ? this.confirmDeleteWithInvoice(item) : this.confirmDelete(item),
+    },
   ]);
 
   readonly totalPages = computed(() => {
@@ -143,7 +232,36 @@ export class ApplicationListComponent implements OnInit {
     return Math.max(1, Math.ceil(total / size));
   });
 
+  @HostListener('window:keydown', ['$event'])
+  handleGlobalKeydown(event: KeyboardEvent): void {
+    const activeElement = document.activeElement;
+    const isInput =
+      activeElement instanceof HTMLInputElement ||
+      activeElement instanceof HTMLTextAreaElement ||
+      (activeElement instanceof HTMLElement && activeElement.isContentEditable);
+
+    if (isInput) return;
+
+    // Shift+N for New Application
+    if (event.key === 'N' && !event.ctrlKey && !event.altKey && !event.metaKey) {
+      event.preventDefault();
+      this.router.navigate(['/applications', 'new'], {
+        state: { from: 'applications', searchQuery: this.query() },
+      });
+    }
+  }
+
   ngOnInit(): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+    // Read navigation state (set by back-navigation) and remember whether we should focus the table or a specific id after load
+    const st = (window as any).history.state || {};
+    this.focusTableOnInit.set(Boolean(st.focusTable));
+    this.focusIdOnInit.set(st.focusId ? Number(st.focusId) : null);
+    if (st.searchQuery) {
+      this.query.set(String(st.searchQuery));
+    }
     this.load();
   }
 
@@ -174,6 +292,18 @@ export class ApplicationListComponent implements OnInit {
     this.confirmOpen.set(true);
   }
 
+  confirmDeleteWithInvoice(row: DocApplicationSerializerWithRelations): void {
+    if (!this.isSuperuser()) {
+      return;
+    }
+    this.pendingDelete.set(row);
+    this.deleteWithInvoiceData.set({
+      applicationId: row.id,
+      invoiceId: row.invoiceId,
+    });
+    this.deleteWithInvoiceOpen.set(true);
+  }
+
   confirmDeleteAction(): void {
     const row = this.pendingDelete();
     if (!row) {
@@ -199,8 +329,58 @@ export class ApplicationListComponent implements OnInit {
   }
 
   cancelDeleteAction(): void {
+    const row = this.pendingDelete();
     this.confirmOpen.set(false);
     this.pendingDelete.set(null);
+
+    // Return focus to the row that was being acted on
+    if (row) {
+      const table = this.dataTable();
+      if (table) {
+        table.focusRowById(row.id);
+      }
+    }
+  }
+
+  confirmDeleteWithInvoiceAction(): void {
+    const row = this.pendingDelete();
+    if (!row) {
+      return;
+    }
+
+    this.service.customerApplicationsDestroy(row.id).subscribe({
+      next: () => {
+        this.toast.success('Application deleted');
+        this.deleteWithInvoiceOpen.set(false);
+        this.deleteWithInvoiceData.set(null);
+        this.pendingDelete.set(null);
+        this.load();
+      },
+      error: (error) => {
+        const message = extractServerErrorMessage(error);
+        this.toast.error(
+          message ? `Failed to delete application: ${message}` : 'Failed to delete application',
+        );
+        this.deleteWithInvoiceOpen.set(false);
+        this.deleteWithInvoiceData.set(null);
+        this.pendingDelete.set(null);
+      },
+    });
+  }
+
+  cancelDeleteWithInvoiceAction(): void {
+    const row = this.pendingDelete();
+    this.deleteWithInvoiceOpen.set(false);
+    this.deleteWithInvoiceData.set(null);
+    this.pendingDelete.set(null);
+
+    // Return focus to the row that was being acted on
+    if (row) {
+      const table = this.dataTable();
+      if (table) {
+        table.focusRowById(row.id);
+      }
+    }
   }
 
   canForceClose(row: DocApplicationSerializerWithRelations): boolean {
@@ -286,6 +466,19 @@ export class ApplicationListComponent implements OnInit {
           this.items.set(res.results ?? []);
           this.totalItems.set(res.count ?? 0);
           this.isLoading.set(false);
+
+          // Focus table or a specific row if requested by navigation state
+          const table = this.dataTable();
+          if (table) {
+            const focusId = this.focusIdOnInit();
+            if (focusId) {
+              this.focusIdOnInit.set(null);
+              table.focusRowById(focusId);
+            } else if (this.focusTableOnInit()) {
+              this.focusTableOnInit.set(false);
+              table.focusFirstRowIfNone();
+            }
+          }
         },
         error: () => {
           this.toast.error('Failed to load applications');

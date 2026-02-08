@@ -38,8 +38,16 @@
       </div>
       <div class="flex flex-wrap gap-2">
         <a z-button zType="outline" routerLink="/customers/{{ customer()!.id }}/edit">Edit</a>
-        <button z-button zType="destructive" (click)="onDelete()">Delete</button>
-        <a z-button zType="ghost" routerLink="/customers">Back to list</a>
+        @if (isSuperuser()) {
+          <button z-button zType="destructive" (click)="onDelete()">Delete</button>
+        }
+        <a
+          z-button
+          zType="ghost"
+          [routerLink]="'/customers'"
+          [state]="{ focusTable: true, focusId: customer()!.id, searchQuery: originSearchQuery() }"
+          >Back to list</a
+        >
       </div>
     </div>
 

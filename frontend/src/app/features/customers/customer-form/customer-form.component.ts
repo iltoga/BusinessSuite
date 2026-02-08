@@ -3,6 +3,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  HostListener,
   OnInit,
   computed,
   inject,
@@ -76,6 +77,44 @@ export class CustomerFormComponent implements OnInit {
   readonly ocrMessageTone = signal<'success' | 'warning' | 'error' | 'info' | null>(null);
   readonly ocrData = signal<OcrStatusResponse | null>(null);
   readonly passportMetadata = signal<Record<string, unknown> | null>(null);
+
+  @HostListener('window:keydown', ['$event'])
+  handleGlobalKeydown(event: KeyboardEvent): void {
+    // Esc --> Cancel
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.onCancel();
+      return;
+    }
+
+    // cmd+s (mac) or ctrl+s (windows/linux) --> save
+    const isSaveKey = (event.ctrlKey || event.metaKey) && (event.key === 's' || event.key === 'S');
+    if (isSaveKey) {
+      event.preventDefault();
+      this.onSubmit();
+      return;
+    }
+
+    // Only trigger B/Left Arrow if no input is focused (to avoid interference with typing)
+    const activeElement = document.activeElement;
+    const isInput =
+      activeElement instanceof HTMLInputElement ||
+      activeElement instanceof HTMLTextAreaElement ||
+      (activeElement instanceof HTMLElement && activeElement.isContentEditable);
+
+    if (isInput) return;
+
+    // B or Left Arrow --> Back to list
+    if (
+      (event.key === 'B' || event.key === 'ArrowLeft') &&
+      !event.ctrlKey &&
+      !event.altKey &&
+      !event.metaKey
+    ) {
+      event.preventDefault();
+      this.onCancel();
+    }
+  }
 
   private ocrPollTimer: number | null = null;
 
@@ -265,7 +304,15 @@ export class CustomerFormComponent implements OnInit {
 
     this.destroyRef.onDestroy(() => {
       if (this.ocrPollTimer) {
-        window.clearTimeout(this.ocrPollTimer);
+        try {
+          if (typeof window !== 'undefined') {
+            window.clearTimeout(this.ocrPollTimer);
+          } else {
+            try {
+              clearTimeout(this.ocrPollTimer as any);
+            } catch {}
+          }
+        } catch {}
       }
     });
   }
@@ -635,6 +682,18 @@ export class CustomerFormComponent implements OnInit {
     }
   }
 
+  onCancel(): void {
+    const idParam = this.route.snapshot.paramMap.get('id');
+    const st = (history.state as any) || {};
+    const state: Record<string, unknown> = { focusTable: true };
+    if (idParam) {
+      const id = Number(idParam);
+      if (id) state['focusId'] = id;
+    }
+    if (st.searchQuery) state['searchQuery'] = st.searchQuery;
+    this.router.navigate(['/customers'], { state });
+  }
+
   onSubmit(): void {
     this.submitted.set(true);
 
@@ -644,16 +703,33 @@ export class CustomerFormComponent implements OnInit {
     }
 
     const rawValue = this.form.getRawValue();
+
+    // Use a helper to format dates consistently in local time (YYYY-MM-DD)
+    const formatDate = (date: Date | null) => {
+      if (!date || isNaN(date.getTime())) return null;
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    // Construct payload with camelCase keys expected by the API
     const payload = {
       ...rawValue,
-      birthdate: rawValue.birthdate ? rawValue.birthdate.toISOString().split('T')[0] : null,
-      passport_issue_date: rawValue.passport_issue_date
-        ? rawValue.passport_issue_date.toISOString().split('T')[0]
-        : null,
-      passport_expiration_date: rawValue.passport_expiration_date
-        ? rawValue.passport_expiration_date.toISOString().split('T')[0]
-        : null,
-      passport_metadata: this.passportMetadata(),
+      customerType: rawValue.customer_type,
+      firstName: rawValue.first_name,
+      lastName: rawValue.last_name,
+      companyName: rawValue.company_name,
+      addressBali: rawValue.address_bali,
+      addressAbroad: rawValue.address_abroad,
+      birthdate: formatDate(rawValue.birthdate),
+      passportNumber: rawValue.passport_number,
+      passportIssueDate: formatDate(rawValue.passport_issue_date),
+      passportExpirationDate: formatDate(rawValue.passport_expiration_date),
+      birthPlace: rawValue.birth_place,
+      notifyDocumentsExpiration: rawValue.notify_documents_expiration,
+      notifyBy: rawValue.notify_by,
+      passportMetadata: this.passportMetadata(),
     };
     this.isLoading.set(true);
 

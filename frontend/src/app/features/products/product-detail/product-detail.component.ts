@@ -3,6 +3,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  HostListener,
   inject,
   PLATFORM_ID,
   signal,
@@ -10,7 +11,7 @@ import {
   type OnInit,
   type TemplateRef,
 } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import {
   ProductsService,
@@ -52,6 +53,7 @@ import {
 })
 export class ProductDetailComponent implements OnInit {
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
   private productsApi = inject(ProductsService);
   private toast = inject(GlobalToastService);
   private platformId = inject(PLATFORM_ID);
@@ -63,6 +65,7 @@ export class ProductDetailComponent implements OnInit {
 
   readonly product = signal<ProductDetail | null>(null);
   readonly isLoading = signal(false);
+  readonly originSearchQuery = signal<string | null>(null);
 
   readonly requiredDocuments = computed<DocumentType[]>(
     () => this.product()?.requiredDocumentTypes ?? [],
@@ -84,10 +87,51 @@ export class ProductDetailComponent implements OnInit {
     { key: 'lastStep', header: 'Last step', template: this.lastStepTemplate() },
   ]);
 
+  @HostListener('window:keydown', ['$event'])
+  handleGlobalKeydown(event: KeyboardEvent): void {
+    const activeElement = document.activeElement;
+    const isInput =
+      activeElement instanceof HTMLInputElement ||
+      activeElement instanceof HTMLTextAreaElement ||
+      (activeElement instanceof HTMLElement && activeElement.isContentEditable);
+
+    if (isInput) return;
+
+    const product = this.product();
+    if (!product) return;
+
+    // E --> Edit
+    if (event.key === 'E' && !event.ctrlKey && !event.altKey && !event.metaKey) {
+      event.preventDefault();
+      this.router.navigate(['/products', product.id, 'edit'], {
+        state: { from: 'products', focusId: product.id, searchQuery: this.originSearchQuery() },
+      });
+    }
+
+    // B or Left Arrow --> Back to list
+    if (
+      (event.key === 'B' || event.key === 'ArrowLeft') &&
+      !event.ctrlKey &&
+      !event.altKey &&
+      !event.metaKey
+    ) {
+      event.preventDefault();
+      this.router.navigate(['/products'], {
+        state: {
+          focusTable: true,
+          focusId: product.id,
+          searchQuery: this.originSearchQuery(),
+        },
+      });
+    }
+  }
+
   ngOnInit(): void {
     if (!isPlatformBrowser(this.platformId)) {
       return;
     }
+    const st = (window as any).history.state || {};
+    this.originSearchQuery.set(st.searchQuery ?? null);
     const idParam = this.route.snapshot.paramMap.get('id');
     if (!idParam) {
       return;

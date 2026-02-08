@@ -3,9 +3,7 @@
     <h1 class="text-3xl font-bold tracking-tight">
       {{ isEditMode() ? 'Edit Invoice' : 'New Invoice' }}
     </h1>
-    <a routerLink="/invoices">
-      <z-button zType="ghost" zSize="sm">Back to list</z-button>
-    </a>
+    <z-button zType="ghost" zSize="sm" (click)="goBack()">Back to list</z-button>
   </div>
 
   <form [formGroup]="form" class="space-y-6">

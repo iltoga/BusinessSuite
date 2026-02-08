@@ -1,8 +1,9 @@
-import { CommonModule } from '@angular/common';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  PLATFORM_ID,
   computed,
   effect,
   forwardRef,
@@ -34,6 +35,8 @@ import { ZardComboboxComponent, type ZardComboboxOption } from '@/shared/compone
 export class CustomerSelectComponent implements ControlValueAccessor {
   private customersService = inject(CustomersService);
   private destroyRef = inject(DestroyRef);
+  private platformId = inject(PLATFORM_ID);
+  private readonly isBrowser = isPlatformBrowser(this.platformId);
 
   readonly label = input<string>('Customer');
   readonly placeholder = input<string>('Select a customer...');
@@ -82,8 +85,14 @@ export class CustomerSelectComponent implements ControlValueAccessor {
     });
 
     this.destroyRef.onDestroy(() => {
-      if (this.searchTimer) {
-        window.clearTimeout(this.searchTimer);
+      if (this.searchTimer && this.isBrowser) {
+        try {
+          window.clearTimeout(this.searchTimer);
+        } catch {
+          try {
+            clearTimeout(this.searchTimer as any);
+          } catch {}
+        }
       }
     });
   }
@@ -121,8 +130,16 @@ export class CustomerSelectComponent implements ControlValueAccessor {
   }
 
   onSearchChange(query: string): void {
+    if (!this.isBrowser) return;
+
     if (this.searchTimer) {
-      window.clearTimeout(this.searchTimer);
+      try {
+        window.clearTimeout(this.searchTimer);
+      } catch {
+        try {
+          clearTimeout(this.searchTimer as any);
+        } catch {}
+      }
     }
     this.searchTimer = window.setTimeout(() => {
       this.loadCustomers(query);

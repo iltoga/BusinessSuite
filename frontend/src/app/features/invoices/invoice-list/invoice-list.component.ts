@@ -2,6 +2,7 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
+  HostListener,
   PLATFORM_ID,
   computed,
   inject,
@@ -10,7 +11,7 @@ import {
   type OnInit,
   type TemplateRef,
 } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 
 import { InvoicesService, type InvoiceList, type PaginatedInvoiceListList } from '@/core/api';
 import { AuthService } from '@/core/services/auth.service';
@@ -24,8 +25,12 @@ import { ZardButtonComponent } from '@/shared/components/button';
 import {
   DataTableComponent,
   type ColumnConfig,
+  type DataTableAction,
   type SortEvent,
 } from '@/shared/components/data-table/data-table.component';
+import { ShortcutHighlightPipe } from '@/shared/components/data-table/shortcut-highlight.pipe';
+import { ZardDropdownImports } from '@/shared/components/dropdown/dropdown.imports';
+import { ZardIconComponent } from '@/shared/components/icon';
 import {
   InvoiceDeleteDialogComponent,
   type InvoiceDeleteDialogResult,
@@ -50,6 +55,9 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
     BulkDeleteDialogComponent,
     InvoiceDeleteDialogComponent,
     InvoiceDownloadDropdownComponent,
+    ZardIconComponent,
+    ShortcutHighlightPipe,
+    ...ZardDropdownImports,
   ],
   templateUrl: './invoice-list.component.html',
   styleUrls: ['./invoice-list.component.css'],
@@ -60,6 +68,7 @@ export class InvoiceListComponent implements OnInit {
   private authService = inject(AuthService);
   private toast = inject(GlobalToastService);
   private platformId = inject(PLATFORM_ID);
+  private router = inject(Router);
 
   private readonly numberTemplate =
     viewChild.required<TemplateRef<{ $implicit: InvoiceList; value: any; row: InvoiceList }>>(
@@ -89,6 +98,13 @@ export class InvoiceListComponent implements OnInit {
     viewChild.required<TemplateRef<{ $implicit: InvoiceList; value: any; row: InvoiceList }>>(
       'actionsTemplate',
     );
+  private readonly createdAtTemplate =
+    viewChild.required<TemplateRef<{ $implicit: InvoiceList; value: any; row: InvoiceList }>>(
+      'createdAtTemplate',
+    );
+
+  // Access the data table for focus management
+  private readonly dataTable = viewChild.required(DataTableComponent);
 
   readonly invoices = signal<InvoiceList[]>([]);
   readonly isLoading = signal(false);
@@ -111,6 +127,10 @@ export class InvoiceListComponent implements OnInit {
   readonly bulkDeleteLabel = computed(() =>
     this.query().trim() ? 'Delete Selected Invoices' : 'Delete All Invoices',
   );
+
+  // When navigating back to the list we may want to focus a specific id or the table
+  private readonly focusTableOnInit = signal(false);
+  private readonly focusIdOnInit = signal<number | null>(null);
 
   readonly columns = computed<ColumnConfig<InvoiceList>[]>(() => [
     {
@@ -137,7 +157,43 @@ export class InvoiceListComponent implements OnInit {
       template: this.statusTemplate(),
     },
     { key: 'amounts', header: 'Totals', template: this.amountsTemplate() },
+    {
+      key: 'createdAt',
+      header: 'Added/Updated',
+      sortable: true,
+      sortKey: 'created_at',
+      template: this.createdAtTemplate(),
+    },
     { key: 'actions', header: 'Actions', template: this.actionsTemplate() },
+  ]);
+
+  readonly actions = computed<DataTableAction<InvoiceList>[]>(() => [
+    {
+      label: 'View',
+      icon: 'eye',
+      variant: 'default',
+      action: (item) =>
+        this.router.navigate(['/invoices', item.id], {
+          state: { from: 'invoices', focusId: item.id, searchQuery: this.query() },
+        }),
+    },
+    {
+      label: 'Edit',
+      icon: 'settings',
+      variant: 'warning',
+      action: (item) =>
+        this.router.navigate(['/invoices', item.id, 'edit'], {
+          state: { from: 'invoices', focusId: item.id, searchQuery: this.query() },
+        }),
+    },
+    {
+      label: 'Delete',
+      icon: 'trash',
+      variant: 'destructive',
+      isDestructive: true,
+      isVisible: () => this.isSuperuser(),
+      action: (item) => this.openInvoiceDeleteDialog(item),
+    },
   ]);
 
   readonly totalPages = computed(() => {
@@ -146,9 +202,34 @@ export class InvoiceListComponent implements OnInit {
     return Math.max(1, Math.ceil(total / size));
   });
 
+  @HostListener('window:keydown', ['$event'])
+  handleGlobalKeydown(event: KeyboardEvent): void {
+    const activeElement = document.activeElement;
+    const isInput =
+      activeElement instanceof HTMLInputElement ||
+      activeElement instanceof HTMLTextAreaElement ||
+      (activeElement instanceof HTMLElement && activeElement.isContentEditable);
+
+    if (isInput) return;
+
+    // Shift+N for New Invoice
+    if (event.key === 'N' && !event.ctrlKey && !event.altKey && !event.metaKey) {
+      event.preventDefault();
+      this.router.navigate(['/invoices', 'new'], {
+        state: { from: 'invoices', searchQuery: this.query() },
+      });
+    }
+  }
+
   ngOnInit(): void {
     if (!isPlatformBrowser(this.platformId)) {
       return;
+    }
+    const st = (window as any).history.state || {};
+    this.focusTableOnInit.set(Boolean(st.focusTable));
+    this.focusIdOnInit.set(st.focusId ? Number(st.focusId) : null);
+    if (st.searchQuery) {
+      this.query.set(String(st.searchQuery));
     }
     this.loadInvoices();
   }
@@ -397,6 +478,18 @@ export class InvoiceListComponent implements OnInit {
           this.invoices.set(response.results ?? []);
           this.totalItems.set(response.count ?? 0);
           this.isLoading.set(false);
+
+          const table = this.dataTable();
+          if (table) {
+            const focusId = this.focusIdOnInit();
+            if (focusId) {
+              this.focusIdOnInit.set(null);
+              table.focusRowById(focusId);
+            } else if (this.focusTableOnInit()) {
+              this.focusTableOnInit.set(false);
+              table.focusFirstRowIfNone();
+            }
+          }
         },
         error: () => {
           this.toast.error('Failed to load invoices');

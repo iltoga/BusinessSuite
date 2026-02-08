@@ -4,6 +4,7 @@
     z-button
     zType="outline"
     zSize="sm"
+    tabindex="-1"
     [zDisabled]="disabled() || !hasPrevious()"
     (click)="goToFirst()"
   >
@@ -16,19 +17,26 @@
     z-button
     zType="outline"
     zSize="sm"
+    tabindex="-1"
     [zDisabled]="disabled() || !hasPrevious()"
     (click)="goToPrevious()"
   >
     Previous
   </button>
 
-  <div class="px-3 text-sm text-muted-foreground">Page {{ page() }} of {{ totalPages() }}</div>
+  <div class="px-3 text-sm text-muted-foreground">
+    Page {{ page() }} of {{ totalPages() }}
+    @if (totalItems() !== null) {
+      <span>({{ totalItems() }})</span>
+    }
+  </div>
 
   <button
     type="button"
     z-button
     zType="outline"
     zSize="sm"
+    tabindex="-1"
     [zDisabled]="disabled() || !hasNext()"
     (click)="goToNext()"
   >
@@ -40,6 +48,7 @@
     z-button
     zType="outline"
     zSize="sm"
+    tabindex="-1"
     [zDisabled]="disabled() || !hasNext()"
     (click)="goToLast()"
   >

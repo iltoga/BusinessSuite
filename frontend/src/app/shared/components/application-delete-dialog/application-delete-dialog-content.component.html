@@ -1,0 +1,27 @@
+<div class="space-y-4 text-sm">
+  <div class="space-y-1">
+    <p class="font-medium">Delete application #{{ data.applicationId }}?</p>
+    <p class="text-muted-foreground">
+      This application has a related invoice
+      @if (data.invoiceId) {
+        #{{ data.invoiceId }}
+      }
+      . Deleting the application will also delete the invoice and cannot be undone.
+    </p>
+  </div>
+
+  <label class="flex items-start gap-2 text-sm">
+    <input
+      type="checkbox"
+      class="mt-0.5"
+      (change)="confirmChecked.set($any($event.target).checked)"
+    />
+    <span>I understand this will delete the linked invoice too.</span>
+  </label>
+
+  @if (showValidation()) {
+    <div class="text-xs text-destructive">
+      Please confirm the invoice deletion before continuing.
+    </div>
+  }
+</div>

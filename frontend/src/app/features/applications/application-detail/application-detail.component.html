@@ -267,6 +267,7 @@
                       <app-document-preview
                         [documentId]="doc.id"
                         [fileLink]="doc.fileLink"
+                        [centerInViewport]="true"
                         zType="default"
                         zSize="default"
                         label="View"
@@ -314,13 +315,11 @@
       }
     </z-card>
 
-    <z-card class="p-6">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="text-lg font-semibold">Optional Documents</h3>
-      </div>
-      @if (optionalDocuments().length === 0) {
-        <div class="text-sm text-muted-foreground">No optional documents pending.</div>
-      } @else {
+    @if (optionalDocuments().length > 0) {
+      <z-card class="p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-semibold">Optional Documents</h3>
+        </div>
         <div class="overflow-x-auto">
           <table class="w-full border-collapse">
             <thead>
@@ -343,8 +342,8 @@
             </tbody>
           </table>
         </div>
-      }
-    </z-card>
+      </z-card>
+    }
   </div>
 }
 
@@ -366,6 +365,8 @@
           [fileName]="selectedFile()?.name || selectedDocument()!.fileLink || null"
           [progress]="uploadProgress()"
           [disabled]="isSaving()"
+          [previewUrl]="inlinePreviewUrl()"
+          [previewType]="inlinePreviewType()"
           (fileSelected)="onFileSelected($event)"
           (cleared)="onFileCleared()"
         />
@@ -426,9 +427,11 @@
             <app-document-preview
               [documentId]="selectedDocument()!.id"
               [fileLink]="selectedDocument()!.fileLink"
+              [centerInViewport]="true"
               zType="outline"
               zSize="sm"
               label="Preview"
+              previewSize="md"
               (viewFull)="viewDocument(selectedDocument()!)"
             />
             @if (selectedDocument()!.docType.hasOcrCheck) {

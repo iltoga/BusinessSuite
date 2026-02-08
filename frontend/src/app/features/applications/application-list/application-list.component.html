@@ -1,7 +1,7 @@
 <div class="h-full flex flex-col gap-6">
   <div class="flex justify-between items-center">
     <h1 class="text-3xl font-bold tracking-tight">Applications</h1>
-    <a routerLink="/applications/new">
+    <a [routerLink]="'/applications/new'" [state]="{ from: 'applications', searchQuery: query() }">
       <z-button zType="default" zSize="default">New Application</z-button>
     </a>
   </div>
@@ -12,6 +12,7 @@
         [query]="query()"
         [placeholder]="'Search Applications...'"
         (queryChange)="onQueryChange($event)"
+        (tabOut)="dataTable.focusFirstRowIfNone()"
       >
         @if (isSuperuser() && totalItems() > 0) {
           <z-button zType="destructive" zSize="sm" (click)="openBulkDeleteDialog()">
@@ -23,9 +24,14 @@
 
     <div class="p-0">
       <app-data-table
+        #dataTable
         [columns]="columns()"
         [data]="items()"
+        [actions]="actions()"
         [isLoading]="isLoading()"
+        [currentPage]="page()"
+        [totalPages]="totalPages()"
+        (pageChange)="onPageChange($event)"
         (sortChange)="onSortChange($event)"
       >
         <ng-template #columnCustomer let-row>
@@ -55,59 +61,15 @@
             }
           }
         </ng-template>
-        <ng-template #columnActions let-row>
-          <div class="flex flex-wrap gap-1">
-            <a [routerLink]="['/applications', row.id]">
-              <z-button zType="secondary" zSize="sm">Manage</z-button>
-            </a>
-            @if (row.status !== 'completed') {
-              <a [routerLink]="['/applications', row.id, 'edit']">
-                <z-button zType="warning" zSize="sm">Edit</z-button>
-              </a>
-            }
-
-            @if (canForceClose(row)) {
-              <z-button zType="outline" zSize="sm" (click)="confirmForceClose(row)"
-                >Force Close</z-button
-              >
-            }
-
-            @if (isSuperuser()) {
-              <span
-                [zTooltip]="
-                  row.hasInvoice
-                    ? 'This application cannot be deleted because it has related invoices. You must delete the invoices first.'
-                    : ''
-                "
-                zPosition="top"
-              >
-                <z-button
-                  zType="destructive"
-                  zSize="sm"
-                  [zDisabled]="row.hasInvoice"
-                  (click)="confirmDelete(row)"
-                >
-                  Delete
-                </z-button>
-              </span>
-            }
-          </div>
-        </ng-template>
-        <ng-template #columnInvoiceActions let-row>
-          <div class="flex flex-wrap gap-1 items-center">
-            @if (row.hasInvoice && row.invoiceId) {
-              <a [routerLink]="['/invoices', row.invoiceId]">
-                <z-button zType="default" zSize="sm">View</z-button>
-              </a>
-              <a [routerLink]="['/invoices', row.invoiceId, 'edit']">
-                <z-button zType="warning" zSize="sm">Edit</z-button>
-              </a>
-            } @else if (row.readyForInvoice) {
-              <a [routerLink]="['/invoices', 'new']" [queryParams]="{ applicationId: row.id }">
-                <z-button zType="success" zSize="sm">Create</z-button>
-              </a>
-            } @else {
-              <z-badge zType="warning">Not Ready</z-badge>
+        <ng-template #columnCreatedAt let-row>
+          <div class="flex flex-col">
+            <span class="text-sm">{{
+              $any(row).createdAt ? ($any(row).createdAt | date: 'dd MMM yyyy HH:mm:ss') : ''
+            }}</span>
+            @if ($any(row).updatedAt && $any(row).updatedAt !== $any(row).createdAt) {
+              <span class="text-xs text-muted-foreground">{{
+                $any(row).updatedAt ? ($any(row).updatedAt | date: 'dd MMM yyyy HH:mm:ss') : ''
+              }}</span>
             }
           </div>
         </ng-template>
@@ -118,6 +80,7 @@
       <app-pagination-controls
         [page]="page()"
         [totalPages]="totalPages()"
+        [totalItems]="totalItems()"
         (pageChange)="onPageChange($event)"
       />
     </div>
@@ -133,6 +96,13 @@
   cancelText="Cancel"
   (confirmed)="confirmDeleteAction()"
   (cancelled)="cancelDeleteAction()"
+/>
+
+<app-application-delete-dialog
+  [isOpen]="deleteWithInvoiceOpen()"
+  [data]="deleteWithInvoiceData()"
+  (confirmed)="confirmDeleteWithInvoiceAction()"
+  (cancelled)="cancelDeleteWithInvoiceAction()"
 />
 
 <app-bulk-delete-dialog

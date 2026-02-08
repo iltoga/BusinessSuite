@@ -2,6 +2,7 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
+  HostListener,
   PLATFORM_ID,
   computed,
   inject,
@@ -108,6 +109,43 @@ export class ProductFormComponent implements OnInit {
     return tasks.filter((group) => group.get('lastStep')?.value).length > 1;
   });
 
+  @HostListener('window:keydown', ['$event'])
+  handleGlobalKeydown(event: KeyboardEvent): void {
+    // Esc --> Cancel
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.goBack();
+      return;
+    }
+
+    // cmd+s (mac) or ctrl+s (windows/linux) --> save
+    const isSaveKey = (event.ctrlKey || event.metaKey) && (event.key === 's' || event.key === 'S');
+    if (isSaveKey) {
+      event.preventDefault();
+      this.save();
+      return;
+    }
+
+    const activeElement = document.activeElement;
+    const isInput =
+      activeElement instanceof HTMLInputElement ||
+      activeElement instanceof HTMLTextAreaElement ||
+      (activeElement instanceof HTMLElement && activeElement.isContentEditable);
+
+    if (isInput) return;
+
+    // B or Left Arrow --> Back to list
+    if (
+      (event.key === 'B' || event.key === 'ArrowLeft') &&
+      !event.ctrlKey &&
+      !event.altKey &&
+      !event.metaKey
+    ) {
+      event.preventDefault();
+      this.goBack();
+    }
+  }
+
   get tasksArray(): FormArray<FormGroup> {
     return this.form.get('tasks') as FormArray<FormGroup>;
   }
@@ -160,6 +198,23 @@ export class ProductFormComponent implements OnInit {
   removeTask(index: number): void {
     this.tasksArray.removeAt(index);
     this.renumberSteps();
+  }
+
+  goBack(): void {
+    const nav = this.router.getCurrentNavigation();
+    const st = (nav && nav.extras && (nav.extras.state as any)) || (history.state as any);
+
+    const focusState: Record<string, unknown> = { focusTable: true };
+    if (st?.focusId) {
+      focusState['focusId'] = st.focusId;
+    } else if (this.product()?.id) {
+      focusState['focusId'] = this.product()?.id;
+    }
+    if (st?.searchQuery) {
+      focusState['searchQuery'] = st.searchQuery;
+    }
+
+    this.router.navigate(['/products'], { state: focusState });
   }
 
   toggleLastStep(index: number): void {

@@ -5,7 +5,7 @@
       <a routerLink="/invoices/import">
         <z-button zType="secondary" zSize="default">Import Invoice</z-button>
       </a>
-      <a routerLink="/invoices/new">
+      <a routerLink="/invoices/new" [state]="{ from: 'invoices', searchQuery: query() }">
         <z-button zType="default" zSize="default">New Invoice</z-button>
       </a>
     </div>
@@ -17,6 +17,7 @@
         [query]="query()"
         [placeholder]="'Search invoices...'"
         (queryChange)="onQueryChange($event)"
+        (tabOut)="dataTable.focusFirstRowIfNone()"
       >
         <div class="flex items-center gap-3">
           <div class="flex items-center gap-2">
@@ -45,9 +46,14 @@
 
     <div class="p-0">
       <app-data-table
+        #dataTable
         [columns]="columns()"
         [data]="invoices()"
+        [actions]="actions()"
         [isLoading]="isLoading()"
+        [currentPage]="page()"
+        [totalPages]="totalPages()"
+        (pageChange)="onPageChange($event)"
         (sortChange)="onSortChange($event)"
       />
     </div>
@@ -56,6 +62,7 @@
       <app-pagination-controls
         [page]="page()"
         [totalPages]="totalPages()"
+        [totalItems]="totalItems()"
         (pageChange)="onPageChange($event)"
       />
     </div>
@@ -63,7 +70,11 @@
 </div>
 
 <ng-template #numberTemplate let-row>
-  <a [routerLink]="['/invoices', row.id]" class="font-medium hover:underline">
+  <a
+    [routerLink]="['/invoices', row.id]"
+    [state]="{ from: 'invoices', focusId: row.id, searchQuery: query() }"
+    class="font-medium hover:underline"
+  >
     {{ row.invoiceNoDisplay || row.invoiceNo || '—' }}
   </a>
 </ng-template>
@@ -112,15 +123,21 @@
   </div>
 </ng-template>
 
+<ng-template #createdAtTemplate let-row>
+  <div class="flex flex-col">
+    <span class="text-sm">{{
+      $any(row).createdAt ? ($any(row).createdAt | date: 'dd MMM yyyy HH:mm:ss') : ''
+    }}</span>
+    @if ($any(row).updatedAt && $any(row).updatedAt !== $any(row).createdAt) {
+      <span class="text-xs text-muted-foreground">{{
+        $any(row).updatedAt ? ($any(row).updatedAt | date: 'dd MMM yyyy HH:mm:ss') : ''
+      }}</span>
+    }
+  </div>
+</ng-template>
+
 <ng-template #actionsTemplate let-row>
   <div class="flex items-center gap-2">
-    <a [routerLink]="['/invoices', row.id]">
-      <z-button zType="default" zSize="sm">View</z-button>
-    </a>
-    <a [routerLink]="['/invoices', row.id, 'edit']">
-      <z-button zType="warning" zSize="sm">Edit</z-button>
-    </a>
-
     <app-invoice-download-dropdown
       [invoiceId]="row.id"
       [invoiceNumber]="(row.invoiceNoDisplay || row.invoiceNo || '—').toString()"
@@ -128,12 +145,38 @@
       zType="secondary"
       zSize="sm"
     />
-
-    @if (isSuperuser()) {
-      <z-button zType="destructive" zSize="sm" (click)="openInvoiceDeleteDialog(row)"
-        >Delete</z-button
+    <div class="flex items-center justify-end">
+      <button
+        z-dropdown
+        [zDropdownMenu]="rowActionsMenu"
+        z-button
+        zType="ghost"
+        zSize="sm"
+        type="button"
+        class="h-8 w-8 p-0"
+        tabindex="-1"
+        (click)="$event.stopPropagation()"
+        aria-label="Row actions"
+        aria-haspopup="menu"
       >
-    }
+        <z-icon zType="ellipsis-horizontal" />
+      </button>
+      <z-dropdown-menu-content #rowActionsMenu class="z-50 min-w-48">
+        @for (action of actions(); track action.label) {
+          @if (!action.isVisible || action.isVisible(row)) {
+            <button
+              z-dropdown-menu-item
+              type="button"
+              [variant]="action.variant ?? (action.isDestructive ? 'destructive' : 'default')"
+              (click)="action.action(row); $event.stopPropagation()"
+            >
+              <z-icon [zType]="action.icon" class="mr-2 h-4 w-4 stroke-current" />
+              <span [innerHTML]="action.label | shortcutHighlight"></span>
+            </button>
+          }
+        }
+      </z-dropdown-menu-content>
+    </div>
   </div>
 </ng-template>
 

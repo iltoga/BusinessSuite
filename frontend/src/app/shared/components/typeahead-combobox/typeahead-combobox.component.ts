@@ -1,5 +1,5 @@
 import type { ZardComboboxOption as BaseOption } from '@/shared/components/combobox/combobox.component';
-import { CommonModule } from '@angular/common';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import {
   afterNextRender,
   ChangeDetectionStrategy,
@@ -12,6 +12,7 @@ import {
   Injector,
   input,
   output,
+  PLATFORM_ID,
   runInInjectionContext,
   signal,
   viewChild,
@@ -165,6 +166,7 @@ export interface TypeaheadOption extends BaseOption {
   encapsulation: ViewEncapsulation.None,
 })
 export class TypeaheadComboboxComponent implements ControlValueAccessor {
+  private platformId = inject(PLATFORM_ID);
   private readonly injector = inject(Injector);
 
   // Signals for state
@@ -293,7 +295,17 @@ export class TypeaheadComboboxComponent implements ControlValueAccessor {
   }
 
   onSearch(q: string) {
-    if (this.searchTimer) window.clearTimeout(this.searchTimer);
+    if (!isPlatformBrowser(this.platformId)) return;
+
+    if (this.searchTimer) {
+      try {
+        window.clearTimeout(this.searchTimer);
+      } catch {
+        try {
+          clearTimeout(this.searchTimer as any);
+        } catch {}
+      }
+    }
     this.searchTimer = window.setTimeout(() => {
       this.searchQuery.set(q);
       this.performSearch(q, 1);

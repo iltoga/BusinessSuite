@@ -4,6 +4,7 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
+  HostListener,
   PLATFORM_ID,
   computed,
   inject,
@@ -98,8 +99,66 @@ export class InvoiceFormComponent implements OnInit {
     }, 0);
   });
 
+  @HostListener('window:keydown', ['$event'])
+  handleGlobalKeydown(event: KeyboardEvent): void {
+    // Esc --> Cancel
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.goBack();
+      return;
+    }
+
+    // cmd+s (mac) or ctrl+s (windows/linux) --> save
+    const isSaveKey = (event.ctrlKey || event.metaKey) && (event.key === 's' || event.key === 'S');
+    if (isSaveKey) {
+      event.preventDefault();
+      this.onSubmit();
+      return;
+    }
+
+    const activeElement = document.activeElement;
+    const isInput =
+      activeElement instanceof HTMLInputElement ||
+      activeElement instanceof HTMLTextAreaElement ||
+      (activeElement instanceof HTMLElement && activeElement.isContentEditable);
+
+    if (isInput) return;
+
+    // B or Left Arrow --> Back to list
+    if (
+      (event.key === 'B' || event.key === 'ArrowLeft') &&
+      !event.ctrlKey &&
+      !event.altKey &&
+      !event.metaKey
+    ) {
+      event.preventDefault();
+      this.goBack();
+    }
+  }
+
   get invoiceApplications(): FormArray<FormGroup> {
     return this.form.get('invoiceApplications') as FormArray<FormGroup>;
+  }
+
+  goBack(): void {
+    const st = history.state as any;
+
+    const focusState: Record<string, unknown> = { focusTable: true };
+    if (st?.focusId) {
+      focusState['focusId'] = st.focusId;
+    } else if (this.invoice()?.id) {
+      focusState['focusId'] = this.invoice()?.id;
+    }
+    if (st?.searchQuery) {
+      focusState['searchQuery'] = st.searchQuery;
+    }
+
+    if (st?.from === 'applications') {
+      this.router.navigate(['/applications'], { state: focusState });
+      return;
+    }
+
+    this.router.navigate(['/invoices'], { state: focusState });
   }
 
   ngOnInit(): void {
@@ -257,11 +316,13 @@ export class InvoiceFormComponent implements OnInit {
       })),
     } as InvoiceCreateUpdate;
 
+    const fromState = history.state?.from;
+
     if (this.isEditMode() && this.invoice()) {
       this.invoicesApi.invoicesUpdate(this.invoice()!.id, payload).subscribe({
         next: (invoice: InvoiceCreateUpdate) => {
           this.toast.success('Invoice updated');
-          this.router.navigate(['/invoices', invoice.id]);
+          this.router.navigate(['/invoices', invoice.id], { state: { from: fromState } });
         },
         error: (error) => {
           applyServerErrorsToForm(this.form, error);
@@ -279,7 +340,7 @@ export class InvoiceFormComponent implements OnInit {
     this.invoicesApi.invoicesCreate(payload).subscribe({
       next: (invoice: InvoiceCreateUpdate) => {
         this.toast.success('Invoice created');
-        this.router.navigate(['/invoices', invoice.id]);
+        this.router.navigate(['/invoices', invoice.id], { state: { from: fromState } });
       },
       error: (error) => {
         applyServerErrorsToForm(this.form, error);
@@ -291,6 +352,10 @@ export class InvoiceFormComponent implements OnInit {
         this.isSaving.set(false);
       },
     });
+  }
+
+  onSubmit(): void {
+    this.save();
   }
 
   formatCurrency(value: number | null | undefined): string {

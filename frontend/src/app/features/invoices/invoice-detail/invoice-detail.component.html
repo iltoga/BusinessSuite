@@ -35,9 +35,7 @@
         <a [routerLink]="['/invoices', invoice()!.id, 'edit']">
           <z-button zType="warning">Edit</z-button>
         </a>
-        <a routerLink="/invoices">
-          <z-button zType="ghost">Back</z-button>
-        </a>
+        <z-button zType="ghost" (click)="goBack()">Back</z-button>
       </div>
     </div>
 

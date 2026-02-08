@@ -1,7 +1,7 @@
 <div class="h-full flex flex-col gap-6">
   <div class="flex justify-between items-center">
     <h1 class="text-3xl font-bold tracking-tight">Customer List</h1>
-    <a routerLink="/customers/new">
+    <a routerLink="/customers/new" [state]="{ from: 'customers', searchQuery: query() }">
       <z-button zType="default" zSize="default"> New Customer </z-button>
     </a>
   </div>
@@ -12,23 +12,15 @@
         [query]="query()"
         [placeholder]="'Search Customers...'"
         (queryChange)="onQueryChange($event)"
+        (tabOut)="onEnterSearch()"
       >
         <div class="flex items-center gap-3">
-          <div class="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="hideDisabled"
-              [checked]="hideDisabled()"
-              (change)="onToggleHideDisabled($event)"
-              class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
-            />
-            <label
-              for="hideDisabled"
-              class="text-sm font-medium leading-none cursor-pointer select-none"
-            >
-              Hide Disabled
-            </label>
-          </div>
+          <z-select class="w-40" [zValue]="statusFilter()" (zValueChange)="onStatusChange($event)">
+            <z-select-item zValue="all">Show All</z-select-item>
+            <z-select-item zValue="active">Enabled Only</z-select-item>
+            <z-select-item zValue="disabled">Disabled Only</z-select-item>
+          </z-select>
+
           @if (isSuperuser() && totalItems() > 0) {
             <z-button zType="destructive" zSize="sm" (click)="openBulkDeleteDialog()">
               {{ bulkDeleteLabel() }}
@@ -40,9 +32,14 @@
 
     <div class="p-0">
       <app-data-table
+        #grid
         [columns]="columns()"
         [data]="customers()"
         [isLoading]="isLoading()"
+        [actions]="actions()"
+        [currentPage]="page()"
+        [totalPages]="totalPages()"
+        (pageChange)="onPageChange($event)"
         (sortChange)="onSortChange($event)"
       />
     </div>
@@ -51,6 +48,7 @@
       <app-pagination-controls
         [page]="page()"
         [totalPages]="totalPages()"
+        [totalItems]="totalItems()"
         (pageChange)="onPageChange($event)"
       />
     </div>
@@ -58,9 +56,14 @@
 </div>
 
 <ng-template #customerTemplate let-row>
-  <a [routerLink]="['/customers', row.id]" class="font-medium hover:underline">
-    {{ row.fullNameWithCompany }}
-  </a>
+  <div class="flex items-center gap-2">
+    <a [routerLink]="['/customers', row.id]" class="font-medium hover:underline">
+      {{ row.fullNameWithCompany }}
+    </a>
+    @if (!row.active) {
+      <z-badge variant="destructive" class="h-4 px-1 text-[10px] uppercase">Disabled</z-badge>
+    }
+  </div>
 </ng-template>
 
 <ng-template #passportTemplate let-row>
@@ -80,27 +83,41 @@
   <span>{{ row.email || '—' }}</span>
 </ng-template>
 
-<ng-template #telephoneTemplate let-row>
-  <span>{{ row.telephone || '—' }}</span>
+<ng-template #whatsappTemplate let-row>
+  @if (row.whatsapp) {
+    <a
+      [href]="getWhatsAppHref(row.whatsapp)"
+      target="_blank"
+      rel="noopener noreferrer"
+      (click)="$event.stopPropagation()"
+      class="text-primary hover:underline"
+    >
+      {{ row.whatsapp }}
+    </a>
+  } @else {
+    <span>—</span>
+  }
 </ng-template>
 
-<ng-template #actionsTemplate let-row>
-  <div class="flex items-center gap-1.5">
-    <a [routerLink]="['/customers', row.id]">
-      <z-button zType="default" zSize="sm">View</z-button>
-    </a>
-    <a [routerLink]="['/customers', row.id, 'edit']">
-      <z-button zType="warning" zSize="sm">Edit</z-button>
-    </a>
-    <z-button [zType]="row.active ? 'secondary' : 'ghost'" zSize="sm" (click)="onToggleActive(row)">
-      {{ row.active ? 'Disable' : 'Enable' }}
-    </z-button>
-    @if (isSuperuser()) {
-      <z-button zType="destructive" zSize="sm" (click)="onDelete(row)">Delete</z-button>
+<ng-template #nationalityTemplate let-row>
+  <div class="flex items-center gap-2">
+    <span>{{ row.nationalityName }}</span>
+    @if (row.nationalityCode) {
+      <span class="text-xs text-muted-foreground">({{ row.nationalityCode }})</span>
     }
-    <a [routerLink]="['/customers', row.id, 'applications', 'new']">
-      <z-button zType="success" zSize="sm">New Application</z-button>
-    </a>
+  </div>
+</ng-template>
+
+<ng-template #createdAtTemplate let-row>
+  <div class="flex flex-col">
+    <span class="text-sm">{{
+      row.createdAt ? (row.createdAt | date: 'dd MMM yyyy HH:mm:ss') : ''
+    }}</span>
+    @if (row.updatedAt && row.updatedAt !== row.createdAt) {
+      <span class="text-xs text-muted-foreground">{{
+        row.updatedAt ? (row.updatedAt | date: 'dd MMM yyyy HH:mm:ss') : ''
+      }}</span>
+    }
   </div>
 </ng-template>
 

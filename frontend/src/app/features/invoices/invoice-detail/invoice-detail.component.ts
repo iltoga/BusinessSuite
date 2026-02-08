@@ -2,13 +2,14 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
+  HostListener,
   PLATFORM_ID,
   computed,
   inject,
   signal,
   type OnInit,
 } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import {
   InvoicesService,
@@ -55,6 +56,7 @@ import { PaymentModalComponent } from '../payment-modal/payment-modal.component'
 })
 export class InvoiceDetailComponent implements OnInit {
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
   private invoicesApi = inject(InvoicesService);
   private paymentsApi = inject(PaymentsService);
   private toast = inject(GlobalToastService);
@@ -62,6 +64,7 @@ export class InvoiceDetailComponent implements OnInit {
 
   readonly invoice = signal<InvoiceDetail | null>(null);
   readonly isLoading = signal(false);
+  readonly originSearchQuery = signal<string | null>(null);
   readonly paymentModalOpen = signal(false);
   readonly selectedApplication = signal<InvoiceApplicationDetail | null>(null);
   readonly selectedPayment = signal<Payment | null>(null);
@@ -80,6 +83,61 @@ export class InvoiceDetailComponent implements OnInit {
     const date = payment.paymentDate ?? '—';
     return `Delete payment of ${amount} dated ${date}? This will update invoice totals.`;
   });
+
+  goBack(): void {
+    const st = history.state as any;
+    const invoice = this.invoice();
+
+    const focusState: Record<string, unknown> = {
+      focusTable: true,
+      focusId: invoice?.id,
+      searchQuery: this.originSearchQuery(),
+    };
+
+    if (st?.from === 'applications') {
+      this.router.navigate(['/applications'], { state: focusState });
+      return;
+    }
+
+    this.router.navigate(['/invoices'], { state: focusState });
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  handleGlobalKeydown(event: KeyboardEvent): void {
+    const activeElement = document.activeElement;
+    const isInput =
+      activeElement instanceof HTMLInputElement ||
+      activeElement instanceof HTMLTextAreaElement ||
+      (activeElement instanceof HTMLElement && activeElement.isContentEditable);
+
+    if (isInput) return;
+
+    const invoice = this.invoice();
+    if (!invoice) return;
+
+    // E --> Edit
+    if (event.key === 'E' && !event.ctrlKey && !event.altKey && !event.metaKey) {
+      event.preventDefault();
+      this.router.navigate(['/invoices', invoice.id, 'edit'], {
+        state: {
+          from: history.state?.from,
+          focusId: invoice.id,
+          searchQuery: this.originSearchQuery(),
+        },
+      });
+    }
+
+    // B or Left Arrow --> Back to list
+    if (
+      (event.key === 'B' || event.key === 'ArrowLeft') &&
+      !event.ctrlKey &&
+      !event.altKey &&
+      !event.metaKey
+    ) {
+      event.preventDefault();
+      this.goBack();
+    }
+  }
 
   hasDue(app: InvoiceApplicationDetail): boolean {
     return Number(app.dueAmount) > 0;
@@ -110,6 +168,8 @@ export class InvoiceDetailComponent implements OnInit {
     if (!isPlatformBrowser(this.platformId)) {
       return;
     }
+    const st = (window as any).history.state || {};
+    this.originSearchQuery.set(st.searchQuery ?? null);
 
     const idParam = this.route.snapshot.paramMap.get('id');
     if (idParam) {

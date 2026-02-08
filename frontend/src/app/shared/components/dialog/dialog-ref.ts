@@ -30,16 +30,16 @@ export class ZardDialogRef<T = any, R = any, U = any> {
       this.overlayRef
         .outsidePointerEvents()
         .pipe(takeUntil(this.destroy$))
-        .subscribe(() => this.close());
+        .subscribe(() => this.trigger(eTriggerAction.CANCEL));
     }
 
     if (isPlatformBrowser(this.platformId)) {
       fromEvent<KeyboardEvent>(document, 'keydown')
         .pipe(
-          filter(event => event.key === 'Escape'),
+          filter((event) => event.key === 'Escape'),
           takeUntil(this.destroy$),
         )
-        .subscribe(() => this.close());
+        .subscribe(() => this.trigger(eTriggerAction.CANCEL));
     }
   }
 
