@@ -98,6 +98,13 @@ export class InvoiceListComponent implements OnInit {
     viewChild.required<TemplateRef<{ $implicit: InvoiceList; value: any; row: InvoiceList }>>(
       'actionsTemplate',
     );
+  private readonly createdAtTemplate =
+    viewChild.required<TemplateRef<{ $implicit: InvoiceList; value: any; row: InvoiceList }>>(
+      'createdAtTemplate',
+    );
+
+  // Access the data table for focus management
+  private readonly dataTable = viewChild.required(DataTableComponent);
 
   readonly invoices = signal<InvoiceList[]>([]);
   readonly isLoading = signal(false);
@@ -120,6 +127,10 @@ export class InvoiceListComponent implements OnInit {
   readonly bulkDeleteLabel = computed(() =>
     this.query().trim() ? 'Delete Selected Invoices' : 'Delete All Invoices',
   );
+
+  // When navigating back to the list we may want to focus a specific id or the table
+  private readonly focusTableOnInit = signal(false);
+  private readonly focusIdOnInit = signal<number | null>(null);
 
   readonly columns = computed<ColumnConfig<InvoiceList>[]>(() => [
     {
@@ -146,6 +157,13 @@ export class InvoiceListComponent implements OnInit {
       template: this.statusTemplate(),
     },
     { key: 'amounts', header: 'Totals', template: this.amountsTemplate() },
+    {
+      key: 'createdAt',
+      header: 'Added/Updated',
+      sortable: true,
+      sortKey: 'created_at',
+      template: this.createdAtTemplate(),
+    },
     { key: 'actions', header: 'Actions', template: this.actionsTemplate() },
   ]);
 
@@ -154,13 +172,19 @@ export class InvoiceListComponent implements OnInit {
       label: 'View',
       icon: 'eye',
       variant: 'default',
-      action: (item) => this.router.navigate(['/invoices', item.id]),
+      action: (item) =>
+        this.router.navigate(['/invoices', item.id], {
+          state: { from: 'invoices', focusId: item.id, searchQuery: this.query() },
+        }),
     },
     {
       label: 'Edit',
       icon: 'settings',
       variant: 'warning',
-      action: (item) => this.router.navigate(['/invoices', item.id, 'edit']),
+      action: (item) =>
+        this.router.navigate(['/invoices', item.id, 'edit'], {
+          state: { from: 'invoices', focusId: item.id, searchQuery: this.query() },
+        }),
     },
     {
       label: 'Delete',
@@ -191,13 +215,21 @@ export class InvoiceListComponent implements OnInit {
     // Shift+N for New Invoice
     if (event.key === 'N' && !event.ctrlKey && !event.altKey && !event.metaKey) {
       event.preventDefault();
-      this.router.navigate(['/invoices', 'new']);
+      this.router.navigate(['/invoices', 'new'], {
+        state: { from: 'invoices', searchQuery: this.query() },
+      });
     }
   }
 
   ngOnInit(): void {
     if (!isPlatformBrowser(this.platformId)) {
       return;
+    }
+    const st = (window as any).history.state || {};
+    this.focusTableOnInit.set(Boolean(st.focusTable));
+    this.focusIdOnInit.set(st.focusId ? Number(st.focusId) : null);
+    if (st.searchQuery) {
+      this.query.set(String(st.searchQuery));
     }
     this.loadInvoices();
   }
@@ -446,6 +478,18 @@ export class InvoiceListComponent implements OnInit {
           this.invoices.set(response.results ?? []);
           this.totalItems.set(response.count ?? 0);
           this.isLoading.set(false);
+
+          const table = this.dataTable();
+          if (table) {
+            const focusId = this.focusIdOnInit();
+            if (focusId) {
+              this.focusIdOnInit.set(null);
+              table.focusRowById(focusId);
+            } else if (this.focusTableOnInit()) {
+              this.focusTableOnInit.set(false);
+              table.focusFirstRowIfNone();
+            }
+          }
         },
         error: () => {
           this.toast.error('Failed to load invoices');

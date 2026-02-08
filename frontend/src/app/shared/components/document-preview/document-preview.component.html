@@ -15,7 +15,7 @@
   </button>
 
   <ng-template #previewContent>
-    <z-popover class="p-2 w-72 sm:w-80">
+    <z-popover [class]="popoverClasses()">
       <div class="space-y-2">
         <div class="flex items-center justify-between">
           <span class="text-xs font-medium text-muted-foreground truncate">
@@ -33,19 +33,23 @@
                 <img
                   [src]="previewUrl()"
                   alt="PDF Preview"
-                  class="max-h-60 w-full object-contain"
+                  [class]="previewImageClasses()"
                 />
               } @else {
-                <div class="w-full h-60">
+                <div [class]="previewFrameClasses()">
                   <iframe [src]="sanitizedPreview()" class="w-full h-full border-0"></iframe>
                 </div>
               }
-            } @else {
+            } @else if (isImage()) {
               <img
                 [src]="previewUrl()"
                 alt="Document Preview"
-                class="max-h-60 w-full object-contain"
+                [class]="previewImageClasses()"
               />
+            } @else {
+              <div class="w-full flex items-center justify-center text-xs text-muted-foreground p-4">
+                Preview not available.
+              </div>
             }
           } @else {
             <div class="text-xs text-muted-foreground text-center p-4">Preview not available.</div>

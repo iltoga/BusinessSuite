@@ -23,6 +23,10 @@ import {
   type BulkDeleteDialogData,
 } from '@/shared/components/bulk-delete-dialog/bulk-delete-dialog.component';
 import { ZardButtonComponent } from '@/shared/components/button';
+import {
+  ApplicationDeleteDialogComponent,
+  type ApplicationDeleteDialogData,
+} from '@/shared/components/application-delete-dialog';
 import { ConfirmDialogComponent } from '@/shared/components/confirm-dialog/confirm-dialog.component';
 import {
   DataTableComponent,
@@ -44,6 +48,7 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
     SearchToolbarComponent,
     PaginationControlsComponent,
     ZardButtonComponent,
+    ApplicationDeleteDialogComponent,
     ConfirmDialogComponent,
     BulkDeleteDialogComponent,
     ...ZardBadgeImports,
@@ -76,6 +81,8 @@ export class ApplicationListComponent implements OnInit {
   readonly confirmOpen = signal(false);
   readonly confirmMessage = signal('');
   readonly pendingDelete = signal<DocApplicationSerializerWithRelations | null>(null);
+  readonly deleteWithInvoiceOpen = signal(false);
+  readonly deleteWithInvoiceData = signal<ApplicationDeleteDialogData | null>(null);
 
   readonly bulkDeleteOpen = signal(false);
   readonly bulkDeleteData = signal<BulkDeleteDialogData | null>(null);
@@ -101,6 +108,10 @@ export class ApplicationListComponent implements OnInit {
     viewChild.required<
       TemplateRef<{ $implicit: DocApplicationSerializerWithRelations; value: any; row: any }>
     >('columnStatus');
+  private readonly createdAtTemplate =
+    viewChild.required<
+      TemplateRef<{ $implicit: DocApplicationSerializerWithRelations; value: any; row: any }>
+    >('columnCreatedAt');
 
   // Access the data table for focus management
   private readonly dataTable = viewChild.required(DataTableComponent);
@@ -135,6 +146,13 @@ export class ApplicationListComponent implements OnInit {
       sortKey: 'status',
       template: this.statusTemplate(),
     },
+    {
+      key: 'createdAt',
+      header: 'Added/Updated',
+      sortable: true,
+      sortKey: 'created_at',
+      template: this.createdAtTemplate(),
+    },
     { key: 'actions', header: 'Actions' },
   ]);
 
@@ -145,7 +163,7 @@ export class ApplicationListComponent implements OnInit {
       variant: 'default',
       action: (item) =>
         this.router.navigate(['/applications', item.id], {
-          state: { from: 'applications', focusId: item.id },
+          state: { from: 'applications', focusId: item.id, searchQuery: this.query() },
         }),
     },
     {
@@ -155,7 +173,7 @@ export class ApplicationListComponent implements OnInit {
       isVisible: (item) => item.status !== 'completed',
       action: (item) =>
         this.router.navigate(['/applications', item.id, 'edit'], {
-          state: { from: 'applications', focusId: item.id },
+          state: { from: 'applications', focusId: item.id, searchQuery: this.query() },
         }),
     },
     {
@@ -192,8 +210,9 @@ export class ApplicationListComponent implements OnInit {
       icon: 'trash',
       variant: 'destructive',
       isDestructive: true,
-      isVisible: (item) => this.isSuperuser() && !item.hasInvoice,
-      action: (item) => this.confirmDelete(item),
+      isVisible: () => this.isSuperuser(),
+      action: (item) =>
+        item.hasInvoice ? this.confirmDeleteWithInvoice(item) : this.confirmDelete(item),
     },
   ]);
 
@@ -216,7 +235,9 @@ export class ApplicationListComponent implements OnInit {
     // Shift+N for New Application
     if (event.key === 'N' && !event.ctrlKey && !event.altKey && !event.metaKey) {
       event.preventDefault();
-      this.router.navigate(['/applications', 'new']);
+      this.router.navigate(['/applications', 'new'], {
+        state: { from: 'applications', searchQuery: this.query() },
+      });
     }
   }
 
@@ -228,6 +249,9 @@ export class ApplicationListComponent implements OnInit {
     const st = (window as any).history.state || {};
     this.focusTableOnInit.set(Boolean(st.focusTable));
     this.focusIdOnInit.set(st.focusId ? Number(st.focusId) : null);
+    if (st.searchQuery) {
+      this.query.set(String(st.searchQuery));
+    }
     this.load();
   }
 
@@ -258,6 +282,18 @@ export class ApplicationListComponent implements OnInit {
     this.confirmOpen.set(true);
   }
 
+  confirmDeleteWithInvoice(row: DocApplicationSerializerWithRelations): void {
+    if (!this.isSuperuser()) {
+      return;
+    }
+    this.pendingDelete.set(row);
+    this.deleteWithInvoiceData.set({
+      applicationId: row.id,
+      invoiceId: row.invoiceId,
+    });
+    this.deleteWithInvoiceOpen.set(true);
+  }
+
   confirmDeleteAction(): void {
     const row = this.pendingDelete();
     if (!row) {
@@ -284,6 +320,38 @@ export class ApplicationListComponent implements OnInit {
 
   cancelDeleteAction(): void {
     this.confirmOpen.set(false);
+    this.pendingDelete.set(null);
+  }
+
+  confirmDeleteWithInvoiceAction(): void {
+    const row = this.pendingDelete();
+    if (!row) {
+      return;
+    }
+
+    this.service.customerApplicationsDestroy(row.id).subscribe({
+      next: () => {
+        this.toast.success('Application deleted');
+        this.deleteWithInvoiceOpen.set(false);
+        this.deleteWithInvoiceData.set(null);
+        this.pendingDelete.set(null);
+        this.load();
+      },
+      error: (error) => {
+        const message = extractServerErrorMessage(error);
+        this.toast.error(
+          message ? `Failed to delete application: ${message}` : 'Failed to delete application',
+        );
+        this.deleteWithInvoiceOpen.set(false);
+        this.deleteWithInvoiceData.set(null);
+        this.pendingDelete.set(null);
+      },
+    });
+  }
+
+  cancelDeleteWithInvoiceAction(): void {
+    this.deleteWithInvoiceOpen.set(false);
+    this.deleteWithInvoiceData.set(null);
     this.pendingDelete.set(null);
   }
 

@@ -1,7 +1,7 @@
 <div class="h-full flex flex-col gap-6">
   <div class="flex justify-between items-center">
     <h1 class="text-3xl font-bold tracking-tight">Customer List</h1>
-    <a routerLink="/customers/new">
+    <a routerLink="/customers/new" [state]="{ from: 'customers', searchQuery: query() }">
       <z-button zType="default" zSize="default"> New Customer </z-button>
     </a>
   </div>
@@ -48,6 +48,7 @@
       <app-pagination-controls
         [page]="page()"
         [totalPages]="totalPages()"
+        [totalItems]="totalItems()"
         (pageChange)="onPageChange($event)"
       />
     </div>
