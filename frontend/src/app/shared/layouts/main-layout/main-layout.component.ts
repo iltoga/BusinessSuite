@@ -109,31 +109,6 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
       }
     }
 
-    // Shift+M for Menu
-    if (event.key === 'M' && !event.ctrlKey && !event.altKey && !event.metaKey) {
-      const active = document.activeElement as HTMLElement | null;
-      const tag = active?.tagName ?? '';
-      const isEditable =
-        tag === 'INPUT' || tag === 'TEXTAREA' || (active && active.isContentEditable);
-      if (isEditable) return;
-
-      event.preventDefault();
-      event.stopPropagation();
-
-      if (!this.sidebarOpen()) {
-        this.sidebarOpen.set(true);
-      }
-
-      // Focus first sidebar item on next tick to ensure visibility
-      setTimeout(() => {
-        const first = this.sidebarItems?.first?.nativeElement;
-        if (first) {
-          first.focus();
-        }
-      }, 0);
-      return;
-    }
-
     // Global navigation shortcuts (Shift + letter)
     if (event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey) {
       const active = document.activeElement as HTMLElement | null;
@@ -143,6 +118,26 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
       if (isEditable) return;
 
       const key = event.key.toUpperCase();
+
+      // Shift+M for Menu
+      if (key === 'M') {
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (!this.sidebarOpen()) {
+          this.sidebarOpen.set(true);
+        }
+
+        // Focus first sidebar item on next tick to ensure visibility
+        setTimeout(() => {
+          const first = this.sidebarItems?.first?.nativeElement;
+          if (first) {
+            first.focus();
+          }
+        }, 0);
+        return;
+      }
+
       if (key === 'L') {
         event.preventDefault();
         event.stopPropagation();
@@ -152,6 +147,30 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
         this.lettersExpanded.set(true);
         setTimeout(() => {
           this.lettersToggle?.nativeElement?.focus();
+        }, 0);
+        return;
+      }
+
+      // Shift+T -> Focus table view if present
+      if (key === 'T') {
+        event.preventDefault();
+        event.stopPropagation();
+        setTimeout(() => {
+          // Prefer a focus trap element if present
+          const tableTrap = document.querySelector('.data-table-focus-trap') as HTMLElement | null;
+          if (tableTrap) {
+            tableTrap.focus();
+            return;
+          }
+
+          // Fallback: focus first focusable element inside a table container
+          const table = document.querySelector('.data-table') as HTMLElement | null;
+          if (table) {
+            const focusable = table.querySelector<HTMLElement>(
+              'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+            );
+            (focusable ?? table).focus();
+          }
         }, 0);
         return;
       }
@@ -170,41 +189,30 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
         this.router.navigate([target]);
         return;
       }
-    }
 
-    // Shift+N -> Create new entity in list views (customers, applications, invoices, products)
-    if (event.key === 'N' && event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey) {
-      const active = document.activeElement as HTMLElement | null;
-      const tag = active?.tagName ?? '';
-      const isEditable =
-        tag === 'INPUT' || tag === 'TEXTAREA' || (active && active.isContentEditable);
-      if (isEditable) return;
-
-      try {
-        const path = window.location.pathname || '';
-        const mapping = ['/customers', '/applications', '/invoices', '/products'];
-        for (const base of mapping) {
-          if (path.startsWith(base)) {
-            event.preventDefault();
-            event.stopPropagation();
-            const searchInput = document.querySelector('app-search-toolbar input') as
-              | HTMLInputElement
-              | null;
-            const searchQuery = searchInput?.value?.trim();
-            const from = base.replace(/^\//, '');
-            try {
+      // Shift+N -> Create new entity in list views (customers, applications, invoices, products)
+      if (key === 'N') {
+        try {
+          const path = window.location.pathname || '';
+          const mapping = ['/customers', '/applications', '/invoices', '/products'];
+          for (const base of mapping) {
+            if (path.startsWith(base)) {
+              event.preventDefault();
+              event.stopPropagation();
+              const searchInput = document.querySelector(
+                'app-search-toolbar input',
+              ) as HTMLInputElement | null;
+              const searchQuery = searchInput?.value?.trim();
+              const from = base.replace(/^\//, '');
               // Use router to navigate to the new entity route
-              this.router.navigate([base.replace(/^\//, ''), 'new'], {
+              this.router.navigate([base.slice(1), 'new'], {
                 state: { from, searchQuery },
               });
-            } catch {
-              // Fallback: change location directly
-              window.location.href = `${base}/new`;
+              return;
             }
-            return;
           }
-        }
-      } catch {}
+        } catch {}
+      }
     }
 
     // Arrow navigation when sidebar item is focused

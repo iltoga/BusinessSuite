@@ -84,6 +84,24 @@ export class InvoiceDetailComponent implements OnInit {
     return `Delete payment of ${amount} dated ${date}? This will update invoice totals.`;
   });
 
+  goBack(): void {
+    const st = history.state as any;
+    const invoice = this.invoice();
+
+    const focusState: Record<string, unknown> = {
+      focusTable: true,
+      focusId: invoice?.id,
+      searchQuery: this.originSearchQuery(),
+    };
+
+    if (st?.from === 'applications') {
+      this.router.navigate(['/applications'], { state: focusState });
+      return;
+    }
+
+    this.router.navigate(['/invoices'], { state: focusState });
+  }
+
   @HostListener('window:keydown', ['$event'])
   handleGlobalKeydown(event: KeyboardEvent): void {
     const activeElement = document.activeElement;
@@ -101,7 +119,11 @@ export class InvoiceDetailComponent implements OnInit {
     if (event.key === 'E' && !event.ctrlKey && !event.altKey && !event.metaKey) {
       event.preventDefault();
       this.router.navigate(['/invoices', invoice.id, 'edit'], {
-        state: { from: 'invoices', focusId: invoice.id, searchQuery: this.originSearchQuery() },
+        state: {
+          from: history.state?.from,
+          focusId: invoice.id,
+          searchQuery: this.originSearchQuery(),
+        },
       });
     }
 
@@ -113,13 +135,7 @@ export class InvoiceDetailComponent implements OnInit {
       !event.metaKey
     ) {
       event.preventDefault();
-      this.router.navigate(['/invoices'], {
-        state: {
-          focusTable: true,
-          focusId: invoice.id,
-          searchQuery: this.originSearchQuery(),
-        },
-      });
+      this.goBack();
     }
   }
 

@@ -1,13 +1,14 @@
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
-import { CommonModule } from '@angular/common';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
-  DestroyRef,
   computed,
+  DestroyRef,
   effect,
   HostListener,
   inject,
+  PLATFORM_ID,
   signal,
   untracked,
   type OnInit,
@@ -76,6 +77,8 @@ export class ApplicationDetailComponent implements OnInit {
   private toast = inject(GlobalToastService);
   private fb = inject(FormBuilder);
   private destroyRef = inject(DestroyRef);
+  private platformId = inject(PLATFORM_ID);
+  private readonly isBrowser = isPlatformBrowser(this.platformId);
 
   readonly application = signal<ApplicationDetail | null>(null);
   readonly isLoading = signal(true);
@@ -220,7 +223,7 @@ export class ApplicationDetailComponent implements OnInit {
 
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
-    const st = (window as any).history.state || {};
+    const st = this.isBrowser ? (window as any).history.state || {} : {};
     this.originSearchQuery.set(st.searchQuery ?? null);
     if (!id) {
       this.toast.error('Invalid application ID');
@@ -231,7 +234,9 @@ export class ApplicationDetailComponent implements OnInit {
 
     this.destroyRef.onDestroy(() => {
       if (this.pollTimer) {
-        window.clearTimeout(this.pollTimer);
+        if (this.isBrowser) {
+          window.clearTimeout(this.pollTimer);
+        }
       }
     });
   }
@@ -573,7 +578,14 @@ export class ApplicationDetailComponent implements OnInit {
     const app = this.application();
     if (!app || !this.canCreateInvoice()) return;
     // Navigate to invoice creation page with applicationId pre-filled
-    this.router.navigate(['/invoices', 'new'], { queryParams: { applicationId: app.id } });
+    this.router.navigate(['/invoices', 'new'], {
+      queryParams: { applicationId: app.id },
+      state: {
+        from: 'applications',
+        focusId: app.id,
+        searchQuery: this.originSearchQuery(),
+      },
+    });
   }
 
   getWorkflowStatusVariant(

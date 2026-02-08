@@ -267,6 +267,7 @@
                       <app-document-preview
                         [documentId]="doc.id"
                         [fileLink]="doc.fileLink"
+                        [centerInViewport]="true"
                         zType="default"
                         zSize="default"
                         label="View"
@@ -426,6 +427,7 @@
             <app-document-preview
               [documentId]="selectedDocument()!.id"
               [fileLink]="selectedDocument()!.fileLink"
+              [centerInViewport]="true"
               zType="outline"
               zSize="sm"
               label="Preview"

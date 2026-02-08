@@ -304,7 +304,15 @@ export class CustomerFormComponent implements OnInit {
 
     this.destroyRef.onDestroy(() => {
       if (this.ocrPollTimer) {
-        window.clearTimeout(this.ocrPollTimer);
+        try {
+          if (typeof window !== 'undefined') {
+            window.clearTimeout(this.ocrPollTimer);
+          } else {
+            try {
+              clearTimeout(this.ocrPollTimer as any);
+            } catch {}
+          }
+        } catch {}
       }
     });
   }

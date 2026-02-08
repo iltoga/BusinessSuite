@@ -17,16 +17,16 @@ import { CustomerApplicationsService } from '@/core/api/api/customer-application
 import { DocApplicationSerializerWithRelations } from '@/core/api/model/doc-application-serializer-with-relations';
 import { AuthService } from '@/core/services/auth.service';
 import { GlobalToastService } from '@/core/services/toast.service';
+import {
+  ApplicationDeleteDialogComponent,
+  type ApplicationDeleteDialogData,
+} from '@/shared/components/application-delete-dialog';
 import { ZardBadgeImports } from '@/shared/components/badge';
 import {
   BulkDeleteDialogComponent,
   type BulkDeleteDialogData,
 } from '@/shared/components/bulk-delete-dialog/bulk-delete-dialog.component';
 import { ZardButtonComponent } from '@/shared/components/button';
-import {
-  ApplicationDeleteDialogComponent,
-  type ApplicationDeleteDialogData,
-} from '@/shared/components/application-delete-dialog';
 import { ConfirmDialogComponent } from '@/shared/components/confirm-dialog/confirm-dialog.component';
 import {
   DataTableComponent,
@@ -187,23 +187,33 @@ export class ApplicationListComponent implements OnInit {
       label: 'Create Invoice',
       icon: 'plus',
       variant: 'success',
+      shortcut: 'i',
       isVisible: (item) => Boolean(item.readyForInvoice),
       action: (item) =>
-        this.router.navigate(['/invoices', 'new'], { queryParams: { applicationId: item.id } }),
+        this.router.navigate(['/invoices', 'new'], {
+          queryParams: { applicationId: item.id },
+          state: { from: 'applications', focusId: item.id, searchQuery: this.query() },
+        }),
     },
     {
       label: 'View Invoice',
       icon: 'eye',
       variant: 'default',
       isVisible: (item) => Boolean(item.hasInvoice && item.invoiceId),
-      action: (item) => this.router.navigate(['/invoices', item.invoiceId]),
+      action: (item) =>
+        this.router.navigate(['/invoices', item.invoiceId], {
+          state: { from: 'applications', focusId: item.id, searchQuery: this.query() },
+        }),
     },
     {
       label: 'Update Invoice',
       icon: 'settings',
       variant: 'warning',
       isVisible: (item) => Boolean(item.hasInvoice && item.invoiceId),
-      action: (item) => this.router.navigate(['/invoices', item.invoiceId, 'edit']),
+      action: (item) =>
+        this.router.navigate(['/invoices', item.invoiceId, 'edit'], {
+          state: { from: 'applications', focusId: item.id, searchQuery: this.query() },
+        }),
     },
     {
       label: 'Delete',
@@ -319,8 +329,17 @@ export class ApplicationListComponent implements OnInit {
   }
 
   cancelDeleteAction(): void {
+    const row = this.pendingDelete();
     this.confirmOpen.set(false);
     this.pendingDelete.set(null);
+
+    // Return focus to the row that was being acted on
+    if (row) {
+      const table = this.dataTable();
+      if (table) {
+        table.focusRowById(row.id);
+      }
+    }
   }
 
   confirmDeleteWithInvoiceAction(): void {
@@ -350,9 +369,18 @@ export class ApplicationListComponent implements OnInit {
   }
 
   cancelDeleteWithInvoiceAction(): void {
+    const row = this.pendingDelete();
     this.deleteWithInvoiceOpen.set(false);
     this.deleteWithInvoiceData.set(null);
     this.pendingDelete.set(null);
+
+    // Return focus to the row that was being acted on
+    if (row) {
+      const table = this.dataTable();
+      if (table) {
+        table.focusRowById(row.id);
+      }
+    }
   }
 
   canForceClose(row: DocApplicationSerializerWithRelations): boolean {

@@ -437,7 +437,15 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
    */
   goBack(): void {
     const nav = this.router.getCurrentNavigation();
-    const st = (nav && nav.extras && (nav.extras.state as any)) || (history.state as any);
+    // Be safe under SSR by preferring router navigation state and guarding access to window.history
+    let st: any = (nav && nav.extras && (nav.extras.state as any)) || {};
+    try {
+      if (typeof window !== 'undefined' && history && (history as any).state) {
+        st = { ...(st || {}), ...((history as any).state || {}) };
+      }
+    } catch {
+      // ignore (SSR or no history)
+    }
 
     const stateFrom = st?.from;
     const focusId = st?.focusId;

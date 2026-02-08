@@ -47,6 +47,8 @@ export class DocumentPreviewComponent {
   zType = input<ZardButtonTypeVariants>('outline');
   zSize = input<ZardButtonSizeVariants>('sm');
   previewSize = input<'sm' | 'md' | 'lg'>('sm');
+  // If true, request the popover to be centered in the viewport instead of anchored to the trigger
+  centerInViewport = input<boolean>(false);
 
   viewFull = output<void>();
 
@@ -87,38 +89,48 @@ export class DocumentPreviewComponent {
   });
 
   protected readonly popoverClasses = computed(() => {
+    // Reduce the popover width to 2/3 of the previous value and keep responsive variants.
+    // These sizes are chosen so the preview is not overly wide and fit common screen sizes.
     switch (this.previewSize()) {
       case 'lg':
-        return 'p-3 w-[28rem] sm:w-[34rem]';
+        // approx 2/3 of previous lg sizes
+        return 'p-3 w-[36rem] sm:w-[45rem]';
       case 'md':
-        return 'p-3 w-96 sm:w-[28rem]';
+        // approx 2/3 of previous md sizes
+        return 'p-3 w-[32rem] sm:w-[36rem]';
       case 'sm':
       default:
-        return 'p-2 w-72 sm:w-80';
+        // approx 2/3 of previous sm sizes
+        return 'p-2 w-[24rem] sm:w-[28rem]';
     }
   });
 
   protected readonly previewFrameClasses = computed(() => {
+    // Use heights approximating A4 aspect ratio (height ≈ width * 1.414) for each size.
     switch (this.previewSize()) {
       case 'lg':
-        return 'w-full h-[26rem]';
+        // width ~45rem => height ~64rem (clamped to nicer rem)
+        return 'w-full h-[64rem]';
       case 'md':
-        return 'w-full h-80';
+        // width ~36rem => height ~51rem
+        return 'w-full h-[51rem]';
       case 'sm':
       default:
-        return 'w-full h-60';
+        // width ~28rem => height ~40rem
+        return 'w-full h-[40rem]';
     }
   });
 
   protected readonly previewImageClasses = computed(() => {
+    // Match the image max-height to the frame heights to maintain A4-like proportions
     switch (this.previewSize()) {
       case 'lg':
-        return 'max-h-[26rem] w-full object-contain';
+        return 'max-h-[64rem] w-full object-contain';
       case 'md':
-        return 'max-h-80 w-full object-contain';
+        return 'max-h-[51rem] w-full object-contain';
       case 'sm':
       default:
-        return 'max-h-60 w-full object-contain';
+        return 'max-h-[40rem] w-full object-contain';
     }
   });
 

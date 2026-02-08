@@ -115,7 +115,9 @@
                               (click)="onActionSelect(action, row, $event)"
                             >
                               <z-icon [zType]="action.icon" class="mr-2 h-4 w-4 stroke-current" />
-                              <span [innerHTML]="action.label | shortcutHighlight"></span>
+                              <span
+                                [innerHTML]="action.label | shortcutHighlight: action.shortcut"
+                              ></span>
                             </button>
                           }
                         }
