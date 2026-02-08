@@ -15,6 +15,7 @@ import { UserSettingsApiService } from '@/core/api/user-settings.service';
 import { authInterceptor } from '@/core/interceptors/auth.interceptor';
 import { AuthService } from '@/core/services/auth.service';
 import { ConfigService } from '@/core/services/config.service';
+import { LoggerService } from '@/core/services/logger.service';
 import { ThemeService } from '@/core/services/theme.service';
 import { provideZard } from '@/shared/core/provider/providezard';
 import { provideClientHydration, withEventReplay } from '@angular/platform-browser';
@@ -39,8 +40,12 @@ export const appConfig: ApplicationConfig = {
       const configService = inject(ConfigService);
       const themeService = inject(ThemeService);
       const authService = inject(AuthService);
+      const loggerService = inject(LoggerService);
       const platformId = inject(PLATFORM_ID);
       const userSettingsApi = inject(UserSettingsApiService);
+
+      // Initialize browser logging as early as possible
+      loggerService.init();
 
       if (!isPlatformBrowser(platformId)) {
         return Promise.resolve();
