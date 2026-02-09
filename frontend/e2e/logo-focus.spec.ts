@@ -2,6 +2,25 @@ import { expect, test } from '@playwright/test';
 
 // Ensure logo and its container are skipped by tabbing
 test.describe('Logo focus behavior', () => {
+  test.beforeEach(async ({ page }) => {
+    // If the app relies on mock auth being enabled, ensure a mock token is present prior to app load
+    await page.addInitScript(() => {
+      try {
+        localStorage.setItem('auth_token', 'mock-token');
+        localStorage.setItem('auth_refresh_token', 'mock-refresh');
+      } catch (e) {}
+    });
+
+    // Ensure the frontend receives a config that enables mock auth
+    await page.route('**/app-config/', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ MOCK_AUTH_ENABLED: 'True' }),
+      }),
+    );
+  });
+
   test('logo should not receive focus when tabbing through the page', async ({ page }) => {
     await page.goto('/customers');
     // Wait for customers list to be present

@@ -1,0 +1,54 @@
+name: Playwright E2E (mock)
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    env:
+      CI: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install Python deps
+        run: |
+          python -m venv .venv
+          . .venv/bin/activate
+          pip install -r requirements.txt
+
+      - name: Generate frontend schema
+        run: . .venv/bin/activate && python manage.py generate_frontend_schema
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.x"
+
+      - name: Install frontend deps
+        run: |
+          cd frontend
+          bun install --production=false
+
+      - name: Generate API client
+        run: |
+          cd frontend
+          bun run generate:api
+
+      - name: Install Playwright browsers and deps
+        run: |
+          cd frontend
+          bunx playwright install --with-deps
+
+      - name: Run Playwright tests (mock)
+        working-directory: frontend
+        run: |
+          bun run test:e2e

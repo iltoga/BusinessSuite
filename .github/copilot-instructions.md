@@ -220,6 +220,7 @@ businesssuite/
 - For models: test business logic and constraints
 - Maintain fixtures in `fixtures/` for core data types
 - **Frontend:** Minimum 80% test coverage required
+- **E2E tests:** Use Playwright with the mock server (Prism). See `docs/playwright-mock-e2e.md` for setup, recommended `playwright.config.ts`, examples, CI tips, and troubleshooting.
 
 ---
 

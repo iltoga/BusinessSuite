@@ -23,7 +23,9 @@ export type ZardAvatarStatus = 'online' | 'offline' | 'doNotDisturb' | 'away';
   standalone: true,
   template: `
     @if (zFallback() && (!zSrc() || !imageLoaded())) {
-      <span class="absolute z-0 m-auto text-base">{{ zFallback() }}</span>
+      <span class="absolute z-0 m-auto text-base font-semibold text-foreground">{{
+        zFallback()
+      }}</span>
     }
 
     @if (zSrc() && !imageError()) {

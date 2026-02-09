@@ -357,13 +357,45 @@ class DocApplication(models.Model):
         self.save(skip_status_calculation=True)
         return True
 
-    def can_be_deleted(self):
+    def can_be_deleted(self, user=None, delete_invoices=False):
+        """
+        Check whether this application can be deleted.
+
+        Args:
+            user: optional user performing the deletion - used to check superuser permission
+            delete_invoices: whether the caller requests to also delete linked invoices
+
+        Returns:
+            (bool, str|None) -> (can_delete, message)
+        """
         # Block deletion if related invoices exist
         if self.invoice_applications.exists():
+            # If the caller asked to delete related invoices, only superusers may do that
+            if delete_invoices:
+                if not user or not getattr(user, "is_superuser", False):
+                    return (
+                        False,
+                        "Only superusers can delete linked invoices. Please delete the invoices first or ask a superuser.",
+                    )
+                # Superuser confirmed cascade delete is allowed
+                return True, None
+
             return False, "Related invoices exist. You must delete the invoices first."
+
         return True, None
 
-    def delete(self, *args, **kwargs):
+    def delete(self, force_delete_invoices=False, user=None, *args, **kwargs):
+        """Allow callers to force deletion when a superuser explicitly requests invoice cascade.
+
+        Usage:
+            delete()  # normal behaviour: will block if related invoices exist
+            delete(force_delete_invoices=True, user=some_superuser)  # allow deletion and let caller cleanup invoices
+        """
+        # If caller explicitly requested invoice deletion and is superuser, allow deletion
+        if force_delete_invoices and user and getattr(user, "is_superuser", False):
+            return super().delete(*args, **kwargs)
+
+        # Default behaviour: enforce can_be_deleted rules
         can_delete, msg = self.can_be_deleted()
         if not can_delete:
             from django.db.models import ProtectedError

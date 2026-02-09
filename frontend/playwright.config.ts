@@ -15,9 +15,9 @@ export default defineConfig({
   },
 
   // Start the dev server automatically when running tests locally or in CI.
-  // Playwright will run `npm start` and wait for the URL to respond.
+  // Use the mock dev script so Prism (mock server) and the Angular dev server start in parallel.
   webServer: {
-    command: 'npm start',
+    command: 'bun run dev:mock',
     url: 'http://localhost:4200',
     timeout: 120_000,
     reuseExistingServer: !process.env.CI,

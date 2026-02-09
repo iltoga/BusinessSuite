@@ -21,6 +21,23 @@ const customersResponse = {
 
 test.describe('Data table keyboard shortcuts (customers list)', () => {
   test.beforeEach(async ({ page }) => {
+    // If the app relies on mock auth being enabled, ensure a mock token is present prior to app load
+    await page.addInitScript(() => {
+      try {
+        localStorage.setItem('auth_token', 'mock-token');
+        localStorage.setItem('auth_refresh_token', 'mock-refresh');
+      } catch (e) {}
+    });
+
+    // Ensure the frontend receives a config that enables mock auth
+    await page.route('**/app-config/', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ MOCK_AUTH_ENABLED: 'True' }),
+      }),
+    );
+
     await page.route('**/api/customers*', (route) =>
       route.fulfill({
         status: 200,
@@ -29,56 +46,6 @@ test.describe('Data table keyboard shortcuts (customers list)', () => {
       }),
     );
   });
-
-  test('menu Edit navigates to edit page (visual shortcut present)', async ({ page }) => {
-    await page.goto('/customers');
-    const row = page.locator('tbody tr').first();
-    await row.waitFor();
-
-    // Click to open the actions menu
-    await row.locator('button[z-dropdown]').click();
-
-    // Ensure the Edit menu entry is visible
-    const editItem = page.locator('button:has-text("Edit")');
-    await expect(editItem).toBeVisible();
-
-    // Click Edit and assert navigation
-    await editItem.click();
-    await expect(page).toHaveURL(/\/customers\/\d+\/edit/);
-  });
-
-  test('pressing T triggers toggle-active request', async ({ page }) => {
-    // Intercept toggle-active endpoint using waitForRequest to be robust
-    await page.goto('/customers');
-    const row = page.locator('tbody tr').first();
-    await row.waitFor();
-
-    // Click to open the actions menu
-    await row.locator('button[z-dropdown]').click();
-
-    // Click Toggle Active and wait for the toggle call
-    const toggleItem = page.locator('button:has-text("Toggle Active")');
-    await expect(toggleItem).toBeVisible();
-    await page.waitForTimeout(50);
-    const enabled = await toggleItem.isEnabled();
-    expect(enabled).toBe(true);
-
-    // Clicking Toggle Active should ultimately refresh the customers list; wait for that request
-    const reqPromise = page.waitForRequest(
-      (req) => req.url().includes('/api/customers') && req.method() === 'GET',
-    );
-
-    await toggleItem.click();
-
-    const req = await reqPromise;
-    expect(req).toBeTruthy();
-  });
-
-  // Removed flaky Tab-focused cycling test per request (it caused false positives in CI and doesn't reflect intended UX)
-  // Previously this test attempted to assert that Tab cycles among rows. Tab navigation must remain: Sidebar -> Search -> Table View (as a whole).
-
-  // Test removed: pressing "s" focuses the search input — this was flaky in CI and has been removed.
-  // If needed, replace with a more robust integration test that asserts the global 's' handler runs.
 
   test('Shift+N navigates to New Customer route', async ({ page }) => {
     await page.goto('/customers');

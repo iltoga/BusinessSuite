@@ -1656,6 +1656,47 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
         return Response({"success": True})
 
+    def destroy(self, request, *args, **kwargs):
+        """Allow optional deletion of linked invoices when deleting an application.
+
+        To delete linked invoices, the caller must explicitly pass `deleteInvoices` (or `delete_invoices`) and be a superuser.
+        """
+        try:
+            application = self.get_object()
+        except DocApplication.DoesNotExist:
+            return self.error_response("Application not found", status.HTTP_404_NOT_FOUND)
+
+        delete_invoices = parse_bool(
+            request.data.get("deleteInvoices")
+            or request.data.get("delete_invoices")
+            or request.query_params.get("deleteInvoices")
+        )
+
+        can_delete, msg = application.can_be_deleted(user=request.user, delete_invoices=delete_invoices)
+        if not can_delete:
+            return self.error_response(msg, status.HTTP_400_BAD_REQUEST)
+
+        invoice_ids = list(application.invoice_applications.values_list("invoice_id", flat=True).distinct())
+        from django.db import transaction
+
+        from invoices.models.invoice import Invoice
+
+        with transaction.atomic():
+            # delete application (cascade will remove InvoiceApplication rows)
+            application.delete(force_delete_invoices=delete_invoices, user=request.user)
+
+            # Cleanup invoices: if an invoice has no remaining InvoiceApplication rows, remove it (force delete)
+            for inv_id in invoice_ids:
+                invoice = Invoice.objects.filter(pk=inv_id).first()
+                if not invoice:
+                    continue
+                if invoice.invoice_applications.count() == 0:
+                    invoice.delete(force=True)
+                else:
+                    invoice.save()
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
     @extend_schema(
         request=OpenApiTypes.OBJECT,
         responses=DocWorkflowSerializer,
