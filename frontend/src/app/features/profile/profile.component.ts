@@ -174,7 +174,7 @@ export class ProfileComponent implements OnInit {
         profile.username,
         profile.fullName,
         profile.role,
-        profile.avatar,
+        profile.avatar ?? '',
         profile.lastLogin ?? '',
         profile.isSuperuser,
         rawValues.email,

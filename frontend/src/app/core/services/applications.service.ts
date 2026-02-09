@@ -157,7 +157,7 @@ export class ApplicationsService {
   updateWorkflowStatus(applicationId: number, workflowId: number, status: string): Observable<any> {
     return this.customerApplicationsService.customerApplicationsWorkflowsStatusCreate(
       applicationId,
-      String(workflowId),
+      workflowId,
       { status },
     );
   }

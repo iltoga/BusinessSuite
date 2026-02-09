@@ -1,3 +1,5 @@
+from typing import Optional
+
 from django.contrib.auth.models import User
 from rest_framework import serializers
 
@@ -23,10 +25,10 @@ class UserProfileSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "username", "role", "avatar", "last_login", "is_superuser"]
 
-    def get_full_name(self, obj):
+    def get_full_name(self, obj) -> str:
         return f"{obj.first_name} {obj.last_name}".strip() or obj.username
 
-    def get_role(self, obj):
+    def get_role(self, obj) -> str:
         if obj.is_superuser:
             return "Administrator"
         groups = obj.groups.all()
@@ -34,7 +36,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             return groups[0].name
         return "Staff"
 
-    def get_avatar(self, obj):
+    def get_avatar(self, obj) -> Optional[str]:
         if hasattr(obj, "profile") and obj.profile.avatar:
             request = self.context.get("request")
             if request:

@@ -59,6 +59,9 @@ export class InvoicesService extends BaseService {
 
         // authentication (cookieAuth) required
 
+        // authentication (jwtAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
+
         const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
             'application/json'
         ]);
@@ -127,6 +130,9 @@ export class InvoicesService extends BaseService {
         let localVarHeaders = this.defaultHeaders;
 
         // authentication (cookieAuth) required
+
+        // authentication (jwtAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
 
         const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
             'application/json'
@@ -197,6 +203,9 @@ export class InvoicesService extends BaseService {
 
         // authentication (cookieAuth) required
 
+        // authentication (jwtAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
+
         const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
             'application/json'
         ]);
@@ -253,6 +262,9 @@ export class InvoicesService extends BaseService {
         let localVarHeaders = this.defaultHeaders;
 
         // authentication (cookieAuth) required
+
+        // authentication (jwtAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
 
         const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
         ]);
@@ -311,6 +323,9 @@ export class InvoicesService extends BaseService {
 
         // authentication (cookieAuth) required
 
+        // authentication (jwtAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
+
         const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
             'application/json'
         ]);
@@ -363,7 +378,7 @@ export class InvoicesService extends BaseService {
 
     /**
      * @endpoint get /api/invoices/download-async/file/{jobId}/
-     * @param jobId 
+     * @param jobId Download job UUID
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
@@ -380,6 +395,9 @@ export class InvoicesService extends BaseService {
 
         // authentication (cookieAuth) required
 
+        // authentication (jwtAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
+
         const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
             'application/json'
         ]);
@@ -403,7 +421,7 @@ export class InvoicesService extends BaseService {
             }
         }
 
-        let localVarPath = `/api/invoices/download-async/file/${this.configuration.encodeParam({name: "jobId", value: jobId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: undefined})}/`;
+        let localVarPath = `/api/invoices/download-async/file/${this.configuration.encodeParam({name: "jobId", value: jobId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/`;
         const { basePath, withCredentials } = this.configuration;
         return this.httpClient.request<InvoiceList>('get', `${basePath}${localVarPath}`,
             {
@@ -420,7 +438,7 @@ export class InvoicesService extends BaseService {
 
     /**
      * @endpoint get /api/invoices/download-async/status/{jobId}/
-     * @param jobId 
+     * @param jobId Download job UUID
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
@@ -437,6 +455,9 @@ export class InvoicesService extends BaseService {
 
         // authentication (cookieAuth) required
 
+        // authentication (jwtAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
+
         const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
             'application/json'
         ]);
@@ -460,7 +481,7 @@ export class InvoicesService extends BaseService {
             }
         }
 
-        let localVarPath = `/api/invoices/download-async/status/${this.configuration.encodeParam({name: "jobId", value: jobId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: undefined})}/`;
+        let localVarPath = `/api/invoices/download-async/status/${this.configuration.encodeParam({name: "jobId", value: jobId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/`;
         const { basePath, withCredentials } = this.configuration;
         return this.httpClient.request<{ [key: string]: any; }>('get', `${basePath}${localVarPath}`,
             {
@@ -477,7 +498,7 @@ export class InvoicesService extends BaseService {
 
     /**
      * @endpoint get /api/invoices/download-async/stream/{jobId}/
-     * @param jobId 
+     * @param jobId Download job UUID
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
@@ -493,6 +514,9 @@ export class InvoicesService extends BaseService {
         let localVarHeaders = this.defaultHeaders;
 
         // authentication (cookieAuth) required
+
+        // authentication (jwtAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
 
         const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
             'application/json'
@@ -517,7 +541,7 @@ export class InvoicesService extends BaseService {
             }
         }
 
-        let localVarPath = `/api/invoices/download-async/stream/${this.configuration.encodeParam({name: "jobId", value: jobId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: undefined})}/`;
+        let localVarPath = `/api/invoices/download-async/stream/${this.configuration.encodeParam({name: "jobId", value: jobId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/`;
         const { basePath, withCredentials } = this.configuration;
         return this.httpClient.request<InvoiceList>('get', `${basePath}${localVarPath}`,
             {
@@ -562,6 +586,9 @@ export class InvoicesService extends BaseService {
         let localVarHeaders = this.defaultHeaders;
 
         // authentication (cookieAuth) required
+
+        // authentication (jwtAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
 
         const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
             'application/json'
@@ -610,6 +637,9 @@ export class InvoicesService extends BaseService {
         let localVarHeaders = this.defaultHeaders;
 
         // authentication (cookieAuth) required
+
+        // authentication (jwtAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
 
         const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
             'application/json'
@@ -762,6 +792,9 @@ export class InvoicesService extends BaseService {
 
         // authentication (cookieAuth) required
 
+        // authentication (jwtAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
+
         const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
             'application/json'
         ]);
@@ -819,6 +852,9 @@ export class InvoicesService extends BaseService {
         let localVarHeaders = this.defaultHeaders;
 
         // authentication (cookieAuth) required
+
+        // authentication (jwtAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
 
         const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
             'application/json'
@@ -880,6 +916,9 @@ export class InvoicesService extends BaseService {
         let localVarHeaders = this.defaultHeaders;
 
         // authentication (cookieAuth) required
+
+        // authentication (jwtAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
 
         const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
             'application/json'
@@ -979,6 +1018,9 @@ export class InvoicesService extends BaseService {
 
         // authentication (cookieAuth) required
 
+        // authentication (jwtAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
+
         const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
             'application/json'
         ]);
@@ -1038,6 +1080,9 @@ export class InvoicesService extends BaseService {
         let localVarHeaders = this.defaultHeaders;
 
         // authentication (cookieAuth) required
+
+        // authentication (jwtAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
 
         const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
             'application/json'
@@ -1109,7 +1154,7 @@ export class InvoicesService extends BaseService {
     /**
      * Get status of an invoice import job.
      * @endpoint get /api/invoices/import/status/{jobId}/
-     * @param jobId 
+     * @param jobId Import job UUID
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
@@ -1125,6 +1170,9 @@ export class InvoicesService extends BaseService {
         let localVarHeaders = this.defaultHeaders;
 
         // authentication (cookieAuth) required
+
+        // authentication (jwtAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
 
         const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
             'application/json'
@@ -1149,7 +1197,7 @@ export class InvoicesService extends BaseService {
             }
         }
 
-        let localVarPath = `/api/invoices/import/status/${this.configuration.encodeParam({name: "jobId", value: jobId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: undefined})}/`;
+        let localVarPath = `/api/invoices/import/status/${this.configuration.encodeParam({name: "jobId", value: jobId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/`;
         const { basePath, withCredentials } = this.configuration;
         return this.httpClient.request<{ [key: string]: any; }>('get', `${basePath}${localVarPath}`,
             {
@@ -1183,6 +1231,9 @@ export class InvoicesService extends BaseService {
         let localVarHeaders = this.defaultHeaders;
 
         // authentication (cookieAuth) required
+
+        // authentication (jwtAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
 
         const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
             'application/json'
@@ -1289,6 +1340,9 @@ export class InvoicesService extends BaseService {
 
         // authentication (cookieAuth) required
 
+        // authentication (jwtAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
+
         const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
             'application/json'
         ]);
@@ -1347,6 +1401,9 @@ export class InvoicesService extends BaseService {
         let localVarHeaders = this.defaultHeaders;
 
         // authentication (cookieAuth) required
+
+        // authentication (jwtAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
 
         const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
             'application/json'
@@ -1420,6 +1477,9 @@ export class InvoicesService extends BaseService {
         let localVarHeaders = this.defaultHeaders;
 
         // authentication (cookieAuth) required
+
+        // authentication (jwtAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
 
         const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
             'application/json'
@@ -1499,6 +1559,9 @@ export class InvoicesService extends BaseService {
 
         // authentication (cookieAuth) required
 
+        // authentication (jwtAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
+
         const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
             'application/json'
         ]);
@@ -1556,6 +1619,9 @@ export class InvoicesService extends BaseService {
         let localVarHeaders = this.defaultHeaders;
 
         // authentication (cookieAuth) required
+
+        // authentication (jwtAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
 
         const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
             'application/json'
@@ -1617,6 +1683,9 @@ export class InvoicesService extends BaseService {
         let localVarHeaders = this.defaultHeaders;
 
         // authentication (cookieAuth) required
+
+        // authentication (jwtAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
 
         const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
             'application/json'

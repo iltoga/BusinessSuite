@@ -7,7 +7,6 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
-import { PaymentTypeEnum } from './payment-type-enum';
 
 
 export interface Payment { 
@@ -15,13 +14,24 @@ export interface Payment {
     invoiceApplication: number;
     fromCustomer?: number;
     paymentDate?: string;
-    paymentType?: PaymentTypeEnum;
+    /**
+     * * `cash` - Cash * `credit_card` - Credit card * `wire_transfer` - Wire transfer * `crypto` - Crypto * `paypal` - PayPal
+     */
+    paymentType?: Payment.PaymentTypeEnum;
     amount: string;
     notes?: string;
     readonly createdAt: string;
     readonly createdBy: number | null;
 }
 export namespace Payment {
+    export const PaymentTypeEnum = {
+        Cash: 'cash',
+        CreditCard: 'credit_card',
+        WireTransfer: 'wire_transfer',
+        Crypto: 'crypto',
+        Paypal: 'paypal'
+    } as const;
+    export type PaymentTypeEnum = typeof PaymentTypeEnum[keyof typeof PaymentTypeEnum];
 }
 
 

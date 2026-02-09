@@ -33,6 +33,8 @@ LOG_DIR = os.path.join(ROOT_DIR, "logs")
 if not os.path.exists(LOG_DIR):
     os.makedirs(LOG_DIR, exist_ok=True)
 LOGS_DIR = LOG_DIR  # Alias for backward compatibility
+# enable or disable client-side logging endpoint
+CLIENT_LOGS_ENABLED = os.getenv("CLIENT_LOGS_ENABLED") == "True"
 
 # Static and Media paths - defined early as they are used by other settings and services
 # Allow overriding via env var so production can point MEDIA_ROOT to a host-mounted path
@@ -413,6 +415,23 @@ SPECTACULAR_SETTINGS = {
     "SERVE_INCLUDE_SCHEMA": False,
     "CAMELIZE_NAMES": True,
     "COMPONENT_SPLIT_PATCH": False,
+    # Preprocessing hooks help filter out endpoints that are hard to auto-discover
+    # We add a hook that excludes APIView endpoints without serializer declarations
+    "PREPROCESSING_HOOKS": ["core.openapi.preprocess_exclude_api_views_without_serializer"],
+    "POSTPROCESSING_HOOKS": [
+        "core.openapi.postprocess_add_job_id_param",
+        "core.openapi.postprocess_add_mock_paths",
+    ],
+    # ENUM_NAME_OVERRIDES maps a friendly enum name to a choices definition (import path or callable)
+    # This avoids drf-spectacular generating many colliding enum names for fields named 'status'.
+    "ENUM_NAME_OVERRIDES": {
+        # DocApplication and DocWorkflow share the same choices; use a single override name
+        "DocApplicationStatus": "customer_applications.models.doc_application.DocApplication.STATUS_CHOICES",
+        "InvoiceStatus": "invoices.models.invoice.Invoice.INVOICE_STATUS_CHOICES",
+        "InvoicePaymentStatus": "invoices.models.invoice.InvoiceApplication.PAYMENT_STATUS_CHOICES",
+        # Consolidate identical job status choices under a single shared enum name to avoid duplication
+        "JobStatus": ["queued", "processing", "completed", "failed"],
+    },
 }
 
 SIMPLE_JWT = {

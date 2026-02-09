@@ -12,7 +12,6 @@ import { DocWorkflow } from './doc-workflow';
 import { Customer } from './customer';
 import { Product } from './product';
 import { Document } from './document';
-import { Status519Enum } from './status519-enum';
 
 
 export interface DocApplicationDetail { 
@@ -21,7 +20,10 @@ export interface DocApplicationDetail {
     readonly product: Product;
     readonly docDate: string;
     readonly dueDate: string | null;
-    readonly status: Status519Enum;
+    /**
+     * * `pending` - Pending * `processing` - Processing * `completed` - Completed * `rejected` - Rejected
+     */
+    readonly status: DocApplicationDetail.StatusEnum;
     readonly notes: string | null;
     readonly createdAt: string;
     readonly updatedAt: string;
@@ -39,6 +41,13 @@ export interface DocApplicationDetail {
     readonly canForceClose: boolean;
 }
 export namespace DocApplicationDetail {
+    export const StatusEnum = {
+        Pending: 'pending',
+        Processing: 'processing',
+        Completed: 'completed',
+        Rejected: 'rejected'
+    } as const;
+    export type StatusEnum = typeof StatusEnum[keyof typeof StatusEnum];
 }
 
 

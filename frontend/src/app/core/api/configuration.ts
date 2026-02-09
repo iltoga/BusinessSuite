@@ -101,6 +101,15 @@ constructor({ accessToken, apiKeys, basePath, credentials, encodeParam, encoder,
                 }
             };
         }
+
+        // init default jwtAuth credential
+        if (!this.credentials['jwtAuth']) {
+            this.credentials['jwtAuth'] = () => {
+                return typeof this.accessToken === 'function'
+                    ? this.accessToken()
+                    : this.accessToken;
+            };
+        }
     }
 
     /**

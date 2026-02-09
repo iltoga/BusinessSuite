@@ -7,7 +7,6 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
-import { ProductTypeEnum } from './product-type-enum';
 
 
 export interface Product { 
@@ -17,7 +16,10 @@ export interface Product {
     description?: string;
     immigrationId?: string | null;
     basePrice?: string | null;
-    productType?: ProductTypeEnum;
+    /**
+     * * `visa` - Visa * `other` - Other
+     */
+    productType?: Product.ProductTypeEnum;
     validity?: number | null;
     requiredDocuments?: string;
     optionalDocuments?: string;
@@ -34,6 +36,11 @@ export interface Product {
     readonly updatedBy: string;
 }
 export namespace Product {
+    export const ProductTypeEnum = {
+        Visa: 'visa',
+        Other: 'other'
+    } as const;
+    export type ProductTypeEnum = typeof ProductTypeEnum[keyof typeof ProductTypeEnum];
 }
 
 

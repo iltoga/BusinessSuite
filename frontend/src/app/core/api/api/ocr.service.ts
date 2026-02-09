@@ -34,7 +34,6 @@ export class OcrService extends BaseService {
     }
 
     /**
-     * API endpoint for passport OCR extraction.  Supports hybrid extraction mode with AI vision for enhanced data extraction.  POST Parameters:     - file: The passport image or PDF file     - doc_type: Document type (e.g., \&#39;passport\&#39;)     - use_ai: (optional) Set to \&#39;true\&#39; to enable AI-enhanced extraction (default: false)     - save_session: (optional) Save file and data to session     - img_preview: (optional) Return base64 preview image     - resize: (optional) Resize the image     - width: (optional) Target width for resize  Returns:     - mrz_data: Extracted passport data (enhanced with AI data if use_ai&#x3D;true)     - b64_resized_image: Base64 encoded preview (if img_preview&#x3D;true)
      * @endpoint post /api/ocr/check/
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
@@ -48,6 +47,9 @@ export class OcrService extends BaseService {
         let localVarHeaders = this.defaultHeaders;
 
         // authentication (cookieAuth) required
+
+        // authentication (jwtAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
 
         const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
         ]);
@@ -87,7 +89,6 @@ export class OcrService extends BaseService {
     }
 
     /**
-     * API endpoint for passport OCR extraction.  Supports hybrid extraction mode with AI vision for enhanced data extraction.  POST Parameters:     - file: The passport image or PDF file     - doc_type: Document type (e.g., \&#39;passport\&#39;)     - use_ai: (optional) Set to \&#39;true\&#39; to enable AI-enhanced extraction (default: false)     - save_session: (optional) Save file and data to session     - img_preview: (optional) Return base64 preview image     - resize: (optional) Resize the image     - width: (optional) Target width for resize  Returns:     - mrz_data: Extracted passport data (enhanced with AI data if use_ai&#x3D;true)     - b64_resized_image: Base64 encoded preview (if img_preview&#x3D;true)
      * @endpoint get /api/ocr/status/{jobId}/
      * @param jobId 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -105,6 +106,9 @@ export class OcrService extends BaseService {
         let localVarHeaders = this.defaultHeaders;
 
         // authentication (cookieAuth) required
+
+        // authentication (jwtAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
 
         const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
         ]);

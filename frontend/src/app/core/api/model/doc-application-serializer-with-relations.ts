@@ -7,7 +7,6 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
-import { Status519Enum } from './status519-enum';
 
 
 export interface DocApplicationSerializerWithRelations { 
@@ -16,7 +15,10 @@ export interface DocApplicationSerializerWithRelations {
     product: number;
     docDate: string;
     dueDate?: string | null;
-    status?: Status519Enum;
+    /**
+     * * `pending` - Pending * `processing` - Processing * `completed` - Completed * `rejected` - Rejected
+     */
+    status?: DocApplicationSerializerWithRelations.StatusEnum;
     notes?: string | null;
     readonly createdAt: string;
     readonly updatedAt: string;
@@ -40,6 +42,13 @@ export interface DocApplicationSerializerWithRelations {
     readonly canForceClose: boolean;
 }
 export namespace DocApplicationSerializerWithRelations {
+    export const StatusEnum = {
+        Pending: 'pending',
+        Processing: 'processing',
+        Completed: 'completed',
+        Rejected: 'rejected'
+    } as const;
+    export type StatusEnum = typeof StatusEnum[keyof typeof StatusEnum];
 }
 
 

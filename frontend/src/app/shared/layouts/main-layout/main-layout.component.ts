@@ -62,10 +62,9 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
   private router = inject(Router);
 
   logoSrc = computed(() => {
-    // Use assets path to ensure the dev-server and production builds serve the images reliably
-    const cfg = this.configService.settings;
-    const normal = `/assets/${cfg.logoFilename || 'logo_transparent.png'}`;
-    const inverted = `/assets/${cfg.logoInvertedFilename || 'logo_inverted_transparent.png'}`;
+    // Hardcoded static paths — dynamic loading from config has been removed.
+    const normal = '/assets/logo_transparent.png';
+    const inverted = '/assets/logo_inverted_transparent.png';
     return this.themeService.isDarkMode() ? inverted : normal;
   });
 

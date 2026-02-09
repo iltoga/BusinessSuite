@@ -109,8 +109,7 @@ export class DocumentPrintComponent implements OnInit {
 
   // Brand logo used in print view
   get logoSrc(): string {
-    const cfg = this.configService.settings;
-    return `/assets/${cfg.logoFilename || 'logo_transparent.png'}`;
+    return '/assets/logo_transparent.png';
   }
 
   goBack(): void {

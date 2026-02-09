@@ -1,0 +1,58 @@
+name: E2E Tests (with mock)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  e2e-mock:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: "latest"
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: bun install
+
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: bunx playwright install --with-deps
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.14"
+
+      - name: Install backend deps
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Generate OpenAPI schema
+        run: |
+          python manage.py generate_frontend_schema
+
+      - name: Start Prism mock server
+        working-directory: frontend
+        run: |
+          bun run mock:server &
+          echo "Waiting for Prism to accept connections on port 4010..."
+          for i in {1..60}; do
+            if bash -c "</dev/tcp/localhost/4010" >/dev/null 2>&1; then
+              echo "Prism port is open"
+              break
+            fi
+            sleep 1
+          done
+
+      - name: Run E2E tests
+        working-directory: frontend
+        run: bun run test:e2e

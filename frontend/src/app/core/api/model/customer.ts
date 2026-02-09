@@ -7,7 +7,6 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
-import { CustomerTypeEnum } from './customer-type-enum';
 
 
 /**
@@ -17,8 +16,14 @@ export interface Customer {
     readonly id: number;
     readonly createdAt: string;
     readonly updatedAt: string;
+    /**
+     * * `` - --------- * `Mr` - Mr * `Mrs` - Mrs * `Ms` - Ms * `Miss` - Miss * `Dr` - Dr * `Prof` - Prof
+     */
     title?: Customer.TitleEnum | null;
-    customerType?: CustomerTypeEnum;
+    /**
+     * * `person` - Person * `company` - Company
+     */
+    customerType?: Customer.CustomerTypeEnum;
     firstName?: string | null;
     lastName?: string | null;
     companyName?: string | null;
@@ -38,8 +43,11 @@ export interface Customer {
     passportExpirationDate?: string | null;
     passportFile?: string | null;
     passportMetadata?: any | null;
-    readonly passportExpired: string;
-    readonly passportExpiringSoon: string;
+    readonly passportExpired: boolean;
+    readonly passportExpiringSoon: boolean;
+    /**
+     * * `` - --------- * `M` - Male * `F` - Female
+     */
     gender?: Customer.GenderEnum | null;
     readonly genderDisplay: string;
     readonly nationalityName: string;
@@ -47,6 +55,9 @@ export interface Customer {
     addressBali?: string | null;
     addressAbroad?: string | null;
     notifyDocumentsExpiration?: boolean;
+    /**
+     * * `` - --------- * `Email` - Email * `SMS` - SMS * `WhatsApp` - WhatsApp * `Telegram` - Telegram * `Telephone` - Telephone
+     */
     notifyBy?: Customer.NotifyByEnum | null;
     active?: boolean;
     readonly fullName: string;
@@ -54,28 +65,33 @@ export interface Customer {
 }
 export namespace Customer {
     export const TitleEnum = {
+        Empty: '',
         Mr: 'Mr',
         Mrs: 'Mrs',
         Ms: 'Ms',
         Miss: 'Miss',
         Dr: 'Dr',
-        Prof: 'Prof',
-        Empty: ''
+        Prof: 'Prof'
     } as const;
     export type TitleEnum = typeof TitleEnum[keyof typeof TitleEnum];
+    export const CustomerTypeEnum = {
+        Person: 'person',
+        Company: 'company'
+    } as const;
+    export type CustomerTypeEnum = typeof CustomerTypeEnum[keyof typeof CustomerTypeEnum];
     export const GenderEnum = {
+        Empty: '',
         M: 'M',
-        F: 'F',
-        Empty: ''
+        F: 'F'
     } as const;
     export type GenderEnum = typeof GenderEnum[keyof typeof GenderEnum];
     export const NotifyByEnum = {
+        Empty: '',
         Email: 'Email',
         Sms: 'SMS',
         WhatsApp: 'WhatsApp',
         Telegram: 'Telegram',
-        Telephone: 'Telephone',
-        Empty: ''
+        Telephone: 'Telephone'
     } as const;
     export type NotifyByEnum = typeof NotifyByEnum[keyof typeof NotifyByEnum];
 }

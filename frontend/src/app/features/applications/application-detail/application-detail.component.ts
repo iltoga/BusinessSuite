@@ -40,6 +40,7 @@ import {
   ZardSkeletonComponent,
 } from '@/shared/components/skeleton';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
+import { HelpService } from '@/shared/services/help.service';
 import { downloadBlob } from '@/shared/utils/file-download';
 
 @Component({
@@ -79,6 +80,7 @@ export class ApplicationDetailComponent implements OnInit {
   private destroyRef = inject(DestroyRef);
   private platformId = inject(PLATFORM_ID);
   private readonly isBrowser = isPlatformBrowser(this.platformId);
+  private help = inject(HelpService);
 
   readonly application = signal<ApplicationDetail | null>(null);
   readonly isLoading = signal(true);
@@ -648,6 +650,16 @@ export class ApplicationDetailComponent implements OnInit {
       next: (data) => {
         this.application.set(data);
         this.isLoading.set(false);
+
+        // Update contextual help for this specific application
+        const cust = data?.customer?.fullName ?? 'unknown customer';
+        const product = data?.product?.name ?? 'unknown product';
+        this.help.setContext({
+          id: `/applications/${id}`,
+          briefExplanation: `Application #${id} for ${cust} (${product}).`,
+          details:
+            'Manage documents, workflow steps, and application-specific actions. Use the upload area to add documents and the actions menu to run workflow steps or create invoices.',
+        });
       },
       error: () => {
         this.toast.error('Failed to load application');

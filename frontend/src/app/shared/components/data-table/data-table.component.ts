@@ -160,12 +160,46 @@ export class DataTableComponent<T = Record<string, any>> implements AfterViewIni
   }
 
   ngAfterViewInit(): void {
-    // Component initialization
+    if (this.isBrowser) {
+      // Use capture phase to intercept Tab before any internal elements (like links) can handle it
+      this.tableWrapper?.first?.nativeElement.addEventListener(
+        'keydown',
+        this._captureTabHandler,
+        true,
+      );
+
+      // Also listen on the document in capture phase if focus is inside the table
+      // to ensure Tab doesn't escape our control.
+      window.addEventListener('keydown', this._globalCaptureTabHandler, true);
+    }
   }
 
   ngOnDestroy(): void {
-    // Cleanup
+    if (this.isBrowser) {
+      this.tableWrapper?.first?.nativeElement.removeEventListener(
+        'keydown',
+        this._captureTabHandler,
+        true,
+      );
+      window.removeEventListener('keydown', this._globalCaptureTabHandler, true);
+    }
   }
+
+  private _captureTabHandler = (event: KeyboardEvent) => {
+    if (event.key === 'Tab') {
+      this.handleTableKeydown(event);
+    }
+  };
+
+  private _globalCaptureTabHandler = (event: KeyboardEvent) => {
+    if (event.key === 'Tab') {
+      const active = document.activeElement;
+      const tableEl = this.tableWrapper?.first?.nativeElement;
+      if (tableEl && tableEl.contains(active)) {
+        this.handleTableKeydown(event);
+      }
+    }
+  };
 
   /**
    * Keyboard navigation for sections and arrows.
@@ -173,19 +207,29 @@ export class DataTableComponent<T = Record<string, any>> implements AfterViewIni
   handleTableKeydown(event: KeyboardEvent): void {
     const key = event.key;
 
-    // Section cycling: Tab jumps out of table
+    // Section navigation: Tab always moves focus out of the table
     if (key === 'Tab') {
       event.preventDefault();
       event.stopPropagation();
-
       if (event.shiftKey) {
-        // Shift+Tab -> Search
-        const search = document.querySelector('app-search-toolbar input') as HTMLElement;
-        search?.focus();
+        // Shift+Tab from Table -> Search
+        const searchInput = document.querySelector('app-search-toolbar input') as HTMLElement;
+        if (searchInput) {
+          searchInput.focus();
+        } else {
+          // Fallback to sidebar if search not found
+          const sidebar = document.querySelector('aside a, aside button') as HTMLElement;
+          sidebar?.focus();
+        }
       } else {
-        // Tab -> Sidebar
+        // Tab from Table -> Sidebar
         const sidebar = document.querySelector('aside a, aside button') as HTMLElement;
-        sidebar?.focus();
+        if (sidebar) {
+          sidebar.focus();
+        } else {
+          // Fallback to top if sidebar not found
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
       }
       return;
     }
@@ -326,11 +370,6 @@ export class DataTableComponent<T = Record<string, any>> implements AfterViewIni
       event.preventDefault();
       event.stopPropagation();
       this.focusPreviousRow();
-      return;
-    }
-
-    if (key === 'Tab') {
-      this.handleTableKeydown(event);
       return;
     }
 

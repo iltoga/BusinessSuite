@@ -14,7 +14,7 @@
         <div class="px-6 pb-6 text-center -mt-12">
           <div class="relative inline-block group cursor-pointer" (click)="avatarInput.click()">
             <z-avatar
-              [zSrc]="profile()?.avatar"
+              [zSrc]="profile()?.avatar ?? undefined"
               [zFallback]="userInitials()"
               class="h-24 w-24 border-4 border-card shadow-lg text-2xl font-bold transition-opacity group-hover:opacity-80"
             />

@@ -36,6 +36,8 @@ import {
 } from '@/shared/components/data-table/data-table.component';
 import { PaginationControlsComponent } from '@/shared/components/pagination-controls';
 import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
+import { ContextHelpDirective } from '@/shared/directives';
+import { HelpService } from '@/shared/services/help.service';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 
 @Component({
@@ -52,6 +54,7 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
     ConfirmDialogComponent,
     BulkDeleteDialogComponent,
     ...ZardBadgeImports,
+    ContextHelpDirective,
   ],
   templateUrl: './application-list.component.html',
   styleUrls: ['./application-list.component.css'],
@@ -63,6 +66,7 @@ export class ApplicationListComponent implements OnInit {
   private toast = inject(GlobalToastService);
   private router = inject(Router);
   private platformId = inject(PLATFORM_ID);
+  private help = inject(HelpService);
 
   readonly items = signal<DocApplicationSerializerWithRelations[]>([]);
   readonly isLoading = signal(false);
@@ -262,6 +266,9 @@ export class ApplicationListComponent implements OnInit {
     if (st.searchQuery) {
       this.query.set(String(st.searchQuery));
     }
+    // Ensure help context is set immediately for this view
+    this.help.setContextForPath('/applications');
+
     this.load();
   }
 

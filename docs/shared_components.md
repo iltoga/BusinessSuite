@@ -12,6 +12,7 @@
 
 | Component Name        | Selector                      | Location                                              | ZardUI Deps             | Status          | Used In         |
 | --------------------- | ----------------------------- | ----------------------------------------------------- | ----------------------- | --------------- | --------------- |
+| HelpDrawer            | z-help-drawer                 | src/app/shared/components/help-drawer                 | Sheet, Button           | Beta            | Global (F1)     |
 | DataTable             | app-data-table                | src/app/shared/components/data-table                  | Table                   | ✅ Ready        |                 |
 | ConfirmDialog         | app-confirm-dialog            | src/app/shared/components/confirm-dialog              | Dialog, Button          | ✅ Ready        |                 |
 | SearchToolbar         | app-search-toolbar            | src/app/shared/components/search-toolbar              | Input, Button           | ✅ Ready        |                 |
@@ -31,6 +32,36 @@
 | QuickApplicationModal | app-quick-application-modal   | src/app/features/applications/quick-application-modal | Dialog, Button, Form    | ✅ Ready        | Invoices        |
 
 ## Component Details
+
+### HelpDrawerComponent
+
+**Location:** `src/app/shared/components/help-drawer/help-drawer.component.ts`
+
+**Selector:** `z-help-drawer`
+
+**Behavior:** Global contextual help drawer built on top of Zard UI's `z-sheet`. Open by pressing `F1` (handled in `App` via `window:keydown`) or by clicking the floating help button (`z-button`). Exposes dynamic content via `HelpService` (singleton) and can be updated by using the `[contextHelp]` directive on elements or by registering contexts with `HelpService.register(id, ctx)`.
+
+**HelpContext interface:**
+
+```ts
+export interface HelpContext {
+  id?: string;
+  title: string;
+  description?: string;
+  links?: { label: string; url: string }[];
+}
+```
+
+**Usage examples:**
+
+- Per-component: add `[contextHelp]="{ id: '/customers', title: 'Customers', description: 'Manage customers...' }"` to an element.
+- Global routing: help text updates automatically for registered paths inside `HelpService` (e.g., `/customers`, `/invoices`, `/applications`, `/products`).
+
+**Recent:** Help contexts were expanded to cover `applications` (list, new, detail), additional invoice pages (import, new, detail), and product detail/new pages. Use `[contextHelp]` on list containers or specific controls (search toolbar, bulk actions) to expose view-level or control-level guidance in the global help drawer.
+
+**Telemetry:** `HelpService` exposes an `openCount()` signal that tracks how many times users open the help drawer. The service will also attempt to send a `help_open` event to a global analytics provider (e.g., `gtag`, `mixpanel`, or `analytics.track`) if available on `window`.
+
+---
 
 ### DataTableComponent
 

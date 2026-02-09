@@ -1,0 +1,14 @@
+/* Basic sheet-like styles in case Zard's Sheet is not available yet */
+:host {
+  pointer-events: none;
+}
+:host > div {
+  pointer-events: auto;
+}
+
+/* Make small screens behave nicely */
+@media (max-width: 640px) {
+  .max-w-md {
+    max-width: 100vw;
+  }
+}

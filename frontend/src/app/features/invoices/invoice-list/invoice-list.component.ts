@@ -39,6 +39,8 @@ import {
 import { InvoiceDownloadDropdownComponent } from '@/shared/components/invoice-download-dropdown/invoice-download-dropdown.component';
 import { PaginationControlsComponent } from '@/shared/components/pagination-controls';
 import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
+import { ContextHelpDirective } from '@/shared/directives';
+import { HelpService } from '@/shared/services/help.service';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 
 @Component({
@@ -58,6 +60,7 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
     ZardIconComponent,
     ShortcutHighlightPipe,
     ...ZardDropdownImports,
+    ContextHelpDirective,
   ],
   templateUrl: './invoice-list.component.html',
   styleUrls: ['./invoice-list.component.css'],
@@ -69,6 +72,7 @@ export class InvoiceListComponent implements OnInit {
   private toast = inject(GlobalToastService);
   private platformId = inject(PLATFORM_ID);
   private router = inject(Router);
+  private help = inject(HelpService);
 
   private readonly numberTemplate =
     viewChild.required<TemplateRef<{ $implicit: InvoiceList; value: any; row: InvoiceList }>>(
@@ -231,6 +235,9 @@ export class InvoiceListComponent implements OnInit {
     if (st.searchQuery) {
       this.query.set(String(st.searchQuery));
     }
+    // Set help context for invoices list
+    this.help.setContextForPath('/invoices');
+
     this.loadInvoices();
   }
 

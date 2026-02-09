@@ -136,7 +136,7 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
 };
 ```
 
-3. Restart the dev server to see changes
+1. Restart the dev server to see changes
 
 ### Available Themes
 
