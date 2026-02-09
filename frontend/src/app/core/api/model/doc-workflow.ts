@@ -8,7 +8,6 @@
  * Do not edit the class manually.
  */
 import { Task } from './task';
-import { Status519Enum } from './status519-enum';
 
 
 export interface DocWorkflow { 
@@ -17,7 +16,10 @@ export interface DocWorkflow {
     readonly startDate: string;
     readonly completionDate: string | null;
     readonly dueDate: string;
-    readonly status: Status519Enum;
+    /**
+     * * `pending` - Pending * `processing` - Processing * `completed` - Completed * `rejected` - Rejected
+     */
+    readonly status: DocWorkflow.StatusEnum;
     readonly notes: string;
     readonly isCurrentStep: boolean;
     readonly isOverdue: boolean;
@@ -29,6 +31,13 @@ export interface DocWorkflow {
     readonly updatedBy: number | null;
 }
 export namespace DocWorkflow {
+    export const StatusEnum = {
+        Pending: 'pending',
+        Processing: 'processing',
+        Completed: 'completed',
+        Rejected: 'rejected'
+    } as const;
+    export type StatusEnum = typeof StatusEnum[keyof typeof StatusEnum];
 }
 
 

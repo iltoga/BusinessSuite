@@ -97,6 +97,10 @@ You must strictly follow this sequence for every request:
       - Run scripts: `bun run [script]` (e.g., `bun run dev`, `bun run build`)
       - CLI: `bunx ng generate ...`
       - Tests: `bun test` or `bun run test`
+    - **Terminal Context Checks (MANDATORY):** When opening a terminal, only for the first command, run `pwd` and `ls` (or `ls -la`) to confirm you are in the `frontend/` directory. If not, run `cd frontend` and re-check with `pwd` and `ls` before proceeding (no need to repeat for subsequent commands in the same terminal).
+    - **Working directory check (MANDATORY):** frontend, not the git project root, is angular project root.
+    - **Testing:** After implementation and static analysis, run `bun test` to ensure all tests pass.
+    - **Build Verification:** Finally, run `bun run build` to confirm the application builds without errors.
     - **API Sync:** If you suspect backend types are out of sync, immediately execute `bun run generate:api`.
 
 5.  **Cleanup:**
@@ -136,4 +140,40 @@ export class MyButtonComponent {}
 - **Error Handling:** Use the global error handler (`shared/utils/error-handler.ts`) instead of local `try/catch` blocks where possible.
 - **Tooling:** Never suggest `npm` or `node` commands; strictly enforce `bun`.
 - **Versioning:** NEVER use git commit, push or pull commands directly. unless explicitly instructed.
-- **Frontend root:** Assume the frontend root is `frontend/` and always operate within this directory. e.g. before run 'bun run start', ensure you are in the `frontend/` directory.
+- **Frontend root (MANDATORY):** The Angular project root is the `frontend/` directory (relative to the repository root). After opening a new terminal, always run cd frontend (if it fails, suppose you are already in the right directory), then proceed with other commands.
+
+## Instructions for specific tasks
+
+### Angular help system
+
+#### Implementing New Side-Drawers for Views
+
+When implementing a new side-drawer for a view (such as a contextual help drawer or similar UI element), follow these guidelines to ensure consistency and reusability:
+
+1. **Reuse Existing Infrastructure:**
+   - Use the existing `HelpService` (`src/app/shared/services/help.service.ts`) for state management and visibility control.
+   - Leverage the `HelpDrawerComponent` (`src/app/shared/components/help-drawer/`) as the base component for rendering the side-drawer.
+   - Integrate with the global F1 key listener in `src/app/app.ts` if applicable.
+
+2. **Context Registration:**
+   - Register the view's help context using `HelpService.setContextForPath()` in the component's initialization or route resolver.
+   - Ensure the context updates dynamically based on router navigation events.
+
+3. **Consistent Help Content Format:**
+   - Maintain a uniform structure for help content across the application to provide a predictable user experience.
+   - Divide the help content into the following sections:
+     1. **Brief Explanation:** A concise description of what the view is about, including when and how to use it.
+     2. **Details:** Additional information, such as explanations of form fields, buttons, or other UI elements present in the view.
+
+4. **Implementation Steps:**
+   - Create or update the view component to include help content in the specified format.
+   - Use the `HelpContext` interface from the generated API types or define it consistently.
+   - **Always update the help content in `help.service.ts`** after modifying a component of a view that has contextual help, to keep the help information accurate and up-to-date.
+   - Test the side-drawer integration with F1 key press and ensure it opens/closes correctly.
+   - Update `docs/shared_components.md` with any new reusable components created during implementation.
+
+5. **Best Practices:**
+   - Always use signals for state management in the drawer component.
+   - Ensure the drawer is accessible and follows ZardUI guidelines.
+   - Run `bun run generate:api` if backend changes affect help content types.
+   - Verify functionality with Playwright tests to confirm key interactions and UI behavior.

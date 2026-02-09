@@ -144,8 +144,8 @@ export class SearchToolbarComponent implements AfterViewInit, OnDestroy {
   private _globalKeyHandler(event: KeyboardEvent): void {
     if (!this.isBrowser) return;
 
-    // Shift+S for Search
-    if (event.key !== 'S') return;
+    // Shift+S for Search (accept lowercase too)
+    if ((event.key || '').toUpperCase() !== 'S') return;
     if (event.altKey || event.ctrlKey || event.metaKey) return;
 
     const active = document.activeElement as HTMLElement | null;

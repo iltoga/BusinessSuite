@@ -43,3 +43,14 @@
   - Files changed: `admin_tools/services.py`
   - How to verify: Take a full backup (include users), restore it to a clean database; verify `loaddata` completes and media files are restored and models reference correct file paths.
   - Note: This prevents regressions caused by automatic `post_migrate` behavior.
+
+- **2026-02-09: OpenAPI Schema & Build Integrity Fix** ✅
+  - Problem: ViewSets without `serializer_class` (like Backups or OCR) were ignored by `drf-spectacular` despite having `@extend_schema` on actions, leading to missing Angular services and build failures (TS2305).
+  - Fix:
+    - Added `serializer_class = serializers.Serializer` to all `viewsets.ViewSet` subclasses that use `@extend_schema`.
+    - Patched `core/openapi.py` preprocessing hook to explicitly allow ViewSets even without serializers.
+    - Implemented `generate_frontend_schema` management command for CI/CD and developer local use.
+    - Fixed type mismatches in `applications.service.ts` (string vs number) and `profile.component.ts`.
+  - Files changed: `api/views.py`, `api/views_admin.py`, `core/openapi.py`, `core/management/commands/generate_frontend_schema.py`, `frontend/src/app/core/services/applications.service.ts`, `frontend/src/app/features/profile/profile.component.ts`
+  - How to verify: Run `python manage.py generate_frontend_schema` and verify 0 errors; then `cd frontend && bun run build` should succeed.
+  - Note: Prevents silent API client drift when adding new admin ViewSets.

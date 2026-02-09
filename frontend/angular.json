@@ -74,10 +74,20 @@
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true
+            },
+            "mock": {
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.mock.ts"
+                }
+              ],
+              "optimization": false,
+              "sourceMap": true
             }
           },
           "defaultConfiguration": "production"
-        },
+        }
         "serve": {
           "builder": "@angular/build:dev-server",
           "options": {
@@ -89,6 +99,10 @@
             },
             "development": {
               "buildTarget": "business-suite-frontend:build:development"
+            },
+            "mock": {
+              "buildTarget": "business-suite-frontend:build:mock",
+              "proxyConfig": "proxy.mock.json"
             }
           },
           "defaultConfiguration": "development"

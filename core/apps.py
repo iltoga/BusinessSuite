@@ -44,3 +44,10 @@ class CoreConfig(AppConfig):
         except Exception:
             # auditlog not installed or registration failed — ignore
             pass
+
+        # Ensure our OpenAPI extensions are imported so drf-spectacular can discover them
+        try:
+            import core.openapi  # noqa: F401
+        except Exception:
+            # if import fails, don't abort startup — this only affects documentation generation
+            pass

@@ -9,7 +9,6 @@
  */
 import { Customer } from './customer';
 import { Product } from './product';
-import { Status519Enum } from './status519-enum';
 
 
 export interface DocApplicationInvoice { 
@@ -18,11 +17,21 @@ export interface DocApplicationInvoice {
     readonly product: Product;
     readonly docDate: string;
     readonly dueDate: string | null;
-    readonly status: Status519Enum;
+    /**
+     * * `pending` - Pending * `processing` - Processing * `completed` - Completed * `rejected` - Rejected
+     */
+    readonly status: DocApplicationInvoice.StatusEnum;
     readonly notes: string | null;
     readonly strField: string;
 }
 export namespace DocApplicationInvoice {
+    export const StatusEnum = {
+        Pending: 'pending',
+        Processing: 'processing',
+        Completed: 'completed',
+        Rejected: 'rejected'
+    } as const;
+    export type StatusEnum = typeof StatusEnum[keyof typeof StatusEnum];
 }
 
 

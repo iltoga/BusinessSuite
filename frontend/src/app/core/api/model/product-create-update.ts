@@ -7,7 +7,6 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
-import { ProductTypeEnum } from './product-type-enum';
 import { TaskNested } from './task-nested';
 
 
@@ -18,7 +17,10 @@ export interface ProductCreateUpdate {
     description?: string;
     immigrationId?: string | null;
     basePrice?: string | null;
-    productType?: ProductTypeEnum;
+    /**
+     * * `visa` - Visa * `other` - Other
+     */
+    productType?: ProductCreateUpdate.ProductTypeEnum;
     validity?: number | null;
     documentsMinValidity?: number | null;
     tasks?: Array<TaskNested>;
@@ -26,6 +28,11 @@ export interface ProductCreateUpdate {
     optionalDocumentIds?: Array<number>;
 }
 export namespace ProductCreateUpdate {
+    export const ProductTypeEnum = {
+        Visa: 'visa',
+        Other: 'other'
+    } as const;
+    export type ProductTypeEnum = typeof ProductTypeEnum[keyof typeof ProductTypeEnum];
 }
 
 

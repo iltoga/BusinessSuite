@@ -1,7 +1,11 @@
-<div class="h-full flex flex-col gap-6">
+<div class="h-full flex flex-col gap-6" [contextHelp]="'/applications'">
   <div class="flex justify-between items-center">
     <h1 class="text-3xl font-bold tracking-tight">Applications</h1>
-    <a [routerLink]="'/applications/new'" [state]="{ from: 'applications', searchQuery: query() }">
+    <a
+      [routerLink]="'/applications/new'"
+      [state]="{ from: 'applications', searchQuery: query() }"
+      [contextHelp]="'/applications/new'"
+    >
       <z-button zType="default" zSize="default">New Application</z-button>
     </a>
   </div>
@@ -13,9 +17,25 @@
         [placeholder]="'Search Applications...'"
         (queryChange)="onQueryChange($event)"
         (tabOut)="dataTable.focusFirstRowIfNone()"
+        [contextHelp]="{
+          id: '/applications/search',
+          briefExplanation: 'Search Applications',
+          details:
+            'Type to search by customer name, product, or notes. Press Enter to focus the table.',
+        }"
       >
         @if (isSuperuser() && totalItems() > 0) {
-          <z-button zType="destructive" zSize="sm" (click)="openBulkDeleteDialog()">
+          <z-button
+            zType="destructive"
+            zSize="sm"
+            (click)="openBulkDeleteDialog()"
+            [contextHelp]="{
+              id: '/applications/bulk-delete',
+              briefExplanation: 'Bulk delete applications',
+              details:
+                'Deletes selected or all applications and their associated documents and workflows.',
+            }"
+          >
             {{ bulkDeleteLabel() }}
           </z-button>
         }

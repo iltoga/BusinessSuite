@@ -94,7 +94,7 @@ class InvoiceListSerializer(serializers.ModelSerializer):
             "invoice_applications",
         ]
 
-    def get_invoice_no_display(self, instance):
+    def get_invoice_no_display(self, instance) -> str:
         return instance.invoice_no_display
 
 
@@ -135,7 +135,7 @@ class InvoiceDetailSerializer(serializers.ModelSerializer):
             "invoice_applications",
         ]
 
-    def get_invoice_no_display(self, instance):
+    def get_invoice_no_display(self, instance) -> str:
         return instance.invoice_no_display
 
 

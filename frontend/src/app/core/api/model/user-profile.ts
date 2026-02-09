@@ -20,7 +20,7 @@ export interface UserProfile {
     lastName?: string;
     readonly fullName: string;
     readonly role: string;
-    readonly avatar: string;
+    readonly avatar: string | null;
     readonly lastLogin: string | null;
     /**
      * Designates that this user has all permissions without explicitly assigning them.

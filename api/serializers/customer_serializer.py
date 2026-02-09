@@ -1,6 +1,9 @@
 from datetime import timedelta
+from typing import Optional
 
 from django.utils import timezone
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from customers.models import Customer
@@ -18,6 +21,9 @@ class CustomerSerializer(serializers.ModelSerializer):
     gender_display = serializers.SerializerMethodField()
     nationality_name = serializers.SerializerMethodField()
     nationality_code = serializers.SerializerMethodField()
+    # Explicit method fields for derived read-only values so we can provide type hints
+    full_name = serializers.SerializerMethodField()
+    full_name_with_company = serializers.SerializerMethodField()
 
     class Meta:
         model = Customer
@@ -62,28 +68,41 @@ class CustomerSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["created_at", "updated_at"]
 
-    def get_passport_expired(self, obj):
+    @extend_schema_field(OpenApiTypes.BOOL)
+    def get_passport_expired(self, obj) -> bool:
         if not obj.passport_expiration_date:
             return False
         return obj.passport_expiration_date < timezone.now().date()
 
-    def get_passport_expiring_soon(self, obj):
+    @extend_schema_field(OpenApiTypes.BOOL)
+    def get_passport_expiring_soon(self, obj) -> bool:
         if not obj.passport_expiration_date:
             return False
         now = timezone.now().date()
         threshold = now + timedelta(days=183)
         return now <= obj.passport_expiration_date <= threshold
 
-    def get_gender_display(self, obj):
+    @extend_schema_field(OpenApiTypes.STR)
+    def get_gender_display(self, obj) -> str:
         return obj.get_gender_display()
 
-    def get_nationality_name(self, obj):
+    @extend_schema_field(OpenApiTypes.STR)
+    def get_nationality_name(self, obj) -> str:
         if not obj.nationality:
             return ""
         return obj.nationality.country_idn or obj.nationality.country
 
-    def get_nationality_code(self, obj):
+    @extend_schema_field(OpenApiTypes.STR)
+    def get_nationality_code(self, obj) -> str:
         return obj.nationality.alpha3_code if obj.nationality else ""
+
+    @extend_schema_field(OpenApiTypes.STR)
+    def get_full_name(self, obj) -> str:
+        return obj.full_name
+
+    @extend_schema_field(OpenApiTypes.STR)
+    def get_full_name_with_company(self, obj) -> str:
+        return obj.full_name_with_company
 
     def validate_passport_number(self, value):
         """Ensure passport number is unique when present."""

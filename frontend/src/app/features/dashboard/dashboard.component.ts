@@ -12,11 +12,12 @@ import { AuthService } from '@/core/services/auth.service';
 import { DashboardService, DashboardStats } from '@/core/services/dashboard.service';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
+import { ContextHelpDirective } from '@/shared/directives';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, ZardButtonComponent, ZardCardComponent],
+  imports: [CommonModule, ZardButtonComponent, ZardCardComponent, ContextHelpDirective],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

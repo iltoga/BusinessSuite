@@ -1,7 +1,11 @@
-<div class="h-full flex flex-col gap-6">
+<div class="h-full flex flex-col gap-6" [contextHelp]="'/products'">
   <div class="flex flex-wrap items-center justify-between gap-3">
     <h1 class="text-3xl font-bold tracking-tight">Products</h1>
-    <a routerLink="/products/new" [state]="{ from: 'products', searchQuery: query() }">
+    <a
+      routerLink="/products/new"
+      [state]="{ from: 'products', searchQuery: query() }"
+      [contextHelp]="'/products/new'"
+    >
       <z-button zType="default" zSize="default">New Product</z-button>
     </a>
   </div>
@@ -10,12 +14,27 @@
     <div class="p-4 border-b">
       <app-search-toolbar
         [query]="query()"
-        [placeholder]="'Search products...'"
+        [placeholder]="'Search Products...'"
         (queryChange)="onQueryChange($event)"
         (tabOut)="dataTable.focusFirstRowIfNone()"
+        [contextHelp]="{
+          id: '/products/search',
+          briefExplanation: 'Search Products',
+          details: 'Search by product code, name, or description. Use sort to change ordering.',
+        }"
       >
         @if (isSuperuser() && totalItems() > 0) {
-          <z-button zType="destructive" zSize="sm" (click)="openBulkDeleteDialog()">
+          <z-button
+            zType="destructive"
+            zSize="sm"
+            (click)="openBulkDeleteDialog()"
+            [contextHelp]="{
+              id: '/products/bulk-delete',
+              briefExplanation: 'Bulk delete products',
+              details:
+                'Deletes selected or all products and their associated tasks. Use search to filter.',
+            }"
+          >
             {{ bulkDeleteLabel() }}
           </z-button>
         }

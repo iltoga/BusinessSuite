@@ -2,6 +2,7 @@ README_CALENDARS.md
 crm-revisbali-*.json
 client_secret.json
 logs/
+frontend/api-schema.json
 frontend/test-results/
 frontend/src/assets/logo_revis*
 testfiles/

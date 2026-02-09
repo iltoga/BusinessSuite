@@ -80,7 +80,7 @@ export class LoggerService {
       const url = window.location.pathname;
 
       // Use fetch instead of HttpClient to bypass interceptors and avoid circular dependencies
-      fetch('/api/client-logs', {
+      fetch('/api/client-logs/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ level, message, url }),

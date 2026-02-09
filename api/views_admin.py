@@ -155,6 +155,7 @@ def backup_restore_sse(request):
 
 
 class BackupsViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
+    serializer_class = serializers.Serializer
     permission_classes = [IsAuthenticated, IsSuperuser]
 
     def _parse_backup_datetime(self, filename: str) -> datetime.datetime | None:
@@ -447,6 +448,7 @@ class BackupsViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
 
 
 class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
+    serializer_class = serializers.Serializer
     permission_classes = [IsAuthenticated, IsSuperuser]
 
     @extend_schema(summary="Clear application cache", responses={200: OpenApiTypes.OBJECT})

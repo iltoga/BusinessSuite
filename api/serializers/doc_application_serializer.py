@@ -116,7 +116,7 @@ class DocApplicationInvoiceSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
-    def get_str_field(self, instance):
+    def get_str_field(self, instance) -> str:
         return str(instance)
 
 
@@ -161,7 +161,7 @@ class DocApplicationDetailSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
-    def get_str_field(self, instance):
+    def get_str_field(self, instance) -> str:
         return str(instance)
 
     def get_has_invoice(self, instance) -> bool:

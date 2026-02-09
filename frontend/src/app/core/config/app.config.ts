@@ -7,9 +7,6 @@ export interface AppConfig {
   dateFormat: string;
   // Optional: custom page title to show in the browser tab
   title?: string;
-  // Optional: custom logo filenames placed under /assets
-  logoFilename?: string;
-  logoInvertedFilename?: string;
 }
 
 export const DEFAULT_APP_CONFIG: AppConfig = {
@@ -18,6 +15,4 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
   theme: 'neutral',
   dateFormat: 'dd-MM-yyyy',
   title: 'BusinessSuite',
-  logoFilename: 'logo_transparent.png',
-  logoInvertedFilename: 'logo_inverted_transparent.png',
 };

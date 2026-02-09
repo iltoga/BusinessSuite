@@ -251,7 +251,7 @@ export class BackupsComponent implements OnInit, OnDestroy {
           return EMPTY;
         }),
       )
-      .subscribe((response) => {
+      .subscribe((response: any) => {
         // Create download link
         const blob = new Blob([response], { type: 'application/octet-stream' });
         const url = window.URL.createObjectURL(blob);

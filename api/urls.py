@@ -104,6 +104,28 @@ urlpatterns = [
         views.ComputeViewSet.as_view({"get": "doc_workflow_due_date"}),
         name="api-compute-docworkflow-due-date",
     ),
+    # Explicitly declare invoice async routes with UUID path converters so drf-spectacular
+    # can infer the path parameter type and avoid warning messages.
+    path(
+        "invoices/download-async/status/<uuid:job_id>/",
+        views.InvoiceViewSet.as_view({"get": "download_async_status"}),
+        name="invoices-download-async-status",
+    ),
+    path(
+        "invoices/download-async/stream/<uuid:job_id>/",
+        views.InvoiceViewSet.as_view({"get": "download_async_stream"}),
+        name="invoices-download-async-stream",
+    ),
+    path(
+        "invoices/download-async/file/<uuid:job_id>/",
+        views.InvoiceViewSet.as_view({"get": "download_async_file"}),
+        name="invoices-download-async-file",
+    ),
+    path(
+        "invoices/import/status/<uuid:job_id>/",
+        views.InvoiceViewSet.as_view({"get": "import_job_status"}),
+        name="invoices-import-status",
+    ),
     # exec_cron_jobs - utility endpoint for Angular admin tools
     path("cron/exec_cron_jobs/", views.exec_cron_jobs, name="api-exec-cron-jobs"),
     # Quick create endpoints - used by Angular forms for rapid data entry
@@ -116,6 +138,8 @@ urlpatterns = [
     ),
     # Mock auth configuration - used for local development and testing
     path("mock-auth-config/", views.mock_auth_config, name="api-mock-auth-config"),
+    # Client-side logging endpoint (used in dev when frontend proxy forwards /api/client-logs)
+    path("client-logs/", views.observability_log, name="api-client-logs"),
     # Include all router URLs - main REST API endpoints for Angular
     path("", include(router.urls)),
 ]

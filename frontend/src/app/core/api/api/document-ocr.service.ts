@@ -34,7 +34,6 @@ export class DocumentOcrService extends BaseService {
     }
 
     /**
-     * API endpoint for document OCR text extraction.  POST Parameters:     - file: The document file (PDF, Excel, Word)  Returns:     - text: Extracted text when completed
      * @endpoint post /api/document-ocr/check/
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
@@ -48,6 +47,9 @@ export class DocumentOcrService extends BaseService {
         let localVarHeaders = this.defaultHeaders;
 
         // authentication (cookieAuth) required
+
+        // authentication (jwtAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
 
         const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
         ]);
@@ -87,7 +89,6 @@ export class DocumentOcrService extends BaseService {
     }
 
     /**
-     * API endpoint for document OCR text extraction.  POST Parameters:     - file: The document file (PDF, Excel, Word)  Returns:     - text: Extracted text when completed
      * @endpoint get /api/document-ocr/status/{jobId}/
      * @param jobId 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -105,6 +106,9 @@ export class DocumentOcrService extends BaseService {
         let localVarHeaders = this.defaultHeaders;
 
         // authentication (cookieAuth) required
+
+        // authentication (jwtAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
 
         const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
         ]);

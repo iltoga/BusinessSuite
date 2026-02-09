@@ -4,6 +4,25 @@ import {
   isMainModule,
   writeResponseToNodeResponse,
 } from '@angular/ssr/node';
+
+// Increase Node EventEmitter default listener limit to avoid "MaxListenersExceededWarning"
+// when tooling attaches multiple listeners (dev servers, test harnesses, hot-reload, etc.).
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const events = require('events') as typeof import('events');
+  if (events && typeof events.EventEmitter === 'function') {
+    events.EventEmitter.defaultMaxListeners = Math.max(
+      events.EventEmitter.defaultMaxListeners || 0,
+      20,
+    );
+  }
+  // Also increase process-level limit if available
+  (process as any).setMaxListeners?.(20);
+  console.debug('[Server] increased EventEmitter.defaultMaxListeners to 20');
+} catch (e) {
+  // Best-effort; don't fail startup
+}
+
 import express from 'express';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import { promises as fs } from 'node:fs';
@@ -97,10 +116,7 @@ app.use(async (req, res, next) => {
 
     // Inject server-provided brand variables into HTML so the client can pick them up
     if (typeof response.body === 'string' && contentType.includes('text/html')) {
-      const logoFilename = process.env['LOGO_FILENAME'] || 'logo_transparent.png';
-      const logoInverted = process.env['LOGO_INVERTED_FILENAME'] || 'logo_inverted_transparent.png';
-
-      // Try to read a runtime title from assets/config.json, falling back to env or default
+      // Logos are now loaded statically from assets/config.json; runtime injection removed.
       let runtimeTitle = process.env['APP_TITLE'] || 'BusinessSuite';
       try {
         const cfgPath = join(browserDistFolder, 'assets', 'config.json');
@@ -122,11 +138,7 @@ app.use(async (req, res, next) => {
       const escapedTitle = escapeHtml(runtimeTitle);
 
       // Log resolved runtime brand to make debugging in production easier
-      console.debug('[SSR] Resolved branding:', {
-        logoFilename,
-        logoInverted,
-        title: runtimeTitle,
-      });
+      console.debug('[SSR] Resolved branding:', { title: runtimeTitle });
 
       // Prepare HTML with replaced title (done once)
       const responseHtml = String(response.body).replace(
@@ -172,14 +184,14 @@ app.use(async (req, res, next) => {
         })();</script>`;
         modifiedBody = modifiedBody.replace(/<head(\s|>)/i, `<head$1\n${configScript}`);
 
-        // Inject a small script with the server's logo choices (script must use nonce when CSP is enabled)
+        // Inject a small script with the server's title only (logo files are not injected)
         // Also add a quick class so CSS can show the correct logo immediately and avoid a flash
-        const logoScript = `<script nonce="${nonce}">(function(){
-          window.APP_BRAND={logo:'/assets/${logoFilename}',logoInverted:'/assets/${logoInverted}',title:${JSON.stringify(runtimeTitle)}};
+        const brandScript = `<script nonce="${nonce}">(function(){
+          window.APP_BRAND = { title: ${JSON.stringify(runtimeTitle)} };
           try{document.documentElement.classList.add('app-brand-ready')}catch(e){}
           try{document.title=${JSON.stringify(runtimeTitle)};}catch(e){}
         })();</script>`;
-        modifiedBody = modifiedBody.replace(/<head(\s|>)/i, `<head$1\n${logoScript}`);
+        modifiedBody = modifiedBody.replace(/<head(\s|>)/i, `<head$1\n${brandScript}`);
 
         // Build a modified response object (avoid mutating readonly properties)
         const modifiedResponse = {
@@ -193,12 +205,12 @@ app.use(async (req, res, next) => {
       } else {
         // Non-CSP path: inject script without nonce
         // Non-CSP path: inject script and add a quick class so CSS shows the correct logo ASAP
-        const logoScript = `<script>(function(){
-          window.APP_BRAND={logo:'/assets/${logoFilename}',logoInverted:'/assets/${logoInverted}',title:${JSON.stringify(runtimeTitle)}};
+        const brandScript = `<script>(function(){
+          window.APP_BRAND = { title: ${JSON.stringify(runtimeTitle)} };
           try{document.documentElement.classList.add('app-brand-ready')}catch(e){}
           try{document.title=${JSON.stringify(runtimeTitle)};}catch(e){}
         })();</script>`;
-        let modifiedBody = responseHtml.replace(/<head(\s|>)/i, `<head$1\n${logoScript}`);
+        let modifiedBody = responseHtml.replace(/<head(\s|>)/i, `<head$1\n${brandScript}`);
 
         // Inject server config from .env into the page
         const mockAuthEnv = (process.env['MOCK_AUTH_ENABLED'] || 'False').trim();

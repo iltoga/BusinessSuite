@@ -134,85 +134,60 @@ describe('DataTableComponent (keyboard shortcuts)', () => {
     const debug = fixture.debugElement.query(By.directive(DataTableComponent));
     dt = debug.componentInstance as DataTableComponent<any>;
 
-    // simulate keydown Tab (handled at document level) to select first row
-    (dt as any)._handleNavigationKey({
-      key: 'Tab',
-      ctrlKey: false,
-      preventDefault: () => {},
-      stopPropagation: () => {},
-    } as unknown as KeyboardEvent);
+    // simulate focusing the table to select first row
+    const wrapper = fixture.debugElement.query(By.css('.data-table-focus-trap'));
+    wrapper.triggerEventHandler('focus', new Event('focus'));
+    fixture.detectChanges();
+
     expect(dt.selectedRow()).toBe(host.data[0]);
 
     // ArrowDown -> second
-    dt.handleRowNavigationKeydown({
-      key: 'ArrowDown',
-      preventDefault: () => {},
-      stopPropagation: () => {},
-    } as unknown as KeyboardEvent);
+    wrapper.triggerEventHandler('keydown', new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+    fixture.detectChanges();
     expect(dt.selectedRow()).toBe(host.data[1]);
 
     // ArrowUp -> wraps to previous (first)
+    wrapper.triggerEventHandler('keydown', new KeyboardEvent('keydown', { key: 'ArrowUp' }));
+    fixture.detectChanges();
+    expect(dt.selectedRow()).toBe(host.data[0]);
+  });
+
+  it('Tab should move focus out of the table (does not change selection)', async () => {
+    host.data = [{ id: 1 }, { id: 2 }, { id: 3 }];
+    fixture.detectChanges();
+
+    const debug = fixture.debugElement.query(By.directive(DataTableComponent));
+    dt = debug.componentInstance as DataTableComponent<any>;
+
+    const wrapper = fixture.debugElement.query(By.css('.data-table-focus-trap'));
+
+    // Tab should not select rows; selection remains null and focus is moved out (focus change is environment-dependent)
+    wrapper.triggerEventHandler('keydown', new KeyboardEvent('keydown', { key: 'Tab' }));
+    fixture.detectChanges();
+    expect(dt.selectedRow()).toBe(null);
+  });
+
+  it('ArrowUp should move to previous row (wraps)', async () => {
+    host.data = [{ id: 1 }, { id: 2 }, { id: 3 }];
+    fixture.detectChanges();
+
+    const debug = fixture.debugElement.query(By.directive(DataTableComponent));
+    dt = debug.componentInstance as DataTableComponent<any>;
+
+    const wrapper = fixture.debugElement.query(By.css('.data-table-focus-trap'));
+
+    // Focus table -> selects first
+    wrapper.triggerEventHandler('focus', new Event('focus'));
+    fixture.detectChanges();
+    expect(dt.selectedRow()).toBe(host.data[0]);
+
+    // ArrowUp -> previous -> wraps to last
     dt.handleRowNavigationKeydown({
       key: 'ArrowUp',
       preventDefault: () => {},
       stopPropagation: () => {},
     } as unknown as KeyboardEvent);
-    expect(dt.selectedRow()).toBe(host.data[0]);
-  });
-
-  it('Tab should move selection to next row (wraps)', async () => {
-    host.data = [{ id: 1 }, { id: 2 }, { id: 3 }];
-    fixture.detectChanges();
-
-    const debug = fixture.debugElement.query(By.directive(DataTableComponent));
-    dt = debug.componentInstance as DataTableComponent<any>;
-
-    const wrapper = fixture.debugElement.query(By.css('.data-table-focus-trap'));
-
-    // first Tab -> select first row
-    wrapper.triggerEventHandler('keydown', new KeyboardEvent('keydown', { key: 'Tab' }));
-    fixture.detectChanges();
-    expect(dt.selectedRow()).toBe(host.data[0]);
-
-    // next Tab -> second row
-    wrapper.triggerEventHandler('keydown', new KeyboardEvent('keydown', { key: 'Tab' }));
-    fixture.detectChanges();
-    expect(dt.selectedRow()).toBe(host.data[1]);
-
-    // two more tabs -> wrap to first
-    wrapper.triggerEventHandler('keydown', new KeyboardEvent('keydown', { key: 'Tab' }));
-    fixture.detectChanges();
-    wrapper.triggerEventHandler('keydown', new KeyboardEvent('keydown', { key: 'Tab' }));
-    fixture.detectChanges();
-    expect(dt.selectedRow()).toBe(host.data[0]);
-  });
-
-  it('Ctrl+Tab or ArrowUp should move to previous row (wraps)', async () => {
-    host.data = [{ id: 1 }, { id: 2 }, { id: 3 }];
-    fixture.detectChanges();
-
-    const debug = fixture.debugElement.query(By.directive(DataTableComponent));
-    dt = debug.componentInstance as DataTableComponent<any>;
-
-    const wrapper = fixture.debugElement.query(By.css('.data-table-focus-trap'));
-
-    // Start from first row
-    wrapper.triggerEventHandler('keydown', new KeyboardEvent('keydown', { key: 'Tab' }));
-    fixture.detectChanges();
-    expect(dt.selectedRow()).toBe(host.data[0]);
-
-    // Ctrl+Tab -> previous -> wraps to last
-    wrapper.triggerEventHandler(
-      'keydown',
-      new KeyboardEvent('keydown', { key: 'Tab', ctrlKey: true }),
-    );
-    fixture.detectChanges();
     expect(dt.selectedRow()).toBe(host.data[2]);
-
-    // ArrowUp -> previous -> second element
-    wrapper.triggerEventHandler('keydown', new KeyboardEvent('keydown', { key: 'ArrowUp' }));
-    fixture.detectChanges();
-    expect(dt.selectedRow()).toBe(host.data[1]);
   });
 
   it('ArrowLeft and ArrowRight should emit pageChange', () => {

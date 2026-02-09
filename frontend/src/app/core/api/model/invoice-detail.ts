@@ -8,7 +8,6 @@
  * Do not edit the class manually.
  */
 import { Customer } from './customer';
-import { Status7a5Enum } from './status7a5-enum';
 import { InvoiceApplicationDetail } from './invoice-application-detail';
 
 
@@ -19,7 +18,10 @@ export interface InvoiceDetail {
     readonly invoiceNoDisplay: string;
     invoiceDate: string;
     dueDate: string;
-    status?: Status7a5Enum;
+    /**
+     * * `created` - Created * `pending_payment` - Pending Payment * `partial_payment` - Partial Payment * `paid` - Paid * `overdue` - Overdue * `disputed` - Disputed * `cancelled` - Cancelled * `partially_refunded` - Partially Refunded * `refunded` - Refunded * `write_off` - Write Off
+     */
+    status?: InvoiceDetail.StatusEnum;
     notes?: string;
     sent?: boolean;
     totalAmount?: string;
@@ -43,6 +45,19 @@ export interface InvoiceDetail {
     readonly invoiceApplications: Array<InvoiceApplicationDetail>;
 }
 export namespace InvoiceDetail {
+    export const StatusEnum = {
+        Created: 'created',
+        PendingPayment: 'pending_payment',
+        PartialPayment: 'partial_payment',
+        Paid: 'paid',
+        Overdue: 'overdue',
+        Disputed: 'disputed',
+        Cancelled: 'cancelled',
+        PartiallyRefunded: 'partially_refunded',
+        Refunded: 'refunded',
+        WriteOff: 'write_off'
+    } as const;
+    export type StatusEnum = typeof StatusEnum[keyof typeof StatusEnum];
 }
 
 
