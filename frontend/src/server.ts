@@ -91,8 +91,12 @@ app.use(
  * Adds optional CSP nonce generation and injection when `CSP_ENABLED=true`.
  */
 app.use(async (req, res, next) => {
+  console.log(`[SSR] Handling request: ${req.url}`);
   try {
     const response = await angularApp.handle(req);
+    if (response?.status === 302) {
+      console.log(`[SSR] Redirecting ${req.url} to ${response.headers.get('location')}`);
+    }
     if (!response) return next();
 
     // Access env vars with bracket notation to satisfy TS index signature typing

@@ -5,6 +5,7 @@ api.module.ts
 api/api-token-auth.service.ts
 api/api.ts
 api/backups.service.ts
+api/calendar.service.ts
 api/compute.service.ts
 api/country-codes.service.ts
 api/customer-applications.service.ts
@@ -20,6 +21,7 @@ api/ocr.service.ts
 api/payments.service.ts
 api/products.service.ts
 api/server-management.service.ts
+api/tasks.service.ts
 api/user-profile.service.ts
 api/user-settings.service.ts
 api/v1.service.ts
@@ -44,6 +46,8 @@ model/document-type.ts
 model/document.ts
 model/get-app-config200-response.ts
 model/get-mock-auth-config200-response.ts
+model/google-calendar-event.ts
+model/google-task.ts
 model/invoice-application-detail.ts
 model/invoice-application-summary.ts
 model/invoice-application-write.ts

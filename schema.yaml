@@ -251,6 +251,170 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/calendar/:
+    get:
+      operationId: calendarList
+      description: A simple ViewSet for listing, creating, retrieving, updating and
+        deleting Google Calendar Events.
+      tags:
+      - calendar
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GoogleCalendarEvent'
+          description: ''
+    post:
+      operationId: calendarCreate
+      description: A simple ViewSet for listing, creating, retrieving, updating and
+        deleting Google Calendar Events.
+      tags:
+      - calendar
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoogleCalendarEvent'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/GoogleCalendarEvent'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/GoogleCalendarEvent'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/GoogleCalendarEvent'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GoogleCalendarEvent'
+          description: ''
+  /api/calendar/{id}/:
+    get:
+      operationId: calendarRetrieve
+      description: A simple ViewSet for listing, creating, retrieving, updating and
+        deleting Google Calendar Events.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - calendar
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GoogleCalendarEvent'
+          description: ''
+    put:
+      operationId: calendarUpdate
+      description: Full update (PUT) - delegates to patch behavior in Google API.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - calendar
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoogleCalendarEvent'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/GoogleCalendarEvent'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/GoogleCalendarEvent'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/GoogleCalendarEvent'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GoogleCalendarEvent'
+          description: ''
+    patch:
+      operationId: calendarPartialUpdate
+      description: A simple ViewSet for listing, creating, retrieving, updating and
+        deleting Google Calendar Events.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - calendar
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoogleCalendarEvent'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/GoogleCalendarEvent'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/GoogleCalendarEvent'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/GoogleCalendarEvent'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GoogleCalendarEvent'
+          description: ''
+    delete:
+      operationId: calendarDestroy
+      description: A simple ViewSet for listing, creating, retrieving, updating and
+        deleting Google Calendar Events.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - calendar
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/compute/doc_workflow_due_date/{taskId}/{startDate}/:
     get:
       operationId: computeDocWorkflowDueDateRetrieve
@@ -490,6 +654,10 @@ paths:
           description: ''
     delete:
       operationId: customerApplicationsDestroy
+      description: |-
+        Allow optional deletion of linked invoices when deleting an application.
+
+        To delete linked invoices, the caller must explicitly pass `deleteInvoices` (or `delete_invoices`) and be a superuser.
       parameters:
       - in: path
         name: id
@@ -2735,6 +2903,52 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/tasks/:
+    get:
+      operationId: tasksList
+      tags:
+      - tasks
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GoogleTask'
+          description: ''
+    post:
+      operationId: tasksCreate
+      tags:
+      - tasks
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoogleTask'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/GoogleTask'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/GoogleTask'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/GoogleTask'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GoogleTask'
+          description: ''
   /api/user-profile/change_password/:
     post:
       operationId: userProfileChangePasswordCreate
@@ -3152,6 +3366,170 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/v1/calendar/:
+    get:
+      operationId: v1CalendarList
+      description: A simple ViewSet for listing, creating, retrieving, updating and
+        deleting Google Calendar Events.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GoogleCalendarEvent'
+          description: ''
+    post:
+      operationId: v1CalendarCreate
+      description: A simple ViewSet for listing, creating, retrieving, updating and
+        deleting Google Calendar Events.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoogleCalendarEvent'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/GoogleCalendarEvent'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/GoogleCalendarEvent'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/GoogleCalendarEvent'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GoogleCalendarEvent'
+          description: ''
+  /api/v1/calendar/{id}/:
+    get:
+      operationId: v1CalendarRetrieve
+      description: A simple ViewSet for listing, creating, retrieving, updating and
+        deleting Google Calendar Events.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GoogleCalendarEvent'
+          description: ''
+    put:
+      operationId: v1CalendarUpdate
+      description: Full update (PUT) - delegates to patch behavior in Google API.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoogleCalendarEvent'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/GoogleCalendarEvent'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/GoogleCalendarEvent'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/GoogleCalendarEvent'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GoogleCalendarEvent'
+          description: ''
+    patch:
+      operationId: v1CalendarPartialUpdate
+      description: A simple ViewSet for listing, creating, retrieving, updating and
+        deleting Google Calendar Events.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoogleCalendarEvent'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/GoogleCalendarEvent'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/GoogleCalendarEvent'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/GoogleCalendarEvent'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GoogleCalendarEvent'
+          description: ''
+    delete:
+      operationId: v1CalendarDestroy
+      description: A simple ViewSet for listing, creating, retrieving, updating and
+        deleting Google Calendar Events.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/v1/compute/doc_workflow_due_date/{taskId}/{startDate}/:
     get:
       operationId: v1ComputeDocWorkflowDueDateRetrieve
@@ -3391,6 +3769,10 @@ paths:
           description: ''
     delete:
       operationId: v1CustomerApplicationsDestroy
+      description: |-
+        Allow optional deletion of linked invoices when deleting an application.
+
+        To delete linked invoices, the caller must explicitly pass `deleteInvoices` (or `delete_invoices`) and be a superuser.
       parameters:
       - in: path
         name: id
@@ -5636,6 +6018,52 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/v1/tasks/:
+    get:
+      operationId: v1TasksList
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GoogleTask'
+          description: ''
+    post:
+      operationId: v1TasksCreate
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoogleTask'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/GoogleTask'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/GoogleTask'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/GoogleTask'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GoogleTask'
+          description: ''
   /api/v1/user-profile/change_password/:
     post:
       operationId: v1UserProfileChangePasswordCreate
@@ -6661,6 +7089,66 @@ components:
       required:
       - id
       - name
+    GoogleCalendarEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+        summary:
+          type: string
+        description:
+          type: string
+        start_time:
+          type: string
+          format: date-time
+          writeOnly: true
+        end_time:
+          type: string
+          format: date-time
+          writeOnly: true
+        start:
+          readOnly: true
+        end:
+          readOnly: true
+        htmlLink:
+          type: string
+          format: uri
+          readOnly: true
+      required:
+      - end
+      - end_time
+      - htmlLink
+      - id
+      - start
+      - start_time
+      - summary
+    GoogleTask:
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+        title:
+          type: string
+        notes:
+          type: string
+        due:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+          readOnly: true
+        selfLink:
+          type: string
+          format: uri
+          readOnly: true
+      required:
+      - id
+      - selfLink
+      - status
+      - title
     InvoiceApplicationDetail:
       type: object
       properties:

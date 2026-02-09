@@ -59,4 +59,9 @@ class JwtOrMockAuthentication(JWTAuthentication):
                         update_last_login(None, user)
                         return (user, None)
 
+            # If no header provided but mock auth is globally enabled,
+            # we might want to check if it's a request that should be mocked.
+            # However, for API calls, we prefer explicit token in header.
+            # But let's check if it's an 'Internal' request from the same server (optional)
+
         return super().authenticate(request)

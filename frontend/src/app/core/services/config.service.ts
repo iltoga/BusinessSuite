@@ -1,13 +1,16 @@
 import { HttpBackend, HttpClient } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { computed, Injectable, signal } from '@angular/core';
 import { catchError, firstValueFrom, of, tap } from 'rxjs';
 
 import { AppConfig, DEFAULT_APP_CONFIG } from '@/core/config/app.config';
 
 @Injectable({ providedIn: 'root' })
 export class ConfigService {
-  private config: AppConfig = DEFAULT_APP_CONFIG;
+  private _config = signal<AppConfig>(DEFAULT_APP_CONFIG);
   private http: HttpClient;
+
+  // Publicly expose as a read-only signal
+  readonly config = computed(() => this._config());
 
   constructor(handler: HttpBackend) {
     this.http = new HttpClient(handler);
@@ -17,29 +20,26 @@ export class ConfigService {
     // Check for server-injected config first (SSR or production inject)
     const injectedConfig = (window as any).APP_CONFIG;
     if (injectedConfig) {
-      this.config = { ...DEFAULT_APP_CONFIG, ...injectedConfig };
-      console.log('[ConfigService] Using server-injected config:', this.config);
-      return Promise.resolve(this.config);
+      this._config.set({ ...DEFAULT_APP_CONFIG, ...injectedConfig });
+      return Promise.resolve(this._config());
     }
 
     return firstValueFrom(
       this.http.get<AppConfig>('/app-config/').pipe(
         tap((data) => {
-          this.config = { ...DEFAULT_APP_CONFIG, ...data };
-
-          // Server-injected branding for logo filenames removed — logos are loaded statically from assets.
+          this._config.set({ ...DEFAULT_APP_CONFIG, ...data });
         }),
         catchError((error) => {
           console.warn('[ConfigService] Failed to load /assets/config.json.', error);
-          this.config = DEFAULT_APP_CONFIG;
+          this._config.set(DEFAULT_APP_CONFIG);
 
-          return of(this.config);
+          return of(this._config());
         }),
       ),
     );
   }
 
   get settings() {
-    return this.config;
+    return this._config();
   }
 }

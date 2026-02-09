@@ -10,26 +10,27 @@
 
 > **UI note:** Prefer using `z-combobox` (searchable combobox) for long/static lists where typeahead improves UX (e.g., country, customer, product selections). Use the standard select only for short, non-searchable lists. This helps provide consistent keyboard navigation, search filtering, and accessibility across forms.
 
-| Component Name        | Selector                      | Location                                              | ZardUI Deps             | Status          | Used In         |
-| --------------------- | ----------------------------- | ----------------------------------------------------- | ----------------------- | --------------- | --------------- |
-| HelpDrawer            | z-help-drawer                 | src/app/shared/components/help-drawer                 | Sheet, Button           | Beta            | Global (F1)     |
-| DataTable             | app-data-table                | src/app/shared/components/data-table                  | Table                   | ✅ Ready        |                 |
-| ConfirmDialog         | app-confirm-dialog            | src/app/shared/components/confirm-dialog              | Dialog, Button          | ✅ Ready        |                 |
-| SearchToolbar         | app-search-toolbar            | src/app/shared/components/search-toolbar              | Input, Button           | ✅ Ready        |                 |
-| Pagination            | app-pagination-controls       | src/app/shared/components/pagination-controls         | Button, Icon            | ✅ Ready        |                 |
-| ExpiryBadge           | app-expiry-badge              | src/app/shared/components/expiry-badge                | Badge                   | ✅ Ready        |                 |
-| Checkbox              | z-checkbox                    | src/app/shared/components/checkbox                    | Icon                    | ✅ Ready        | Admin (Backups) |
-| BulkDeleteDialog      | app-bulk-delete-dialog        | src/app/shared/components/bulk-delete-dialog          | Dialog, Button          | ✅ Ready        |                 |
-| InvoiceDeleteDialog   | app-invoice-delete-dialog     | src/app/shared/components/invoice-delete-dialog       | Dialog, Button          | ✅ Ready        |                 |
-| FileUpload            | app-file-upload               | src/app/shared/components/file-upload                 | Button                  | ✅ Ready        | Applications    |
-| DocumentPreview       | app-document-preview          | src/app/shared/components/document-preview            | Popover, Icon           | ✅ Ready        | Applications    |
-| PdfViewerHost         | app-pdf-viewer-host           | src/app/shared/components/pdf-viewer-host             | ngx-extended-pdf-viewer | ✅ Ready (lazy) | Applications    |
-| SortableMultiSelect   | app-sortable-multi-select     | src/app/shared/components/sortable-multi-select       | DragDrop                | ✅ Ready        | Applications    |
-| CustomerSelect        | app-customer-select           | src/app/shared/components/customer-select             | Combobox                | ✅ Ready        |                 |
-| TableSkeleton         | app-table-skeleton            | src/app/shared/components/skeleton                    | Table, Skeleton         | ✅ Ready        |                 |
-| CardSkeleton          | app-card-skeleton             | src/app/shared/components/skeleton                    | Card, Skeleton          | ✅ Ready        |                 |
-| InvoiceDownload       | app-invoice-download-dropdown | src/app/shared/components/invoice-download-dropdown   | Dropdown, Button, Icon  | ✅ Ready        | Invoices        |
-| QuickApplicationModal | app-quick-application-modal   | src/app/features/applications/quick-application-modal | Dialog, Button, Form    | ✅ Ready        | Invoices        |
+| Component Name        | Selector                      | Location                                                             | ZardUI Deps             | Status          | Used In         |
+| --------------------- | ----------------------------- | -------------------------------------------------------------------- | ----------------------- | --------------- | --------------- |
+| HelpDrawer            | z-help-drawer                 | src/app/shared/components/help-drawer                                | Sheet, Button           | Beta            | Global (F1)     |
+| DataTable             | app-data-table                | src/app/shared/components/data-table                                 | Table                   | ✅ Ready        |                 |
+| ConfirmDialog         | app-confirm-dialog            | src/app/shared/components/confirm-dialog                             | Dialog, Button          | ✅ Ready        |                 |
+| SearchToolbar         | app-search-toolbar            | src/app/shared/components/search-toolbar                             | Input, Button           | ✅ Ready        |                 |
+| Pagination            | app-pagination-controls       | src/app/shared/components/pagination-controls                        | Button, Icon            | ✅ Ready        |                 |
+| ExpiryBadge           | app-expiry-badge              | src/app/shared/components/expiry-badge                               | Badge                   | ✅ Ready        |                 |
+| Checkbox              | z-checkbox                    | src/app/shared/components/checkbox                                   | Icon                    | ✅ Ready        | Admin (Backups) |
+| BulkDeleteDialog      | app-bulk-delete-dialog        | src/app/shared/components/bulk-delete-dialog                         | Dialog, Button          | ✅ Ready        |                 |
+| InvoiceDeleteDialog   | app-invoice-delete-dialog     | src/app/shared/components/invoice-delete-dialog                      | Dialog, Button          | ✅ Ready        |                 |
+| FileUpload            | app-file-upload               | src/app/shared/components/file-upload                                | Button                  | ✅ Ready        | Applications    |
+| DocumentPreview       | app-document-preview          | src/app/shared/components/document-preview                           | Popover, Icon           | ✅ Ready        | Applications    |
+| PdfViewerHost         | app-pdf-viewer-host           | src/app/shared/components/pdf-viewer-host                            | ngx-extended-pdf-viewer | ✅ Ready (lazy) | Applications    |
+| SortableMultiSelect   | app-sortable-multi-select     | src/app/shared/components/sortable-multi-select                      | DragDrop                | ✅ Ready        | Applications    |
+| CustomerSelect        | app-customer-select           | src/app/shared/components/customer-select                            | Combobox                | ✅ Ready        |                 |
+| TableSkeleton         | app-table-skeleton            | src/app/shared/components/skeleton                                   | Table, Skeleton         | ✅ Ready        |                 |
+| CardSkeleton          | app-card-skeleton             | src/app/shared/components/skeleton                                   | Card, Skeleton          | ✅ Ready        |                 |
+| InvoiceDownload       | app-invoice-download-dropdown | src/app/shared/components/invoice-download-dropdown                  | Dropdown, Button, Icon  | ✅ Ready        | Invoices        |
+| CalendarIntegration   | app-calendar-integration      | src/app/shared/components/calendar/calendar-integration.component.ts | HttpClient, FormsModule | Beta            | Dashboard       |
+| QuickApplicationModal | app-quick-application-modal   | src/app/features/applications/quick-application-modal                | Dialog, Button, Form    | ✅ Ready        | Invoices        |
 
 ## Component Details
 

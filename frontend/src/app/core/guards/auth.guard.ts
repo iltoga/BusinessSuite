@@ -18,5 +18,10 @@ export const authGuard: CanActivateFn = () => {
     return true;
   }
 
+  // Final check for mock mode - in case signals are still settling
+  if (authService.isMockEnabled() && authService.getToken() === 'mock-token') {
+    return true;
+  }
+
   return router.createUrlTree(['/login']);
 };

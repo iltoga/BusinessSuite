@@ -265,6 +265,7 @@ export class CustomerApplicationsService extends BaseService {
     }
 
     /**
+     * Allow optional deletion of linked invoices when deleting an application.  To delete linked invoices, the caller must explicitly pass &#x60;deleteInvoices&#x60; (or &#x60;delete_invoices&#x60;) and be a superuser.
      * @endpoint delete /api/customer-applications/{id}/
      * @param id A unique integer value identifying this doc application.
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.

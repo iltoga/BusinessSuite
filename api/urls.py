@@ -46,6 +46,13 @@ router.register(r"ocr", views.OCRViewSet, basename="ocr")
 router.register(r"document-ocr", views.DocumentOCRViewSet, basename="document-ocr")
 router.register(r"compute", views.ComputeViewSet, basename="compute")
 router.register(r"dashboard-stats", views.DashboardStatsView, basename="dashboard-stats")
+
+# Google Calendar & Tasks integration
+from .google_views import GoogleCalendarViewSet, GoogleTasksViewSet
+
+router.register(r"calendar", GoogleCalendarViewSet, basename="calendar")
+router.register(r"tasks", GoogleTasksViewSet, basename="tasks")
+
 # Admin tools (superuser only) - used by Angular admin components
 router.register(r"backups", BackupsViewSet, basename="backups")
 router.register(r"server-management", ServerManagementViewSet, basename="server-management")
