@@ -64,6 +64,8 @@ services:
     networks:
       dockernet:
         ipv4_address: 192.168.2.60
+    env_file:
+      - .env
     environment:
       DB_HOST: ${DB_HOST}
       DB_PORT: ${DB_PORT}
@@ -103,6 +105,8 @@ services:
     networks:
       dockernet:
         ipv4_address: 192.168.2.63
+    env_file:
+      - .env
     environment:
       DB_HOST: ${DB_HOST}
       DB_PORT: ${DB_PORT}
