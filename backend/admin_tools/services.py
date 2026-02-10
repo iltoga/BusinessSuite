@@ -14,7 +14,7 @@ from django.core.files.storage import default_storage
 from django.core.management import call_command
 from django.db.models.fields.files import FileField
 
-BACKUPS_DIR = os.path.join(settings.BASE_DIR, "backups")
+BACKUPS_DIR = getattr(settings, "BACKUPS_ROOT", os.path.join(settings.BASE_DIR, "backups"))
 
 
 def ensure_backups_dir():
@@ -168,13 +168,12 @@ def restore_from_file(path, include_users=False):
 
     import json
 
+    # Import the signal handlers so we can disconnect them
+    from core.models.user_profile import UserProfile, create_user_profile, save_user_profile
     from django.apps import apps
     from django.contrib.auth.models import User
     from django.db import connection, transaction
     from django.db.models.signals import post_save
-
-    # Import the signal handlers so we can disconnect them
-    from core.models.user_profile import UserProfile, create_user_profile, save_user_profile
 
     tmp_path = None
     extracted_tmp = None

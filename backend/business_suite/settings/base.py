@@ -39,6 +39,7 @@ CLIENT_LOGS_ENABLED = os.getenv("CLIENT_LOGS_ENABLED") == "True"
 # Allow overriding via env var so production can point MEDIA_ROOT to a host-mounted path
 MEDIA_ROOT = os.getenv("MEDIA_ROOT", os.path.join(BASE_DIR, "files/media/"))
 MEDIA_URL = os.getenv("MEDIA_URL", "/uploads/")
+BACKUPS_ROOT = os.getenv("BACKUPS_ROOT", os.path.join(BASE_DIR, "backups"))
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 STATIC_SOURCE_ROOT = os.path.join(BASE_DIR, "static")
 

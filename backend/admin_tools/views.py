@@ -219,7 +219,7 @@ def restore_stream(request):
     fn = request.GET.get("file")
     if not fn:
         return HttpResponse("Missing file parameter", status=400)
-    gz_path = os.path.join(settings.BASE_DIR, "backups", fn)
+    gz_path = os.path.join(services.BACKUPS_DIR, fn)
 
     def event_stream():
         yield _sse_event("Restore started")

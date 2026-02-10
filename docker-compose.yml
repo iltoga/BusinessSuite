@@ -73,6 +73,7 @@ services:
       COMPONENT: backend
       MEDIA_ROOT: /media
       MEDIA_URL: /media/
+      BACKUPS_ROOT: /backups
     volumes:
       - ./.env:/usr/src/app/.env:ro
       - type: bind
@@ -92,6 +93,9 @@ services:
       - type: bind
         source: ${DATA_PATH}/staticfiles
         target: /staticfiles
+      - type: bind
+        source: ~/revisbali/crm/backups
+        target: /backups
       - le-certs:/etc/letsencrypt
     restart: unless-stopped
 
@@ -113,6 +117,7 @@ services:
       COMPONENT: task_worker
       MEDIA_ROOT: /media
       MEDIA_URL: /media/
+      BACKUPS_ROOT: /backups
     volumes:
       - ./.env:/usr/src/app/.env:ro
       - type: bind
@@ -130,6 +135,9 @@ services:
       - type: bind
         source: ${DATA_PATH}/staticfiles
         target: /staticfiles
+      - type: bind
+        source: ~/revisbali/crm/backups
+        target: /backups
       - le-certs:/etc/letsencrypt
     restart: unless-stopped
     command: python manage.py run_huey

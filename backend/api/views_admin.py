@@ -6,6 +6,8 @@ import os
 import shutil
 import tarfile
 
+from admin_tools import services
+from api.views import ApiErrorHandlingMixin
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.http import FileResponse, JsonResponse, StreamingHttpResponse
@@ -15,9 +17,6 @@ from rest_framework import permissions, serializers, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-
-from admin_tools import services
-from api.views import ApiErrorHandlingMixin
 
 User = get_user_model()
 
@@ -123,7 +122,7 @@ def backup_restore_sse(request):
     if not filename:
         return JsonResponse({"error": "Missing file parameter"}, status=400)
 
-    gz_path = os.path.join(settings.BASE_DIR, "backups", filename)
+    gz_path = os.path.join(services.BACKUPS_DIR, filename)
     include_users = request.GET.get("include_users", "0") in ("1", "true", "True")
 
     def _sse_event(data: str):
@@ -420,7 +419,7 @@ class BackupsViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
         if not filename:
             return Response({"error": "Missing file parameter"}, status=400)
 
-        gz_path = os.path.join(settings.BASE_DIR, "backups", filename)
+        gz_path = os.path.join(services.BACKUPS_DIR, filename)
         include_users = request.query_params.get("include_users", "0") == "1"
 
         def _sse_event(data: str):
