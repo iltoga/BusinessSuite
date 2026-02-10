@@ -1,7 +1,7 @@
 import { CalendarService } from '@/core/api/api/calendar.service';
 import { GoogleCalendarEvent } from '@/core/api/model/google-calendar-event';
-import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { Component, inject, OnInit, PLATFORM_ID, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 @Component({
@@ -99,6 +99,7 @@ import { FormsModule } from '@angular/forms';
 })
 export class CalendarIntegrationComponent implements OnInit {
   private calendarService = inject(CalendarService);
+  private platformId = inject(PLATFORM_ID);
 
   // Signals for state management
   events = signal<GoogleCalendarEvent[]>([]);
@@ -109,7 +110,10 @@ export class CalendarIntegrationComponent implements OnInit {
   newEventDesc = '';
 
   ngOnInit() {
-    this.loadEvents();
+    // FIX: Only load events in the browser to avoid SSR refresh attempts
+    if (isPlatformBrowser(this.platformId)) {
+      this.loadEvents();
+    }
   }
 
   loadEvents() {

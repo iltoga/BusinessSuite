@@ -264,6 +264,12 @@ export class AuthService {
     const existing = this.refreshRequest$;
     if (existing) return existing;
 
+    // FIX: Prevent SSR crash - avoid accessing localStorage on server
+    if (!isPlatformBrowser(this.platformId)) {
+      // Return an error that can be caught or ignored, preventing the "No refresh token" crash
+      return throwError(() => new Error('SSR: Cannot refresh token'));
+    }
+
     const refresh = this.getRefreshToken();
     if (!refresh) {
       return throwError(() => new Error('No refresh token'));
