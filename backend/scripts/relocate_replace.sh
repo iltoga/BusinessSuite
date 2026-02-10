@@ -76,11 +76,27 @@ if [[ -f .github/workflows/deploy.yml ]]; then
   sed -i '' "s|locale/|backend/locale/|g" .github/workflows/deploy.yml
 fi
 
-# 4) Helpful confirmation: show resulting diffs
+# 5) Update manage.py references for HOST context (README and workflows)
+# We avoid updating scripts/ and start.sh as they run INSIDE the container where manage.py is at root
+echo "Updating manage.py references in README and workflows"
+for f in README.md .github/workflows/*.yml; do
+  if [[ -f "$f" ]]; then
+    sed -i '' 's|python manage\.py|python backend/manage.py|g' "$f"
+    sed -i '' 's|\./\.venv/bin/python manage\.py|./.venv/bin/python backend/manage.py|g' "$f"
+  fi
+done
+
+# 6) Project-specific documentation (Copilot instructions)
+if [[ -f .github/copilot-instructions.md ]]; then
+  echo "Updating copilot instructions"
+  sed -i '' 's|python manage\.py|python backend/manage.py|g' .github/copilot-instructions.md
+fi
+
+# 7) Helpful confirmation: show resulting diffs
 echo "\nReplacements applied. Showing git status and diffs (if any):"
 
 git --no-pager status --porcelain
 
-git --no-pager --no-color diff --name-only || true
+git --no-pager diff --name-only || true
 
 echo "\nDone. Review changes, run tests, and commit when satisfied."
