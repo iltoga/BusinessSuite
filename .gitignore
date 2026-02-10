@@ -26,8 +26,9 @@ testfiles/
 .vscode/
 .idea/
 
-# Sub-projects (handled by their own .gitignore)
-# backend/
-# frontend/
+# Distribution / packaging
+*.egg-info/
+build/
+dist/
 
 .hypothesis/
