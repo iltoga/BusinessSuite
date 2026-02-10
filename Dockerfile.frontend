@@ -16,7 +16,7 @@ COPY frontend/package.json frontend/bun.lock ./
 RUN bun install --frozen-lockfile
 
 # Copy the rest of the frontend files
-COPY frontend/ .env ./
+COPY frontend/ ./
 
 # Run Angular CLI via Node to avoid Bun's ESM loader limitations during build
 RUN node ./node_modules/@angular/cli/bin/ng.js build --configuration production --progress=false
