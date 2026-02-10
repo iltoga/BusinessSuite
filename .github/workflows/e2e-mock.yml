@@ -35,7 +35,7 @@ jobs:
 
       - name: Generate OpenAPI schema
         run: |
-          python manage.py generate_frontend_schema
+          python backend/manage.py generate_frontend_schema
 
       - name: Start Prism mock server
         working-directory: frontend

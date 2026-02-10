@@ -23,7 +23,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Generate frontend schema
-        run: . .venv/bin/activate && python manage.py generate_frontend_schema
+        run: . .venv/bin/activate && python backend/manage.py generate_frontend_schema
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2

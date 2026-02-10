@@ -274,7 +274,7 @@ grep -r "similar_pattern" .
 
 ### For Database Changes
 
-1. Create migration: `python manage.py makemigrations`
+1. Create migration: `python backend/manage.py makemigrations`
 2. Update admin.py if needed
 3. Update serializers if exposed via API
 4. Update forms if used in templates
@@ -411,11 +411,11 @@ See [zardui.md](copilot/specs/django-angular/zardui.md) for documentation on the
 
 ### Backend Scripts
 
-- `python manage.py runserver` — Start development server
-- `python manage.py makemigrations` — Create database migrations
-- `python manage.py migrate` — Apply migrations
-- `python manage.py test` — Run test suite
-- `python manage.py shell` — Django Python shell
+- `python backend/manage.py runserver` — Start development server
+- `python backend/manage.py makemigrations` — Create database migrations
+- `python backend/manage.py migrate` — Apply migrations
+- `python backend/manage.py test` — Run test suite
+- `python backend/manage.py shell` — Django Python shell
 
 ### Frontend Scripts (Angular)
 
@@ -429,7 +429,7 @@ See [zardui.md](copilot/specs/django-angular/zardui.md) for documentation on the
 
 - Search for existing implementations: `grep -r "pattern" .`
 - Find unused imports (Python): Use IDE or `pylint`
-- Check test coverage: `python manage.py test --coverage`
+- Check test coverage: `python backend/manage.py test --coverage`
 
 ---
 

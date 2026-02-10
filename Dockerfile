@@ -21,12 +21,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   vim \
   && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-COPY pyproject.toml uv.lock ./
+COPY backend/pyproject.toml backend/uv.lock ./
 
 RUN uv venv /opt/venv
 RUN uv sync --frozen --no-dev --no-install-project
 
-COPY . .
+COPY backend/ .
 RUN uv sync --frozen --no-dev
 
 

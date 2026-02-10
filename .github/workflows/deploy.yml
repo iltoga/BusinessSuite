@@ -82,7 +82,7 @@ jobs:
             echo "🔍  Detecting dependency-file changes …"
             DEP_CHANGED=false
             if [ "$OLD_COMMIT" != none ] && [ "$OLD_COMMIT" != "$NEW_COMMIT" ]; then
-              if git diff --name-only $OLD_COMMIT $NEW_COMMIT | grep -E '(pyproject\.toml|requirements\.txt|Dockerfile|Dockerfile\.frontend|frontend/|locale/|.*\\.po$)' >/dev/null; then
+              if git diff --name-only $OLD_COMMIT $NEW_COMMIT | grep -E '(backend/pyproject\.toml|backend/requirements\.txt|Dockerfile|Dockerfile\.frontend|frontend/|backend/locale/|.*\\.po$)' >/dev/null; then
                 DEP_CHANGED=true
                 echo "📦  Dependencies or Dockerfile changed — full rebuild needed."
               else

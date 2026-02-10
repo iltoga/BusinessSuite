@@ -1,6 +1,6 @@
 ---
 name: django_developer
-description: A specialized Django backend expert that implements features, fixes bugs, and refactors code using up-to-date documentation and strict architectural standards.
+description: A specialized Django backend expert that implements features, fixes bugs, and refactors code using up-to-date documentation and strict architectural standards. Django code lives in `backend/`.
 argument-hint: A task to implement, a bug to fix, or a test to write.
 tools:
   [

@@ -55,8 +55,8 @@ To get started with the application, you will need to have Python, Django, and a
    ```
 
 3. ⚙️ Configure the database settings in the `.env` file.
-4. 🛠️ Run the database migrations using `python manage.py migrate`.
-5. 🚀 Start the development server using `python manage.py runserver`.
+4. 🛠️ Run the database migrations using `python backend/manage.py migrate`.
+5. 🚀 Start the development server using `python backend/manage.py runserver`.
 
 For a production environment, it is recommended to use the provided Docker setup.
 
@@ -79,7 +79,7 @@ This section provides links to detailed guides and how-tos for advanced setup an
   2. Compile translations to binary `.mo` files with:
 
   ```sh
-  python manage.py compilemessages
+  python backend/manage.py compilemessages
   ```
 
   After compiling, make sure `LOCALE_PATHS` in `business_suite/settings/base.py` points to the `locale/` folder (it already does).
@@ -117,7 +117,7 @@ Quick steps:
 3. Run migrations for auditlog tables:
 
    ```bash
-   python manage.py migrate auditlog
+   python backend/manage.py migrate auditlog
    ```
 
 4. Register models for auditing (we do this automatically for apps in `LOGGING_MODE`). You can also register manually:
@@ -137,7 +137,7 @@ Note: Audit log DB retention is configured via the `AUDITLOG_RETENTION_DAYS` env
 Notes:
 
 - We will automatically register models listed in `LOGGING_MODE` for audit logging on app ready.
-- If you previously used `django-easy-audit`, run `python manage.py drop_easyaudit --yes` to remove easyaudit DB tables, then remove the package and its `INSTALLED_APPS` entry.
+- If you previously used `django-easy-audit`, run `python backend/manage.py drop_easyaudit --yes` to remove easyaudit DB tables, then remove the package and its `INSTALLED_APPS` entry.
 - The project forwards new `auditlog.LogEntry` objects to Loki (structured logs) so you can continue using Loki/Grafana for observability.
 
 ---

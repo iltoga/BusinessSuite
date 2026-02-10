@@ -58,7 +58,7 @@ services:
       - db
     image: bs-app:web
     build:
-      context: ./
+      context: ./backend/
       dockerfile: Dockerfile
       target: web
     networks:
@@ -75,7 +75,7 @@ services:
       MEDIA_URL: /media/
     volumes:
       - type: bind
-        source: ./
+        source: ./backend
         target: /usr/src/app
         bind:
           propagation: rslave
@@ -114,7 +114,7 @@ services:
       MEDIA_URL: /media/
     volumes:
       - type: bind
-        source: ./
+        source: ./backend
         target: /usr/src/app
       - type: bind
         source: ${DATA_PATH}/media
