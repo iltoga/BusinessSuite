@@ -13,8 +13,8 @@ test.describe('Auth mock bypass', () => {
       }
     });
 
-    // Intercept /app-config/ to ensure MOCK_AUTH_ENABLED is true for the test run
-    await page.route('**/app-config/', (route) =>
+    // Intercept /api/app-config/ to ensure MOCK_AUTH_ENABLED is true for the test run
+    await page.route('**/api/app-config/', (route) =>
       route.fulfill({
         status: 200,
         contentType: 'application/json',

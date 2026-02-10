@@ -15,10 +15,9 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
+from core.utils.dropbox_refresh_token import refresh_dropbox_token
 from dotenv import load_dotenv
 from peewee import PostgresqlDatabase
-
-from core.utils.dropbox_refresh_token import refresh_dropbox_token
 
 # Load environment variables from .env file
 load_dotenv()
@@ -352,7 +351,6 @@ LOGOUT_URL = "/logout/"
 LOGIN_EXEMPT_URLS = (
     r"^login/$",
     r"^logout/$",
-    r"^app-config/$",
     r"^api/.*$",  # match 'api/' and any subpaths
     r"^api-token-auth/$",
 )

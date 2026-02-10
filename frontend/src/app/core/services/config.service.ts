@@ -25,12 +25,12 @@ export class ConfigService {
     }
 
     return firstValueFrom(
-      this.http.get<AppConfig>('/app-config/').pipe(
+      this.http.get<AppConfig>('/api/app-config/').pipe(
         tap((data) => {
           this._config.set({ ...DEFAULT_APP_CONFIG, ...data });
         }),
         catchError((error) => {
-          console.warn('[ConfigService] Failed to load /assets/config.json.', error);
+          console.warn('[ConfigService] Failed to load /api/app-config/.', error);
           this._config.set(DEFAULT_APP_CONFIG);
 
           return of(this._config());

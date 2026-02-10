@@ -34,7 +34,7 @@ test.describe('Row actions dropdown keyboard flow', () => {
     });
 
     // Ensure the frontend receives a config that enables mock auth
-    await page.route('**/app-config/', (route) =>
+    await page.route('**/api/app-config/', (route) =>
       route.fulfill({
         status: 200,
         contentType: 'application/json',

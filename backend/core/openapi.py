@@ -80,9 +80,9 @@ def postprocess_add_mock_paths(result, generator, **kwargs):
     but are required by the frontend (CSR/SSR integration points).
     """
     paths = result.get("paths", {})
-    # Add /app-config/
-    if "/app-config/" not in paths:
-        paths["/app-config/"] = {
+    # Add /api/app-config/
+    if "/api/app-config/" not in paths:
+        paths["/api/app-config/"] = {
             "get": {
                 "operationId": "getAppConfig",
                 "responses": {

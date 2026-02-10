@@ -83,7 +83,7 @@ Notes:
 
 ## Writing tests: examples & tips
 
-- The mock environment sets `MOCK_AUTH_ENABLED` in `/app-config/` so the frontend can short-circuit authentication. Verify the schema contains this example or seed `localStorage` if you need custom behavior.
+- The mock environment sets `MOCK_AUTH_ENABLED` in `/api/app-config/` so the frontend can short-circuit authentication. Verify the schema contains this example or seed `localStorage` if you need custom behavior.
 
 Example test (TypeScript):
 
@@ -140,7 +140,7 @@ Example CI step (simplified):
 ## Troubleshooting & common pitfalls
 
 - Port collisions (EADDRINUSE) — use `lsof` to kill processes on `4010` and `4200`.
-- Prism validation errors: if Prism responds with 500 or `UNAUTHORIZED` because of missing security definitions, make sure OpenAPI postprocessing (see `core/openapi.py`) includes the example responses for `/app-config/` and relaxes strict security on logging endpoints.
+- Prism validation errors: if Prism responds with 500 or `UNAUTHORIZED` because of missing security definitions, make sure OpenAPI postprocessing (see `core/openapi.py`) includes the example responses for `/api/app-config/` and relaxes strict security on logging endpoints.
 - If tests fail due to unexpected response shapes, regenerate the frontend client and re-run tests (`bun run generate:api`).
 
 ---

@@ -6448,7 +6448,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/UserSettings'
           description: ''
-  /app-config/:
+  /api/app-config/:
     get:
       operationId: getAppConfig
       responses:

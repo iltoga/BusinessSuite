@@ -26,7 +26,7 @@ When deployed in Docker the frontend server reads several environment variables 
 These values are:
 
 - Injected into server-rendered HTML as `window.APP_BRAND` (for branding)
-- Served at `/assets/config.json` (overrides `assets/config.json` values for the client app)
+- Served at `src//assets/config.json` (overrides `assets/config.json` values for the client app)
 
 Set the variables in your `.env` and ensure `docker-compose.yml` passes them to the `bs-frontend` service. After changing the variables, restart the `bs-frontend` container so values take effect.
 

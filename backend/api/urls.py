@@ -21,6 +21,7 @@ Migration context:
 Do not confuse with legacy Django views in templates/ directories that use Django Templates + Bootstrap.
 """
 
+from core import views as core_views
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 from rest_framework.routers import DefaultRouter
@@ -145,6 +146,8 @@ urlpatterns = [
     ),
     # Mock auth configuration - used for local development and testing
     path("mock-auth-config/", views.mock_auth_config, name="api-mock-auth-config"),
+    # Public application configuration
+    path("app-config/", core_views.public_app_config, name="api-public-app-config"),
     # Client-side logging endpoint (used in dev when frontend proxy forwards /api/client-logs)
     path("client-logs/", views.observability_log, name="api-client-logs"),
     # Include all router URLs - main REST API endpoints for Angular
