@@ -64,9 +64,9 @@ services:
     networks:
       dockernet:
         ipv4_address: 192.168.2.60
-    env_file:
-      - .env
     environment:
+      SYSTEM_USER_PASSWORD: ${SYSTEM_USER_PASSWORD:-NOT_SET_IN_HOST_ENV}
+      SYSTEM_USER_EMAIL: ${SYSTEM_USER_EMAIL:-NOT_SET_IN_HOST_ENV}
       DB_HOST: ${DB_HOST}
       DB_PORT: ${DB_PORT}
       DB_NAME: ${DB_NAME}
@@ -76,6 +76,7 @@ services:
       MEDIA_ROOT: /media
       MEDIA_URL: /media/
     volumes:
+      - ./.env:/usr/src/app/.env:ro
       - type: bind
         source: ./backend
         target: /usr/src/app
@@ -105,9 +106,9 @@ services:
     networks:
       dockernet:
         ipv4_address: 192.168.2.63
-    env_file:
-      - .env
     environment:
+      SYSTEM_USER_PASSWORD: ${SYSTEM_USER_PASSWORD:-NOT_SET_IN_HOST_ENV}
+      SYSTEM_USER_EMAIL: ${SYSTEM_USER_EMAIL:-NOT_SET_IN_HOST_ENV}
       DB_HOST: ${DB_HOST}
       DB_PORT: ${DB_PORT}
       DB_NAME: ${DB_NAME}
@@ -117,6 +118,7 @@ services:
       MEDIA_ROOT: /media
       MEDIA_URL: /media/
     volumes:
+      - ./.env:/usr/src/app/.env:ro
       - type: bind
         source: ./backend
         target: /usr/src/app

@@ -15,6 +15,19 @@ fi
 # 2. Safety Check for Required Variables
 if [[ -z "${SYSTEM_USER_PASSWORD}" || -z "${SYSTEM_USER_EMAIL}" ]]; then
   echo "Error: SYSTEM_USER_PASSWORD or SYSTEM_USER_EMAIL is not set."
+  echo "DEBUG: SYSTEM_USER_PASSWORD value: [${SYSTEM_USER_PASSWORD}]"
+  echo "DEBUG: SYSTEM_USER_EMAIL value: [${SYSTEM_USER_EMAIL}]"
+  echo "DEBUG: Current User: $(id)"
+  echo "DEBUG: PWD: $PWD"
+  echo "DEBUG: Directory listing of $PWD:"
+  ls -la
+  if [ -f .env ]; then
+    echo "DEBUG: .env file FOUND in $PWD"
+    echo "DEBUG: .env keys present:"
+    grep -o '^[A-Z_]*' .env | sort | xargs
+  else
+    echo "DEBUG: .env file NOT FOUND in $PWD"
+  fi
   exit 1
 fi
 
