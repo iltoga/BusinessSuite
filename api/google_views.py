@@ -114,3 +114,34 @@ class GoogleTasksViewSet(viewsets.ViewSet):
             return Response(task, status=status.HTTP_201_CREATED)
         except Exception as e:
             raise APIException(f"Failed to create task: {str(e)}")
+
+    @extend_schema(responses={200: GoogleTaskSerializer})
+    def retrieve(self, request, pk=None):
+        tasklist = request.query_params.get("tasklist")
+        client = GoogleClient()
+        task = client.get_task(task_id=pk, tasklist=tasklist)
+        return Response(task)
+
+    @extend_schema(request=GoogleTaskSerializer, responses={200: GoogleTaskSerializer})
+    def update(self, request, pk=None):
+        serializer = GoogleTaskSerializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        tasklist = request.query_params.get("tasklist")
+        client = GoogleClient()
+        updated = client.update_task(task_id=pk, data=serializer.validated_data, tasklist=tasklist)
+        return Response(updated)
+
+    @extend_schema(request=GoogleTaskSerializer, responses={200: GoogleTaskSerializer})
+    def partial_update(self, request, pk=None):
+        serializer = GoogleTaskSerializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        tasklist = request.query_params.get("tasklist")
+        client = GoogleClient()
+        updated = client.update_task(task_id=pk, data=serializer.validated_data, tasklist=tasklist)
+        return Response(updated)
+
+    def destroy(self, request, pk=None):
+        tasklist = request.query_params.get("tasklist")
+        client = GoogleClient()
+        client.delete_task(task_id=pk, tasklist=tasklist)
+        return Response(status=status.HTTP_204_NO_CONTENT)

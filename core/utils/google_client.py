@@ -202,3 +202,42 @@ class GoogleClient:
             raise APIException(f"Google Tasks Create Error: {str(e)}")
         except Exception as e:
             raise APIException(f"Google Tasks Create Error: {str(e)}")
+
+    def get_task(self, task_id, tasklist=None):
+        if tasklist is None:
+            tasklist = DEFAULT_TASKLIST_ID
+        try:
+            return self.tasks_service.tasks().get(tasklist=tasklist, task=task_id).execute()
+        except HttpError as e:
+            raise APIException(f"Google Tasks Get Error: {str(e)}")
+        except Exception as e:
+            raise APIException(f"Google Tasks Get Error: {str(e)}")
+
+    def update_task(self, task_id, data, tasklist=None):
+        if tasklist is None:
+            tasklist = DEFAULT_TASKLIST_ID
+        try:
+            body = {}
+            if "title" in data:
+                body["title"] = data["title"]
+            if "notes" in data:
+                body["notes"] = data["notes"]
+            if "due" in data:
+                body["due"] = data["due"]
+            result = self.tasks_service.tasks().update(tasklist=tasklist, task=task_id, body=body).execute()
+            return result
+        except HttpError as e:
+            raise APIException(f"Google Tasks Update Error: {str(e)}")
+        except Exception as e:
+            raise APIException(f"Google Tasks Update Error: {str(e)}")
+
+    def delete_task(self, task_id, tasklist=None):
+        if tasklist is None:
+            tasklist = DEFAULT_TASKLIST_ID
+        try:
+            self.tasks_service.tasks().delete(tasklist=tasklist, task=task_id).execute()
+            return True
+        except HttpError as e:
+            raise APIException(f"Google Tasks Delete Error: {str(e)}")
+        except Exception as e:
+            raise APIException(f"Google Tasks Delete Error: {str(e)}")
