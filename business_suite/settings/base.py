@@ -74,7 +74,9 @@ def _parse_bool(value, default=False):
         return default
     if isinstance(value, bool):
         return value
-    return str(value).strip().lower() in {"true", "1", "yes", "y", "on"}
+    # Strip common quote characters and whitespace
+    s = str(value).strip().strip('"').strip("'").lower()
+    return s in {"true", "1", "yes", "y", "on"}
 
 
 def _parse_list(value, default=None):
@@ -291,6 +293,23 @@ TIME_ZONE = "Asia/Singapore"
 USE_I18N = True
 
 USE_TZ = True
+
+# Google API settings (service account file path, scopes, timezone)
+_google_file = os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE", "crm-revisbali-94d3dc9b6077.json").strip('"').strip("'")
+if not os.path.isabs(_google_file):
+    GOOGLE_SERVICE_ACCOUNT_FILE = os.path.join(ROOT_DIR, _google_file)
+else:
+    GOOGLE_SERVICE_ACCOUNT_FILE = _google_file
+
+GOOGLE_SCOPES = _parse_list(
+    os.getenv(
+        "GOOGLE_SCOPES",
+        "https://www.googleapis.com/auth/calendar,https://www.googleapis.com/auth/tasks",
+    )
+)
+GOOGLE_TIMEZONE = os.getenv("GOOGLE_TIMEZONE", "Asia/Makassar")
+GOOGLE_CALENDAR_ID = os.getenv("GOOGLE_CALENDAR_ID", "primary")
+GOOGLE_TASKLIST_ID = os.getenv("GOOGLE_TASKLIST_ID", "@default")
 
 # Configure project locale path for translations (locale is at project root, one level up from BASE_DIR)
 LOCALE_PATHS = [os.path.join(BASE_DIR, "..", "locale")]
@@ -548,7 +567,6 @@ HUEY = {
     "huey_class": "huey.contrib.sql_huey.SqlHuey",
     "name": "business_suite",
     "results": True,
-    "store_errors": True,
     "immediate": False,
     "database": huey_database,
     "consumer": {

@@ -1,0 +1,243 @@
+import os
+
+from django.conf import settings
+from rest_framework.exceptions import APIException
+
+# Lazy import of google libraries so tests or environments without them fail fast with clear message
+try:
+    from google.oauth2 import service_account
+    from googleapiclient.discovery import build
+    from googleapiclient.errors import HttpError
+except Exception as e:  # pragma: no cover - environment dependent
+    service_account = None
+    build = None
+    HttpError = Exception
+
+SCOPES = getattr(
+    settings,
+    "GOOGLE_SCOPES",
+    [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/tasks",
+    ],
+)
+SERVICE_ACCOUNT_FILE = getattr(
+    settings, "GOOGLE_SERVICE_ACCOUNT_FILE", os.path.join(settings.BASE_DIR, "crm-revisbali-94d3dc9b6077.json")
+)
+TIMEZONE = getattr(settings, "GOOGLE_TIMEZONE", "Asia/Makassar")
+DEFAULT_CALENDAR_ID = getattr(settings, "GOOGLE_CALENDAR_ID", "primary")
+DEFAULT_TASKLIST_ID = getattr(settings, "GOOGLE_TASKLIST_ID", "@default")
+
+
+class GoogleClient:
+    """Thin wrapper around Google Calendar and Tasks APIs using a service account.
+
+    Raises APIException when configuration or API errors occur.
+    """
+
+    def __init__(self):
+        if service_account is None or build is None:
+            raise APIException(
+                "Google client libraries are not installed. Install `google-auth` and `google-api-python-client`"
+            )
+
+        if not os.path.exists(SERVICE_ACCOUNT_FILE):
+            raise APIException(f"Service account file not found at: {SERVICE_ACCOUNT_FILE}")
+
+        try:
+            self.creds = service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+            self.calendar_service = build("calendar", "v3", credentials=self.creds)
+            self.tasks_service = build("tasks", "v1", credentials=self.creds)
+        except Exception as e:
+            raise APIException(f"Failed to initialize Google client: {e}")
+
+    # --- CALENDAR METHODS ---
+
+    def list_events(self, calendar_id=None, max_results=50, time_min=None):
+        import datetime
+
+        if calendar_id is None:
+            calendar_id = DEFAULT_CALENDAR_ID
+
+        if time_min is None:
+            # Default to now to show upcoming events
+            time_min = datetime.datetime.utcnow().isoformat() + "Z"
+
+        try:
+            req = self.calendar_service.events().list(
+                calendarId=calendar_id,
+                timeMin=time_min,
+                maxResults=max_results,
+                singleEvents=True,
+                orderBy="startTime",
+            )
+            events_result = req.execute()
+            return events_result.get("items", [])
+        except HttpError as e:
+            raise APIException(f"Google Calendar Error: {str(e)}")
+        except Exception as e:
+            raise APIException(f"Google Calendar Error: {str(e)}")
+
+    def get_event(self, event_id, calendar_id=None):
+        if calendar_id is None:
+            calendar_id = DEFAULT_CALENDAR_ID
+        try:
+            return self.calendar_service.events().get(calendarId=calendar_id, eventId=event_id).execute()
+        except HttpError as e:
+            raise APIException(f"Google Calendar Get Error: {str(e)}")
+        except Exception as e:
+            raise APIException(f"Google Calendar Get Error: {str(e)}")
+
+    def create_event(self, data, calendar_id=None):
+        """
+        Expects data: { 'summary': str, 'description': str, 'start_time': iso_str|datetime, 'end_time': iso_str|datetime }
+        """
+        import datetime
+
+        if calendar_id is None:
+            calendar_id = DEFAULT_CALENDAR_ID
+
+        start_time = data.get("start_time")
+        if isinstance(start_time, (datetime.datetime, datetime.date)):
+            start_time = start_time.isoformat()
+
+        end_time = data.get("end_time")
+        if isinstance(end_time, (datetime.datetime, datetime.date)):
+            end_time = end_time.isoformat()
+
+        event_body = {
+            "summary": data.get("summary"),
+            "description": data.get("description", ""),
+            "start": {"dateTime": start_time, "timeZone": TIMEZONE},
+            "end": {"dateTime": end_time, "timeZone": TIMEZONE},
+            "reminders": {
+                "useDefault": False,
+                "overrides": [{"method": "email", "minutes": 60}, {"method": "popup", "minutes": 10}],
+            },
+        }
+
+        try:
+            event = self.calendar_service.events().insert(calendarId=calendar_id, body=event_body).execute()
+            return event
+        except HttpError as e:
+            raise APIException(f"Google Calendar Create Error: {str(e)}")
+        except Exception as e:
+            raise APIException(f"Google Calendar Create Error: {str(e)}")
+
+    def update_event(self, event_id, data, calendar_id=None):
+        import datetime
+
+        if calendar_id is None:
+            calendar_id = DEFAULT_CALENDAR_ID
+
+        try:
+            body = {}
+            if "summary" in data:
+                body["summary"] = data["summary"]
+            if "description" in data:
+                body["description"] = data["description"]
+
+            if "start_time" in data:
+                start_time = data["start_time"]
+                if isinstance(start_time, (datetime.datetime, datetime.date)):
+                    start_time = start_time.isoformat()
+                body.setdefault("start", {})["dateTime"] = start_time
+                body.setdefault("start", {})["timeZone"] = TIMEZONE
+
+            if "end_time" in data:
+                end_time = data["end_time"]
+                if isinstance(end_time, (datetime.datetime, datetime.date)):
+                    end_time = end_time.isoformat()
+                body.setdefault("end", {})["dateTime"] = end_time
+                body.setdefault("end", {})["timeZone"] = TIMEZONE
+
+            event = self.calendar_service.events().patch(calendarId=calendar_id, eventId=event_id, body=body).execute()
+            return event
+        except HttpError as e:
+            raise APIException(f"Google Calendar Update Error: {str(e)}")
+        except Exception as e:
+            raise APIException(f"Google Calendar Update Error: {str(e)}")
+
+    def delete_event(self, event_id, calendar_id=None):
+        if calendar_id is None:
+            calendar_id = DEFAULT_CALENDAR_ID
+        try:
+            self.calendar_service.events().delete(calendarId=calendar_id, eventId=event_id).execute()
+            return True
+        except HttpError as e:
+            raise APIException(f"Google Calendar Delete Error: {str(e)}")
+        except Exception as e:
+            raise APIException(f"Google Calendar Delete Error: {str(e)}")
+
+    # --- TASKS METHODS ---
+
+    def list_tasks(self, tasklist=None):
+        if tasklist is None:
+            tasklist = DEFAULT_TASKLIST_ID
+        try:
+            results = self.tasks_service.tasks().list(tasklist=tasklist).execute()
+            return results.get("items", [])
+        except HttpError as e:
+            raise APIException(f"Google Tasks Error: {str(e)}")
+        except Exception as e:
+            raise APIException(f"Google Tasks Error: {str(e)}")
+
+    def create_task(self, title, notes="", due=None, tasklist=None):
+        import datetime
+
+        if tasklist is None:
+            tasklist = DEFAULT_TASKLIST_ID
+
+        if isinstance(due, (datetime.datetime, datetime.date)):
+            due = due.isoformat()
+
+        body = {"title": title, "notes": notes}
+        if due:
+            body["due"] = due
+
+        try:
+            result = self.tasks_service.tasks().insert(tasklist=tasklist, body=body).execute()
+            return result
+        except HttpError as e:
+            raise APIException(f"Google Tasks Create Error: {str(e)}")
+        except Exception as e:
+            raise APIException(f"Google Tasks Create Error: {str(e)}")
+
+    def get_task(self, task_id, tasklist=None):
+        if tasklist is None:
+            tasklist = DEFAULT_TASKLIST_ID
+        try:
+            return self.tasks_service.tasks().get(tasklist=tasklist, task=task_id).execute()
+        except HttpError as e:
+            raise APIException(f"Google Tasks Get Error: {str(e)}")
+        except Exception as e:
+            raise APIException(f"Google Tasks Get Error: {str(e)}")
+
+    def update_task(self, task_id, data, tasklist=None):
+        if tasklist is None:
+            tasklist = DEFAULT_TASKLIST_ID
+        try:
+            body = {}
+            if "title" in data:
+                body["title"] = data["title"]
+            if "notes" in data:
+                body["notes"] = data["notes"]
+            if "due" in data:
+                body["due"] = data["due"]
+            result = self.tasks_service.tasks().update(tasklist=tasklist, task=task_id, body=body).execute()
+            return result
+        except HttpError as e:
+            raise APIException(f"Google Tasks Update Error: {str(e)}")
+        except Exception as e:
+            raise APIException(f"Google Tasks Update Error: {str(e)}")
+
+    def delete_task(self, task_id, tasklist=None):
+        if tasklist is None:
+            tasklist = DEFAULT_TASKLIST_ID
+        try:
+            self.tasks_service.tasks().delete(tasklist=tasklist, task=task_id).execute()
+            return True
+        except HttpError as e:
+            raise APIException(f"Google Tasks Delete Error: {str(e)}")
+        except Exception as e:
+            raise APIException(f"Google Tasks Delete Error: {str(e)}")

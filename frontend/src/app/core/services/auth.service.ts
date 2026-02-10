@@ -58,9 +58,20 @@ export class AuthService {
   private refreshRequest$: import('rxjs').Observable<string> | null = null;
 
   isAuthenticated = computed(() => {
+    // Explicitly track config signal dependency
+    const isMock = this.configService.config().MOCK_AUTH_ENABLED;
+    const isMockEnabled = isMock === true || String(isMock).toLowerCase() === 'true';
+
+    // If mock auth is enabled, we consider the app authenticated by default
+    // to prevent race conditions during initialization and auto-login bypass.
+    if (isMockEnabled) {
+      return true;
+    }
+
     const token = this.getToken();
     if (!token) return false;
-    const claims = this.buildClaimsFromToken(token);
+
+    const claims = this.buildClaimsFromToken(token, isMockEnabled);
     if (!claims) return false;
     if (!claims.exp) return true; // token has no exp claim
     return Date.now() / 1000 < claims.exp;
@@ -103,11 +114,15 @@ export class AuthService {
     }
   }
 
-  private get mockAuthEnabled(): boolean {
-    const v = this.configService.settings.MOCK_AUTH_ENABLED;
+  private mockAuthEnabledSignal = computed(() => {
+    const v = this.configService.config().MOCK_AUTH_ENABLED;
     if (typeof v === 'boolean') return v;
     if (typeof v === 'string') return v.toLowerCase() === 'true';
     return false;
+  });
+
+  private get mockAuthEnabled(): boolean {
+    return this.mockAuthEnabledSignal();
   }
 
   login(credentials: LoginCredentials): Observable<AuthToken> {
@@ -249,6 +264,12 @@ export class AuthService {
     const existing = this.refreshRequest$;
     if (existing) return existing;
 
+    // FIX: Prevent SSR crash - avoid accessing localStorage on server
+    if (!isPlatformBrowser(this.platformId)) {
+      // Return an error that can be caught or ignored, preventing the "No refresh token" crash
+      return throwError(() => new Error('SSR: Cannot refresh token'));
+    }
+
     const refresh = this.getRefreshToken();
     if (!refresh) {
       return throwError(() => new Error('No refresh token'));
@@ -291,12 +312,15 @@ export class AuthService {
     }
   }
 
-  private buildClaimsFromToken(token: string | null): AuthClaims | null {
+  private buildClaimsFromToken(token: string | null, isMockEnabled?: boolean): AuthClaims | null {
     if (!token) {
       return null;
     }
 
-    if (token === 'mock-token' && this.mockAuthEnabled) {
+    // Use passed isMockEnabled or fall back to current config
+    const mockEnabled = isMockEnabled ?? this.mockAuthEnabled;
+
+    if (token === 'mock-token' && mockEnabled) {
       return this._mockClaims() ?? this.buildFallbackMockClaims();
     }
 

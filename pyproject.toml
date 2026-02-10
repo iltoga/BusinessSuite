@@ -49,8 +49,9 @@ dependencies = [
     "pypdf>=6.5.0",
     "hypothesis>=6.148.9",
     "django-auditlog>=3.1.1",
-
     "concurrent-log-handler>=0.9.0",
+    "google-auth>=2.48.0",
+    "google-api-python-client>=2.189.0",
 ]
 
 [build-system]
@@ -75,8 +76,10 @@ include = [
 [tool.pytest.ini_options]
 # Avoid recursing into heavy non-test directories that slow down collection
 norecursedirs = [
+  ".*",
   ".git",
   ".venv",
+  ".hypothesis",
   "node_modules",
   "frontend",
   "frontend/node_modules",

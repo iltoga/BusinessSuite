@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 
@@ -24,7 +24,7 @@ import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/uti
   styleUrls: ['./login.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
   private fb = inject(FormBuilder);
   authService = inject(AuthService);
   private router = inject(Router);
@@ -39,6 +39,13 @@ export class LoginComponent {
     username: 'Username',
     password: 'Password',
   };
+
+  ngOnInit() {
+    // If already authenticated (e.g. mock auth auto-login), redirect to dashboard
+    if (this.authService.isAuthenticated()) {
+      this.router.navigate(['/dashboard']);
+    }
+  }
 
   onSubmit(): void {
     if (this.loginForm.valid) {
