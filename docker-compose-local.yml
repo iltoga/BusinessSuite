@@ -61,7 +61,7 @@ services:
       - db
     image: bs-app:web
     build:
-      context: ./
+      context: ./backend/
       dockerfile: Dockerfile
       target: web
     restart: unless-stopped
@@ -83,7 +83,7 @@ services:
       # LOKI_URL: "http://bs-loki:3100/loki/api/v1/push"
     volumes:
       - type: bind
-        source: ./
+        source: ./backend
         target: /usr/src/app
       - type: bind
         source: ${DATA_PATH}/media
@@ -121,7 +121,7 @@ services:
       # LOKI_URL: "http://bs-loki:3100/loki/api/v1/push"
     volumes:
       - type: bind
-        source: ./
+        source: ./backend
         target: /usr/src/app
       - type: bind
         source: ${DATA_PATH}/media

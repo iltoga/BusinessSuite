@@ -58,7 +58,7 @@ services:
       - db
     image: bs-app:web
     build:
-      context: ./
+      context: ./backend/
       dockerfile: Dockerfile
       target: web
     networks:
@@ -74,8 +74,9 @@ services:
       MEDIA_ROOT: /media
       MEDIA_URL: /media/
     volumes:
+      - ./.env:/usr/src/app/.env:ro
       - type: bind
-        source: ./
+        source: ./backend
         target: /usr/src/app
         bind:
           propagation: rslave
@@ -113,8 +114,9 @@ services:
       MEDIA_ROOT: /media
       MEDIA_URL: /media/
     volumes:
+      - ./.env:/usr/src/app/.env:ro
       - type: bind
-        source: ./
+        source: ./backend
         target: /usr/src/app
       - type: bind
         source: ${DATA_PATH}/media
@@ -146,6 +148,8 @@ services:
     networks:
       dockernet:
         ipv4_address: 192.168.2.61
+    env_file:
+      - .env
     environment:
       PORT: 4000
       BACKEND_URL: http://bs-core:8000

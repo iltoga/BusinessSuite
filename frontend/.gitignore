@@ -50,3 +50,14 @@ __screenshots__/
 .DS_Store
 Thumbs.db
 .last-run.json
+
+# API Schema (generated)
+api-schema.json
+
+# Test results
+test-results/
+
+# Assets
+src/assets/logo_revis*
+src/assets/logo_transparent.png
+src/assets/logo_inverted_transparent.png
