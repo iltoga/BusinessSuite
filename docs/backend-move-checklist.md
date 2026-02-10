@@ -22,13 +22,14 @@ Execute these commands from the repo root to move Django components and related 
 mkdir -p backend/
 
 # Apps & Core modules
-x git mv admin_tools/ api/ business_suite/ core/ customer_applications/ backend/
-x git mv customers/ invoices/ landing/ letters/ payments/ products/ reports/ backend/
+git mv admin_tools/ api/ business_suite/ core/ customer_applications/ backend/
+git mv customers/ invoices/ landing/ letters/ payments/ products/ reports/ transactions/ backend/
 
 # Project files
-x git mv manage.py pyproject.toml uv.lock requirements.txt requirements/ backend/
-x git mv fixtures/ locale/ static/ backend/
-x git mv schema.yaml schema_dump.yaml backend/ 2>/dev/null || true
+git mv manage.py pyproject.toml uv.lock requirements.txt requirements/ backend/
+git mv fixtures/ locale/ static/ testfiles/ backend/
+git mv Dockerfile backend/
+git mv schema.yaml schema_dump.yaml backend/ 2>/dev/null || true
 
 # Scripts & Runner
 git mv start.sh scripts/ backend/

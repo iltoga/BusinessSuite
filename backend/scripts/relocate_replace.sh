@@ -54,12 +54,10 @@ for f in docker-compose.yml docker-compose-local.yml; do
   fi
 done
 
-# 2) Dockerfile: precise updates for pyproject/uv.lock and root copy
+# 2) Dockerfile: Move to backend and ensure context consistency
 if [[ -f Dockerfile ]]; then
-  echo "Updating Dockerfile paths"
-  sed -i '' 's|COPY pyproject.toml uv.lock ./|COPY backend/pyproject.toml backend/uv.lock ./|g' Dockerfile
-  sed -i '' 's|COPY \. \.|COPY backend/ .|g' Dockerfile
-  sed -i '' 's|/usr/src/app/scripts|/usr/src/app/scripts|g' Dockerfile # remains same as backend/scripts -> /usr/src/app/scripts
+  echo "Moving Dockerfile to backend/"
+  git mv Dockerfile backend/
 fi
 
 # 3) Frontend scripts: schema.yaml path
@@ -73,6 +71,7 @@ if [[ -f .github/workflows/deploy.yml ]]; then
   echo "Updating deploy workflow dependency regex"
   sed -i '' "s|'(pyproject\\\\.toml|'(backend/pyproject\\\\.toml|g" .github/workflows/deploy.yml
   sed -i '' "s|requirements\\\\.txt|backend/requirements\\\\.txt|g" .github/workflows/deploy.yml
+  sed -i '' "s|Dockerfile|backend/Dockerfile|g" .github/workflows/deploy.yml
   sed -i '' "s|locale/|backend/locale/|g" .github/workflows/deploy.yml
 fi
 
