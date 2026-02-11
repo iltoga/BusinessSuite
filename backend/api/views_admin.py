@@ -37,6 +37,7 @@ def sse_token_auth_required(view_func):
     Decorator for SSE endpoints that need token auth.
     EventSource cannot send Authorization headers, so we accept token via query param.
     Supports both JWT tokens (rest_framework_simplejwt) and DRF Token auth.
+    Also supports mock-token when MOCK_AUTH_ENABLED is True.
     Falls back to session auth if no token provided.
     """
 
@@ -45,6 +46,15 @@ def sse_token_auth_required(view_func):
         # Check for token in query param first (for EventSource)
         token_str = request.GET.get("token")
         if token_str:
+            # Try mock token first if enabled
+            if getattr(settings, "MOCK_AUTH_ENABLED", False) and token_str == "mock-token":
+                from business_suite.authentication import ensure_mock_user
+
+                user = ensure_mock_user()
+                if user.is_active and user.is_superuser:
+                    request.user = user
+                    return view_func(request, *args, **kwargs)
+
             # Try JWT token first (starts with eyJ for base64-encoded JSON)
             if token_str.startswith("eyJ"):
                 try:

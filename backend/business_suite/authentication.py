@@ -49,6 +49,13 @@ def ensure_mock_user() -> User:
 class JwtOrMockAuthentication(JWTAuthentication):
     def authenticate(self, request):
         if getattr(settings, "MOCK_AUTH_ENABLED", False):
+            # Check query param for mock-token (useful for EventSource or generic downloads)
+            token_param = getattr(request, "query_params", getattr(request, "GET", {})).get("token")
+            if token_param == "mock-token":
+                user = ensure_mock_user()
+                update_last_login(None, user)
+                return (user, None)
+
             header = self.get_header(request)
             if header is not None:
                 raw_token = self.get_raw_token(header)

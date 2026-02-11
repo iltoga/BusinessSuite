@@ -53,6 +53,7 @@ dependencies = [
     "google-auth>=2.48.0",
     "google-api-python-client>=2.189.0",
     "urllib3>=2.6.3",
+    "pytest>=9.0.2",
 ]
 
 [build-system]
