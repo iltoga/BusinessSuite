@@ -1,5 +1,6 @@
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -23,6 +24,7 @@ import {
   type DocumentAction,
   type OcrStatusResponse,
 } from '@/core/services/applications.service';
+import { DocumentTypesService } from '@/core/api/api/document-types.service';
 import { DocumentsService } from '@/core/services/documents.service';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardBadgeComponent } from '@/shared/components/badge';
@@ -75,6 +77,8 @@ export class ApplicationDetailComponent implements OnInit {
   private router = inject(Router);
   private applicationsService = inject(ApplicationsService);
   private documentsService = inject(DocumentsService);
+  private documentTypesApi = inject(DocumentTypesService);
+  private http = inject(HttpClient);
   private toast = inject(GlobalToastService);
   private fb = inject(FormBuilder);
   private destroyRef = inject(DestroyRef);
@@ -119,6 +123,8 @@ export class ApplicationDetailComponent implements OnInit {
   readonly actionLoading = signal<string | null>(null);
   readonly workflowAction = signal<string | null>(null);
   readonly originSearchQuery = signal<string | null>(null);
+  readonly documentTypeOptions = signal<Array<{ value: string; label: string }>>([]);
+  readonly newDocumentTypeId = signal<string>("");
 
   // PDF Merge and Selection
   readonly localUploadedDocuments = signal<ApplicationDocument[]>([]);
@@ -146,20 +152,6 @@ export class ApplicationDetailComponent implements OnInit {
 
     const application = this.application();
     if (!application) return;
-
-    // E --> Edit
-    if (event.key === 'E' && !event.ctrlKey && !event.altKey && !event.metaKey) {
-      if (application.status !== 'completed') {
-        event.preventDefault();
-        this.router.navigate(['/applications', application.id, 'edit'], {
-          state: {
-            from: 'applications',
-            focusId: application.id,
-            searchQuery: this.originSearchQuery(),
-          },
-        });
-      }
-    }
 
     // B or Left Arrow --> Back
     if (
@@ -233,6 +225,7 @@ export class ApplicationDetailComponent implements OnInit {
       return;
     }
     this.loadApplication(id);
+    this.loadDocumentTypes();
 
     this.destroyRef.onDestroy(() => {
       if (this.pollTimer) {
@@ -642,6 +635,82 @@ export class ApplicationDetailComponent implements OnInit {
 
     // Edge case: newly created applications should return to the list and focus the first row.
     this.router.navigate(['/applications'], { state: { focusTable: true } });
+  }
+
+
+  updateApplication(patch: Record<string, unknown>): void {
+    const app = this.application();
+    if (!app) return;
+    this.http.patch(`/api/customer-applications/${app.id}/`, patch).subscribe({
+      next: () => this.loadApplication(app.id),
+      error: () => this.toast.error('Failed to update application'),
+    });
+  }
+
+  onDocDateChange(value: string): void {
+    if (!value) return;
+    this.updateApplication({ docDate: value });
+  }
+
+  onDueDateChange(value: string): void {
+    if (!value) return;
+    this.updateApplication({ dueDate: value });
+  }
+
+  onNotesBlur(value: string): void {
+    this.updateApplication({ notes: value });
+  }
+
+  onToggleDeadlines(value: boolean): void {
+    this.updateApplication({ addDeadlinesToCalendar: value });
+  }
+
+  onToggleNotifyCustomer(value: boolean): void {
+    const app = this.application();
+    if (!app) return;
+    const channel = app.notificationChannel || (app.customer?.whatsapp ? 'whatsapp' : app.customer?.email ? 'email' : '');
+    this.updateApplication({ notifyCustomerToo: value, notificationChannel: value ? channel : '' });
+  }
+
+  onNotificationChannelChange(value: string): void {
+    this.updateApplication({ notificationChannel: value });
+  }
+
+  addApplicationDocument(): void {
+    const app = this.application();
+    const docTypeId = Number(this.newDocumentTypeId());
+    if (!app || !docTypeId) return;
+    this.http
+      .post('/api/documents/', {
+        doc_application: app.id,
+        doc_type_id: docTypeId,
+        required: false,
+      })
+      .subscribe({
+        next: () => {
+          this.newDocumentTypeId.set('');
+          this.loadApplication(app.id);
+        },
+        error: () => this.toast.error('Failed to add document'),
+      });
+  }
+
+  removeDocument(documentId: number): void {
+    if (!confirm('Remove this document?')) return;
+    const app = this.application();
+    if (!app) return;
+    this.http.delete(`/api/documents/${documentId}/`).subscribe({
+      next: () => this.loadApplication(app.id),
+      error: () => this.toast.error('Failed to remove document'),
+    });
+  }
+
+  private loadDocumentTypes(): void {
+    this.documentTypesApi.documentTypesList().subscribe({
+      next: (items: any[]) => {
+        this.documentTypeOptions.set((items || []).map((x) => ({ value: String(x.id), label: x.name })));
+      },
+    });
   }
 
   private loadApplication(id: number): void {

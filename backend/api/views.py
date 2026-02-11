@@ -25,7 +25,7 @@ from rest_framework.authentication import SessionAuthentication
 from rest_framework.decorators import action, api_view, authentication_classes, permission_classes, throttle_classes
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -57,6 +57,7 @@ from api.serializers import (
     SuratPermohonanRequestSerializer,
     UserProfileSerializer,
     UserSettingsSerializer,
+    WorkflowNotificationSerializer,
     ordered_document_types,
 )
 from api.serializers.auth_serializer import CustomTokenObtainSerializer
@@ -64,12 +65,12 @@ from business_suite.authentication import JwtOrMockAuthentication
 from core.models import CountryCode, DocumentOCRJob, OCRJob, UserProfile, UserSettings
 from core.services.document_merger import DocumentMerger, DocumentMergerError
 from core.services.quick_create import create_quick_customer, create_quick_customer_application, create_quick_product
-from core.tasks.cron_jobs import run_clear_cache_now, run_full_backup_now
+from core.tasks.cron_jobs import run_clear_cache_now, run_full_backup_now, run_workflow_notifications_now
 from core.tasks.document_ocr import run_document_ocr_job
 from core.tasks.ocr import run_ocr_job
 from core.utils.dateutils import calculate_due_date
 from core.utils.pdf_converter import PDFConverter, PDFConverterError
-from customer_applications.models import DocApplication, Document
+from customer_applications.models import DocApplication, Document, WorkflowNotification
 from customers.models import Customer
 from invoices.models import InvoiceDownloadJob
 from invoices.models.invoice import Invoice, InvoiceApplication
@@ -1654,6 +1655,10 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         # Refresh application status
         application.save()
 
+        from customer_applications.services.application_calendar_service import ApplicationCalendarService
+
+        ApplicationCalendarService().sync_next_task_deadline(application, start_date=current_workflow.due_date)
+
         return Response({"success": True})
 
     def destroy(self, request, *args, **kwargs):
@@ -1778,7 +1783,7 @@ class DocumentViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = DocumentSerializer
     parser_classes = [MultiPartParser, FormParser, JSONParser]
-    http_method_names = ["get", "patch", "put", "post"]
+    http_method_names = ["get", "patch", "put", "post", "delete"]
 
     def get_queryset(self):
         return Document.objects.select_related("doc_application", "doc_type", "updated_by", "created_by")
@@ -2250,6 +2255,7 @@ def exec_cron_jobs(request):
     request.throttle_scope = "cron"
     run_full_backup_now.delay()
     run_clear_cache_now.delay()
+    run_workflow_notifications_now.delay()
     return Response({"status": "queued"}, status=status.HTTP_202_ACCEPTED)
 
 
@@ -2435,3 +2441,46 @@ def product_quick_create(request):
             return Response({"success": False, "errors": e.message_dict}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({"success": False, "error": error_msg}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class WorkflowNotificationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
+    permission_classes = [IsAdminUser]
+    serializer_class = WorkflowNotificationSerializer
+    queryset = WorkflowNotification.objects.select_related("doc_application", "doc_workflow").all()
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["recipient", "subject", "status", "doc_application__id"]
+    ordering = ["-id"]
+
+    @action(detail=True, methods=["post"], url_path="resend")
+    def resend(self, request, pk=None):
+        from notifications.services.providers import NotificationDispatcher
+
+        notification = self.get_object()
+        if notification.status == WorkflowNotification.STATUS_CANCELLED:
+            return self.error_response("Cancelled notifications cannot be resent.", status.HTTP_400_BAD_REQUEST)
+
+        try:
+            result = NotificationDispatcher().send(
+                notification.channel,
+                notification.recipient,
+                notification.subject,
+                notification.body,
+            )
+            notification.status = WorkflowNotification.STATUS_SENT
+            notification.sent_at = timezone.now()
+            notification.provider_message = result
+            notification.save(update_fields=["status", "sent_at", "provider_message", "updated_at"])
+        except Exception as exc:
+            notification.status = WorkflowNotification.STATUS_FAILED
+            notification.provider_message = str(exc)
+            notification.save(update_fields=["status", "provider_message", "updated_at"])
+            return self.error_response(str(exc), status.HTTP_400_BAD_REQUEST)
+
+        return Response(self.get_serializer(notification).data)
+
+    @action(detail=True, methods=["post"], url_path="cancel")
+    def cancel(self, request, pk=None):
+        notification = self.get_object()
+        notification.status = WorkflowNotification.STATUS_CANCELLED
+        notification.save(update_fields=["status", "updated_at"])
+        return Response(self.get_serializer(notification).data)

@@ -13,6 +13,7 @@ export interface ApplicationCustomer {
   lastName?: string | null;
   email?: string | null;
   telephone?: string | null;
+  whatsapp?: string | null;
 }
 
 export interface ApplicationProduct {
@@ -97,6 +98,9 @@ export interface ApplicationDetail {
   product: ApplicationProduct;
   docDate: string;
   dueDate?: string | null;
+  addDeadlinesToCalendar?: boolean;
+  notifyCustomerToo?: boolean;
+  notificationChannel?: string;
   status: string;
   notes?: string | null;
   documents: ApplicationDocument[];

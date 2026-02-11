@@ -1,0 +1,63 @@
+import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
+import { FormsModule } from '@angular/forms';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ZardButtonComponent } from '@/shared/components/button';
+
+@Component({
+  selector: 'app-workflow-notifications',
+  standalone: true,
+  imports: [CommonModule, FormsModule, ZardButtonComponent],
+  templateUrl: './workflow-notifications.component.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class WorkflowNotificationsComponent {
+  private http = inject(HttpClient);
+  readonly notifications = signal<any[]>([]);
+  readonly loading = signal(false);
+  readonly editingId = signal<number | null>(null);
+
+  constructor() {
+    this.load();
+  }
+
+  load(): void {
+    this.loading.set(true);
+    this.http.get<any>('/api/workflow-notifications/').subscribe({
+      next: (res) => {
+        this.notifications.set(res?.results ?? res ?? []);
+        this.loading.set(false);
+      },
+      error: () => this.loading.set(false),
+    });
+  }
+
+  resend(id: number): void {
+    this.http.post(`/api/workflow-notifications/${id}/resend/`, {}).subscribe(() => this.load());
+  }
+
+  cancel(id: number): void {
+    this.http.post(`/api/workflow-notifications/${id}/cancel/`, {}).subscribe(() => this.load());
+  }
+
+  remove(id: number): void {
+    this.http.delete(`/api/workflow-notifications/${id}/`).subscribe(() => this.load());
+  }
+
+  startEdit(id: number): void {
+    this.editingId.set(id);
+  }
+
+  save(item: any): void {
+    this.http
+      .patch(`/api/workflow-notifications/${item.id}/`, {
+        recipient: item.recipient,
+        subject: item.subject,
+        body: item.body,
+      })
+      .subscribe(() => {
+        this.editingId.set(null);
+        this.load();
+      });
+  }
+}

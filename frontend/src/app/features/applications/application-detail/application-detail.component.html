@@ -74,20 +74,63 @@
         </div>
         <div>
           <div class="text-sm text-muted-foreground">Document Date</div>
-          <div>{{ application()!.docDate | appDate }}</div>
+          <input
+            z-input
+            type="date"
+            [value]="application()!.docDate"
+            (change)="onDocDateChange($any($event.target).value)"
+          />
         </div>
-        @if (application()!.dueDate) {
-          <div>
-            <div class="text-sm text-muted-foreground">Due Date</div>
-            <div>{{ application()!.dueDate | appDate }}</div>
-          </div>
-        }
-        @if (application()!.notes) {
-          <div class="md:col-span-2">
-            <div class="text-sm text-muted-foreground">Notes</div>
-            <div>{{ application()!.notes }}</div>
-          </div>
-        }
+        <div>
+          <div class="text-sm text-muted-foreground">Due Date</div>
+          <input
+            z-input
+            type="date"
+            [value]="application()!.dueDate || application()!.docDate"
+            (change)="onDueDateChange($any($event.target).value)"
+          />
+        </div>
+        <div class="md:col-span-2 flex items-center gap-4">
+          <label class="inline-flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              [checked]="application()!.addDeadlinesToCalendar"
+              (change)="onToggleDeadlines($any($event.target).checked)"
+            />
+            Add deadlines to calendar
+          </label>
+          <label class="inline-flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              [checked]="application()!.notifyCustomerToo"
+              (change)="onToggleNotifyCustomer($any($event.target).checked)"
+            />
+            Notify Customer too
+          </label>
+          @if (application()!.notifyCustomerToo) {
+            <select
+              z-input
+              [value]="application()!.notificationChannel || ''"
+              (change)="onNotificationChannelChange($any($event.target).value)"
+            >
+              @if (application()!.customer.whatsapp) {
+                <option value="whatsapp">WhatsApp</option>
+              }
+              @if (application()!.customer.email) {
+                <option value="email">Email</option>
+              }
+            </select>
+          }
+        </div>
+        <div class="md:col-span-2">
+          <div class="text-sm text-muted-foreground">Notes</div>
+          <textarea
+            z-input
+            rows="3"
+            [value]="application()!.notes || ''"
+            (blur)="onNotesBlur($any($event.target).value)"
+          ></textarea>
+        </div>
       </div>
     </z-card>
 
@@ -303,9 +346,10 @@
                 <tr class="border-b">
                   <td class="py-3">{{ doc.docType.name }}</td>
                   <td class="py-3">
-                    <button z-button zType="default" zSize="sm" (click)="openUpload(doc)">
-                      Upload
-                    </button>
+                    <div class="flex gap-2">
+                      <button z-button zType="default" zSize="sm" (click)="openUpload(doc)">Upload</button>
+                      <button z-button zType="destructive" zSize="sm" (click)="removeDocument(doc.id)">Remove</button>
+                    </div>
                   </td>
                 </tr>
               }
@@ -333,9 +377,10 @@
                 <tr class="border-b">
                   <td class="py-3">{{ doc.docType.name }}</td>
                   <td class="py-3">
-                    <button z-button zType="default" zSize="sm" (click)="openUpload(doc)">
-                      Upload
-                    </button>
+                    <div class="flex gap-2">
+                      <button z-button zType="default" zSize="sm" (click)="openUpload(doc)">Upload</button>
+                      <button z-button zType="destructive" zSize="sm" (click)="removeDocument(doc.id)">Remove</button>
+                    </div>
                   </td>
                 </tr>
               }

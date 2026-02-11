@@ -171,16 +171,6 @@ export class ApplicationListComponent implements OnInit {
         }),
     },
     {
-      label: 'Edit Application',
-      icon: 'settings',
-      variant: 'warning',
-      isVisible: (item) => item.status !== 'completed',
-      action: (item) =>
-        this.router.navigate(['/applications', item.id, 'edit'], {
-          state: { from: 'applications', focusId: item.id, searchQuery: this.query() },
-        }),
-    },
-    {
       label: 'Force Close',
       icon: 'ban',
       variant: 'outline',

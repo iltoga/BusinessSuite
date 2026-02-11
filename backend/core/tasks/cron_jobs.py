@@ -38,6 +38,13 @@ def _perform_clear_cache() -> None:
     logger.info("Cache cleared successfully")
 
 
+def _perform_send_workflow_notifications() -> None:
+    from customer_applications.services.application_calendar_service import ApplicationCalendarService
+
+    count = ApplicationCalendarService().dispatch_pending_notifications()
+    logger.info("Workflow notifications processed: %s", count)
+
+
 @db_task()
 def run_full_backup_now() -> None:
     _perform_full_backup()
@@ -46,6 +53,11 @@ def run_full_backup_now() -> None:
 @db_task()
 def run_clear_cache_now() -> None:
     _perform_clear_cache()
+
+
+@db_task()
+def run_workflow_notifications_now() -> None:
+    _perform_send_workflow_notifications()
 
 
 @db_task()
@@ -128,3 +140,8 @@ def _register_auditlog_prune() -> None:
 _register_full_backup()
 _register_clear_cache()
 _register_auditlog_prune()
+
+
+@db_periodic_task(crontab(minute="*/5"), name="core.workflow_notifications_5m")
+def _workflow_notifications_5m() -> None:
+    _perform_send_workflow_notifications()

@@ -1,0 +1,83 @@
+<div class="space-y-4">
+  <div class="flex items-center justify-between">
+    <h2 class="text-2xl font-bold">Google Calendar (Via Django)</h2>
+    <button z-button zType="secondary" (click)="loadEvents()" [zDisabled]="loading()">Refresh</button>
+  </div>
+
+  <div class="grid gap-4 lg:grid-cols-3">
+    <app-dashboard-widget title="Today" subtitle="Deadlines and events due today">
+      @if (todayEvents().length === 0) {
+        <div class="text-sm text-muted-foreground">No events today.</div>
+      } @else {
+        <ul class="space-y-2">
+          @for (event of todayEvents(); track event.id) {
+            <li class="rounded border p-2">{{ event.summary }}</li>
+          }
+        </ul>
+      }
+    </app-dashboard-widget>
+
+    <app-dashboard-widget title="Week" subtitle="Current week calendar items">
+      @if (weekEvents().length === 0) {
+        <div class="text-sm text-muted-foreground">No events this week.</div>
+      } @else {
+        <ul class="space-y-2">
+          @for (event of weekEvents(); track event.id) {
+            <li class="rounded border p-2">
+              <div class="font-medium">{{ event.summary }}</div>
+              <div class="text-xs text-muted-foreground">
+                {{ (event.start?.dateTime | date: 'EEE, dd MMM') || event.start?.date }}
+              </div>
+            </li>
+          }
+        </ul>
+      }
+    </app-dashboard-widget>
+
+    <app-dashboard-widget title="Month" subtitle="Days with tasks are highlighted">
+      <div class="grid grid-cols-7 gap-1 text-center text-xs mb-2 text-muted-foreground">
+        @for (d of ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']; track d) {
+          <div>{{ d }}</div>
+        }
+      </div>
+      <div class="grid grid-cols-7 gap-1">
+        @for (_ of [].constructor(monthGrid().firstWeekday); track $index) {
+          <div class="h-8"></div>
+        }
+        @for (cell of monthGrid().days; track cell.date) {
+          <button
+            class="h-8 rounded border text-xs transition-colors"
+            [class.bg-primary/20]="cell.hasEvents"
+            [class.border-primary]="cell.hasEvents"
+            (click)="openDay(cell.date)"
+          >
+            {{ cell.day }}
+          </button>
+        }
+      </div>
+    </app-dashboard-widget>
+  </div>
+
+  @if (selectedDay()) {
+    <div class="fixed inset-0 z-50 bg-black/40 flex items-center justify-center" (click)="closeDayDialog()">
+      <div class="bg-card border rounded-lg p-4 w-[32rem] max-w-[90vw]" (click)="$event.stopPropagation()">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-semibold">Events on {{ selectedDay() }}</h3>
+          <button z-button zType="ghost" (click)="closeDayDialog()">Close</button>
+        </div>
+        @if (selectedDayEvents().length === 0) {
+          <div class="text-sm text-muted-foreground">No events for this day.</div>
+        } @else {
+          <ul class="space-y-2">
+            @for (event of selectedDayEvents(); track event.id) {
+              <li class="border rounded p-2">
+                <div class="font-medium">{{ event.summary }}</div>
+                <div class="text-xs text-muted-foreground">{{ event.description || 'No description' }}</div>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+    </div>
+  }
+</div>

@@ -101,6 +101,9 @@ class DocApplication(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="doc_applications")
     doc_date = models.DateField(db_index=True)
     due_date = models.DateField(blank=True, null=True, db_index=True)
+    add_deadlines_to_calendar = models.BooleanField(default=True)
+    notify_customer_too = models.BooleanField(default=False)
+    notification_channel = models.CharField(max_length=20, blank=True, default="")
     status = models.CharField(max_length=50, choices=STATUS_CHOICES, default=STATUS_PENDING, db_index=True)
     notes = models.TextField(blank=True, null=True)  # Person-specific details from invoice import
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
@@ -196,6 +199,26 @@ class DocApplication(models.Model):
         else:
             return tasks.first()
 
+
+    def get_next_calendar_task(self):
+        """Return next workflow task configured for calendar reminders."""
+        tasks = self.product.tasks.order_by("step")
+        current_workflow = self.current_workflow
+
+        if current_workflow and current_workflow.status == self.STATUS_COMPLETED:
+            tasks = tasks.filter(step__gt=current_workflow.task.step)
+        elif current_workflow:
+            tasks = tasks.filter(step__gte=current_workflow.task.step)
+
+        return tasks.filter(add_task_to_calendar=True).first()
+
+    def calculate_next_calendar_due_date(self, start_date=None):
+        task = self.get_next_calendar_task()
+        if not task:
+            return self.doc_date
+        base_date = start_date or timezone.localdate()
+        return calculate_due_date(base_date, task.duration, task.duration_is_business_days)
+
     @property
     def upload_folder(self):
         customer_folder = self.customer.upload_folder
@@ -211,7 +234,8 @@ class DocApplication(models.Model):
                                    Useful when status is set explicitly (e.g., from invoice payment or re-open).
         """
         self.updated_at = timezone.now()
-        self.due_date = self.calculate_application_due_date()
+        if not self.due_date:
+            self.due_date = self.calculate_application_due_date()
 
         # Skip all automatic status calculation when explicitly requested
         if not skip_status_calculation:

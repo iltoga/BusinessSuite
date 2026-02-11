@@ -15,6 +15,7 @@ import { ZardIconComponent } from '@/shared/components/icon';
 import { ZardInputDirective } from '@/shared/components/input';
 import { ProductSelectComponent } from '@/shared/components/product-select';
 import { TypeaheadComboboxComponent } from '@/shared/components/typeahead-combobox';
+import { ZardTooltipDirective } from '@/shared/components/tooltip';
 import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/utils/form-errors';
 import { CommonModule, Location } from '@angular/common';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
@@ -30,7 +31,7 @@ import {
   signal,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { FormArray, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, FormArray, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { map, startWith, Subject, takeUntil } from 'rxjs';
 
@@ -50,6 +51,7 @@ import { map, startWith, Subject, takeUntil } from 'rxjs';
     ProductSelectComponent,
     TypeaheadComboboxComponent,
     ZardDateInputComponent,
+    ZardTooltipDirective,
     FormErrorSummaryComponent,
   ],
   templateUrl: './application-form.component.html',
@@ -73,10 +75,22 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
 
   readonly selectedCustomer = signal<Customer | null>(null);
+  readonly customerCanBeNotified = computed(() => {
+    const c = this.selectedCustomer();
+    return Boolean(c?.whatsapp || c?.email);
+  });
+  readonly notificationChannelOptions = computed<ZardComboboxOption[]>(() => {
+    const c = this.selectedCustomer();
+    const options: ZardComboboxOption[] = [];
+    if (c?.whatsapp) options.push({ value: 'whatsapp', label: 'WhatsApp' });
+    if (c?.email) options.push({ value: 'email', label: 'Email' });
+    return options;
+  });
   readonly documentTypes = signal<any[]>([]);
   readonly isEditMode = signal(false);
   readonly applicationId = signal<number | null>(null);
   readonly isLoading = signal(false);
+  readonly initialProductId = signal<number | null>(null);
   // Loading state and open/closed state for the Documents panel
   readonly documentsLoading = signal(false);
   readonly documentsPanelOpen = signal(false);
@@ -85,7 +99,11 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
     customer: [null as string | null, Validators.required],
     product: [null as string | null, Validators.required],
     // use Date object so z-date-input binds correctly
-    docDate: [new Date()],
+    docDate: [new Date(), Validators.required],
+    dueDate: [new Date(), Validators.required],
+    addDeadlinesToCalendar: [true],
+    notifyCustomerToo: [false],
+    notificationChannel: [''],
     notes: [''],
     documents: this.fb.array([]),
   });
@@ -94,11 +112,24 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
     customer: 'Customer',
     product: 'Product',
     docDate: 'Document Date',
+    dueDate: 'Due Date',
+    addDeadlinesToCalendar: 'Add deadlines to calendar',
+    notifyCustomerToo: 'Notify Customer too',
+    notificationChannel: 'Notification Channel',
     notes: 'Notes',
     documents: 'Documents',
   };
 
   readonly isSubmitting = signal(false);
+
+  private dueDateValidator = (control: AbstractControl) => {
+    const docDate = this.form?.get('docDate')?.value as Date | null;
+    const dueDate = control?.value as Date | null;
+    if (docDate && dueDate && dueDate < docDate) {
+      return { dueBeforeDocDate: true };
+    }
+    return null;
+  };
 
   readonly documentTypeOptions = computed<ZardComboboxOption[]>(() => {
     return this.documentTypes().map((dt) => ({
@@ -141,6 +172,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.form.get('dueDate')?.setValidators([Validators.required, this.dueDateValidator]);
     const url = this.router.url;
     const editMatch = url.match(/\/applications\/(\d+)\/edit/);
 
@@ -190,6 +222,39 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
         });
     }
 
+    this.form
+      .get('docDate')
+      ?.valueChanges.pipe(takeUntil(this.destroy$))
+      .subscribe(() => this.form.get('dueDate')?.updateValueAndValidity());
+
+    this.form
+      .get('notifyCustomerToo')
+      ?.valueChanges.pipe(takeUntil(this.destroy$))
+      .subscribe((enabled) => {
+        if (!enabled) {
+          this.form.patchValue({ notificationChannel: '' }, { emitEvent: false });
+          return;
+        }
+        const customer = this.selectedCustomer();
+        if (customer?.whatsapp) {
+          this.form.patchValue({ notificationChannel: 'whatsapp' }, { emitEvent: false });
+        } else if (customer?.email) {
+          this.form.patchValue({ notificationChannel: 'email' }, { emitEvent: false });
+        }
+      });
+
+    this.form
+      .get('product')
+      ?.valueChanges.pipe(takeUntil(this.destroy$))
+      .subscribe((productId) => {
+        if (!productId) return;
+        const numericProductId = Number(productId);
+        if (this.isEditMode() && this.initialProductId() === numericProductId) {
+          return;
+        }
+        this.tryAutoDueDateCalculation(numericProductId);
+      });
+
     this.loadDocumentTypes();
   }
 
@@ -204,6 +269,10 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
           customer: String(customerId),
           product: productId ? String(productId) : null,
           docDate: docDate,
+          dueDate: app.dueDate ? new Date(app.dueDate) : docDate,
+          addDeadlinesToCalendar: app.addDeadlinesToCalendar ?? true,
+          notifyCustomerToo: app.notifyCustomerToo ?? false,
+          notificationChannel: app.notificationChannel ?? '',
           notes: app.notes ?? '',
         });
         if (customerId) {
@@ -212,6 +281,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
 
         // Ensure product documents are loaded when editing an application
         if (productId) {
+          this.initialProductId.set(productId);
           // open the documents panel and load documents
           this.documentsPanelOpen.set(true);
           this.loadProductDocuments(productId);
@@ -230,6 +300,14 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
     this.customersService.customersRetrieve(customerId).subscribe({
       next: (customer) => {
         this.selectedCustomer.set(customer);
+        const canNotify = Boolean(customer?.whatsapp || customer?.email);
+        if (!canNotify) {
+          this.form.patchValue({ notifyCustomerToo: false, notificationChannel: "" });
+        } else if (customer?.whatsapp) {
+          this.form.patchValue({ notificationChannel: "whatsapp" });
+        } else if (customer?.email) {
+          this.form.patchValue({ notificationChannel: "email" });
+        }
         // Refresh documents if product is already selected to re-check for auto-imports
         const productId = this.form.get('product')?.value;
         if (productId && !this.isEditMode()) {
@@ -345,11 +423,33 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
 
     if (disabled) {
       customerControl?.disable({ emitEvent: false });
-      productControl?.disable({ emitEvent: false });
+      productControl?.enable({ emitEvent: false });
     } else {
       customerControl?.enable({ emitEvent: false });
       productControl?.enable({ emitEvent: false });
     }
+  }
+
+  private tryAutoDueDateCalculation(productId: number): void {
+    this.productsService.productsRetrieve(productId).subscribe({
+      next: (product: any) => {
+        const task = (product.tasks || []).find((t: any) => t.addTaskToCalendar);
+        const doc = this.form.get('docDate')?.value as Date | null;
+        if (!doc) return;
+        if (!task) {
+          this.form.patchValue({ dueDate: doc });
+          return;
+        }
+        const start = doc.toISOString().slice(0, 10);
+        this.http.get<any>(`/api/compute/doc_workflow_due_date/${task.id}/${start}/`).subscribe({
+          next: (res) => {
+            if (res?.due_date) {
+              this.form.patchValue({ dueDate: new Date(res.due_date) });
+            }
+          },
+        });
+      },
+    });
   }
 
   submit(): void {
@@ -361,16 +461,23 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
 
     this.isSubmitting.set(true);
 
-    const docValue = this.form.value.docDate;
+    const rawValue = this.form.getRawValue();
+    const docValue = rawValue.docDate;
     const docDateStr = docValue instanceof Date ? docValue.toISOString().slice(0, 10) : docValue;
 
     if (this.isEditMode() && this.applicationId()) {
       // Update mode
+      const dueValue = rawValue.dueDate;
+      const dueDateStr = dueValue instanceof Date ? dueValue.toISOString().slice(0, 10) : dueValue;
       const payload = {
-        customer: Number(this.form.value.customer),
-        product: Number(this.form.value.product),
+        customer: Number(rawValue.customer),
+        product: Number(rawValue.product),
         docDate: docDateStr,
-        notes: this.form.value.notes,
+        dueDate: dueDateStr,
+        addDeadlinesToCalendar: rawValue.addDeadlinesToCalendar,
+        notifyCustomerToo: rawValue.notifyCustomerToo,
+        notificationChannel: rawValue.notificationChannel || undefined,
+        notes: rawValue.notes,
       };
 
       const headers = this.buildAuthHeaders();
@@ -395,11 +502,17 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
         });
     } else {
       // Create mode
+      const dueValue = rawValue.dueDate;
+      const dueDateStr = dueValue instanceof Date ? dueValue.toISOString().slice(0, 10) : dueValue;
       const payload = {
-        customer: Number(this.form.value.customer),
-        product: Number(this.form.value.product),
+        customer: Number(rawValue.customer),
+        product: Number(rawValue.product),
         docDate: docDateStr,
-        notes: this.form.value.notes,
+        dueDate: dueDateStr,
+        addDeadlinesToCalendar: rawValue.addDeadlinesToCalendar,
+        notifyCustomerToo: rawValue.notifyCustomerToo,
+        notificationChannel: rawValue.notificationChannel || undefined,
+        notes: rawValue.notes,
         documentTypes: this.form.value.documents,
       };
 

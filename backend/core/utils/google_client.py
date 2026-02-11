@@ -98,19 +98,41 @@ class GoogleClient:
             calendar_id = DEFAULT_CALENDAR_ID
 
         start_time = data.get("start_time")
-        if isinstance(start_time, (datetime.datetime, datetime.date)):
-            start_time = start_time.isoformat()
-
         end_time = data.get("end_time")
-        if isinstance(end_time, (datetime.datetime, datetime.date)):
-            end_time = end_time.isoformat()
+        all_day = bool(data.get("all_day"))
+
+        if all_day:
+            if isinstance(start_time, datetime.datetime):
+                start_date = start_time.date()
+            elif isinstance(start_time, datetime.date):
+                start_date = start_time
+            else:
+                start_date = datetime.datetime.fromisoformat(str(start_time)).date()
+
+            if isinstance(end_time, datetime.datetime):
+                end_date = end_time.date()
+            elif isinstance(end_time, datetime.date):
+                end_date = end_time
+            else:
+                end_date = datetime.datetime.fromisoformat(str(end_time)).date()
+
+            event_start = {"date": start_date.isoformat()}
+            event_end = {"date": (end_date + datetime.timedelta(days=1)).isoformat()}
+        else:
+            if isinstance(start_time, (datetime.datetime, datetime.date)):
+                start_time = start_time.isoformat()
+            if isinstance(end_time, (datetime.datetime, datetime.date)):
+                end_time = end_time.isoformat()
+            event_start = {"dateTime": start_time, "timeZone": TIMEZONE}
+            event_end = {"dateTime": end_time, "timeZone": TIMEZONE}
 
         event_body = {
             "summary": data.get("summary"),
             "description": data.get("description", ""),
-            "start": {"dateTime": start_time, "timeZone": TIMEZONE},
-            "end": {"dateTime": end_time, "timeZone": TIMEZONE},
-            "reminders": {
+            "start": event_start,
+            "end": event_end,
+            "reminders": data.get("reminders")
+            or {
                 "useDefault": False,
                 "overrides": [{"method": "email", "minutes": 60}, {"method": "popup", "minutes": 10}],
             },
@@ -150,6 +172,9 @@ class GoogleClient:
                     end_time = end_time.isoformat()
                 body.setdefault("end", {})["dateTime"] = end_time
                 body.setdefault("end", {})["timeZone"] = TIMEZONE
+
+            if "reminders" in data:
+                body["reminders"] = data["reminders"]
 
             event = self.calendar_service.events().patch(calendarId=calendar_id, eventId=event_id, body=body).execute()
             return event
