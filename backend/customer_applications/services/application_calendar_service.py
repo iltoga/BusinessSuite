@@ -10,24 +10,29 @@ logger = logging.getLogger(__name__)
 
 
 class ApplicationCalendarService:
-    def sync_next_task_deadline(self, application, start_date=None):
+    def sync_next_task_deadline(self, application, start_date=None, previous_due_date=None):
         if not application.add_deadlines_to_calendar:
             # If it was turned off, try to delete the last event if it exists
-            last_notification = (
-                WorkflowNotification.objects.filter(doc_application=application, external_reference__isnull=False)
-                .exclude(external_reference="")
-                .order_by("-id")
-                .first()
-            )
-            if last_notification:
+            event_id = application.calendar_event_id
+            if not event_id:
+                last_notification = (
+                    WorkflowNotification.objects.filter(doc_application=application, external_reference__isnull=False)
+                    .exclude(external_reference="")
+                    .order_by("-id")
+                    .first()
+                )
+                event_id = last_notification.external_reference if last_notification else None
+            if event_id:
                 try:
                     client = GoogleClient()
-                    client.delete_event(
-                        last_notification.external_reference,
-                        calendar_id=getattr(settings, "GOOGLE_CALENDAR_ID", "primary"),
-                    )
+                    client.delete_event(event_id, calendar_id=getattr(settings, "GOOGLE_CALENDAR_ID", "primary"))
                 except Exception:
                     pass
+            else:
+                self._delete_events_by_application(application)
+            if application.calendar_event_id:
+                application.calendar_event_id = None
+                application.save(update_fields=["calendar_event_id", "updated_at"])
             return None
 
         task = application.get_next_calendar_task()
@@ -47,41 +52,31 @@ class ApplicationCalendarService:
                 start_date=application.doc_date
             )
 
-        # To avoid duplicate calendar events, check if we've already synced this state
-        last_notification = (
-            WorkflowNotification.objects.filter(doc_application=application, external_reference__isnull=False)
-            .exclude(external_reference="")
-            .order_by("-id")
-            .first()
-        )
+        event_id = application.calendar_event_id
+        if not event_id:
+            last_notification = (
+                WorkflowNotification.objects.filter(doc_application=application, external_reference__isnull=False)
+                .exclude(external_reference="")
+                .order_by("-id")
+                .first()
+            )
+            event_id = last_notification.external_reference if last_notification else None
+            if event_id and not application.calendar_event_id:
+                application.calendar_event_id = event_id
+                application.save(update_fields=["calendar_event_id", "updated_at"])
 
-        if last_notification:
-            # Check if it's the same task
-            is_same_task = False
-            if workflow and last_notification.doc_workflow_id:
-                is_same_task = last_notification.doc_workflow_id == workflow.id
-            else:
-                is_same_task = task.name in last_notification.subject
+        if previous_due_date is not None and previous_due_date == due_date and event_id:
+            # Due date didn't change; no calendar update needed.
+            return None
 
-            # Check if date is also same. We compare the target due_date with
-            # the one that was used for the last notification.
-            # scheduled_for = due_date - notify_days
-            notify_days = task.notify_days_before or 0
-            expected_scheduled_date = due_date - timedelta(days=notify_days)
-            last_scheduled_date = last_notification.scheduled_for.date() if last_notification.scheduled_for else None
-
-            if is_same_task and last_scheduled_date == expected_scheduled_date:
-                # Task and date haven't changed, skip creating new event
-                return None
-
-            # If we are here, something changed (task or date). Delete old event.
+        if event_id:
             try:
                 client = GoogleClient()
-                client.delete_event(
-                    last_notification.external_reference, calendar_id=getattr(settings, "GOOGLE_CALENDAR_ID", "primary")
-                )
+                client.delete_event(event_id, calendar_id=getattr(settings, "GOOGLE_CALENDAR_ID", "primary"))
             except Exception as e:
-                logger.warning(f"Failed to delete old calendar event {last_notification.external_reference}: {e}")
+                logger.warning(f"Failed to delete old calendar event {event_id}: {e}")
+        elif previous_due_date is None or previous_due_date != due_date:
+            self._delete_events_by_application(application)
 
         # Update application due date
         application.due_date = due_date
@@ -93,8 +88,32 @@ class ApplicationCalendarService:
         except Exception:
             event = None
 
+        if event and event.get("id"):
+            application.calendar_event_id = event.get("id")
+            application.save(update_fields=["calendar_event_id", "updated_at"])
+        elif application.calendar_event_id:
+            application.calendar_event_id = None
+            application.save(update_fields=["calendar_event_id", "updated_at"])
+
         self._create_notification(application, task, due_date, event, workflow=workflow)
         return event
+
+    def _delete_events_by_application(self, application):
+        try:
+            client = GoogleClient()
+            summary_prefix = f"[Application #{application.id}]"
+            events = client.list_events(calendar_id=getattr(settings, "GOOGLE_CALENDAR_ID", "primary"), max_results=250)
+            for event in events:
+                summary = event.get("summary") or ""
+                if summary.startswith(summary_prefix):
+                    try:
+                        client.delete_event(
+                            event.get("id"), calendar_id=getattr(settings, "GOOGLE_CALENDAR_ID", "primary")
+                        )
+                    except Exception:
+                        continue
+        except Exception as e:
+            logger.warning(f"Failed to cleanup calendar events for application #{application.id}: {e}")
 
     def _create_calendar_event(self, application, task, due_date):
         notify_days = task.notify_days_before or 0

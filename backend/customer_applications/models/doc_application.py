@@ -2,17 +2,16 @@ import logging
 import os
 import shutil
 
+# Get an instance of a logger
+from core.services.logger_service import Logger
+from core.utils.dateutils import calculate_due_date
+from customers.models import Customer
 from django.conf import settings
 from django.db import models
 from django.db.models import Count, F, Q
 from django.db.models.signals import post_delete, pre_delete
 from django.dispatch import receiver
 from django.utils import timezone
-
-# Get an instance of a logger
-from core.services.logger_service import Logger
-from core.utils.dateutils import calculate_due_date
-from customers.models import Customer
 from products.models import Product
 
 logger = Logger.get_logger(__name__)
@@ -109,6 +108,7 @@ class DocApplication(models.Model):
     doc_date = models.DateField(db_index=True)
     due_date = models.DateField(blank=True, null=True, db_index=True)
     add_deadlines_to_calendar = models.BooleanField(default=True)
+    calendar_event_id = models.CharField(max_length=255, blank=True, null=True, db_index=True)
     notify_customer_too = models.BooleanField(default=False)
     notify_customer_channel = models.CharField(
         max_length=20,
@@ -210,7 +210,6 @@ class DocApplication(models.Model):
             return current_workflow.task
         else:
             return tasks.first()
-
 
     def get_next_calendar_task(self):
         """Return next workflow task configured for calendar reminders."""

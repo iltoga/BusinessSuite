@@ -42,7 +42,7 @@ dependencies = [
     "user-agents",
     "django-user-agents",
     "seaborn",
-    "pillow",
+    "pillow>=12.1.1",
     "openai>=1.102.0",
     "openpyxl>=3.1.5",
     "python-docx>=1.2.0",

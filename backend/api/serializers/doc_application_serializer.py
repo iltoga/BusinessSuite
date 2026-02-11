@@ -315,6 +315,7 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
         from products.models.document_type import DocumentType
 
         document_types = validated_data.pop("document_types", None)
+        previous_due_date = instance.due_date
         application = super().update(instance, validated_data)
 
         if document_types is not None:
@@ -357,7 +358,7 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
 
         from customer_applications.services.application_calendar_service import ApplicationCalendarService
 
-        ApplicationCalendarService().sync_next_task_deadline(application)
+        ApplicationCalendarService().sync_next_task_deadline(application, previous_due_date=previous_due_date)
         return application
 
     def _can_auto_import_passport(self, application) -> bool:

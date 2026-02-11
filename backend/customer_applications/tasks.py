@@ -174,12 +174,17 @@ def advance_workflow_task(job_id, application_id, user_id):
             step.save()
 
         # Refresh application status
+        previous_due_date = application.due_date
         application.save()
 
         job.update_progress(80, "Syncing Google Calendar...")
         from customer_applications.services.application_calendar_service import ApplicationCalendarService
 
-        ApplicationCalendarService().sync_next_task_deadline(application, start_date=current_workflow.due_date)
+        ApplicationCalendarService().sync_next_task_deadline(
+            application,
+            start_date=current_workflow.due_date,
+            previous_due_date=previous_due_date,
+        )
 
         job.complete(message="Workflow advanced successfully")
 
