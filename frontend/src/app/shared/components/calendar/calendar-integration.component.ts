@@ -1,116 +1,147 @@
 import { CalendarService } from '@/core/api/api/calendar.service';
 import { GoogleCalendarEvent } from '@/core/api/model/google-calendar-event';
+import { DashboardWidgetComponent } from '@/shared/components/dashboard-widget/dashboard-widget.component';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { Component, inject, OnInit, PLATFORM_ID, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { ChangeDetectionStrategy, Component, computed, inject, OnInit, PLATFORM_ID, signal } from '@angular/core';
+import { ZardButtonComponent } from '@/shared/components/button';
 
 @Component({
   selector: 'app-calendar-integration',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, DashboardWidgetComponent, ZardButtonComponent],
   template: `
-    <div class="p-6 space-y-6">
-      <h2 class="text-2xl font-bold">Google Calendar (via Django)</h2>
+    <div class="space-y-4">
+      <h2 class="text-2xl font-bold">Calendar Overview</h2>
 
-      <!-- Create Event Form -->
-      <div class="p-6 border rounded-xl bg-white shadow-sm border-gray-100">
-        <h3 class="font-bold text-lg mb-4 text-gray-900">New Calendar Event</h3>
-        <div class="grid gap-4">
-          <div class="space-y-1">
-            <label class="text-xs font-semibold text-gray-500 uppercase tracking-wider"
-              >Title</label
-            >
-            <input
-              type="text"
-              [(ngModel)]="newEventTitle"
-              placeholder="What's happening?"
-              class="w-full p-3 border rounded-lg bg-gray-50 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all font-medium"
-            />
+      <div class="grid gap-4 lg:grid-cols-3">
+        <app-dashboard-widget title="Today" subtitle="Upcoming today">
+          @if (todayEvents().length === 0) {
+            <div class="text-sm text-muted-foreground">No events today.</div>
+          } @else {
+            <ul class="space-y-2 text-sm">
+              @for (event of todayEvents(); track event.id) {
+                <li class="rounded border border-border/50 px-3 py-2">{{ event.summary }}</li>
+              }
+            </ul>
+          }
+        </app-dashboard-widget>
+
+        <app-dashboard-widget title="This Week" subtitle="Current week">
+          @if (weekEvents().length === 0) {
+            <div class="text-sm text-muted-foreground">No events this week.</div>
+          } @else {
+            <ul class="space-y-2 text-sm">
+              @for (event of weekEvents(); track event.id) {
+                <li class="rounded border border-border/50 px-3 py-2">
+                  <div class="font-medium">{{ event.summary }}</div>
+                  <div class="text-xs text-muted-foreground">{{ event.start | date: 'EEE, d MMM' }}</div>
+                </li>
+              }
+            </ul>
+          }
+        </app-dashboard-widget>
+
+        <app-dashboard-widget title="Month" subtitle="Click day for details">
+          <div class="grid grid-cols-7 gap-1 text-center text-xs mb-2 text-muted-foreground">
+            @for (day of ['S','M','T','W','T','F','S']; track day + $index) {
+              <div>{{ day }}</div>
+            }
           </div>
-          <div class="space-y-1">
-            <label class="text-xs font-semibold text-gray-500 uppercase tracking-wider"
-              >Description</label
-            >
-            <textarea
-              [(ngModel)]="newEventDesc"
-              placeholder="Add more details..."
-              rows="2"
-              class="w-full p-3 border rounded-lg bg-gray-50 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all font-medium"
-            ></textarea>
+          <div class="grid grid-cols-7 gap-1">
+            @for (day of monthGrid(); track day.key) {
+              <button
+                class="h-8 rounded text-xs border transition"
+                [class.bg-primary/15]="day.hasEvents"
+                [class.border-primary/40]="day.hasEvents"
+                [class.border-border/50]="!day.hasEvents"
+                [class.text-muted-foreground]="!day.inMonth"
+                (click)="openDay(day.date)"
+              >
+                {{ day.date.getDate() }}
+              </button>
+            }
           </div>
-          <button
-            (click)="addEvent()"
-            [disabled]="loading() || !newEventTitle"
-            class="mt-2 px-6 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 active:scale-95 disabled:opacity-50 disabled:scale-100 transition-all shadow-lg shadow-blue-200"
-          >
-            {{ loading() ? 'Saving...' : '✨ Create Event' }}
-          </button>
-        </div>
-      </div>
-
-      <!-- Events List -->
-      <div class="mt-8">
-        <h3 class="font-bold text-lg mb-4 text-foreground">Upcoming Events</h3>
-        <div *ngIf="loading()" class="flex items-center space-x-2 text-gray-500">
-          <span class="animate-spin text-xl">◌</span>
-          <span>Syncing with Google...</span>
-        </div>
-
-        <div
-          *ngIf="events().length === 0 && !loading()"
-          class="p-8 border-2 border-dashed rounded-lg text-center bg-gray-50/50"
-        >
-          <p class="text-gray-500 mb-2 font-medium">No upcoming events found.</p>
-          <p class="text-sm text-gray-400 max-w-sm mx-auto">
-            If you expected to see events here, ensure your calendar is shared with the service
-            account email or check your settings.
-          </p>
-        </div>
-
-        <ul class="space-y-3">
-          <li
-            *ngFor="let event of events()"
-            class="flex justify-between items-center p-4 bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow"
-          >
-            <div class="flex-1 min-w-0 pr-4">
-              <div class="font-bold text-gray-900 truncate">{{ event.summary }}</div>
-              <div class="text-sm text-gray-600 flex items-center mt-1">
-                <span class="mr-2">📅</span>
-                {{
-                  (event.start?.dateTime | date: 'medium') ||
-                    (event.start?.date | date: 'mediumDate')
-                }}
-              </div>
-              <div *ngIf="event.description" class="text-xs text-gray-400 mt-1 truncate">
-                {{ event.description }}
-              </div>
-            </div>
-            <button
-              (click)="deleteEvent(event.id)"
-              class="px-3 py-1 text-sm font-medium text-red-600 hover:bg-red-50 rounded transition-colors border border-red-100"
-            >
-              Delete
-            </button>
-          </li>
-        </ul>
+        </app-dashboard-widget>
       </div>
     </div>
+
+    @if (openDayEventsDate()) {
+      <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div class="w-full max-w-xl rounded-lg bg-card p-4">
+          <div class="mb-3 flex items-center justify-between">
+            <h3 class="text-lg font-semibold">{{ openDayEventsDate() | date: 'fullDate' }}</h3>
+            <button z-button zType="ghost" zSize="sm" (click)="openDayEventsDate.set(null)">Close</button>
+          </div>
+          @if (selectedDayEvents().length === 0) {
+            <div class="text-sm text-muted-foreground">No events for this day.</div>
+          } @else {
+            <ul class="space-y-2 text-sm">
+              @for (event of selectedDayEvents(); track event.id) {
+                <li class="rounded border border-border/50 px-3 py-2">{{ event.summary }}</li>
+              }
+            </ul>
+          }
+        </div>
+      </div>
+    }
   `,
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CalendarIntegrationComponent implements OnInit {
   private calendarService = inject(CalendarService);
   private platformId = inject(PLATFORM_ID);
 
-  // Signals for state management
   events = signal<GoogleCalendarEvent[]>([]);
   loading = signal<boolean>(false);
+  openDayEventsDate = signal<Date | null>(null);
 
-  // Form inputs
-  newEventTitle = '';
-  newEventDesc = '';
+  readonly normalizedEvents = computed(() =>
+    this.events().map((event) => ({
+      ...event,
+      start: this.extractDate(event),
+    })),
+  );
+
+  readonly todayEvents = computed(() => {
+    const today = new Date();
+    return this.normalizedEvents().filter((e) => this.isSameDay(e.start, today));
+  });
+
+  readonly weekEvents = computed(() => {
+    const today = new Date();
+    const start = new Date(today);
+    start.setDate(today.getDate() - today.getDay());
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 7);
+    return this.normalizedEvents().filter((e) => e.start >= start && e.start < end);
+  });
+
+  readonly monthGrid = computed(() => {
+    const now = new Date();
+    const first = new Date(now.getFullYear(), now.getMonth(), 1);
+    const start = new Date(first);
+    start.setDate(first.getDate() - first.getDay());
+    return Array.from({ length: 42 }).map((_, index) => {
+      const date = new Date(start);
+      date.setDate(start.getDate() + index);
+      const hasEvents = this.normalizedEvents().some((event) => this.isSameDay(event.start, date));
+      return {
+        key: `${date.toISOString()}-${index}`,
+        date,
+        inMonth: date.getMonth() === now.getMonth(),
+        hasEvents,
+      };
+    });
+  });
+
+  readonly selectedDayEvents = computed(() => {
+    const day = this.openDayEventsDate();
+    if (!day) return [];
+    return this.normalizedEvents().filter((event) => this.isSameDay(event.start, day));
+  });
 
   ngOnInit() {
-    // FIX: Only load events in the browser to avoid SSR refresh attempts
     if (isPlatformBrowser(this.platformId)) {
       this.loadEvents();
     }
@@ -123,56 +154,25 @@ export class CalendarIntegrationComponent implements OnInit {
         this.events.set(data);
         this.loading.set(false);
       },
-      error: (err) => {
-        console.error('Failed to load events', err);
-        this.loading.set(false);
-      },
+      error: () => this.loading.set(false),
     });
   }
 
-  addEvent() {
-    if (!this.newEventTitle) return;
-
-    this.loading.set(true);
-
-    // Create an event for Tomorrow at 10 AM
-    const startTime = new Date();
-    startTime.setDate(startTime.getDate() + 1);
-    startTime.setHours(10, 0, 0, 0);
-
-    const endTime = new Date(startTime);
-    endTime.setHours(11, 0, 0, 0);
-
-    const googleEvent: any = {
-      summary: this.newEventTitle,
-      description: this.newEventDesc,
-      startTime: startTime.toISOString(),
-      endTime: endTime.toISOString(),
-    };
-
-    this.calendarService.calendarCreate(googleEvent).subscribe({
-      next: () => {
-        this.newEventTitle = '';
-        this.newEventDesc = '';
-        this.loadEvents(); // Refresh list
-      },
-      error: (err) => {
-        console.error('Failed to create event', err);
-        this.loading.set(false);
-      },
-    });
+  openDay(date: Date): void {
+    this.openDayEventsDate.set(date);
   }
 
-  deleteEvent(id: string) {
-    if (!confirm('Are you sure you want to delete this event?')) return;
+  private extractDate(event: GoogleCalendarEvent): Date {
+    const startAny: any = event.start;
+    const source = startAny?.dateTime || startAny?.date || event.startTime;
+    return source ? new Date(source) : new Date();
+  }
 
-    this.loading.set(true);
-    this.calendarService.calendarDestroy(id).subscribe({
-      next: () => this.loadEvents(),
-      error: (err) => {
-        console.error('Failed to delete', err);
-        this.loading.set(false);
-      },
-    });
+  private isSameDay(a: Date, b: Date): boolean {
+    return (
+      a.getFullYear() === b.getFullYear() &&
+      a.getMonth() === b.getMonth() &&
+      a.getDate() === b.getDate()
+    );
   }
 }

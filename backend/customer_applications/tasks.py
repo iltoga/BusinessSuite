@@ -5,7 +5,8 @@ from core.models.async_job import AsyncJob
 from customer_applications.models import DocApplication
 from django.contrib.auth import get_user_model
 from django.utils import timezone
-from huey.contrib.djhuey import db_task
+from huey import crontab
+from huey.contrib.djhuey import db_periodic_task, db_task
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -186,3 +187,34 @@ def advance_workflow_task(job_id, application_id, user_id):
         logger.error(f"Error in advance_workflow_task: {str(e)}")
         job = AsyncJob.objects.get(id=job_id)
         job.fail(error_message=str(e), traceback=traceback.format_exc())
+
+
+@db_periodic_task(crontab(minute="*/5"), name="customer_applications.send_pending_notifications")
+def send_pending_notifications_task():
+    """Send due notifications that were scheduled by application calendar sync."""
+    from customer_applications.models import WorkflowNotification
+    from notifications.services.providers import NotificationDispatcher
+
+    now = timezone.now()
+    notifications = WorkflowNotification.objects.filter(
+        status=WorkflowNotification.STATUS_PENDING,
+        scheduled_for__isnull=False,
+        scheduled_for__lte=now,
+    )[:100]
+
+    dispatcher = NotificationDispatcher()
+    for notification in notifications:
+        try:
+            message = dispatcher.send(
+                channel=notification.channel,
+                recipient=notification.recipient,
+                subject=notification.subject,
+                body=notification.body,
+            )
+            notification.status = WorkflowNotification.STATUS_SENT
+            notification.provider_message = message
+            notification.sent_at = timezone.now()
+        except Exception as exc:
+            notification.status = WorkflowNotification.STATUS_FAILED
+            notification.provider_message = str(exc)
+        notification.save(update_fields=["status", "provider_message", "sent_at", "updated_at"])

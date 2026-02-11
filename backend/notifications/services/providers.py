@@ -21,9 +21,18 @@ class EmailNotificationProvider(NotificationProvider):
         return f"sent:{count}"
 
 
+
+
+class WhatsappNotificationProvider(NotificationProvider):
+    channel = "whatsapp"
+
+    def send(self, recipient: str, subject: str, body: str) -> str:
+        # Placeholder provider: keep audit trail while WhatsApp transport is not configured yet.
+        return f"queued_whatsapp:{recipient}"
+
 class NotificationDispatcher:
     def __init__(self):
-        self.providers = {"email": EmailNotificationProvider()}
+        self.providers = {"email": EmailNotificationProvider(), "whatsapp": WhatsappNotificationProvider()}
 
     def send(self, channel: str, recipient: str, subject: str, body: str) -> str:
         provider = self.providers.get(channel)

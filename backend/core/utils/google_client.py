@@ -105,17 +105,25 @@ class GoogleClient:
         if isinstance(end_time, (datetime.datetime, datetime.date)):
             end_time = end_time.isoformat()
 
+        start_date = data.get("start_date")
+        end_date = data.get("end_date")
+
         event_body = {
             "summary": data.get("summary"),
             "description": data.get("description", ""),
-            "start": {"dateTime": start_time, "timeZone": TIMEZONE},
-            "end": {"dateTime": end_time, "timeZone": TIMEZONE},
             "reminders": data.get("reminders")
             or {
                 "useDefault": False,
                 "overrides": [{"method": "email", "minutes": 60}, {"method": "popup", "minutes": 10}],
             },
         }
+
+        if start_date and end_date:
+            event_body["start"] = {"date": start_date}
+            event_body["end"] = {"date": end_date}
+        else:
+            event_body["start"] = {"dateTime": start_time, "timeZone": TIMEZONE}
+            event_body["end"] = {"dateTime": end_time, "timeZone": TIMEZONE}
 
         try:
             event = self.calendar_service.events().insert(calendarId=calendar_id, body=event_body).execute()

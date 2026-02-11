@@ -97,6 +97,9 @@ export interface ApplicationDetail {
   product: ApplicationProduct;
   docDate: string;
   dueDate?: string | null;
+  addDeadlinesToCalendar?: boolean;
+  notifyCustomerToo?: boolean;
+  notifyCustomerChannel?: 'whatsapp' | 'email' | null;
   status: string;
   notes?: string | null;
   documents: ApplicationDocument[];

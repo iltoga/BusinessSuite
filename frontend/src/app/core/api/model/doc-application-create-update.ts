@@ -17,6 +17,7 @@ export interface DocApplicationCreateUpdate {
     dueDate?: string | null;
     notes?: string | null;
     addDeadlinesToCalendar?: boolean;
+    notifyCustomerToo?: boolean;
+    notifyCustomerChannel?: 'email' | 'whatsapp' | null;
     documentTypes?: Array<{ [key: string]: any; }>;
 }
-
