@@ -13,6 +13,11 @@ resolution-markers = [
     "python_full_version < '3.13' and sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 
+[manifest]
+members = [
+    "business-suite",
+]
+
 [[package]]
 name = "annotated-types"
 version = "0.7.0"
@@ -56,7 +61,7 @@ wheels = [
 [[package]]
 name = "business-suite"
 version = "0.1.0"
-source = { editable = "." }
+source = { editable = "backend" }
 dependencies = [
     { name = "concurrent-log-handler" },
     { name = "crispy-bootstrap5" },
@@ -116,7 +121,7 @@ dev = [
 requires-dist = [
     { name = "concurrent-log-handler", specifier = ">=0.9.0" },
     { name = "crispy-bootstrap5", specifier = ">=2025.6" },
-    { name = "django", specifier = ">=6.0.0" },
+    { name = "django", specifier = ">=6.0.2" },
     { name = "django-auditlog", specifier = ">=3.1.1" },
     { name = "django-bootstrap-sidebar", specifier = ">=1.2.7" },
     { name = "django-cleanup", specifier = ">=9.0.0" },
@@ -148,7 +153,7 @@ requires-dist = [
     { name = "pillow" },
     { name = "psycopg2-binary", specifier = ">=2.9.11" },
     { name = "pymemcache", specifier = ">=4.0.0" },
-    { name = "pypdf", specifier = ">=6.5.0" },
+    { name = "pypdf", specifier = ">=6.7.0" },
     { name = "python-docx", specifier = ">=1.2.0" },
     { name = "python-dotenv", specifier = ">=1.2.1" },
     { name = "pyyaml" },

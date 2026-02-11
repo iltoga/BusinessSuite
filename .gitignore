@@ -32,3 +32,4 @@ build/
 dist/
 
 .hypothesis/
+pyproject.toml
