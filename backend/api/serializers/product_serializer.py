@@ -166,6 +166,7 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
 
         product = Product.objects.create(**validated_data)
         for task_data in tasks_data:
+            task_data.pop("id", None)  # Remove potentially null ID for new tasks
             task = Task(product=product, **task_data)
             task.full_clean()
             task.save()

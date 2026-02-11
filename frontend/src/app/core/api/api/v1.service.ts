@@ -17,6 +17,8 @@ import { Observable }                                        from 'rxjs';
 import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 
 // @ts-ignore
+import { AsyncJob } from '../model/async-job';
+// @ts-ignore
 import { CountryCode } from '../model/country-code';
 // @ts-ignore
 import { CustomTokenObtain } from '../model/custom-token-obtain';
@@ -155,6 +157,124 @@ export class V1Service extends BaseService {
             {
                 context: localVarHttpContext,
                 body: customTokenObtain,
+                responseType: <any>responseType_,
+                ...(withCredentials ? { withCredentials } : {}),
+                headers: localVarHeaders,
+                observe: observe,
+                ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * ViewSet for polling AsyncJob status if SSE is not used.
+     * @endpoint get /api/v1/async-jobs/
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     * @param options additional options
+     */
+    public v1AsyncJobsList(observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<Array<AsyncJob>>;
+    public v1AsyncJobsList(observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<Array<AsyncJob>>>;
+    public v1AsyncJobsList(observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<Array<AsyncJob>>>;
+    public v1AsyncJobsList(observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+
+        let localVarHeaders = this.defaultHeaders;
+
+        // authentication (cookieAuth) required
+
+        // authentication (jwtAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
+
+        const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            'application/json'
+        ]);
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+        const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/async-jobs/`;
+        const { basePath, withCredentials } = this.configuration;
+        return this.httpClient.request<Array<AsyncJob>>('get', `${basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                responseType: <any>responseType_,
+                ...(withCredentials ? { withCredentials } : {}),
+                headers: localVarHeaders,
+                observe: observe,
+                ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * ViewSet for polling AsyncJob status if SSE is not used.
+     * @endpoint get /api/v1/async-jobs/{id}/
+     * @param id A UUID string identifying this async job.
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     * @param options additional options
+     */
+    public v1AsyncJobsRetrieve(id: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<AsyncJob>;
+    public v1AsyncJobsRetrieve(id: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<AsyncJob>>;
+    public v1AsyncJobsRetrieve(id: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<AsyncJob>>;
+    public v1AsyncJobsRetrieve(id: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+        if (id === null || id === undefined) {
+            throw new Error('Required parameter id was null or undefined when calling v1AsyncJobsRetrieve.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        // authentication (cookieAuth) required
+
+        // authentication (jwtAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
+
+        const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            'application/json'
+        ]);
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+        const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/async-jobs/${this.configuration.encodeParam({name: "id", value: id, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/`;
+        const { basePath, withCredentials } = this.configuration;
+        return this.httpClient.request<AsyncJob>('get', `${basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
                 responseType: <any>responseType_,
                 ...(withCredentials ? { withCredentials } : {}),
                 headers: localVarHeaders,
@@ -1286,7 +1406,7 @@ export class V1Service extends BaseService {
     }
 
     /**
-     * Complete current workflow and create next step.
+     * Complete current workflow and create next step asynchronously.
      * @endpoint post /api/v1/customer-applications/{id}/advance-workflow/
      * @param id A unique integer value identifying this doc application.
      * @param docApplicationSerializerWithRelations 
@@ -1435,15 +1555,16 @@ export class V1Service extends BaseService {
     }
 
     /**
+     * Create application asynchronously.
      * @endpoint post /api/v1/customer-applications/
      * @param docApplicationCreateUpdate 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public v1CustomerApplicationsCreate(docApplicationCreateUpdate: DocApplicationCreateUpdate, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<DocApplicationCreateUpdate>;
-    public v1CustomerApplicationsCreate(docApplicationCreateUpdate: DocApplicationCreateUpdate, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<DocApplicationCreateUpdate>>;
-    public v1CustomerApplicationsCreate(docApplicationCreateUpdate: DocApplicationCreateUpdate, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<DocApplicationCreateUpdate>>;
+    public v1CustomerApplicationsCreate(docApplicationCreateUpdate: DocApplicationCreateUpdate, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<AsyncJob>;
+    public v1CustomerApplicationsCreate(docApplicationCreateUpdate: DocApplicationCreateUpdate, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<AsyncJob>>;
+    public v1CustomerApplicationsCreate(docApplicationCreateUpdate: DocApplicationCreateUpdate, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<AsyncJob>>;
     public v1CustomerApplicationsCreate(docApplicationCreateUpdate: DocApplicationCreateUpdate, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
         if (docApplicationCreateUpdate === null || docApplicationCreateUpdate === undefined) {
             throw new Error('Required parameter docApplicationCreateUpdate was null or undefined when calling v1CustomerApplicationsCreate.');
@@ -1492,7 +1613,7 @@ export class V1Service extends BaseService {
 
         let localVarPath = `/api/v1/customer-applications/`;
         const { basePath, withCredentials } = this.configuration;
-        return this.httpClient.request<DocApplicationCreateUpdate>('post', `${basePath}${localVarPath}`,
+        return this.httpClient.request<AsyncJob>('post', `${basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 body: docApplicationCreateUpdate,
@@ -1507,20 +1628,42 @@ export class V1Service extends BaseService {
     }
 
     /**
-     * Allow optional deletion of linked invoices when deleting an application.  To delete linked invoices, the caller must explicitly pass &#x60;deleteInvoices&#x60; (or &#x60;delete_invoices&#x60;) and be a superuser.
+     * Allow optional deletion of linked invoices when deleting an application asynchronously.
      * @endpoint delete /api/v1/customer-applications/{id}/
      * @param id A unique integer value identifying this doc application.
+     * @param deleteInvoices 
+     * @param deleteInvoices2 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public v1CustomerApplicationsDestroy(id: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<any>;
-    public v1CustomerApplicationsDestroy(id: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<any>>;
-    public v1CustomerApplicationsDestroy(id: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<any>>;
-    public v1CustomerApplicationsDestroy(id: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<any> {
+    public v1CustomerApplicationsDestroy(id: number, deleteInvoices?: boolean, deleteInvoices2?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<AsyncJob>;
+    public v1CustomerApplicationsDestroy(id: number, deleteInvoices?: boolean, deleteInvoices2?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<AsyncJob>>;
+    public v1CustomerApplicationsDestroy(id: number, deleteInvoices?: boolean, deleteInvoices2?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<AsyncJob>>;
+    public v1CustomerApplicationsDestroy(id: number, deleteInvoices?: boolean, deleteInvoices2?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
         if (id === null || id === undefined) {
             throw new Error('Required parameter id was null or undefined when calling v1CustomerApplicationsDestroy.');
         }
+
+        let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
+
+        localVarQueryParameters = this.addToHttpParams(
+            localVarQueryParameters,
+            'deleteInvoices',
+            <any>deleteInvoices,
+            QueryParamStyle.Form,
+            true,
+        );
+
+
+        localVarQueryParameters = this.addToHttpParams(
+            localVarQueryParameters,
+            'delete_invoices',
+            <any>deleteInvoices2,
+            QueryParamStyle.Form,
+            true,
+        );
+
 
         let localVarHeaders = this.defaultHeaders;
 
@@ -1530,6 +1673,7 @@ export class V1Service extends BaseService {
         localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
 
         const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            'application/json'
         ]);
         if (localVarHttpHeaderAcceptSelected !== undefined) {
             localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
@@ -1553,9 +1697,10 @@ export class V1Service extends BaseService {
 
         let localVarPath = `/api/v1/customer-applications/${this.configuration.encodeParam({name: "id", value: id, in: "path", style: "simple", explode: false, dataType: "number", dataFormat: undefined})}/`;
         const { basePath, withCredentials } = this.configuration;
-        return this.httpClient.request<any>('delete', `${basePath}${localVarPath}`,
+        return this.httpClient.request<AsyncJob>('delete', `${basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
+                params: localVarQueryParameters.toHttpParams(),
                 responseType: <any>responseType_,
                 ...(withCredentials ? { withCredentials } : {}),
                 headers: localVarHeaders,
@@ -1956,6 +2101,7 @@ export class V1Service extends BaseService {
     }
 
     /**
+     * Update application asynchronously.
      * @endpoint put /api/v1/customer-applications/{id}/
      * @param id A unique integer value identifying this doc application.
      * @param docApplicationCreateUpdate 
@@ -1963,9 +2109,9 @@ export class V1Service extends BaseService {
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public v1CustomerApplicationsUpdate(id: number, docApplicationCreateUpdate: DocApplicationCreateUpdate, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<DocApplicationCreateUpdate>;
-    public v1CustomerApplicationsUpdate(id: number, docApplicationCreateUpdate: DocApplicationCreateUpdate, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<DocApplicationCreateUpdate>>;
-    public v1CustomerApplicationsUpdate(id: number, docApplicationCreateUpdate: DocApplicationCreateUpdate, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<DocApplicationCreateUpdate>>;
+    public v1CustomerApplicationsUpdate(id: number, docApplicationCreateUpdate: DocApplicationCreateUpdate, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<AsyncJob>;
+    public v1CustomerApplicationsUpdate(id: number, docApplicationCreateUpdate: DocApplicationCreateUpdate, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<AsyncJob>>;
+    public v1CustomerApplicationsUpdate(id: number, docApplicationCreateUpdate: DocApplicationCreateUpdate, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<AsyncJob>>;
     public v1CustomerApplicationsUpdate(id: number, docApplicationCreateUpdate: DocApplicationCreateUpdate, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
         if (id === null || id === undefined) {
             throw new Error('Required parameter id was null or undefined when calling v1CustomerApplicationsUpdate.');
@@ -2017,7 +2163,7 @@ export class V1Service extends BaseService {
 
         let localVarPath = `/api/v1/customer-applications/${this.configuration.encodeParam({name: "id", value: id, in: "path", style: "simple", explode: false, dataType: "number", dataFormat: undefined})}/`;
         const { basePath, withCredentials } = this.configuration;
-        return this.httpClient.request<DocApplicationCreateUpdate>('put', `${basePath}${localVarPath}`,
+        return this.httpClient.request<AsyncJob>('put', `${basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 body: docApplicationCreateUpdate,

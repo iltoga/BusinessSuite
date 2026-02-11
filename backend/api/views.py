@@ -7,30 +7,8 @@ import uuid
 from datetime import datetime
 from io import BytesIO
 
-from django.conf import settings
-from django.contrib.auth import logout as django_logout
-from django.core.files.storage import default_storage
-from django.db.models import Count, DecimalField, F, OuterRef, Prefetch, Q, Subquery, Sum, Value
-from django.db.models.functions import Coalesce
-from django.http import FileResponse, JsonResponse, StreamingHttpResponse
-from django.shortcuts import get_object_or_404
-from django.urls import reverse
-from django.utils import timezone
-from django.utils.text import slugify
-from django.views.decorators.csrf import csrf_exempt
-from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema, extend_schema_view
-from rest_framework import filters, pagination, serializers, status, viewsets
-from rest_framework.authentication import SessionAuthentication
-from rest_framework.decorators import action, api_view, authentication_classes, permission_classes, throttle_classes
-from rest_framework.exceptions import NotFound, ValidationError
-from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
-from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.throttling import ScopedRateThrottle
-from rest_framework_simplejwt.views import TokenObtainPairView
-
 from api.serializers import (
+    AsyncJobSerializer,
     AvatarUploadSerializer,
     ChangePasswordSerializer,
     CountryCodeSerializer,
@@ -61,8 +39,9 @@ from api.serializers import (
     ordered_document_types,
 )
 from api.serializers.auth_serializer import CustomTokenObtainSerializer
+from api.utils.sse_auth import sse_token_auth_required
 from business_suite.authentication import JwtOrMockAuthentication
-from core.models import CountryCode, DocumentOCRJob, OCRJob, UserProfile, UserSettings
+from core.models import AsyncJob, CountryCode, DocumentOCRJob, OCRJob, UserProfile, UserSettings
 from core.services.document_merger import DocumentMerger, DocumentMergerError
 from core.services.quick_create import create_quick_customer, create_quick_customer_application, create_quick_product
 from core.tasks.cron_jobs import run_clear_cache_now, run_full_backup_now
@@ -71,7 +50,26 @@ from core.tasks.ocr import run_ocr_job
 from core.utils.dateutils import calculate_due_date
 from core.utils.pdf_converter import PDFConverter, PDFConverterError
 from customer_applications.models import DocApplication, Document, WorkflowNotification
+from customer_applications.tasks import (
+    advance_workflow_task,
+    create_application_task,
+    delete_application_task,
+    update_application_task,
+)
 from customers.models import Customer
+from django.conf import settings
+from django.contrib.auth import logout as django_logout
+from django.core.files.storage import default_storage
+from django.db.models import Count, DecimalField, F, OuterRef, Prefetch, Q, Subquery, Sum, Value
+from django.db.models.functions import Coalesce
+from django.http import FileResponse, JsonResponse, StreamingHttpResponse
+from django.shortcuts import get_object_or_404
+from django.urls import reverse
+from django.utils import timezone
+from django.utils.text import slugify
+from django.views.decorators.csrf import csrf_exempt
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema, extend_schema_view
 from invoices.models import InvoiceDownloadJob
 from invoices.models.invoice import Invoice, InvoiceApplication
 from invoices.services.InvoiceService import InvoiceService
@@ -81,6 +79,15 @@ from payments.models import Payment
 from products.models import Product
 from products.models.document_type import DocumentType
 from products.models.task import Task
+from rest_framework import filters, pagination, serializers, status, viewsets
+from rest_framework.authentication import SessionAuthentication
+from rest_framework.decorators import action, api_view, authentication_classes, permission_classes, throttle_classes
+from rest_framework.exceptions import NotFound, ValidationError
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
+from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
+from rest_framework_simplejwt.views import TokenObtainPairView
 
 
 @api_view(["POST"])
@@ -104,6 +111,14 @@ def parse_bool(value, default=False):
     if isinstance(value, bool):
         return value
     return str(value).strip().lower() in {"true", "1", "yes", "y", "on"}
+
+
+def launch_async_job(task_func, user, *args, **kwargs):
+    """Utility to launch a Huey task with an AsyncJob record."""
+    job = AsyncJob.objects.create(task_name=task_func.__name__, created_by=user, status=AsyncJob.STATUS_PENDING)
+    # Huey tasks are called with job_id string as first arg
+    task_func(str(job.id), *args, **kwargs)
+    return job
 
 
 class ApiErrorHandlingMixin:
@@ -381,7 +396,6 @@ class DocumentTypeViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     def can_delete(self, request, pk=None):
         """Check if document type can be safely deleted."""
         from django.db.models import Q
-
         from products.models.product import Product
 
         document_type = self.get_object()
@@ -1290,7 +1304,6 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     def import_batch(self, request):
         """Process multiple uploaded invoice files with real-time progress streaming."""
         from django.utils.text import get_valid_filename
-
         from invoices.models import InvoiceImportItem, InvoiceImportJob
         from invoices.tasks.import_jobs import run_invoice_import_item
 
@@ -1602,6 +1615,30 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             return DocApplicationDetailSerializer
         return DocApplicationSerializerWithRelations
 
+    @extend_schema(responses={202: AsyncJobSerializer})
+    def create(self, request, *args, **kwargs):
+        """Create application asynchronously."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        job = launch_async_job(create_application_task, request.user, data=request.data, user_id=request.user.id)
+        return Response(AsyncJobSerializer(job).data, status=status.HTTP_202_ACCEPTED)
+
+    @extend_schema(responses={202: AsyncJobSerializer})
+    def update(self, request, *args, **kwargs):
+        """Update application asynchronously."""
+        partial = kwargs.pop("partial", False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        job = launch_async_job(
+            update_application_task,
+            request.user,
+            application_id=instance.id,
+            data=request.data,
+            user_id=request.user.id,
+        )
+        return Response(AsyncJobSerializer(job).data, status=status.HTTP_202_ACCEPTED)
+
     @action(detail=False, methods=["post"], url_path="bulk-delete")
     def bulk_delete(self, request):
         if not request.user.is_superuser:
@@ -1616,8 +1653,9 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         return Response({"deleted_count": count})
 
     @action(detail=True, methods=["post"], url_path="advance-workflow")
+    @extend_schema(responses={202: AsyncJobSerializer})
     def advance_workflow(self, request, pk=None):
-        """Complete current workflow and create next step."""
+        """Complete current workflow and create next step asynchronously."""
         try:
             application = self.get_object()
         except DocApplication.DoesNotExist:
@@ -1628,44 +1666,20 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             if not application.documents.filter(required=True).exists():
                 return self.error_response("Document collection is not completed", status.HTTP_400_BAD_REQUEST)
 
-        current_workflow = application.current_workflow
-        if not current_workflow:
-            return self.error_response("No current workflow found", status.HTTP_400_BAD_REQUEST)
+        job = launch_async_job(
+            advance_workflow_task, request.user, application_id=application.id, user_id=request.user.id
+        )
+        return Response(AsyncJobSerializer(job).data, status=status.HTTP_202_ACCEPTED)
 
-        # Complete current workflow
-        current_workflow.status = current_workflow.STATUS_COMPLETED
-        current_workflow.updated_by = request.user
-        current_workflow.save()
-
-        # Create next workflow if exists
-        next_task = application.next_task
-        if next_task:
-            from customer_applications.models.doc_workflow import DocWorkflow
-
-            step = DocWorkflow(
-                start_date=timezone.now().date(),
-                task=next_task,
-                doc_application=application,
-                created_by=request.user,
-                status=DocWorkflow.STATUS_PENDING,
-            )
-            step.due_date = step.calculate_workflow_due_date()
-            step.save()
-
-        # Refresh application status
-        application.save()
-
-        from customer_applications.services.application_calendar_service import ApplicationCalendarService
-
-        ApplicationCalendarService().sync_next_task_deadline(application, start_date=current_workflow.due_date)
-
-        return Response({"success": True})
-
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("delete_invoices", OpenApiTypes.BOOL, OpenApiParameter.QUERY),
+            OpenApiParameter("deleteInvoices", OpenApiTypes.BOOL, OpenApiParameter.QUERY),
+        ],
+        responses={202: AsyncJobSerializer},
+    )
     def destroy(self, request, *args, **kwargs):
-        """Allow optional deletion of linked invoices when deleting an application.
-
-        To delete linked invoices, the caller must explicitly pass `deleteInvoices` (or `delete_invoices`) and be a superuser.
-        """
+        """Allow optional deletion of linked invoices when deleting an application asynchronously."""
         try:
             application = self.get_object()
         except DocApplication.DoesNotExist:
@@ -1673,34 +1687,22 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
         delete_invoices = parse_bool(
             request.data.get("deleteInvoices")
-            or request.data.get("delete_invoices")
-            or request.query_params.get("deleteInvoices")
+            or request.data.get("delete_with_invoices")
+            or request.query_params.get("delete_invoices")
         )
 
         can_delete, msg = application.can_be_deleted(user=request.user, delete_invoices=delete_invoices)
         if not can_delete:
             return self.error_response(msg, status.HTTP_400_BAD_REQUEST)
 
-        invoice_ids = list(application.invoice_applications.values_list("invoice_id", flat=True).distinct())
-        from django.db import transaction
-
-        from invoices.models.invoice import Invoice
-
-        with transaction.atomic():
-            # delete application (cascade will remove InvoiceApplication rows)
-            application.delete(force_delete_invoices=delete_invoices, user=request.user)
-
-            # Cleanup invoices: if an invoice has no remaining InvoiceApplication rows, remove it (force delete)
-            for inv_id in invoice_ids:
-                invoice = Invoice.objects.filter(pk=inv_id).first()
-                if not invoice:
-                    continue
-                if invoice.invoice_applications.count() == 0:
-                    invoice.delete(force=True)
-                else:
-                    invoice.save()
-
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        job = launch_async_job(
+            delete_application_task,
+            request.user,
+            application_id=application.id,
+            user_id=request.user.id,
+            delete_invoices=delete_invoices,
+        )
+        return Response(AsyncJobSerializer(job).data, status=status.HTTP_202_ACCEPTED)
 
     @extend_schema(
         request=OpenApiTypes.OBJECT,
@@ -2483,3 +2485,58 @@ class WorkflowNotificationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         notification.status = WorkflowNotification.STATUS_CANCELLED
         notification.save(update_fields=["status", "updated_at"])
         return Response(self.get_serializer(notification).data)
+
+
+@sse_token_auth_required
+def async_job_status_sse(request, job_id):
+    """Generic SSE endpoint for tracking AsyncJob status."""
+
+    def event_stream():
+        last_progress = -1
+        last_status = None
+
+        while True:
+            try:
+                # Refresh from DB
+                job = AsyncJob.objects.get(id=job_id)
+
+                # Only send if changed
+                if job.progress != last_progress or job.status != last_status:
+                    data = {
+                        "id": str(job.id),
+                        "status": job.status,
+                        "progress": job.progress,
+                        "message": job.message,
+                        "result": job.result,
+                        "error_message": job.error_message,
+                    }
+                    yield f"data: {json.dumps(data)}\n\n"
+                    last_progress = job.progress
+                    last_status = job.status
+
+                # Check for completion
+                if job.status in [AsyncJob.STATUS_COMPLETED, AsyncJob.STATUS_FAILED]:
+                    break
+
+            except AsyncJob.DoesNotExist:
+                yield f"data: {json.dumps({'error': 'Job not found'})}\n\n"
+                break
+            except Exception as e:
+                yield f"data: {json.dumps({'error': str(e)})}\n\n"
+                break
+
+            time.sleep(1)
+            yield ": keepalive\n\n"
+
+    response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
+    response["Cache-Control"] = "no-cache"
+    response["X-Accel-Buffering"] = "no"
+    return response
+
+
+class AsyncJobViewSet(viewsets.ReadOnlyModelViewSet):
+    """ViewSet for polling AsyncJob status if SSE is not used."""
+
+    queryset = AsyncJob.objects.all()
+    serializer_class = AsyncJobSerializer
+    permission_classes = [IsAuthenticated]

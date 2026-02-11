@@ -4,6 +4,7 @@ api.base.service.ts
 api.module.ts
 api/api-token-auth.service.ts
 api/api.ts
+api/async-jobs.service.ts
 api/backups.service.ts
 api/calendar.service.ts
 api/compute.service.ts
@@ -30,6 +31,7 @@ configuration.ts
 encoder.ts
 git_push.sh
 index.ts
+model/async-job.ts
 model/change-password.ts
 model/country-code.ts
 model/custom-token-obtain.ts

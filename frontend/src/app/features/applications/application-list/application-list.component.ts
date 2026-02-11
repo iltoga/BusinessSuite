@@ -16,6 +16,7 @@ import { Router, RouterLink } from '@angular/router';
 import { CustomerApplicationsService } from '@/core/api/api/customer-applications.service';
 import { DocApplicationSerializerWithRelations } from '@/core/api/model/doc-application-serializer-with-relations';
 import { AuthService } from '@/core/services/auth.service';
+import { JobService } from '@/core/services/job.service';
 import { GlobalToastService } from '@/core/services/toast.service';
 import {
   ApplicationDeleteDialogComponent,
@@ -63,6 +64,7 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 export class ApplicationListComponent implements OnInit {
   private service = inject(CustomerApplicationsService);
   private authService = inject(AuthService);
+  private jobService = inject(JobService);
   private toast = inject(GlobalToastService);
   private router = inject(Router);
   private platformId = inject(PLATFORM_ID);
@@ -318,11 +320,18 @@ export class ApplicationListComponent implements OnInit {
     }
 
     this.service.customerApplicationsDestroy(row.id).subscribe({
-      next: () => {
-        this.toast.success('Application deleted');
-        this.confirmOpen.set(false);
-        this.pendingDelete.set(null);
-        this.load();
+      next: (job) => {
+        const jobId = job?.id;
+        this.jobService
+          .openProgressDialog(jobId, 'Deleting Application...')
+          .subscribe((success) => {
+            if (success) {
+              this.toast.success('Application deleted');
+              this.load();
+            }
+            this.confirmOpen.set(false);
+            this.pendingDelete.set(null);
+          });
       },
       error: (error) => {
         const message = extractServerErrorMessage(error);
@@ -355,13 +364,20 @@ export class ApplicationListComponent implements OnInit {
       return;
     }
 
-    this.service.customerApplicationsDestroy(row.id).subscribe({
-      next: () => {
-        this.toast.success('Application deleted');
-        this.deleteWithInvoiceOpen.set(false);
-        this.deleteWithInvoiceData.set(null);
-        this.pendingDelete.set(null);
-        this.load();
+    this.service.customerApplicationsDestroy(row.id, true).subscribe({
+      next: (job) => {
+        const jobId = job?.id;
+        this.jobService
+          .openProgressDialog(jobId, 'Deleting Application...')
+          .subscribe((success) => {
+            if (success) {
+              this.toast.success('Application deleted');
+              this.load();
+            }
+            this.deleteWithInvoiceOpen.set(false);
+            this.deleteWithInvoiceData.set(null);
+            this.pendingDelete.set(null);
+          });
       },
       error: (error) => {
         const message = extractServerErrorMessage(error);

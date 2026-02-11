@@ -17,6 +17,11 @@ except Exception:  # pragma: no cover
     OCRJob = None
 
 try:
+    from .async_job import AsyncJob
+except Exception:  # pragma: no cover
+    AsyncJob = None
+
+try:
     from .holiday import Holiday
 except Exception:  # pragma: no cover
     Holiday = None
@@ -31,4 +36,12 @@ try:
 except Exception:  # pragma: no cover
     UserSettings = None
 
-__all__ = ["CountryCode", "DocumentOCRJob", "OCRJob", "Holiday", "UserProfile", "UserSettings"]
+__all__ = [
+    "CountryCode",
+    "DocumentOCRJob",
+    "OCRJob",
+    "AsyncJob",
+    "Holiday",
+    "UserProfile",
+    "UserSettings",
+]

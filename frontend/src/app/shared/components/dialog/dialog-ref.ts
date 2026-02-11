@@ -13,6 +13,7 @@ const enum eTriggerAction {
 
 export class ZardDialogRef<T = any, R = any, U = any> {
   private destroy$ = new Subject<void>();
+  private closed$ = new Subject<R | undefined>();
   private isClosing = false;
   protected result?: R;
   componentInstance: T | null = null;
@@ -51,6 +52,10 @@ export class ZardDialogRef<T = any, R = any, U = any> {
     this.isClosing = true;
     this.result = result;
 
+    // Emit result to any afterClosed subscribers
+    this.closed$.next(this.result);
+    this.closed$.complete();
+
     if (isPlatformBrowser(this.platformId)) {
       const hostElement = this.containerInstance.getNativeElement();
       hostElement.classList.add('dialog-leave');
@@ -69,6 +74,10 @@ export class ZardDialogRef<T = any, R = any, U = any> {
         this.destroy$.complete();
       }
     }, 150);
+  }
+
+  afterClosed() {
+    return this.closed$.asObservable();
   }
 
   private trigger(action: eTriggerAction) {

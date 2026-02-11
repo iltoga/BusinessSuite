@@ -40,6 +40,16 @@
         </p>
       </div>
       <div class="flex gap-2">
+        @if (isSuperuser()) {
+          <button
+            z-button
+            zType="destructive"
+            (click)="deleteApplication()"
+            [disabled]="workflowAction() !== null"
+          >
+            Delete Application
+          </button>
+        }
         @if (canForceClose()) {
           <button
             z-button

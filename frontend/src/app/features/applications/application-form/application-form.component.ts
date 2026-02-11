@@ -4,6 +4,7 @@ import { DocumentTypesService } from '@/core/api/api/document-types.service';
 import { ProductsService } from '@/core/api/api/products.service';
 import type { Customer } from '@/core/api/model/customer';
 import { AuthService } from '@/core/services/auth.service';
+import { JobService } from '@/core/services/job.service';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
@@ -30,7 +31,13 @@ import {
   signal,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { AbstractControl, FormArray, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  AbstractControl,
+  FormArray,
+  FormBuilder,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { map, startWith, Subject, takeUntil } from 'rxjs';
 
@@ -63,6 +70,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
   private productsService = inject(ProductsService);
   private documentTypesService = inject(DocumentTypesService);
   private authService = inject(AuthService);
+  private jobService = inject(JobService);
   private toast = inject(GlobalToastService);
   private http = inject(HttpClient);
   private route = inject(ActivatedRoute);
@@ -437,12 +445,18 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
       const headers = this.buildAuthHeaders();
 
       this.http
-        .patch(`/api/customer-applications/${this.applicationId()}/`, payload, { headers })
+        .patch<any>(`/api/customer-applications/${this.applicationId()}/`, payload, { headers })
         .subscribe({
-          next: () => {
-            this.toast.success('Application updated');
-            this.router.navigate(['/applications', this.applicationId()]);
-            this.isSubmitting.set(false);
+          next: (job) => {
+            this.jobService
+              .openProgressDialog(job.id, 'Updating Application')
+              .subscribe((finalJob) => {
+                if (finalJob?.status === 'completed') {
+                  this.toast.success('Application updated');
+                  this.router.navigate(['/applications', this.applicationId()]);
+                }
+                this.isSubmitting.set(false);
+              });
           },
           error: (error) => {
             applyServerErrorsToForm(this.form, error);
@@ -471,17 +485,22 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
       const headers = this.buildAuthHeaders();
 
       // Use the main endpoint which supports document_types via DocApplicationCreateUpdateSerializer
-      this.http.post('/api/customer-applications/', payload, { headers }).subscribe({
-        next: (res: any) => {
-          this.toast.success('Application created');
-          const id = res?.id;
-          if (id) {
-            this.router.navigate(['/applications', id]);
-          } else {
-            // fallback to applications list if id is missing in response
-            this.router.navigate(['/applications']);
-          }
-          this.isSubmitting.set(false);
+      this.http.post<any>('/api/customer-applications/', payload, { headers }).subscribe({
+        next: (job) => {
+          this.jobService
+            .openProgressDialog(job.id, 'Creating Application')
+            .subscribe((finalJob) => {
+              if (finalJob?.status === 'completed') {
+                this.toast.success('Application created');
+                const id = finalJob.result?.id;
+                if (id) {
+                  this.router.navigate(['/applications', id]);
+                } else {
+                  this.router.navigate(['/applications']);
+                }
+              }
+              this.isSubmitting.set(false);
+            });
         },
         error: (error) => {
           applyServerErrorsToForm(this.form, error);

@@ -147,6 +147,13 @@ export class ApplicationsService {
     return this.customerApplicationsService.customerApplicationsRetrieve(applicationId, 'body');
   }
 
+  deleteApplication(applicationId: number, deleteInvoices: boolean = false): Observable<any> {
+    return this.customerApplicationsService.customerApplicationsDestroy(
+      applicationId,
+      deleteInvoices,
+    );
+  }
+
   advanceWorkflow(applicationId: number): Observable<any> {
     return this.customerApplicationsService.customerApplicationsAdvanceWorkflowCreate(
       applicationId,

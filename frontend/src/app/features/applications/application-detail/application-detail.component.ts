@@ -23,7 +23,9 @@ import {
   type DocumentAction,
   type OcrStatusResponse,
 } from '@/core/services/applications.service';
+import { AuthService } from '@/core/services/auth.service';
 import { DocumentsService } from '@/core/services/documents.service';
+import { JobService } from '@/core/services/job.service';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
@@ -75,6 +77,8 @@ export class ApplicationDetailComponent implements OnInit {
   private router = inject(Router);
   private applicationsService = inject(ApplicationsService);
   private documentsService = inject(DocumentsService);
+  private jobService = inject(JobService);
+  private authService = inject(AuthService);
   private toast = inject(GlobalToastService);
   private fb = inject(FormBuilder);
   private destroyRef = inject(DestroyRef);
@@ -119,6 +123,7 @@ export class ApplicationDetailComponent implements OnInit {
   readonly actionLoading = signal<string | null>(null);
   readonly workflowAction = signal<string | null>(null);
   readonly originSearchQuery = signal<string | null>(null);
+  readonly isSuperuser = this.authService.isSuperuser;
 
   // PDF Merge and Selection
   readonly localUploadedDocuments = signal<ApplicationDocument[]>([]);
@@ -486,16 +491,49 @@ export class ApplicationDetailComponent implements OnInit {
 
     this.workflowAction.set('advance');
     this.applicationsService.advanceWorkflow(app.id).subscribe({
-      next: () => {
-        this.toast.success('Workflow advanced');
-        this.loadApplication(app.id);
-        this.workflowAction.set(null);
+      next: (job) => {
+        const jobId = job?.id || job?.jobId;
+        this.jobService.openProgressDialog(jobId, 'Advancing Workflow...').subscribe((success) => {
+          if (success) {
+            this.toast.success('Workflow advanced');
+            this.loadApplication(app.id);
+          }
+          this.workflowAction.set(null);
+        });
       },
       error: () => {
-        this.toast.error('Failed to advance workflow');
+        this.toast.error('Failed to start workflow advancement');
         this.workflowAction.set(null);
       },
     });
+  }
+
+  deleteApplication(): void {
+    const app = this.application();
+    if (!app || !this.isSuperuser()) return;
+
+    if (confirm(`Are you sure you want to delete application #${app.id}?`)) {
+      this.workflowAction.set('delete');
+      this.applicationsService.deleteApplication(app.id).subscribe({
+        next: (job) => {
+          const jobId = job?.id || job?.jobId;
+          this.jobService
+            .openProgressDialog(jobId, 'Deleting Application...')
+            .subscribe((success) => {
+              if (success) {
+                this.toast.success('Application deleted');
+                this.goBack();
+              } else {
+                this.workflowAction.set(null);
+              }
+            });
+        },
+        error: () => {
+          this.toast.error('Failed to start application deletion');
+          this.workflowAction.set(null);
+        },
+      });
+    }
   }
 
   updateWorkflowStatus(workflowId: number, status: string | null): void {
