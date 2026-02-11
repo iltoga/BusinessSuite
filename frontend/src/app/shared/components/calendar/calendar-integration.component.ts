@@ -1,9 +1,17 @@
 import { CalendarService } from '@/core/api/api/calendar.service';
 import { GoogleCalendarEvent } from '@/core/api/model/google-calendar-event';
+import { ZardButtonComponent } from '@/shared/components/button';
 import { DashboardWidgetComponent } from '@/shared/components/dashboard-widget/dashboard-widget.component';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject, OnInit, PLATFORM_ID, signal } from '@angular/core';
-import { ZardButtonComponent } from '@/shared/components/button';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  OnInit,
+  PLATFORM_ID,
+  signal,
+} from '@angular/core';
 
 @Component({
   selector: 'app-calendar-integration',
@@ -34,7 +42,9 @@ import { ZardButtonComponent } from '@/shared/components/button';
               @for (event of weekEvents(); track event.id) {
                 <li class="rounded border border-border/50 px-3 py-2">
                   <div class="font-medium">{{ event.summary }}</div>
-                  <div class="text-xs text-muted-foreground">{{ event.start | date: 'EEE, d MMM' }}</div>
+                  <div class="text-xs text-muted-foreground">
+                    {{ event.start | date: 'EEE, d MMM' }}
+                  </div>
                 </li>
               }
             </ul>
@@ -43,7 +53,7 @@ import { ZardButtonComponent } from '@/shared/components/button';
 
         <app-dashboard-widget title="Month" subtitle="Click day for details">
           <div class="grid grid-cols-7 gap-1 text-center text-xs mb-2 text-muted-foreground">
-            @for (day of ['S','M','T','W','T','F','S']; track day + $index) {
+            @for (day of ['S', 'M', 'T', 'W', 'T', 'F', 'S']; track day + $index) {
               <div>{{ day }}</div>
             }
           </div>
@@ -67,10 +77,12 @@ import { ZardButtonComponent } from '@/shared/components/button';
 
     @if (openDayEventsDate()) {
       <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-        <div class="w-full max-w-xl rounded-lg bg-card p-4">
+        <div class="w-full max-w-xl rounded-lg bg-card p-4 border-4 border-primary/50">
           <div class="mb-3 flex items-center justify-between">
             <h3 class="text-lg font-semibold">{{ openDayEventsDate() | date: 'fullDate' }}</h3>
-            <button z-button zType="ghost" zSize="sm" (click)="openDayEventsDate.set(null)">Close</button>
+            <button z-button zType="ghost" zSize="sm" (click)="openDayEventsDate.set(null)">
+              Close
+            </button>
           </div>
           @if (selectedDayEvents().length === 0) {
             <div class="text-sm text-muted-foreground">No events for this day.</div>
