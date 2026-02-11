@@ -1,11 +1,9 @@
-from datetime import datetime, time
+from datetime import timedelta
 
 from django.conf import settings
-from django.utils import timezone
 
 from core.utils.google_client import GoogleClient
 from customer_applications.models import WorkflowNotification
-from notifications.services.providers import NotificationDispatcher
 
 
 class ApplicationCalendarService:
@@ -31,8 +29,6 @@ class ApplicationCalendarService:
         return event
 
     def _create_calendar_event(self, application, task, due_date):
-        start_dt = timezone.make_aware(datetime.combine(due_date, time(hour=9, minute=0)))
-        end_dt = timezone.make_aware(datetime.combine(due_date, time(hour=10, minute=0)))
         notify_days = task.notify_days_before or 0
         reminder_minutes = max(0, notify_days * 24 * 60)
 
@@ -48,41 +44,46 @@ class ApplicationCalendarService:
         payload = {
             "summary": f"[Application #{application.id}] {application.customer.full_name} - {task.name}",
             "description": description,
-            "start_time": start_dt,
-            "end_time": end_dt,
-            "reminders": {"useDefault": False, "overrides": [{"method": "email", "minutes": reminder_minutes}]},
+            "start_date": due_date.isoformat(),
+            "end_date": (due_date + timedelta(days=1)).isoformat(),
+            "reminders": {"useDefault": False, "overrides": [{"method": "popup", "minutes": reminder_minutes}]},
         }
         client = GoogleClient()
         return client.create_event(payload, calendar_id=getattr(settings, "GOOGLE_CALENDAR_ID", "primary"))
 
     def _create_notification(self, application, task, due_date, event):
-        recipient = application.customer.email or getattr(settings, "DEFAULT_CUSTOMER_EMAIL", "sample_email@gmail.com")
+        notify_days = task.notify_days_before or 0
+        scheduled_for = due_date - timedelta(days=notify_days)
+
+        if not application.notify_customer_too:
+            return None
+
+        channel = application.notify_customer_channel or application.NOTIFY_CHANNEL_EMAIL
+        if channel == application.NOTIFY_CHANNEL_WHATSAPP:
+            recipient = application.customer.whatsapp
+        else:
+            recipient = application.customer.email
+
+        if not recipient:
+            return None
+
         subject = f"Upcoming deadline: {task.name}"
         body = (
             f"Dear {application.customer.full_name},\n\n"
             f"Your next step for application #{application.id} is '{task.name}'.\n"
-            f"Due date: {due_date}\n\n"
+            f"Due date: {due_date}\n"
+            f"Reminder date: {scheduled_for}\n\n"
             f"Notes: {application.notes or '-'}"
         )
 
         notification = WorkflowNotification.objects.create(
-            channel="email",
+            channel=channel,
             recipient=recipient,
             subject=subject,
             body=body,
             doc_application=application,
             status=WorkflowNotification.STATUS_PENDING,
-            scheduled_for=due_date,
+            scheduled_for=scheduled_for,
             external_reference=(event or {}).get("id", ""),
         )
-
-        try:
-            message = NotificationDispatcher().send("email", recipient, subject, body)
-            notification.status = WorkflowNotification.STATUS_SENT
-            notification.provider_message = message
-            notification.sent_at = timezone.now()
-        except Exception as exc:
-            notification.status = WorkflowNotification.STATUS_FAILED
-            notification.provider_message = str(exc)
-        notification.save(update_fields=["status", "provider_message", "sent_at", "updated_at"])
         return notification

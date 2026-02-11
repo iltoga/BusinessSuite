@@ -190,7 +190,18 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DocApplication
-        fields = ["id", "customer", "product", "doc_date", "due_date", "notes", "add_deadlines_to_calendar", "document_types"]
+        fields = [
+            "id",
+            "customer",
+            "product",
+            "doc_date",
+            "due_date",
+            "notes",
+            "add_deadlines_to_calendar",
+            "notify_customer_too",
+            "notify_customer_channel",
+            "document_types",
+        ]
         read_only_fields = ["id"]
 
 
@@ -199,6 +210,23 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
         due_date = attrs.get("due_date") or getattr(self.instance, "due_date", None)
         if due_date and doc_date and due_date < doc_date:
             raise serializers.ValidationError({"due_date": "Due date cannot be before document date."})
+
+        notify_customer_too = attrs.get("notify_customer_too")
+        if notify_customer_too is None and self.instance is not None:
+            notify_customer_too = self.instance.notify_customer_too
+        notify_customer_channel = attrs.get("notify_customer_channel")
+        if notify_customer_channel is None and self.instance is not None:
+            notify_customer_channel = self.instance.notify_customer_channel
+
+        customer = attrs.get("customer") or getattr(self.instance, "customer", None)
+        if notify_customer_too:
+            if not notify_customer_channel:
+                raise serializers.ValidationError({"notify_customer_channel": "Select a notification channel."})
+            if notify_customer_channel == "whatsapp" and not getattr(customer, "whatsapp", None):
+                raise serializers.ValidationError({"notify_customer_channel": "Customer has no WhatsApp number."})
+            if notify_customer_channel == "email" and not getattr(customer, "email", None):
+                raise serializers.ValidationError({"notify_customer_channel": "Customer has no email."})
+
         return attrs
 
     def create(self, validated_data):

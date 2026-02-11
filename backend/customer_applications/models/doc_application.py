@@ -97,11 +97,25 @@ class DocApplication(models.Model):
         (STATUS_REJECTED, "Rejected"),
     ]
 
+    NOTIFY_CHANNEL_EMAIL = "email"
+    NOTIFY_CHANNEL_WHATSAPP = "whatsapp"
+    NOTIFY_CHANNEL_CHOICES = [
+        (NOTIFY_CHANNEL_EMAIL, "Email"),
+        (NOTIFY_CHANNEL_WHATSAPP, "WhatsApp"),
+    ]
+
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name="doc_applications")
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="doc_applications")
     doc_date = models.DateField(db_index=True)
     due_date = models.DateField(blank=True, null=True, db_index=True)
     add_deadlines_to_calendar = models.BooleanField(default=True)
+    notify_customer_too = models.BooleanField(default=False)
+    notify_customer_channel = models.CharField(
+        max_length=20,
+        choices=NOTIFY_CHANNEL_CHOICES,
+        blank=True,
+        null=True,
+    )
     status = models.CharField(max_length=50, choices=STATUS_CHOICES, default=STATUS_PENDING, db_index=True)
     notes = models.TextField(blank=True, null=True)  # Person-specific details from invoice import
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)

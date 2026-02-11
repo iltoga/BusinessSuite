@@ -68,9 +68,38 @@
             </div>
           </div>
 
-          <div class="md:col-span-2 flex items-center gap-2">
-            <input type="checkbox" formControlName="addDeadlinesToCalendar" class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
-            <label class="text-sm font-medium">Add deadlines to calendar</label>
+          <div class="md:col-span-2 flex flex-wrap items-center gap-6">
+            <label class="flex items-center gap-2">
+              <input type="checkbox" formControlName="addDeadlinesToCalendar" class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
+              <span class="text-sm font-medium">Add deadlines to calendar</span>
+            </label>
+
+            <label
+              class="flex items-center gap-2"
+              [zTooltip]="
+                canNotifyCustomer()
+                  ? null
+                  : 'Customer cannot be notified because we do not have email or whatsapp'
+              "
+            >
+              <input
+                type="checkbox"
+                formControlName="notifyCustomerToo"
+                [disabled]="!canNotifyCustomer()"
+                class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+              />
+              <span class="text-sm font-medium">Notify customer too</span>
+            </label>
+          </div>
+
+          <div class="md:col-span-2" *ngIf="form.value.notifyCustomerToo">
+            <label class="text-sm font-medium block mb-1">Customer notification channel</label>
+            <z-combobox
+              formControlName="notifyCustomerChannel"
+              [options]="customerNotificationOptions()"
+              [searchable]="false"
+              [zWidth]="'full'"
+            />
           </div>
 
           <div class="md:col-span-2">

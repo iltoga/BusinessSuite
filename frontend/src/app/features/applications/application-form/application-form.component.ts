@@ -16,6 +16,7 @@ import { ZardIconComponent } from '@/shared/components/icon';
 import { ZardInputDirective } from '@/shared/components/input';
 import { ProductSelectComponent } from '@/shared/components/product-select';
 import { TypeaheadComboboxComponent } from '@/shared/components/typeahead-combobox';
+import { ZardTooltipImports } from '@/shared/components/tooltip';
 import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/utils/form-errors';
 import { CommonModule, Location } from '@angular/common';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
@@ -58,6 +59,7 @@ import { map, startWith, Subject, takeUntil } from 'rxjs';
     TypeaheadComboboxComponent,
     ZardDateInputComponent,
     FormErrorSummaryComponent,
+    ...ZardTooltipImports,
   ],
   templateUrl: './application-form.component.html',
   styleUrls: ['./application-form.component.css'],
@@ -97,6 +99,8 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
     docDate: [new Date(), Validators.required],
     dueDate: [new Date(), Validators.required],
     addDeadlinesToCalendar: [true],
+    notifyCustomerToo: [false],
+    notifyCustomerChannel: ['whatsapp' as 'whatsapp' | 'email'],
     notes: [''],
     documents: this.fb.array([]),
   });
@@ -107,6 +111,8 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
     docDate: 'Document Date',
     dueDate: 'Due Date',
     addDeadlinesToCalendar: 'Add deadlines to calendar',
+    notifyCustomerToo: 'Notify customer too',
+    notifyCustomerChannel: 'Customer notification channel',
     notes: 'Notes',
     documents: 'Documents',
   };
@@ -121,6 +127,20 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
     }
     return null;
   };
+
+  readonly customerNotificationOptions = computed<ZardComboboxOption[]>(() => {
+    const customer = this.selectedCustomer();
+    const options: ZardComboboxOption[] = [];
+    if (customer?.whatsapp) {
+      options.push({ value: 'whatsapp', label: 'WhatsApp' });
+    }
+    if (customer?.email) {
+      options.push({ value: 'email', label: 'Email' });
+    }
+    return options;
+  });
+
+  readonly canNotifyCustomer = computed(() => this.customerNotificationOptions().length > 0);
 
   readonly documentTypeOptions = computed<ZardComboboxOption[]>(() => {
     return this.documentTypes().map((dt) => ({
@@ -230,6 +250,14 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
         this.tryAutoDueDateCalculation(numericProductId);
       });
 
+    this.form
+      .get('notifyCustomerToo')
+      ?.valueChanges.pipe(takeUntil(this.destroy$))
+      .subscribe((enabled) => {
+        if (!enabled) {
+          this.form.patchValue({ notifyCustomerChannel: 'whatsapp' }, { emitEvent: false });
+        }
+      });
     this.loadDocumentTypes();
   }
 
@@ -246,6 +274,8 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
           docDate: docDate,
           dueDate: app.dueDate ? new Date(app.dueDate) : docDate,
           addDeadlinesToCalendar: app.addDeadlinesToCalendar ?? true,
+          notifyCustomerToo: app.notifyCustomerToo ?? false,
+          notifyCustomerChannel: app.notifyCustomerChannel ?? 'whatsapp',
           notes: app.notes ?? '',
         });
         if (customerId) {
@@ -273,6 +303,15 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
     this.customersService.customersRetrieve(customerId).subscribe({
       next: (customer) => {
         this.selectedCustomer.set(customer);
+        const options = this.customerNotificationOptions();
+        if (options.length === 0) {
+          this.form.patchValue({ notifyCustomerToo: false, notifyCustomerChannel: 'whatsapp' }, { emitEvent: false });
+        } else {
+          const current = this.form.get('notifyCustomerChannel')?.value;
+          if (!options.some((opt) => opt.value === current)) {
+            this.form.patchValue({ notifyCustomerChannel: options[0]!.value as 'whatsapp' | 'email' }, { emitEvent: false });
+          }
+        }
         // Refresh documents if product is already selected to re-check for auto-imports
         const productId = this.form.get('product')?.value;
         if (productId && !this.isEditMode()) {
@@ -434,11 +473,13 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
       const dueValue = this.form.value.dueDate;
       const dueDateStr = dueValue instanceof Date ? dueValue.toISOString().slice(0, 10) : dueValue;
       const payload = {
-        customer: Number(this.form.value.customer),
+        customer: Number(this.form.getRawValue().customer),
         product: Number(this.form.value.product),
         docDate: docDateStr,
         dueDate: dueDateStr,
         addDeadlinesToCalendar: this.form.value.addDeadlinesToCalendar,
+        notifyCustomerToo: this.form.value.notifyCustomerToo,
+        notifyCustomerChannel: this.form.value.notifyCustomerToo ? this.form.value.notifyCustomerChannel : null,
         notes: this.form.value.notes,
       };
 
@@ -473,11 +514,13 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
       const dueValue = this.form.value.dueDate;
       const dueDateStr = dueValue instanceof Date ? dueValue.toISOString().slice(0, 10) : dueValue;
       const payload = {
-        customer: Number(this.form.value.customer),
+        customer: Number(this.form.getRawValue().customer),
         product: Number(this.form.value.product),
         docDate: docDateStr,
         dueDate: dueDateStr,
         addDeadlinesToCalendar: this.form.value.addDeadlinesToCalendar,
+        notifyCustomerToo: this.form.value.notifyCustomerToo,
+        notifyCustomerChannel: this.form.value.notifyCustomerToo ? this.form.value.notifyCustomerChannel : null,
         notes: this.form.value.notes,
         documentTypes: this.form.value.documents,
       };

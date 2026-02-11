@@ -24,7 +24,7 @@ class WorkflowNotification(models.Model):
     channel = models.CharField(max_length=20, default=CHANNEL_EMAIL, db_index=True)
     subject = models.CharField(max_length=255)
     body = models.TextField()
-    recipient = models.EmailField()
+    recipient = models.CharField(max_length=255)
     doc_application = models.ForeignKey(
         "customer_applications.DocApplication", related_name="notifications", on_delete=models.CASCADE
     )
