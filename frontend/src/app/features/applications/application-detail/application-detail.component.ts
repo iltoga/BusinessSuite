@@ -137,6 +137,20 @@ export class ApplicationDetailComponent implements OnInit {
   readonly editableNotes = signal('');
   readonly selectedNewDocType = signal<string | null>(null);
   readonly docTypeOptions = signal<ZardComboboxOption[]>([]);
+  readonly filteredDocTypeOptions = computed(() => {
+    const options = this.docTypeOptions();
+    const app = this.application();
+    if (!app) {
+      return options;
+    }
+    const existingDocTypeIds = new Set(
+      (app.documents ?? [])
+        .map((doc) => doc.docType?.id)
+        .filter((id): id is number => typeof id === 'number')
+        .map((id) => String(id)),
+    );
+    return options.filter((opt) => !existingDocTypeIds.has(opt.value));
+  });
 
   // Computed signals for stable object references in templates
   readonly docDateAsDate = computed(() => {
@@ -695,7 +709,7 @@ export class ApplicationDetailComponent implements OnInit {
 
   onInlineDateChange(field: 'docDate' | 'dueDate', value: Date | null): void {
     if (!value) return;
-    const iso = value.toISOString().slice(0, 10);
+    const iso = this.formatDateForApi(value);
     this.updateApplicationPartial(
       { [field]: iso } as any,
       `${field === 'docDate' ? 'Document' : 'Due'} date updated`,
@@ -901,5 +915,12 @@ export class ApplicationDetailComponent implements OnInit {
     }
     this.uploadPreviewUrl.set(null);
     this.uploadPreviewType.set('unknown');
+  }
+
+  private formatDateForApi(value: Date): string {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 }
