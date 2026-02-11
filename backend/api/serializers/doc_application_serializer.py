@@ -1,12 +1,11 @@
 import os
 
-from rest_framework import serializers
-
 from api.serializers.customer_serializer import CustomerSerializer
 from api.serializers.doc_workflow_serializer import DocWorkflowSerializer, TaskSerializer
 from api.serializers.document_serializer import DocumentSerializer
 from api.serializers.product_serializer import ProductSerializer
 from customer_applications.models import DocApplication
+from rest_framework import serializers
 
 
 class DocApplicationSerializer(serializers.ModelSerializer):
@@ -206,7 +205,6 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id"]
 
-
     def validate(self, attrs):
         doc_date = attrs.get("doc_date") or getattr(self.instance, "doc_date", None)
         due_date = attrs.get("due_date") or getattr(self.instance, "due_date", None)
@@ -232,12 +230,11 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
+        from customer_applications.models.doc_workflow import DocWorkflow
+        from customer_applications.models.document import Document
         from django.core.files import File
         from django.core.files.storage import default_storage
         from django.utils import timezone
-
-        from customer_applications.models.doc_workflow import DocWorkflow
-        from customer_applications.models.document import Document
         from products.models.document_type import DocumentType
         from products.models.task import Task
 
@@ -248,11 +245,15 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
         if not validated_data.get("due_date"):
             product = validated_data.get("product")
             doc_date = validated_data.get("doc_date")
-            next_calendar_task = product.tasks.filter(add_task_to_calendar=True).order_by("step").first() if product else None
+            next_calendar_task = (
+                product.tasks.filter(add_task_to_calendar=True).order_by("step").first() if product else None
+            )
             if next_calendar_task:
                 from core.utils.dateutils import calculate_due_date
 
-                validated_data["due_date"] = calculate_due_date(doc_date, next_calendar_task.duration, next_calendar_task.duration_is_business_days)
+                validated_data["due_date"] = calculate_due_date(
+                    doc_date, next_calendar_task.duration, next_calendar_task.duration_is_business_days
+                )
             else:
                 validated_data["due_date"] = doc_date
 
@@ -309,9 +310,8 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
         return application
 
     def update(self, instance, validated_data):
-        from django.utils import timezone
-
         from customer_applications.models.document import Document
+        from django.utils import timezone
         from products.models.document_type import DocumentType
 
         document_types = validated_data.pop("document_types", None)
@@ -362,9 +362,8 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
 
     def _can_auto_import_passport(self, application) -> bool:
         """Check if passport can be auto-imported for this application."""
-        from django.core.files.storage import default_storage
-
         from customer_applications.models.document import Document
+        from django.core.files.storage import default_storage
         from products.models.document_type import DocumentType
 
         try:
@@ -400,12 +399,11 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
 
     def _auto_import_passport(self, application, user):
         """Replicates legacy auto-import logic from DocApplicationCreateView."""
+        from core.models.country_code import CountryCode
+        from customer_applications.models.document import Document, get_upload_to
         from django.core.files import File
         from django.core.files.storage import default_storage
         from django.utils import timezone
-
-        from core.models.country_code import CountryCode
-        from customer_applications.models.document import Document, get_upload_to
         from products.models.document_type import DocumentType
 
         passport_doc_type = DocumentType.objects.get(name="Passport")
@@ -510,15 +508,3 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
                 new_doc.save()
             except Exception:
                 pass
-
-    def update(self, instance, validated_data):
-        # Allow updating main fields only
-        for attr in ["doc_date", "due_date", "notes", "product", "customer", "add_deadlines_to_calendar"]:
-            if attr in validated_data:
-                setattr(instance, attr, validated_data[attr])
-        instance.save()
-
-        from customer_applications.services.application_calendar_service import ApplicationCalendarService
-
-        ApplicationCalendarService().sync_next_task_deadline(instance)
-        return instance
