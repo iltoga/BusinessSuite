@@ -770,3 +770,5 @@ logging.logThreads = False
 logging.logProcesses = False
 logging.logMultiprocessing = False
 logging.logAsyncioTasks = False
+
+NOTIFICATION_FROM_EMAIL = os.getenv("NOTIFICATION_FROM_EMAIL", "dewi@revisbali.com")

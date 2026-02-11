@@ -25,6 +25,15 @@ export const adminRoutes: Routes = [
       ),
   },
   {
+    path: 'workflow-notifications',
+    title: 'Workflow Notifications',
+    canActivate: [superuserGuard],
+    loadComponent: () =>
+      import('./workflow-notifications/workflow-notifications.component').then(
+        (c) => c.WorkflowNotificationsComponent,
+      ),
+  },
+  {
     path: '',
     redirectTo: 'document-types',
     pathMatch: 'full',

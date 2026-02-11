@@ -14,6 +14,7 @@ class Task(models.Model):
     duration_is_business_days = models.BooleanField(default=True)
     # Notify the user this many days before the task is due
     notify_days_before = models.PositiveIntegerField(blank=True, default=0)
+    add_task_to_calendar = models.BooleanField(default=False, db_index=True)
 
     class Meta:
         ordering = ['step']

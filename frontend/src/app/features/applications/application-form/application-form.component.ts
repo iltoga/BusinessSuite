@@ -30,7 +30,7 @@ import {
   signal,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { FormArray, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, FormArray, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { map, startWith, Subject, takeUntil } from 'rxjs';
 
@@ -77,6 +77,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
   readonly isEditMode = signal(false);
   readonly applicationId = signal<number | null>(null);
   readonly isLoading = signal(false);
+  readonly initialProductId = signal<number | null>(null);
   // Loading state and open/closed state for the Documents panel
   readonly documentsLoading = signal(false);
   readonly documentsPanelOpen = signal(false);
@@ -85,7 +86,9 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
     customer: [null as string | null, Validators.required],
     product: [null as string | null, Validators.required],
     // use Date object so z-date-input binds correctly
-    docDate: [new Date()],
+    docDate: [new Date(), Validators.required],
+    dueDate: [new Date(), Validators.required],
+    addDeadlinesToCalendar: [true],
     notes: [''],
     documents: this.fb.array([]),
   });
@@ -94,11 +97,22 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
     customer: 'Customer',
     product: 'Product',
     docDate: 'Document Date',
+    dueDate: 'Due Date',
+    addDeadlinesToCalendar: 'Add deadlines to calendar',
     notes: 'Notes',
     documents: 'Documents',
   };
 
   readonly isSubmitting = signal(false);
+
+  private dueDateValidator = (control: AbstractControl) => {
+    const docDate = this.form?.get('docDate')?.value as Date | null;
+    const dueDate = control?.value as Date | null;
+    if (docDate && dueDate && dueDate < docDate) {
+      return { dueBeforeDocDate: true };
+    }
+    return null;
+  };
 
   readonly documentTypeOptions = computed<ZardComboboxOption[]>(() => {
     return this.documentTypes().map((dt) => ({
@@ -141,6 +155,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.form.get('dueDate')?.setValidators([Validators.required, this.dueDateValidator]);
     const url = this.router.url;
     const editMatch = url.match(/\/applications\/(\d+)\/edit/);
 
@@ -190,6 +205,23 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
         });
     }
 
+    this.form
+      .get('docDate')
+      ?.valueChanges.pipe(takeUntil(this.destroy$))
+      .subscribe(() => this.form.get('dueDate')?.updateValueAndValidity());
+
+    this.form
+      .get('product')
+      ?.valueChanges.pipe(takeUntil(this.destroy$))
+      .subscribe((productId) => {
+        if (!productId) return;
+        const numericProductId = Number(productId);
+        if (this.isEditMode() && this.initialProductId() === numericProductId) {
+          return;
+        }
+        this.tryAutoDueDateCalculation(numericProductId);
+      });
+
     this.loadDocumentTypes();
   }
 
@@ -204,6 +236,8 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
           customer: String(customerId),
           product: productId ? String(productId) : null,
           docDate: docDate,
+          dueDate: app.dueDate ? new Date(app.dueDate) : docDate,
+          addDeadlinesToCalendar: app.addDeadlinesToCalendar ?? true,
           notes: app.notes ?? '',
         });
         if (customerId) {
@@ -212,6 +246,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
 
         // Ensure product documents are loaded when editing an application
         if (productId) {
+          this.initialProductId.set(productId);
           // open the documents panel and load documents
           this.documentsPanelOpen.set(true);
           this.loadProductDocuments(productId);
@@ -345,11 +380,33 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
 
     if (disabled) {
       customerControl?.disable({ emitEvent: false });
-      productControl?.disable({ emitEvent: false });
+      productControl?.enable({ emitEvent: false });
     } else {
       customerControl?.enable({ emitEvent: false });
       productControl?.enable({ emitEvent: false });
     }
+  }
+
+  private tryAutoDueDateCalculation(productId: number): void {
+    this.productsService.productsRetrieve(productId).subscribe({
+      next: (product: any) => {
+        const task = (product.tasks || []).find((t: any) => t.addTaskToCalendar);
+        const doc = this.form.get('docDate')?.value as Date | null;
+        if (!doc) return;
+        if (!task) {
+          this.form.patchValue({ dueDate: doc });
+          return;
+        }
+        const start = doc.toISOString().slice(0, 10);
+        this.http.get<any>(`/api/compute/doc_workflow_due_date/${task.id}/${start}/`).subscribe({
+          next: (res) => {
+            if (res?.due_date) {
+              this.form.patchValue({ dueDate: new Date(res.due_date) });
+            }
+          },
+        });
+      },
+    });
   }
 
   submit(): void {
@@ -366,10 +423,14 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
 
     if (this.isEditMode() && this.applicationId()) {
       // Update mode
+      const dueValue = this.form.value.dueDate;
+      const dueDateStr = dueValue instanceof Date ? dueValue.toISOString().slice(0, 10) : dueValue;
       const payload = {
         customer: Number(this.form.value.customer),
         product: Number(this.form.value.product),
         docDate: docDateStr,
+        dueDate: dueDateStr,
+        addDeadlinesToCalendar: this.form.value.addDeadlinesToCalendar,
         notes: this.form.value.notes,
       };
 
@@ -395,10 +456,14 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
         });
     } else {
       // Create mode
+      const dueValue = this.form.value.dueDate;
+      const dueDateStr = dueValue instanceof Date ? dueValue.toISOString().slice(0, 10) : dueValue;
       const payload = {
         customer: Number(this.form.value.customer),
         product: Number(this.form.value.product),
         docDate: docDateStr,
+        dueDate: dueDateStr,
+        addDeadlinesToCalendar: this.form.value.addDeadlinesToCalendar,
         notes: this.form.value.notes,
         documentTypes: this.form.value.documents,
       };
