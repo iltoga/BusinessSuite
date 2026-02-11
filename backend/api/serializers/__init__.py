@@ -37,3 +37,4 @@ from .quick_create_serializer import (
 )
 from .user_serializer import AvatarUploadSerializer, ChangePasswordSerializer, UserProfileSerializer
 from .user_settings_serializer import UserSettingsSerializer
+from .workflow_notification_serializer import WorkflowNotificationSerializer

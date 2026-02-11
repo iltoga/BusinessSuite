@@ -1,0 +1,37 @@
+<div class="space-y-4">
+  <div class="flex items-center justify-between">
+    <h1 class="text-xl font-semibold">Workflow Notifications</h1>
+    <button z-button zType="secondary" (click)="load()">Refresh</button>
+  </div>
+
+  <div class="overflow-auto border rounded">
+    <table class="min-w-full text-sm">
+      <thead>
+        <tr class="border-b text-left">
+          <th class="p-2">ID</th>
+          <th class="p-2">Status</th>
+          <th class="p-2">Recipient</th>
+          <th class="p-2">Subject</th>
+          <th class="p-2">Scheduled</th>
+          <th class="p-2">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (item of notifications(); track item.id) {
+          <tr class="border-b">
+            <td class="p-2">{{ item.id }}</td>
+            <td class="p-2">{{ item.status }}</td>
+            <td class="p-2">{{ item.recipient }}</td>
+            <td class="p-2">{{ item.subject }}</td>
+            <td class="p-2">{{ item.scheduled_for || '-' }}</td>
+            <td class="p-2 flex gap-2">
+              <button z-button zSize="sm" (click)="resend(item.id)">Resend</button>
+              <button z-button zType="secondary" zSize="sm" (click)="cancel(item.id)">Cancel</button>
+              <button z-button zType="destructive" zSize="sm" (click)="remove(item.id)">Delete</button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

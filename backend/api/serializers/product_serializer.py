@@ -45,6 +45,7 @@ class TaskNestedSerializer(serializers.ModelSerializer):
             "duration",
             "duration_is_business_days",
             "notify_days_before",
+            "add_task_to_calendar",
             "last_step",
         ]
 

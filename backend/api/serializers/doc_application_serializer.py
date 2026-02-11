@@ -18,6 +18,7 @@ class DocApplicationSerializer(serializers.ModelSerializer):
             "product",
             "doc_date",
             "due_date",
+            "add_deadlines_to_calendar",
             "status",
             "notes",
             "created_at",
@@ -47,6 +48,7 @@ class DocApplicationSerializerWithRelations(serializers.ModelSerializer):
             "product",
             "doc_date",
             "due_date",
+            "add_deadlines_to_calendar",
             "status",
             "notes",
             "created_at",
@@ -110,6 +112,7 @@ class DocApplicationInvoiceSerializer(serializers.ModelSerializer):
             "product",
             "doc_date",
             "due_date",
+            "add_deadlines_to_calendar",
             "status",
             "notes",
             "str_field",
@@ -142,6 +145,7 @@ class DocApplicationDetailSerializer(serializers.ModelSerializer):
             "product",
             "doc_date",
             "due_date",
+            "add_deadlines_to_calendar",
             "status",
             "notes",
             "created_at",
@@ -186,8 +190,16 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DocApplication
-        fields = ["id", "customer", "product", "doc_date", "notes", "document_types"]
+        fields = ["id", "customer", "product", "doc_date", "due_date", "notes", "add_deadlines_to_calendar", "document_types"]
         read_only_fields = ["id"]
+
+
+    def validate(self, attrs):
+        doc_date = attrs.get("doc_date") or getattr(self.instance, "doc_date", None)
+        due_date = attrs.get("due_date") or getattr(self.instance, "due_date", None)
+        if due_date and doc_date and due_date < doc_date:
+            raise serializers.ValidationError({"due_date": "Due date cannot be before document date."})
+        return attrs
 
     def create(self, validated_data):
         from django.core.files import File
@@ -203,6 +215,17 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
         user = self.context["request"].user
 
         # Create application
+        if not validated_data.get("due_date"):
+            product = validated_data.get("product")
+            doc_date = validated_data.get("doc_date")
+            next_calendar_task = product.tasks.filter(add_task_to_calendar=True).order_by("step").first() if product else None
+            if next_calendar_task:
+                from core.utils.dateutils import calculate_due_date
+
+                validated_data["due_date"] = calculate_due_date(doc_date, next_calendar_task.duration, next_calendar_task.duration_is_business_days)
+            else:
+                validated_data["due_date"] = doc_date
+
         validated_data["created_by"] = user
         application = DocApplication.objects.create(**validated_data)
 
@@ -248,6 +271,10 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
         # Perform auto-import
         if has_auto_passport:
             self._auto_import_passport(application, user)
+
+        from customer_applications.services.application_calendar_service import ApplicationCalendarService
+
+        ApplicationCalendarService().sync_next_task_deadline(application)
 
         return application
 
@@ -404,8 +431,12 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         # Allow updating main fields only
-        for attr in ["doc_date", "notes", "product", "customer"]:
+        for attr in ["doc_date", "due_date", "notes", "product", "customer", "add_deadlines_to_calendar"]:
             if attr in validated_data:
                 setattr(instance, attr, validated_data[attr])
         instance.save()
+
+        from customer_applications.services.application_calendar_service import ApplicationCalendarService
+
+        ApplicationCalendarService().sync_next_task_deadline(instance)
         return instance

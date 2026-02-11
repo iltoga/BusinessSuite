@@ -57,6 +57,7 @@ router.register(r"tasks", GoogleTasksViewSet, basename="tasks")
 # Admin tools (superuser only) - used by Angular admin components
 router.register(r"backups", BackupsViewSet, basename="backups")
 router.register(r"server-management", ServerManagementViewSet, basename="server-management")
+router.register(r"workflow-notifications", views.WorkflowNotificationViewSet, basename="workflow-notifications")
 
 urlpatterns = [
     # OpenAPI schema endpoints for API documentation and client generation

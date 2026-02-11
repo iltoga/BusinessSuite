@@ -110,7 +110,8 @@ class GoogleClient:
             "description": data.get("description", ""),
             "start": {"dateTime": start_time, "timeZone": TIMEZONE},
             "end": {"dateTime": end_time, "timeZone": TIMEZONE},
-            "reminders": {
+            "reminders": data.get("reminders")
+            or {
                 "useDefault": False,
                 "overrides": [{"method": "email", "minutes": 60}, {"method": "popup", "minutes": 10}],
             },
