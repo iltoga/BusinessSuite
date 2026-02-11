@@ -1,6 +1,7 @@
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 
 from django.conf import settings
+from django.utils import timezone
 
 from core.utils.google_client import GoogleClient
 from customer_applications.models import WorkflowNotification
@@ -53,7 +54,8 @@ class ApplicationCalendarService:
 
     def _create_notification(self, application, task, due_date, event):
         notify_days = task.notify_days_before or 0
-        scheduled_for = due_date - timedelta(days=notify_days)
+        scheduled_date = due_date - timedelta(days=notify_days)
+        scheduled_for = timezone.make_aware(datetime.combine(scheduled_date, time.min))
 
         if not application.notify_customer_too:
             return None

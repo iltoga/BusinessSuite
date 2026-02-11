@@ -31,7 +31,7 @@ class WorkflowNotification(models.Model):
     doc_workflow = models.ForeignKey(
         "customer_applications.DocWorkflow", related_name="notifications", on_delete=models.SET_NULL, null=True, blank=True
     )
-    scheduled_for = models.DateField(null=True, blank=True)
+    scheduled_for = models.DateTimeField(null=True, blank=True)
     sent_at = models.DateTimeField(null=True, blank=True)
     provider_message = models.TextField(blank=True)
     external_reference = models.CharField(max_length=255, blank=True)

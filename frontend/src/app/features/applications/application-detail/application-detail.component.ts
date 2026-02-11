@@ -1,5 +1,6 @@
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -14,6 +15,7 @@ import {
   type OnInit,
 } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import {
@@ -27,10 +29,12 @@ import { AuthService } from '@/core/services/auth.service';
 import { DocumentsService } from '@/core/services/documents.service';
 import { JobService } from '@/core/services/job.service';
 import { GlobalToastService } from '@/core/services/toast.service';
+import { DocumentTypesService } from '@/core/api/api/document-types.service';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
 import { ZardComboboxComponent, type ZardComboboxOption } from '@/shared/components/combobox';
+import { ZardDateInputComponent } from '@/shared/components/date-input';
 import { DocumentPreviewComponent } from '@/shared/components/document-preview';
 import { FileUploadComponent } from '@/shared/components/file-upload';
 import { ZardIconComponent } from '@/shared/components/icon';
@@ -41,6 +45,7 @@ import {
   TableSkeletonComponent,
   ZardSkeletonComponent,
 } from '@/shared/components/skeleton';
+import { ZardTooltipImports } from '@/shared/components/tooltip';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 import { HelpService } from '@/shared/services/help.service';
 import { downloadBlob } from '@/shared/utils/file-download';
@@ -52,11 +57,13 @@ import { downloadBlob } from '@/shared/utils/file-download';
     CommonModule,
     RouterLink,
     ReactiveFormsModule,
+    FormsModule,
     DragDropModule,
     ZardBadgeComponent,
     ZardButtonComponent,
     ZardCardComponent,
     ZardComboboxComponent,
+    ZardDateInputComponent,
     DocumentPreviewComponent,
     FileUploadComponent,
     ZardIconComponent,
@@ -67,6 +74,7 @@ import { downloadBlob } from '@/shared/utils/file-download';
     TableSkeletonComponent,
     ZardSkeletonComponent,
     AppDatePipe,
+    ...ZardTooltipImports,
   ],
   templateUrl: './application-detail.component.html',
   styleUrls: ['./application-detail.component.css'],
@@ -78,6 +86,7 @@ export class ApplicationDetailComponent implements OnInit {
   private applicationsService = inject(ApplicationsService);
   private documentsService = inject(DocumentsService);
   private jobService = inject(JobService);
+  private documentTypesService = inject(DocumentTypesService);
   private authService = inject(AuthService);
   private toast = inject(GlobalToastService);
   private fb = inject(FormBuilder);
@@ -85,6 +94,7 @@ export class ApplicationDetailComponent implements OnInit {
   private platformId = inject(PLATFORM_ID);
   private readonly isBrowser = isPlatformBrowser(this.platformId);
   private help = inject(HelpService);
+  private http = inject(HttpClient);
 
   readonly application = signal<ApplicationDetail | null>(null);
   readonly isLoading = signal(true);
@@ -124,6 +134,10 @@ export class ApplicationDetailComponent implements OnInit {
   readonly workflowAction = signal<string | null>(null);
   readonly originSearchQuery = signal<string | null>(null);
   readonly isSuperuser = this.authService.isSuperuser;
+  readonly isSavingMeta = signal(false);
+  readonly editableNotes = signal('');
+  readonly selectedNewDocType = signal<string | null>(null);
+  readonly docTypeOptions = signal<ZardComboboxOption[]>([]);
 
   // PDF Merge and Selection
   readonly localUploadedDocuments = signal<ApplicationDocument[]>([]);
@@ -151,20 +165,6 @@ export class ApplicationDetailComponent implements OnInit {
 
     const application = this.application();
     if (!application) return;
-
-    // E --> Edit
-    if (event.key === 'E' && !event.ctrlKey && !event.altKey && !event.metaKey) {
-      if (application.status !== 'completed') {
-        event.preventDefault();
-        this.router.navigate(['/applications', application.id, 'edit'], {
-          state: {
-            from: 'applications',
-            focusId: application.id,
-            searchQuery: this.originSearchQuery(),
-          },
-        });
-      }
-    }
 
     // B or Left Arrow --> Back
     if (
@@ -238,6 +238,7 @@ export class ApplicationDetailComponent implements OnInit {
       return;
     }
     this.loadApplication(id);
+    this.loadDocumentTypes();
 
     this.destroyRef.onDestroy(() => {
       if (this.pollTimer) {
@@ -682,12 +683,95 @@ export class ApplicationDetailComponent implements OnInit {
     this.router.navigate(['/applications'], { state: { focusTable: true } });
   }
 
+  onInlineDateChange(field: 'docDate' | 'dueDate', value: Date | null): void {
+    if (!value) return;
+    const iso = value.toISOString().slice(0, 10);
+    this.updateApplicationPartial({ [field]: iso } as any, `${field === 'docDate' ? 'Document' : 'Due'} date updated`);
+  }
+
+  getDocDateAsDate(): Date | null {
+    const value = this.application()?.docDate;
+    return value ? new Date(value) : null;
+  }
+
+  getDueDateAsDate(): Date | null {
+    const value = this.application()?.dueDate;
+    return value ? new Date(value) : null;
+  }
+
+  onCalendarToggle(enabled: boolean): void {
+    this.updateApplicationPartial({ addDeadlinesToCalendar: enabled }, 'Calendar sync updated');
+  }
+
+  onNotesBlur(): void {
+    const app = this.application();
+    if (!app) return;
+    const next = this.editableNotes().trim();
+    if ((app.notes ?? '').trim() === next) return;
+    this.updateApplicationPartial({ notes: next }, 'Notes updated');
+  }
+
+  addApplicationDocument(): void {
+    const docTypeId = this.selectedNewDocType();
+    const app = this.application();
+    if (!docTypeId || !app) return;
+    const payloadDocs = app.documents.map((d) => ({ id: d.docType.id, required: d.required }));
+    if (!payloadDocs.some((d) => String(d.id) === String(docTypeId))) {
+      payloadDocs.push({ id: Number(docTypeId), required: true });
+    }
+    this.updateApplicationPartial({ documentTypes: payloadDocs }, 'Document added');
+    this.selectedNewDocType.set(null);
+  }
+
+  removeApplicationDocument(doc: ApplicationDocument): void {
+    const app = this.application();
+    if (!app) return;
+    const payloadDocs = app.documents
+      .filter((d) => d.docType.id !== doc.docType.id)
+      .map((d) => ({ id: d.docType.id, required: d.required }));
+    this.updateApplicationPartial({ documentTypes: payloadDocs }, 'Document removed');
+  }
+
+  private updateApplicationPartial(payload: Record<string, unknown>, successMessage: string): void {
+    const app = this.application();
+    if (!app || this.isSavingMeta()) return;
+    this.isSavingMeta.set(true);
+    this.http.patch<any>(`/api/customer-applications/${app.id}/`, payload).subscribe({
+      next: (job) => {
+        this.jobService.openProgressDialog(job.id, 'Updating Application').subscribe((finalJob) => {
+          if (finalJob?.status === 'completed') {
+            this.toast.success(successMessage);
+            this.loadApplication(app.id);
+          } else {
+            this.isSavingMeta.set(false);
+          }
+        });
+      },
+      error: () => {
+        this.toast.error('Failed to update application');
+        this.isSavingMeta.set(false);
+      },
+    });
+  }
+
+  private loadDocumentTypes(): void {
+    this.documentTypesService.documentTypesList().subscribe({
+      next: (types) =>
+        this.docTypeOptions.set(
+          (types ?? []).map((t) => ({ value: String(t.id), label: t.name })),
+        ),
+      error: () => this.docTypeOptions.set([]),
+    });
+  }
+
   private loadApplication(id: number): void {
     this.isLoading.set(true);
     this.applicationsService.getApplication(id).subscribe({
       next: (data) => {
         this.application.set(data);
+        this.editableNotes.set(data?.notes ?? '');
         this.isLoading.set(false);
+        this.isSavingMeta.set(false);
 
         // Update contextual help for this specific application
         const cust = data?.customer?.fullName ?? 'unknown customer';
@@ -702,6 +786,7 @@ export class ApplicationDetailComponent implements OnInit {
       error: () => {
         this.toast.error('Failed to load application');
         this.isLoading.set(false);
+        this.isSavingMeta.set(false);
       },
     });
   }

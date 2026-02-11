@@ -195,11 +195,11 @@ def send_pending_notifications_task():
     from customer_applications.models import WorkflowNotification
     from notifications.services.providers import NotificationDispatcher
 
-    today = timezone.localdate()
+    now = timezone.now()
     notifications = WorkflowNotification.objects.filter(
         status=WorkflowNotification.STATUS_PENDING,
         scheduled_for__isnull=False,
-        scheduled_for__lte=today,
+        scheduled_for__lte=now,
     )[:100]
 
     dispatcher = NotificationDispatcher()

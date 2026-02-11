@@ -84,20 +84,45 @@
         </div>
         <div>
           <div class="text-sm text-muted-foreground">Document Date</div>
-          <div>{{ application()!.docDate | appDate }}</div>
+          <div class="flex items-center gap-2">
+            <z-date-input
+              [ngModel]="getDocDateAsDate()"
+              (ngModelChange)="onInlineDateChange('docDate', $event)"
+              placeholder="DD-MM-YYYY"
+            />
+          </div>
         </div>
         @if (application()!.dueDate) {
           <div>
             <div class="text-sm text-muted-foreground">Due Date</div>
-            <div>{{ application()!.dueDate | appDate }}</div>
+            <z-date-input
+              [ngModel]="getDueDateAsDate()"
+              (ngModelChange)="onInlineDateChange('dueDate', $event)"
+              placeholder="DD-MM-YYYY"
+            />
           </div>
         }
-        @if (application()!.notes) {
-          <div class="md:col-span-2">
-            <div class="text-sm text-muted-foreground">Notes</div>
-            <div>{{ application()!.notes }}</div>
-          </div>
-        }
+        <div>
+          <label class="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              [checked]="application()!.addDeadlinesToCalendar"
+              (change)="onCalendarToggle($any($event.target).checked)"
+              class="h-4 w-4 rounded border text-primary"
+            />
+            Add deadlines to calendar
+          </label>
+        </div>
+        <div class="md:col-span-2">
+          <div class="text-sm text-muted-foreground">Notes</div>
+          <textarea
+            z-input
+            rows="3"
+            [ngModel]="editableNotes()"
+            (ngModelChange)="editableNotes.set($event)"
+            (blur)="onNotesBlur()"
+          ></textarea>
+        </div>
       </div>
     </z-card>
 
@@ -212,6 +237,15 @@
             </button>
             <button z-button zType="outline" (click)="deselectAllDocuments()">Deselect All</button>
           } @else {
+            <z-combobox
+              [options]="docTypeOptions()"
+              [value]="selectedNewDocType()"
+              [searchable]="true"
+              placeholder="Select doc type"
+              [zWidth]="'full'"
+              (zValueChange)="selectedNewDocType.set($event)"
+            />
+            <button z-button zType="outline" (click)="addApplicationDocument()">Add application document</button>
             <button z-button zType="outline" (click)="selectAllDocuments()">Select All</button>
           }
         </div>
@@ -315,6 +349,9 @@
                   <td class="py-3">
                     <button z-button zType="default" zSize="sm" (click)="openUpload(doc)">
                       Upload
+                    </button>
+                    <button z-button zType="destructive" zSize="sm" class="ml-2" (click)="removeApplicationDocument(doc)">
+                      Remove
                     </button>
                   </td>
                 </tr>

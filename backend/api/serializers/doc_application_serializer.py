@@ -146,6 +146,8 @@ class DocApplicationDetailSerializer(serializers.ModelSerializer):
             "doc_date",
             "due_date",
             "add_deadlines_to_calendar",
+            "notify_customer_too",
+            "notify_customer_channel",
             "status",
             "notes",
             "created_at",
@@ -304,6 +306,58 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
 
         ApplicationCalendarService().sync_next_task_deadline(application)
 
+        return application
+
+    def update(self, instance, validated_data):
+        from django.utils import timezone
+
+        from customer_applications.models.document import Document
+        from products.models.document_type import DocumentType
+
+        document_types = validated_data.pop("document_types", None)
+        application = super().update(instance, validated_data)
+
+        if document_types is not None:
+            desired: dict[int, bool] = {}
+            for dt in document_types:
+                doc_type_id = dt.get("doc_type_id") or dt.get("id")
+                if not doc_type_id:
+                    continue
+                desired[int(doc_type_id)] = bool(dt.get("required", True))
+
+            existing_docs = Document.objects.filter(doc_application=application)
+            existing_by_type = {doc.doc_type_id: doc for doc in existing_docs}
+
+            # Remove only pending placeholder docs that are no longer requested.
+            for doc in existing_docs:
+                if doc.doc_type_id not in desired and not doc.completed:
+                    doc.delete()
+
+            user = self.context.get("request").user if self.context.get("request") else None
+            for doc_type_id, required in desired.items():
+                existing = existing_by_type.get(doc_type_id)
+                if existing:
+                    if existing.required != required:
+                        existing.required = required
+                        existing.updated_by = user
+                        existing.updated_at = timezone.now()
+                        existing.save(update_fields=["required", "updated_by", "updated_at"])
+                    continue
+                try:
+                    doc_type = DocumentType.objects.get(pk=doc_type_id)
+                except DocumentType.DoesNotExist:
+                    raise serializers.ValidationError({"document_types": f"Invalid document type id: {doc_type_id}"})
+                Document.objects.create(
+                    doc_application=application,
+                    doc_type=doc_type,
+                    required=required,
+                    created_by=user,
+                    updated_by=user,
+                )
+
+        from customer_applications.services.application_calendar_service import ApplicationCalendarService
+
+        ApplicationCalendarService().sync_next_task_deadline(application)
         return application
 
     def _can_auto_import_passport(self, application) -> bool:
