@@ -115,7 +115,15 @@ def parse_bool(value, default=False):
 
 def launch_async_job(task_func, user, *args, **kwargs):
     """Utility to launch a Huey task with an AsyncJob record."""
-    job = AsyncJob.objects.create(task_name=task_func.__name__, created_by=user, status=AsyncJob.STATUS_PENDING)
+    # Huey TaskWrapper doesn't have __name__, but the original function does
+    task_name = getattr(task_func, "__name__", None)
+    if task_name is None:
+        if hasattr(task_func, "func"):
+            task_name = getattr(task_func.func, "__name__", str(task_func))
+        else:
+            task_name = getattr(task_func, "name", str(task_func))
+
+    job = AsyncJob.objects.create(task_name=task_name, created_by=user, status=AsyncJob.STATUS_PENDING)
     # Huey tasks are called with job_id string as first arg
     task_func(str(job.id), *args, **kwargs)
     return job

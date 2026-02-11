@@ -1,4 +1,4 @@
-import { Directive, inject, Injectable, input, computed } from '@angular/core';
+import { Directive, inject, Injectable, input, signal } from '@angular/core';
 
 @Injectable({ providedIn: 'root' })
 class ZardIdInternalService {
@@ -17,5 +17,12 @@ export class ZardIdDirective {
 
   readonly zardId = input('ssr');
 
-  readonly id = computed(() => this.idService.generate(this.zardId()));
+  // Use a simple non-computed property for the ID to ensure it is generated once per instance
+  // and stays stable. Computed signals should be pure.
+  public readonly id = signal('');
+
+  constructor() {
+    // Generate the ID once on initialization
+    this.id.set(this.idService.generate(this.zardId()));
+  }
 }

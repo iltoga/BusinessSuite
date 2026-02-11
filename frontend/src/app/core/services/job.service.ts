@@ -1,5 +1,6 @@
+import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { catchError, Observable, switchMap, takeWhile, timer } from 'rxjs';
 
 import { AsyncJob } from '@/core/api';
 import { AuthService } from '@/core/services/auth.service';
@@ -15,6 +16,7 @@ export class JobService {
   constructor(
     private sseService: SseService,
     private authService: AuthService,
+    private http: HttpClient,
   ) {}
 
   /**
@@ -25,9 +27,25 @@ export class JobService {
    */
   watchJob(jobId: string): Observable<AsyncJob> {
     const token = this.authService.getToken();
-    // Use the explicit SSE endpoint path
-    const url = `/api/async-jobs/status/${jobId}/?token=${token}`;
-    return this.sseService.connect<AsyncJob>(url);
+    const params = new URLSearchParams();
+
+    if (token) {
+      params.set('token', token);
+    } else if (this.authService.isMockEnabled()) {
+      params.set('token', 'mock-token');
+    }
+
+    const query = params.toString();
+    const url = `/api/async-jobs/status/${jobId}/${query ? `?${query}` : ''}`;
+
+    return this.sseService.connect<AsyncJob>(url).pipe(catchError(() => this.pollJob(jobId)));
+  }
+
+  private pollJob(jobId: string): Observable<AsyncJob> {
+    return timer(0, 1000).pipe(
+      switchMap(() => this.http.get<AsyncJob>(`/api/async-jobs/${jobId}/`)),
+      takeWhile((job) => !this.isFinished(job), true),
+    );
   }
 
   /**
@@ -45,8 +63,10 @@ export class JobService {
     const dialogRef = this.dialogService.create({
       zContent: JobProgressDialogComponent,
       zData: { jobId, title },
+      zTitle: title || 'Processing Task...',
       zWidth: '450px',
       zClosable: false,
+      zHideFooter: true,
     });
 
     return dialogRef.afterClosed();

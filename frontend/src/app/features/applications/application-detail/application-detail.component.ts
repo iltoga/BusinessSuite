@@ -14,10 +14,10 @@ import {
   untracked,
   type OnInit,
 } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { FormsModule } from '@angular/forms';
+import { FormBuilder, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
+import { DocumentTypesService } from '@/core/api/api/document-types.service';
 import {
   ApplicationsService,
   type ApplicationDetail,
@@ -29,7 +29,6 @@ import { AuthService } from '@/core/services/auth.service';
 import { DocumentsService } from '@/core/services/documents.service';
 import { JobService } from '@/core/services/job.service';
 import { GlobalToastService } from '@/core/services/toast.service';
-import { DocumentTypesService } from '@/core/api/api/document-types.service';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
@@ -138,6 +137,17 @@ export class ApplicationDetailComponent implements OnInit {
   readonly editableNotes = signal('');
   readonly selectedNewDocType = signal<string | null>(null);
   readonly docTypeOptions = signal<ZardComboboxOption[]>([]);
+
+  // Computed signals for stable object references in templates
+  readonly docDateAsDate = computed(() => {
+    const value = this.application()?.docDate;
+    return value ? new Date(value) : null;
+  });
+
+  readonly dueDateAsDate = computed(() => {
+    const value = this.application()?.dueDate;
+    return value ? new Date(value) : null;
+  });
 
   // PDF Merge and Selection
   readonly localUploadedDocuments = signal<ApplicationDocument[]>([]);
@@ -686,17 +696,10 @@ export class ApplicationDetailComponent implements OnInit {
   onInlineDateChange(field: 'docDate' | 'dueDate', value: Date | null): void {
     if (!value) return;
     const iso = value.toISOString().slice(0, 10);
-    this.updateApplicationPartial({ [field]: iso } as any, `${field === 'docDate' ? 'Document' : 'Due'} date updated`);
-  }
-
-  getDocDateAsDate(): Date | null {
-    const value = this.application()?.docDate;
-    return value ? new Date(value) : null;
-  }
-
-  getDueDateAsDate(): Date | null {
-    const value = this.application()?.dueDate;
-    return value ? new Date(value) : null;
+    this.updateApplicationPartial(
+      { [field]: iso } as any,
+      `${field === 'docDate' ? 'Document' : 'Due'} date updated`,
+    );
   }
 
   onCalendarToggle(enabled: boolean): void {
@@ -757,9 +760,7 @@ export class ApplicationDetailComponent implements OnInit {
   private loadDocumentTypes(): void {
     this.documentTypesService.documentTypesList().subscribe({
       next: (types) =>
-        this.docTypeOptions.set(
-          (types ?? []).map((t) => ({ value: String(t.id), label: t.name })),
-        ),
+        this.docTypeOptions.set((types ?? []).map((t) => ({ value: String(t.id), label: t.name }))),
       error: () => this.docTypeOptions.set([]),
     });
   }

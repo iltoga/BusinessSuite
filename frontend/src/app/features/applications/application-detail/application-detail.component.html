@@ -75,33 +75,34 @@
     </div>
 
     <z-card class="p-6">
-      <div class="grid gap-4 md:grid-cols-2">
-        <div>
-          <div class="text-sm text-muted-foreground">Status</div>
-          <z-badge [zType]="application()!.status === 'completed' ? 'success' : 'warning'">
-            {{ application()!.status | titlecase }}
-          </z-badge>
-        </div>
-        <div>
-          <div class="text-sm text-muted-foreground">Document Date</div>
-          <div class="flex items-center gap-2">
+      <div class="grid gap-6">
+        <div class="flex flex-wrap items-end gap-6">
+          <div class="w-full sm:w-48">
+            <div class="text-sm text-muted-foreground mb-1">Document Date</div>
             <z-date-input
-              [ngModel]="getDocDateAsDate()"
+              [ngModel]="docDateAsDate()"
               (ngModelChange)="onInlineDateChange('docDate', $event)"
               placeholder="DD-MM-YYYY"
             />
           </div>
-        </div>
-        @if (application()!.dueDate) {
-          <div>
-            <div class="text-sm text-muted-foreground">Due Date</div>
-            <z-date-input
-              [ngModel]="getDueDateAsDate()"
-              (ngModelChange)="onInlineDateChange('dueDate', $event)"
-              placeholder="DD-MM-YYYY"
-            />
+          @if (application()!.dueDate) {
+            <div class="w-full sm:w-48">
+              <div class="text-sm text-muted-foreground mb-1">Due Date</div>
+              <z-date-input
+                [ngModel]="dueDateAsDate()"
+                (ngModelChange)="onInlineDateChange('dueDate', $event)"
+                placeholder="DD-MM-YYYY"
+              />
+            </div>
+          }
+          <div class="ml-auto flex flex-col items-end">
+            <div class="text-sm text-muted-foreground mb-1 text-right">Application Status</div>
+            <z-badge [zType]="application()!.status === 'completed' ? 'success' : 'warning'">
+              {{ application()!.status | titlecase }}
+            </z-badge>
           </div>
-        }
+        </div>
+
         <div>
           <label class="flex items-center gap-2 text-sm">
             <input
@@ -113,11 +114,13 @@
             Add deadlines to calendar
           </label>
         </div>
-        <div class="md:col-span-2">
-          <div class="text-sm text-muted-foreground">Notes</div>
+
+        <div>
+          <div class="text-sm text-muted-foreground mb-1">Notes</div>
           <textarea
             z-input
             rows="3"
+            class="w-full"
             [ngModel]="editableNotes()"
             (ngModelChange)="editableNotes.set($event)"
             (blur)="onNotesBlur()"
@@ -245,7 +248,9 @@
               [zWidth]="'full'"
               (zValueChange)="selectedNewDocType.set($event)"
             />
-            <button z-button zType="outline" (click)="addApplicationDocument()">Add application document</button>
+            <button z-button zType="outline" (click)="addApplicationDocument()">
+              Add application document
+            </button>
             <button z-button zType="outline" (click)="selectAllDocuments()">Select All</button>
           }
         </div>
@@ -350,7 +355,13 @@
                     <button z-button zType="default" zSize="sm" (click)="openUpload(doc)">
                       Upload
                     </button>
-                    <button z-button zType="destructive" zSize="sm" class="ml-2" (click)="removeApplicationDocument(doc)">
+                    <button
+                      z-button
+                      zType="destructive"
+                      zSize="sm"
+                      class="ml-2"
+                      (click)="removeApplicationDocument(doc)"
+                    >
                       Remove
                     </button>
                   </td>
