@@ -40,3 +40,4 @@ export * from './task';
 export * from './task-nested';
 export * from './user-profile';
 export * from './user-settings';
+export * from './workflow-notification';

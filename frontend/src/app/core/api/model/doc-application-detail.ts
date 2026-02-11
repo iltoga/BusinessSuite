@@ -20,6 +20,7 @@ export interface DocApplicationDetail {
     readonly product: Product;
     readonly docDate: string;
     readonly dueDate: string | null;
+    readonly addDeadlinesToCalendar: boolean;
     /**
      * * `pending` - Pending * `processing` - Processing * `completed` - Completed * `rejected` - Rejected
      */

@@ -16,7 +16,6 @@ export interface Task {
     duration?: number;
     durationIsBusinessDays?: boolean;
     notifyDaysBefore?: number;
-    addTaskToCalendar?: boolean;
     lastStep?: boolean;
 }
 

@@ -15,8 +15,8 @@ export interface DocApplicationCreateUpdate {
     product: number;
     docDate: string;
     dueDate?: string | null;
-    addDeadlinesToCalendar?: boolean;
     notes?: string | null;
+    addDeadlinesToCalendar?: boolean;
     documentTypes?: Array<{ [key: string]: any; }>;
 }
 

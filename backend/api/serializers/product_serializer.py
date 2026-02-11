@@ -1,10 +1,9 @@
-from drf_spectacular.utils import extend_schema_field
-from rest_framework import serializers
-
 from api.serializers.document_type_serializer import DocumentTypeSerializer
+from drf_spectacular.utils import extend_schema_field
 from products.models import Product
 from products.models.document_type import DocumentType
 from products.models.task import Task
+from rest_framework import serializers
 
 
 def _ordered_document_names(document_ids):
@@ -32,7 +31,7 @@ def ordered_document_types(names):
 
 
 class TaskNestedSerializer(serializers.ModelSerializer):
-    id = serializers.IntegerField(required=False)
+    id = serializers.IntegerField(required=False, allow_null=True)
 
     class Meta:
         model = Task

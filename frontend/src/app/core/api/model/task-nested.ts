@@ -10,7 +10,7 @@
 
 
 export interface TaskNested { 
-    id?: number;
+    id?: number | null;
     step: number;
     name: string;
     description?: string | null;

@@ -6448,6 +6448,494 @@ paths:
               schema:
                 $ref: '#/components/schemas/UserSettings'
           description: ''
+  /api/v1/workflow-notifications/:
+    get:
+      operationId: v1WorkflowNotificationsList
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WorkflowNotification'
+          description: ''
+    post:
+      operationId: v1WorkflowNotificationsCreate
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowNotification'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WorkflowNotification'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WorkflowNotification'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/WorkflowNotification'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowNotification'
+          description: ''
+  /api/v1/workflow-notifications/{id}/:
+    get:
+      operationId: v1WorkflowNotificationsRetrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this workflow notification.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowNotification'
+          description: ''
+    put:
+      operationId: v1WorkflowNotificationsUpdate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this workflow notification.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowNotification'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WorkflowNotification'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WorkflowNotification'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/WorkflowNotification'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowNotification'
+          description: ''
+    patch:
+      operationId: v1WorkflowNotificationsPartialUpdate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this workflow notification.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowNotification'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WorkflowNotification'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WorkflowNotification'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/WorkflowNotification'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowNotification'
+          description: ''
+    delete:
+      operationId: v1WorkflowNotificationsDestroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this workflow notification.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/workflow-notifications/{id}/cancel/:
+    post:
+      operationId: v1WorkflowNotificationsCancelCreate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this workflow notification.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowNotification'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WorkflowNotification'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WorkflowNotification'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/WorkflowNotification'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowNotification'
+          description: ''
+  /api/v1/workflow-notifications/{id}/resend/:
+    post:
+      operationId: v1WorkflowNotificationsResendCreate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this workflow notification.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowNotification'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WorkflowNotification'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WorkflowNotification'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/WorkflowNotification'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowNotification'
+          description: ''
+  /api/workflow-notifications/:
+    get:
+      operationId: workflowNotificationsList
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - workflow-notifications
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WorkflowNotification'
+          description: ''
+    post:
+      operationId: workflowNotificationsCreate
+      tags:
+      - workflow-notifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowNotification'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WorkflowNotification'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WorkflowNotification'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/WorkflowNotification'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowNotification'
+          description: ''
+  /api/workflow-notifications/{id}/:
+    get:
+      operationId: workflowNotificationsRetrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this workflow notification.
+        required: true
+      tags:
+      - workflow-notifications
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowNotification'
+          description: ''
+    put:
+      operationId: workflowNotificationsUpdate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this workflow notification.
+        required: true
+      tags:
+      - workflow-notifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowNotification'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WorkflowNotification'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WorkflowNotification'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/WorkflowNotification'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowNotification'
+          description: ''
+    patch:
+      operationId: workflowNotificationsPartialUpdate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this workflow notification.
+        required: true
+      tags:
+      - workflow-notifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowNotification'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WorkflowNotification'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WorkflowNotification'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/WorkflowNotification'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowNotification'
+          description: ''
+    delete:
+      operationId: workflowNotificationsDestroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this workflow notification.
+        required: true
+      tags:
+      - workflow-notifications
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/workflow-notifications/{id}/cancel/:
+    post:
+      operationId: workflowNotificationsCancelCreate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this workflow notification.
+        required: true
+      tags:
+      - workflow-notifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowNotification'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WorkflowNotification'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WorkflowNotification'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/WorkflowNotification'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowNotification'
+          description: ''
+  /api/workflow-notifications/{id}/resend/:
+    post:
+      operationId: workflowNotificationsResendCreate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this workflow notification.
+        required: true
+      tags:
+      - workflow-notifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowNotification'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WorkflowNotification'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WorkflowNotification'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/WorkflowNotification'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowNotification'
+          description: ''
   /api/app-config/:
     get:
       operationId: getAppConfig
@@ -6819,9 +7307,15 @@ components:
         doc_date:
           type: string
           format: date
+        due_date:
+          type: string
+          format: date
+          nullable: true
         notes:
           type: string
           nullable: true
+        add_deadlines_to_calendar:
+          type: boolean
         document_types:
           type: array
           items:
@@ -6856,6 +7350,9 @@ components:
           format: date
           readOnly: true
           nullable: true
+        add_deadlines_to_calendar:
+          type: boolean
+          readOnly: true
         status:
           enum:
           - pending
@@ -6926,6 +7423,7 @@ components:
           type: boolean
           readOnly: true
       required:
+      - add_deadlines_to_calendar
       - can_force_close
       - created_at
       - created_by
@@ -6970,6 +7468,9 @@ components:
           format: date
           readOnly: true
           nullable: true
+        add_deadlines_to_calendar:
+          type: boolean
+          readOnly: true
         status:
           enum:
           - pending
@@ -6992,6 +7493,7 @@ components:
           type: string
           readOnly: true
       required:
+      - add_deadlines_to_calendar
       - customer
       - doc_date
       - due_date
@@ -7017,6 +7519,8 @@ components:
           type: string
           format: date
           nullable: true
+        add_deadlines_to_calendar:
+          type: boolean
         status:
           enum:
           - pending
@@ -8241,6 +8745,7 @@ components:
       properties:
         id:
           type: integer
+          nullable: true
         step:
           type: integer
           maximum: 2147483647
@@ -8265,6 +8770,8 @@ components:
           type: integer
           maximum: 2147483647
           minimum: 0
+        add_task_to_calendar:
+          type: boolean
         last_step:
           type: boolean
       required:
@@ -8330,6 +8837,83 @@ components:
         dark_mode:
           type: boolean
         preferences: {}
+    WorkflowNotification:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        application_id:
+          type: integer
+          readOnly: true
+        status:
+          enum:
+          - pending
+          - sent
+          - failed
+          - cancelled
+          type: string
+          description: |-
+            * `pending` - Pending
+            * `sent` - Sent
+            * `failed` - Failed
+            * `cancelled` - Cancelled
+          x-spec-enum-id: a046de4b9ad561bf
+        channel:
+          type: string
+          maxLength: 20
+        subject:
+          type: string
+          maxLength: 255
+        body:
+          type: string
+        recipient:
+          type: string
+          format: email
+          maxLength: 254
+        scheduled_for:
+          type: string
+          format: date
+          nullable: true
+        sent_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        provider_message:
+          type: string
+          readOnly: true
+        external_reference:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        doc_application:
+          type: integer
+        doc_workflow:
+          type: integer
+          nullable: true
+        created_by:
+          type: integer
+          nullable: true
+      required:
+      - application_id
+      - body
+      - created_at
+      - doc_application
+      - external_reference
+      - id
+      - provider_message
+      - recipient
+      - sent_at
+      - subject
+      - updated_at
   securitySchemes:
     cookieAuth:
       type: apiKey

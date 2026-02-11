@@ -42,4 +42,6 @@ export * from './user-settings.service';
 import { UserSettingsService } from './user-settings.service';
 export * from './v1.service';
 import { V1Service } from './v1.service';
-export const APIS = [ApiTokenAuthService, BackupsService, CalendarService, ComputeService, CountryCodesService, CustomerApplicationsService, CustomersService, DashboardStatsService, DocumentOcrService, DocumentTypesService, DocumentsService, InvoicesService, LettersService, MockService, OcrService, PaymentsService, ProductsService, ServerManagementService, TasksService, UserProfileService, UserSettingsService, V1Service];
+export * from './workflow-notifications.service';
+import { WorkflowNotificationsService } from './workflow-notifications.service';
+export const APIS = [ApiTokenAuthService, BackupsService, CalendarService, ComputeService, CountryCodesService, CustomerApplicationsService, CustomersService, DashboardStatsService, DocumentOcrService, DocumentTypesService, DocumentsService, InvoicesService, LettersService, MockService, OcrService, PaymentsService, ProductsService, ServerManagementService, TasksService, UserProfileService, UserSettingsService, V1Service, WorkflowNotificationsService];

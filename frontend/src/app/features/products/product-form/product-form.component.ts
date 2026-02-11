@@ -275,18 +275,23 @@ export class ProductFormComponent implements OnInit {
       documents_min_validity: rawValue.documentsMinValidity,
       required_document_ids: rawValue.requiredDocumentIds,
       optional_document_ids: rawValue.optionalDocumentIds,
-      tasks: (rawValue.tasks || []).map((t: any) => ({
-        id: t.id,
-        step: t.step,
-        name: t.name,
-        description: t.description,
-        cost: t.cost !== null ? String(t.cost) : '0',
-        duration: t.duration,
-        add_task_to_calendar: t.addTaskToCalendar,
-        duration_is_business_days: t.durationIsBusinessDays,
-        notify_days_before: t.notifyDaysBefore,
-        last_step: t.lastStep,
-      })),
+      tasks: (rawValue.tasks || []).map((t: any) => {
+        const task: any = {
+          step: t.step,
+          name: t.name,
+          description: t.description,
+          cost: t.cost !== null ? String(t.cost) : '0',
+          duration: t.duration,
+          add_task_to_calendar: t.addTaskToCalendar,
+          duration_is_business_days: t.durationIsBusinessDays,
+          notify_days_before: t.notifyDaysBefore,
+          last_step: t.lastStep,
+        };
+        if (t.id != null) {
+          task.id = t.id;
+        }
+        return task;
+      }),
     } as any;
 
     if (this.isEditMode() && this.product()) {
