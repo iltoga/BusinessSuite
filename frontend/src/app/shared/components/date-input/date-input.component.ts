@@ -4,6 +4,7 @@ import {
   Component,
   computed,
   forwardRef,
+  inject,
   input,
   model,
   signal,
@@ -13,11 +14,14 @@ import {
 } from '@angular/core';
 import { NG_VALUE_ACCESSOR, type ControlValueAccessor } from '@angular/forms';
 
+import { ConfigService } from '@/core/services/config.service';
 import { ZardCalendarComponent } from '@/shared/components/calendar';
 import { ZardIconComponent } from '@/shared/components/icon';
 import { ZardInputDirective } from '@/shared/components/input';
 import { ZardInputGroupComponent } from '@/shared/components/input-group';
 import { ZardPopoverComponent, ZardPopoverDirective } from '@/shared/components/popover';
+
+type SupportedDateFormat = 'dd-MM-yyyy' | 'yyyy-MM-dd' | 'dd/MM/yyyy' | 'MM/dd/yyyy';
 
 @Component({
   selector: 'z-date-input',
@@ -36,7 +40,7 @@ import { ZardPopoverComponent, ZardPopoverDirective } from '@/shared/components/
       <input
         z-input
         type="text"
-        [placeholder]="placeholder()"
+        [placeholder]="effectivePlaceholder()"
         [value]="displayValue()"
         (input)="onInput($event)"
         (blur)="onBlur()"
@@ -87,28 +91,41 @@ import { ZardPopoverComponent, ZardPopoverDirective } from '@/shared/components/
   exportAs: 'zDateInput',
 })
 export class ZardDateInputComponent implements ControlValueAccessor {
+  private configService = inject(ConfigService);
+
   readonly calendarTemplate = viewChild.required<TemplateRef<unknown>>('calendarTemplate');
   readonly popoverDirective = viewChild<ZardPopoverDirective>('popoverDirective');
   readonly calendar = viewChild<ZardCalendarComponent>('calendar');
 
   readonly zSize = input<'sm' | 'default' | 'lg'>('default');
-  readonly placeholder = input<string>('DD-MM-YYYY');
+  readonly placeholder = input<string | null>(null);
   readonly value = model<Date | null>(null);
   readonly minDate = input<Date | null>(null);
   readonly maxDate = input<Date | null>(null);
   readonly disabled = model<boolean>(false);
 
   private inputValue = signal<string>('');
+  private readonly configuredDateFormat = computed<SupportedDateFormat>(() =>
+    this.normalizeDateFormat(this.configService.config().dateFormat),
+  );
 
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   private onChange: (value: Date | null) => void = () => {};
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   private onTouched: () => void = () => {};
 
+  protected readonly effectivePlaceholder = computed(() => {
+    const customPlaceholder = this.placeholder()?.trim();
+    if (customPlaceholder) {
+      return customPlaceholder;
+    }
+    return this.toPlaceholder(this.configuredDateFormat());
+  });
+
   protected readonly displayValue = computed(() => {
     const date = this.value();
     if (date instanceof Date && !isNaN(date.getTime())) {
-      return this.formatDateToDDMMYYYY(date);
+      return this.formatDateForDisplay(date);
     }
     return this.inputValue();
   });
@@ -138,7 +155,7 @@ export class ZardDateInputComponent implements ControlValueAccessor {
   protected onCalendarDateChange(date: Date | Date[]): void {
     const singleDate = Array.isArray(date) ? (date[0] ?? null) : date;
     this.value.set(singleDate);
-    this.inputValue.set(singleDate ? this.formatDateToDDMMYYYY(singleDate) : '');
+    this.inputValue.set(singleDate ? this.formatDateForDisplay(singleDate) : '');
     this.onChange(singleDate);
     this.onTouched();
     this.popoverDirective()?.hide();
@@ -155,41 +172,62 @@ export class ZardDateInputComponent implements ControlValueAccessor {
   }
 
   private parseDate(dateStr: string): Date | null {
-    // Try parsing DD-MM-YYYY format
-    const ddmmyyyyMatch = dateStr.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
-    if (ddmmyyyyMatch) {
-      const [, day, month, year] = ddmmyyyyMatch;
-      return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    const trimmed = dateStr.trim();
+    if (!trimmed) {
+      return null;
     }
 
-    // Try parsing ISO format (YYYY-MM-DD)
-    const isoMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (isoMatch) {
-      const [, year, month, day] = isoMatch;
-      return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    const configured = this.parseDateByFormat(trimmed, this.configuredDateFormat());
+    if (configured) {
+      return configured;
     }
 
-    // Try parsing other common formats (DD/MM/YYYY, MM/DD/YYYY)
-    const slashMatch = dateStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
-    if (slashMatch) {
-      const [, first, second, year] = slashMatch;
-      // Assume DD/MM/YYYY format (European)
-      return new Date(parseInt(year), parseInt(second) - 1, parseInt(first));
+    const fallbackFormats: SupportedDateFormat[] = [
+      'dd-MM-yyyy',
+      'yyyy-MM-dd',
+      'dd/MM/yyyy',
+      'MM/dd/yyyy',
+    ];
+
+    for (const format of fallbackFormats) {
+      if (format === this.configuredDateFormat()) {
+        continue;
+      }
+      const fallback = this.parseDateByFormat(trimmed, format);
+      if (fallback) {
+        return fallback;
+      }
+    }
+
+    const parsed = new Date(trimmed);
+    if (!Number.isNaN(parsed.getTime())) {
+      return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
     }
 
     return null;
   }
 
-  private formatDateToDDMMYYYY(date: Date): string {
+  private formatDateForDisplay(date: Date): string {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
-    return `${day}-${month}-${year}`;
+
+    switch (this.configuredDateFormat()) {
+      case 'yyyy-MM-dd':
+        return `${year}-${month}-${day}`;
+      case 'dd/MM/yyyy':
+        return `${day}/${month}/${year}`;
+      case 'MM/dd/yyyy':
+        return `${month}/${day}/${year}`;
+      case 'dd-MM-yyyy':
+      default:
+        return `${day}-${month}-${year}`;
+    }
   }
 
   writeValue(value: Date | null): void {
     this.value.set(value);
-    this.inputValue.set(value ? this.formatDateToDDMMYYYY(value) : '');
+    this.inputValue.set(value ? this.formatDateForDisplay(value) : '');
   }
 
   registerOnChange(fn: (value: Date | null) => void): void {
@@ -202,5 +240,66 @@ export class ZardDateInputComponent implements ControlValueAccessor {
 
   setDisabledState(isDisabled: boolean): void {
     this.disabled.set(isDisabled);
+  }
+
+  private normalizeDateFormat(format: string | null | undefined): SupportedDateFormat {
+    const normalized = (format ?? '').trim();
+    if (normalized === 'yyyy-MM-dd') return 'yyyy-MM-dd';
+    if (normalized === 'dd/MM/yyyy') return 'dd/MM/yyyy';
+    if (normalized === 'MM/dd/yyyy') return 'MM/dd/yyyy';
+    return 'dd-MM-yyyy';
+  }
+
+  private toPlaceholder(format: SupportedDateFormat): string {
+    return format.replace('dd', 'DD').replace('yyyy', 'YYYY');
+  }
+
+  private parseDateByFormat(dateStr: string, format: SupportedDateFormat): Date | null {
+    switch (format) {
+      case 'yyyy-MM-dd': {
+        const match = dateStr.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+        if (!match) return null;
+        const [, year, month, day] = match;
+        return this.buildDate(Number(year), Number(month), Number(day));
+      }
+      case 'dd/MM/yyyy': {
+        const match = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+        if (!match) return null;
+        const [, day, month, year] = match;
+        return this.buildDate(Number(year), Number(month), Number(day));
+      }
+      case 'MM/dd/yyyy': {
+        const match = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+        if (!match) return null;
+        const [, month, day, year] = match;
+        return this.buildDate(Number(year), Number(month), Number(day));
+      }
+      case 'dd-MM-yyyy':
+      default: {
+        const match = dateStr.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+        if (!match) return null;
+        const [, day, month, year] = match;
+        return this.buildDate(Number(year), Number(month), Number(day));
+      }
+    }
+  }
+
+  private buildDate(year: number, month: number, day: number): Date | null {
+    if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) {
+      return null;
+    }
+    if (month < 1 || month > 12 || day < 1 || day > 31) {
+      return null;
+    }
+
+    const date = new Date(year, month - 1, day);
+    if (
+      date.getFullYear() !== year ||
+      date.getMonth() !== month - 1 ||
+      date.getDate() !== day
+    ) {
+      return null;
+    }
+    return date;
   }
 }

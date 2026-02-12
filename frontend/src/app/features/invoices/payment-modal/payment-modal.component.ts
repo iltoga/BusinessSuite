@@ -72,7 +72,7 @@ export class PaymentModalComponent {
   });
 
   readonly form = this.fb.group({
-    paymentDate: [new Date().toISOString().split('T')[0], Validators.required],
+    paymentDate: [this.todayIsoLocal(), Validators.required],
     paymentType: ['cash', Validators.required],
     amount: [0, [Validators.required, Validators.min(1)]],
     notes: [''],
@@ -122,7 +122,7 @@ export class PaymentModalComponent {
 
   private resetForm(): void {
     this.form.reset({
-      paymentDate: new Date().toISOString().split('T')[0],
+      paymentDate: this.todayIsoLocal(),
       paymentType: 'cash',
       amount: 0,
       notes: '',
@@ -132,7 +132,7 @@ export class PaymentModalComponent {
   private prefillForm(): void {
     const app = this.invoiceApplication();
     const payment = this.payment();
-    const defaultDate = new Date().toISOString().split('T')[0];
+    const defaultDate = this.todayIsoLocal();
 
     if (payment) {
       this.form.patchValue({
@@ -244,5 +244,13 @@ export class PaymentModalComponent {
 
   close(): void {
     this.closed.emit();
+  }
+
+  private todayIsoLocal(): string {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 }

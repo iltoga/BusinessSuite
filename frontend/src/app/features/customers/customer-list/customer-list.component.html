@@ -125,11 +125,11 @@
 <ng-template #createdAtTemplate let-row>
   <div class="flex flex-col">
     <span class="text-sm">{{
-      row.createdAt ? (row.createdAt | date: 'dd MMM yyyy HH:mm:ss') : ''
+      row.createdAt ? (row.createdAt | appDate: 'datetime') : ''
     }}</span>
     @if (row.updatedAt && row.updatedAt !== row.createdAt) {
       <span class="text-xs text-muted-foreground">{{
-        row.updatedAt ? (row.updatedAt | date: 'dd MMM yyyy HH:mm:ss') : ''
+        row.updatedAt ? (row.updatedAt | appDate: 'datetime') : ''
       }}</span>
     }
   </div>

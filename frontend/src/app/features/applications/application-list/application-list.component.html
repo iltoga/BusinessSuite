@@ -63,7 +63,7 @@
           <div>{{ row.product?.name }}</div>
         </ng-template>
         <ng-template #columnDate let-row>
-          <div class="whitespace-nowrap">{{ row.docDate | date: 'dd MMM yyyy' }}</div>
+          <div class="whitespace-nowrap">{{ row.docDate | appDate }}</div>
         </ng-template>
         <ng-template #columnStatus let-row>
           @switch (row.status) {
@@ -84,11 +84,11 @@
         <ng-template #columnCreatedAt let-row>
           <div class="flex flex-col">
             <span class="text-sm">{{
-              $any(row).createdAt ? ($any(row).createdAt | date: 'dd MMM yyyy HH:mm:ss') : ''
+              $any(row).createdAt ? ($any(row).createdAt | appDate: 'datetime') : ''
             }}</span>
             @if ($any(row).updatedAt && $any(row).updatedAt !== $any(row).createdAt) {
               <span class="text-xs text-muted-foreground">{{
-                $any(row).updatedAt ? ($any(row).updatedAt | date: 'dd MMM yyyy HH:mm:ss') : ''
+                $any(row).updatedAt ? ($any(row).updatedAt | appDate: 'datetime') : ''
               }}</span>
             }
           </div>

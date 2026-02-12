@@ -210,7 +210,7 @@
         <div
           class="print-footer hidden print:flex justify-between items-center mt-12 pt-8 border-t text-[10px] text-muted-foreground"
         >
-          <span>Printed on: {{ today | date: 'medium' }}</span>
+          <span>Printed on: {{ today | appDate: 'datetime' }}</span>
           <span>BusinessSuite Automation System</span>
           <span>Page 1 of 1</span>
         </div>

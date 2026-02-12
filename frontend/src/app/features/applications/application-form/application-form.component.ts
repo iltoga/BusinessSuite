@@ -90,6 +90,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
   readonly applicationId = signal<number | null>(null);
   readonly isLoading = signal(false);
   readonly initialProductId = signal<number | null>(null);
+  readonly nextDeadlineTaskName = signal<string | null>(null);
   // Loading state and open/closed state for the Documents panel
   readonly documentsLoading = signal(false);
   readonly documentsPanelOpen = signal(false);
@@ -143,6 +144,10 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
   });
 
   readonly canNotifyCustomer = computed(() => this.customerNotificationOptions().length > 0);
+  readonly dueDateContextLabel = computed(() => {
+    const taskName = this.nextDeadlineTaskName();
+    return taskName ? `(Next Deadline: ${taskName})` : '(Next Deadline: —)';
+  });
 
   readonly documentTypeOptions = computed<ZardComboboxOption[]>(() => {
     return this.documentTypes().map((dt) => ({
@@ -229,11 +234,12 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
         .get('product')
         ?.valueChanges.pipe(takeUntil(this.destroy$))
         .subscribe((productId) => {
-          if (productId) {
-            this.loadProductDocuments(Number(productId));
-          } else {
+          if (!productId) {
             this.documentsArray.clear();
+            this.nextDeadlineTaskName.set(null);
+            return;
           }
+          this.loadProductDocuments(Number(productId));
         });
     }
 
@@ -292,6 +298,9 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
           channelControl?.enable({ emitEvent: false });
         }
       });
+
+    // Ensure initial disabled/enabled state is correct before any customer is selected.
+    this.syncNotifyCustomerAvailability();
     this.loadDocumentTypes();
   }
 
@@ -365,6 +374,9 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
 
     this.productsService.productsGetProductByIdRetrieve(productId).subscribe({
       next: (data: any) => {
+        const deadlineTask = this.getCalendarTaskFromProduct(data);
+        this.nextDeadlineTaskName.set(this.getTaskName(deadlineTask));
+
         this.documentsArray.clear();
         let passportAutoImported = false;
 
@@ -387,6 +399,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
         this.cdr.markForCheck();
       },
       error: () => {
+        this.nextDeadlineTaskName.set(null);
         this.documentsLoading.set(false);
         this.cdr.markForCheck();
         this.toast.error('Failed to load product documents');
@@ -466,9 +479,8 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
   private tryAutoDueDateCalculation(productId: number): void {
     this.productsService.productsRetrieve(productId).subscribe({
       next: (product: any) => {
-        const task = (product.tasks || []).find(
-          (t: any) => t?.addTaskToCalendar === true || t?.add_task_to_calendar === true,
-        );
+        const task = this.getCalendarTaskFromProduct(product);
+        this.nextDeadlineTaskName.set(this.getTaskName(task));
         const doc = this.toDateOnly(this.form.get('docDate')?.value);
         if (!doc) return;
         if (!task) {
@@ -488,6 +500,21 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
         });
       },
     });
+  }
+
+  private getCalendarTaskFromProduct(product: any): any | null {
+    const tasks = Array.isArray(product?.tasks) ? product.tasks : [];
+    return (
+      tasks.find(
+        (task: any) => task?.addTaskToCalendar === true || task?.add_task_to_calendar === true,
+      ) ??
+      null
+    );
+  }
+
+  private getTaskName(task: any): string | null {
+    const rawName = typeof task?.name === 'string' ? task.name.trim() : '';
+    return rawName || null;
   }
 
   private syncNotifyCustomerAvailability(): void {

@@ -56,7 +56,7 @@
             <div>
               <p class="text-xs uppercase text-muted-foreground">Created</p>
               <p class="text-sm">
-                {{ product()?.createdAt | date: 'dd MMM yyyy HH:mm:ss' }}
+                {{ product()?.createdAt | appDate: 'datetime' }}
                 @if (product()?.createdBy) {
                   <span class="text-xs text-muted-foreground">(by {{ product()?.createdBy }})</span>
                 }
@@ -65,7 +65,7 @@
             <div>
               <p class="text-xs uppercase text-muted-foreground">Last Updated</p>
               <p class="text-sm">
-                {{ product()?.updatedAt | date: 'dd MMM yyyy HH:mm:ss' }}
+                {{ product()?.updatedAt | appDate: 'datetime' }}
                 @if (product()?.updatedBy) {
                   <span class="text-xs text-muted-foreground">(by {{ product()?.updatedBy }})</span>
                 }

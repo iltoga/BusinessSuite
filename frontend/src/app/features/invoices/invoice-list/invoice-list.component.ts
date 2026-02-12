@@ -40,6 +40,7 @@ import { InvoiceDownloadDropdownComponent } from '@/shared/components/invoice-do
 import { PaginationControlsComponent } from '@/shared/components/pagination-controls';
 import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
 import { ContextHelpDirective } from '@/shared/directives';
+import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 import { HelpService } from '@/shared/services/help.service';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 
@@ -61,6 +62,7 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
     ShortcutHighlightPipe,
     ...ZardDropdownImports,
     ContextHelpDirective,
+    AppDatePipe,
   ],
   templateUrl: './invoice-list.component.html',
   styleUrls: ['./invoice-list.component.css'],

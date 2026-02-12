@@ -122,8 +122,7 @@ export class QuickApplicationModalComponent {
     this.isSaving.set(true);
 
     const raw = this.form.getRawValue();
-    const docDateStr =
-      raw.docDate instanceof Date ? raw.docDate.toISOString().split('T')[0] : raw.docDate;
+    const docDateStr = this.toApiDate(raw.docDate);
 
     const payload = {
       customer: this.customerId()!,
@@ -192,5 +191,26 @@ export class QuickApplicationModalComponent {
 
   close(): void {
     this.closed.emit();
+  }
+
+  private toApiDate(raw: unknown): string | null {
+    if (raw == null) return null;
+
+    if (typeof raw === 'string') {
+      const isoDate = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (isoDate) {
+        return `${isoDate[1]}-${isoDate[2]}-${isoDate[3]}`;
+      }
+    }
+
+    const value = raw instanceof Date ? raw : new Date(raw as string);
+    if (Number.isNaN(value.getTime())) {
+      return null;
+    }
+
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 }

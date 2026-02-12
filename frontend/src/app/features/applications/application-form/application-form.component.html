@@ -57,12 +57,19 @@
 
           <div>
             <label class="text-sm font-medium">Doc Date</label>
-            <z-date-input formControlName="docDate" placeholder="DD-MM-YYYY"></z-date-input>
+            <z-date-input formControlName="docDate"></z-date-input>
           </div>
 
           <div>
-            <label class="text-sm font-medium">Due Date (For Calendar Notification)</label>
-            <z-date-input formControlName="dueDate" placeholder="DD-MM-YYYY"></z-date-input>
+            <label class="text-sm font-medium flex items-center gap-1 min-h-6 w-full">
+              <span class="shrink-0">Due Date</span>
+              <span
+                class="min-w-0 truncate text-muted-foreground"
+                [title]="dueDateContextLabel()"
+                >{{ dueDateContextLabel() }}</span
+              >
+            </label>
+            <z-date-input formControlName="dueDate"></z-date-input>
             <div
               *ngIf="
                 form.get('dueDate')?.errors?.['dueBeforeDocDate'] && form.get('dueDate')?.touched
@@ -88,7 +95,7 @@
               [zTooltip]="
                 canNotifyCustomer()
                   ? null
-                  : 'Cusomer cannot be notified because we don\'t have his email or whatsapp'
+                  : 'Customer cannot be notified because we don\'t have his email or whatsapp'
               "
             >
               <input

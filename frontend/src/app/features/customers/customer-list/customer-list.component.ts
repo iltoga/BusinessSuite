@@ -33,6 +33,7 @@ import { PaginationControlsComponent } from '@/shared/components/pagination-cont
 import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
 import { ZardSelectImports } from '@/shared/components/select';
 import { ContextHelpDirective } from '@/shared/directives';
+import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 import { HelpService } from '@/shared/services/help.service';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 
@@ -52,6 +53,7 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
     ZardBadgeComponent,
     // context help directive
     ContextHelpDirective,
+    AppDatePipe,
   ],
   templateUrl: './customer-list.component.html',
   styleUrls: ['./customer-list.component.css'],

@@ -2,6 +2,7 @@ import { CalendarService } from '@/core/api/api/calendar.service';
 import { GoogleCalendarEvent } from '@/core/api/model/google-calendar-event';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { DashboardWidgetComponent } from '@/shared/components/dashboard-widget/dashboard-widget.component';
+import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import {
   ChangeDetectionStrategy,
@@ -16,7 +17,7 @@ import {
 @Component({
   selector: 'app-calendar-integration',
   standalone: true,
-  imports: [CommonModule, DashboardWidgetComponent, ZardButtonComponent],
+  imports: [CommonModule, DashboardWidgetComponent, ZardButtonComponent, AppDatePipe],
   template: `
     <div class="space-y-4">
       <h2 class="text-2xl font-bold">Calendar Overview</h2>
@@ -43,7 +44,7 @@ import {
                 <li class="rounded border border-border/50 px-3 py-2">
                   <div class="font-medium">{{ event.summary }}</div>
                   <div class="text-xs text-muted-foreground">
-                    {{ event.start | date: 'EEE, d MMM' }}
+                    {{ event.start | appDate }}
                   </div>
                 </li>
               }
@@ -79,7 +80,7 @@ import {
       <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
         <div class="w-full max-w-xl rounded-lg bg-card p-4 border-4 border-primary/50">
           <div class="mb-3 flex items-center justify-between">
-            <h3 class="text-lg font-semibold">{{ openDayEventsDate() | date: 'fullDate' }}</h3>
+            <h3 class="text-lg font-semibold">{{ openDayEventsDate() | appDate }}</h3>
             <button z-button zType="ghost" zSize="sm" (click)="openDayEventsDate.set(null)">
               Close
             </button>

@@ -162,6 +162,20 @@ export class ApplicationDetailComponent implements OnInit {
     const value = this.application()?.dueDate;
     return value ? new Date(value) : null;
   });
+  readonly dueDateContextLabel = computed(() => {
+    const app = this.application();
+    if (!app) {
+      return 'Next Deadline: —';
+    }
+
+    const taskName =
+      app.nextTask?.name?.trim() ||
+      app.workflows?.find((workflow) => workflow.isCurrentStep)?.task?.name?.trim() ||
+      app.workflows?.find((workflow) => workflow.dueDate === app.dueDate)?.task?.name?.trim() ||
+      '';
+
+    return taskName ? `Next Deadline (${taskName})` : 'Next Deadline: —';
+  });
 
   // PDF Merge and Selection
   readonly localUploadedDocuments = signal<ApplicationDocument[]>([]);

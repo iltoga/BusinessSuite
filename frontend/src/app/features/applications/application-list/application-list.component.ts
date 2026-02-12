@@ -38,6 +38,7 @@ import {
 import { PaginationControlsComponent } from '@/shared/components/pagination-controls';
 import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
 import { ContextHelpDirective } from '@/shared/directives';
+import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 import { HelpService } from '@/shared/services/help.service';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 
@@ -56,6 +57,7 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
     BulkDeleteDialogComponent,
     ...ZardBadgeImports,
     ContextHelpDirective,
+    AppDatePipe,
   ],
   templateUrl: './application-list.component.html',
   styleUrls: ['./application-list.component.css'],

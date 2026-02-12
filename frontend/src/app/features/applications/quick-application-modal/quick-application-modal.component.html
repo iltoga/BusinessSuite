@@ -24,7 +24,7 @@
 
       <div class="flex flex-col gap-2">
         <label class="text-sm font-medium">Doc Date</label>
-        <z-date-input formControlName="docDate" placeholder="DD-MM-YYYY"></z-date-input>
+        <z-date-input formControlName="docDate"></z-date-input>
         <div
           *ngIf="form.get('docDate')?.invalid && form.get('docDate')?.touched"
           class="text-xs text-destructive mt-1"

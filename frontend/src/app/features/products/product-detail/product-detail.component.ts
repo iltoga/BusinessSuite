@@ -32,6 +32,7 @@ import {
   TableSkeletonComponent,
   ZardSkeletonComponent,
 } from '@/shared/components/skeleton';
+import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 import { HelpService } from '@/shared/services/help.service';
 
 @Component({
@@ -47,6 +48,7 @@ import { HelpService } from '@/shared/services/help.service';
     CardSkeletonComponent,
     TableSkeletonComponent,
     ZardSkeletonComponent,
+    AppDatePipe,
   ],
   templateUrl: './product-detail.component.html',
   styleUrls: ['./product-detail.component.css'],

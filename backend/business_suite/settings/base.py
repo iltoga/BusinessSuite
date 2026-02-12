@@ -105,6 +105,10 @@ GLOBAL_SETTINGS = {
     "LOGO_INVERTED_FILENAME": os.getenv("LOGO_INVERTED_FILENAME", "logo_inverted_transparent.png"),
 }
 
+# Date format exposed to Angular frontend via /api/app-config/.
+# Uses Angular DatePipe tokens (e.g. dd-MM-yyyy, yyyy-MM-dd, dd/MM/yyyy).
+DATE_FORMAT_JS = os.getenv("DATE_FORMAT_JS", "dd-MM-yyyy")
+
 # When True, legacy Django views (non-admin, non-api) are disabled and return 403.
 # Can be toggled via env var DISABLE_DJANGO_VIEWS or managed via a waffle flag named "disable_django_views"
 DISABLE_DJANGO_VIEWS = _parse_bool(os.getenv("DISABLE_DJANGO_VIEWS", "False"))

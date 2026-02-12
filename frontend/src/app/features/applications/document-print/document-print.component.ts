@@ -1,4 +1,4 @@
-import { CommonModule, DatePipe, Location } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
@@ -49,7 +49,6 @@ interface DocumentPrintData {
     ZardButtonComponent,
     ZardCardComponent,
     AppDatePipe,
-    DatePipe,
   ],
   templateUrl: './document-print.component.html',
   styleUrls: ['./document-print.component.css'],
