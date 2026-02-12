@@ -41,7 +41,7 @@ class WhatsappNotificationProvider(NotificationProvider):
     - META_WHATSAPP_ACCESS_TOKEN
     - META_PHONE_NUMBER_ID (or META_WHATSAPP_BUSINESS_NUMBER_ID)
     Optional:
-    - META_GRAPH_API_VERSION (default: v22.0)
+    - META_GRAPH_API_VERSION (default: v23.0)
     """
 
     channel = "whatsapp"
@@ -51,7 +51,7 @@ class WhatsappNotificationProvider(NotificationProvider):
         phone_number_id = getattr(settings, "META_PHONE_NUMBER_ID", "") or getattr(
             settings, "META_WHATSAPP_BUSINESS_NUMBER_ID", ""
         )
-        graph_version = getattr(settings, "META_GRAPH_API_VERSION", "v22.0")
+        graph_version = getattr(settings, "META_GRAPH_API_VERSION", "v23.0")
 
         if not access_token or not phone_number_id:
             logger.info("Meta WhatsApp credentials are not configured. Returning queued placeholder.")
@@ -64,6 +64,7 @@ class WhatsappNotificationProvider(NotificationProvider):
         }
         payload = {
             "messaging_product": "whatsapp",
+            "recipient_type": "individual",
             "to": self._normalize_meta_phone_number(recipient),
             "type": "text",
             "text": {
@@ -103,6 +104,7 @@ class WhatsappNotificationProvider(NotificationProvider):
         language_code = getattr(settings, "META_WHATSAPP_DEFAULT_TEMPLATE_LANG", "en_US")
         payload = {
             "messaging_product": "whatsapp",
+            "recipient_type": "individual",
             "to": self._normalize_meta_phone_number(recipient),
             "type": "template",
             "template": {

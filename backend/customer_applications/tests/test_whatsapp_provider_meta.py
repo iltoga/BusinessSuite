@@ -9,7 +9,7 @@ class WhatsappMetaProviderTests(SimpleTestCase):
     @override_settings(
         META_WHATSAPP_ACCESS_TOKEN="meta-token",
         META_PHONE_NUMBER_ID="942804508924296",
-        META_GRAPH_API_VERSION="v22.0",
+        META_GRAPH_API_VERSION="v23.0",
     )
     @patch("notifications.services.providers.requests.post")
     def test_send_uses_meta_graph_messages_endpoint(self, post_mock):
@@ -34,6 +34,7 @@ class WhatsappMetaProviderTests(SimpleTestCase):
             kwargs["json"],
             {
                 "messaging_product": "whatsapp",
+                "recipient_type": "individual",
                 "to": "6282237392596",
                 "type": "text",
                 "text": {
@@ -52,7 +53,7 @@ class WhatsappMetaProviderTests(SimpleTestCase):
     @override_settings(
         META_WHATSAPP_ACCESS_TOKEN="meta-token",
         META_PHONE_NUMBER_ID="942804508924296",
-        META_GRAPH_API_VERSION="v22.0",
+        META_GRAPH_API_VERSION="v23.0",
         META_WHATSAPP_DEFAULT_TEMPLATE_NAME="hello_world",
         META_WHATSAPP_DEFAULT_TEMPLATE_LANG="en_US",
     )
