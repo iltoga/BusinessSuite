@@ -443,6 +443,13 @@ class DocApplication(models.Model):
 def pre_delete_doc_application_signal(sender, instance, **kwargs):
     # retain the folder path before deleting the doc application
     instance.folder_path = instance.upload_folder
+    # Keep Google Calendar in sync when applications are removed.
+    try:
+        from customer_applications.services.application_calendar_service import ApplicationCalendarService
+
+        ApplicationCalendarService().delete_application_events(instance, clear_application_reference=False)
+    except Exception as exc:
+        logger.warning("Failed to cleanup calendar events for application #%s: %s", instance.id, exc)
 
 
 @receiver(post_delete, sender=DocApplication)

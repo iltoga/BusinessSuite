@@ -15,8 +15,8 @@ import { FormErrorSummaryComponent } from '@/shared/components/form-error-summar
 import { ZardIconComponent } from '@/shared/components/icon';
 import { ZardInputDirective } from '@/shared/components/input';
 import { ProductSelectComponent } from '@/shared/components/product-select';
-import { TypeaheadComboboxComponent } from '@/shared/components/typeahead-combobox';
 import { ZardTooltipImports } from '@/shared/components/tooltip';
+import { TypeaheadComboboxComponent } from '@/shared/components/typeahead-combobox';
 import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/utils/form-errors';
 import { CommonModule, Location } from '@angular/common';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
@@ -99,7 +99,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
     docDate: [new Date(), Validators.required],
     dueDate: [new Date(), Validators.required],
     addDeadlinesToCalendar: [true],
-    notifyCustomerToo: [false],
+    notifyCustomer: [false],
     notifyCustomerChannel: ['whatsapp' as 'whatsapp' | 'email'],
     notes: [''],
     documents: this.fb.array([]),
@@ -111,7 +111,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
     docDate: 'Document Date',
     dueDate: 'Due Date',
     addDeadlinesToCalendar: 'Add deadlines to calendar',
-    notifyCustomerToo: 'Notify customer too',
+    notifyCustomer: 'Notify customer',
     notifyCustomerChannel: 'Customer notification channel',
     notes: 'Notes',
     documents: 'Documents',
@@ -251,7 +251,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
       });
 
     this.form
-      .get('notifyCustomerToo')
+      .get('notifyCustomer')
       ?.valueChanges.pipe(takeUntil(this.destroy$))
       .subscribe((enabled) => {
         if (!enabled) {
@@ -274,7 +274,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
           docDate: docDate,
           dueDate: app.dueDate ? new Date(app.dueDate) : docDate,
           addDeadlinesToCalendar: app.addDeadlinesToCalendar ?? true,
-          notifyCustomerToo: app.notifyCustomerToo ?? false,
+          notifyCustomer: app.notifyCustomer ?? false,
           notifyCustomerChannel: app.notifyCustomerChannel ?? 'whatsapp',
           notes: app.notes ?? '',
         });
@@ -305,11 +305,17 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
         this.selectedCustomer.set(customer);
         const options = this.customerNotificationOptions();
         if (options.length === 0) {
-          this.form.patchValue({ notifyCustomerToo: false, notifyCustomerChannel: 'whatsapp' }, { emitEvent: false });
+          this.form.patchValue(
+            { notifyCustomer: false, notifyCustomerChannel: 'whatsapp' },
+            { emitEvent: false },
+          );
         } else {
           const current = this.form.get('notifyCustomerChannel')?.value;
           if (!options.some((opt) => opt.value === current)) {
-            this.form.patchValue({ notifyCustomerChannel: options[0]!.value as 'whatsapp' | 'email' }, { emitEvent: false });
+            this.form.patchValue(
+              { notifyCustomerChannel: options[0]!.value as 'whatsapp' | 'email' },
+              { emitEvent: false },
+            );
           }
         }
         // Refresh documents if product is already selected to re-check for auto-imports
@@ -478,8 +484,10 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
         docDate: docDateStr,
         dueDate: dueDateStr,
         addDeadlinesToCalendar: this.form.value.addDeadlinesToCalendar,
-        notifyCustomerToo: this.form.value.notifyCustomerToo,
-        notifyCustomerChannel: this.form.value.notifyCustomerToo ? this.form.value.notifyCustomerChannel : null,
+        notifyCustomer: this.form.value.notifyCustomer,
+        notifyCustomerChannel: this.form.value.notifyCustomer
+          ? this.form.value.notifyCustomerChannel
+          : null,
         notes: this.form.value.notes,
       };
 
@@ -519,8 +527,10 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
         docDate: docDateStr,
         dueDate: dueDateStr,
         addDeadlinesToCalendar: this.form.value.addDeadlinesToCalendar,
-        notifyCustomerToo: this.form.value.notifyCustomerToo,
-        notifyCustomerChannel: this.form.value.notifyCustomerToo ? this.form.value.notifyCustomerChannel : null,
+        notifyCustomer: this.form.value.notifyCustomer,
+        notifyCustomerChannel: this.form.value.notifyCustomer
+          ? this.form.value.notifyCustomerChannel
+          : null,
         notes: this.form.value.notes,
         documentTypes: this.form.value.documents,
       };

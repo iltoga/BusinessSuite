@@ -61,16 +61,25 @@
           </div>
 
           <div>
-            <label class="text-sm font-medium">Due Date</label>
+            <label class="text-sm font-medium">Due Date (For Calendar Notification)</label>
             <z-date-input formControlName="dueDate" placeholder="DD-MM-YYYY"></z-date-input>
-            <div *ngIf="form.get('dueDate')?.errors?.['dueBeforeDocDate'] && form.get('dueDate')?.touched" class="text-xs text-destructive mt-1">
+            <div
+              *ngIf="
+                form.get('dueDate')?.errors?.['dueBeforeDocDate'] && form.get('dueDate')?.touched
+              "
+              class="text-xs text-destructive mt-1"
+            >
               Due date cannot be before Doc Date
             </div>
           </div>
 
           <div class="md:col-span-2 flex flex-wrap items-center gap-6">
             <label class="flex items-center gap-2">
-              <input type="checkbox" formControlName="addDeadlinesToCalendar" class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
+              <input
+                type="checkbox"
+                formControlName="addDeadlinesToCalendar"
+                class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+              />
               <span class="text-sm font-medium">Add deadlines to calendar</span>
             </label>
 
@@ -84,15 +93,15 @@
             >
               <input
                 type="checkbox"
-                formControlName="notifyCustomerToo"
+                formControlName="notifyCustomer"
                 [disabled]="!canNotifyCustomer()"
                 class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
               />
-              <span class="text-sm font-medium">Notify customer too</span>
+              <span class="text-sm font-medium">Notify customer</span>
             </label>
           </div>
 
-          <div class="md:col-span-2" *ngIf="form.value.notifyCustomerToo">
+          <div class="md:col-span-2" *ngIf="form.value.notifyCustomer">
             <label class="text-sm font-medium block mb-1">Customer notification channel</label>
             <z-combobox
               formControlName="notifyCustomerChannel"

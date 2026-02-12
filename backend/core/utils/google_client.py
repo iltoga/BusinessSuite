@@ -53,26 +53,57 @@ class GoogleClient:
 
     # --- CALENDAR METHODS ---
 
-    def list_events(self, calendar_id=None, max_results=50, time_min=None):
+    def list_events(
+        self,
+        calendar_id=None,
+        max_results=50,
+        time_min=None,
+        include_past=False,
+        private_extended_property=None,
+        query=None,
+        fetch_all=False,
+    ):
         import datetime
 
         if calendar_id is None:
             calendar_id = DEFAULT_CALENDAR_ID
 
-        if time_min is None:
+        if time_min is None and not include_past:
             # Default to now to show upcoming events
             time_min = datetime.datetime.utcnow().isoformat() + "Z"
 
         try:
-            req = self.calendar_service.events().list(
-                calendarId=calendar_id,
-                timeMin=time_min,
-                maxResults=max_results,
-                singleEvents=True,
-                orderBy="startTime",
-            )
-            events_result = req.execute()
-            return events_result.get("items", [])
+            request_data = {
+                "calendarId": calendar_id,
+                "maxResults": max_results,
+                "singleEvents": True,
+                "orderBy": "startTime",
+            }
+            if time_min:
+                request_data["timeMin"] = time_min
+            if private_extended_property:
+                request_data["privateExtendedProperty"] = private_extended_property
+            if query:
+                request_data["q"] = query
+
+            items = []
+            page_token = None
+
+            while True:
+                if page_token:
+                    request_data["pageToken"] = page_token
+                elif "pageToken" in request_data:
+                    request_data.pop("pageToken")
+
+                req = self.calendar_service.events().list(**request_data)
+                events_result = req.execute()
+                items.extend(events_result.get("items", []))
+
+                page_token = events_result.get("nextPageToken")
+                if not fetch_all or not page_token:
+                    break
+
+            return items
         except HttpError as e:
             raise APIException(f"Google Calendar Error: {str(e)}")
         except Exception as e:
@@ -117,6 +148,8 @@ class GoogleClient:
                 "overrides": [{"method": "email", "minutes": 60}, {"method": "popup", "minutes": 10}],
             },
         }
+        if data.get("extended_properties"):
+            event_body["extendedProperties"] = data.get("extended_properties")
 
         if start_date and end_date:
             event_body["start"] = {"date": start_date}
@@ -145,6 +178,8 @@ class GoogleClient:
                 body["summary"] = data["summary"]
             if "description" in data:
                 body["description"] = data["description"]
+            if "extended_properties" in data:
+                body["extendedProperties"] = data["extended_properties"]
 
             if "start_time" in data:
                 start_time = data["start_time"]

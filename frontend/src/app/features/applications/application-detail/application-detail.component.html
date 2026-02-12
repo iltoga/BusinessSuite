@@ -87,7 +87,7 @@
           </div>
           @if (application()!.dueDate) {
             <div class="w-full sm:w-48">
-              <div class="text-sm text-muted-foreground mb-1">Due Date</div>
+              <div class="text-sm text-muted-foreground mb-1">Due Date (Next task)</div>
               <z-date-input
                 [ngModel]="dueDateAsDate()"
                 (ngModelChange)="onInlineDateChange('dueDate', $event)"
@@ -131,7 +131,7 @@
 
     <z-card class="p-6">
       <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
-        <h3 class="text-lg font-semibold">Workflow Timeline</h3>
+        <h3 class="text-lg font-semibold">Tasks Timeline</h3>
         <div class="flex flex-wrap gap-2">
           @if (canAdvanceWorkflow()) {
             <button
@@ -167,7 +167,7 @@
       }
 
       @if (sortedWorkflows().length === 0) {
-        <div class="text-sm text-muted-foreground">No workflow steps yet.</div>
+        <div class="text-sm text-muted-foreground">Not started yet</div>
       } @else {
         <ol class="space-y-4">
           @for (workflow of sortedWorkflows(); track workflow.id) {
