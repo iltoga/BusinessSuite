@@ -15,6 +15,7 @@ import {
   computed,
   DestroyRef,
   effect,
+  HostListener,
   inject,
   OnInit,
   PLATFORM_ID,
@@ -232,11 +233,17 @@ type CalendarEventViewModel = CalendarEventWithColor & {
 
     @if (openDayEventsDate()) {
       <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-        <div class="w-full max-w-xl rounded-lg border-4 border-primary/50 bg-card p-4">
+        <div class="w-full max-w-xl rounded-lg border border-border bg-card p-4">
           <div class="mb-3 flex items-center justify-between">
             <h3 class="text-lg font-semibold">{{ openDayEventsDate() | appDate }}</h3>
-            <button z-button zType="ghost" zSize="sm" (click)="openDayEventsDate.set(null)">
-              Close
+            <button
+              z-button
+              zType="ghost"
+              zSize="sm"
+              aria-label="Close dialog"
+              (click)="openDayEventsDate.set(null)"
+            >
+              <z-icon zType="x" />
             </button>
           </div>
           @if (selectedDayEvents().length === 0) {
@@ -367,7 +374,6 @@ export class CalendarIntegrationComponent implements OnInit {
         const ref = this.dialogService.create({
           zTitle: selected?.summary || 'Calendar Event',
           zContent: this.todayEventDetailsTemplate(),
-          zCustomClasses: 'border-4',
           zHideFooter: true,
           zClosable: true,
           zOnCancel: () => {
@@ -411,6 +417,13 @@ export class CalendarIntegrationComponent implements OnInit {
 
   openDay(date: Date): void {
     this.openDayEventsDate.set(date);
+  }
+
+  @HostListener('document:keydown.escape')
+  closeDayDialogOnEscape(): void {
+    if (this.openDayEventsDate()) {
+      this.openDayEventsDate.set(null);
+    }
   }
 
   selectTodayEvent(eventId: string): void {
