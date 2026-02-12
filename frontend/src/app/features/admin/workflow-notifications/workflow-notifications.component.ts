@@ -23,6 +23,8 @@ import { GlobalToastService } from '@/core/services/toast.service';
 })
 export class WorkflowNotificationsComponent {
   @ViewChild('pushTestDialogTemplate', { static: true }) pushTestDialogTemplate!: TemplateRef<any>;
+  @ViewChild('whatsappTestDialogTemplate', { static: true })
+  whatsappTestDialogTemplate!: TemplateRef<any>;
 
   private http = inject(HttpClient);
   private fb = inject(FormBuilder);
@@ -31,6 +33,7 @@ export class WorkflowNotificationsComponent {
   readonly notifications = signal<any[]>([]);
   readonly loading = signal(false);
   readonly sendingPush = signal(false);
+  readonly sendingWhatsapp = signal(false);
   readonly users = signal<any[]>([]);
   readonly userOptions = signal<ZardComboboxOption[]>([]);
   dialogRef: any = null;
@@ -41,6 +44,12 @@ export class WorkflowNotificationsComponent {
     body: ['Push notification test completed.', [Validators.required, Validators.maxLength(500)]],
     link: ['/'],
     data: ['{}'],
+  });
+
+  readonly whatsappTestForm = this.fb.group({
+    to: [''],
+    subject: ['Revis Bali CRM WhatsApp Test', [Validators.required, Validators.maxLength(120)]],
+    body: ['WhatsApp test message from Revis Bali CRM.', [Validators.required, Validators.maxLength(1000)]],
   });
 
   constructor() {
@@ -91,6 +100,25 @@ export class WorkflowNotificationsComponent {
     this.dialogRef = this.dialogService.create({
       zTitle: 'Send Test Push Notification',
       zContent: this.pushTestDialogTemplate,
+      zHideFooter: true,
+      zClosable: true,
+      zWidth: '760px',
+      zCustomClasses: 'border-2 border-primary/30 sm:max-w-[760px]',
+      zOnCancel: () => {
+        this.dialogRef = null;
+      },
+    });
+  }
+
+  openWhatsappTestDialog(): void {
+    this.whatsappTestForm.reset({
+      to: '',
+      subject: 'Revis Bali CRM WhatsApp Test',
+      body: 'WhatsApp test message from Revis Bali CRM.',
+    });
+    this.dialogRef = this.dialogService.create({
+      zTitle: 'Send Test WhatsApp',
+      zContent: this.whatsappTestDialogTemplate,
       zHideFooter: true,
       zClosable: true,
       zWidth: '760px',
@@ -197,6 +225,36 @@ export class WorkflowNotificationsComponent {
       error: (error) => {
         this.sendingPush.set(false);
         const message = error?.error?.error || 'Failed to send test push notification';
+        this.toast.error(String(message));
+      },
+    });
+  }
+
+  sendTestWhatsapp(): void {
+    if (this.whatsappTestForm.invalid || this.sendingWhatsapp()) {
+      this.whatsappTestForm.markAllAsTouched();
+      return;
+    }
+
+    const raw = this.whatsappTestForm.getRawValue();
+    const payload = {
+      to: raw.to?.trim() || '',
+      subject: raw.subject?.trim() || 'Revis Bali CRM WhatsApp Test',
+      body: raw.body?.trim() || 'WhatsApp test message from Revis Bali CRM.',
+    };
+
+    this.sendingWhatsapp.set(true);
+    this.http.post<any>('/api/push-notifications/send-test-whatsapp/', payload).subscribe({
+      next: (response) => {
+        this.sendingWhatsapp.set(false);
+        const recipient = response?.recipient || payload.to || 'default test number';
+        this.toast.success(`Test WhatsApp sent to ${recipient}`);
+        this.dialogRef?.close();
+        this.dialogRef = null;
+      },
+      error: (error) => {
+        this.sendingWhatsapp.set(false);
+        const message = error?.error?.error || 'Failed to send test WhatsApp';
         this.toast.error(String(message));
       },
     });

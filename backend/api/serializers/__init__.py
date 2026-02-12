@@ -27,6 +27,7 @@ from .invoice_serializer import (
 from .letters_serializer import SuratPermohonanCustomerDataSerializer, SuratPermohonanRequestSerializer
 from .push_notification_serializer import (
     AdminPushNotificationSendSerializer,
+    AdminWhatsappTestSendSerializer,
     PushNotificationTestSerializer,
     WebPushSubscriptionDeleteSerializer,
     WebPushSubscriptionSerializer,

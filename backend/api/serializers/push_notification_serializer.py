@@ -37,3 +37,13 @@ class PushNotificationTestSerializer(serializers.Serializer):
 
 class AdminPushNotificationSendSerializer(PushNotificationTestSerializer):
     user_id = serializers.IntegerField(required=True, min_value=1)
+
+
+class AdminWhatsappTestSendSerializer(serializers.Serializer):
+    to = serializers.CharField(required=False, allow_blank=True, default="")
+    subject = serializers.CharField(max_length=120, required=False, default="Revis Bali CRM WhatsApp Test")
+    body = serializers.CharField(
+        max_length=1000,
+        required=False,
+        default="WhatsApp test message from Revis Bali CRM.",
+    )

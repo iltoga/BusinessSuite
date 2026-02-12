@@ -734,7 +734,7 @@ export class ApplicationDetailComponent implements OnInit {
   onNotifyCustomerToggle(enabled: boolean): void {
     if (!enabled) {
       this.updateApplicationPartial(
-        { notifyCustomer: false, notifyCustomerChannel: null },
+        { notifyCustomerToo: false, notifyCustomerChannel: null },
         'Customer notifications updated',
       );
       return;
@@ -751,7 +751,7 @@ export class ApplicationDetailComponent implements OnInit {
       : (options[0]?.value as 'whatsapp' | 'email');
 
     this.updateApplicationPartial(
-      { notifyCustomer: true, notifyCustomerChannel: nextChannel },
+      { notifyCustomerToo: true, notifyCustomerChannel: nextChannel },
       'Customer notifications updated',
     );
   }
@@ -761,7 +761,7 @@ export class ApplicationDetailComponent implements OnInit {
       return;
     }
     this.updateApplicationPartial(
-      { notifyCustomer: true, notifyCustomerChannel: value },
+      { notifyCustomerToo: true, notifyCustomerChannel: value },
       'Customer notification channel updated',
     );
   }
@@ -823,14 +823,26 @@ export class ApplicationDetailComponent implements OnInit {
     this.isLoading.set(true);
     this.applicationsService.getApplication(id).subscribe({
       next: (data) => {
-        this.application.set(data);
-        this.editableNotes.set(data?.notes ?? '');
+        const normalized = {
+          ...data,
+          notifyCustomer:
+            data?.notifyCustomer ??
+            data?.notifyCustomerToo ??
+            data?.notify_customer_too ??
+            false,
+          notifyCustomerChannel:
+            data?.notifyCustomerChannel ??
+            data?.notify_customer_channel ??
+            null,
+        };
+        this.application.set(normalized);
+        this.editableNotes.set(normalized?.notes ?? '');
         this.isLoading.set(false);
         this.isSavingMeta.set(false);
 
         // Update contextual help for this specific application
-        const cust = data?.customer?.fullName ?? 'unknown customer';
-        const product = data?.product?.name ?? 'unknown product';
+        const cust = normalized?.customer?.fullName ?? 'unknown customer';
+        const product = normalized?.product?.name ?? 'unknown product';
         this.help.setContext({
           id: `/applications/${id}`,
           briefExplanation: `Application #${id} for ${cust} (${product}).`,

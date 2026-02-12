@@ -9,6 +9,7 @@ from io import BytesIO
 
 from api.serializers import (
     AdminPushNotificationSendSerializer,
+    AdminWhatsappTestSendSerializer,
     AsyncJobSerializer,
     AvatarUploadSerializer,
     ChangePasswordSerializer,
@@ -2741,6 +2742,47 @@ class PushNotificationViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                 details=payload,
             )
         return Response(payload)
+
+    @action(detail=False, methods=["post"], url_path="send-test-whatsapp")
+    def send_test_whatsapp(self, request):
+        forbidden = self._ensure_admin(request)
+        if forbidden is not None:
+            return forbidden
+
+        serializer = AdminWhatsappTestSendSerializer(data=request.data or {})
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        explicit_recipient = str(data.get("to") or "").strip()
+        recipient = explicit_recipient or str(getattr(settings, "WHATSAPP_TEST_NUMBER", "") or "").strip()
+        if not recipient:
+            return self.error_response(
+                "No WhatsApp destination configured. Set WHATSAPP_TEST_NUMBER in backend settings or provide 'to'.",
+                status.HTTP_400_BAD_REQUEST,
+            )
+
+        from notifications.services.providers import NotificationDispatcher
+
+        subject = str(data.get("subject") or "").strip() or "Revis Bali CRM WhatsApp Test"
+        body = str(data.get("body") or "").strip() or "WhatsApp test message from Revis Bali CRM."
+
+        try:
+            message_id = NotificationDispatcher().send(
+                channel="whatsapp",
+                recipient=recipient,
+                subject=subject,
+                body=body,
+            )
+        except Exception as exc:
+            return self.error_response(f"WhatsApp send failed: {exc}", status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            {
+                "recipient": recipient,
+                "used_default_recipient": explicit_recipient == "",
+                "message_id": str(message_id),
+            }
+        )
 
 
 @sse_token_auth_required

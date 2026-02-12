@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
+from django.test.utils import override_settings
 from rest_framework.test import APIClient
 
 from core.models import WebPushSubscription
@@ -108,3 +109,61 @@ class PushNotificationApiTests(TestCase):
 
         self.assertEqual(response.status_code, 409)
         self.assertIn("Target user has no active browser push subscriptions", str(response.data.get("error")))
+
+    @patch("notifications.services.providers.NotificationDispatcher.send")
+    @override_settings(WHATSAPP_TEST_NUMBER="+628111111111")
+    def test_admin_send_test_whatsapp_uses_default_number_when_to_omitted(self, send_mock):
+        send_mock.return_value = "wamid.test.123"
+
+        response = self.client.post(
+            "/api/push-notifications/send-test-whatsapp/",
+            {
+                "subject": "WhatsApp subject",
+                "body": "WhatsApp body",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["recipient"], "+628111111111")
+        self.assertTrue(response.data["used_default_recipient"])
+        self.assertEqual(response.data["message_id"], "wamid.test.123")
+        send_mock.assert_called_once()
+        kwargs = send_mock.call_args.kwargs
+        self.assertEqual(kwargs["channel"], "whatsapp")
+        self.assertEqual(kwargs["recipient"], "+628111111111")
+        self.assertEqual(kwargs["subject"], "WhatsApp subject")
+        self.assertEqual(kwargs["body"], "WhatsApp body")
+
+    @patch("notifications.services.providers.NotificationDispatcher.send")
+    def test_admin_send_test_whatsapp_uses_explicit_to(self, send_mock):
+        send_mock.return_value = "wamid.test.456"
+
+        response = self.client.post(
+            "/api/push-notifications/send-test-whatsapp/",
+            {
+                "to": "+628222222222",
+                "subject": "Explicit recipient",
+                "body": "Body",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["recipient"], "+628222222222")
+        self.assertFalse(response.data["used_default_recipient"])
+        self.assertEqual(response.data["message_id"], "wamid.test.456")
+
+    @override_settings(WHATSAPP_TEST_NUMBER="")
+    def test_admin_send_test_whatsapp_returns_400_when_no_destination(self):
+        response = self.client.post(
+            "/api/push-notifications/send-test-whatsapp/",
+            {
+                "subject": "No recipient configured",
+                "body": "Body",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("No WhatsApp destination configured", str(response.data.get("error")))

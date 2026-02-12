@@ -315,8 +315,10 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
           docDate: docDate,
           dueDate: app.dueDate ? new Date(app.dueDate) : docDate,
           addDeadlinesToCalendar: app.addDeadlinesToCalendar ?? true,
-          notifyCustomer: app.notifyCustomer ?? false,
-          notifyCustomerChannel: app.notifyCustomerChannel ?? 'whatsapp',
+          notifyCustomer:
+            app.notifyCustomer ?? app.notifyCustomerToo ?? app.notify_customer_too ?? false,
+          notifyCustomerChannel:
+            app.notifyCustomerChannel ?? app.notify_customer_channel ?? 'whatsapp',
           notes: app.notes ?? '',
         }, { emitEvent: false });
         if (customerId) {
@@ -567,7 +569,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
         docDate: docDateStr,
         dueDate: dueDateStr,
         addDeadlinesToCalendar: this.form.value.addDeadlinesToCalendar,
-        notifyCustomer: this.form.value.notifyCustomer,
+        notifyCustomerToo: this.form.value.notifyCustomer,
         notifyCustomerChannel: this.form.value.notifyCustomer
           ? this.form.value.notifyCustomerChannel
           : null,
@@ -604,7 +606,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
         docDate: docDateStr,
         dueDate: dueDateStr,
         addDeadlinesToCalendar: this.form.value.addDeadlinesToCalendar,
-        notifyCustomer: this.form.value.notifyCustomer,
+        notifyCustomerToo: this.form.value.notifyCustomer,
         notifyCustomerChannel: this.form.value.notifyCustomer
           ? this.form.value.notifyCustomerChannel
           : null,

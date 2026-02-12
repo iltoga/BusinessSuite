@@ -4,6 +4,7 @@
     <div class="flex items-center gap-2">
       <button z-button zType="secondary" (click)="load()">Refresh</button>
       <button z-button zType="default" (click)="openPushTestDialog()">Send Test Push</button>
+      <button z-button zType="default" (click)="openWhatsappTestDialog()">Send Test WhatsApp</button>
     </div>
   </div>
 
@@ -94,6 +95,39 @@
         [disabled]="sendingPush() || (pushTestForm.get('userId')?.value && selectedUserActiveSubscriptions() === 0)"
       >
         {{ sendingPush() ? 'Sending...' : 'Send' }}
+      </button>
+    </div>
+  </form>
+</ng-template>
+
+<ng-template #whatsappTestDialogTemplate>
+  <form [formGroup]="whatsappTestForm" class="space-y-4" (ngSubmit)="sendTestWhatsapp()">
+    <div>
+      <label class="mb-1 block text-sm font-medium">To (optional)</label>
+      <input z-input formControlName="to" type="text" class="w-full" />
+      <p class="mt-1 text-xs text-muted-foreground">
+        Leave empty to use backend default: <code>WHATSAPP_TEST_NUMBER</code>.
+      </p>
+    </div>
+
+    <div>
+      <label class="mb-1 block text-sm font-medium">Subject</label>
+      <input z-input formControlName="subject" type="text" class="w-full" />
+    </div>
+
+    <div>
+      <label class="mb-1 block text-sm font-medium">Body</label>
+      <textarea
+        formControlName="body"
+        class="block w-full rounded border border-input bg-background p-2 text-sm"
+        rows="4"
+      ></textarea>
+    </div>
+
+    <div class="flex justify-end gap-2">
+      <button z-button zType="secondary" type="button" (click)="dialogRef?.close()">Cancel</button>
+      <button z-button zType="default" type="submit" [disabled]="sendingWhatsapp()">
+        {{ sendingWhatsapp() ? 'Sending...' : 'Send' }}
       </button>
     </div>
   </form>
