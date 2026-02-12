@@ -84,8 +84,8 @@ class ApplicationCalendarServiceTests(TestCase):
         self.application.refresh_from_db()
         self.assertEqual(self.application.calendar_event_id, "evt-new")
 
-    @patch("customer_applications.services.application_calendar_service.GoogleClient")
-    def test_delete_signal_cleans_all_related_calendar_events(self, google_client_cls):
+    @patch("customer_applications.tasks.sync_application_calendar_task")
+    def test_delete_signal_queues_calendar_cleanup_task(self, sync_task_mock):
         application_id = self.application.id
         self.application.calendar_event_id = "evt-primary"
         self.application.save(update_fields=["calendar_event_id", "updated_at"])
@@ -98,22 +98,14 @@ class ApplicationCalendarServiceTests(TestCase):
             external_reference="evt-from-notification",
         )
 
-        mock_client = google_client_cls.return_value
-        mock_client.list_events.side_effect = [
-            [{"id": "evt-by-property"}],
-            [{"id": "evt-legacy", "summary": f"[Application #{application_id}] legacy event"}],
-        ]
+        with self.captureOnCommitCallbacks(execute=True):
+            self.application.delete()
 
-        self.application.delete()
-
-        deleted_event_ids = {call.args[0] for call in mock_client.delete_event.call_args_list}
+        sync_task_mock.assert_called_once()
+        kwargs = sync_task_mock.call_args.kwargs
+        self.assertEqual(kwargs["application_id"], application_id)
+        self.assertEqual(kwargs["action"], "delete")
         self.assertSetEqual(
-            deleted_event_ids,
-            {"evt-primary", "evt-from-notification", "evt-by-property", "evt-legacy"},
-        )
-
-        first_lookup_kwargs = mock_client.list_events.call_args_list[0].kwargs
-        self.assertEqual(
-            first_lookup_kwargs["private_extended_property"],
-            f"revisbali_customer_application_id={application_id}",
+            set(kwargs["known_event_ids"]),
+            {"evt-primary", "evt-from-notification"},
         )

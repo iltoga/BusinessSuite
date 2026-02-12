@@ -54,7 +54,7 @@ type CalendarEventViewModel = CalendarEventWithColor & {
       <div class="grid gap-4 lg:grid-cols-3">
         <app-dashboard-widget title="Today" subtitle="Todo and done">
           @if (todayEvents().length === 0) {
-            <div class="text-sm text-muted-foreground">No events today.</div>
+            <div class="text-sm text-muted-foreground">No applications deadlines today.</div>
           } @else {
             <div class="space-y-3">
               <section class="space-y-2">

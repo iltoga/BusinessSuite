@@ -1,8 +1,6 @@
 import logging
-import traceback
 from datetime import datetime, time, timedelta
 
-from core.models.async_job import AsyncJob
 from customer_applications.models import DocApplication
 from django.contrib.auth import get_user_model
 from django.conf import settings
@@ -13,187 +11,126 @@ from huey.contrib.djhuey import db_periodic_task, db_task
 User = get_user_model()
 logger = logging.getLogger(__name__)
 
+SYNC_ACTION_UPSERT = "upsert"
+SYNC_ACTION_DELETE = "delete"
 
-@db_task()
-def create_application_task(job_id, data, user_id):
-    """Background task to create a customer application and sync calendar."""
+
+def _build_manual_calendar_copy(application):
+    task = application.get_next_calendar_task()
+    due_date = application.due_date or application.calculate_next_calendar_due_date(start_date=application.doc_date)
+    task_name = task.name if task else "Follow-up"
+    reminder_days_before = task.notify_days_before if task else 0
+
+    summary = f"[Application #{application.id}] {application.customer.full_name} - {task_name}"
+    description = (
+        f"Application #{application.id}\n"
+        f"Customer: {application.customer.full_name}\n"
+        f"Product: {application.product.name}\n"
+        f"Task: {task_name}\n"
+        f"Application Notes: {application.notes or '-'}"
+    )
+    copy_text = (
+        f"Summary: {summary}\n"
+        f"Due date: {due_date}\n"
+        f"Reminder days before: {reminder_days_before}\n"
+        f"Description:\n{description}"
+    )
+    return {
+        "applicationId": application.id,
+        "summary": summary,
+        "dueDate": due_date.isoformat() if hasattr(due_date, "isoformat") else str(due_date),
+        "reminderDaysBefore": reminder_days_before,
+        "description": description,
+        "copyText": copy_text,
+    }
+
+
+def _notify_calendar_sync_failure(user, *, application, action, error_message):
+    if not user:
+        return
+
     try:
-        job = AsyncJob.objects.get(id=job_id)
-        job.update_progress(10, "Starting application creation...", status=AsyncJob.STATUS_PROCESSING)
+        from core.services.push_notifications import PushNotificationService
 
-        user = User.objects.get(pk=user_id)
-
-        # We use the serializer logic but inside the task
-        from api.serializers.doc_application_serializer import DocApplicationCreateUpdateSerializer
-        from rest_framework.request import Request
-        from rest_framework.test import APIRequestFactory
-
-        # Mock request for serializer context
-        factory = APIRequestFactory()
-        request = factory.post("/")
-        request.user = user
-
-        serializer = DocApplicationCreateUpdateSerializer(data=data, context={"request": request})
-        if serializer.is_valid():
-            job.update_progress(30, "Saving application and documents...")
-            application = serializer.save()
-
-            job.update_progress(70, "Syncing with Google Calendar...")
-            # Calendar sync is already called in serializer.save(),
-            # but we can call it again or make sure it's called here if we want more progress updates.
-            # Actually, we might want to refactor the serializer to NOT call it if we are in a task,
-            # but for now, it's fine as it runs in the background.
-
-            job.complete(
-                result={"id": application.id, "str_field": str(application)}, message="Application created successfully"
-            )
-        else:
-            job.fail(error_message=str(serializer.errors))
-
-    except Exception as e:
-        logger.error(f"Error in create_application_task: {str(e)}")
-        job = AsyncJob.objects.get(id=job_id)
-        job.fail(error_message=str(e), traceback=traceback.format_exc())
-
-
-@db_task()
-def update_application_task(job_id, application_id, data, user_id):
-    """Background task to update a customer application and sync calendar."""
-    try:
-        job = AsyncJob.objects.get(id=job_id)
-        job.update_progress(10, "Starting application update...", status=AsyncJob.STATUS_PROCESSING)
-
-        user = User.objects.get(pk=user_id)
-        application = DocApplication.objects.get(pk=application_id)
-
-        from api.serializers.doc_application_serializer import DocApplicationCreateUpdateSerializer
-        from rest_framework.test import APIRequestFactory
-
-        factory = APIRequestFactory()
-        request = factory.patch("/")
-        request.user = user
-
-        serializer = DocApplicationCreateUpdateSerializer(
-            application, data=data, partial=True, context={"request": request}
+        manual_copy = _build_manual_calendar_copy(application)
+        PushNotificationService().send_to_user(
+            user=user,
+            title="Calendar Sync Failed",
+            body=f"Application #{application.id}: {error_message}",
+            data={
+                "type": "calendar_sync_failed",
+                "action": action,
+                "applicationId": application.id,
+                "error": error_message,
+                "calendarTaskCopy": manual_copy,
+            },
+            link=f"/applications/{application.id}",
         )
-        if serializer.is_valid():
-            job.update_progress(40, "Saving changes...")
-            serializer.save()
-
-            job.update_progress(80, "Updating Google Calendar...")
-            # Calendar sync called in serializer.save()
-
-            job.complete(
-                result={"id": application.id, "str_field": str(application)}, message="Application updated successfully"
-            )
-        else:
-            job.fail(error_message=str(serializer.errors))
-
-    except Exception as e:
-        logger.error(f"Error in update_application_task: {str(e)}")
-        job = AsyncJob.objects.get(id=job_id)
-        job.fail(error_message=str(e), traceback=traceback.format_exc())
+    except Exception:
+        logger.exception("Failed to push calendar sync error notification to user #%s", getattr(user, "id", None))
 
 
 @db_task()
-def delete_application_task(job_id, application_id, user_id, delete_invoices=False):
-    """Background task to delete a customer application."""
+def sync_application_calendar_task(
+    *,
+    application_id: int,
+    user_id: int | None = None,
+    action: str = SYNC_ACTION_UPSERT,
+    previous_due_date: str | None = None,
+    start_date: str | None = None,
+    known_event_ids: list[str] | None = None,
+):
+    from customer_applications.services.application_calendar_service import ApplicationCalendarService
+
+    application = (
+        DocApplication.objects.select_related("customer", "product")
+        .prefetch_related("product__tasks", "workflows__task")
+        .filter(pk=application_id)
+        .first()
+    )
+
+    user = User.objects.filter(pk=user_id).first() if user_id else None
+    if not application and action != SYNC_ACTION_DELETE:
+        logger.info("Skipping calendar sync: application #%s no longer exists", application_id)
+        return {"status": "skipped", "reason": "application_missing"}
+
     try:
-        job = AsyncJob.objects.get(id=job_id)
-        job.update_progress(10, "Starting application deletion...", status=AsyncJob.STATUS_PROCESSING)
-
-        user = User.objects.get(pk=user_id)
-        application = DocApplication.objects.get(pk=application_id)
-
-        # Re-verify deletion permission
-        can_delete, msg = application.can_be_deleted(user=user, delete_invoices=delete_invoices)
-        if not can_delete:
-            job.fail(error_message=msg)
-            return
-
-        job.update_progress(50, "Deleting application...")
-        # Since we are in background, we can handle the transaction here if needed
-        # but CustomerApplicationViewSet already had some complex logic for invoices.
-        # We'll replicate it or move it to a service.
-
-        from django.db import transaction
-        from invoices.models.invoice import Invoice
-
-        invoice_ids = list(application.invoice_applications.values_list("invoice_id", flat=True).distinct())
-
-        with transaction.atomic():
-            application.delete(force_delete_invoices=delete_invoices, user=user)
-            # Cleanup invoices
-            for inv_id in invoice_ids:
-                invoice = Invoice.objects.filter(pk=inv_id).first()
-                if invoice and invoice.invoice_applications.count() == 0:
-                    invoice.delete(force=True)
-
-        job.complete(message="Application deleted successfully")
-
-    except Exception as e:
-        logger.error(f"Error in delete_application_task: {str(e)}")
-        job = AsyncJob.objects.get(id=job_id)
-        job.fail(error_message=str(e), traceback=traceback.format_exc())
-
-
-@db_task()
-def advance_workflow_task(job_id, application_id, user_id):
-    """Background task to advance application workflow."""
-    try:
-        job = AsyncJob.objects.get(id=job_id)
-        job.update_progress(10, "Advancing workflow...", status=AsyncJob.STATUS_PROCESSING)
-
-        user = User.objects.get(pk=user_id)
-        application = DocApplication.objects.get(pk=application_id)
-
-        # Logic from advance_workflow view
-        from django.utils import timezone
-
-        current_workflow = application.current_workflow
-        if not current_workflow:
-            job.fail(error_message="No current workflow found")
-            return
-
-        job.update_progress(40, "Completing current step...")
-        current_workflow.status = current_workflow.STATUS_COMPLETED
-        current_workflow.updated_by = user
-        current_workflow.save()
-
-        # Create next workflow if exists
-        next_task = application.next_task
-        if next_task:
-            from customer_applications.models.doc_workflow import DocWorkflow
-
-            step = DocWorkflow(
-                start_date=timezone.now().date(),
-                task=next_task,
-                doc_application=application,
-                created_by=user,
-                status=DocWorkflow.STATUS_PENDING,
+        calendar_service = ApplicationCalendarService()
+        if action == SYNC_ACTION_DELETE:
+            deleted = calendar_service.delete_events_for_application_id(
+                application_id=application_id,
+                known_event_ids=known_event_ids or [],
             )
-            step.due_date = step.calculate_workflow_due_date()
-            step.save()
+            return {"status": "ok", "deleted": deleted}
 
-        # Refresh application status
-        previous_due_date = application.due_date
-        application.save()
+        parsed_previous_due_date = None
+        parsed_start_date = None
+        if previous_due_date:
+            parsed_previous_due_date = datetime.fromisoformat(previous_due_date).date()
+        if start_date:
+            parsed_start_date = datetime.fromisoformat(start_date).date()
 
-        job.update_progress(80, "Syncing Google Calendar...")
-        from customer_applications.services.application_calendar_service import ApplicationCalendarService
-
-        ApplicationCalendarService().sync_next_task_deadline(
+        calendar_service.sync_next_task_deadline(
             application,
-            start_date=current_workflow.due_date,
-            previous_due_date=previous_due_date,
+            start_date=parsed_start_date,
+            previous_due_date=parsed_previous_due_date,
         )
 
-        job.complete(message="Workflow advanced successfully")
-
-    except Exception as e:
-        logger.error(f"Error in advance_workflow_task: {str(e)}")
-        job = AsyncJob.objects.get(id=job_id)
-        job.fail(error_message=str(e), traceback=traceback.format_exc())
+        send_due_tomorrow_customer_notifications(
+            application_ids=[application.id],
+            immediate=True,
+        )
+        return {"status": "ok"}
+    except Exception as exc:
+        logger.exception("Calendar sync failed for application #%s", application_id)
+        if application and user:
+            _notify_calendar_sync_failure(
+                user,
+                application=application,
+                action=action,
+                error_message=str(exc),
+            )
+        return {"status": "failed", "error": str(exc)}
 
 
 def _send_due_tomorrow_notification_for_application(

@@ -59,6 +59,7 @@ router.register(r"backups", BackupsViewSet, basename="backups")
 router.register(r"server-management", ServerManagementViewSet, basename="server-management")
 router.register(r"workflow-notifications", views.WorkflowNotificationViewSet, basename="workflow-notifications")
 router.register(r"async-jobs", views.AsyncJobViewSet, basename="async-jobs")
+router.register(r"push-notifications", views.PushNotificationViewSet, basename="push-notifications")
 
 urlpatterns = [
     # OpenAPI schema endpoints for API documentation and client generation

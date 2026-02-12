@@ -7,7 +7,7 @@ from core.services.logger_service import Logger
 from core.utils.dateutils import calculate_due_date
 from customers.models import Customer
 from django.conf import settings
-from django.db import models
+from django.db import models, transaction
 from django.db.models import Count, F, Q
 from django.db.models.signals import post_delete, pre_delete
 from django.dispatch import receiver
@@ -443,13 +443,40 @@ class DocApplication(models.Model):
 def pre_delete_doc_application_signal(sender, instance, **kwargs):
     # retain the folder path before deleting the doc application
     instance.folder_path = instance.upload_folder
-    # Keep Google Calendar in sync when applications are removed.
-    try:
-        from customer_applications.services.application_calendar_service import ApplicationCalendarService
 
-        ApplicationCalendarService().delete_application_events(instance, clear_application_reference=False)
+    # Queue Google Calendar cleanup asynchronously after the DB transaction commits.
+    known_event_ids = set()
+    if instance.calendar_event_id:
+        known_event_ids.add(instance.calendar_event_id)
+    try:
+        from customer_applications.models.workflow_notification import WorkflowNotification
+
+        refs = (
+            WorkflowNotification.objects.filter(doc_application=instance, external_reference__isnull=False)
+            .exclude(external_reference="")
+            .values_list("external_reference", flat=True)
+        )
+        known_event_ids.update(refs)
     except Exception as exc:
-        logger.warning("Failed to cleanup calendar events for application #%s: %s", instance.id, exc)
+        logger.warning("Failed to collect known calendar event references for application #%s: %s", instance.id, exc)
+
+    application_id = instance.id
+    actor_user_id = instance.updated_by_id or instance.created_by_id
+
+    def _queue_calendar_cleanup():
+        try:
+            from customer_applications.tasks import SYNC_ACTION_DELETE, sync_application_calendar_task
+
+            sync_application_calendar_task(
+                application_id=application_id,
+                user_id=actor_user_id,
+                action=SYNC_ACTION_DELETE,
+                known_event_ids=list(known_event_ids),
+            )
+        except Exception as exc:
+            logger.warning("Failed to queue calendar cleanup for application #%s: %s", application_id, exc)
+
+    transaction.on_commit(_queue_calendar_cleanup)
 
 
 @receiver(post_delete, sender=DocApplication)

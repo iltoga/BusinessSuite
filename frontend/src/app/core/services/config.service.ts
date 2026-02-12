@@ -17,11 +17,11 @@ export class ConfigService {
   }
 
   loadConfig() {
-    // Check for server-injected config first (SSR or production inject)
+    // Seed from server-injected config first (SSR or production inject),
+    // but still fetch backend app-config so auth flags stay synchronized.
     const injectedConfig = (window as any).APP_CONFIG;
     if (injectedConfig) {
       this._config.set({ ...DEFAULT_APP_CONFIG, ...injectedConfig });
-      return Promise.resolve(this._config());
     }
 
     return firstValueFrom(
@@ -31,7 +31,9 @@ export class ConfigService {
         }),
         catchError((error) => {
           console.warn('[ConfigService] Failed to load /api/app-config/.', error);
-          this._config.set(DEFAULT_APP_CONFIG);
+          if (!injectedConfig) {
+            this._config.set(DEFAULT_APP_CONFIG);
+          }
 
           return of(this._config());
         }),

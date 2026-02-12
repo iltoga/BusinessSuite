@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
+import json
 import logging
 import os
 from datetime import timedelta
@@ -809,12 +810,35 @@ WHATSAPP_TEST_NUMBER = os.getenv("WHATSAPP_TEST_NUMBER", "")
 #
 # Web Push Notifications (Firebase Cloud Messaging) settings
 
-# Used by Angular to identify your project and request permission
-FCM_SENDER_ID = os.getenv("FCM_SENDER_ID", "")
-# Used by Angular to subscribe the browser to push notifications
-# This is the "Key pair" shown at the bottom of your screenshot
-FCM_VAPID_PUBLIC_KEY = os.getenv("FCM_VAPID_PUBLIC_KEY", "")
-# Used by Django for initialization (this is typically the Project ID or the Sender ID)
-# Note: The Sender ID and Project Number are identical
-FCM_PROJECT_NUMBER = os.getenv("FCM_PROJECT_NUMBER", "")
-GOOGLE_FCM_SERVICE_ACCOUNT_FILE = os.getenv("GOOGLE_FCM_SERVICE_ACCOUNT_FILE", "")
+FCM_SENDER_ID = os.getenv("FCM_SENDER_ID", "").strip()
+FCM_VAPID_PUBLIC_KEY = os.getenv("FCM_VAPID_PUBLIC_KEY", "").strip()
+FCM_VAPID_PRIVATE_KEY = os.getenv("FCM_VAPID_PRIVATE_KEY", "").strip()
+
+# Legacy setting kept for backward compatibility. In modern Firebase docs this is called `messagingSenderId`.
+FCM_PROJECT_NUMBER = os.getenv("FCM_PROJECT_NUMBER", "").strip()
+FCM_PROJECT_ID = os.getenv("FCM_PROJECT_ID", "").strip()
+
+# Web app config exposed to Angular for Firebase SDK initialization.
+FCM_WEB_API_KEY = os.getenv("FCM_WEB_API_KEY", "").strip()
+FCM_WEB_APP_ID = os.getenv("FCM_WEB_APP_ID", "").strip()
+FCM_WEB_AUTH_DOMAIN = os.getenv("FCM_WEB_AUTH_DOMAIN", "").strip()
+FCM_WEB_STORAGE_BUCKET = os.getenv("FCM_WEB_STORAGE_BUCKET", "").strip()
+FCM_WEB_MEASUREMENT_ID = os.getenv("FCM_WEB_MEASUREMENT_ID", "").strip()
+
+_fcm_file = os.getenv("GOOGLE_FCM_SERVICE_ACCOUNT_FILE", "").strip().strip('"').strip("'")
+if _fcm_file:
+    if os.path.isabs(_fcm_file):
+        GOOGLE_FCM_SERVICE_ACCOUNT_FILE = _fcm_file
+    else:
+        GOOGLE_FCM_SERVICE_ACCOUNT_FILE = os.path.join(ROOT_DIR, _fcm_file)
+else:
+    GOOGLE_FCM_SERVICE_ACCOUNT_FILE = ""
+
+# FCM HTTP v1 endpoint requires a project id (string). If missing, derive from service account json.
+if not FCM_PROJECT_ID and GOOGLE_FCM_SERVICE_ACCOUNT_FILE and os.path.exists(GOOGLE_FCM_SERVICE_ACCOUNT_FILE):
+    try:
+        with open(GOOGLE_FCM_SERVICE_ACCOUNT_FILE, "r", encoding="utf-8") as f:
+            _fcm_sa_payload = json.load(f)
+        FCM_PROJECT_ID = str(_fcm_sa_payload.get("project_id") or "").strip()
+    except Exception:
+        FCM_PROJECT_ID = ""

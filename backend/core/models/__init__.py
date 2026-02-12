@@ -36,6 +36,11 @@ try:
 except Exception:  # pragma: no cover
     UserSettings = None
 
+try:
+    from .web_push_subscription import WebPushSubscription
+except Exception:  # pragma: no cover
+    WebPushSubscription = None
+
 __all__ = [
     "CountryCode",
     "DocumentOCRJob",
@@ -44,4 +49,5 @@ __all__ = [
     "Holiday",
     "UserProfile",
     "UserSettings",
+    "WebPushSubscription",
 ]

@@ -5,7 +5,6 @@ import { DocumentTypesService } from '@/core/api/api/document-types.service';
 import { ProductsService } from '@/core/api/api/products.service';
 import type { Customer } from '@/core/api/model/customer';
 import { AuthService } from '@/core/services/auth.service';
-import { JobService } from '@/core/services/job.service';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
@@ -74,7 +73,6 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
   private productsService = inject(ProductsService);
   private documentTypesService = inject(DocumentTypesService);
   private authService = inject(AuthService);
-  private jobService = inject(JobService);
   private toast = inject(GlobalToastService);
   private http = inject(HttpClient);
   private route = inject(ActivatedRoute);
@@ -581,16 +579,11 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
       this.http
         .patch<any>(`/api/customer-applications/${this.applicationId()}/`, payload, { headers })
         .subscribe({
-          next: (job) => {
-            this.jobService
-              .openProgressDialog(job.id, 'Updating Application')
-              .subscribe((finalJob) => {
-                if (finalJob?.status === 'completed') {
-                  this.toast.success('Application updated');
-                  this.router.navigate(['/applications', this.applicationId()]);
-                }
-                this.isSubmitting.set(false);
-              });
+          next: (application) => {
+            this.toast.success('Application updated');
+            const id = application?.id ?? this.applicationId();
+            this.router.navigate(['/applications', id]);
+            this.isSubmitting.set(false);
           },
           error: (error) => {
             applyServerErrorsToForm(this.form, error);
@@ -623,21 +616,15 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
 
       // Use the main endpoint which supports document_types via DocApplicationCreateUpdateSerializer
       this.http.post<any>('/api/customer-applications/', payload, { headers }).subscribe({
-        next: (job) => {
-          this.jobService
-            .openProgressDialog(job.id, 'Creating Application')
-            .subscribe((finalJob) => {
-              if (finalJob?.status === 'completed') {
-                this.toast.success('Application created');
-                const id = finalJob.result?.id;
-                if (id) {
-                  this.router.navigate(['/applications', id]);
-                } else {
-                  this.router.navigate(['/applications']);
-                }
-              }
-              this.isSubmitting.set(false);
-            });
+        next: (application) => {
+          this.toast.success('Application created');
+          const id = application?.id;
+          if (id) {
+            this.router.navigate(['/applications', id]);
+          } else {
+            this.router.navigate(['/applications']);
+          }
+          this.isSubmitting.set(false);
         },
         error: (error) => {
           applyServerErrorsToForm(this.form, error);

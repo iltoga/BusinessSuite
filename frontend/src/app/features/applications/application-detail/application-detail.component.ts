@@ -27,7 +27,6 @@ import {
 } from '@/core/services/applications.service';
 import { AuthService } from '@/core/services/auth.service';
 import { DocumentsService } from '@/core/services/documents.service';
-import { JobService } from '@/core/services/job.service';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
@@ -84,7 +83,6 @@ export class ApplicationDetailComponent implements OnInit {
   private router = inject(Router);
   private applicationsService = inject(ApplicationsService);
   private documentsService = inject(DocumentsService);
-  private jobService = inject(JobService);
   private documentTypesService = inject(DocumentTypesService);
   private authService = inject(AuthService);
   private toast = inject(GlobalToastService);
@@ -542,18 +540,13 @@ export class ApplicationDetailComponent implements OnInit {
 
     this.workflowAction.set('advance');
     this.applicationsService.advanceWorkflow(app.id).subscribe({
-      next: (job) => {
-        const jobId = job?.id || job?.jobId;
-        this.jobService.openProgressDialog(jobId, 'Advancing Workflow...').subscribe((success) => {
-          if (success) {
-            this.toast.success('Workflow advanced');
-            this.loadApplication(app.id);
-          }
-          this.workflowAction.set(null);
-        });
+      next: () => {
+        this.toast.success('Workflow advanced');
+        this.loadApplication(app.id);
+        this.workflowAction.set(null);
       },
       error: () => {
-        this.toast.error('Failed to start workflow advancement');
+        this.toast.error('Failed to advance workflow');
         this.workflowAction.set(null);
       },
     });
@@ -566,21 +559,13 @@ export class ApplicationDetailComponent implements OnInit {
     if (confirm(`Are you sure you want to delete application #${app.id}?`)) {
       this.workflowAction.set('delete');
       this.applicationsService.deleteApplication(app.id).subscribe({
-        next: (job) => {
-          const jobId = job?.id || job?.jobId;
-          this.jobService
-            .openProgressDialog(jobId, 'Deleting Application...')
-            .subscribe((success) => {
-              if (success) {
-                this.toast.success('Application deleted');
-                this.goBack();
-              } else {
-                this.workflowAction.set(null);
-              }
-            });
+        next: () => {
+          this.toast.success('Application deleted');
+          this.goBack();
+          this.workflowAction.set(null);
         },
         error: () => {
-          this.toast.error('Failed to start application deletion');
+          this.toast.error('Failed to delete application');
           this.workflowAction.set(null);
         },
       });
@@ -815,15 +800,9 @@ export class ApplicationDetailComponent implements OnInit {
     if (!app || this.isSavingMeta()) return;
     this.isSavingMeta.set(true);
     this.http.patch<any>(`/api/customer-applications/${app.id}/`, payload).subscribe({
-      next: (job) => {
-        this.jobService.openProgressDialog(job.id, 'Updating Application').subscribe((finalJob) => {
-          if (finalJob?.status === 'completed') {
-            this.toast.success(successMessage);
-            this.loadApplication(app.id);
-          } else {
-            this.isSavingMeta.set(false);
-          }
-        });
+      next: () => {
+        this.toast.success(successMessage);
+        this.loadApplication(app.id);
       },
       error: () => {
         this.toast.error('Failed to update application');

@@ -22,3 +22,21 @@ class PublicAppConfigTests(TestCase):
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertEqual(payload["dateFormat"], "yyyy-MM-dd")
+
+    @override_settings(MOCK_AUTH_ENABLED=False)
+    def test_public_app_config_returns_mock_auth_disabled_flag(self):
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertIn("MOCK_AUTH_ENABLED", payload)
+        self.assertIs(payload["MOCK_AUTH_ENABLED"], False)
+
+    @override_settings(MOCK_AUTH_ENABLED=True)
+    def test_public_app_config_returns_mock_auth_enabled_flag(self):
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertIn("MOCK_AUTH_ENABLED", payload)
+        self.assertIs(payload["MOCK_AUTH_ENABLED"], True)

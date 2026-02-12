@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime, time, timedelta
+from typing import Iterable
 
 from core.utils.google_client import GoogleClient
 from core.services.google_calendar_event_colors import GoogleCalendarEventColors
@@ -67,22 +68,11 @@ class ApplicationCalendarService:
         return event
 
     def delete_application_events(self, application, clear_application_reference=True):
-        calendar_id = getattr(settings, "GOOGLE_CALENDAR_ID", "primary")
-        try:
-            client = GoogleClient()
-        except Exception as e:
-            logger.warning(f"Failed to initialize Google client for application #{application.id}: {e}")
-            return 0
-
-        event_ids = self._get_application_event_ids(application, client)
-        deleted_count = 0
-
-        for event_id in event_ids:
-            try:
-                client.delete_event(event_id, calendar_id=calendar_id)
-                deleted_count += 1
-            except Exception as e:
-                logger.warning(f"Failed to delete calendar event {event_id}: {e}")
+        known_event_ids = self._known_event_ids_from_application(application)
+        deleted_count = self.delete_events_for_application_id(
+            application_id=application.id,
+            known_event_ids=known_event_ids,
+        )
 
         if clear_application_reference and application.calendar_event_id:
             application.calendar_event_id = None
@@ -90,23 +80,46 @@ class ApplicationCalendarService:
 
         return deleted_count
 
-    def _get_application_event_ids(self, application, client):
+    def delete_events_for_application_id(self, application_id: int, known_event_ids: Iterable[str] | None = None):
         calendar_id = getattr(settings, "GOOGLE_CALENDAR_ID", "primary")
-        event_ids = set()
+        try:
+            client = GoogleClient()
+        except Exception as e:
+            logger.warning(f"Failed to initialize Google client for application #{application_id}: {e}")
+            return 0
 
+        event_ids = set(filter(None, known_event_ids or []))
+        event_ids.update(self._lookup_event_ids_for_application_id(client=client, application_id=application_id))
+
+        deleted_count = 0
+        for event_id in event_ids:
+            try:
+                client.delete_event(event_id, calendar_id=calendar_id)
+                deleted_count += 1
+            except Exception as e:
+                logger.warning(f"Failed to delete calendar event {event_id}: {e}")
+
+        return deleted_count
+
+    def _known_event_ids_from_application(self, application):
+        event_ids = set()
         if application.calendar_event_id:
             event_ids.add(application.calendar_event_id)
 
         notification_refs = (
             WorkflowNotification.objects.filter(
                 doc_application=application,
-                doc_workflow__isnull=False,
                 external_reference__isnull=False,
             )
             .exclude(external_reference="")
             .values_list("external_reference", flat=True)
         )
         event_ids.update(notification_refs)
+        return event_ids
+
+    def _lookup_event_ids_for_application_id(self, client, application_id: int):
+        calendar_id = getattr(settings, "GOOGLE_CALENDAR_ID", "primary")
+        event_ids = set()
 
         try:
             events = client.list_events(
@@ -114,18 +127,17 @@ class ApplicationCalendarService:
                 max_results=250,
                 include_past=True,
                 fetch_all=True,
-                private_extended_property=self._private_extended_property_filter(application),
+                private_extended_property=f"{self.PRIVATE_PROP_APPLICATION_ID_KEY}={application_id}",
             )
             for event in events:
                 event_id = event.get("id")
                 if event_id:
                     event_ids.add(event_id)
         except Exception as e:
-            logger.warning(f"Failed to lookup pinned calendar events for application #{application.id}: {e}")
+            logger.warning(f"Failed to lookup pinned calendar events for application #{application_id}: {e}")
 
-        # Backward-compatible fallback for old events created before extended properties.
         try:
-            summary_prefix = self._summary_prefix(application)
+            summary_prefix = f"[Application #{application_id}]"
             legacy_events = client.list_events(
                 calendar_id=calendar_id,
                 max_results=250,
@@ -139,8 +151,13 @@ class ApplicationCalendarService:
                 if event_id and summary.startswith(summary_prefix):
                     event_ids.add(event_id)
         except Exception as e:
-            logger.warning(f"Failed to lookup legacy calendar events for application #{application.id}: {e}")
+            logger.warning(f"Failed to lookup legacy calendar events for application #{application_id}: {e}")
 
+        return event_ids
+
+    def _get_application_event_ids(self, application, client):
+        event_ids = set(self._known_event_ids_from_application(application))
+        event_ids.update(self._lookup_event_ids_for_application_id(client=client, application_id=application.id))
         return {event_id for event_id in event_ids if event_id}
 
     def _resolve_primary_event_id(self, application):

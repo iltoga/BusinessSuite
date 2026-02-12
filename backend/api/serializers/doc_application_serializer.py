@@ -303,12 +303,6 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
         if has_auto_passport:
             self._auto_import_passport(application, user)
 
-        from customer_applications.services.application_calendar_service import ApplicationCalendarService
-        from customer_applications.tasks import send_due_tomorrow_customer_notifications
-
-        ApplicationCalendarService().sync_next_task_deadline(application)
-        send_due_tomorrow_customer_notifications(application_ids=[application.id], immediate=True)
-
         return application
 
     def update(self, instance, validated_data):
@@ -317,7 +311,6 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
         from products.models.document_type import DocumentType
 
         document_types = validated_data.pop("document_types", None)
-        previous_due_date = instance.due_date
         application = super().update(instance, validated_data)
 
         if document_types is not None:
@@ -358,11 +351,6 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
                     updated_by=user,
                 )
 
-        from customer_applications.services.application_calendar_service import ApplicationCalendarService
-        from customer_applications.tasks import send_due_tomorrow_customer_notifications
-
-        ApplicationCalendarService().sync_next_task_deadline(application, previous_due_date=previous_due_date)
-        send_due_tomorrow_customer_notifications(application_ids=[application.id], immediate=True)
         return application
 
     def _can_auto_import_passport(self, application) -> bool:
