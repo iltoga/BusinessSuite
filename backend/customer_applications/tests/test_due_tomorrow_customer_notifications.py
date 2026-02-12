@@ -85,3 +85,33 @@ class DueTomorrowCustomerNotificationTests(TestCase):
         notification = WorkflowNotification.objects.get(doc_application=self.application)
         self.assertEqual(notification.channel, DocApplication.NOTIFY_CHANNEL_WHATSAPP)
         self.assertEqual(notification.external_reference, "SM123")
+
+    @patch("notifications.services.providers.NotificationDispatcher.send", side_effect=RuntimeError("provider down"))
+    def test_failed_notification_is_not_recreated_automatically(self, send_mock):
+        first = send_due_tomorrow_customer_notifications(now=self.now)
+        second = send_due_tomorrow_customer_notifications(now=self.now)
+
+        self.assertEqual(first["failed"], 1)
+        self.assertEqual(second["failed"], 0)
+        self.assertEqual(second["skipped"], 1)
+        self.assertEqual(send_mock.call_count, 1)
+        self.assertEqual(WorkflowNotification.objects.filter(doc_application=self.application).count(), 1)
+        notification = WorkflowNotification.objects.get(doc_application=self.application)
+        self.assertEqual(notification.status, WorkflowNotification.STATUS_FAILED)
+
+    @patch(
+        "notifications.services.providers.NotificationDispatcher.send",
+        return_value="queued_whatsapp:+628123456789",
+    )
+    def test_whatsapp_queued_placeholder_is_kept_pending(self, send_mock):
+        self.application.notify_customer_channel = DocApplication.NOTIFY_CHANNEL_WHATSAPP
+        self.application.save(update_fields=["notify_customer_channel", "updated_at"])
+
+        result = send_due_tomorrow_customer_notifications(now=self.now)
+
+        self.assertEqual(result["pending"], 1)
+        self.assertEqual(send_mock.call_count, 1)
+        notification = WorkflowNotification.objects.get(doc_application=self.application)
+        self.assertEqual(notification.status, WorkflowNotification.STATUS_PENDING)
+        self.assertEqual(notification.external_reference, "")
+        self.assertIsNone(notification.sent_at)

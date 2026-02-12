@@ -142,6 +142,11 @@ class NotificationDispatcher:
         return provider.send(recipient=recipient, subject=subject, body=body, html_body=html_body)
 
 
+def is_queued_provider_result(channel: str, provider_result: str | None) -> bool:
+    value = str(provider_result or "").strip()
+    return channel == "whatsapp" and value.startswith("queued_whatsapp:")
+
+
 def process_whatsapp_webhook_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
     """Process Meta WhatsApp webhook payload (delivery statuses + incoming replies)."""
     if not isinstance(payload, Mapping):

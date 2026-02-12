@@ -6,6 +6,7 @@ import time
 import uuid
 from datetime import datetime
 from io import BytesIO
+from typing import Any, cast
 
 from api.serializers import (
     AdminPushNotificationSendSerializer,
@@ -114,6 +115,7 @@ def observability_log(request):
 def whatsapp_webhook(request):
     """Meta WhatsApp webhook endpoint (verification + delivery statuses + incoming replies)."""
     from notifications.services.providers import process_whatsapp_webhook_payload, verify_meta_webhook_signature
+
     webhook_logger = logging.getLogger("notifications.whatsapp_webhook")
 
     if request.method == "GET":
@@ -1801,12 +1803,6 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         if not workflow:
             return self.error_response("Workflow not found", status.HTTP_404_NOT_FOUND)
 
-        if (
-            status_value == DocWorkflow.STATUS_COMPLETED
-            and not workflow.doc_application.is_document_collection_completed
-        ):
-            return self.error_response("Document collection is not completed", status.HTTP_400_BAD_REQUEST)
-
         workflow.status = status_value
         workflow.updated_by = request.user
         workflow.save()
@@ -2529,7 +2525,7 @@ class WorkflowNotificationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], url_path="resend")
     def resend(self, request, pk=None):
-        from notifications.services.providers import NotificationDispatcher
+        from notifications.services.providers import NotificationDispatcher, is_queued_provider_result
 
         notification = self.get_object()
         if notification.status == WorkflowNotification.STATUS_CANCELLED:
@@ -2542,14 +2538,32 @@ class WorkflowNotificationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                 notification.subject,
                 notification.body,
             )
-            notification.status = WorkflowNotification.STATUS_SENT
-            notification.sent_at = timezone.now()
-            notification.provider_message = result
-            notification.save(update_fields=["status", "sent_at", "provider_message", "updated_at"])
+            notification.provider_message = str(result)
+            if is_queued_provider_result(notification.channel, result):
+                notification.status = WorkflowNotification.STATUS_PENDING
+                notification.sent_at = None
+                if notification.channel == WorkflowNotification.CHANNEL_WHATSAPP:
+                    notification.external_reference = ""
+                notification.save(
+                    update_fields=["status", "sent_at", "provider_message", "external_reference", "updated_at"]
+                )
+            else:
+                notification.status = WorkflowNotification.STATUS_SENT
+                notification.sent_at = timezone.now()
+                if notification.channel == WorkflowNotification.CHANNEL_WHATSAPP:
+                    notification.external_reference = str(result)
+                notification.save(
+                    update_fields=["status", "sent_at", "provider_message", "external_reference", "updated_at"]
+                )
         except Exception as exc:
             notification.status = WorkflowNotification.STATUS_FAILED
+            notification.sent_at = None
             notification.provider_message = str(exc)
-            notification.save(update_fields=["status", "provider_message", "updated_at"])
+            if notification.channel == WorkflowNotification.CHANNEL_WHATSAPP:
+                notification.external_reference = ""
+            notification.save(
+                update_fields=["status", "sent_at", "provider_message", "external_reference", "updated_at"]
+            )
             return self.error_response(str(exc), status.HTTP_400_BAD_REQUEST)
 
         return Response(self.get_serializer(notification).data)
@@ -2597,7 +2611,8 @@ class PushNotificationViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
         serializer = WebPushSubscriptionUpsertSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        token = serializer.validated_data["token"].strip()
+        data = cast(dict[str, Any], serializer.validated_data)
+        token = data["token"].strip()
         if not token:
             return self.error_response("Token is required", status.HTTP_400_BAD_REQUEST)
 
@@ -2620,7 +2635,8 @@ class PushNotificationViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
         serializer = WebPushSubscriptionDeleteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        token = serializer.validated_data["token"].strip()
+        data = cast(dict[str, Any], serializer.validated_data)
+        token = data["token"].strip()
         updated = WebPushSubscription.objects.filter(user=request.user, token=token).update(is_active=False)
         return Response({"updated": updated})
 
@@ -2629,7 +2645,7 @@ class PushNotificationViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
         serializer = PushNotificationTestSerializer(data=request.data or {})
         serializer.is_valid(raise_exception=True)
 
-        data = serializer.validated_data
+        data = cast(dict[str, Any], serializer.validated_data)
         active_subscriptions = self._active_subscription_count(request.user)
         if active_subscriptions == 0:
             return self.error_response(
@@ -2704,7 +2720,7 @@ class PushNotificationViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
 
         serializer = AdminPushNotificationSendSerializer(data=request.data or {})
         serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
+        data = cast(dict[str, Any], serializer.validated_data)
 
         User = get_user_model()
         target_user = User.objects.filter(pk=data["user_id"], is_active=True).first()

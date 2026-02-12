@@ -4,6 +4,7 @@ from datetime import datetime, time, timedelta
 from customer_applications.models import DocApplication
 from django.contrib.auth import get_user_model
 from django.conf import settings
+from django.db import IntegrityError
 from django.utils import timezone
 from huey import crontab
 from huey.contrib.djhuey import db_periodic_task, db_task
@@ -94,35 +95,34 @@ def sync_application_calendar_task(
         logger.info("Skipping calendar sync: application #%s no longer exists", application_id)
         return {"status": "skipped", "reason": "application_missing"}
 
-    try:
-        calendar_service = ApplicationCalendarService()
-        if action == SYNC_ACTION_DELETE:
-            deleted = calendar_service.delete_events_for_application_id(
+    if action == SYNC_ACTION_DELETE:
+        try:
+            deleted = ApplicationCalendarService().delete_events_for_application_id(
                 application_id=application_id,
                 known_event_ids=known_event_ids or [],
             )
             return {"status": "ok", "deleted": deleted}
+        except Exception as exc:
+            logger.exception("Calendar cleanup failed for application #%s", application_id)
+            return {"status": "failed", "error": str(exc)}
 
-        parsed_previous_due_date = None
-        parsed_start_date = None
-        if previous_due_date:
-            parsed_previous_due_date = datetime.fromisoformat(previous_due_date).date()
-        if start_date:
-            parsed_start_date = datetime.fromisoformat(start_date).date()
+    parsed_previous_due_date = None
+    parsed_start_date = None
+    if previous_due_date:
+        parsed_previous_due_date = datetime.fromisoformat(previous_due_date).date()
+    if start_date:
+        parsed_start_date = datetime.fromisoformat(start_date).date()
 
-        calendar_service.sync_next_task_deadline(
+    calendar_error = None
+    try:
+        ApplicationCalendarService().sync_next_task_deadline(
             application,
             start_date=parsed_start_date,
             previous_due_date=parsed_previous_due_date,
         )
-
-        send_due_tomorrow_customer_notifications(
-            application_ids=[application.id],
-            immediate=True,
-        )
-        return {"status": "ok"}
     except Exception as exc:
         logger.exception("Calendar sync failed for application #%s", application_id)
+        calendar_error = exc
         if application and user:
             _notify_calendar_sync_failure(
                 user,
@@ -130,13 +130,20 @@ def sync_application_calendar_task(
                 action=action,
                 error_message=str(exc),
             )
-        return {"status": "failed", "error": str(exc)}
+
+    notification_result = send_due_tomorrow_customer_notifications(
+        application_ids=[application.id],
+        immediate=True,
+    )
+
+    if calendar_error is not None:
+        return {"status": "failed", "error": str(calendar_error), "notifications": notification_result}
+    return {"status": "ok", "notifications": notification_result}
 
 
 def _send_due_tomorrow_notification_for_application(
     *,
     application,
-    today,
     dispatcher,
     scheduled_for,
 ):
@@ -144,6 +151,8 @@ def _send_due_tomorrow_notification_for_application(
     from notifications.services.customer_deadline_messages import (
         build_customer_deadline_notification_payload,
     )
+    from notifications.services.providers import is_queued_provider_result
+
     task = application.get_next_calendar_task()
     if not task or not task.notify_customer:
         return "skipped"
@@ -160,26 +169,39 @@ def _send_due_tomorrow_notification_for_application(
     body = payload["email_text"] if channel == application.NOTIFY_CHANNEL_EMAIL else payload["whatsapp_text"]
     html_body = payload["email_html"] if channel == application.NOTIFY_CHANNEL_EMAIL else None
 
-    duplicate_exists = WorkflowNotification.objects.filter(
-        doc_application=application,
-        channel=channel,
-        subject=subject,
-        scheduled_for__date=today,
-        status__in=[WorkflowNotification.STATUS_PENDING, WorkflowNotification.STATUS_SENT],
-    ).exists()
-    if duplicate_exists:
+    try:
+        notification, created = WorkflowNotification.objects.get_or_create(
+            doc_application=application,
+            channel=channel,
+            notification_type=WorkflowNotification.TYPE_DUE_TOMORROW,
+            target_date=application.due_date,
+            defaults={
+                "recipient": recipient,
+                "subject": subject,
+                "body": body,
+                "doc_workflow": None,
+                "status": WorkflowNotification.STATUS_PENDING,
+                "scheduled_for": scheduled_for,
+            },
+        )
+    except IntegrityError:
         return "skipped"
 
-    notification = WorkflowNotification.objects.create(
-        channel=channel,
-        recipient=recipient,
-        subject=subject,
-        body=body,
-        doc_application=application,
-        doc_workflow=None,
-        status=WorkflowNotification.STATUS_PENDING,
-        scheduled_for=scheduled_for,
-    )
+    if not created:
+        # Keep stored payload aligned with latest application data for manual retries.
+        update_fields = []
+        if notification.recipient != recipient:
+            notification.recipient = recipient
+            update_fields.append("recipient")
+        if notification.subject != subject:
+            notification.subject = subject
+            update_fields.append("subject")
+        if notification.body != body:
+            notification.body = body
+            update_fields.append("body")
+        if update_fields:
+            notification.save(update_fields=[*update_fields, "updated_at"])
+        return "skipped"
 
     try:
         message = dispatcher.send(
@@ -189,14 +211,23 @@ def _send_due_tomorrow_notification_for_application(
             body=body,
             html_body=html_body,
         )
-        notification.status = WorkflowNotification.STATUS_SENT
-        notification.provider_message = message
-        notification.external_reference = message if channel == application.NOTIFY_CHANNEL_WHATSAPP else ""
-        notification.sent_at = timezone.now()
-        result = "sent"
+        notification.provider_message = str(message)
+        if is_queued_provider_result(channel, message):
+            # Provider accepted queueing placeholder but did not send to recipient yet.
+            notification.status = WorkflowNotification.STATUS_PENDING
+            notification.external_reference = ""
+            notification.sent_at = None
+            result = "pending"
+        else:
+            notification.status = WorkflowNotification.STATUS_SENT
+            notification.external_reference = str(message) if channel == application.NOTIFY_CHANNEL_WHATSAPP else ""
+            notification.sent_at = timezone.now()
+            result = "sent"
     except Exception as exc:
         notification.status = WorkflowNotification.STATUS_FAILED
         notification.provider_message = str(exc)
+        notification.external_reference = ""
+        notification.sent_at = None
         result = "failed"
 
     notification.save(
@@ -241,6 +272,7 @@ def send_due_tomorrow_customer_notifications(now=None, application_ids=None, imm
     dispatcher = NotificationDispatcher()
     sent_count = 0
     failed_count = 0
+    pending_count = 0
     skipped_count = 0
     scheduled_for = (
         current_time
@@ -259,7 +291,6 @@ def send_due_tomorrow_customer_notifications(now=None, application_ids=None, imm
     for application in applications:
         result = _send_due_tomorrow_notification_for_application(
             application=application,
-            today=today,
             dispatcher=dispatcher,
             scheduled_for=scheduled_for,
         )
@@ -267,17 +298,20 @@ def send_due_tomorrow_customer_notifications(now=None, application_ids=None, imm
             sent_count += 1
         elif result == "failed":
             failed_count += 1
+        elif result == "pending":
+            pending_count += 1
         else:
             skipped_count += 1
 
     logger.info(
-        "Due-tomorrow notification job completed: sent=%s failed=%s skipped=%s target_date=%s",
+        "Due-tomorrow notification job completed: sent=%s pending=%s failed=%s skipped=%s target_date=%s",
         sent_count,
+        pending_count,
         failed_count,
         skipped_count,
         tomorrow.isoformat(),
     )
-    return {"sent": sent_count, "failed": failed_count, "skipped": skipped_count}
+    return {"sent": sent_count, "pending": pending_count, "failed": failed_count, "skipped": skipped_count}
 
 
 @db_periodic_task(

@@ -181,7 +181,9 @@ class DocApplication(models.Model):
         Checks whether the application is completed.
         """
         current_workflow = self.current_workflow
-        return current_workflow.is_workflow_completed if current_workflow else False
+        return bool(
+            current_workflow and current_workflow.is_workflow_completed and self.is_document_collection_completed
+        )
 
     @property
     def has_next_task(self):

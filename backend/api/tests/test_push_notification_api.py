@@ -1,12 +1,11 @@
 from unittest.mock import patch
 
+from core.models import WebPushSubscription
+from core.services.push_notifications import PushNotificationResult
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.test.utils import override_settings
 from rest_framework.test import APIClient
-
-from core.models import WebPushSubscription
-from core.services.push_notifications import PushNotificationResult
 
 User = get_user_model()
 
@@ -87,8 +86,9 @@ class PushNotificationApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         current = next((item for item in response.data if item["id"] == self.user.id), None)
         self.assertIsNotNone(current)
-        self.assertEqual(current["active_push_subscriptions"], 1)
-        self.assertEqual(current["total_push_subscriptions"], 1)
+        if current:
+            self.assertEqual(current["active_push_subscriptions"], 1)
+            self.assertEqual(current["total_push_subscriptions"], 1)
 
     def test_test_endpoint_returns_409_when_no_active_subscription(self):
         response = self.client.post(

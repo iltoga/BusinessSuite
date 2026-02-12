@@ -109,6 +109,7 @@ class ApplicationCalendarService:
         notification_refs = (
             WorkflowNotification.objects.filter(
                 doc_application=application,
+                notification_type="",
                 external_reference__isnull=False,
             )
             .exclude(external_reference="")
@@ -165,7 +166,11 @@ class ApplicationCalendarService:
             return application.calendar_event_id
 
         last_notification = (
-            WorkflowNotification.objects.filter(doc_application=application, external_reference__isnull=False)
+            WorkflowNotification.objects.filter(
+                doc_application=application,
+                notification_type="",
+                external_reference__isnull=False,
+            )
             .exclude(external_reference="")
             .order_by("-id")
             .first()

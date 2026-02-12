@@ -46,6 +46,7 @@ import {
 import { ZardTooltipImports } from '@/shared/components/tooltip';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 import { HelpService } from '@/shared/services/help.service';
+import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 import { downloadBlob } from '@/shared/utils/file-download';
 
 @Component({
@@ -368,8 +369,8 @@ export class ApplicationDetailComponent implements OnInit {
             this.closeUpload();
           }
         },
-        error: () => {
-          this.toast.error('Failed to update document');
+        error: (error) => {
+          this.toast.error(extractServerErrorMessage(error) || 'Failed to update document');
           this.isSaving.set(false);
         },
       });
@@ -400,8 +401,8 @@ export class ApplicationDetailComponent implements OnInit {
           this.handleOcrResult(response as OcrStatusResponse);
         }
       },
-      error: () => {
-        this.toast.error('Failed to start OCR');
+      error: (error) => {
+        this.toast.error(extractServerErrorMessage(error) || 'Failed to start OCR');
         this.ocrPolling.set(false);
       },
     });
@@ -452,8 +453,8 @@ export class ApplicationDetailComponent implements OnInit {
         }
         this.actionLoading.set(null);
       },
-      error: () => {
-        this.toast.error('Failed to execute action');
+      error: (error) => {
+        this.toast.error(extractServerErrorMessage(error) || 'Failed to execute action');
         this.actionLoading.set(null);
       },
     });
@@ -469,12 +470,12 @@ export class ApplicationDetailComponent implements OnInit {
         }
         window.setTimeout(() => URL.revokeObjectURL(url), 60000);
       },
-      error: () => {
+      error: (error) => {
         if (doc.fileLink) {
           window.open(doc.fileLink, '_blank');
           return;
         }
-        this.toast.error('Failed to open document');
+        this.toast.error(extractServerErrorMessage(error) || 'Failed to open document');
       },
     });
   }
@@ -526,9 +527,8 @@ export class ApplicationDetailComponent implements OnInit {
         this.isMerging.set(false);
         this.toast.success('PDF merged and downloaded');
       },
-      error: (err: any) => {
-        const errorMsg = err?.error?.error || 'Failed to merge documents';
-        this.toast.error(errorMsg);
+      error: (error) => {
+        this.toast.error(extractServerErrorMessage(error) || 'Failed to merge documents');
         this.isMerging.set(false);
       },
     });
@@ -545,8 +545,8 @@ export class ApplicationDetailComponent implements OnInit {
         this.loadApplication(app.id);
         this.workflowAction.set(null);
       },
-      error: () => {
-        this.toast.error('Failed to advance workflow');
+      error: (error) => {
+        this.toast.error(extractServerErrorMessage(error) || 'Failed to advance workflow');
         this.workflowAction.set(null);
       },
     });
@@ -564,8 +564,8 @@ export class ApplicationDetailComponent implements OnInit {
           this.goBack();
           this.workflowAction.set(null);
         },
-        error: () => {
-          this.toast.error('Failed to delete application');
+        error: (error) => {
+          this.toast.error(extractServerErrorMessage(error) || 'Failed to delete application');
           this.workflowAction.set(null);
         },
       });
@@ -583,8 +583,8 @@ export class ApplicationDetailComponent implements OnInit {
         this.loadApplication(app.id);
         this.workflowAction.set(null);
       },
-      error: () => {
-        this.toast.error('Failed to update workflow status');
+      error: (error) => {
+        this.toast.error(extractServerErrorMessage(error) || 'Failed to update workflow status');
         this.workflowAction.set(null);
       },
     });
@@ -601,8 +601,8 @@ export class ApplicationDetailComponent implements OnInit {
         this.loadApplication(app.id);
         this.workflowAction.set(null);
       },
-      error: () => {
-        this.toast.error('Failed to re-open application');
+      error: (error) => {
+        this.toast.error(extractServerErrorMessage(error) || 'Failed to re-open application');
         this.workflowAction.set(null);
       },
     });
@@ -636,9 +636,8 @@ export class ApplicationDetailComponent implements OnInit {
           this.loadApplication(app.id);
           this.workflowAction.set(null);
         },
-        error: (err: any) => {
-          const msg = err?.error?.detail || err?.error || 'Failed to force close application';
-          this.toast.error(msg);
+        error: (error) => {
+          this.toast.error(extractServerErrorMessage(error) || 'Failed to force close application');
           this.workflowAction.set(null);
         },
       });
@@ -804,8 +803,8 @@ export class ApplicationDetailComponent implements OnInit {
         this.toast.success(successMessage);
         this.loadApplication(app.id);
       },
-      error: () => {
-        this.toast.error('Failed to update application');
+      error: (error) => {
+        this.toast.error(extractServerErrorMessage(error) || 'Failed to update application');
         this.isSavingMeta.set(false);
       },
     });
@@ -850,8 +849,8 @@ export class ApplicationDetailComponent implements OnInit {
             'Manage documents, workflow steps, and application-specific actions. Use the upload area to add documents and the actions menu to run workflow steps or create invoices.',
         });
       },
-      error: () => {
-        this.toast.error('Failed to load application');
+      error: (error) => {
+        this.toast.error(extractServerErrorMessage(error) || 'Failed to load application');
         this.isLoading.set(false);
         this.isSavingMeta.set(false);
       },
@@ -887,8 +886,8 @@ export class ApplicationDetailComponent implements OnInit {
           }
           this.pollOcrStatus(statusUrl, attempt + 1);
         },
-        error: () => {
-          this.toast.error('Failed to check OCR status');
+        error: (error) => {
+          this.toast.error(extractServerErrorMessage(error) || 'Failed to check OCR status');
           this.ocrPolling.set(false);
         },
       });

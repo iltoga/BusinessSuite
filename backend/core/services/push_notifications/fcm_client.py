@@ -126,6 +126,8 @@ class FcmClient:
             return {"raw": response.text}
 
     def _access_token(self) -> str:
+        if Request is None:
+            raise FcmConfigurationError("google-auth Request is not available for FCM access token refresh")
         self.credentials.refresh(Request())
         if not self.credentials.token:
             raise FcmConfigurationError("Failed to refresh FCM access token")
