@@ -3,6 +3,8 @@ import os
 from django.conf import settings
 from rest_framework.exceptions import APIException
 
+from core.services.google_calendar_event_colors import GoogleCalendarEventColors
+
 # Lazy import of google libraries so tests or environments without them fail fast with clear message
 try:
     from google.oauth2 import service_account
@@ -150,6 +152,8 @@ class GoogleClient:
         }
         if data.get("extended_properties"):
             event_body["extendedProperties"] = data.get("extended_properties")
+        if data.get("color_id") is not None:
+            event_body["colorId"] = GoogleCalendarEventColors.validate_color_id(data.get("color_id"))
 
         if start_date and end_date:
             event_body["start"] = {"date": start_date}
@@ -180,6 +184,8 @@ class GoogleClient:
                 body["description"] = data["description"]
             if "extended_properties" in data:
                 body["extendedProperties"] = data["extended_properties"]
+            if "color_id" in data:
+                body["colorId"] = GoogleCalendarEventColors.validate_color_id(data["color_id"])
 
             if "start_time" in data:
                 start_time = data["start_time"]
@@ -201,6 +207,16 @@ class GoogleClient:
             raise APIException(f"Google Calendar Update Error: {str(e)}")
         except Exception as e:
             raise APIException(f"Google Calendar Update Error: {str(e)}")
+
+    def set_event_color(self, event_id, color_id, calendar_id=None):
+        if calendar_id is None:
+            calendar_id = DEFAULT_CALENDAR_ID
+        validated_color_id = GoogleCalendarEventColors.validate_color_id(color_id)
+        return self.update_event(event_id=event_id, data={"color_id": validated_color_id}, calendar_id=calendar_id)
+
+    def set_event_done_state(self, event_id, done: bool, calendar_id=None):
+        target_color_id = GoogleCalendarEventColors.color_for_done_state(done)
+        return self.set_event_color(event_id=event_id, color_id=target_color_id, calendar_id=calendar_id)
 
     def delete_event(self, event_id, calendar_id=None):
         if calendar_id is None:

@@ -314,6 +314,8 @@ GOOGLE_SCOPES = _parse_list(
 GOOGLE_TIMEZONE = os.getenv("GOOGLE_TIMEZONE", "Asia/Makassar")
 GOOGLE_CALENDAR_ID = os.getenv("GOOGLE_CALENDAR_ID", "primary")
 GOOGLE_TASKLIST_ID = os.getenv("GOOGLE_TASKLIST_ID", "@default")
+GOOGLE_CALENDAR_TODO_COLOR_ID = os.getenv("GOOGLE_CALENDAR_TODO_COLOR_ID", "5")
+GOOGLE_CALENDAR_DONE_COLOR_ID = os.getenv("GOOGLE_CALENDAR_DONE_COLOR_ID", "10")
 
 # Configure project locale path for translations (locale is at project root, one level up from BASE_DIR)
 LOCALE_PATHS = [os.path.join(BASE_DIR, "..", "locale")]
@@ -803,3 +805,16 @@ META_WEBHOOK_ENFORCE_SIGNATURE = (
     os.getenv("META_WEBHOOK_ENFORCE_SIGNATURE", "false" if DEBUG else "true").lower() == "true"
 )
 WHATSAPP_TEST_NUMBER = os.getenv("WHATSAPP_TEST_NUMBER", "")
+
+#
+# Web Push Notifications (Firebase Cloud Messaging) settings
+
+# Used by Angular to identify your project and request permission
+FCM_SENDER_ID = os.getenv("FCM_SENDER_ID", "")
+# Used by Angular to subscribe the browser to push notifications
+# This is the "Key pair" shown at the bottom of your screenshot
+FCM_VAPID_PUBLIC_KEY = os.getenv("FCM_VAPID_PUBLIC_KEY", "")
+# Used by Django for initialization (this is typically the Project ID or the Sender ID)
+# Note: The Sender ID and Project Number are identical
+FCM_PROJECT_NUMBER = os.getenv("FCM_PROJECT_NUMBER", "")
+GOOGLE_FCM_SERVICE_ACCOUNT_FILE = os.getenv("GOOGLE_FCM_SERVICE_ACCOUNT_FILE", "")

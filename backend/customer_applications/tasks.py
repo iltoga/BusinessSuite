@@ -196,7 +196,85 @@ def advance_workflow_task(job_id, application_id, user_id):
         job.fail(error_message=str(e), traceback=traceback.format_exc())
 
 
-def send_due_tomorrow_customer_notifications(now=None):
+def _send_due_tomorrow_notification_for_application(
+    *,
+    application,
+    today,
+    dispatcher,
+    scheduled_for,
+):
+    from customer_applications.models import WorkflowNotification
+    from notifications.services.customer_deadline_messages import (
+        build_customer_deadline_notification_payload,
+    )
+    task = application.get_next_calendar_task()
+    if not task or not task.notify_customer:
+        return "skipped"
+
+    channel = application.notify_customer_channel or application.NOTIFY_CHANNEL_EMAIL
+    recipient = (
+        application.customer.whatsapp if channel == application.NOTIFY_CHANNEL_WHATSAPP else application.customer.email
+    )
+    if not recipient:
+        return "skipped"
+
+    payload = build_customer_deadline_notification_payload(application, task, application.due_date)
+    subject = payload["subject"]
+    body = payload["email_text"] if channel == application.NOTIFY_CHANNEL_EMAIL else payload["whatsapp_text"]
+    html_body = payload["email_html"] if channel == application.NOTIFY_CHANNEL_EMAIL else None
+
+    duplicate_exists = WorkflowNotification.objects.filter(
+        doc_application=application,
+        channel=channel,
+        subject=subject,
+        scheduled_for__date=today,
+        status__in=[WorkflowNotification.STATUS_PENDING, WorkflowNotification.STATUS_SENT],
+    ).exists()
+    if duplicate_exists:
+        return "skipped"
+
+    notification = WorkflowNotification.objects.create(
+        channel=channel,
+        recipient=recipient,
+        subject=subject,
+        body=body,
+        doc_application=application,
+        doc_workflow=None,
+        status=WorkflowNotification.STATUS_PENDING,
+        scheduled_for=scheduled_for,
+    )
+
+    try:
+        message = dispatcher.send(
+            channel=channel,
+            recipient=recipient,
+            subject=subject,
+            body=body,
+            html_body=html_body,
+        )
+        notification.status = WorkflowNotification.STATUS_SENT
+        notification.provider_message = message
+        notification.external_reference = message if channel == application.NOTIFY_CHANNEL_WHATSAPP else ""
+        notification.sent_at = timezone.now()
+        result = "sent"
+    except Exception as exc:
+        notification.status = WorkflowNotification.STATUS_FAILED
+        notification.provider_message = str(exc)
+        result = "failed"
+
+    notification.save(
+        update_fields=[
+            "status",
+            "provider_message",
+            "external_reference",
+            "sent_at",
+            "updated_at",
+        ]
+    )
+    return result
+
+
+def send_due_tomorrow_customer_notifications(now=None, application_ids=None, immediate=False):
     """Send customer reminders for applications whose deadline is tomorrow.
 
     Conditions:
@@ -205,10 +283,6 @@ def send_due_tomorrow_customer_notifications(now=None):
     - next calendar task exists and task.notify_customer == True
     - recipient exists for selected channel
     """
-    from customer_applications.models import WorkflowNotification
-    from notifications.services.customer_deadline_messages import (
-        build_customer_deadline_notification_payload,
-    )
     from notifications.services.providers import NotificationDispatcher
 
     current_time = timezone.now() if now is None else now
@@ -224,79 +298,40 @@ def send_due_tomorrow_customer_notifications(now=None):
             status__in=[DocApplication.STATUS_PENDING, DocApplication.STATUS_PROCESSING],
         )
     )
+    if application_ids is not None:
+        applications = applications.filter(id__in=list(application_ids))
 
     dispatcher = NotificationDispatcher()
     sent_count = 0
     failed_count = 0
     skipped_count = 0
-    scheduled_for = timezone.make_aware(datetime.combine(today, time(hour=8, minute=0)))
+    scheduled_for = (
+        current_time
+        if immediate
+        else timezone.make_aware(
+            datetime.combine(
+                today,
+                time(
+                    hour=getattr(settings, "CUSTOMER_NOTIFICATIONS_DAILY_HOUR", 8),
+                    minute=getattr(settings, "CUSTOMER_NOTIFICATIONS_DAILY_MINUTE", 0),
+                ),
+            )
+        )
+    )
 
     for application in applications:
-        task = application.get_next_calendar_task()
-        if not task or not task.notify_customer:
-            skipped_count += 1
-            continue
-
-        channel = application.notify_customer_channel or application.NOTIFY_CHANNEL_EMAIL
-        recipient = application.customer.whatsapp if channel == application.NOTIFY_CHANNEL_WHATSAPP else application.customer.email
-        if not recipient:
-            skipped_count += 1
-            continue
-
-        payload = build_customer_deadline_notification_payload(application, task, application.due_date)
-        subject = payload["subject"]
-        body = payload["email_text"] if channel == application.NOTIFY_CHANNEL_EMAIL else payload["whatsapp_text"]
-        html_body = payload["email_html"] if channel == application.NOTIFY_CHANNEL_EMAIL else None
-
-        duplicate_exists = WorkflowNotification.objects.filter(
-            doc_application=application,
-            channel=channel,
-            subject=subject,
-            scheduled_for__date=today,
-            status__in=[WorkflowNotification.STATUS_PENDING, WorkflowNotification.STATUS_SENT],
-        ).exists()
-        if duplicate_exists:
-            skipped_count += 1
-            continue
-
-        notification = WorkflowNotification.objects.create(
-            channel=channel,
-            recipient=recipient,
-            subject=subject,
-            body=body,
-            doc_application=application,
-            doc_workflow=None,
-            status=WorkflowNotification.STATUS_PENDING,
+        result = _send_due_tomorrow_notification_for_application(
+            application=application,
+            today=today,
+            dispatcher=dispatcher,
             scheduled_for=scheduled_for,
         )
-
-        try:
-            message = dispatcher.send(
-                channel=channel,
-                recipient=recipient,
-                subject=subject,
-                body=body,
-                html_body=html_body,
-            )
-            notification.status = WorkflowNotification.STATUS_SENT
-            notification.provider_message = message
-            notification.external_reference = message if channel == application.NOTIFY_CHANNEL_WHATSAPP else ""
-            notification.sent_at = timezone.now()
+        if result == "sent":
             sent_count += 1
-        except Exception as exc:
-            notification.status = WorkflowNotification.STATUS_FAILED
-            notification.provider_message = str(exc)
+        elif result == "failed":
             failed_count += 1
-
-        notification.save(
-            update_fields=[
-                "status",
-                "provider_message",
-                "external_reference",
-                "sent_at",
-                "updated_at",
-            ]
-        )
+        else:
+            skipped_count += 1
 
     logger.info(
         "Due-tomorrow notification job completed: sent=%s failed=%s skipped=%s target_date=%s",

@@ -2,6 +2,7 @@ import logging
 from datetime import datetime, time, timedelta
 
 from core.utils.google_client import GoogleClient
+from core.services.google_calendar_event_colors import GoogleCalendarEventColors
 from customer_applications.models import WorkflowNotification
 from django.conf import settings
 from django.utils import timezone
@@ -188,6 +189,7 @@ class ApplicationCalendarService:
             "description": description,
             "start_date": due_date.isoformat(),
             "end_date": (due_date + timedelta(days=1)).isoformat(),
+            "color_id": GoogleCalendarEventColors.todo_color_id(),
             "reminders": {"useDefault": False, "overrides": [{"method": "popup", "minutes": reminder_minutes}]},
             "extended_properties": {"private": self._private_properties(application)},
         }

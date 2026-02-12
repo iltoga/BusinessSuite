@@ -4,6 +4,8 @@ from django.conf import settings
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
+from core.services.google_calendar_event_colors import GoogleCalendarEventColors
+
 
 def public_app_config(request):
     """
@@ -18,6 +20,8 @@ def public_app_config(request):
             "MOCK_AUTH_ENABLED": getattr(settings, "MOCK_AUTH_ENABLED", False),
             "title": global_settings.get("SITE_NAME", "BusinessSuite"),
             "dateFormat": getattr(settings, "DATE_FORMAT_JS", "dd-MM-yyyy"),
+            "calendarTodoColorId": GoogleCalendarEventColors.todo_color_id(),
+            "calendarDoneColorId": GoogleCalendarEventColors.done_color_id(),
             "logoFilename": global_settings.get("LOGO_FILENAME", "logo_transparent.png"),
             "logoInvertedFilename": global_settings.get("LOGO_INVERTED_FILENAME", "logo_inverted_transparent.png"),
         }

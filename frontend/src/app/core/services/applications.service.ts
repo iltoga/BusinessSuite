@@ -12,6 +12,7 @@ export interface ApplicationCustomer {
   firstName?: string | null;
   lastName?: string | null;
   email?: string | null;
+  whatsapp?: string | null;
   telephone?: string | null;
 }
 

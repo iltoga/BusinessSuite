@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -27,7 +26,6 @@ type SupportedDateFormat = 'dd-MM-yyyy' | 'yyyy-MM-dd' | 'dd/MM/yyyy' | 'MM/dd/y
   selector: 'z-date-input',
   standalone: true,
   imports: [
-    CommonModule,
     ZardInputDirective,
     ZardInputGroupComponent,
     ZardIconComponent,
@@ -70,9 +68,9 @@ type SupportedDateFormat = 'dd-MM-yyyy' | 'yyyy-MM-dd' | 'dd/MM/yyyy' | 'MM/dd/y
         <z-calendar
           #calendar
           class="border-0"
-          [value]="value()"
-          [minDate]="minDate()"
-          [maxDate]="maxDate()"
+          [value]="value() ?? null"
+          [minDate]="minDate() ?? null"
+          [maxDate]="maxDate() ?? null"
           [disabled]="disabled()"
           (dateChange)="onCalendarDateChange($event)"
         />
@@ -98,10 +96,10 @@ export class ZardDateInputComponent implements ControlValueAccessor {
   readonly calendar = viewChild<ZardCalendarComponent>('calendar');
 
   readonly zSize = input<'sm' | 'default' | 'lg'>('default');
-  readonly placeholder = input<string | null>(null);
-  readonly value = model<Date | null>(null);
-  readonly minDate = input<Date | null>(null);
-  readonly maxDate = input<Date | null>(null);
+  readonly placeholder = input<string | null | undefined>(null);
+  readonly value = model<Date | null | undefined>(null);
+  readonly minDate = input<Date | null | undefined>(null);
+  readonly maxDate = input<Date | null | undefined>(null);
   readonly disabled = model<boolean>(false);
 
   private inputValue = signal<string>('');
@@ -293,11 +291,7 @@ export class ZardDateInputComponent implements ControlValueAccessor {
     }
 
     const date = new Date(year, month - 1, day);
-    if (
-      date.getFullYear() !== year ||
-      date.getMonth() !== month - 1 ||
-      date.getDate() !== day
-    ) {
+    if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
       return null;
     }
     return date;

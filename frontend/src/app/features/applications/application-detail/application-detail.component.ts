@@ -176,6 +176,18 @@ export class ApplicationDetailComponent implements OnInit {
 
     return taskName ? `Next Deadline (${taskName})` : 'Next Deadline: —';
   });
+  readonly customerNotificationOptions = computed<ZardComboboxOption[]>(() => {
+    const customer = this.application()?.customer;
+    const options: ZardComboboxOption[] = [];
+    if (customer?.whatsapp) {
+      options.push({ value: 'whatsapp', label: 'WhatsApp' });
+    }
+    if (customer?.email) {
+      options.push({ value: 'email', label: 'Email' });
+    }
+    return options;
+  });
+  readonly canNotifyCustomer = computed(() => this.customerNotificationOptions().length > 0);
 
   // PDF Merge and Selection
   readonly localUploadedDocuments = signal<ApplicationDocument[]>([]);
@@ -732,6 +744,41 @@ export class ApplicationDetailComponent implements OnInit {
 
   onCalendarToggle(enabled: boolean): void {
     this.updateApplicationPartial({ addDeadlinesToCalendar: enabled }, 'Calendar sync updated');
+  }
+
+  onNotifyCustomerToggle(enabled: boolean): void {
+    if (!enabled) {
+      this.updateApplicationPartial(
+        { notifyCustomer: false, notifyCustomerChannel: null },
+        'Customer notifications updated',
+      );
+      return;
+    }
+
+    const options = this.customerNotificationOptions();
+    if (options.length === 0) {
+      return;
+    }
+
+    const current = this.application()?.notifyCustomerChannel;
+    const nextChannel = options.some((opt) => opt.value === current)
+      ? current
+      : (options[0]?.value as 'whatsapp' | 'email');
+
+    this.updateApplicationPartial(
+      { notifyCustomer: true, notifyCustomerChannel: nextChannel },
+      'Customer notifications updated',
+    );
+  }
+
+  onNotifyCustomerChannelChange(value: string | null): void {
+    if (!value) {
+      return;
+    }
+    this.updateApplicationPartial(
+      { notifyCustomer: true, notifyCustomerChannel: value },
+      'Customer notification channel updated',
+    );
   }
 
   onNotesBlur(): void {
