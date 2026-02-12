@@ -647,6 +647,10 @@ AUDITLOG_RETENTION_DAYS = int(os.getenv("AUDITLOG_RETENTION_DAYS", "14"))
 # Daily schedule for audit log pruning (HH:MM 24h). Set to empty string to disable scheduling.
 AUDITLOG_RETENTION_SCHEDULE = os.getenv("AUDITLOG_RETENTION_SCHEDULE", "04:00")
 
+# Daily customer reminder notification schedule (GMT+8 project timezone).
+CUSTOMER_NOTIFICATIONS_DAILY_HOUR = int(os.getenv("CUSTOMER_NOTIFICATIONS_DAILY_HOUR", "8"))
+CUSTOMER_NOTIFICATIONS_DAILY_MINUTE = int(os.getenv("CUSTOMER_NOTIFICATIONS_DAILY_MINUTE", "0"))
+
 # Conditionally enable the `auditlog` app and its middleware (so the feature can be fully toggled at startup)
 if AUDIT_ENABLED:
     # Add auditlog to installed apps if missing
@@ -778,7 +782,6 @@ logging.logAsyncioTasks = False
 NOTIFICATION_FROM_EMAIL = os.getenv("NOTIFICATION_FROM_EMAIL", "dewi@revisbali.com")
 GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD")
 
-
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
@@ -786,3 +789,16 @@ EMAIL_HOST_USER = NOTIFICATION_FROM_EMAIL
 EMAIL_HOST_PASSWORD = GMAIL_APP_PASSWORD
 EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "true").lower() == "true"
 DEFAULT_FROM_EMAIL = NOTIFICATION_FROM_EMAIL
+
+# Whatsapp (meta) business API configuration
+META_APP_ID = os.getenv("META_APP_ID", "")
+META_APP_SECRET = os.getenv("META_APP_SECRET", "")
+META_PHONE_NUMBER_ID = os.getenv("META_PHONE_NUMBER_ID", "")
+META_WHATSAPP_BUSINESS_NUMBER_ID = os.getenv("META_WHATSAPP_BUSINESS_NUMBER_ID", "")
+META_WHATSAPP_BUSINESS_NUMBER = os.getenv("META_WHATSAPP_BUSINESS_NUMBER", "")
+META_WHATSAPP_ACCESS_TOKEN = os.getenv("META_WHATSAPP_ACCESS_TOKEN", "")
+META_TOKEN_CLIENT = os.getenv("META_TOKEN_CLIENT", "")
+META_GRAPH_API_VERSION = os.getenv("META_GRAPH_API_VERSION", "v22.0")
+META_WEBHOOK_ENFORCE_SIGNATURE = (
+    os.getenv("META_WEBHOOK_ENFORCE_SIGNATURE", "false" if DEBUG else "true").lower() == "true"
+)

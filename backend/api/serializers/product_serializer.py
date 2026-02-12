@@ -44,6 +44,7 @@ class TaskNestedSerializer(serializers.ModelSerializer):
             "duration",
             "duration_is_business_days",
             "notify_days_before",
+            "notify_customer",
             "add_task_to_calendar",
             "last_step",
         ]
@@ -151,6 +152,8 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
             notify = task.get("notify_days_before") or 0
             if notify > duration:
                 raise serializers.ValidationError("notify_days_before cannot be greater than duration.")
+            if task.get("notify_customer") and not task.get("add_task_to_calendar"):
+                raise serializers.ValidationError("notify_customer requires add_task_to_calendar to be enabled.")
         return value
 
     def create(self, validated_data):

@@ -185,6 +185,7 @@ export class ProductFormComponent implements OnInit {
         cost: [task?.cost ? Number(task.cost) : 0],
         duration: [task?.duration ?? 0, [Validators.required, Validators.min(0)]],
         addTaskToCalendar: [task?.addTaskToCalendar ?? false],
+        notifyCustomer: [task?.notifyCustomer ?? false],
         durationIsBusinessDays: [task?.durationIsBusinessDays ?? true],
         notifyDaysBefore: [task?.notifyDaysBefore ?? 0, [Validators.min(0)]],
         lastStep: [task?.lastStep ?? false],
@@ -193,6 +194,7 @@ export class ProductFormComponent implements OnInit {
         validators: [this.taskDurationValidator],
       },
     );
+    this.syncTaskNotifyCustomerAvailability(group);
     this.tasksArray.push(group);
   }
 
@@ -283,6 +285,7 @@ export class ProductFormComponent implements OnInit {
           cost: t.cost !== null ? String(t.cost) : '0',
           duration: t.duration,
           add_task_to_calendar: t.addTaskToCalendar,
+          notify_customer: t.notifyCustomer,
           duration_is_business_days: t.durationIsBusinessDays,
           notify_days_before: t.notifyDaysBefore,
           last_step: t.lastStep,
@@ -375,6 +378,26 @@ export class ProductFormComponent implements OnInit {
     this.tasksArray.controls.forEach((group, index) => {
       group.get('step')?.setValue(index + 1);
     });
+  }
+
+  private syncTaskNotifyCustomerAvailability(group: FormGroup): void {
+    const addToCalendarControl = group.get('addTaskToCalendar');
+    const notifyCustomerControl = group.get('notifyCustomer');
+    if (!addToCalendarControl || !notifyCustomerControl) {
+      return;
+    }
+
+    const applyState = (enabled: boolean) => {
+      if (enabled) {
+        notifyCustomerControl.enable({ emitEvent: false });
+        return;
+      }
+      notifyCustomerControl.setValue(false, { emitEvent: false });
+      notifyCustomerControl.disable({ emitEvent: false });
+    };
+
+    applyState(Boolean(addToCalendarControl.value));
+    addToCalendarControl.valueChanges.subscribe((enabled) => applyState(Boolean(enabled)));
   }
 
   private taskDurationValidator(group: FormGroup) {

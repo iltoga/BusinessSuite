@@ -119,3 +119,9 @@
     {{ row.lastStep ? 'Yes' : 'No' }}
   </z-badge>
 </ng-template>
+
+<ng-template #notifyCustomerTemplate let-row>
+  <z-badge [zType]="row.notifyCustomer ? 'success' : 'secondary'">
+    {{ row.notifyCustomer ? 'Yes' : 'No' }}
+  </z-badge>
+</ng-template>

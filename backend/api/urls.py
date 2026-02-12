@@ -153,6 +153,7 @@ urlpatterns = [
     path("app-config/", core_views.public_app_config, name="api-public-app-config"),
     # Client-side logging endpoint (used in dev when frontend proxy forwards /api/client-logs)
     path("client-logs/", views.observability_log, name="api-client-logs"),
+    path("notifications/whatsapp/webhook/", views.whatsapp_webhook, name="api-whatsapp-webhook"),
     # Include all router URLs - main REST API endpoints for Angular
     path("", include(router.urls)),
 ]

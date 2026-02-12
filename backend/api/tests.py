@@ -396,7 +396,9 @@ class ProductApiTestCase(TestCase):
                     "cost": "0.00",
                     "duration": 5,
                     "durationIsBusinessDays": True,
+                    "addTaskToCalendar": True,
                     "notifyDaysBefore": 2,
+                    "notifyCustomer": False,
                     "lastStep": False,
                 },
                 {
@@ -406,7 +408,9 @@ class ProductApiTestCase(TestCase):
                     "cost": "500000.00",
                     "duration": 3,
                     "durationIsBusinessDays": True,
+                    "addTaskToCalendar": True,
                     "notifyDaysBefore": 1,
+                    "notifyCustomer": True,
                     "lastStep": True,
                 },
             ],
@@ -418,6 +422,8 @@ class ProductApiTestCase(TestCase):
         self.assertEqual(product.required_documents, "Passport")
         self.assertEqual(product.optional_documents, "Bank Statement")
         self.assertEqual(product.tasks.count(), 2)
+        self.assertFalse(product.tasks.get(step=1).notify_customer)
+        self.assertTrue(product.tasks.get(step=2).notify_customer)
 
     def test_product_update_reconciles_tasks(self):
         product = Product.objects.create(
@@ -463,7 +469,9 @@ class ProductApiTestCase(TestCase):
                     "cost": "0.00",
                     "duration": 4,
                     "durationIsBusinessDays": True,
+                    "addTaskToCalendar": True,
                     "notifyDaysBefore": 1,
+                    "notifyCustomer": True,
                     "lastStep": True,
                 }
             ],
@@ -473,6 +481,7 @@ class ProductApiTestCase(TestCase):
         product.refresh_from_db()
         self.assertEqual(product.tasks.count(), 1)
         self.assertEqual(product.tasks.first().name, "Collect Docs")
+        self.assertTrue(product.tasks.first().notify_customer)
 
     def test_product_can_delete_endpoint(self):
         self.client.force_login(self.user)

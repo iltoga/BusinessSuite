@@ -62,7 +62,7 @@ from django.contrib.auth import logout as django_logout
 from django.core.files.storage import default_storage
 from django.db.models import Count, DecimalField, F, OuterRef, Prefetch, Q, Subquery, Sum, Value
 from django.db.models.functions import Coalesce
-from django.http import FileResponse, JsonResponse, StreamingHttpResponse
+from django.http import FileResponse, HttpResponse, JsonResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.utils import timezone
@@ -103,6 +103,55 @@ def observability_log(request):
     # Log at info level; tests patch Logger.info
     logger.info(payload.get("message", ""), extra={"level": payload.get("level"), "metadata": payload.get("metadata")})
     return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@csrf_exempt
+@api_view(["GET", "POST"])
+@permission_classes([AllowAny])
+@authentication_classes([])
+def whatsapp_webhook(request):
+    """Meta WhatsApp webhook endpoint (verification + delivery statuses + incoming replies)."""
+    from notifications.services.providers import process_whatsapp_webhook_payload, verify_meta_webhook_signature
+    webhook_logger = logging.getLogger("notifications.whatsapp_webhook")
+
+    if request.method == "GET":
+        mode = request.query_params.get("hub.mode")
+        challenge = request.query_params.get("hub.challenge", "")
+        verify_token = request.query_params.get("hub.verify_token")
+
+        # Meta webhook verification handshake
+        if mode == "subscribe":
+            expected_token = getattr(settings, "META_TOKEN_CLIENT", "")
+            if verify_token and expected_token and verify_token == expected_token:
+                return HttpResponse(challenge, status=status.HTTP_200_OK, content_type="text/plain")
+            return Response({"error": "Invalid verify token"}, status=status.HTTP_403_FORBIDDEN)
+
+        return Response({"status": "ok"}, status=status.HTTP_200_OK)
+
+    signature_header = request.headers.get("X-Hub-Signature-256")
+    signature_valid = verify_meta_webhook_signature(request.body, signature_header)
+    enforce_signature = getattr(settings, "META_WEBHOOK_ENFORCE_SIGNATURE", True)
+    if not signature_valid:
+        if enforce_signature:
+            webhook_logger.warning("Rejected WhatsApp webhook due to invalid signature.")
+            return Response({"error": "Invalid webhook signature"}, status=status.HTTP_403_FORBIDDEN)
+        webhook_logger.warning("Processing WhatsApp webhook with invalid signature (enforcement disabled).")
+
+    data = request.data
+    if not isinstance(data, dict):
+        try:
+            data = json.loads(request.body.decode("utf-8") or "{}")
+        except Exception:
+            data = request.POST.dict()
+
+    result = process_whatsapp_webhook_payload(data)
+    webhook_logger.info(
+        "Processed WhatsApp webhook: signature_valid=%s status_updates=%s replies=%s",
+        signature_valid,
+        result.get("status_updates", 0),
+        result.get("replies", 0),
+    )
+    return Response({"status": "received"}, status=status.HTTP_200_OK)
 
 
 def parse_bool(value, default=False):

@@ -1,0 +1,15 @@
+Dear {{ customer.full_name }},
+
+This is a reminder that your next application deadline is tomorrow.
+
+Application: #{{ application.id }}
+Product: {{ product.name }}
+Step: {{ task.name }}
+Due date: {{ due_date_display }}
+
+Notes:
+{{ notes }}
+
+If you need support, please reply to this message.
+
+BusinessSuite Team

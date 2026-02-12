@@ -24,9 +24,6 @@ class ApplicationCalendarService:
             self.delete_application_events(application, clear_application_reference=True)
             return None
 
-        # Find the workflow instance for this task if it exists
-        workflow = application.workflows.filter(task=task).first()
-
         # Determine the target due date
         if start_date:
             due_date = application.calculate_next_calendar_due_date(start_date=start_date)
@@ -66,7 +63,6 @@ class ApplicationCalendarService:
             application.calendar_event_id = None
             application.save(update_fields=["calendar_event_id", "updated_at"])
 
-        self._create_notification(application, task, due_date, event, workflow=workflow)
         return event
 
     def delete_application_events(self, application, clear_application_reference=True):
@@ -101,7 +97,11 @@ class ApplicationCalendarService:
             event_ids.add(application.calendar_event_id)
 
         notification_refs = (
-            WorkflowNotification.objects.filter(doc_application=application, external_reference__isnull=False)
+            WorkflowNotification.objects.filter(
+                doc_application=application,
+                doc_workflow__isnull=False,
+                external_reference__isnull=False,
+            )
             .exclude(external_reference="")
             .values_list("external_reference", flat=True)
         )

@@ -15,6 +15,7 @@ class Task(models.Model):
     # Notify the user this many days before the task is due
     notify_days_before = models.PositiveIntegerField(blank=True, default=0)
     add_task_to_calendar = models.BooleanField(default=False, db_index=True)
+    notify_customer = models.BooleanField(default=False, db_index=True)
 
     class Meta:
         ordering = ['step']
@@ -26,6 +27,9 @@ class Task(models.Model):
     def clean(self):
         if self.notify_days_before and self.notify_days_before > self.duration:
             raise ValidationError("notify_days_before cannot be greater than duration.")
+
+        if self.notify_customer and not self.add_task_to_calendar:
+            raise ValidationError("notify_customer requires add_task_to_calendar to be enabled.")
 
         if self.cost and self.cost < 0:
             raise ValidationError("cost cannot be negative.")

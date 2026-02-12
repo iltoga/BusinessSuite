@@ -249,6 +249,14 @@
                       formControlName="addTaskToCalendar"
                     />
                   </div>
+                  <div class="flex flex-col gap-2">
+                    <label class="text-sm font-medium">Notify user</label>
+                    <input
+                      type="checkbox"
+                      class="h-4 w-4 rounded border-muted-foreground/40 text-primary"
+                      formControlName="notifyCustomer"
+                    />
+                  </div>
                   @if (task.get('addTaskToCalendar')?.value) {
                     <div class="flex flex-col gap-2">
                       <label class="text-sm font-medium">Notify days before</label>

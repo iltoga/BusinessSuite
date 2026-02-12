@@ -66,6 +66,10 @@ export class ProductDetailComponent implements OnInit {
     viewChild.required<TemplateRef<{ $implicit: TaskNested; value: any; row: TaskNested }>>(
       'lastStepTemplate',
     );
+  private readonly notifyCustomerTemplate =
+    viewChild.required<TemplateRef<{ $implicit: TaskNested; value: any; row: TaskNested }>>(
+      'notifyCustomerTemplate',
+    );
 
   readonly product = signal<ProductDetail | null>(null);
   readonly isLoading = signal(false);
@@ -88,6 +92,7 @@ export class ProductDetailComponent implements OnInit {
     { key: 'name', header: 'Task' },
     { key: 'duration', header: 'Duration (days)' },
     { key: 'notifyDaysBefore', header: 'Notify (days)' },
+    { key: 'notifyCustomer', header: 'Notify user', template: this.notifyCustomerTemplate() },
     { key: 'lastStep', header: 'Last step', template: this.lastStepTemplate() },
   ]);
 

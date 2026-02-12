@@ -1,0 +1,33 @@
+<!doctype html>
+<html>
+  <body style="font-family: Arial, sans-serif; color: #1f2937; line-height: 1.5;">
+    <p>Dear <strong>{{ customer.full_name }}</strong>,</p>
+
+    <p>This is a reminder that your next application deadline is tomorrow.</p>
+
+    <table style="border-collapse: collapse; margin: 12px 0;">
+      <tr>
+        <td style="padding: 4px 8px; font-weight: 600;">Application</td>
+        <td style="padding: 4px 8px;">#{{ application.id }}</td>
+      </tr>
+      <tr>
+        <td style="padding: 4px 8px; font-weight: 600;">Product</td>
+        <td style="padding: 4px 8px;">{{ product.name }}</td>
+      </tr>
+      <tr>
+        <td style="padding: 4px 8px; font-weight: 600;">Step</td>
+        <td style="padding: 4px 8px;">{{ task.name }}</td>
+      </tr>
+      <tr>
+        <td style="padding: 4px 8px; font-weight: 600;">Due date</td>
+        <td style="padding: 4px 8px;">{{ due_date_display }}</td>
+      </tr>
+    </table>
+
+    <p><strong>Notes:</strong><br />{{ notes|linebreaksbr }}</p>
+
+    <p>If you need support, please reply to this email.</p>
+
+    <p>BusinessSuite Team</p>
+  </body>
+</html>
