@@ -43,7 +43,7 @@
             <div class="flex items-center gap-2 justify-center">
               <z-icon zType="calendar" class="h-4 w-4" />
               <span class="text-xs md:text-sm whitespace-nowrap"
-                >Last login {{ (profile()?.lastLogin | date: 'MMM d, y, h:mm a') || 'Never' }}</span
+                >Last login {{ (profile()?.lastLogin | appDate: 'datetime') || 'Never' }}</span
               >
             </div>
           </div>

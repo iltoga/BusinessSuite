@@ -6,6 +6,8 @@ import pytest
 from googleapiclient.http import RequestMockBuilder
 from rest_framework.test import APIClient
 
+from core.services.google_calendar_event_colors import GoogleCalendarEventColors
+
 
 @pytest.mark.django_db
 def test_calendar_crud_flow_with_requestmockbuilder(settings):
@@ -113,11 +115,56 @@ def test_calendar_crud_flow_with_requestmockbuilder(settings):
         resp = client.delete(f"/api/calendar/{created_event['id']}/")
         assert resp.status_code == 204
 
-        # After delete, list returns empty (RequestMockBuilder configured accordingly)
-        # Note: In a real app listing might still return items if we don't mock it changing,
-        # but for this flow we can assume listing is empty or re-mock if needed.
-        # Here we just re-run list and if it fails because RMB is static we adjust.
-        # RMB is static, so list will still return created_event unless we change RMB.
-        # For simplicity, we just check status 200.
+        # RMB is static, so this list call still returns the same mocked payload.
         resp = client.get("/api/calendar/")
         assert resp.status_code == 200
+
+
+@pytest.mark.django_db
+def test_calendar_done_patch_updates_color_with_requestmockbuilder(settings):
+    done_color_id = GoogleCalendarEventColors.done_color_id()
+    updated_event = {
+        "id": "evt-color-1",
+        "summary": "Task",
+        "colorId": done_color_id,
+        "start": {"date": "2026-02-13"},
+        "end": {"date": "2026-02-14"},
+    }
+
+    rmb = RequestMockBuilder(
+        {
+            "calendar.events.patch": (None, json.dumps(updated_event), json.dumps({"colorId": done_color_id})),
+        }
+    )
+
+    with (
+        patch("core.utils.google_client.os.path.exists", return_value=True),
+        patch("core.utils.google_client.service_account.Credentials.from_service_account_file") as mock_creds,
+        patch("core.utils.google_client.build") as real_build,
+    ):
+
+        class DummyCreds:
+            def authorize(self, http):
+                return http
+
+        mock_creds.return_value = DummyCreds()
+
+        import googleapiclient.discovery as discovery
+
+        orig_build = discovery.build
+
+        def build_with_rmb(service, version, credentials=None, **kwargs):
+            return orig_build(service, version, credentials=credentials, requestBuilder=rmb, **kwargs)
+
+        real_build.side_effect = build_with_rmb
+
+        client = APIClient()
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        user = User.objects.create_superuser(username="reqtest2", email="req2@test", password="test")
+        client.force_authenticate(user=user)
+
+        resp = client.patch(f"/api/calendar/{updated_event['id']}/", {"done": True}, format="json")
+        assert resp.status_code == 200
+        assert resp.data["colorId"] == done_color_id

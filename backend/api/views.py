@@ -6,31 +6,12 @@ import time
 import uuid
 from datetime import datetime
 from io import BytesIO
-
-from django.conf import settings
-from django.contrib.auth import logout as django_logout
-from django.core.files.storage import default_storage
-from django.db.models import Count, DecimalField, F, OuterRef, Prefetch, Q, Subquery, Sum, Value
-from django.db.models.functions import Coalesce
-from django.http import FileResponse, JsonResponse, StreamingHttpResponse
-from django.shortcuts import get_object_or_404
-from django.urls import reverse
-from django.utils import timezone
-from django.utils.text import slugify
-from django.views.decorators.csrf import csrf_exempt
-from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema, extend_schema_view
-from rest_framework import filters, pagination, serializers, status, viewsets
-from rest_framework.authentication import SessionAuthentication
-from rest_framework.decorators import action, api_view, authentication_classes, permission_classes, throttle_classes
-from rest_framework.exceptions import NotFound, ValidationError
-from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.throttling import ScopedRateThrottle
-from rest_framework_simplejwt.views import TokenObtainPairView
+from typing import Any, cast
 
 from api.serializers import (
+    AdminPushNotificationSendSerializer,
+    AdminWhatsappTestSendSerializer,
+    AsyncJobSerializer,
     AvatarUploadSerializer,
     ChangePasswordSerializer,
     CountryCodeSerializer,
@@ -53,24 +34,45 @@ from api.serializers import (
     ProductDetailSerializer,
     ProductQuickCreateSerializer,
     ProductSerializer,
+    PushNotificationTestSerializer,
     SuratPermohonanCustomerDataSerializer,
     SuratPermohonanRequestSerializer,
     UserProfileSerializer,
     UserSettingsSerializer,
+    WebPushSubscriptionDeleteSerializer,
+    WebPushSubscriptionSerializer,
+    WebPushSubscriptionUpsertSerializer,
+    WorkflowNotificationSerializer,
     ordered_document_types,
 )
 from api.serializers.auth_serializer import CustomTokenObtainSerializer
+from api.utils.sse_auth import sse_token_auth_required
 from business_suite.authentication import JwtOrMockAuthentication
-from core.models import CountryCode, DocumentOCRJob, OCRJob, UserProfile, UserSettings
+from core.models import AsyncJob, CountryCode, DocumentOCRJob, OCRJob, UserProfile, UserSettings, WebPushSubscription
 from core.services.document_merger import DocumentMerger, DocumentMergerError
+from core.services.push_notifications import FcmConfigurationError, PushNotificationService
 from core.services.quick_create import create_quick_customer, create_quick_customer_application, create_quick_product
 from core.tasks.cron_jobs import run_clear_cache_now, run_full_backup_now
 from core.tasks.document_ocr import run_document_ocr_job
 from core.tasks.ocr import run_ocr_job
 from core.utils.dateutils import calculate_due_date
 from core.utils.pdf_converter import PDFConverter, PDFConverterError
-from customer_applications.models import DocApplication, Document
+from customer_applications.models import DocApplication, Document, WorkflowNotification
 from customers.models import Customer
+from django.conf import settings
+from django.contrib.auth import logout as django_logout
+from django.core.files.storage import default_storage
+from django.db import transaction
+from django.db.models import Count, DecimalField, F, OuterRef, Prefetch, Q, Subquery, Sum, Value
+from django.db.models.functions import Coalesce
+from django.http import FileResponse, HttpResponse, JsonResponse, StreamingHttpResponse
+from django.shortcuts import get_object_or_404
+from django.urls import reverse
+from django.utils import timezone
+from django.utils.text import slugify
+from django.views.decorators.csrf import csrf_exempt
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema, extend_schema_view
 from invoices.models import InvoiceDownloadJob
 from invoices.models.invoice import Invoice, InvoiceApplication
 from invoices.services.InvoiceService import InvoiceService
@@ -80,6 +82,15 @@ from payments.models import Payment
 from products.models import Product
 from products.models.document_type import DocumentType
 from products.models.task import Task
+from rest_framework import filters, pagination, serializers, status, viewsets
+from rest_framework.authentication import SessionAuthentication
+from rest_framework.decorators import action, api_view, authentication_classes, permission_classes, throttle_classes
+from rest_framework.exceptions import NotFound, ValidationError
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
+from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
+from rest_framework_simplejwt.views import TokenObtainPairView
 
 
 @api_view(["POST"])
@@ -95,6 +106,56 @@ def observability_log(request):
     # Log at info level; tests patch Logger.info
     logger.info(payload.get("message", ""), extra={"level": payload.get("level"), "metadata": payload.get("metadata")})
     return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@csrf_exempt
+@api_view(["GET", "POST"])
+@permission_classes([AllowAny])
+@authentication_classes([])
+def whatsapp_webhook(request):
+    """Meta WhatsApp webhook endpoint (verification + delivery statuses + incoming replies)."""
+    from notifications.services.providers import process_whatsapp_webhook_payload, verify_meta_webhook_signature
+
+    webhook_logger = logging.getLogger("notifications.whatsapp_webhook")
+
+    if request.method == "GET":
+        mode = request.query_params.get("hub.mode")
+        challenge = request.query_params.get("hub.challenge", "")
+        verify_token = request.query_params.get("hub.verify_token")
+
+        # Meta webhook verification handshake
+        if mode == "subscribe":
+            expected_token = getattr(settings, "META_TOKEN_CLIENT", "")
+            if verify_token and expected_token and verify_token == expected_token:
+                return HttpResponse(challenge, status=status.HTTP_200_OK, content_type="text/plain")
+            return Response({"error": "Invalid verify token"}, status=status.HTTP_403_FORBIDDEN)
+
+        return Response({"status": "ok"}, status=status.HTTP_200_OK)
+
+    signature_header = request.headers.get("X-Hub-Signature-256")
+    signature_valid = verify_meta_webhook_signature(request.body, signature_header)
+    enforce_signature = getattr(settings, "META_WEBHOOK_ENFORCE_SIGNATURE", True)
+    if not signature_valid:
+        if enforce_signature:
+            webhook_logger.warning("Rejected WhatsApp webhook due to invalid signature.")
+            return Response({"error": "Invalid webhook signature"}, status=status.HTTP_403_FORBIDDEN)
+        webhook_logger.warning("Processing WhatsApp webhook with invalid signature (enforcement disabled).")
+
+    data = request.data
+    if not isinstance(data, dict):
+        try:
+            data = json.loads(request.body.decode("utf-8") or "{}")
+        except Exception:
+            data = request.POST.dict()
+
+    result = process_whatsapp_webhook_payload(data)
+    webhook_logger.info(
+        "Processed WhatsApp webhook: signature_valid=%s status_updates=%s replies=%s",
+        signature_valid,
+        result.get("status_updates", 0),
+        result.get("replies", 0),
+    )
+    return Response({"status": "received"}, status=status.HTTP_200_OK)
 
 
 def parse_bool(value, default=False):
@@ -380,7 +441,6 @@ class DocumentTypeViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     def can_delete(self, request, pk=None):
         """Check if document type can be safely deleted."""
         from django.db.models import Q
-
         from products.models.product import Product
 
         document_type = self.get_object()
@@ -1289,7 +1349,6 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     def import_batch(self, request):
         """Process multiple uploaded invoice files with real-time progress streaming."""
         from django.utils.text import get_valid_filename
-
         from invoices.models import InvoiceImportItem, InvoiceImportJob
         from invoices.tasks.import_jobs import run_invoice_import_item
 
@@ -1601,6 +1660,59 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             return DocApplicationDetailSerializer
         return DocApplicationSerializerWithRelations
 
+    def _serialize_application_detail(self, application):
+        return DocApplicationDetailSerializer(application, context={"request": self.request}).data
+
+    def _queue_calendar_sync(
+        self,
+        *,
+        application_id: int,
+        user_id: int,
+        previous_due_date=None,
+        start_date=None,
+    ):
+        from customer_applications.tasks import SYNC_ACTION_UPSERT, sync_application_calendar_task
+
+        previous_due_date_value = previous_due_date.isoformat() if previous_due_date else None
+        start_date_value = start_date.isoformat() if start_date else None
+
+        transaction.on_commit(
+            lambda: sync_application_calendar_task(
+                application_id=application_id,
+                user_id=user_id,
+                action=SYNC_ACTION_UPSERT,
+                previous_due_date=previous_due_date_value,
+                start_date=start_date_value,
+            )
+        )
+
+    @extend_schema(responses={201: DocApplicationDetailSerializer})
+    def create(self, request, *args, **kwargs):
+        """Create application synchronously and queue calendar sync in Huey."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        application = serializer.save()
+        self._queue_calendar_sync(application_id=application.id, user_id=request.user.id)
+        data = self._serialize_application_detail(application)
+        headers = self.get_success_headers(serializer.data)
+        return Response(data, status=status.HTTP_201_CREATED, headers=headers)
+
+    @extend_schema(responses={200: DocApplicationDetailSerializer})
+    def update(self, request, *args, **kwargs):
+        """Update application synchronously and queue calendar sync in Huey."""
+        partial = kwargs.pop("partial", False)
+        instance = self.get_object()
+        previous_due_date = instance.due_date
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        application = serializer.save()
+        self._queue_calendar_sync(
+            application_id=application.id,
+            user_id=request.user.id,
+            previous_due_date=previous_due_date,
+        )
+        return Response(self._serialize_application_detail(application), status=status.HTTP_200_OK)
+
     @action(detail=False, methods=["post"], url_path="bulk-delete")
     def bulk_delete(self, request):
         if not request.user.is_superuser:
@@ -1615,8 +1727,11 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         return Response({"deleted_count": count})
 
     @action(detail=True, methods=["post"], url_path="advance-workflow")
+    @extend_schema(responses={200: DocApplicationDetailSerializer})
     def advance_workflow(self, request, pk=None):
-        """Complete current workflow and create next step."""
+        """Complete current workflow synchronously and queue calendar sync in Huey."""
+        from customer_applications.services.application_lifecycle_service import ApplicationLifecycleService
+
         try:
             application = self.get_object()
         except DocApplication.DoesNotExist:
@@ -1627,40 +1742,26 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             if not application.documents.filter(required=True).exists():
                 return self.error_response("Document collection is not completed", status.HTTP_400_BAD_REQUEST)
 
-        current_workflow = application.current_workflow
-        if not current_workflow:
-            return self.error_response("No current workflow found", status.HTTP_400_BAD_REQUEST)
+        result = ApplicationLifecycleService().advance_workflow(application=application, user=request.user)
+        self._queue_calendar_sync(
+            application_id=result.application.id,
+            user_id=request.user.id,
+            previous_due_date=result.previous_due_date,
+            start_date=result.start_date,
+        )
+        return Response(self._serialize_application_detail(result.application), status=status.HTTP_200_OK)
 
-        # Complete current workflow
-        current_workflow.status = current_workflow.STATUS_COMPLETED
-        current_workflow.updated_by = request.user
-        current_workflow.save()
-
-        # Create next workflow if exists
-        next_task = application.next_task
-        if next_task:
-            from customer_applications.models.doc_workflow import DocWorkflow
-
-            step = DocWorkflow(
-                start_date=timezone.now().date(),
-                task=next_task,
-                doc_application=application,
-                created_by=request.user,
-                status=DocWorkflow.STATUS_PENDING,
-            )
-            step.due_date = step.calculate_workflow_due_date()
-            step.save()
-
-        # Refresh application status
-        application.save()
-
-        return Response({"success": True})
-
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("delete_invoices", OpenApiTypes.BOOL, OpenApiParameter.QUERY),
+            OpenApiParameter("deleteInvoices", OpenApiTypes.BOOL, OpenApiParameter.QUERY),
+        ],
+        responses={204: OpenApiTypes.NONE},
+    )
     def destroy(self, request, *args, **kwargs):
-        """Allow optional deletion of linked invoices when deleting an application.
+        """Delete application synchronously and queue calendar cleanup in Huey."""
+        from customer_applications.services.application_lifecycle_service import ApplicationLifecycleService
 
-        To delete linked invoices, the caller must explicitly pass `deleteInvoices` (or `delete_invoices`) and be a superuser.
-        """
         try:
             application = self.get_object()
         except DocApplication.DoesNotExist:
@@ -1668,33 +1769,16 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
         delete_invoices = parse_bool(
             request.data.get("deleteInvoices")
-            or request.data.get("delete_invoices")
+            or request.data.get("delete_with_invoices")
             or request.query_params.get("deleteInvoices")
+            or request.query_params.get("delete_invoices")
         )
 
-        can_delete, msg = application.can_be_deleted(user=request.user, delete_invoices=delete_invoices)
-        if not can_delete:
-            return self.error_response(msg, status.HTTP_400_BAD_REQUEST)
-
-        invoice_ids = list(application.invoice_applications.values_list("invoice_id", flat=True).distinct())
-        from django.db import transaction
-
-        from invoices.models.invoice import Invoice
-
-        with transaction.atomic():
-            # delete application (cascade will remove InvoiceApplication rows)
-            application.delete(force_delete_invoices=delete_invoices, user=request.user)
-
-            # Cleanup invoices: if an invoice has no remaining InvoiceApplication rows, remove it (force delete)
-            for inv_id in invoice_ids:
-                invoice = Invoice.objects.filter(pk=inv_id).first()
-                if not invoice:
-                    continue
-                if invoice.invoice_applications.count() == 0:
-                    invoice.delete(force=True)
-                else:
-                    invoice.save()
-
+        ApplicationLifecycleService().delete_application(
+            application=application,
+            user=request.user,
+            delete_invoices=delete_invoices,
+        )
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @extend_schema(
@@ -1718,12 +1802,6 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         )
         if not workflow:
             return self.error_response("Workflow not found", status.HTTP_404_NOT_FOUND)
-
-        if (
-            status_value == DocWorkflow.STATUS_COMPLETED
-            and not workflow.doc_application.is_document_collection_completed
-        ):
-            return self.error_response("Document collection is not completed", status.HTTP_400_BAD_REQUEST)
 
         workflow.status = status_value
         workflow.updated_by = request.user
@@ -2435,3 +2513,344 @@ def product_quick_create(request):
             return Response({"success": False, "errors": e.message_dict}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({"success": False, "error": error_msg}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class WorkflowNotificationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
+    permission_classes = [IsAdminUser]
+    serializer_class = WorkflowNotificationSerializer
+    queryset = WorkflowNotification.objects.select_related("doc_application", "doc_workflow").all()
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["recipient", "subject", "status", "doc_application__id"]
+    ordering = ["-id"]
+
+    @action(detail=True, methods=["post"], url_path="resend")
+    def resend(self, request, pk=None):
+        from notifications.services.providers import NotificationDispatcher, is_queued_provider_result
+
+        notification = self.get_object()
+        if notification.status == WorkflowNotification.STATUS_CANCELLED:
+            return self.error_response("Cancelled notifications cannot be resent.", status.HTTP_400_BAD_REQUEST)
+
+        try:
+            result = NotificationDispatcher().send(
+                notification.channel,
+                notification.recipient,
+                notification.subject,
+                notification.body,
+            )
+            notification.provider_message = str(result)
+            if is_queued_provider_result(notification.channel, result):
+                notification.status = WorkflowNotification.STATUS_PENDING
+                notification.sent_at = None
+                if notification.channel == WorkflowNotification.CHANNEL_WHATSAPP:
+                    notification.external_reference = ""
+                notification.save(
+                    update_fields=["status", "sent_at", "provider_message", "external_reference", "updated_at"]
+                )
+            else:
+                notification.status = WorkflowNotification.STATUS_SENT
+                notification.sent_at = timezone.now()
+                if notification.channel == WorkflowNotification.CHANNEL_WHATSAPP:
+                    notification.external_reference = str(result)
+                notification.save(
+                    update_fields=["status", "sent_at", "provider_message", "external_reference", "updated_at"]
+                )
+        except Exception as exc:
+            notification.status = WorkflowNotification.STATUS_FAILED
+            notification.sent_at = None
+            notification.provider_message = str(exc)
+            if notification.channel == WorkflowNotification.CHANNEL_WHATSAPP:
+                notification.external_reference = ""
+            notification.save(
+                update_fields=["status", "sent_at", "provider_message", "external_reference", "updated_at"]
+            )
+            return self.error_response(str(exc), status.HTTP_400_BAD_REQUEST)
+
+        return Response(self.get_serializer(notification).data)
+
+    @action(detail=True, methods=["post"], url_path="cancel")
+    def cancel(self, request, pk=None):
+        notification = self.get_object()
+        notification.status = WorkflowNotification.STATUS_CANCELLED
+        notification.save(update_fields=["status", "updated_at"])
+        return Response(self.get_serializer(notification).data)
+
+
+class PushNotificationViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
+    permission_classes = [IsAuthenticated]
+
+    def _ensure_admin(self, request):
+        if not request.user or not request.user.is_staff:
+            return self.error_response("You do not have permission to perform this action.", status.HTTP_403_FORBIDDEN)
+        return None
+
+    @staticmethod
+    def _result_payload(result):
+        return {
+            "sent": result.sent,
+            "failed": result.failed,
+            "skipped": result.skipped,
+            "total": result.total,
+        }
+
+    @staticmethod
+    def _active_subscription_count(user):
+        return WebPushSubscription.objects.filter(user=user, is_active=True).count()
+
+    @staticmethod
+    def _subscription_count(user):
+        return WebPushSubscription.objects.filter(user=user).count()
+
+    @action(detail=False, methods=["get"], url_path="subscriptions")
+    def subscriptions(self, request):
+        queryset = WebPushSubscription.objects.filter(user=request.user).order_by("-updated_at")
+        return Response(WebPushSubscriptionSerializer(queryset, many=True).data)
+
+    @action(detail=False, methods=["post"], url_path="register")
+    def register(self, request):
+        serializer = WebPushSubscriptionUpsertSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        data = cast(dict[str, Any], serializer.validated_data)
+        token = data["token"].strip()
+        if not token:
+            return self.error_response("Token is required", status.HTTP_400_BAD_REQUEST)
+
+        subscription, created = WebPushSubscription.objects.update_or_create(
+            token=token,
+            defaults={
+                "user": request.user,
+                "device_label": serializer.validated_data.get("device_label", ""),
+                "user_agent": serializer.validated_data.get("user_agent") or request.META.get("HTTP_USER_AGENT", ""),
+                "is_active": True,
+                "last_error": "",
+            },
+        )
+        payload = WebPushSubscriptionSerializer(subscription).data
+        payload["created"] = created
+        return Response(payload, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
+    @action(detail=False, methods=["post"], url_path="unregister")
+    def unregister(self, request):
+        serializer = WebPushSubscriptionDeleteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        data = cast(dict[str, Any], serializer.validated_data)
+        token = data["token"].strip()
+        updated = WebPushSubscription.objects.filter(user=request.user, token=token).update(is_active=False)
+        return Response({"updated": updated})
+
+    @action(detail=False, methods=["post"], url_path="test")
+    def test(self, request):
+        serializer = PushNotificationTestSerializer(data=request.data or {})
+        serializer.is_valid(raise_exception=True)
+
+        data = cast(dict[str, Any], serializer.validated_data)
+        active_subscriptions = self._active_subscription_count(request.user)
+        if active_subscriptions == 0:
+            return self.error_response(
+                "No active browser push subscriptions for your user. Open CRM in a browser, allow notifications, then retry.",
+                status.HTTP_409_CONFLICT,
+                details={
+                    "active_subscriptions": 0,
+                    "total_subscriptions": self._subscription_count(request.user),
+                },
+            )
+        try:
+            result = PushNotificationService().send_to_user(
+                user=request.user,
+                title=data["title"],
+                body=data["body"],
+                data=data.get("data") or {},
+                link=(data.get("link") or "").strip() or None,
+            )
+        except FcmConfigurationError as exc:
+            return self.error_response(str(exc), status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        payload = self._result_payload(result)
+        if result.sent == 0:
+            return self.error_response(
+                "Push delivery failed for all active subscriptions.",
+                status.HTTP_502_BAD_GATEWAY,
+                details=payload,
+            )
+        return Response(payload)
+
+    @action(detail=False, methods=["get"], url_path="users")
+    def users(self, request):
+        forbidden = self._ensure_admin(request)
+        if forbidden is not None:
+            return forbidden
+
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        queryset = (
+            User.objects.filter(is_active=True)
+            .annotate(
+                total_push_subscriptions=Count("web_push_subscriptions", distinct=True),
+                active_push_subscriptions=Count(
+                    "web_push_subscriptions",
+                    filter=Q(web_push_subscriptions__is_active=True),
+                    distinct=True,
+                ),
+            )
+            .order_by("username")
+        )
+        payload = [
+            {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email or "",
+                "full_name": (f"{user.first_name} {user.last_name}".strip() or user.username),
+                "active_push_subscriptions": int(getattr(user, "active_push_subscriptions", 0) or 0),
+                "total_push_subscriptions": int(getattr(user, "total_push_subscriptions", 0) or 0),
+            }
+            for user in queryset
+        ]
+        return Response(payload)
+
+    @action(detail=False, methods=["post"], url_path="send-test")
+    def send_test(self, request):
+        forbidden = self._ensure_admin(request)
+        if forbidden is not None:
+            return forbidden
+
+        from django.contrib.auth import get_user_model
+
+        serializer = AdminPushNotificationSendSerializer(data=request.data or {})
+        serializer.is_valid(raise_exception=True)
+        data = cast(dict[str, Any], serializer.validated_data)
+
+        User = get_user_model()
+        target_user = User.objects.filter(pk=data["user_id"], is_active=True).first()
+        if not target_user:
+            return self.error_response("Target user not found", status.HTTP_404_NOT_FOUND)
+
+        active_subscriptions = self._active_subscription_count(target_user)
+        if active_subscriptions == 0:
+            return self.error_response(
+                "Target user has no active browser push subscriptions. Open CRM in browser, allow notifications, then retry.",
+                status.HTTP_409_CONFLICT,
+                details={
+                    "target_user_id": target_user.id,
+                    "active_subscriptions": 0,
+                    "total_subscriptions": self._subscription_count(target_user),
+                },
+            )
+
+        try:
+            result = PushNotificationService().send_to_user(
+                user=target_user,
+                title=data["title"],
+                body=data["body"],
+                data=data.get("data") or {},
+                link=(data.get("link") or "").strip() or None,
+            )
+        except FcmConfigurationError as exc:
+            return self.error_response(str(exc), status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        payload = self._result_payload(result)
+        if result.sent == 0:
+            return self.error_response(
+                "Push delivery failed for all active subscriptions of the target user.",
+                status.HTTP_502_BAD_GATEWAY,
+                details=payload,
+            )
+        return Response(payload)
+
+    @action(detail=False, methods=["post"], url_path="send-test-whatsapp")
+    def send_test_whatsapp(self, request):
+        forbidden = self._ensure_admin(request)
+        if forbidden is not None:
+            return forbidden
+
+        serializer = AdminWhatsappTestSendSerializer(data=request.data or {})
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        explicit_recipient = str(data.get("to") or "").strip()
+        recipient = explicit_recipient or str(getattr(settings, "WHATSAPP_TEST_NUMBER", "") or "").strip()
+        if not recipient:
+            return self.error_response(
+                "No WhatsApp destination configured. Set WHATSAPP_TEST_NUMBER in backend settings or provide 'to'.",
+                status.HTTP_400_BAD_REQUEST,
+            )
+
+        from notifications.services.providers import NotificationDispatcher
+
+        subject = str(data.get("subject") or "").strip() or "Revis Bali CRM WhatsApp Test"
+        body = str(data.get("body") or "").strip() or "WhatsApp test message from Revis Bali CRM."
+
+        try:
+            message_id = NotificationDispatcher().send(
+                channel="whatsapp",
+                recipient=recipient,
+                subject=subject,
+                body=body,
+            )
+        except Exception as exc:
+            return self.error_response(f"WhatsApp send failed: {exc}", status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            {
+                "recipient": recipient,
+                "used_default_recipient": explicit_recipient == "",
+                "message_id": str(message_id),
+            }
+        )
+
+
+@sse_token_auth_required
+def async_job_status_sse(request, job_id):
+    """Generic SSE endpoint for tracking AsyncJob status."""
+
+    def event_stream():
+        last_progress = -1
+        last_status = None
+
+        while True:
+            try:
+                # Refresh from DB
+                job = AsyncJob.objects.get(id=job_id)
+
+                # Only send if changed
+                if job.progress != last_progress or job.status != last_status:
+                    data = {
+                        "id": str(job.id),
+                        "status": job.status,
+                        "progress": job.progress,
+                        "message": job.message,
+                        "result": job.result,
+                        "error_message": job.error_message,
+                    }
+                    yield f"data: {json.dumps(data)}\n\n"
+                    last_progress = job.progress
+                    last_status = job.status
+
+                # Check for completion
+                if job.status in [AsyncJob.STATUS_COMPLETED, AsyncJob.STATUS_FAILED]:
+                    break
+
+            except AsyncJob.DoesNotExist:
+                yield f"data: {json.dumps({'error': 'Job not found'})}\n\n"
+                break
+            except Exception as e:
+                yield f"data: {json.dumps({'error': str(e)})}\n\n"
+                break
+
+            time.sleep(1)
+            yield ": keepalive\n\n"
+
+    response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
+    response["Cache-Control"] = "no-cache"
+    response["X-Accel-Buffering"] = "no"
+    return response
+
+
+class AsyncJobViewSet(viewsets.ReadOnlyModelViewSet):
+    """ViewSet for polling AsyncJob status if SSE is not used."""
+
+    queryset = AsyncJob.objects.all()
+    serializer_class = AsyncJobSerializer
+    permission_classes = [IsAuthenticated]

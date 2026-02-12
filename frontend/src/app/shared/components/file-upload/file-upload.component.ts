@@ -28,10 +28,10 @@ export class FileUploadComponent {
   label = input<string>('Upload file');
   accept = input<string>('*/*');
   disabled = input<boolean>(false);
-  progress = input<number | null>(null);
-  fileName = input<string | null>(null);
-  helperText = input<string | null>(null);
-  previewUrl = input<string | null>(null);
+  progress = input<number | null | undefined>(null);
+  fileName = input<string | null | undefined>(null);
+  helperText = input<string | null | undefined>(null);
+  previewUrl = input<string | null | undefined>(null);
   previewType = input<'image' | 'pdf' | 'unknown'>('unknown');
 
   fileSelected = output<File>();

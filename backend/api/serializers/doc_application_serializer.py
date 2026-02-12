@@ -1,12 +1,11 @@
 import os
 
-from rest_framework import serializers
-
 from api.serializers.customer_serializer import CustomerSerializer
 from api.serializers.doc_workflow_serializer import DocWorkflowSerializer, TaskSerializer
 from api.serializers.document_serializer import DocumentSerializer
 from api.serializers.product_serializer import ProductSerializer
 from customer_applications.models import DocApplication
+from rest_framework import serializers
 
 
 class DocApplicationSerializer(serializers.ModelSerializer):
@@ -18,6 +17,7 @@ class DocApplicationSerializer(serializers.ModelSerializer):
             "product",
             "doc_date",
             "due_date",
+            "add_deadlines_to_calendar",
             "status",
             "notes",
             "created_at",
@@ -47,6 +47,7 @@ class DocApplicationSerializerWithRelations(serializers.ModelSerializer):
             "product",
             "doc_date",
             "due_date",
+            "add_deadlines_to_calendar",
             "status",
             "notes",
             "created_at",
@@ -110,6 +111,7 @@ class DocApplicationInvoiceSerializer(serializers.ModelSerializer):
             "product",
             "doc_date",
             "due_date",
+            "add_deadlines_to_calendar",
             "status",
             "notes",
             "str_field",
@@ -142,6 +144,9 @@ class DocApplicationDetailSerializer(serializers.ModelSerializer):
             "product",
             "doc_date",
             "due_date",
+            "add_deadlines_to_calendar",
+            "notify_customer_too",
+            "notify_customer_channel",
             "status",
             "notes",
             "created_at",
@@ -186,16 +191,50 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = DocApplication
-        fields = ["id", "customer", "product", "doc_date", "notes", "document_types"]
+        fields = [
+            "id",
+            "customer",
+            "product",
+            "doc_date",
+            "due_date",
+            "notes",
+            "add_deadlines_to_calendar",
+            "notify_customer_too",
+            "notify_customer_channel",
+            "document_types",
+        ]
         read_only_fields = ["id"]
 
+    def validate(self, attrs):
+        doc_date = attrs.get("doc_date") or getattr(self.instance, "doc_date", None)
+        due_date = attrs.get("due_date") or getattr(self.instance, "due_date", None)
+        if due_date and doc_date and due_date < doc_date:
+            raise serializers.ValidationError({"due_date": "Due date cannot be before document date."})
+
+        notify_customer_too = attrs.get("notify_customer_too")
+        if notify_customer_too is None and self.instance is not None:
+            notify_customer_too = self.instance.notify_customer_too
+        notify_customer_channel = attrs.get("notify_customer_channel")
+        if notify_customer_channel is None and self.instance is not None:
+            notify_customer_channel = self.instance.notify_customer_channel
+
+        customer = attrs.get("customer") or getattr(self.instance, "customer", None)
+        if notify_customer_too:
+            if not notify_customer_channel:
+                raise serializers.ValidationError({"notify_customer_channel": "Select a notification channel."})
+            if notify_customer_channel == "whatsapp" and not getattr(customer, "whatsapp", None):
+                raise serializers.ValidationError({"notify_customer_channel": "Customer has no WhatsApp number."})
+            if notify_customer_channel == "email" and not getattr(customer, "email", None):
+                raise serializers.ValidationError({"notify_customer_channel": "Customer has no email."})
+
+        return attrs
+
     def create(self, validated_data):
+        from customer_applications.models.doc_workflow import DocWorkflow
+        from customer_applications.models.document import Document
         from django.core.files import File
         from django.core.files.storage import default_storage
         from django.utils import timezone
-
-        from customer_applications.models.doc_workflow import DocWorkflow
-        from customer_applications.models.document import Document
         from products.models.document_type import DocumentType
         from products.models.task import Task
 
@@ -203,6 +242,21 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
         user = self.context["request"].user
 
         # Create application
+        if not validated_data.get("due_date"):
+            product = validated_data.get("product")
+            doc_date = validated_data.get("doc_date")
+            next_calendar_task = (
+                product.tasks.filter(add_task_to_calendar=True).order_by("step").first() if product else None
+            )
+            if next_calendar_task:
+                from core.utils.dateutils import calculate_due_date
+
+                validated_data["due_date"] = calculate_due_date(
+                    doc_date, next_calendar_task.duration, next_calendar_task.duration_is_business_days
+                )
+            else:
+                validated_data["due_date"] = doc_date
+
         validated_data["created_by"] = user
         application = DocApplication.objects.create(**validated_data)
 
@@ -249,13 +303,72 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
         if has_auto_passport:
             self._auto_import_passport(application, user)
 
+        self._trigger_immediate_due_tomorrow_notification(application)
         return application
+
+    def update(self, instance, validated_data):
+        from customer_applications.models.document import Document
+        from django.utils import timezone
+        from products.models.document_type import DocumentType
+
+        document_types = validated_data.pop("document_types", None)
+        application = super().update(instance, validated_data)
+
+        if document_types is not None:
+            desired: dict[int, bool] = {}
+            for dt in document_types:
+                doc_type_id = dt.get("doc_type_id") or dt.get("id")
+                if not doc_type_id:
+                    continue
+                desired[int(doc_type_id)] = bool(dt.get("required", True))
+
+            existing_docs = Document.objects.filter(doc_application=application)
+            existing_by_type = {doc.doc_type_id: doc for doc in existing_docs}
+
+            # Remove only pending placeholder docs that are no longer requested.
+            for doc in existing_docs:
+                if doc.doc_type_id not in desired and not doc.completed:
+                    doc.delete()
+
+            user = self.context.get("request").user if self.context.get("request") else None
+            for doc_type_id, required in desired.items():
+                existing = existing_by_type.get(doc_type_id)
+                if existing:
+                    if existing.required != required:
+                        existing.required = required
+                        existing.updated_by = user
+                        existing.updated_at = timezone.now()
+                        existing.save(update_fields=["required", "updated_by", "updated_at"])
+                    continue
+                try:
+                    doc_type = DocumentType.objects.get(pk=doc_type_id)
+                except DocumentType.DoesNotExist:
+                    raise serializers.ValidationError({"document_types": f"Invalid document type id: {doc_type_id}"})
+                Document.objects.create(
+                    doc_application=application,
+                    doc_type=doc_type,
+                    required=required,
+                    created_by=user,
+                    updated_by=user,
+                )
+
+        self._trigger_immediate_due_tomorrow_notification(application)
+        return application
+
+    def _trigger_immediate_due_tomorrow_notification(self, application):
+        from customer_applications.tasks import send_due_tomorrow_customer_notifications
+        from django.utils import timezone
+
+        send_due_tomorrow_customer_notifications(
+            now=timezone.now(),
+            application_ids=[application.id],
+            immediate=True,
+        )
 
     def _can_auto_import_passport(self, application) -> bool:
         """Check if passport can be auto-imported for this application."""
-        from django.core.files.storage import default_storage
-
         from customer_applications.models.document import Document
+        from django.core.files.storage import default_storage
         from products.models.document_type import DocumentType
 
         try:
@@ -291,12 +404,11 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
 
     def _auto_import_passport(self, application, user):
         """Replicates legacy auto-import logic from DocApplicationCreateView."""
+        from core.models.country_code import CountryCode
+        from customer_applications.models.document import Document, get_upload_to
         from django.core.files import File
         from django.core.files.storage import default_storage
         from django.utils import timezone
-
-        from core.models.country_code import CountryCode
-        from customer_applications.models.document import Document, get_upload_to
         from products.models.document_type import DocumentType
 
         passport_doc_type = DocumentType.objects.get(name="Passport")
@@ -401,11 +513,3 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
                 new_doc.save()
             except Exception:
                 pass
-
-    def update(self, instance, validated_data):
-        # Allow updating main fields only
-        for attr in ["doc_date", "notes", "product", "customer"]:
-            if attr in validated_data:
-                setattr(instance, attr, validated_data[attr])
-        instance.save()
-        return instance

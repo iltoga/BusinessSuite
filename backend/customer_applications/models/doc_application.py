@@ -2,17 +2,16 @@ import logging
 import os
 import shutil
 
-from django.conf import settings
-from django.db import models
-from django.db.models import Count, F, Q
-from django.db.models.signals import post_delete, pre_delete
-from django.dispatch import receiver
-from django.utils import timezone
-
 # Get an instance of a logger
 from core.services.logger_service import Logger
 from core.utils.dateutils import calculate_due_date
 from customers.models import Customer
+from django.conf import settings
+from django.db import models, transaction
+from django.db.models import Count, F, Q
+from django.db.models.signals import post_delete, pre_delete
+from django.dispatch import receiver
+from django.utils import timezone
 from products.models import Product
 
 logger = Logger.get_logger(__name__)
@@ -97,10 +96,26 @@ class DocApplication(models.Model):
         (STATUS_REJECTED, "Rejected"),
     ]
 
+    NOTIFY_CHANNEL_EMAIL = "email"
+    NOTIFY_CHANNEL_WHATSAPP = "whatsapp"
+    NOTIFY_CHANNEL_CHOICES = [
+        (NOTIFY_CHANNEL_EMAIL, "Email"),
+        (NOTIFY_CHANNEL_WHATSAPP, "WhatsApp"),
+    ]
+
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name="doc_applications")
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="doc_applications")
     doc_date = models.DateField(db_index=True)
     due_date = models.DateField(blank=True, null=True, db_index=True)
+    add_deadlines_to_calendar = models.BooleanField(default=True)
+    calendar_event_id = models.CharField(max_length=255, blank=True, null=True, db_index=True)
+    notify_customer_too = models.BooleanField(default=False)
+    notify_customer_channel = models.CharField(
+        max_length=20,
+        choices=NOTIFY_CHANNEL_CHOICES,
+        blank=True,
+        null=True,
+    )
     status = models.CharField(max_length=50, choices=STATUS_CHOICES, default=STATUS_PENDING, db_index=True)
     notes = models.TextField(blank=True, null=True)  # Person-specific details from invoice import
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
@@ -166,7 +181,9 @@ class DocApplication(models.Model):
         Checks whether the application is completed.
         """
         current_workflow = self.current_workflow
-        return current_workflow.is_workflow_completed if current_workflow else False
+        return bool(
+            current_workflow and current_workflow.is_workflow_completed and self.is_document_collection_completed
+        )
 
     @property
     def has_next_task(self):
@@ -196,6 +213,25 @@ class DocApplication(models.Model):
         else:
             return tasks.first()
 
+    def get_next_calendar_task(self):
+        """Return next workflow task configured for calendar reminders."""
+        tasks = self.product.tasks.order_by("step")
+        current_workflow = self.current_workflow
+
+        if current_workflow and current_workflow.status == self.STATUS_COMPLETED:
+            tasks = tasks.filter(step__gt=current_workflow.task.step)
+        elif current_workflow:
+            tasks = tasks.filter(step__gte=current_workflow.task.step)
+
+        return tasks.filter(add_task_to_calendar=True).first()
+
+    def calculate_next_calendar_due_date(self, start_date=None):
+        task = self.get_next_calendar_task()
+        if not task:
+            return self.doc_date
+        base_date = start_date or timezone.localdate()
+        return calculate_due_date(base_date, task.duration, task.duration_is_business_days)
+
     @property
     def upload_folder(self):
         customer_folder = self.customer.upload_folder
@@ -211,7 +247,8 @@ class DocApplication(models.Model):
                                    Useful when status is set explicitly (e.g., from invoice payment or re-open).
         """
         self.updated_at = timezone.now()
-        self.due_date = self.calculate_application_due_date()
+        if not self.due_date:
+            self.due_date = self.calculate_application_due_date()
 
         # Skip all automatic status calculation when explicitly requested
         if not skip_status_calculation:
@@ -408,6 +445,40 @@ class DocApplication(models.Model):
 def pre_delete_doc_application_signal(sender, instance, **kwargs):
     # retain the folder path before deleting the doc application
     instance.folder_path = instance.upload_folder
+
+    # Queue Google Calendar cleanup asynchronously after the DB transaction commits.
+    known_event_ids = set()
+    if instance.calendar_event_id:
+        known_event_ids.add(instance.calendar_event_id)
+    try:
+        from customer_applications.models.workflow_notification import WorkflowNotification
+
+        refs = (
+            WorkflowNotification.objects.filter(doc_application=instance, external_reference__isnull=False)
+            .exclude(external_reference="")
+            .values_list("external_reference", flat=True)
+        )
+        known_event_ids.update(refs)
+    except Exception as exc:
+        logger.warning("Failed to collect known calendar event references for application #%s: %s", instance.id, exc)
+
+    application_id = instance.id
+    actor_user_id = instance.updated_by_id or instance.created_by_id
+
+    def _queue_calendar_cleanup():
+        try:
+            from customer_applications.tasks import SYNC_ACTION_DELETE, sync_application_calendar_task
+
+            sync_application_calendar_task(
+                application_id=application_id,
+                user_id=actor_user_id,
+                action=SYNC_ACTION_DELETE,
+                known_event_ids=list(known_event_ids),
+            )
+        except Exception as exc:
+            logger.warning("Failed to queue calendar cleanup for application #%s: %s", application_id, exc)
+
+    transaction.on_commit(_queue_calendar_cleanup)
 
 
 @receiver(post_delete, sender=DocApplication)

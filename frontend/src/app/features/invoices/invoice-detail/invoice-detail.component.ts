@@ -30,6 +30,7 @@ import {
   ZardSkeletonComponent,
 } from '@/shared/components/skeleton';
 import { ZardTooltipImports } from '@/shared/components/tooltip';
+import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 import { HelpService } from '@/shared/services/help.service';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 import { PaymentModalComponent } from '../payment-modal/payment-modal.component';
@@ -49,6 +50,7 @@ import { PaymentModalComponent } from '../payment-modal/payment-modal.component'
     TableSkeletonComponent,
     ZardSkeletonComponent,
     InvoiceDownloadDropdownComponent,
+    AppDatePipe,
     ...ZardTooltipImports,
   ],
   templateUrl: './invoice-detail.component.html',

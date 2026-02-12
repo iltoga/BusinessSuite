@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
+import json
 import logging
 import os
 from datetime import timedelta
@@ -104,6 +105,10 @@ GLOBAL_SETTINGS = {
     "LOGO_FILENAME": os.getenv("LOGO_FILENAME", "logo_transparent.png"),
     "LOGO_INVERTED_FILENAME": os.getenv("LOGO_INVERTED_FILENAME", "logo_inverted_transparent.png"),
 }
+
+# Date format exposed to Angular frontend via /api/app-config/.
+# Uses Angular DatePipe tokens (e.g. dd-MM-yyyy, yyyy-MM-dd, dd/MM/yyyy).
+DATE_FORMAT_JS = os.getenv("DATE_FORMAT_JS", "dd-MM-yyyy")
 
 # When True, legacy Django views (non-admin, non-api) are disabled and return 403.
 # Can be toggled via env var DISABLE_DJANGO_VIEWS or managed via a waffle flag named "disable_django_views"
@@ -310,6 +315,8 @@ GOOGLE_SCOPES = _parse_list(
 GOOGLE_TIMEZONE = os.getenv("GOOGLE_TIMEZONE", "Asia/Makassar")
 GOOGLE_CALENDAR_ID = os.getenv("GOOGLE_CALENDAR_ID", "primary")
 GOOGLE_TASKLIST_ID = os.getenv("GOOGLE_TASKLIST_ID", "@default")
+GOOGLE_CALENDAR_TODO_COLOR_ID = os.getenv("GOOGLE_CALENDAR_TODO_COLOR_ID", "5")
+GOOGLE_CALENDAR_DONE_COLOR_ID = os.getenv("GOOGLE_CALENDAR_DONE_COLOR_ID", "10")
 
 # Configure project locale path for translations (locale is at project root, one level up from BASE_DIR)
 LOCALE_PATHS = [os.path.join(BASE_DIR, "..", "locale")]
@@ -643,6 +650,10 @@ AUDITLOG_RETENTION_DAYS = int(os.getenv("AUDITLOG_RETENTION_DAYS", "14"))
 # Daily schedule for audit log pruning (HH:MM 24h). Set to empty string to disable scheduling.
 AUDITLOG_RETENTION_SCHEDULE = os.getenv("AUDITLOG_RETENTION_SCHEDULE", "04:00")
 
+# Daily customer reminder notification schedule (GMT+8 project timezone).
+CUSTOMER_NOTIFICATIONS_DAILY_HOUR = int(os.getenv("CUSTOMER_NOTIFICATIONS_DAILY_HOUR", "8"))
+CUSTOMER_NOTIFICATIONS_DAILY_MINUTE = int(os.getenv("CUSTOMER_NOTIFICATIONS_DAILY_MINUTE", "0"))
+
 # Conditionally enable the `auditlog` app and its middleware (so the feature can be fully toggled at startup)
 if AUDIT_ENABLED:
     # Add auditlog to installed apps if missing
@@ -770,3 +781,64 @@ logging.logThreads = False
 logging.logProcesses = False
 logging.logMultiprocessing = False
 logging.logAsyncioTasks = False
+
+NOTIFICATION_FROM_EMAIL = os.getenv("NOTIFICATION_FROM_EMAIL", "dewi@revisbali.com")
+GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD")
+
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = NOTIFICATION_FROM_EMAIL
+EMAIL_HOST_PASSWORD = GMAIL_APP_PASSWORD
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "true").lower() == "true"
+DEFAULT_FROM_EMAIL = NOTIFICATION_FROM_EMAIL
+
+# Whatsapp (meta) business API configuration
+META_APP_ID = os.getenv("META_APP_ID", "")
+META_APP_SECRET = os.getenv("META_APP_SECRET", "")
+META_PHONE_NUMBER_ID = os.getenv("META_PHONE_NUMBER_ID", "")
+META_WHATSAPP_BUSINESS_NUMBER_ID = os.getenv("META_WHATSAPP_BUSINESS_NUMBER_ID", "")
+META_WHATSAPP_BUSINESS_NUMBER = os.getenv("META_WHATSAPP_BUSINESS_NUMBER", "")
+META_WHATSAPP_ACCESS_TOKEN = os.getenv("META_WHATSAPP_ACCESS_TOKEN", "")
+META_TOKEN_CLIENT = os.getenv("META_TOKEN_CLIENT", "")
+META_GRAPH_API_VERSION = os.getenv("META_GRAPH_API_VERSION", "v23.0")
+META_WEBHOOK_ENFORCE_SIGNATURE = (
+    os.getenv("META_WEBHOOK_ENFORCE_SIGNATURE", "false" if DEBUG else "true").lower() == "true"
+)
+WHATSAPP_TEST_NUMBER = os.getenv("WHATSAPP_TEST_NUMBER", "")
+
+#
+# Web Push Notifications (Firebase Cloud Messaging) settings
+
+FCM_SENDER_ID = os.getenv("FCM_SENDER_ID", "").strip()
+FCM_VAPID_PUBLIC_KEY = os.getenv("FCM_VAPID_PUBLIC_KEY", "").strip()
+FCM_VAPID_PRIVATE_KEY = os.getenv("FCM_VAPID_PRIVATE_KEY", "").strip()
+
+# Legacy setting kept for backward compatibility. In modern Firebase docs this is called `messagingSenderId`.
+FCM_PROJECT_NUMBER = os.getenv("FCM_PROJECT_NUMBER", "").strip()
+FCM_PROJECT_ID = os.getenv("FCM_PROJECT_ID", "").strip()
+
+# Web app config exposed to Angular for Firebase SDK initialization.
+FCM_WEB_API_KEY = os.getenv("FCM_WEB_API_KEY", "").strip()
+FCM_WEB_APP_ID = os.getenv("FCM_WEB_APP_ID", "").strip()
+FCM_WEB_AUTH_DOMAIN = os.getenv("FCM_WEB_AUTH_DOMAIN", "").strip()
+FCM_WEB_STORAGE_BUCKET = os.getenv("FCM_WEB_STORAGE_BUCKET", "").strip()
+FCM_WEB_MEASUREMENT_ID = os.getenv("FCM_WEB_MEASUREMENT_ID", "").strip()
+
+_fcm_file = os.getenv("GOOGLE_FCM_SERVICE_ACCOUNT_FILE", "").strip().strip('"').strip("'")
+if _fcm_file:
+    if os.path.isabs(_fcm_file):
+        GOOGLE_FCM_SERVICE_ACCOUNT_FILE = _fcm_file
+    else:
+        GOOGLE_FCM_SERVICE_ACCOUNT_FILE = os.path.join(ROOT_DIR, _fcm_file)
+else:
+    GOOGLE_FCM_SERVICE_ACCOUNT_FILE = ""
+
+# FCM HTTP v1 endpoint requires a project id (string). If missing, derive from service account json.
+if not FCM_PROJECT_ID and GOOGLE_FCM_SERVICE_ACCOUNT_FILE and os.path.exists(GOOGLE_FCM_SERVICE_ACCOUNT_FILE):
+    try:
+        with open(GOOGLE_FCM_SERVICE_ACCOUNT_FILE, "r", encoding="utf-8") as f:
+            _fcm_sa_payload = json.load(f)
+        FCM_PROJECT_ID = str(_fcm_sa_payload.get("project_id") or "").strip()
+    except Exception:
+        FCM_PROJECT_ID = ""

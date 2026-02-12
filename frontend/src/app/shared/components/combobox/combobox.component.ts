@@ -199,7 +199,7 @@ export class ZardComboboxComponent implements ControlValueAccessor {
   readonly emptyText = input<string>('No results found.');
   readonly disabled = input<boolean>(false);
   readonly searchable = input<boolean>(true);
-  readonly value = input<string | null>(null);
+  readonly value = input<string | null | undefined>(null);
   readonly options = input<ZardComboboxOption[]>([]);
   readonly groups = input<ZardComboboxGroup[]>([]);
   readonly ariaLabel = input<string>('');

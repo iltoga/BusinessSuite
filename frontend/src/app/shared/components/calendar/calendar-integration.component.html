@@ -1,0 +1,210 @@
+<div class="space-y-4">
+  <h2 class="text-2xl font-bold">Calendar Overview</h2>
+
+  <div class="grid gap-4 lg:grid-cols-3">
+    <app-dashboard-widget title="Today" subtitle="Todo and done">
+      @if (todayEvents().length === 0) {
+        <div class="text-sm text-muted-foreground">No applications deadlines today.</div>
+      } @else {
+        <div class="space-y-3">
+          <section class="space-y-2">
+            <div
+              class="flex items-center justify-between text-xs uppercase tracking-wide text-muted-foreground"
+            >
+              <span>Todo</span>
+              <span>{{ todayTodoEvents().length }}</span>
+            </div>
+            @if (todayTodoEvents().length === 0) {
+              <div
+                class="rounded border border-dashed border-border/60 p-3 text-xs text-muted-foreground"
+              >
+                No todo events.
+              </div>
+            } @else {
+              <ul class="space-y-2 text-sm">
+                @for (event of todayTodoEvents(); track event.id) {
+                  <li class="rounded border border-border/50 bg-background/40 px-2 py-2">
+                    <div class="flex items-start gap-2">
+                      <button
+                        type="button"
+                        class="mt-0.5 rounded-full text-muted-foreground transition hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                        [disabled]="isEventUpdating(event.id)"
+                        [attr.aria-label]="'Mark ' + event.summary + ' done'"
+                        (click)="toggleEventDone(event, $event)"
+                      >
+                        <z-icon zType="circle" class="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        class="min-w-0 flex-1 text-left"
+                        (click)="openTodayEventDialog(event.id)"
+                      >
+                        <div class="font-medium">{{ event.summary }}</div>
+                      </button>
+                    </div>
+                  </li>
+                }
+              </ul>
+            }
+          </section>
+
+          <div class="h-px w-full bg-border/70"></div>
+
+          <section class="space-y-2">
+            <div
+              class="flex items-center justify-between text-xs uppercase tracking-wide text-muted-foreground"
+            >
+              <span>Done</span>
+              <span>{{ todayDoneEvents().length }}</span>
+            </div>
+            @if (todayDoneEvents().length === 0) {
+              <div
+                class="rounded border border-dashed border-border/60 p-3 text-xs text-muted-foreground"
+              >
+                No completed events.
+              </div>
+            } @else {
+              <ul class="space-y-2 text-sm">
+                @for (event of todayDoneEvents(); track event.id) {
+                  <li class="rounded border border-border/60 bg-muted/40 px-2 py-2">
+                    <div class="flex items-start gap-2">
+                      <button
+                        type="button"
+                        class="mt-0.5 rounded-full text-primary transition hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                        [disabled]="isEventUpdating(event.id)"
+                        [attr.aria-label]="'Mark ' + event.summary + ' todo'"
+                        (click)="toggleEventDone(event, $event)"
+                      >
+                        <z-icon zType="circle-check" class="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        class="min-w-0 flex-1 text-left"
+                        (click)="openTodayEventDialog(event.id)"
+                      >
+                        <div class="font-medium text-foreground">{{ event.summary }}</div>
+                      </button>
+                    </div>
+                  </li>
+                }
+              </ul>
+            }
+          </section>
+        </div>
+      }
+    </app-dashboard-widget>
+
+    <app-dashboard-widget title="Rest of the Week" subtitle="Tomorrow to week end">
+      @if (restOfWeekEvents().length === 0) {
+        <div class="text-sm text-muted-foreground">Nothing yet for the rest of the week.</div>
+      } @else {
+        <ul class="space-y-2 text-sm">
+          @for (event of restOfWeekEvents(); track event.id) {
+            <li class="rounded border border-border/50 px-3 py-2">
+              <div class="font-medium">{{ event.summary }}</div>
+              <div class="text-xs text-muted-foreground">
+                {{ event.startDate | appDate }}
+              </div>
+            </li>
+          }
+        </ul>
+      }
+    </app-dashboard-widget>
+
+    <app-dashboard-widget title="Month" subtitle="Click day for details">
+      <div class="mb-2 grid grid-cols-7 gap-1 text-center text-xs text-muted-foreground">
+        @for (day of ['S', 'M', 'T', 'W', 'T', 'F', 'S']; track day + $index) {
+          <div>{{ day }}</div>
+        }
+      </div>
+      <div class="grid grid-cols-7 gap-1">
+        @for (day of monthGrid(); track day.key) {
+          <button
+            class="h-8 rounded border text-xs transition"
+            [class.bg-primary/15]="day.hasEvents"
+            [class.border-primary/40]="day.hasEvents"
+            [class.border-border/50]="!day.hasEvents"
+            [class.text-muted-foreground]="!day.inMonth"
+            (click)="openDay(day.date)"
+          >
+            {{ day.date.getDate() }}
+          </button>
+        }
+      </div>
+    </app-dashboard-widget>
+  </div>
+</div>
+
+<ng-template #todayEventDetailsTemplate>
+  @if (selectedTodayEvent(); as selected) {
+    <div class="space-y-3 text-sm">
+      <div>
+        <p class="text-xs text-muted-foreground">
+          {{ selected.startDate | appDate: 'datetime' }}
+        </p>
+        @if (selected.endDate) {
+          <p class="text-xs text-muted-foreground">
+            Ends {{ selected.endDate | appDate: 'datetime' }}
+          </p>
+        }
+      </div>
+
+      @if (selected.description) {
+        <div>
+          <p class="text-xs uppercase tracking-wide text-muted-foreground">Details</p>
+          <p class="whitespace-pre-wrap text-sm">{{ selected.description }}</p>
+        </div>
+      }
+
+      @if (eventAlerts(selected).length > 0) {
+        <div>
+          <p class="text-xs uppercase tracking-wide text-muted-foreground">Alerts</p>
+          <ul class="list-disc space-y-1 pl-5">
+            @for (alert of eventAlerts(selected); track alert + $index) {
+              <li>{{ alert }}</li>
+            }
+          </ul>
+        </div>
+      }
+
+      @if (selected.htmlLink) {
+        <a
+          class="inline-block text-xs text-primary underline-offset-4 hover:underline"
+          [href]="selected.htmlLink"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Open in Google Calendar
+        </a>
+      }
+    </div>
+  }
+</ng-template>
+
+@if (openDayEventsDate()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div class="w-full max-w-xl rounded-lg border border-border bg-card p-4">
+      <div class="mb-3 flex items-center justify-between">
+        <h3 class="text-lg font-semibold">{{ openDayEventsDate() | appDate }}</h3>
+        <button
+          z-button
+          zType="ghost"
+          zSize="sm"
+          aria-label="Close dialog"
+          (click)="openDayEventsDate.set(null)"
+        >
+          <z-icon zType="x" />
+        </button>
+      </div>
+      @if (selectedDayEvents().length === 0) {
+        <div class="text-sm text-muted-foreground">No events for this day.</div>
+      } @else {
+        <ul class="space-y-2 text-sm">
+          @for (event of selectedDayEvents(); track event.id) {
+            <li class="rounded border border-border/50 px-3 py-2">{{ event.summary }}</li>
+          }
+        </ul>
+      }
+    </div>
+  </div>
+}

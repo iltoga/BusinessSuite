@@ -10,7 +10,7 @@
 
 
 export interface TaskNested { 
-    id?: number;
+    id?: number | null;
     step: number;
     name: string;
     description?: string | null;
@@ -18,6 +18,7 @@ export interface TaskNested {
     duration?: number;
     durationIsBusinessDays?: boolean;
     notifyDaysBefore?: number;
+    addTaskToCalendar?: boolean;
+    notifyCustomer?: boolean;
     lastStep?: boolean;
 }
-

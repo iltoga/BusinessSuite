@@ -32,6 +32,7 @@ import {
   TableSkeletonComponent,
   ZardSkeletonComponent,
 } from '@/shared/components/skeleton';
+import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 import { HelpService } from '@/shared/services/help.service';
 
 @Component({
@@ -47,6 +48,7 @@ import { HelpService } from '@/shared/services/help.service';
     CardSkeletonComponent,
     TableSkeletonComponent,
     ZardSkeletonComponent,
+    AppDatePipe,
   ],
   templateUrl: './product-detail.component.html',
   styleUrls: ['./product-detail.component.css'],
@@ -63,6 +65,10 @@ export class ProductDetailComponent implements OnInit {
   private readonly lastStepTemplate =
     viewChild.required<TemplateRef<{ $implicit: TaskNested; value: any; row: TaskNested }>>(
       'lastStepTemplate',
+    );
+  private readonly notifyCustomerTemplate =
+    viewChild.required<TemplateRef<{ $implicit: TaskNested; value: any; row: TaskNested }>>(
+      'notifyCustomerTemplate',
     );
 
   readonly product = signal<ProductDetail | null>(null);
@@ -86,6 +92,7 @@ export class ProductDetailComponent implements OnInit {
     { key: 'name', header: 'Task' },
     { key: 'duration', header: 'Duration (days)' },
     { key: 'notifyDaysBefore', header: 'Notify (days)' },
+    { key: 'notifyCustomer', header: 'Notify user', template: this.notifyCustomerTemplate() },
     { key: 'lastStep', header: 'Last step', template: this.lastStepTemplate() },
   ]);
 

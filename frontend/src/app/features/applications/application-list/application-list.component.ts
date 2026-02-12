@@ -37,6 +37,7 @@ import {
 import { PaginationControlsComponent } from '@/shared/components/pagination-controls';
 import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
 import { ContextHelpDirective } from '@/shared/directives';
+import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 import { HelpService } from '@/shared/services/help.service';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 
@@ -55,6 +56,7 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
     BulkDeleteDialogComponent,
     ...ZardBadgeImports,
     ContextHelpDirective,
+    AppDatePipe,
   ],
   templateUrl: './application-list.component.html',
   styleUrls: ['./application-list.component.css'],
@@ -167,16 +169,6 @@ export class ApplicationListComponent implements OnInit {
       variant: 'default',
       action: (item) =>
         this.router.navigate(['/applications', item.id], {
-          state: { from: 'applications', focusId: item.id, searchQuery: this.query() },
-        }),
-    },
-    {
-      label: 'Edit Application',
-      icon: 'settings',
-      variant: 'warning',
-      isVisible: (item) => item.status !== 'completed',
-      action: (item) =>
-        this.router.navigate(['/applications', item.id, 'edit'], {
           state: { from: 'applications', focusId: item.id, searchQuery: this.query() },
         }),
     },
@@ -320,9 +312,9 @@ export class ApplicationListComponent implements OnInit {
     this.service.customerApplicationsDestroy(row.id).subscribe({
       next: () => {
         this.toast.success('Application deleted');
+        this.load();
         this.confirmOpen.set(false);
         this.pendingDelete.set(null);
-        this.load();
       },
       error: (error) => {
         const message = extractServerErrorMessage(error);
@@ -355,13 +347,13 @@ export class ApplicationListComponent implements OnInit {
       return;
     }
 
-    this.service.customerApplicationsDestroy(row.id).subscribe({
+    this.service.customerApplicationsDestroy(row.id, true).subscribe({
       next: () => {
         this.toast.success('Application deleted');
+        this.load();
         this.deleteWithInvoiceOpen.set(false);
         this.deleteWithInvoiceData.set(null);
         this.pendingDelete.set(null);
-        this.load();
       },
       error: (error) => {
         const message = extractServerErrorMessage(error);

@@ -12,6 +12,7 @@ export interface ApplicationCustomer {
   firstName?: string | null;
   lastName?: string | null;
   email?: string | null;
+  whatsapp?: string | null;
   telephone?: string | null;
 }
 
@@ -97,6 +98,9 @@ export interface ApplicationDetail {
   product: ApplicationProduct;
   docDate: string;
   dueDate?: string | null;
+  addDeadlinesToCalendar?: boolean;
+  notifyCustomer?: boolean;
+  notifyCustomerChannel?: 'whatsapp' | 'email' | null;
   status: string;
   notes?: string | null;
   documents: ApplicationDocument[];
@@ -145,6 +149,13 @@ export class ApplicationsService {
 
   getApplication(applicationId: number): Observable<any> {
     return this.customerApplicationsService.customerApplicationsRetrieve(applicationId, 'body');
+  }
+
+  deleteApplication(applicationId: number, deleteInvoices: boolean = false): Observable<any> {
+    return this.customerApplicationsService.customerApplicationsDestroy(
+      applicationId,
+      deleteInvoices,
+    );
   }
 
   advanceWorkflow(applicationId: number): Observable<any> {

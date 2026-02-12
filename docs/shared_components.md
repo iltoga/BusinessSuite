@@ -31,6 +31,7 @@
 | InvoiceDownload       | app-invoice-download-dropdown | src/app/shared/components/invoice-download-dropdown                  | Dropdown, Button, Icon  | ✅ Ready        | Invoices        |
 | CalendarIntegration   | app-calendar-integration      | src/app/shared/components/calendar/calendar-integration.component.ts | HttpClient, FormsModule | Beta            | Dashboard       |
 | QuickApplicationModal | app-quick-application-modal   | src/app/features/applications/quick-application-modal                | Dialog, Button, Form    | ✅ Ready        | Invoices        |
+| JobProgress           | app-job-progress-dialog       | src/app/shared/components/job-progress-dialog                        | Dialog, Loader, Icon    | ✅ Ready        | Global (Jobs)   |
 
 ## Component Details
 
@@ -420,13 +421,32 @@ export class CardSkeletonComponent {
 }
 ```
 
+### JobProgressDialogComponent
+
+**Location:** `src/app/shared/components/job-progress-dialog/job-progress-dialog.component.ts`
+
+**Interface:**
+
+```typescript
+export interface JobProgressData {
+  jobId: string;
+  title?: string;
+}
+
+@Component({
+  selector: "app-job-progress-dialog",
+  standalone: true,
+})
+export class JobProgressDialogComponent {
+  // Uses DIALOG_DATA to receive JobProgressData
+}
+```
+
+**Behavior:** Reusable dialog for tracking background tasks via SSE. It displays a loader, progress bar, and final status (success/failure). It automatically connects to the `JobService` to stream updates. Returns the final `AsyncJob` state on close.
+
+**Used In:** Global (Applications list/detail/form). Usually triggered via `JobService.openProgressDialog(jobId, title)`.
+
 ## Updates
 
-- **2026-01-30:** Added `TableSkeletonComponent` and `CardSkeletonComponent` to handle loading states in list and detail views.
-- **2026-01-29:** Letters (Surat Permohonan) feature reused existing shared components; no new shared components added.
-- **2026-01-29:** Invoices & Payments feature added new invoice screens; no new shared components added.
-- **2026-01-31:** Added `InvoiceDownloadDropdownComponent` to handle multi-format invoice downloads (DOCX/PDF) across list and detail views. Fixed ZardUI component property names (zType/zSize) and added missing icons (download, file-code) to `icons.ts`.
-- **2026-01-31:** Applications feature reused existing shared components; specifically: `SortableMultiSelect` (used for ordered document selection), `DocumentPreview`, `FileUpload`, and `PdfViewerHost`. No new shared components were created for this task. Note: several AI-dependent invoice import tests were removed because they were environment-dependent and flaky in CI (`invoices/tests/test_invoice_import_multimodal.py`).
-- **2026-01-31:** Added Invoice Import feature with `InvoiceImportModalComponent` (feature-specific, not shared). Uses SSE for real-time progress updates, LLM-based invoice parsing, and batch import support. Added `upload` icon to `icons.ts`. Backend endpoints added to `InvoiceViewSet`: `import_config`, `import_single`, `import_batch`, `import_status`, `import_stream`.
-- **2026-02-01:** Added `Checkbox` component (`z-checkbox`) as a reusable standalone component implementing `ControlValueAccessor` (location: `src/app/shared/components/checkbox`). The Main Layout now shows **Admin** links to superusers for discoverability. Also added new UI themes and minor frontend UX tweaks to improve admin discoverability and consistency.
+- **2026-02-12:** Implemented generic Asynchronous Job & SSE Framework. Added `JobProgressDialogComponent` and `JobService` to handle background tasks for Applications (CRUD, workflow, calendar sync). Updated Application list, detail, and form to use the new async pattern. Added `AsyncJob` model and Huey task integration in the backend.
 - **2026-02-06:** Added `QuickApplicationModalComponent` to provide a fast way to create and force-close applications directly from the invoice creation form. This simplifies the UX when document tracking is not required for a specific invoice item.

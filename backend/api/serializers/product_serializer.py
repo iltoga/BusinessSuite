@@ -1,10 +1,9 @@
-from drf_spectacular.utils import extend_schema_field
-from rest_framework import serializers
-
 from api.serializers.document_type_serializer import DocumentTypeSerializer
+from drf_spectacular.utils import extend_schema_field
 from products.models import Product
 from products.models.document_type import DocumentType
 from products.models.task import Task
+from rest_framework import serializers
 
 
 def _ordered_document_names(document_ids):
@@ -32,7 +31,7 @@ def ordered_document_types(names):
 
 
 class TaskNestedSerializer(serializers.ModelSerializer):
-    id = serializers.IntegerField(required=False)
+    id = serializers.IntegerField(required=False, allow_null=True)
 
     class Meta:
         model = Task
@@ -45,6 +44,8 @@ class TaskNestedSerializer(serializers.ModelSerializer):
             "duration",
             "duration_is_business_days",
             "notify_days_before",
+            "notify_customer",
+            "add_task_to_calendar",
             "last_step",
         ]
 
@@ -151,6 +152,8 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
             notify = task.get("notify_days_before") or 0
             if notify > duration:
                 raise serializers.ValidationError("notify_days_before cannot be greater than duration.")
+            if task.get("notify_customer") and not task.get("add_task_to_calendar"):
+                raise serializers.ValidationError("notify_customer requires add_task_to_calendar to be enabled.")
         return value
 
     def create(self, validated_data):
@@ -166,6 +169,7 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
 
         product = Product.objects.create(**validated_data)
         for task_data in tasks_data:
+            task_data.pop("id", None)  # Remove potentially null ID for new tasks
             task = Task(product=product, **task_data)
             task.full_clean()
             task.save()

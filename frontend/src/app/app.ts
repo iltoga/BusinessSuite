@@ -1,8 +1,20 @@
 import { ZardToastComponent } from '@/shared/components/toast';
 import { isPlatformBrowser } from '@angular/common';
-import { Component, HostListener, inject, PLATFORM_ID, signal } from '@angular/core';
+import {
+  ApplicationRef,
+  Component,
+  effect,
+  HostListener,
+  inject,
+  NgZone,
+  PLATFORM_ID,
+  signal,
+} from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { filter, take } from 'rxjs';
 
+import { AuthService } from '@/core/services/auth.service';
+import { PushNotificationsService } from '@/core/services/push-notifications.service';
 import { HelpDrawerComponent, HotkeysDrawerComponent } from '@/shared/components/help-drawer';
 import { HelpService } from '@/shared/services/help.service';
 
@@ -14,10 +26,39 @@ import { HelpService } from '@/shared/services/help.service';
 })
 export class App {
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly appRef = inject(ApplicationRef);
+  private readonly zone = inject(NgZone);
+  private readonly authService = inject(AuthService);
+  private readonly pushNotifications = inject(PushNotificationsService);
   protected readonly title = signal('business-suite-frontend');
   protected readonly isBrowser = signal(isPlatformBrowser(this.platformId));
+  private readonly hydrationSettled = signal(false);
 
   protected readonly help = inject(HelpService);
+
+  constructor() {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    this.appRef.isStable
+      .pipe(
+        filter((stable) => stable),
+        take(1),
+      )
+      .subscribe(() => {
+        this.hydrationSettled.set(true);
+      });
+
+    effect(() => {
+      if (this.hydrationSettled() && this.authService.isAuthenticated()) {
+        // Keep SW/FCM bootstrap outside Angular stability accounting.
+        this.zone.runOutsideAngular(() => {
+          void this.pushNotifications.initialize();
+        });
+      }
+    });
+  }
 
   // Zoneless-friendly global F1 handler: toggle help drawer and prevent default browser help
   @HostListener('window:keydown', ['$event'])

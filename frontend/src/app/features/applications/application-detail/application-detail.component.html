@@ -40,6 +40,16 @@
         </p>
       </div>
       <div class="flex gap-2">
+        @if (isSuperuser()) {
+          <button
+            z-button
+            zType="destructive"
+            (click)="deleteApplication()"
+            [disabled]="workflowAction() !== null"
+          >
+            Delete Application
+          </button>
+        }
         @if (canForceClose()) {
           <button
             z-button
@@ -65,35 +75,97 @@
     </div>
 
     <z-card class="p-6">
-      <div class="grid gap-4 md:grid-cols-2">
-        <div>
-          <div class="text-sm text-muted-foreground">Status</div>
-          <z-badge [zType]="application()!.status === 'completed' ? 'success' : 'warning'">
-            {{ application()!.status | titlecase }}
-          </z-badge>
+      <div class="grid gap-6">
+        <div class="flex flex-wrap items-end gap-6">
+          <div class="w-full sm:w-48">
+            <div class="text-sm text-muted-foreground mb-1">Document Date</div>
+            <z-date-input
+              [ngModel]="docDateAsDate()"
+              (ngModelChange)="onInlineDateChange('docDate', $event)"
+            />
+          </div>
+          @if (application()!.dueDate) {
+            <div class="w-full sm:flex-1 sm:min-w-[18rem] sm:max-w-md">
+              <div class="text-sm text-muted-foreground mb-1 flex items-center gap-1 min-h-5">
+                <span class="min-w-0 truncate" [title]="dueDateContextLabel()">
+                  {{ dueDateContextLabel() }}
+                </span>
+              </div>
+              <z-date-input
+                [ngModel]="dueDateAsDate()"
+                (ngModelChange)="onInlineDateChange('dueDate', $event)"
+              />
+            </div>
+          }
+          <div class="ml-auto flex flex-col items-end">
+            <div class="text-sm text-muted-foreground mb-1 text-right">Application Status</div>
+            <z-badge [zType]="application()!.status === 'completed' ? 'success' : 'warning'">
+              {{ application()!.status | titlecase }}
+            </z-badge>
+          </div>
         </div>
+
         <div>
-          <div class="text-sm text-muted-foreground">Document Date</div>
-          <div>{{ application()!.docDate | appDate }}</div>
+          <label class="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              [checked]="application()!.addDeadlinesToCalendar"
+              (change)="onCalendarToggle($any($event.target).checked)"
+              class="h-4 w-4 rounded border text-primary"
+            />
+            Add deadlines to calendar
+          </label>
         </div>
-        @if (application()!.dueDate) {
-          <div>
-            <div class="text-sm text-muted-foreground">Due Date</div>
-            <div>{{ application()!.dueDate | appDate }}</div>
+
+        <div>
+          <label class="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              [checked]="application()!.notifyCustomer ?? false"
+              [disabled]="!canNotifyCustomer()"
+              (change)="onNotifyCustomerToggle($any($event.target).checked)"
+              class="h-4 w-4 rounded border text-primary"
+            />
+            Notify customer
+          </label>
+          @if (!canNotifyCustomer()) {
+            <div class="text-xs text-muted-foreground mt-1">
+              Customer cannot be notified because no email or WhatsApp number is available.
+            </div>
+          }
+        </div>
+
+        @if (application()!.notifyCustomer && canNotifyCustomer()) {
+          <div class="w-full sm:max-w-md">
+            <div class="text-sm text-muted-foreground mb-1">Customer notification channel</div>
+            <z-combobox
+              [value]="application()!.notifyCustomerChannel"
+              [options]="customerNotificationOptions()"
+              [searchable]="false"
+              [zWidth]="'full'"
+              [disabled]="isSavingMeta()"
+              (zValueChange)="onNotifyCustomerChannelChange($event)"
+            />
           </div>
         }
-        @if (application()!.notes) {
-          <div class="md:col-span-2">
-            <div class="text-sm text-muted-foreground">Notes</div>
-            <div>{{ application()!.notes }}</div>
-          </div>
-        }
+
+        <div>
+          <div class="text-sm text-muted-foreground mb-1">Notes</div>
+          <textarea
+            z-input
+            rows="3"
+            class="w-full"
+            [ngModel]="editableNotes()"
+            (ngModelChange)="editableNotes.set($event)"
+            (blur)="onNotesBlur()"
+          ></textarea>
+        </div>
       </div>
     </z-card>
 
     <z-card class="p-6">
       <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
-        <h3 class="text-lg font-semibold">Workflow Timeline</h3>
+        <h3 class="text-lg font-semibold">Tasks Timeline</h3>
         <div class="flex flex-wrap gap-2">
           @if (canAdvanceWorkflow()) {
             <button
@@ -129,7 +201,7 @@
       }
 
       @if (sortedWorkflows().length === 0) {
-        <div class="text-sm text-muted-foreground">No workflow steps yet.</div>
+        <div class="text-sm text-muted-foreground">Not started yet</div>
       } @else {
         <ol class="space-y-4">
           @for (workflow of sortedWorkflows(); track workflow.id) {
@@ -202,6 +274,17 @@
             </button>
             <button z-button zType="outline" (click)="deselectAllDocuments()">Deselect All</button>
           } @else {
+            <z-combobox
+              [options]="docTypeOptions()"
+              [value]="selectedNewDocType()"
+              [searchable]="true"
+              placeholder="Select doc type"
+              [zWidth]="'full'"
+              (zValueChange)="selectedNewDocType.set($event)"
+            />
+            <button z-button zType="outline" (click)="addApplicationDocument()">
+              Add application document
+            </button>
             <button z-button zType="outline" (click)="selectAllDocuments()">Select All</button>
           }
         </div>
@@ -305,6 +388,15 @@
                   <td class="py-3">
                     <button z-button zType="default" zSize="sm" (click)="openUpload(doc)">
                       Upload
+                    </button>
+                    <button
+                      z-button
+                      zType="destructive"
+                      zSize="sm"
+                      class="ml-2"
+                      (click)="removeApplicationDocument(doc)"
+                    >
+                      Remove
                     </button>
                   </td>
                 </tr>

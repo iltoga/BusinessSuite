@@ -57,6 +57,9 @@ router.register(r"tasks", GoogleTasksViewSet, basename="tasks")
 # Admin tools (superuser only) - used by Angular admin components
 router.register(r"backups", BackupsViewSet, basename="backups")
 router.register(r"server-management", ServerManagementViewSet, basename="server-management")
+router.register(r"workflow-notifications", views.WorkflowNotificationViewSet, basename="workflow-notifications")
+router.register(r"async-jobs", views.AsyncJobViewSet, basename="async-jobs")
+router.register(r"push-notifications", views.PushNotificationViewSet, basename="push-notifications")
 
 urlpatterns = [
     # OpenAPI schema endpoints for API documentation and client generation
@@ -82,6 +85,7 @@ urlpatterns = [
         views.DocumentOCRViewSet.as_view({"get": "status"}),
         name="api-document-ocr-status",
     ),
+    path("async-jobs/status/<uuid:job_id>/", views.async_job_status_sse, name="api-async-job-status-sse"),
     # Compatibility aliases for template tags
     # These provide backward compatibility but are primarily for Angular consumption
     path(
@@ -150,6 +154,7 @@ urlpatterns = [
     path("app-config/", core_views.public_app_config, name="api-public-app-config"),
     # Client-side logging endpoint (used in dev when frontend proxy forwards /api/client-logs)
     path("client-logs/", views.observability_log, name="api-client-logs"),
+    path("notifications/whatsapp/webhook/", views.whatsapp_webhook, name="api-whatsapp-webhook"),
     # Include all router URLs - main REST API endpoints for Angular
     path("", include(router.urls)),
 ]

@@ -1,6 +1,7 @@
 # Core environment and secrets
 README_CALENDARS.md
 crm-revisbali-*.json
+crmrevisbali-*.json
 client_secret.json
 .env
 .venv/

@@ -15,6 +15,7 @@ export interface DocApplicationSerializerWithRelations {
     product: number;
     docDate: string;
     dueDate?: string | null;
+    addDeadlinesToCalendar?: boolean;
     /**
      * * `pending` - Pending * `processing` - Processing * `completed` - Completed * `rejected` - Rejected
      */

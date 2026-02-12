@@ -1,116 +1,193 @@
 import { CalendarService } from '@/core/api/api/calendar.service';
 import { GoogleCalendarEvent } from '@/core/api/model/google-calendar-event';
+import { AppConfig } from '@/core/config/app.config';
+import { ConfigService } from '@/core/services/config.service';
+import { ZardButtonComponent } from '@/shared/components/button';
+import { DashboardWidgetComponent } from '@/shared/components/dashboard-widget/dashboard-widget.component';
+import { ZardDialogService } from '@/shared/components/dialog';
+import type { ZardDialogRef } from '@/shared/components/dialog/dialog-ref';
+import { ZardIconComponent } from '@/shared/components/icon';
+import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { Component, inject, OnInit, PLATFORM_ID, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  DestroyRef,
+  effect,
+  HostListener,
+  inject,
+  OnInit,
+  PLATFORM_ID,
+  signal,
+  viewChild,
+  type TemplateRef,
+} from '@angular/core';
+import { finalize } from 'rxjs';
+
+type CalendarEventWithColor = GoogleCalendarEvent & {
+  colorId?: string;
+  start?: { dateTime?: string; date?: string } | null;
+  end?: { dateTime?: string; date?: string } | null;
+};
+
+type CalendarEventViewModel = CalendarEventWithColor & {
+  startDate: Date;
+  endDate: Date | null;
+  isDone: boolean;
+};
 
 @Component({
   selector: 'app-calendar-integration',
   standalone: true,
-  imports: [CommonModule, FormsModule],
-  template: `
-    <div class="p-6 space-y-6">
-      <h2 class="text-2xl font-bold">Google Calendar (via Django)</h2>
-
-      <!-- Create Event Form -->
-      <div class="p-6 border rounded-xl bg-white shadow-sm border-gray-100">
-        <h3 class="font-bold text-lg mb-4 text-gray-900">New Calendar Event</h3>
-        <div class="grid gap-4">
-          <div class="space-y-1">
-            <label class="text-xs font-semibold text-gray-500 uppercase tracking-wider"
-              >Title</label
-            >
-            <input
-              type="text"
-              [(ngModel)]="newEventTitle"
-              placeholder="What's happening?"
-              class="w-full p-3 border rounded-lg bg-gray-50 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all font-medium"
-            />
-          </div>
-          <div class="space-y-1">
-            <label class="text-xs font-semibold text-gray-500 uppercase tracking-wider"
-              >Description</label
-            >
-            <textarea
-              [(ngModel)]="newEventDesc"
-              placeholder="Add more details..."
-              rows="2"
-              class="w-full p-3 border rounded-lg bg-gray-50 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all font-medium"
-            ></textarea>
-          </div>
-          <button
-            (click)="addEvent()"
-            [disabled]="loading() || !newEventTitle"
-            class="mt-2 px-6 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 active:scale-95 disabled:opacity-50 disabled:scale-100 transition-all shadow-lg shadow-blue-200"
-          >
-            {{ loading() ? 'Saving...' : '✨ Create Event' }}
-          </button>
-        </div>
-      </div>
-
-      <!-- Events List -->
-      <div class="mt-8">
-        <h3 class="font-bold text-lg mb-4 text-foreground">Upcoming Events</h3>
-        <div *ngIf="loading()" class="flex items-center space-x-2 text-gray-500">
-          <span class="animate-spin text-xl">◌</span>
-          <span>Syncing with Google...</span>
-        </div>
-
-        <div
-          *ngIf="events().length === 0 && !loading()"
-          class="p-8 border-2 border-dashed rounded-lg text-center bg-gray-50/50"
-        >
-          <p class="text-gray-500 mb-2 font-medium">No upcoming events found.</p>
-          <p class="text-sm text-gray-400 max-w-sm mx-auto">
-            If you expected to see events here, ensure your calendar is shared with the service
-            account email or check your settings.
-          </p>
-        </div>
-
-        <ul class="space-y-3">
-          <li
-            *ngFor="let event of events()"
-            class="flex justify-between items-center p-4 bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow"
-          >
-            <div class="flex-1 min-w-0 pr-4">
-              <div class="font-bold text-gray-900 truncate">{{ event.summary }}</div>
-              <div class="text-sm text-gray-600 flex items-center mt-1">
-                <span class="mr-2">📅</span>
-                {{
-                  (event.start?.dateTime | date: 'medium') ||
-                    (event.start?.date | date: 'mediumDate')
-                }}
-              </div>
-              <div *ngIf="event.description" class="text-xs text-gray-400 mt-1 truncate">
-                {{ event.description }}
-              </div>
-            </div>
-            <button
-              (click)="deleteEvent(event.id)"
-              class="px-3 py-1 text-sm font-medium text-red-600 hover:bg-red-50 rounded transition-colors border border-red-100"
-            >
-              Delete
-            </button>
-          </li>
-        </ul>
-      </div>
-    </div>
-  `,
+  imports: [
+    CommonModule,
+    DashboardWidgetComponent,
+    ZardButtonComponent,
+    ZardIconComponent,
+    AppDatePipe,
+  ],
+  templateUrl: './calendar-integration.component.html',
+  styleUrl: './calendar-integration.component.css',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CalendarIntegrationComponent implements OnInit {
   private calendarService = inject(CalendarService);
+  private configService = inject(ConfigService);
   private platformId = inject(PLATFORM_ID);
+  private dialogService = inject(ZardDialogService);
+  private destroyRef = inject(DestroyRef);
 
-  // Signals for state management
   events = signal<GoogleCalendarEvent[]>([]);
   loading = signal<boolean>(false);
+  openDayEventsDate = signal<Date | null>(null);
+  selectedTodayEventId = signal<string | null>(null);
+  isTodayEventDialogOpen = signal<boolean>(false);
+  private eventUpdatingState = signal<Record<string, boolean>>({});
+  private todayEventDialogRef = signal<ZardDialogRef | null>(null);
 
-  // Form inputs
-  newEventTitle = '';
-  newEventDesc = '';
+  readonly todayEventDetailsTemplate = viewChild.required<TemplateRef<unknown>>(
+    'todayEventDetailsTemplate',
+  );
+
+  readonly todoColorId = computed(() => this.getConfigColorId('calendarTodoColorId', '5'));
+  readonly doneColorId = computed(() => this.getConfigColorId('calendarDoneColorId', '10'));
+
+  readonly normalizedEvents = computed<CalendarEventViewModel[]>(() =>
+    this.events().map((event) => {
+      const typed = event as CalendarEventWithColor;
+      return {
+        ...typed,
+        startDate: this.extractStartDate(typed),
+        endDate: this.extractEndDate(typed),
+        isDone: this.isDoneEvent(typed),
+      };
+    }),
+  );
+
+  readonly todayEvents = computed(() => {
+    const today = new Date();
+    return this.normalizedEvents().filter((event) => this.isSameDay(event.startDate, today));
+  });
+
+  readonly todayTodoEvents = computed(() => this.todayEvents().filter((event) => !event.isDone));
+
+  readonly todayDoneEvents = computed(() => this.todayEvents().filter((event) => event.isDone));
+
+  readonly selectedTodayEvent = computed(() => {
+    const selectedId = this.selectedTodayEventId();
+    if (!selectedId) return null;
+    return this.todayEvents().find((event) => event.id === selectedId) ?? null;
+  });
+
+  readonly restOfWeekEvents = computed(() => {
+    const today = new Date();
+    const tomorrowStart = new Date(today);
+    tomorrowStart.setDate(today.getDate() + 1);
+    tomorrowStart.setHours(0, 0, 0, 0);
+
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - today.getDay());
+    weekStart.setHours(0, 0, 0, 0);
+
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 7);
+
+    if (tomorrowStart >= weekEnd) {
+      return [];
+    }
+
+    return this.normalizedEvents().filter(
+      (event) => event.startDate >= tomorrowStart && event.startDate < weekEnd,
+    );
+  });
+
+  readonly monthGrid = computed(() => {
+    const now = new Date();
+    const first = new Date(now.getFullYear(), now.getMonth(), 1);
+    const start = new Date(first);
+    start.setDate(first.getDate() - first.getDay());
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+    return Array.from({ length: 42 }).map((_, index) => {
+      const date = new Date(start);
+      date.setDate(start.getDate() + index);
+      const isHighlightableDay = date >= todayStart && date < endOfMonth;
+      const hasEvents =
+        isHighlightableDay &&
+        this.normalizedEvents().some((event) => this.isSameDay(event.startDate, date));
+
+      return {
+        key: `${date.toISOString()}-${index}`,
+        date,
+        inMonth: date.getMonth() === now.getMonth(),
+        hasEvents,
+      };
+    });
+  });
+
+  readonly selectedDayEvents = computed(() => {
+    const day = this.openDayEventsDate();
+    if (!day) return [];
+    return this.normalizedEvents().filter((event) => this.isSameDay(event.startDate, day));
+  });
+
+  constructor() {
+    effect(() => {
+      const open = this.isTodayEventDialogOpen();
+      const current = this.todayEventDialogRef();
+      const selected = this.selectedTodayEvent();
+
+      if (open && !current) {
+        const ref = this.dialogService.create({
+          zTitle: selected?.summary || 'Calendar Event',
+          zContent: this.todayEventDetailsTemplate(),
+          zHideFooter: true,
+          zClosable: true,
+          zOnCancel: () => {
+            this.isTodayEventDialogOpen.set(false);
+          },
+        });
+        this.todayEventDialogRef.set(ref);
+      }
+
+      if (!open && current) {
+        current.close();
+        this.todayEventDialogRef.set(null);
+      }
+    });
+
+    this.destroyRef.onDestroy(() => {
+      const current = this.todayEventDialogRef();
+      if (current) {
+        current.close();
+      }
+    });
+  }
 
   ngOnInit() {
-    // FIX: Only load events in the browser to avoid SSR refresh attempts
     if (isPlatformBrowser(this.platformId)) {
       this.loadEvents();
     }
@@ -121,58 +198,153 @@ export class CalendarIntegrationComponent implements OnInit {
     this.calendarService.calendarList().subscribe({
       next: (data) => {
         this.events.set(data);
+        this.ensureSelectedTodayEvent();
         this.loading.set(false);
       },
-      error: (err) => {
-        console.error('Failed to load events', err);
-        this.loading.set(false);
-      },
+      error: () => this.loading.set(false),
     });
   }
 
-  addEvent() {
-    if (!this.newEventTitle) return;
+  openDay(date: Date): void {
+    this.openDayEventsDate.set(date);
+  }
 
-    this.loading.set(true);
+  @HostListener('document:keydown.escape')
+  closeDayDialogOnEscape(): void {
+    if (this.openDayEventsDate()) {
+      this.openDayEventsDate.set(null);
+    }
+  }
 
-    // Create an event for Tomorrow at 10 AM
-    const startTime = new Date();
-    startTime.setDate(startTime.getDate() + 1);
-    startTime.setHours(10, 0, 0, 0);
+  selectTodayEvent(eventId: string): void {
+    this.selectedTodayEventId.set(eventId);
+  }
 
-    const endTime = new Date(startTime);
-    endTime.setHours(11, 0, 0, 0);
+  openTodayEventDialog(eventId: string): void {
+    this.selectTodayEvent(eventId);
+    this.isTodayEventDialogOpen.set(true);
+  }
 
-    const googleEvent: any = {
-      summary: this.newEventTitle,
-      description: this.newEventDesc,
-      startTime: startTime.toISOString(),
-      endTime: endTime.toISOString(),
-    };
+  toggleEventDone(event: CalendarEventViewModel, domEvent?: Event): void {
+    domEvent?.stopPropagation();
+    if (!event.id || this.isEventUpdating(event.id)) {
+      return;
+    }
 
-    this.calendarService.calendarCreate(googleEvent).subscribe({
-      next: () => {
-        this.newEventTitle = '';
-        this.newEventDesc = '';
-        this.loadEvents(); // Refresh list
-      },
-      error: (err) => {
-        console.error('Failed to create event', err);
-        this.loading.set(false);
-      },
+    this.setEventUpdating(event.id, true);
+    const targetColorId = event.isDone ? this.todoColorId() : this.doneColorId();
+
+    this.calendarService
+      .calendarPartialUpdate(event.id, { done: !event.isDone } as unknown as GoogleCalendarEvent)
+      .pipe(finalize(() => this.setEventUpdating(event.id, false)))
+      .subscribe({
+        next: (updatedEvent) => {
+          this.events.update((items) =>
+            items.map((item) =>
+              item.id === event.id
+                ? ({
+                    ...item,
+                    colorId: targetColorId,
+                    ...(updatedEvent as CalendarEventWithColor),
+                  } as GoogleCalendarEvent)
+                : item,
+            ),
+          );
+          this.ensureSelectedTodayEvent();
+        },
+      });
+  }
+
+  isEventUpdating(eventId: string): boolean {
+    return this.eventUpdatingState()[eventId] === true;
+  }
+
+  eventAlerts(event: CalendarEventViewModel): string[] {
+    const reminders = (event as any)?.reminders;
+    const overrides = Array.isArray(reminders?.overrides) ? reminders.overrides : [];
+
+    return overrides
+      .map((override: any) => {
+        const minutes = Number(override?.minutes);
+        const method = override?.method ? String(override.method) : 'Alert';
+
+        if (!Number.isFinite(minutes)) {
+          return `${method} reminder`;
+        }
+        if (minutes === 0) {
+          return `${method} at event time`;
+        }
+        if (minutes < 60) {
+          return `${method} ${minutes} minute${minutes === 1 ? '' : 's'} before`;
+        }
+        if (minutes < 1440) {
+          const hours = Math.round(minutes / 60);
+          return `${method} ${hours} hour${hours === 1 ? '' : 's'} before`;
+        }
+
+        const days = Math.round(minutes / 1440);
+        return `${method} ${days} day${days === 1 ? '' : 's'} before`;
+      })
+      .filter((value: string) => value.trim().length > 0);
+  }
+
+  private ensureSelectedTodayEvent(): void {
+    const today = this.todayEvents();
+    if (today.length === 0) {
+      this.selectedTodayEventId.set(null);
+      this.isTodayEventDialogOpen.set(false);
+      return;
+    }
+
+    const selected = this.selectedTodayEventId();
+    if (selected && today.some((event) => event.id === selected)) {
+      return;
+    }
+
+    this.selectedTodayEventId.set(today[0].id);
+  }
+
+  private setEventUpdating(eventId: string, isUpdating: boolean): void {
+    this.eventUpdatingState.update((current) => {
+      const next = { ...current };
+      if (isUpdating) {
+        next[eventId] = true;
+      } else {
+        delete next[eventId];
+      }
+      return next;
     });
   }
 
-  deleteEvent(id: string) {
-    if (!confirm('Are you sure you want to delete this event?')) return;
+  private extractStartDate(event: CalendarEventWithColor): Date {
+    const start = event.start;
+    const source = start?.dateTime || start?.date || event.startTime;
+    return source ? new Date(source) : new Date();
+  }
 
-    this.loading.set(true);
-    this.calendarService.calendarDestroy(id).subscribe({
-      next: () => this.loadEvents(),
-      error: (err) => {
-        console.error('Failed to delete', err);
-        this.loading.set(false);
-      },
-    });
+  private extractEndDate(event: CalendarEventWithColor): Date | null {
+    const end = event.end;
+    const source = end?.dateTime || end?.date || event.endTime;
+    return source ? new Date(source) : null;
+  }
+
+  private isDoneEvent(event: CalendarEventWithColor): boolean {
+    return event.colorId === this.doneColorId();
+  }
+
+  private getConfigColorId<K extends keyof AppConfig>(key: K, fallback: string): string {
+    const value = this.configService.settings[key];
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value.trim();
+    }
+    return fallback;
+  }
+
+  private isSameDay(a: Date, b: Date): boolean {
+    return (
+      a.getFullYear() === b.getFullYear() &&
+      a.getMonth() === b.getMonth() &&
+      a.getDate() === b.getDate()
+    );
   }
 }

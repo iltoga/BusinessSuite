@@ -4,7 +4,6 @@ import {
   computed,
   contentChild,
   contentChildren,
-  effect,
   forwardRef,
   input,
   output,
@@ -94,9 +93,6 @@ export class ZardCommandComponent implements ControlValueAccessor {
   readonly searchTerm = signal('');
   readonly selectedIndex = signal(-1);
 
-  // Signal to trigger updates when optionComponents change
-  private readonly optionsUpdateTrigger = signal(0);
-
   protected readonly classes = computed(() =>
     mergeClasses(commandVariants({ size: this.size() }), this.class()),
   );
@@ -104,23 +100,22 @@ export class ZardCommandComponent implements ControlValueAccessor {
   // Computed signal for filtered options - this will automatically update when searchTerm or options change
   readonly filteredOptions = computed(() => {
     const searchTerm = this.searchTerm();
-    // Include the trigger signal to make this computed reactive to option changes
-    this.optionsUpdateTrigger();
+    const options = this.optionComponents();
 
-    if (!this.optionComponents()) {
+    if (!options) {
       return [];
     }
 
     if (this.zRemote()) {
-      return this.optionComponents();
+      return [...options];
     }
 
     const lowerSearchTerm = searchTerm.toLowerCase().trim();
     if (!lowerSearchTerm) {
-      return this.optionComponents();
+      return [...options];
     }
 
-    return this.optionComponents().filter((option) => {
+    return options.filter((option) => {
       const label = option.zLabel().toLowerCase();
       const command = option.zCommand()?.toLowerCase() ?? '';
       return label.includes(lowerSearchTerm) || command.includes(lowerSearchTerm);
@@ -151,17 +146,11 @@ export class ZardCommandComponent implements ControlValueAccessor {
     // ControlValueAccessor implementation
   };
 
-  constructor() {
-    effect(() => {
-      this.triggerOptionsUpdate();
-    });
-  }
-
   /**
    * Trigger an update to the filteredOptions computed signal
    */
   private triggerOptionsUpdate(): void {
-    this.optionsUpdateTrigger.update((value) => value + 1);
+    // No-op: contentChildren signal is already reactive and handles updates automatically.
   }
 
   onSearch(searchTerm: string) {
@@ -262,10 +251,10 @@ export class ZardCommandComponent implements ControlValueAccessor {
   }
 
   /**
-   * Refresh the options list - useful when options are added/removed dynamically
+   * Refresh the options list - contentChildren is already reactive, so this is just for manual calls
    */
   refreshOptions(): void {
-    this.triggerOptionsUpdate();
+    // No-op since contentChildren signal handles reactivity
   }
 
   /**

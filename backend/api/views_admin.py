@@ -7,6 +7,7 @@ import shutil
 import tarfile
 
 from admin_tools import services
+from api.utils.sse_auth import sse_token_auth_required
 from api.views import ApiErrorHandlingMixin
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -32,73 +33,12 @@ class IsSuperuser(permissions.BasePermission):
         return request.user and request.user.is_superuser
 
 
-def sse_token_auth_required(view_func):
-    """
-    Decorator for SSE endpoints that need token auth.
-    EventSource cannot send Authorization headers, so we accept token via query param.
-    Supports both JWT tokens (rest_framework_simplejwt) and DRF Token auth.
-    Also supports mock-token when MOCK_AUTH_ENABLED is True.
-    Falls back to session auth if no token provided.
-    """
-
-    @functools.wraps(view_func)
-    def wrapper(request, *args, **kwargs):
-        # Check for token in query param first (for EventSource)
-        token_str = request.GET.get("token")
-        if token_str:
-            # Try mock token first if enabled
-            if getattr(settings, "MOCK_AUTH_ENABLED", False) and token_str == "mock-token":
-                from business_suite.authentication import ensure_mock_user
-
-                user = ensure_mock_user()
-                if user.is_active and user.is_superuser:
-                    request.user = user
-                    return view_func(request, *args, **kwargs)
-
-            # Try JWT token first (starts with eyJ for base64-encoded JSON)
-            if token_str.startswith("eyJ"):
-                try:
-                    from rest_framework_simplejwt.tokens import AccessToken
-
-                    access_token = AccessToken(token_str)
-                    user_id = access_token.get("user_id")
-                    user = User.objects.get(pk=user_id)
-                    if user.is_active and user.is_superuser:
-                        request.user = user
-                        return view_func(request, *args, **kwargs)
-                    else:
-                        return JsonResponse({"error": "Unauthorized"}, status=403)
-                except Exception:
-                    return JsonResponse({"error": "Invalid JWT token"}, status=401)
-            else:
-                # Try DRF Token auth
-                try:
-                    from rest_framework.authtoken.models import Token
-
-                    token = Token.objects.select_related("user").get(key=token_str)
-                    if token.user.is_active and token.user.is_superuser:
-                        request.user = token.user
-                        return view_func(request, *args, **kwargs)
-                    else:
-                        return JsonResponse({"error": "Unauthorized"}, status=403)
-                except Exception:
-                    return JsonResponse({"error": "Invalid token"}, status=401)
-
-        # Fall back to session auth
-        if request.user.is_authenticated and request.user.is_superuser:
-            return view_func(request, *args, **kwargs)
-
-        return JsonResponse({"error": "Authentication required"}, status=401)
-
-    return wrapper
-
-
 # ============================================================================
 # Plain Django views for SSE endpoints (bypass DRF content negotiation)
 # ============================================================================
 
 
-@sse_token_auth_required
+@sse_token_auth_required(superuser_only=True)
 def backup_start_sse(request):
     """SSE endpoint for backup - bypasses DRF content negotiation."""
     include_users = request.GET.get("include_users", "0") in ("1", "true", "True")
@@ -125,7 +65,7 @@ def backup_start_sse(request):
     return response
 
 
-@sse_token_auth_required
+@sse_token_auth_required(superuser_only=True)
 def backup_restore_sse(request):
     """SSE endpoint for restore - bypasses DRF content negotiation."""
     filename = request.GET.get("file")

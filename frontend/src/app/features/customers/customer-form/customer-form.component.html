@@ -244,17 +244,11 @@
           </div>
           <div class="space-y-2">
             <label class="text-sm font-medium">Passport Issue Date</label>
-            <z-date-input
-              formControlName="passport_issue_date"
-              placeholder="DD-MM-YYYY"
-            ></z-date-input>
+            <z-date-input formControlName="passport_issue_date"></z-date-input>
           </div>
           <div class="space-y-2">
             <label class="text-sm font-medium">Passport Expiration Date</label>
-            <z-date-input
-              formControlName="passport_expiration_date"
-              placeholder="DD-MM-YYYY"
-            ></z-date-input>
+            <z-date-input formControlName="passport_expiration_date"></z-date-input>
             @if (
               form.get('passport_expiration_date')?.hasError('passportExpirationBeforeIssue') &&
               (form.get('passport_expiration_date')?.touched || submitted())
@@ -265,7 +259,7 @@
           @if (isPerson()) {
             <div class="space-y-2">
               <label class="text-sm font-medium">Birthdate</label>
-              <z-date-input formControlName="birthdate" placeholder="DD-MM-YYYY"></z-date-input>
+              <z-date-input formControlName="birthdate"></z-date-input>
               @if (
                 form.get('birthdate')?.hasError('birthdateAfterIssue') &&
                 (form.get('birthdate')?.touched || submitted())

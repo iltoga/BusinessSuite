@@ -14,6 +14,7 @@ class TaskSerializer(serializers.ModelSerializer):
             "duration",
             "duration_is_business_days",
             "notify_days_before",
+            "notify_customer",
             "last_step",
         ]
 

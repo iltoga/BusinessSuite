@@ -1,4 +1,5 @@
 import { CustomerApplicationsService } from '@/core/api/api/customer-applications.service';
+import { ComputeService } from '@/core/api/api/compute.service';
 import { CustomersService } from '@/core/api/api/customers.service';
 import { DocumentTypesService } from '@/core/api/api/document-types.service';
 import { ProductsService } from '@/core/api/api/products.service';
@@ -14,6 +15,7 @@ import { FormErrorSummaryComponent } from '@/shared/components/form-error-summar
 import { ZardIconComponent } from '@/shared/components/icon';
 import { ZardInputDirective } from '@/shared/components/input';
 import { ProductSelectComponent } from '@/shared/components/product-select';
+import { ZardTooltipImports } from '@/shared/components/tooltip';
 import { TypeaheadComboboxComponent } from '@/shared/components/typeahead-combobox';
 import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/utils/form-errors';
 import { CommonModule, Location } from '@angular/common';
@@ -30,9 +32,15 @@ import {
   signal,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { FormArray, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  AbstractControl,
+  FormArray,
+  FormBuilder,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { map, startWith, Subject, takeUntil } from 'rxjs';
+import { map, pairwise, startWith, Subject, takeUntil } from 'rxjs';
 
 @Component({
   selector: 'app-application-form',
@@ -51,6 +59,7 @@ import { map, startWith, Subject, takeUntil } from 'rxjs';
     TypeaheadComboboxComponent,
     ZardDateInputComponent,
     FormErrorSummaryComponent,
+    ...ZardTooltipImports,
   ],
   templateUrl: './application-form.component.html',
   styleUrls: ['./application-form.component.css'],
@@ -60,6 +69,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
   private fb = inject(FormBuilder);
   private customersService = inject(CustomersService);
   private customerApplicationsService = inject(CustomerApplicationsService);
+  private computeService = inject(ComputeService);
   private productsService = inject(ProductsService);
   private documentTypesService = inject(DocumentTypesService);
   private authService = inject(AuthService);
@@ -77,6 +87,8 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
   readonly isEditMode = signal(false);
   readonly applicationId = signal<number | null>(null);
   readonly isLoading = signal(false);
+  readonly initialProductId = signal<number | null>(null);
+  readonly nextDeadlineTaskName = signal<string | null>(null);
   // Loading state and open/closed state for the Documents panel
   readonly documentsLoading = signal(false);
   readonly documentsPanelOpen = signal(false);
@@ -85,7 +97,11 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
     customer: [null as string | null, Validators.required],
     product: [null as string | null, Validators.required],
     // use Date object so z-date-input binds correctly
-    docDate: [new Date()],
+    docDate: [new Date(), Validators.required],
+    dueDate: [new Date(), Validators.required],
+    addDeadlinesToCalendar: [true],
+    notifyCustomer: [false],
+    notifyCustomerChannel: ['whatsapp' as 'whatsapp' | 'email'],
     notes: [''],
     documents: this.fb.array([]),
   });
@@ -94,11 +110,42 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
     customer: 'Customer',
     product: 'Product',
     docDate: 'Document Date',
+    dueDate: 'Due Date',
+    addDeadlinesToCalendar: 'Add deadlines to calendar',
+    notifyCustomer: 'Notify customer',
+    notifyCustomerChannel: 'Customer notification channel',
     notes: 'Notes',
     documents: 'Documents',
   };
 
   readonly isSubmitting = signal(false);
+
+  private dueDateValidator = (control: AbstractControl) => {
+    const docDate = this.form?.get('docDate')?.value as Date | null;
+    const dueDate = control?.value as Date | null;
+    if (docDate && dueDate && dueDate < docDate) {
+      return { dueBeforeDocDate: true };
+    }
+    return null;
+  };
+
+  readonly customerNotificationOptions = computed<ZardComboboxOption[]>(() => {
+    const customer = this.selectedCustomer();
+    const options: ZardComboboxOption[] = [];
+    if (customer?.whatsapp) {
+      options.push({ value: 'whatsapp', label: 'WhatsApp' });
+    }
+    if (customer?.email) {
+      options.push({ value: 'email', label: 'Email' });
+    }
+    return options;
+  });
+
+  readonly canNotifyCustomer = computed(() => this.customerNotificationOptions().length > 0);
+  readonly dueDateContextLabel = computed(() => {
+    const taskName = this.nextDeadlineTaskName();
+    return taskName ? `(Next Deadline: ${taskName})` : '(Next Deadline: —)';
+  });
 
   readonly documentTypeOptions = computed<ZardComboboxOption[]>(() => {
     return this.documentTypes().map((dt) => ({
@@ -141,6 +188,8 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.form.get('dueDate')?.setValidators([Validators.required, this.dueDateValidator]);
+    this.form.get('notifyCustomerChannel')?.disable({ emitEvent: false });
     const url = this.router.url;
     const editMatch = url.match(/\/applications\/(\d+)\/edit/);
 
@@ -169,6 +218,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
             this.loadCustomerDetail(Number(customerId));
           } else {
             this.selectedCustomer.set(null);
+            this.syncNotifyCustomerAvailability();
             // If product is set, reload docs (to re-evaluate without customer)
             const productId = this.form.get('product')?.value;
             if (productId) {
@@ -182,14 +232,73 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
         .get('product')
         ?.valueChanges.pipe(takeUntil(this.destroy$))
         .subscribe((productId) => {
-          if (productId) {
-            this.loadProductDocuments(Number(productId));
-          } else {
+          if (!productId) {
             this.documentsArray.clear();
+            this.nextDeadlineTaskName.set(null);
+            return;
           }
+          this.loadProductDocuments(Number(productId));
         });
     }
 
+    this.form
+      .get('docDate')
+      ?.valueChanges.pipe(
+        startWith(this.form.get('docDate')?.value),
+        pairwise(),
+        takeUntil(this.destroy$),
+      )
+      .subscribe(([previousDocDateRaw, currentDocDateRaw]) => {
+        this.form.get('dueDate')?.updateValueAndValidity();
+
+        const previousDocDate = this.toDateOnly(previousDocDateRaw);
+        const currentDocDate = this.toDateOnly(currentDocDateRaw);
+        const currentDueDate = this.toDateOnly(this.form.get('dueDate')?.value);
+
+        if (!previousDocDate || !currentDocDate || !currentDueDate) {
+          return;
+        }
+
+        const dayDelta = this.diffInDays(previousDocDate, currentDocDate);
+        if (dayDelta === 0) {
+          return;
+        }
+
+        this.form.patchValue(
+          { dueDate: this.addDays(currentDueDate, dayDelta) },
+          { emitEvent: false },
+        );
+      });
+
+    this.form
+      .get('product')
+      ?.valueChanges.pipe(takeUntil(this.destroy$))
+      .subscribe((productId) => {
+        if (!productId) return;
+        const numericProductId = Number(productId);
+        if (this.isEditMode() && this.initialProductId() === numericProductId) {
+          return;
+        }
+        this.tryAutoDueDateCalculation(numericProductId);
+      });
+
+    this.form
+      .get('notifyCustomer')
+      ?.valueChanges.pipe(takeUntil(this.destroy$))
+      .subscribe((enabled) => {
+        const channelControl = this.form.get('notifyCustomerChannel');
+        if (!enabled) {
+          this.form.patchValue({ notifyCustomerChannel: 'whatsapp' }, { emitEvent: false });
+          channelControl?.disable({ emitEvent: false });
+          return;
+        }
+        if (this.canNotifyCustomer()) {
+          channelControl?.enable({ emitEvent: false });
+        }
+      });
+
+    // Ensure initial disabled/enabled state is correct before any customer is selected.
+    this.syncNotifyCustomerAvailability();
     this.loadDocumentTypes();
   }
 
@@ -204,14 +313,21 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
           customer: String(customerId),
           product: productId ? String(productId) : null,
           docDate: docDate,
+          dueDate: app.dueDate ? new Date(app.dueDate) : docDate,
+          addDeadlinesToCalendar: app.addDeadlinesToCalendar ?? true,
+          notifyCustomer:
+            app.notifyCustomer ?? app.notifyCustomerToo ?? app.notify_customer_too ?? false,
+          notifyCustomerChannel:
+            app.notifyCustomerChannel ?? app.notify_customer_channel ?? 'whatsapp',
           notes: app.notes ?? '',
-        });
+        }, { emitEvent: false });
         if (customerId) {
           this.loadCustomerDetail(customerId);
         }
 
         // Ensure product documents are loaded when editing an application
         if (productId) {
+          this.initialProductId.set(productId);
           // open the documents panel and load documents
           this.documentsPanelOpen.set(true);
           this.loadProductDocuments(productId);
@@ -230,13 +346,17 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
     this.customersService.customersRetrieve(customerId).subscribe({
       next: (customer) => {
         this.selectedCustomer.set(customer);
+        this.syncNotifyCustomerAvailability();
         // Refresh documents if product is already selected to re-check for auto-imports
         const productId = this.form.get('product')?.value;
         if (productId && !this.isEditMode()) {
           this.loadProductDocuments(Number(productId));
         }
       },
-      error: () => this.selectedCustomer.set(null),
+      error: () => {
+        this.selectedCustomer.set(null);
+        this.syncNotifyCustomerAvailability();
+      },
     });
   }
 
@@ -254,6 +374,9 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
 
     this.productsService.productsGetProductByIdRetrieve(productId).subscribe({
       next: (data: any) => {
+        const deadlineTask = this.getCalendarTaskFromProduct(data);
+        this.nextDeadlineTaskName.set(this.getTaskName(deadlineTask));
+
         this.documentsArray.clear();
         let passportAutoImported = false;
 
@@ -276,6 +399,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
         this.cdr.markForCheck();
       },
       error: () => {
+        this.nextDeadlineTaskName.set(null);
         this.documentsLoading.set(false);
         this.cdr.markForCheck();
         this.toast.error('Failed to load product documents');
@@ -345,10 +469,83 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
 
     if (disabled) {
       customerControl?.disable({ emitEvent: false });
-      productControl?.disable({ emitEvent: false });
+      productControl?.enable({ emitEvent: false });
     } else {
       customerControl?.enable({ emitEvent: false });
       productControl?.enable({ emitEvent: false });
+    }
+  }
+
+  private tryAutoDueDateCalculation(productId: number): void {
+    this.productsService.productsRetrieve(productId).subscribe({
+      next: (product: any) => {
+        const task = this.getCalendarTaskFromProduct(product);
+        this.nextDeadlineTaskName.set(this.getTaskName(task));
+        const doc = this.toDateOnly(this.form.get('docDate')?.value);
+        if (!doc) return;
+        if (!task) {
+          this.form.patchValue({ dueDate: doc });
+          return;
+        }
+        const start = this.toApiDate(doc);
+        if (!start) return;
+        this.computeService.computeDocWorkflowDueDateRetrieve(start, task.id).subscribe({
+          next: (res) => {
+            const computedDueDate = res?.dueDate ?? res?.due_date;
+            if (!computedDueDate) return;
+            const parsedDueDate = this.toDateOnly(computedDueDate);
+            if (!parsedDueDate) return;
+            this.form.patchValue({ dueDate: parsedDueDate }, { emitEvent: false });
+          },
+        });
+      },
+    });
+  }
+
+  private getCalendarTaskFromProduct(product: any): any | null {
+    const tasks = Array.isArray(product?.tasks) ? product.tasks : [];
+    return (
+      tasks.find(
+        (task: any) => task?.addTaskToCalendar === true || task?.add_task_to_calendar === true,
+      ) ??
+      null
+    );
+  }
+
+  private getTaskName(task: any): string | null {
+    const rawName = typeof task?.name === 'string' ? task.name.trim() : '';
+    return rawName || null;
+  }
+
+  private syncNotifyCustomerAvailability(): void {
+    const notifyControl = this.form.get('notifyCustomer');
+    const channelControl = this.form.get('notifyCustomerChannel');
+    const options = this.customerNotificationOptions();
+    const canNotify = options.length > 0;
+
+    if (!canNotify) {
+      this.form.patchValue(
+        { notifyCustomer: false, notifyCustomerChannel: 'whatsapp' },
+        { emitEvent: false },
+      );
+      notifyControl?.disable({ emitEvent: false });
+      channelControl?.disable({ emitEvent: false });
+      return;
+    }
+
+    notifyControl?.enable({ emitEvent: false });
+    const current = this.form.get('notifyCustomerChannel')?.value;
+    if (!options.some((opt) => opt.value === current)) {
+      this.form.patchValue(
+        { notifyCustomerChannel: options[0]!.value as 'whatsapp' | 'email' },
+        { emitEvent: false },
+      );
+    }
+
+    if (notifyControl?.value) {
+      channelControl?.enable({ emitEvent: false });
+    } else {
+      channelControl?.disable({ emitEvent: false });
     }
   }
 
@@ -361,26 +558,33 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
 
     this.isSubmitting.set(true);
 
-    const docValue = this.form.value.docDate;
-    const docDateStr = docValue instanceof Date ? docValue.toISOString().slice(0, 10) : docValue;
+    const docDateStr = this.toApiDate(this.form.value.docDate);
 
     if (this.isEditMode() && this.applicationId()) {
       // Update mode
+      const dueDateStr = this.toApiDate(this.form.value.dueDate);
       const payload = {
-        customer: Number(this.form.value.customer),
+        customer: Number(this.form.getRawValue().customer),
         product: Number(this.form.value.product),
         docDate: docDateStr,
+        dueDate: dueDateStr,
+        addDeadlinesToCalendar: this.form.value.addDeadlinesToCalendar,
+        notifyCustomerToo: this.form.value.notifyCustomer,
+        notifyCustomerChannel: this.form.value.notifyCustomer
+          ? this.form.value.notifyCustomerChannel
+          : null,
         notes: this.form.value.notes,
       };
 
       const headers = this.buildAuthHeaders();
 
       this.http
-        .patch(`/api/customer-applications/${this.applicationId()}/`, payload, { headers })
+        .patch<any>(`/api/customer-applications/${this.applicationId()}/`, payload, { headers })
         .subscribe({
-          next: () => {
+          next: (application) => {
             this.toast.success('Application updated');
-            this.router.navigate(['/applications', this.applicationId()]);
+            const id = application?.id ?? this.applicationId();
+            this.router.navigate(['/applications', id]);
             this.isSubmitting.set(false);
           },
           error: (error) => {
@@ -395,10 +599,17 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
         });
     } else {
       // Create mode
+      const dueDateStr = this.toApiDate(this.form.value.dueDate);
       const payload = {
-        customer: Number(this.form.value.customer),
+        customer: Number(this.form.getRawValue().customer),
         product: Number(this.form.value.product),
         docDate: docDateStr,
+        dueDate: dueDateStr,
+        addDeadlinesToCalendar: this.form.value.addDeadlinesToCalendar,
+        notifyCustomerToo: this.form.value.notifyCustomer,
+        notifyCustomerChannel: this.form.value.notifyCustomer
+          ? this.form.value.notifyCustomerChannel
+          : null,
         notes: this.form.value.notes,
         documentTypes: this.form.value.documents,
       };
@@ -406,14 +617,13 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
       const headers = this.buildAuthHeaders();
 
       // Use the main endpoint which supports document_types via DocApplicationCreateUpdateSerializer
-      this.http.post('/api/customer-applications/', payload, { headers }).subscribe({
-        next: (res: any) => {
+      this.http.post<any>('/api/customer-applications/', payload, { headers }).subscribe({
+        next: (application) => {
           this.toast.success('Application created');
-          const id = res?.id;
+          const id = application?.id;
           if (id) {
             this.router.navigate(['/applications', id]);
           } else {
-            // fallback to applications list if id is missing in response
             this.router.navigate(['/applications']);
           }
           this.isSubmitting.set(false);
@@ -546,5 +756,50 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
       token = this.authService.getToken();
     }
     return token ? new HttpHeaders({ Authorization: `Bearer ${token}` }) : undefined;
+  }
+
+  private toDateOnly(raw: unknown): Date | null {
+    if (raw == null) return null;
+
+    if (raw instanceof Date) {
+      if (Number.isNaN(raw.getTime())) return null;
+      return new Date(raw.getFullYear(), raw.getMonth(), raw.getDate());
+    }
+
+    if (typeof raw === 'string') {
+      const isoDateMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (isoDateMatch) {
+        const [, year, month, day] = isoDateMatch;
+        return new Date(Number(year), Number(month) - 1, Number(day));
+      }
+      const parsed = new Date(raw);
+      if (!Number.isNaN(parsed.getTime())) {
+        return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+      }
+    }
+
+    return null;
+  }
+
+  private toApiDate(raw: unknown): string | null {
+    const date = this.toDateOnly(raw);
+    if (!date) return null;
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  private diffInDays(from: Date, to: Date): number {
+    const fromUtc = Date.UTC(from.getFullYear(), from.getMonth(), from.getDate());
+    const toUtc = Date.UTC(to.getFullYear(), to.getMonth(), to.getDate());
+    return Math.round((toUtc - fromUtc) / (24 * 60 * 60 * 1000));
+  }
+
+  private addDays(date: Date, days: number): Date {
+    const next = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    next.setDate(next.getDate() + days);
+    return next;
   }
 }

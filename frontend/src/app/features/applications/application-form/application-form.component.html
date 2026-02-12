@@ -57,7 +57,64 @@
 
           <div>
             <label class="text-sm font-medium">Doc Date</label>
-            <z-date-input formControlName="docDate" placeholder="DD-MM-YYYY"></z-date-input>
+            <z-date-input formControlName="docDate"></z-date-input>
+          </div>
+
+          <div>
+            <label class="text-sm font-medium flex items-center gap-1 min-h-6 w-full">
+              <span class="shrink-0">Due Date</span>
+              <span
+                class="min-w-0 truncate text-muted-foreground"
+                [title]="dueDateContextLabel()"
+                >{{ dueDateContextLabel() }}</span
+              >
+            </label>
+            <z-date-input formControlName="dueDate"></z-date-input>
+            <div
+              *ngIf="
+                form.get('dueDate')?.errors?.['dueBeforeDocDate'] && form.get('dueDate')?.touched
+              "
+              class="text-xs text-destructive mt-1"
+            >
+              Due date cannot be before Doc Date
+            </div>
+          </div>
+
+          <div class="md:col-span-2 flex flex-wrap items-center gap-6">
+            <label class="flex items-center gap-2">
+              <input
+                type="checkbox"
+                formControlName="addDeadlinesToCalendar"
+                class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+              />
+              <span class="text-sm font-medium">Add deadlines to calendar</span>
+            </label>
+
+            <label
+              class="flex items-center gap-2"
+              [zTooltip]="
+                canNotifyCustomer()
+                  ? null
+                  : 'Customer cannot be notified because we don\'t have his email or whatsapp'
+              "
+            >
+              <input
+                type="checkbox"
+                formControlName="notifyCustomer"
+                class="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+              />
+              <span class="text-sm font-medium">Notify customer</span>
+            </label>
+          </div>
+
+          <div class="md:col-span-2" *ngIf="form.value.notifyCustomer">
+            <label class="text-sm font-medium block mb-1">Customer notification channel</label>
+            <z-combobox
+              formControlName="notifyCustomerChannel"
+              [options]="customerNotificationOptions()"
+              [searchable]="false"
+              [zWidth]="'full'"
+            />
           </div>
 
           <div class="md:col-span-2">

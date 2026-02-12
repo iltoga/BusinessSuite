@@ -1,0 +1,12 @@
+Hello {{ customer.full_name }},
+
+Reminder: your next deadline is tomorrow.
+
+Application #{{ application.id }}
+Product: {{ product.name }}
+Step: {{ task.name }}
+Due date: {{ due_date_display }}
+
+Notes: {{ notes }}
+
+Reply to this message if you need help.

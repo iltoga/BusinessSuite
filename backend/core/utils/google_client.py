@@ -3,6 +3,8 @@ import os
 from django.conf import settings
 from rest_framework.exceptions import APIException
 
+from core.services.google_calendar_event_colors import GoogleCalendarEventColors
+
 # Lazy import of google libraries so tests or environments without them fail fast with clear message
 try:
     from google.oauth2 import service_account
@@ -53,26 +55,57 @@ class GoogleClient:
 
     # --- CALENDAR METHODS ---
 
-    def list_events(self, calendar_id=None, max_results=50, time_min=None):
+    def list_events(
+        self,
+        calendar_id=None,
+        max_results=50,
+        time_min=None,
+        include_past=False,
+        private_extended_property=None,
+        query=None,
+        fetch_all=False,
+    ):
         import datetime
 
         if calendar_id is None:
             calendar_id = DEFAULT_CALENDAR_ID
 
-        if time_min is None:
+        if time_min is None and not include_past:
             # Default to now to show upcoming events
             time_min = datetime.datetime.utcnow().isoformat() + "Z"
 
         try:
-            req = self.calendar_service.events().list(
-                calendarId=calendar_id,
-                timeMin=time_min,
-                maxResults=max_results,
-                singleEvents=True,
-                orderBy="startTime",
-            )
-            events_result = req.execute()
-            return events_result.get("items", [])
+            request_data = {
+                "calendarId": calendar_id,
+                "maxResults": max_results,
+                "singleEvents": True,
+                "orderBy": "startTime",
+            }
+            if time_min:
+                request_data["timeMin"] = time_min
+            if private_extended_property:
+                request_data["privateExtendedProperty"] = private_extended_property
+            if query:
+                request_data["q"] = query
+
+            items = []
+            page_token = None
+
+            while True:
+                if page_token:
+                    request_data["pageToken"] = page_token
+                elif "pageToken" in request_data:
+                    request_data.pop("pageToken")
+
+                req = self.calendar_service.events().list(**request_data)
+                events_result = req.execute()
+                items.extend(events_result.get("items", []))
+
+                page_token = events_result.get("nextPageToken")
+                if not fetch_all or not page_token:
+                    break
+
+            return items
         except HttpError as e:
             raise APIException(f"Google Calendar Error: {str(e)}")
         except Exception as e:
@@ -105,16 +138,29 @@ class GoogleClient:
         if isinstance(end_time, (datetime.datetime, datetime.date)):
             end_time = end_time.isoformat()
 
+        start_date = data.get("start_date")
+        end_date = data.get("end_date")
+
         event_body = {
             "summary": data.get("summary"),
             "description": data.get("description", ""),
-            "start": {"dateTime": start_time, "timeZone": TIMEZONE},
-            "end": {"dateTime": end_time, "timeZone": TIMEZONE},
-            "reminders": {
+            "reminders": data.get("reminders")
+            or {
                 "useDefault": False,
                 "overrides": [{"method": "email", "minutes": 60}, {"method": "popup", "minutes": 10}],
             },
         }
+        if data.get("extended_properties"):
+            event_body["extendedProperties"] = data.get("extended_properties")
+        if data.get("color_id") is not None:
+            event_body["colorId"] = GoogleCalendarEventColors.validate_color_id(data.get("color_id"))
+
+        if start_date and end_date:
+            event_body["start"] = {"date": start_date}
+            event_body["end"] = {"date": end_date}
+        else:
+            event_body["start"] = {"dateTime": start_time, "timeZone": TIMEZONE}
+            event_body["end"] = {"dateTime": end_time, "timeZone": TIMEZONE}
 
         try:
             event = self.calendar_service.events().insert(calendarId=calendar_id, body=event_body).execute()
@@ -136,6 +182,10 @@ class GoogleClient:
                 body["summary"] = data["summary"]
             if "description" in data:
                 body["description"] = data["description"]
+            if "extended_properties" in data:
+                body["extendedProperties"] = data["extended_properties"]
+            if "color_id" in data:
+                body["colorId"] = GoogleCalendarEventColors.validate_color_id(data["color_id"])
 
             if "start_time" in data:
                 start_time = data["start_time"]
@@ -157,6 +207,16 @@ class GoogleClient:
             raise APIException(f"Google Calendar Update Error: {str(e)}")
         except Exception as e:
             raise APIException(f"Google Calendar Update Error: {str(e)}")
+
+    def set_event_color(self, event_id, color_id, calendar_id=None):
+        if calendar_id is None:
+            calendar_id = DEFAULT_CALENDAR_ID
+        validated_color_id = GoogleCalendarEventColors.validate_color_id(color_id)
+        return self.update_event(event_id=event_id, data={"color_id": validated_color_id}, calendar_id=calendar_id)
+
+    def set_event_done_state(self, event_id, done: bool, calendar_id=None):
+        target_color_id = GoogleCalendarEventColors.color_for_done_state(done)
+        return self.set_event_color(event_id=event_id, color_id=target_color_id, calendar_id=calendar_id)
 
     def delete_event(self, event_id, calendar_id=None):
         if calendar_id is None:

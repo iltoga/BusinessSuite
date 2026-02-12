@@ -1,5 +1,5 @@
 import type { ZardComboboxOption as BaseOption } from '@/shared/components/combobox/combobox.component';
-import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser } from '@angular/common';
 import {
   afterNextRender,
   ChangeDetectionStrategy,
@@ -18,7 +18,7 @@ import {
   viewChild,
   ViewEncapsulation,
 } from '@angular/core';
-import { FormsModule, NG_VALUE_ACCESSOR, type ControlValueAccessor } from '@angular/forms';
+import { NG_VALUE_ACCESSOR, type ControlValueAccessor } from '@angular/forms';
 import { Observable } from 'rxjs';
 
 import { ZardButtonComponent } from '@/shared/components/button/button.component';
@@ -26,7 +26,6 @@ import { type ZardComboboxVariants } from '@/shared/components/combobox/combobox
 import { ZardCommandEmptyComponent } from '@/shared/components/command/command-empty.component';
 import { ZardCommandInputComponent } from '@/shared/components/command/command-input.component';
 import { ZardCommandListComponent } from '@/shared/components/command/command-list.component';
-import { ZardCommandOptionGroupComponent } from '@/shared/components/command/command-option-group.component';
 import { ZardCommandOptionComponent } from '@/shared/components/command/command-option.component';
 import {
   ZardCommandComponent,
@@ -54,15 +53,12 @@ export interface TypeaheadOption extends BaseOption {
   selector: 'app-typeahead-combobox',
   standalone: true,
   imports: [
-    CommonModule,
-    FormsModule,
     ZardButtonComponent,
     ZardCommandComponent,
     ZardCommandInputComponent,
     ZardCommandListComponent,
     ZardCommandEmptyComponent,
     ZardCommandOptionComponent,
-    ZardCommandOptionGroupComponent,
     ZardPopoverDirective,
     ZardPopoverComponent,
     ZardEmptyComponent,
@@ -197,7 +193,7 @@ export class TypeaheadComboboxComponent implements ControlValueAccessor {
   readonly mapFn = input<((item: any) => TypeaheadOption) | undefined>(undefined);
 
   // External value control from CVA/Inputs
-  readonly value = input<string | null>(null);
+  readonly value = input<string | null | undefined>(null);
   readonly valueChange = output<string | null>();
 
   // Element refs
@@ -216,7 +212,7 @@ export class TypeaheadComboboxComponent implements ControlValueAccessor {
     effect(() => {
       const val = this.value();
       if (val !== this.internalValue()) {
-        this.internalValue.set(val);
+        this.internalValue.set(val ?? null);
       }
     });
 

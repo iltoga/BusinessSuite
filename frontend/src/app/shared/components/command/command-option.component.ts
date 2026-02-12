@@ -24,35 +24,30 @@ import { mergeClasses, transform } from '@/shared/utils/merge-classes';
   selector: 'z-command-option',
   imports: [ZardIconComponent],
   template: `
-    @if (shouldShow()) {
-      <div
-        [class]="classes()"
-        [attr.role]="'option'"
-        [attr.aria-selected]="isSelected()"
-        [attr.data-selected]="isSelected()"
-        [attr.data-disabled]="zDisabled()"
-        [attr.tabindex]="0"
-        (click)="onClick()"
-        (keydown.{enter,space}.prevent)="onClick()"
-        (mouseenter)="onMouseEnter()"
-      >
-        @if (zIcon()) {
-          <div
-            z-icon
-            [zType]="zIcon()!"
-            class="mr-2 flex shrink-0 items-center justify-center"
-          ></div>
-        }
-        <span class="flex-1">
-          <ng-content></ng-content>
-          <!-- Keep label available to screen readers / fallback, but visually hidden so we can project a custom display -->
-          <span class="sr-only">{{ zLabel() }}</span>
-        </span>
-        @if (zShortcut()) {
-          <span [class]="shortcutClasses()">{{ zShortcut() }}</span>
-        }
-      </div>
-    }
+    <div
+      [class]="classes()"
+      [class.hidden]="!shouldShow()"
+      [attr.role]="'option'"
+      [attr.aria-selected]="isSelected()"
+      [attr.data-selected]="isSelected()"
+      [attr.data-disabled]="zDisabled()"
+      [attr.tabindex]="0"
+      (click)="onClick()"
+      (keydown.{enter,space}.prevent)="onClick()"
+      (mouseenter)="onMouseEnter()"
+    >
+      @if (zIcon()) {
+        <div z-icon [zType]="zIcon()!" class="mr-2 flex shrink-0 items-center justify-center"></div>
+      }
+      <span class="flex-1">
+        <ng-content></ng-content>
+        <!-- Keep label available to screen readers / fallback, but visually hidden so we can project a custom display -->
+        <span class="sr-only">{{ zLabel() }}</span>
+      </span>
+      @if (zShortcut()) {
+        <span [class]="shortcutClasses()">{{ zShortcut() }}</span>
+      }
+    </div>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,

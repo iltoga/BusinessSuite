@@ -1,0 +1,134 @@
+<div class="space-y-4">
+  <div class="flex items-center justify-between">
+    <h1 class="text-xl font-semibold">Workflow Notifications</h1>
+    <div class="flex items-center gap-2">
+      <button z-button zType="secondary" (click)="load()">Refresh</button>
+      <button z-button zType="default" (click)="openPushTestDialog()">Send Test Push</button>
+      <button z-button zType="default" (click)="openWhatsappTestDialog()">Send Test WhatsApp</button>
+    </div>
+  </div>
+
+  <div class="overflow-auto border rounded">
+    <table class="min-w-full text-sm">
+      <thead>
+        <tr class="border-b text-left">
+          <th class="p-2">ID</th>
+          <th class="p-2">Status</th>
+          <th class="p-2">Recipient</th>
+          <th class="p-2">Subject</th>
+          <th class="p-2">Scheduled</th>
+          <th class="p-2">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (item of notifications(); track item.id) {
+          <tr class="border-b">
+            <td class="p-2">{{ item.id }}</td>
+            <td class="p-2">{{ item.status }}</td>
+            <td class="p-2">{{ item.recipient }}</td>
+            <td class="p-2">{{ item.subject }}</td>
+            <td class="p-2">{{ item.scheduled_for || '-' }}</td>
+            <td class="p-2 flex gap-2">
+              <button z-button zSize="sm" (click)="resend(item.id)">Resend</button>
+              <button z-button zType="secondary" zSize="sm" (click)="cancel(item.id)">Cancel</button>
+              <button z-button zType="destructive" zSize="sm" (click)="remove(item.id)">Delete</button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<ng-template #pushTestDialogTemplate>
+  <form [formGroup]="pushTestForm" class="space-y-4" (ngSubmit)="sendTestPush()">
+    <div>
+      <label class="mb-1 block text-sm font-medium">User</label>
+      <z-combobox formControlName="userId" [options]="userOptions()" [searchable]="true" [zWidth]="'full'" />
+      @if (pushTestForm.get('userId')?.invalid && pushTestForm.get('userId')?.touched) {
+        <p class="mt-1 text-xs text-destructive">User is required.</p>
+      }
+      @if (pushTestForm.get('userId')?.value && selectedUserActiveSubscriptions() === 0) {
+        <p class="mt-1 text-xs text-destructive">
+          This user has no active push devices. Open CRM in browser and allow notifications first.
+        </p>
+      }
+    </div>
+
+    <div>
+      <label class="mb-1 block text-sm font-medium">Title</label>
+      <input z-input formControlName="title" type="text" class="w-full" />
+    </div>
+
+    <div>
+      <label class="mb-1 block text-sm font-medium">Body</label>
+      <textarea
+        formControlName="body"
+        class="block w-full rounded border border-input bg-background p-2 text-sm"
+        rows="4"
+      ></textarea>
+    </div>
+
+    <div>
+      <label class="mb-1 block text-sm font-medium">Link</label>
+      <input z-input formControlName="link" type="text" class="w-full" />
+    </div>
+
+    <div>
+      <label class="mb-1 block text-sm font-medium">Data (JSON object)</label>
+      <textarea
+        formControlName="data"
+        class="block w-full rounded border border-input bg-background p-2 font-mono text-xs"
+        rows="5"
+      ></textarea>
+      @if (pushTestForm.get('data')?.hasError('invalidJson')) {
+        <p class="mt-1 text-xs text-destructive">Invalid JSON object.</p>
+      }
+    </div>
+
+    <div class="flex justify-end gap-2">
+      <button z-button zType="secondary" type="button" (click)="dialogRef?.close()">Cancel</button>
+      <button
+        z-button
+        zType="default"
+        type="submit"
+        [disabled]="sendingPush() || (pushTestForm.get('userId')?.value && selectedUserActiveSubscriptions() === 0)"
+      >
+        {{ sendingPush() ? 'Sending...' : 'Send' }}
+      </button>
+    </div>
+  </form>
+</ng-template>
+
+<ng-template #whatsappTestDialogTemplate>
+  <form [formGroup]="whatsappTestForm" class="space-y-4" (ngSubmit)="sendTestWhatsapp()">
+    <div>
+      <label class="mb-1 block text-sm font-medium">To (optional)</label>
+      <input z-input formControlName="to" type="text" class="w-full" />
+      <p class="mt-1 text-xs text-muted-foreground">
+        Leave empty to use backend default: <code>WHATSAPP_TEST_NUMBER</code>.
+      </p>
+    </div>
+
+    <div>
+      <label class="mb-1 block text-sm font-medium">Subject</label>
+      <input z-input formControlName="subject" type="text" class="w-full" />
+    </div>
+
+    <div>
+      <label class="mb-1 block text-sm font-medium">Body</label>
+      <textarea
+        formControlName="body"
+        class="block w-full rounded border border-input bg-background p-2 text-sm"
+        rows="4"
+      ></textarea>
+    </div>
+
+    <div class="flex justify-end gap-2">
+      <button z-button zType="secondary" type="button" (click)="dialogRef?.close()">Cancel</button>
+      <button z-button zType="default" type="submit" [disabled]="sendingWhatsapp()">
+        {{ sendingWhatsapp() ? 'Sending...' : 'Send' }}
+      </button>
+    </div>
+  </form>
+</ng-template>

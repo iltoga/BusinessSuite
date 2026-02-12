@@ -108,9 +108,6 @@ class DocWorkflow(models.Model):
     def save(self, *args, **kwargs):
         if not self.id:
             self.created_at = timezone.now()
-        # don't allow to complete any workflow until the document collection is completed
-        elif self.is_completed and not self.doc_application.is_document_collection_completed:
-            return None
 
         self.updated_at = timezone.now()
         if self.status == "completed":

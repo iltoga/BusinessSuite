@@ -341,7 +341,7 @@ Located in `copilot/specs/django-angular/`:
 1. Copy Pre-Task Checklist from [tasks.md](copilot/specs/django-angular/tasks.md)
 2. Review anti-patterns in [design.md](copilot/specs/django-angular/design.md) Section 7
 3. Check [api-contract-examples.md](copilot/specs/django-angular/api-contract-examples.md) for endpoint schema
-4. Search [docs/shared_components.md](docs/shared_components.md) for reusable components
+4. Search [docs/shared_components.md](../docs/shared_components.md) for reusable components
 
 **During implementation:**
 
@@ -352,8 +352,8 @@ Located in `copilot/specs/django-angular/`:
 
 **After completing a feature:**
 
-1. Update [docs/shared_components.md](docs/shared_components.md) if reusable components created
-2. Update [docs/implementation_feedback.md](docs/implementation_feedback.md) with lessons learned
+1. Update [docs/shared_components.md](../docs/shared_components.md) if reusable components created
+2. Update [docs/implementation_feedback.md](../docs/implementation_feedback.md) with lessons learned
 3. Run Post-Task Checklist from [tasks.md](copilot/specs/django-angular/tasks.md)
 4. **Automatic cleanup:** Remove unused code, imports, debug statements
 5. Verify tests pass (minimum 80% coverage)
@@ -436,6 +436,7 @@ See [zardui.md](copilot/specs/django-angular/zardui.md) for documentation on the
 ## References and Resources
 
 - **API Endpoints:** See `docs/API_ENDPOINTS.md` for a list of main API endpoints (note: update it as new endpoints are added)
+- **Web Push Notifications:** See `docs/web-push-notifications.md` for setup and usage guide.
 - **Context7 Documentation:** Reference for library behavior clarification
 - **Django REST Framework Docs:** https://www.django-rest-framework.org/
 - **Angular 19 Docs:** https://angular.dev/
@@ -453,6 +454,6 @@ This is a Django + Angular ERP/CRM for visa processing agencies. Key priorities:
 4. **Angular Migration:** Use specifications in `copilot/specs/django-angular/`, follow anti-patterns guide
 5. **Generated Clients:** Use OpenAPI → TypeScript generation, never manual interfaces
 6. **Automatic Cleanup:** Remove unused/stale code after every task without asking
-7. **Documentation:** Update [docs/shared_components.md](docs/shared_components.md) and [docs/implementation_feedback.md](docs/implementation_feedback.md)
+7. **Documentation:** Update [docs/shared_components.md](../docs/shared_components.md) and [docs/implementation_feedback.md](../docs/implementation_feedback.md)
 
 When in doubt, check the migration specs in `copilot/specs/django-angular/` — they contain complete working examples for every pattern.

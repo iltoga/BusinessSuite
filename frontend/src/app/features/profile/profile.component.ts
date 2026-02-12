@@ -25,6 +25,7 @@ import { ZardCardComponent } from '@/shared/components/card';
 import { ZardDialogService } from '@/shared/components/dialog';
 import { ZardIconComponent } from '@/shared/components/icon';
 import { ZardInputDirective } from '@/shared/components/input';
+import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 
 @Component({
   selector: 'app-profile',
@@ -38,6 +39,7 @@ import { ZardInputDirective } from '@/shared/components/input';
     ZardAvatarComponent,
     ZardBadgeComponent,
     ZardIconComponent,
+    AppDatePipe,
   ],
   templateUrl: './profile.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,

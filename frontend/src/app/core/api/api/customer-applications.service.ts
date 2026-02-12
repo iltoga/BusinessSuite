@@ -17,6 +17,8 @@ import { Observable }                                        from 'rxjs';
 import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 
 // @ts-ignore
+import { AsyncJob } from '../model/async-job';
+// @ts-ignore
 import { DocApplicationCreateUpdate } from '../model/doc-application-create-update';
 // @ts-ignore
 import { DocApplicationDetail } from '../model/doc-application-detail';
@@ -44,7 +46,7 @@ export class CustomerApplicationsService extends BaseService {
     }
 
     /**
-     * Complete current workflow and create next step.
+     * Complete current workflow and create next step asynchronously.
      * @endpoint post /api/customer-applications/{id}/advance-workflow/
      * @param id A unique integer value identifying this doc application.
      * @param docApplicationSerializerWithRelations 
@@ -193,15 +195,16 @@ export class CustomerApplicationsService extends BaseService {
     }
 
     /**
+     * Create application asynchronously.
      * @endpoint post /api/customer-applications/
      * @param docApplicationCreateUpdate 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public customerApplicationsCreate(docApplicationCreateUpdate: DocApplicationCreateUpdate, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<DocApplicationCreateUpdate>;
-    public customerApplicationsCreate(docApplicationCreateUpdate: DocApplicationCreateUpdate, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<DocApplicationCreateUpdate>>;
-    public customerApplicationsCreate(docApplicationCreateUpdate: DocApplicationCreateUpdate, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<DocApplicationCreateUpdate>>;
+    public customerApplicationsCreate(docApplicationCreateUpdate: DocApplicationCreateUpdate, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<AsyncJob>;
+    public customerApplicationsCreate(docApplicationCreateUpdate: DocApplicationCreateUpdate, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<AsyncJob>>;
+    public customerApplicationsCreate(docApplicationCreateUpdate: DocApplicationCreateUpdate, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<AsyncJob>>;
     public customerApplicationsCreate(docApplicationCreateUpdate: DocApplicationCreateUpdate, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
         if (docApplicationCreateUpdate === null || docApplicationCreateUpdate === undefined) {
             throw new Error('Required parameter docApplicationCreateUpdate was null or undefined when calling customerApplicationsCreate.');
@@ -250,7 +253,7 @@ export class CustomerApplicationsService extends BaseService {
 
         let localVarPath = `/api/customer-applications/`;
         const { basePath, withCredentials } = this.configuration;
-        return this.httpClient.request<DocApplicationCreateUpdate>('post', `${basePath}${localVarPath}`,
+        return this.httpClient.request<AsyncJob>('post', `${basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 body: docApplicationCreateUpdate,
@@ -265,20 +268,42 @@ export class CustomerApplicationsService extends BaseService {
     }
 
     /**
-     * Allow optional deletion of linked invoices when deleting an application.  To delete linked invoices, the caller must explicitly pass &#x60;deleteInvoices&#x60; (or &#x60;delete_invoices&#x60;) and be a superuser.
+     * Allow optional deletion of linked invoices when deleting an application asynchronously.
      * @endpoint delete /api/customer-applications/{id}/
      * @param id A unique integer value identifying this doc application.
+     * @param deleteInvoices 
+     * @param deleteInvoices2 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public customerApplicationsDestroy(id: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<any>;
-    public customerApplicationsDestroy(id: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<any>>;
-    public customerApplicationsDestroy(id: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<any>>;
-    public customerApplicationsDestroy(id: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<any> {
+    public customerApplicationsDestroy(id: number, deleteInvoices?: boolean, deleteInvoices2?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<AsyncJob>;
+    public customerApplicationsDestroy(id: number, deleteInvoices?: boolean, deleteInvoices2?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<AsyncJob>>;
+    public customerApplicationsDestroy(id: number, deleteInvoices?: boolean, deleteInvoices2?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<AsyncJob>>;
+    public customerApplicationsDestroy(id: number, deleteInvoices?: boolean, deleteInvoices2?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
         if (id === null || id === undefined) {
             throw new Error('Required parameter id was null or undefined when calling customerApplicationsDestroy.');
         }
+
+        let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
+
+        localVarQueryParameters = this.addToHttpParams(
+            localVarQueryParameters,
+            'deleteInvoices',
+            <any>deleteInvoices,
+            QueryParamStyle.Form,
+            true,
+        );
+
+
+        localVarQueryParameters = this.addToHttpParams(
+            localVarQueryParameters,
+            'delete_invoices',
+            <any>deleteInvoices2,
+            QueryParamStyle.Form,
+            true,
+        );
+
 
         let localVarHeaders = this.defaultHeaders;
 
@@ -288,6 +313,7 @@ export class CustomerApplicationsService extends BaseService {
         localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
 
         const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            'application/json'
         ]);
         if (localVarHttpHeaderAcceptSelected !== undefined) {
             localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
@@ -311,9 +337,10 @@ export class CustomerApplicationsService extends BaseService {
 
         let localVarPath = `/api/customer-applications/${this.configuration.encodeParam({name: "id", value: id, in: "path", style: "simple", explode: false, dataType: "number", dataFormat: undefined})}/`;
         const { basePath, withCredentials } = this.configuration;
-        return this.httpClient.request<any>('delete', `${basePath}${localVarPath}`,
+        return this.httpClient.request<AsyncJob>('delete', `${basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
+                params: localVarQueryParameters.toHttpParams(),
                 responseType: <any>responseType_,
                 ...(withCredentials ? { withCredentials } : {}),
                 headers: localVarHeaders,
@@ -714,6 +741,7 @@ export class CustomerApplicationsService extends BaseService {
     }
 
     /**
+     * Update application asynchronously.
      * @endpoint put /api/customer-applications/{id}/
      * @param id A unique integer value identifying this doc application.
      * @param docApplicationCreateUpdate 
@@ -721,9 +749,9 @@ export class CustomerApplicationsService extends BaseService {
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public customerApplicationsUpdate(id: number, docApplicationCreateUpdate: DocApplicationCreateUpdate, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<DocApplicationCreateUpdate>;
-    public customerApplicationsUpdate(id: number, docApplicationCreateUpdate: DocApplicationCreateUpdate, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<DocApplicationCreateUpdate>>;
-    public customerApplicationsUpdate(id: number, docApplicationCreateUpdate: DocApplicationCreateUpdate, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<DocApplicationCreateUpdate>>;
+    public customerApplicationsUpdate(id: number, docApplicationCreateUpdate: DocApplicationCreateUpdate, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<AsyncJob>;
+    public customerApplicationsUpdate(id: number, docApplicationCreateUpdate: DocApplicationCreateUpdate, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<AsyncJob>>;
+    public customerApplicationsUpdate(id: number, docApplicationCreateUpdate: DocApplicationCreateUpdate, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<AsyncJob>>;
     public customerApplicationsUpdate(id: number, docApplicationCreateUpdate: DocApplicationCreateUpdate, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
         if (id === null || id === undefined) {
             throw new Error('Required parameter id was null or undefined when calling customerApplicationsUpdate.');
@@ -775,7 +803,7 @@ export class CustomerApplicationsService extends BaseService {
 
         let localVarPath = `/api/customer-applications/${this.configuration.encodeParam({name: "id", value: id, in: "path", style: "simple", explode: false, dataType: "number", dataFormat: undefined})}/`;
         const { basePath, withCredentials } = this.configuration;
-        return this.httpClient.request<DocApplicationCreateUpdate>('put', `${basePath}${localVarPath}`,
+        return this.httpClient.request<AsyncJob>('put', `${basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 body: docApplicationCreateUpdate,

@@ -242,29 +242,47 @@
                     />
                   </div>
                   <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium">Notify days before</label>
-                    <input
-                      z-input
-                      formControlName="notifyDaysBefore"
-                      type="number"
-                      min="0"
-                      [zStatus]="
-                        (task.get('notifyDaysBefore')?.invalid ||
-                          task.errors?.['notifyBeforeDuration']) &&
-                        task.get('notifyDaysBefore')?.touched
-                          ? 'error'
-                          : undefined
-                      "
-                    />
-                  </div>
-                  <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium">Business days?</label>
+                    <label class="text-sm font-medium">Add task to calendar</label>
                     <input
                       type="checkbox"
                       class="h-4 w-4 rounded border-muted-foreground/40 text-primary"
-                      formControlName="durationIsBusinessDays"
+                      formControlName="addTaskToCalendar"
                     />
                   </div>
+                  <div class="flex flex-col gap-2">
+                    <label class="text-sm font-medium">Notify user</label>
+                    <input
+                      type="checkbox"
+                      class="h-4 w-4 rounded border-muted-foreground/40 text-primary"
+                      formControlName="notifyCustomer"
+                    />
+                  </div>
+                  @if (task.get('addTaskToCalendar')?.value) {
+                    <div class="flex flex-col gap-2">
+                      <label class="text-sm font-medium">Notify days before</label>
+                      <input
+                        z-input
+                        formControlName="notifyDaysBefore"
+                        type="number"
+                        min="0"
+                        [zStatus]="
+                          (task.get('notifyDaysBefore')?.invalid ||
+                            task.errors?.['notifyBeforeDuration']) &&
+                          task.get('notifyDaysBefore')?.touched
+                            ? 'error'
+                            : undefined
+                        "
+                      />
+                    </div>
+                    <div class="flex flex-col gap-2">
+                      <label class="text-sm font-medium">Business days?</label>
+                      <input
+                        type="checkbox"
+                        class="h-4 w-4 rounded border-muted-foreground/40 text-primary"
+                        formControlName="durationIsBusinessDays"
+                      />
+                    </div>
+                  }
                   <div class="flex flex-col gap-2">
                     <label class="text-sm font-medium">Last step</label>
                     <input

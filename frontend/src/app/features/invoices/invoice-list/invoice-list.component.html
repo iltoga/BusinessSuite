@@ -123,7 +123,7 @@
 </ng-template>
 
 <ng-template #dueTemplate let-row>
-  <span>{{ row.dueDate || '—' }}</span>
+  <span>{{ row.dueDate ? (row.dueDate | appDate) : '—' }}</span>
 </ng-template>
 
 <ng-template #statusTemplate let-row>
@@ -146,11 +146,11 @@
 <ng-template #createdAtTemplate let-row>
   <div class="flex flex-col">
     <span class="text-sm">{{
-      $any(row).createdAt ? ($any(row).createdAt | date: 'dd MMM yyyy HH:mm:ss') : ''
+      $any(row).createdAt ? ($any(row).createdAt | appDate: 'datetime') : ''
     }}</span>
     @if ($any(row).updatedAt && $any(row).updatedAt !== $any(row).createdAt) {
       <span class="text-xs text-muted-foreground">{{
-        $any(row).updatedAt ? ($any(row).updatedAt | date: 'dd MMM yyyy HH:mm:ss') : ''
+        $any(row).updatedAt ? ($any(row).updatedAt | appDate: 'datetime') : ''
       }}</span>
     }
   </div>

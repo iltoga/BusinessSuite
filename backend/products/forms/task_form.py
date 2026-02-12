@@ -18,6 +18,8 @@ class TaskForm(forms.ModelForm):
             "duration",
             "duration_is_business_days",
             "notify_days_before",
+            "add_task_to_calendar",
+            "notify_customer",
         ]
 
     # if update a new task, then the product field is disabled
