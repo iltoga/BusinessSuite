@@ -83,7 +83,7 @@ export class InvoiceFormComponent implements OnInit {
     customer: 'Customer',
     invoiceNo: 'Invoice No',
     invoiceDate: 'Invoice Date',
-    dueDate: 'Due Date',
+    dueDate: 'Due Date (Payment)',
     notes: 'Notes',
     sent: 'Sent',
     invoiceApplications: 'Invoice Applications',
