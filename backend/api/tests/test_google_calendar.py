@@ -141,6 +141,86 @@ class TestGoogleCalendarAPI:
         assert str(application.id) in resp.data[0]["summary"]
 
     @pytest.mark.django_db
+    def test_calendar_list_local_includes_completed_workflow_events_as_done(self):
+        from django.contrib.auth import get_user_model
+        from django.utils import timezone
+
+        from customer_applications.models import DocApplication
+        from customer_applications.models.doc_workflow import DocWorkflow
+        from customers.models import Customer
+        from products.models import Product
+
+        User = get_user_model()
+        user = User.objects.create_superuser(username="testadmin-local-done", email="localdone@test", password="test")
+        self.client.force_authenticate(user=user)
+
+        customer = Customer.objects.create(first_name="Done", last_name="Workflow")
+        product = Product.objects.create(
+            name="Local Calendar Done Product",
+            code="LCD-1",
+            product_type="visa",
+            required_documents="Passport",
+        )
+        task1 = product.tasks.create(
+            step=1,
+            name="Step 1",
+            duration=1,
+            duration_is_business_days=True,
+            add_task_to_calendar=True,
+            last_step=False,
+        )
+        task2 = product.tasks.create(
+            step=2,
+            name="Step 2",
+            duration=1,
+            duration_is_business_days=True,
+            add_task_to_calendar=True,
+            last_step=False,
+        )
+
+        today = timezone.localdate()
+        tomorrow = today + datetime.timedelta(days=1)
+        application = DocApplication.objects.create(
+            customer=customer,
+            product=product,
+            doc_date=today,
+            due_date=tomorrow,
+            add_deadlines_to_calendar=True,
+            created_by=user,
+        )
+
+        completed = DocWorkflow.objects.create(
+            start_date=today,
+            due_date=today,
+            task=task1,
+            doc_application=application,
+            created_by=user,
+            status=DocWorkflow.STATUS_COMPLETED,
+        )
+        pending = DocWorkflow.objects.create(
+            start_date=today,
+            due_date=tomorrow,
+            task=task2,
+            doc_application=application,
+            created_by=user,
+            status=DocWorkflow.STATUS_PENDING,
+        )
+
+        resp = self.client.get("/api/calendar/")
+        assert resp.status_code == status.HTTP_200_OK
+
+        done_event = next((event for event in resp.data if event["id"].endswith(f"workflow-{completed.id}")), None)
+        assert done_event is not None
+        assert done_event["colorId"] == GoogleCalendarEventColors.done_color_id()
+        assert "Step 1" in done_event["summary"]
+
+        todo_event = next((event for event in resp.data if event["id"] == f"local-app-{application.id}"), None)
+        assert todo_event is not None
+        assert todo_event["colorId"] == GoogleCalendarEventColors.todo_color_id()
+        assert "Step 2" in todo_event["summary"]
+        assert pending.due_date.isoformat() == todo_event["start"]["date"]
+
+    @pytest.mark.django_db
     def test_partial_update_done_field_maps_to_color_id(self):
         from django.contrib.auth import get_user_model
 
@@ -177,7 +257,7 @@ class TestGoogleCalendarAPI:
             resp = self.client.patch("/api/calendar/evt-1/", {"colorId": "99"}, format="json")
             assert resp.status_code == status.HTTP_400_BAD_REQUEST
             assert "errors" in resp.data
-            assert "color_id" in resp.data["errors"]
+            assert "colorId" in resp.data["errors"]
 
     @pytest.mark.django_db
     def test_partial_update_rejects_done_false(self):
@@ -276,4 +356,7 @@ class TestGoogleCalendarAPI:
         assert next_workflow.status == DocWorkflow.STATUS_PENDING
 
         sync_mock.assert_called_once()
-        update_mock.assert_not_called()
+        update_mock.assert_called_once()
+        kwargs = update_mock.call_args.kwargs
+        assert kwargs["event_id"] == "evt-app-1"
+        assert kwargs["data"]["color_id"] == GoogleCalendarEventColors.done_color_id()

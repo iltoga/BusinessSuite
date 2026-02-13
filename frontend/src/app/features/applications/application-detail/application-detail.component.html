@@ -325,7 +325,7 @@
             <button z-button zType="outline" (click)="deselectAllDocuments()">Deselect All</button>
           } @else {
             <z-combobox
-              [options]="docTypeOptions()"
+              [options]="filteredDocTypeOptions()"
               [value]="selectedNewDocType()"
               [searchable]="true"
               placeholder="Select doc type"

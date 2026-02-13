@@ -1,7 +1,6 @@
 from datetime import date
 from unittest.mock import patch
 
-from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
@@ -57,7 +56,7 @@ class ApplicationCalendarServiceTests(TestCase):
         self.assertEqual(self.application.calendar_event_id, "evt-created")
 
     @patch("customer_applications.services.application_calendar_service.GoogleClient")
-    def test_sync_recreates_calendar_event_when_due_date_changes(self, google_client_cls):
+    def test_sync_creates_new_calendar_event_when_due_date_changes_without_deleting_history(self, google_client_cls):
         self.application.calendar_event_id = "evt-old"
         self.application.save(update_fields=["calendar_event_id", "updated_at"])
 
@@ -74,15 +73,28 @@ class ApplicationCalendarServiceTests(TestCase):
             previous_due_date=previous_due_date,
         )
 
-        mock_client.delete_event.assert_any_call(
-            "evt-old",
-            calendar_id=getattr(settings, "GOOGLE_CALENDAR_ID", "primary"),
-        )
+        mock_client.delete_event.assert_not_called()
         payload = mock_client.create_event.call_args.args[0]
         self.assertEqual(payload["start_date"], "2026-01-25")
 
         self.application.refresh_from_db()
         self.assertEqual(self.application.calendar_event_id, "evt-new")
+
+    @patch("customer_applications.services.application_calendar_service.GoogleClient")
+    def test_sync_keeps_existing_events_when_no_next_calendar_task(self, google_client_cls):
+        self.task.add_task_to_calendar = False
+        self.task.save(update_fields=["add_task_to_calendar"])
+        self.application.calendar_event_id = "evt-old"
+        self.application.save(update_fields=["calendar_event_id", "updated_at"])
+
+        result = ApplicationCalendarService().sync_next_task_deadline(self.application)
+
+        self.assertIsNone(result)
+        mock_client = google_client_cls.return_value
+        mock_client.delete_event.assert_not_called()
+        mock_client.create_event.assert_not_called()
+        self.application.refresh_from_db()
+        self.assertIsNone(self.application.calendar_event_id)
 
     @patch("customer_applications.services.application_calendar_service.GoogleClient")
     def test_sync_logs_error_with_payload_when_event_create_fails(self, google_client_cls):

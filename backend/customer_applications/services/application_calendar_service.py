@@ -23,7 +23,10 @@ class ApplicationCalendarService:
 
         task = application.get_next_calendar_task()
         if not task:
-            self.delete_application_events(application, clear_application_reference=True)
+            # Keep historical events; only clear the active pointer when no next task exists.
+            if application.calendar_event_id:
+                application.calendar_event_id = None
+                application.save(update_fields=["calendar_event_id", "updated_at"])
             return None
 
         # Determine the target due date
@@ -44,8 +47,6 @@ class ApplicationCalendarService:
         if previous_due_date is not None and previous_due_date == due_date and event_id:
             # Due date didn't change; no calendar update needed.
             return None
-
-        self.delete_application_events(application, clear_application_reference=False)
 
         # Update application due date
         if application.due_date != due_date:
