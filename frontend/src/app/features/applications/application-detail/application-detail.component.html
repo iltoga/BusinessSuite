@@ -105,49 +105,51 @@
           </div>
         </div>
 
-        <div>
-          <label class="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              [checked]="application()!.addDeadlinesToCalendar"
-              (change)="onCalendarToggle($any($event.target).checked)"
-              class="h-4 w-4 rounded border text-primary"
-            />
-            Add deadlines to calendar
-          </label>
-        </div>
+        <div class="flex flex-wrap items-end gap-6">
+          <div>
+            <label class="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                [checked]="application()!.addDeadlinesToCalendar"
+                (change)="onCalendarToggle($any($event.target).checked)"
+                class="h-4 w-4 rounded border text-primary"
+              />
+              Add deadlines to calendar
+            </label>
+          </div>
 
-        <div>
-          <label class="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              [checked]="application()!.notifyCustomer ?? false"
-              [disabled]="!canNotifyCustomer()"
-              (change)="onNotifyCustomerToggle($any($event.target).checked)"
-              class="h-4 w-4 rounded border text-primary"
-            />
-            Notify customer of deadlines
-          </label>
-          @if (!canNotifyCustomer()) {
-            <div class="text-xs text-muted-foreground mt-1">
-              Customer cannot be notified because no email or WhatsApp number is available.
+          <div>
+            <label class="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                [checked]="application()!.notifyCustomer ?? false"
+                [disabled]="!canNotifyCustomer()"
+                (change)="onNotifyCustomerToggle($any($event.target).checked)"
+                class="h-4 w-4 rounded border text-primary"
+              />
+              Notify customer of deadlines
+            </label>
+            @if (!canNotifyCustomer()) {
+              <div class="text-xs text-muted-foreground mt-1">
+                Customer cannot be notified because no email or WhatsApp number is available.
+              </div>
+            }
+          </div>
+
+          @if (application()!.notifyCustomer && canNotifyCustomer()) {
+            <div class="w-full sm:w-64">
+              <div class="text-sm text-muted-foreground mb-1">Customer notification channel</div>
+              <z-combobox
+                [value]="application()!.notifyCustomerChannel"
+                [options]="customerNotificationOptions()"
+                [searchable]="false"
+                [zWidth]="'full'"
+                [disabled]="isSavingMeta()"
+                (zValueChange)="onNotifyCustomerChannelChange($event)"
+              />
             </div>
           }
         </div>
-
-        @if (application()!.notifyCustomer && canNotifyCustomer()) {
-          <div class="w-full sm:max-w-md">
-            <div class="text-sm text-muted-foreground mb-1">Customer notification channel</div>
-            <z-combobox
-              [value]="application()!.notifyCustomerChannel"
-              [options]="customerNotificationOptions()"
-              [searchable]="false"
-              [zWidth]="'full'"
-              [disabled]="isSavingMeta()"
-              (zValueChange)="onNotifyCustomerChannelChange($event)"
-            />
-          </div>
-        }
 
         <div>
           <div class="text-sm text-muted-foreground mb-1">Notes</div>
