@@ -1808,10 +1808,13 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path=r"workflows/(?P<workflow_id>[^/.]+)/status")
     def update_workflow_status(self, request, pk=None, workflow_id=None):
         """Update the status of a workflow step for an application."""
-        from customer_applications.models.doc_workflow import DocWorkflow
+        from customer_applications.services.workflow_status_transition_service import (
+            WorkflowStatusTransitionError,
+            WorkflowStatusTransitionService,
+        )
 
         status_value = request.data.get("status")
-        valid_statuses = {choice[0] for choice in DocWorkflow.STATUS_CHOICES}
+        valid_statuses = WorkflowStatusTransitionService.valid_statuses()
 
         if not status_value or status_value not in valid_statuses:
             return self.error_response("Invalid workflow status", status.HTTP_400_BAD_REQUEST)
@@ -1825,61 +1828,21 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         if workflow.status == status_value:
             return Response(DocWorkflowSerializer(workflow).data)
 
-        if workflow.status in DocWorkflow.TERMINAL_STATUSES and workflow.status != status_value:
-            return self.error_response("Finalized tasks cannot be changed", status.HTTP_400_BAD_REQUEST)
+        try:
+            transition_result = WorkflowStatusTransitionService().transition(
+                workflow=workflow,
+                status_value=status_value,
+                user=request.user,
+            )
+        except WorkflowStatusTransitionError as exc:
+            return self.error_response(str(exc), status.HTTP_400_BAD_REQUEST)
 
-        current_workflow = workflow.doc_application.current_workflow
-        if current_workflow and current_workflow.id != workflow.id and workflow.status != status_value:
-            return self.error_response("Only the current task can be updated", status.HTTP_400_BAD_REQUEST)
-
-        moving_from_pending = workflow.status == DocWorkflow.STATUS_PENDING
-        promoting_status = status_value in {DocWorkflow.STATUS_PROCESSING, DocWorkflow.STATUS_COMPLETED}
-        if moving_from_pending and promoting_status and workflow.task.step > 1:
-            previous_workflow = self._get_previous_workflow(workflow)
-            if previous_workflow and previous_workflow.due_date and timezone.localdate() < previous_workflow.due_date:
-                return self.error_response(
-                    (
-                        "Status can move to processing/completed only when system date (GMT+8) is on/after "
-                        f"previous task due date ({previous_workflow.due_date.isoformat()})"
-                    ),
-                    status.HTTP_400_BAD_REQUEST,
-                )
-
-        application = workflow.doc_application
-        previous_due_date = application.due_date
-        next_start_date = None
-
-        with transaction.atomic():
-            workflow.status = status_value
-            workflow.updated_by = request.user
-            workflow.save()
-
-            # Completing a non-final task automatically creates the next one as pending.
-            if status_value == DocWorkflow.STATUS_COMPLETED:
-                next_task = workflow.next_task_in_sequence
-                if next_task and not application.workflows.filter(task_id=next_task.id).exists():
-                    next_workflow = DocWorkflow(
-                        start_date=timezone.localdate(),
-                        task=next_task,
-                        doc_application=application,
-                        created_by=request.user,
-                        status=DocWorkflow.STATUS_PENDING,
-                    )
-                    next_workflow.due_date = next_workflow.calculate_workflow_due_date()
-                    next_workflow.save()
-                    next_start_date = next_workflow.start_date
-
-            current_after_update = application.current_workflow
-            if current_after_update and current_after_update.due_date != application.due_date:
-                application.due_date = current_after_update.due_date
-
-            application.updated_by = request.user
-            application.save()
+        if transition_result.changed:
             self._queue_calendar_sync(
-                application_id=application.id,
+                application_id=transition_result.application.id,
                 user_id=request.user.id,
-                previous_due_date=previous_due_date,
-                start_date=next_start_date,
+                previous_due_date=transition_result.previous_due_date,
+                start_date=transition_result.next_start_date,
             )
 
         return Response(DocWorkflowSerializer(workflow).data)

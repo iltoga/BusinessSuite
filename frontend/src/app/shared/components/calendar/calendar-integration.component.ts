@@ -240,15 +240,15 @@ export class CalendarIntegrationComponent implements OnInit {
 
   toggleEventDone(event: CalendarEventViewModel, domEvent?: Event): void {
     domEvent?.stopPropagation();
-    if (!event.id || this.isEventUpdating(event.id)) {
+    if (!event.id || event.isDone || this.isEventUpdating(event.id)) {
       return;
     }
 
     this.setEventUpdating(event.id, true);
-    const targetColorId = event.isDone ? this.todoColorId() : this.doneColorId();
+    const targetColorId = this.doneColorId();
 
     this.calendarService
-      .calendarPartialUpdate(event.id, { done: !event.isDone } as unknown as GoogleCalendarEvent)
+      .calendarPartialUpdate(event.id, { done: true } as unknown as GoogleCalendarEvent)
       .pipe(finalize(() => this.setEventUpdating(event.id, false)))
       .subscribe({
         next: (updatedEvent) => {

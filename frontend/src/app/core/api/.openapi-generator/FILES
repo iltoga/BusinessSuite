@@ -21,6 +21,7 @@ api/mock.service.ts
 api/ocr.service.ts
 api/payments.service.ts
 api/products.service.ts
+api/push-notifications.service.ts
 api/server-management.service.ts
 api/tasks.service.ts
 api/user-profile.service.ts

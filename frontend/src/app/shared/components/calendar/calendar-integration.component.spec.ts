@@ -86,6 +86,36 @@ describe('CalendarIntegrationComponent', () => {
     expect(component.todayTodoEvents().length).toBe(0);
   });
 
+  it('does not allow moving a done event back to todo', () => {
+    const calendarServiceMock = {
+      calendarList: vi.fn().mockReturnValue(of([makeEvent('1', 'Done Event', '10')])),
+      calendarPartialUpdate: vi.fn().mockReturnValue(of(makeEvent('1', 'Done Event', '5'))),
+    };
+
+    const configServiceMock = {
+      settings: { ...DEFAULT_APP_CONFIG, calendarTodoColorId: '5', calendarDoneColorId: '10' },
+    };
+
+    TestBed.configureTestingModule({
+      imports: [CalendarIntegrationComponent],
+      providers: [
+        { provide: CalendarService, useValue: calendarServiceMock },
+        { provide: ConfigService, useValue: configServiceMock },
+      ],
+    });
+
+    const fixture = TestBed.createComponent(CalendarIntegrationComponent);
+    fixture.detectChanges();
+
+    const component = fixture.componentInstance;
+    const doneEvent = component.todayDoneEvents()[0];
+
+    component.toggleEventDone(doneEvent);
+
+    expect(calendarServiceMock.calendarPartialUpdate).not.toHaveBeenCalled();
+    expect(component.todayDoneEvents().length).toBe(1);
+  });
+
   it('lists overdue application events from newest due date to oldest', () => {
     const calendarServiceMock = {
       calendarList: vi.fn().mockReturnValue(

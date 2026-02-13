@@ -67,7 +67,7 @@ class TestGoogleCalendarAPI:
 
             # List should include created event
             mock_list.return_value = [created]
-            resp = self.client.get("/api/calendar/")
+            resp = self.client.get("/api/calendar/?source=google")
             assert resp.status_code == status.HTTP_200_OK
             assert any(e["id"] == "evt-1" for e in resp.data)
 
@@ -93,9 +93,52 @@ class TestGoogleCalendarAPI:
 
             # After delete, list empty
             mock_list.return_value = []
-            resp = self.client.get("/api/calendar/")
+            resp = self.client.get("/api/calendar/?source=google")
             assert resp.status_code == status.HTTP_200_OK
             assert resp.data == []
+
+    @pytest.mark.django_db
+    def test_calendar_list_uses_local_application_source_by_default(self):
+        from django.contrib.auth import get_user_model
+        from django.utils import timezone
+
+        from customer_applications.models import DocApplication
+        from customers.models import Customer
+        from products.models import Product
+
+        User = get_user_model()
+        user = User.objects.create_superuser(username="testadmin-local", email="local@test", password="test")
+        self.client.force_authenticate(user=user)
+
+        customer = Customer.objects.create(first_name="Local", last_name="Event")
+        product = Product.objects.create(
+            name="Local Calendar Product",
+            code="LCP-1",
+            product_type="visa",
+            required_documents="Passport",
+        )
+        product.tasks.create(
+            step=1,
+            name="Biometrics",
+            duration=1,
+            duration_is_business_days=True,
+            add_task_to_calendar=True,
+            last_step=False,
+        )
+
+        application = DocApplication.objects.create(
+            customer=customer,
+            product=product,
+            doc_date=timezone.localdate(),
+            due_date=timezone.localdate(),
+            add_deadlines_to_calendar=True,
+            created_by=user,
+        )
+
+        resp = self.client.get("/api/calendar/")
+        assert resp.status_code == status.HTTP_200_OK
+        assert len(resp.data) == 1
+        assert str(application.id) in resp.data[0]["summary"]
 
     @pytest.mark.django_db
     def test_partial_update_done_field_maps_to_color_id(self):
@@ -135,3 +178,102 @@ class TestGoogleCalendarAPI:
             assert resp.status_code == status.HTTP_400_BAD_REQUEST
             assert "errors" in resp.data
             assert "color_id" in resp.data["errors"]
+
+    @pytest.mark.django_db
+    def test_partial_update_rejects_done_false(self):
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        user = User.objects.create_superuser(username="testadmin4", email="test4@local", password="test")
+        self.client.force_authenticate(user=user)
+
+        with patch("core.utils.google_client.GoogleClient.update_event") as update_mock:
+            resp = self.client.patch("/api/calendar/evt-1/", {"done": False}, format="json")
+
+        assert resp.status_code == status.HTTP_400_BAD_REQUEST
+        errors = resp.data.get("errors", resp.data)
+        assert "done" in errors
+        update_mock.assert_not_called()
+
+    @pytest.mark.django_db
+    def test_partial_update_done_completes_application_current_task_and_queues_calendar_sync(self):
+        from django.contrib.auth import get_user_model
+        from django.utils import timezone
+
+        from customer_applications.models import DocApplication, Document
+        from customer_applications.models.doc_workflow import DocWorkflow
+        from customers.models import Customer
+        from products.models import Product
+        from products.models.document_type import DocumentType
+
+        User = get_user_model()
+        user = User.objects.create_superuser(username="testadmin5", email="test5@local", password="test")
+        self.client.force_authenticate(user=user)
+
+        customer = Customer.objects.create(first_name="Calendar", last_name="Workflow")
+        product = Product.objects.create(
+            name="Calendar Workflow Product",
+            code="CWP-1",
+            product_type="visa",
+            required_documents="Passport",
+        )
+        task1 = product.tasks.create(
+            step=1,
+            name="Step 1",
+            duration=1,
+            duration_is_business_days=True,
+            add_task_to_calendar=True,
+            last_step=False,
+        )
+        product.tasks.create(
+            step=2,
+            name="Step 2",
+            duration=1,
+            duration_is_business_days=True,
+            add_task_to_calendar=True,
+            last_step=False,
+        )
+
+        application = DocApplication.objects.create(
+            customer=customer,
+            product=product,
+            doc_date=timezone.localdate(),
+            due_date=timezone.localdate(),
+            calendar_event_id="evt-app-1",
+            add_deadlines_to_calendar=True,
+            created_by=user,
+        )
+        doc_type = DocumentType.objects.create(name="Passport", has_doc_number=True)
+        Document.objects.create(
+            doc_application=application,
+            doc_type=doc_type,
+            required=True,
+            created_by=user,
+        )
+
+        workflow = DocWorkflow(
+            start_date=timezone.localdate(),
+            task=task1,
+            doc_application=application,
+            created_by=user,
+            status=DocWorkflow.STATUS_PENDING,
+        )
+        workflow.due_date = workflow.calculate_workflow_due_date()
+        workflow.save()
+
+        with patch("customer_applications.tasks.sync_application_calendar_task") as sync_mock, patch(
+            "django.db.transaction.on_commit", side_effect=lambda callback: callback()
+        ), patch("core.utils.google_client.GoogleClient.update_event") as update_mock:
+            resp = self.client.patch("/api/calendar/evt-app-1/", {"done": True}, format="json")
+
+        assert resp.status_code == status.HTTP_200_OK
+        workflow.refresh_from_db()
+        application.refresh_from_db()
+        assert workflow.status == DocWorkflow.STATUS_COMPLETED
+
+        next_workflow = application.workflows.filter(task__step=2).first()
+        assert next_workflow is not None
+        assert next_workflow.status == DocWorkflow.STATUS_PENDING
+
+        sync_mock.assert_called_once()
+        update_mock.assert_not_called()

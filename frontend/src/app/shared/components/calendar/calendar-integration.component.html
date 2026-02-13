@@ -90,10 +90,9 @@
                     <div class="flex items-start gap-2">
                       <button
                         type="button"
-                        class="mt-0.5 rounded-full text-primary transition hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                        [disabled]="isEventUpdating(event.id)"
-                        [attr.aria-label]="'Mark ' + event.summary + ' todo'"
-                        (click)="toggleEventDone(event, $event)"
+                        class="mt-0.5 cursor-default rounded-full text-primary"
+                        disabled
+                        [attr.aria-label]="'Completed: ' + event.summary"
                       >
                         <z-icon zType="circle-check" class="h-4 w-4" />
                       </button>

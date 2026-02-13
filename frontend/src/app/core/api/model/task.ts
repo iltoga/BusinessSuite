@@ -19,3 +19,4 @@ export interface Task {
     notifyCustomer?: boolean;
     lastStep?: boolean;
 }
+

@@ -97,7 +97,7 @@ def test_calendar_crud_flow_with_requestmockbuilder(settings):
         assert resp.data["id"] == created_event["id"]
 
         # List events
-        resp = client.get("/api/calendar/")
+        resp = client.get("/api/calendar/?source=google")
         assert resp.status_code == 200
         assert any(e["id"] == created_event["id"] for e in resp.data)
 
@@ -116,7 +116,7 @@ def test_calendar_crud_flow_with_requestmockbuilder(settings):
         assert resp.status_code == 204
 
         # RMB is static, so this list call still returns the same mocked payload.
-        resp = client.get("/api/calendar/")
+        resp = client.get("/api/calendar/?source=google")
         assert resp.status_code == 200
 
 

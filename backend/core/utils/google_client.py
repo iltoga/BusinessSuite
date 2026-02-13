@@ -1,9 +1,8 @@
 import os
 
+from core.services.google_calendar_event_colors import GoogleCalendarEventColors
 from django.conf import settings
 from rest_framework.exceptions import APIException
-
-from core.services.google_calendar_event_colors import GoogleCalendarEventColors
 
 # Lazy import of google libraries so tests or environments without them fail fast with clear message
 try:
@@ -152,7 +151,9 @@ class GoogleClient:
         }
         if data.get("extended_properties"):
             event_body["extendedProperties"] = data.get("extended_properties")
-        if data.get("color_id") is not None:
+        if data.get("colorId") is not None:
+            event_body["colorId"] = GoogleCalendarEventColors.validate_color_id(data.get("colorId"))
+        elif data.get("color_id") is not None:
             event_body["colorId"] = GoogleCalendarEventColors.validate_color_id(data.get("color_id"))
 
         if start_date and end_date:
@@ -184,7 +185,9 @@ class GoogleClient:
                 body["description"] = data["description"]
             if "extended_properties" in data:
                 body["extendedProperties"] = data["extended_properties"]
-            if "color_id" in data:
+            if "colorId" in data:
+                body["colorId"] = GoogleCalendarEventColors.validate_color_id(data["colorId"])
+            elif "color_id" in data:
                 body["colorId"] = GoogleCalendarEventColors.validate_color_id(data["color_id"])
 
             if "start_time" in data:

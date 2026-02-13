@@ -24,6 +24,8 @@ export interface WorkflowNotification {
     readonly sentAt: string | null;
     readonly providerMessage: string;
     readonly externalReference: string;
+    notificationType?: string;
+    targetDate?: string | null;
     readonly createdAt: string;
     readonly updatedAt: string;
     docApplication: number;

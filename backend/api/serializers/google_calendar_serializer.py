@@ -1,6 +1,5 @@
-from rest_framework import serializers
-
 from core.services.google_calendar_event_colors import GoogleCalendarEventColors
+from rest_framework import serializers
 
 COLOR_ID_CHOICES = [(str(i), str(i)) for i in range(1, 12)]
 
@@ -11,19 +10,18 @@ class GoogleCalendarEventSerializer(serializers.Serializer):
     description = serializers.CharField(required=False, allow_blank=True)
     start_time = serializers.DateTimeField(write_only=True)
     end_time = serializers.DateTimeField(write_only=True)
-    color_id = serializers.ChoiceField(required=False, choices=COLOR_ID_CHOICES)
+    colorId = serializers.ChoiceField(required=False, choices=COLOR_ID_CHOICES)
     done = serializers.BooleanField(required=False, write_only=True)
     start = serializers.JSONField(read_only=True)
     end = serializers.JSONField(read_only=True)
     htmlLink = serializers.URLField(read_only=True)
-    colorId = serializers.CharField(read_only=True)
 
     def validate(self, attrs):
         done = attrs.pop("done", None)
-        if done is not None and "color_id" in attrs:
-            raise serializers.ValidationError("Use either done or color_id, not both.")
+        if done is not None and "colorId" in attrs:
+            raise serializers.ValidationError("Use either done or colorId, not both.")
         if done is not None:
-            attrs["color_id"] = GoogleCalendarEventColors.color_for_done_state(done)
+            attrs["colorId"] = GoogleCalendarEventColors.color_for_done_state(done)
         return attrs
 
 
