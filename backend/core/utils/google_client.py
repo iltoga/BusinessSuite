@@ -71,7 +71,7 @@ class GoogleClient:
 
         if time_min is None and not include_past:
             # Default to now to show upcoming events
-            time_min = datetime.datetime.utcnow().isoformat() + "Z"
+            time_min = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
         try:
             request_data = {
