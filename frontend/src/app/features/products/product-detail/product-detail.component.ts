@@ -70,6 +70,14 @@ export class ProductDetailComponent implements OnInit {
     viewChild.required<TemplateRef<{ $implicit: TaskNested; value: any; row: TaskNested }>>(
       'notifyCustomerTemplate',
     );
+  private readonly taskTemplate =
+    viewChild.required<TemplateRef<{ $implicit: TaskNested; value: any; row: TaskNested }>>(
+      'taskTemplate',
+    );
+  private readonly addToCalendarTemplate =
+    viewChild.required<TemplateRef<{ $implicit: TaskNested; value: any; row: TaskNested }>>(
+      'addToCalendarTemplate',
+    );
 
   readonly product = signal<ProductDetail | null>(null);
   readonly isLoading = signal(false);
@@ -89,9 +97,10 @@ export class ProductDetailComponent implements OnInit {
 
   readonly taskColumns = computed<ColumnConfig<TaskNested>[]>(() => [
     { key: 'step', header: 'Step' },
-    { key: 'name', header: 'Task' },
+    { key: 'name', header: 'Task', template: this.taskTemplate() },
     { key: 'duration', header: 'Duration (days)' },
-    { key: 'notifyDaysBefore', header: 'Notify (days)' },
+    { key: 'addTaskToCalendar', header: 'Add to calendar', template: this.addToCalendarTemplate() },
+    { key: 'notifyDaysBefore', header: 'Notify days before' },
     { key: 'notifyCustomer', header: 'Notify user', template: this.notifyCustomerTemplate() },
     { key: 'lastStep', header: 'Last step', template: this.lastStepTemplate() },
   ]);
@@ -153,6 +162,10 @@ export class ProductDetailComponent implements OnInit {
     if (type === 'visa') return 'Visa';
     if (type === 'other') return 'Other';
     return type ?? '—';
+  }
+
+  documentsMinValidityLabel(type?: string | null): string {
+    return type === 'visa' ? 'Passport min validity (days)' : 'Docs min validity (days)';
   }
 
   private loadProduct(id: number): void {

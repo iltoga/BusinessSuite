@@ -73,6 +73,7 @@
               [attr.tabindex]="selectedRow() === row ? 0 : -1"
               [attr.aria-selected]="selectedRow() === row ? 'true' : 'false'"
               [class.selected]="selectedRow() === row"
+              [ngClass]="rowClass()?.(row) || ''"
               (focus)="selectRow(row, $event)"
               (click)="selectRow(row, $event)"
               (keydown)="handleRowKeydown($event, row); handleRowNavigationKeydown($event)"

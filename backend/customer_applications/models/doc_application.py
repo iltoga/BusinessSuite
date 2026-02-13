@@ -173,7 +173,7 @@ class DocApplication(models.Model):
         """
         Gets the current workflow.
         """
-        return self.workflows.order_by("-task__step").first()
+        return self.workflows.order_by("-task__step", "-created_at", "-id").first()
 
     @property
     def is_application_completed(self):
@@ -181,19 +181,19 @@ class DocApplication(models.Model):
         Checks whether the application is completed.
         """
         current_workflow = self.current_workflow
-        return bool(
-            current_workflow and current_workflow.is_workflow_completed and self.is_document_collection_completed
-        )
+        if self.status == self.STATUS_COMPLETED:
+            return True
+        return bool(current_workflow and current_workflow.is_workflow_completed)
 
     @property
     def has_next_task(self):
         """
         Checks whether there is a next task.
         """
-        if not self.is_document_collection_completed or self.is_application_completed:
+        if self.status in (self.STATUS_COMPLETED, self.STATUS_REJECTED) or self.is_application_completed:
             return False
         current_workflow = self.current_workflow
-        if current_workflow and current_workflow.status != self.STATUS_COMPLETED:
+        if current_workflow and current_workflow.status not in (self.STATUS_COMPLETED,):
             return False
         next_task = self.next_task
         return bool(next_task and next_task.step)
@@ -208,6 +208,8 @@ class DocApplication(models.Model):
 
         if current_workflow and current_workflow.status == self.STATUS_COMPLETED:
             return tasks.filter(step=current_workflow.task.step + 1).first()
+        elif current_workflow and current_workflow.status == self.STATUS_REJECTED:
+            return None
         elif current_workflow:
             return current_workflow.task
         else:
@@ -220,6 +222,8 @@ class DocApplication(models.Model):
 
         if current_workflow and current_workflow.status == self.STATUS_COMPLETED:
             tasks = tasks.filter(step__gt=current_workflow.task.step)
+        elif current_workflow and current_workflow.status == self.STATUS_REJECTED:
+            return None
         elif current_workflow:
             tasks = tasks.filter(step__gte=current_workflow.task.step)
 
@@ -252,18 +256,22 @@ class DocApplication(models.Model):
 
         # Skip all automatic status calculation when explicitly requested
         if not skip_status_calculation:
-            # If product has no required documents, set status to completed
-            if self.product and (not self.product.required_documents or not self.product.required_documents.strip()):
-                self.status = self.STATUS_COMPLETED
-            elif self.pk:
+            if self.pk:
                 self.status = self._get_application_status()
+            # For brand-new applications, keep legacy behavior when no required documents exist yet.
+            elif self.product and (not self.product.required_documents or not self.product.required_documents.strip()):
+                self.status = self.STATUS_COMPLETED
         super().save(*args, **kwargs)
 
     def _get_application_status(self):
         """
         Gets the application status based on the workflows and documents.
         """
-        if self.is_application_completed:
+        if self.workflows.filter(status=self.STATUS_REJECTED).exists():
+            return self.STATUS_REJECTED
+
+        current_workflow = self.current_workflow
+        if current_workflow and current_workflow.status == self.STATUS_COMPLETED and current_workflow.is_workflow_completed:
             return self.STATUS_COMPLETED
 
         if self.is_document_collection_completed:
@@ -272,10 +280,12 @@ class DocApplication(models.Model):
                 return self.STATUS_COMPLETED
             return self.STATUS_PROCESSING
 
-        if self.workflows.filter(status=self.STATUS_REJECTED).exists():
-            return self.STATUS_REJECTED
+        if self.workflows.filter(status=self.STATUS_PROCESSING).exists():
+            return self.STATUS_PROCESSING
+        if self.workflows.filter(status=self.STATUS_PENDING).exists():
+            return self.STATUS_PENDING
 
-        return self.status
+        return self.STATUS_PENDING
 
     def calculate_application_due_date(self):
         """

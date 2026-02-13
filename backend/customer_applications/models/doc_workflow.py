@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.db.models import Max
 from django.utils import timezone
 
 from core.utils.dateutils import calculate_due_date
@@ -34,6 +35,7 @@ class DocWorkflow(models.Model):
         (STATUS_COMPLETED, "Completed"),
         (STATUS_REJECTED, "Rejected"),
     ]
+    TERMINAL_STATUSES = {STATUS_COMPLETED, STATUS_REJECTED}
 
     doc_application = models.ForeignKey(DocApplication, related_name="workflows", on_delete=models.CASCADE)
     task = models.ForeignKey(Task, related_name="doc_workflows", on_delete=models.CASCADE)
@@ -64,12 +66,39 @@ class DocWorkflow(models.Model):
 
     @property
     def is_current_step(self):
-        next_step = self.doc_application.workflows.filter(task__step=self.task.step + 1).first()
-        return next_step is None
+        current = self.doc_application.workflows.order_by("-task__step", "-created_at", "-id").first()
+        return bool(current and current.pk == self.pk)
+
+    @property
+    def is_terminal_status(self):
+        return self.status in self.TERMINAL_STATUSES
+
+    @property
+    def is_last_task_in_sequence(self):
+        if not self.doc_application_id:
+            return bool(self.task and self.task.last_step)
+        max_step = (
+            self.doc_application.product.tasks.aggregate(max_step=Max("step")).get("max_step")
+            if self.doc_application and self.doc_application.product_id
+            else None
+        )
+        if max_step is None:
+            return True
+        return self.task.step >= max_step or self.task.last_step
+
+    @property
+    def next_task_in_sequence(self):
+        if not self.doc_application_id or not self.doc_application.product_id:
+            return None
+        return (
+            self.doc_application.product.tasks.filter(step__gt=self.task.step)
+            .order_by("step")
+            .first()
+        )
 
     @property
     def is_workflow_completed(self):
-        return self.task.last_step and self.is_completed
+        return self.is_last_task_in_sequence and self.is_completed
 
     @property
     def is_notification_date_reached(self):
@@ -110,7 +139,7 @@ class DocWorkflow(models.Model):
             self.created_at = timezone.now()
 
         self.updated_at = timezone.now()
-        if self.status == "completed":
+        if self.status in self.TERMINAL_STATUSES:
             self.completion_date = timezone.now().date()
         else:
             self.completion_date = None

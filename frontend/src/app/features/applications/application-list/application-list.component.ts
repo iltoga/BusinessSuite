@@ -228,6 +228,9 @@ export class ApplicationListComponent implements OnInit {
     return Math.max(1, Math.ceil(total / size));
   });
 
+  readonly rowClassFn = (row: DocApplicationSerializerWithRelations): string =>
+    row.status === 'rejected' ? 'row-danger-soft' : '';
+
   @HostListener('window:keydown', ['$event'])
   handleGlobalKeydown(event: KeyboardEvent): void {
     const activeElement = document.activeElement;
@@ -383,7 +386,7 @@ export class ApplicationListComponent implements OnInit {
   }
 
   canForceClose(row: DocApplicationSerializerWithRelations): boolean {
-    return !!row.canForceClose && row.status !== 'completed';
+    return !!row.canForceClose && row.status !== 'completed' && row.status !== 'rejected';
   }
 
   confirmForceClose(row: DocApplicationSerializerWithRelations) {

@@ -173,6 +173,16 @@ export class ApplicationsService {
     );
   }
 
+  updateWorkflowDueDate(applicationId: number, workflowId: number, dueDate: string): Observable<any> {
+    return this.http.post(`/api/customer-applications/${applicationId}/workflows/${workflowId}/due-date/`, {
+      dueDate,
+    });
+  }
+
+  rollbackWorkflow(applicationId: number, workflowId: number): Observable<any> {
+    return this.http.post(`/api/customer-applications/${applicationId}/workflows/${workflowId}/rollback/`, {});
+  }
+
   reopenApplication(applicationId: number): Observable<any> {
     return this.customerApplicationsService.customerApplicationsReopenCreate(
       applicationId,

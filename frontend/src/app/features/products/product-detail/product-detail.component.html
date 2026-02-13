@@ -1,9 +1,9 @@
 <div class="flex flex-col gap-6">
   <div class="flex flex-wrap items-center justify-between gap-3">
     <div class="flex flex-col gap-1">
-      <h1 class="text-3xl font-bold tracking-tight">Product Detail</h1>
+      <p class="text-xs uppercase tracking-wider text-muted-foreground">Product Detail</p>
       @if (product()) {
-        <p class="text-sm text-muted-foreground">{{ product()?.code }} · {{ product()?.name }}</p>
+        <h1 class="product-identity">{{ product()?.code }} · {{ product()?.name }}</h1>
       }
     </div>
     <div class="flex items-center gap-2">
@@ -26,7 +26,7 @@
         <div class="mb-4">
           <z-skeleton class="h-6 w-1/4" />
         </div>
-        <app-table-skeleton [rows]="5" [columns]="5" />
+        <app-table-skeleton [rows]="5" [columns]="7" />
       </z-card>
     </div>
   } @else if (product()) {
@@ -35,9 +35,7 @@
         <div class="flex flex-col gap-4">
           <div class="flex flex-wrap items-center gap-3">
             <z-badge zType="secondary">{{ productTypeLabel(product()?.productType) }}</z-badge>
-            <span class="text-sm text-muted-foreground"
-              >Base price: {{ product()?.basePrice ?? '—' }}</span
-            >
+            <span class="base-price-chip">Base price: {{ product()?.basePrice ?? '—' }}</span>
           </div>
           <div class="text-sm text-muted-foreground">
             {{ product()?.description || 'No description provided.' }}
@@ -48,7 +46,9 @@
               <p class="text-sm font-medium">{{ product()?.validity ?? '—' }}</p>
             </div>
             <div>
-              <p class="text-xs uppercase text-muted-foreground">Docs min validity (days)</p>
+              <p class="text-xs uppercase text-muted-foreground">
+                {{ documentsMinValidityLabel(product()?.productType) }}
+              </p>
               <p class="text-sm font-medium">{{ product()?.documentsMinValidity ?? '—' }}</p>
             </div>
           </div>
@@ -57,9 +57,9 @@
               <p class="text-xs uppercase text-muted-foreground">Created</p>
               <p class="text-sm">
                 {{ product()?.createdAt | appDate: 'datetime' }}
-                @if (product()?.createdBy) {
-                  <span class="text-xs text-muted-foreground">(by {{ product()?.createdBy }})</span>
-                }
+                <span class="text-xs text-muted-foreground"
+                  >(by {{ product()?.createdBy || '—' }})</span
+                >
               </p>
             </div>
             <div>
@@ -124,4 +124,19 @@
   <z-badge [zType]="row.notifyCustomer ? 'success' : 'secondary'">
     {{ row.notifyCustomer ? 'Yes' : 'No' }}
   </z-badge>
+</ng-template>
+
+<ng-template #addToCalendarTemplate let-row>
+  <z-badge [zType]="row.addTaskToCalendar ? 'success' : 'secondary'">
+    {{ row.addTaskToCalendar ? 'Yes' : 'No' }}
+  </z-badge>
+</ng-template>
+
+<ng-template #taskTemplate let-row>
+  <div class="task-cell">
+    <div class="task-name">{{ row.name || '—' }}</div>
+    @if (row.description) {
+      <div class="task-description">{{ row.description }}</div>
+    }
+  </div>
 </ng-template>

@@ -26,6 +26,11 @@ tr.selected {
   }
 }
 
+/* Soft highlight for warning rows such as rejected applications. */
+tr.row-danger-soft:not(.selected) {
+  background-color: rgba(220, 38, 38, 0.075);
+}
+
 /* Styling for the highlighted shortcut letter in the menu */
 .dt-shortcut b {
   font-weight: 700;

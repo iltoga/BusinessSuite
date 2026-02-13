@@ -22,6 +22,8 @@ class ApplicationLifecycleService:
         current_workflow = application.current_workflow
         if not current_workflow:
             raise ValidationError("No current workflow found")
+        if current_workflow.status in DocWorkflow.TERMINAL_STATUSES:
+            raise ValidationError("Current task is already finalized")
 
         start_date = current_workflow.due_date
 
@@ -30,7 +32,7 @@ class ApplicationLifecycleService:
         current_workflow.save()
 
         next_task = application.next_task
-        if next_task:
+        if next_task and not application.workflows.filter(task_id=next_task.id).exists():
             step = DocWorkflow(
                 start_date=timezone.now().date(),
                 task=next_task,

@@ -110,9 +110,9 @@ export class HelpService {
       {
         id: '/applications/',
         briefExplanation:
-          'View and manage an application. Review documents, workflows, and take actions.',
+          'View and manage one application from start to finish.',
         details:
-          'Upload or review documents, run OCR checks where available, advance workflow tasks, and create invoices for completed applications.',
+          'Use Tasks Timeline to see each stage in order. Update only the latest task status, and the next task appears automatically. Finished tasks stay visible as history. If an application is completed or rejected, you can still create an invoice.',
       },
     ],
     // Invoices additional entries

@@ -53,9 +53,17 @@ class ApplicationCalendarService:
             application.save(update_fields=["due_date", "updated_at"])
 
         event = None
+        event_payload = self._build_calendar_event_payload(application, task, due_date)
         try:
-            event = self._create_calendar_event(application, task, due_date)
-        except Exception:
+            event = self._create_calendar_event(event_payload)
+        except Exception as exc:
+            logger.error(
+                "Calendar event create/update failed for application #%s: error_type=%s error=%s payload=%s",
+                application.id,
+                type(exc).__name__,
+                str(exc),
+                event_payload,
+            )
             event = None
 
         if event and event.get("id"):
@@ -193,7 +201,7 @@ class ApplicationCalendarService:
 
         return None
 
-    def _create_calendar_event(self, application, task, due_date):
+    def _build_calendar_event_payload(self, application, task, due_date):
         notify_days = task.notify_days_before or 0
         reminder_minutes = max(0, notify_days * 24 * 60)
 
@@ -206,7 +214,7 @@ class ApplicationCalendarService:
             f"Application Notes: {notes}"
         )
 
-        payload = {
+        return {
             "summary": f"[Application #{application.id}] {application.customer.full_name} - {task.name}",
             "description": description,
             "start_date": due_date.isoformat(),
@@ -215,6 +223,8 @@ class ApplicationCalendarService:
             "reminders": {"useDefault": False, "overrides": [{"method": "popup", "minutes": reminder_minutes}]},
             "extended_properties": {"private": self._private_properties(application)},
         }
+
+    def _create_calendar_event(self, payload):
         client = GoogleClient()
         return client.create_event(payload, calendar_id=getattr(settings, "GOOGLE_CALENDAR_ID", "primary"))
 

@@ -1686,6 +1686,30 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             )
         )
 
+    def _get_application_workflow_or_none(self, *, application_id: int, workflow_id: int):
+        from customer_applications.models.doc_workflow import DocWorkflow
+
+        return (
+            DocWorkflow.objects.select_related("doc_application", "task")
+            .filter(pk=workflow_id, doc_application_id=application_id)
+            .first()
+        )
+
+    def _get_previous_workflow(self, workflow):
+        return (
+            workflow.doc_application.workflows.filter(task__step__lt=workflow.task.step)
+            .order_by("-task__step", "-created_at", "-id")
+            .first()
+        )
+
+    def _parse_request_date(self, value):
+        if not value:
+            return None
+        try:
+            return datetime.fromisoformat(str(value)).date()
+        except (TypeError, ValueError):
+            return None
+
     @extend_schema(responses={201: DocApplicationDetailSerializer})
     def create(self, request, *args, **kwargs):
         """Create application synchronously and queue calendar sync in Huey."""
@@ -1736,11 +1760,6 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             application = self.get_object()
         except DocApplication.DoesNotExist:
             return self.error_response("Application not found", status.HTTP_404_NOT_FOUND)
-
-        # If product requires documents but none exist at all -> incomplete
-        if application.product and (application.product.required_documents or "").strip():
-            if not application.documents.filter(required=True).exists():
-                return self.error_response("Document collection is not completed", status.HTTP_400_BAD_REQUEST)
 
         result = ApplicationLifecycleService().advance_workflow(application=application, user=request.user)
         self._queue_calendar_sync(
@@ -1797,22 +1816,164 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         if not status_value or status_value not in valid_statuses:
             return self.error_response("Invalid workflow status", status.HTTP_400_BAD_REQUEST)
 
-        workflow = (
-            DocWorkflow.objects.select_related("doc_application").filter(pk=workflow_id, doc_application_id=pk).first()
-        )
+        workflow = self._get_application_workflow_or_none(application_id=pk, workflow_id=workflow_id)
         if not workflow:
             return self.error_response("Workflow not found", status.HTTP_404_NOT_FOUND)
 
-        workflow.status = status_value
-        workflow.updated_by = request.user
-        workflow.save()
-
-        workflow.doc_application.updated_by = request.user
-        workflow.doc_application.save()
-
         from api.serializers.doc_workflow_serializer import DocWorkflowSerializer
 
+        if workflow.status == status_value:
+            return Response(DocWorkflowSerializer(workflow).data)
+
+        if workflow.status in DocWorkflow.TERMINAL_STATUSES and workflow.status != status_value:
+            return self.error_response("Finalized tasks cannot be changed", status.HTTP_400_BAD_REQUEST)
+
+        current_workflow = workflow.doc_application.current_workflow
+        if current_workflow and current_workflow.id != workflow.id and workflow.status != status_value:
+            return self.error_response("Only the current task can be updated", status.HTTP_400_BAD_REQUEST)
+
+        moving_from_pending = workflow.status == DocWorkflow.STATUS_PENDING
+        promoting_status = status_value in {DocWorkflow.STATUS_PROCESSING, DocWorkflow.STATUS_COMPLETED}
+        if moving_from_pending and promoting_status and workflow.task.step > 1:
+            previous_workflow = self._get_previous_workflow(workflow)
+            if previous_workflow and previous_workflow.due_date and timezone.localdate() < previous_workflow.due_date:
+                return self.error_response(
+                    (
+                        "Status can move to processing/completed only when system date (GMT+8) is on/after "
+                        f"previous task due date ({previous_workflow.due_date.isoformat()})"
+                    ),
+                    status.HTTP_400_BAD_REQUEST,
+                )
+
+        application = workflow.doc_application
+        previous_due_date = application.due_date
+        next_start_date = None
+
+        with transaction.atomic():
+            workflow.status = status_value
+            workflow.updated_by = request.user
+            workflow.save()
+
+            # Completing a non-final task automatically creates the next one as pending.
+            if status_value == DocWorkflow.STATUS_COMPLETED:
+                next_task = workflow.next_task_in_sequence
+                if next_task and not application.workflows.filter(task_id=next_task.id).exists():
+                    next_workflow = DocWorkflow(
+                        start_date=timezone.localdate(),
+                        task=next_task,
+                        doc_application=application,
+                        created_by=request.user,
+                        status=DocWorkflow.STATUS_PENDING,
+                    )
+                    next_workflow.due_date = next_workflow.calculate_workflow_due_date()
+                    next_workflow.save()
+                    next_start_date = next_workflow.start_date
+
+            current_after_update = application.current_workflow
+            if current_after_update and current_after_update.due_date != application.due_date:
+                application.due_date = current_after_update.due_date
+
+            application.updated_by = request.user
+            application.save()
+            self._queue_calendar_sync(
+                application_id=application.id,
+                user_id=request.user.id,
+                previous_due_date=previous_due_date,
+                start_date=next_start_date,
+            )
+
         return Response(DocWorkflowSerializer(workflow).data)
+
+    @extend_schema(
+        request=OpenApiTypes.OBJECT,
+        responses=DocWorkflowSerializer,
+        parameters=[OpenApiParameter("workflow_id", OpenApiTypes.INT, OpenApiParameter.PATH)],
+    )
+    @action(detail=True, methods=["post"], url_path=r"workflows/(?P<workflow_id>[^/.]+)/due-date")
+    def update_workflow_due_date(self, request, pk=None, workflow_id=None):
+        """Update the due date for the current workflow step and sync application due date."""
+        from api.serializers.doc_workflow_serializer import DocWorkflowSerializer
+
+        workflow = self._get_application_workflow_or_none(application_id=pk, workflow_id=workflow_id)
+        if not workflow:
+            return self.error_response("Workflow not found", status.HTTP_404_NOT_FOUND)
+
+        due_date = self._parse_request_date(request.data.get("due_date"))
+        if due_date is None:
+            return self.error_response("Invalid workflow due date", status.HTTP_400_BAD_REQUEST)
+        if workflow.start_date and due_date < workflow.start_date:
+            return self.error_response("Workflow due date cannot be before start date", status.HTTP_400_BAD_REQUEST)
+
+        application = workflow.doc_application
+        current_workflow = application.current_workflow
+        if not current_workflow or current_workflow.id != workflow.id:
+            return self.error_response("Only the current task due date can be updated", status.HTTP_400_BAD_REQUEST)
+
+        previous_due_date = application.due_date
+        with transaction.atomic():
+            workflow.due_date = due_date
+            workflow.updated_by = request.user
+            workflow.save()
+
+            application.due_date = due_date
+            application.updated_by = request.user
+            application.save()
+            self._queue_calendar_sync(
+                application_id=application.id,
+                user_id=request.user.id,
+                previous_due_date=previous_due_date,
+            )
+
+        return Response(DocWorkflowSerializer(workflow).data, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        request=OpenApiTypes.OBJECT,
+        responses=DocApplicationDetailSerializer,
+        parameters=[OpenApiParameter("workflow_id", OpenApiTypes.INT, OpenApiParameter.PATH)],
+    )
+    @action(detail=True, methods=["post"], url_path=r"workflows/(?P<workflow_id>[^/.]+)/rollback")
+    def rollback_workflow(self, request, pk=None, workflow_id=None):
+        """Remove the current workflow step and reopen the previous step."""
+        from customer_applications.models.doc_workflow import DocWorkflow
+
+        workflow = self._get_application_workflow_or_none(application_id=pk, workflow_id=workflow_id)
+        if not workflow:
+            return self.error_response("Workflow not found", status.HTTP_404_NOT_FOUND)
+
+        application = workflow.doc_application
+        current_workflow = application.current_workflow
+        if not current_workflow or current_workflow.id != workflow.id:
+            return self.error_response("Only the current task can be rolled back", status.HTTP_400_BAD_REQUEST)
+        if workflow.task.step <= 1:
+            return self.error_response("Step 1 cannot be rolled back", status.HTTP_400_BAD_REQUEST)
+
+        previous_workflow = self._get_previous_workflow(workflow)
+        if not previous_workflow:
+            return self.error_response("Previous workflow not found", status.HTTP_400_BAD_REQUEST)
+
+        previous_due_date = application.due_date
+        with transaction.atomic():
+            workflow.delete()
+
+            previous_workflow.status = DocWorkflow.STATUS_PENDING
+            previous_workflow.updated_by = request.user
+            previous_workflow.save()
+
+            application.refresh_from_db()
+            current_after_rollback = application.current_workflow
+            if current_after_rollback and current_after_rollback.due_date:
+                application.due_date = current_after_rollback.due_date
+            application.updated_by = request.user
+            application.save()
+
+            self._queue_calendar_sync(
+                application_id=application.id,
+                user_id=request.user.id,
+                previous_due_date=previous_due_date,
+            )
+
+        application.refresh_from_db()
+        return Response(self._serialize_application_detail(application), status=status.HTTP_200_OK)
 
     @extend_schema(responses=OpenApiTypes.OBJECT)
     @action(detail=True, methods=["post"], url_path="reopen")
@@ -1842,6 +2003,8 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
         if application.status == DocApplication.STATUS_COMPLETED:
             return self.error_response("Application already completed", status.HTTP_400_BAD_REQUEST)
+        if application.status == DocApplication.STATUS_REJECTED:
+            return self.error_response("Rejected applications cannot be force closed", status.HTTP_400_BAD_REQUEST)
 
         application.status = DocApplication.STATUS_COMPLETED
         application.updated_by = request.user

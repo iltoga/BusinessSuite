@@ -22,6 +22,7 @@ import {
   ApplicationsService,
   type ApplicationDetail,
   type ApplicationDocument,
+  type ApplicationWorkflow,
   type DocumentAction,
   type OcrStatusResponse,
 } from '@/core/services/applications.service';
@@ -48,6 +49,11 @@ import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 import { HelpService } from '@/shared/services/help.service';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 import { downloadBlob } from '@/shared/utils/file-download';
+
+interface TimelineWorkflowItem {
+  workflow: ApplicationWorkflow;
+  gapDaysFromPrevious: number | null;
+}
 
 @Component({
   selector: 'app-application-detail',
@@ -161,6 +167,16 @@ export class ApplicationDetailComponent implements OnInit {
     const value = this.application()?.dueDate;
     return value ? new Date(value) : null;
   });
+  readonly hasWorkflowTasks = computed(() => {
+    const app = this.application();
+    if (!app) {
+      return false;
+    }
+    return this.sortedWorkflows().length > 0 || !!app.nextTask || !!app.hasNextTask;
+  });
+  readonly isDueDateLocked = computed(() => this.hasWorkflowTasks());
+  readonly dueDateLockedTooltip =
+    'Please update Due date in Task Timeline to change this deadline.';
   readonly dueDateContextLabel = computed(() => {
     const app = this.application();
     if (!app) {
@@ -192,13 +208,7 @@ export class ApplicationDetailComponent implements OnInit {
   readonly localUploadedDocuments = signal<ApplicationDocument[]>([]);
   readonly selectedDocumentIds = signal<Set<number>>(new Set());
   readonly isMerging = signal(false);
-
-  readonly workflowStatusOptions: ZardComboboxOption[] = [
-    { value: 'pending', label: 'Pending' },
-    { value: 'processing', label: 'Processing' },
-    { value: 'completed', label: 'Completed' },
-    { value: 'rejected', label: 'Rejected' },
-  ];
+  private readonly workflowTimezone = 'Asia/Singapore';
 
   private pollTimer: number | null = null;
 
@@ -236,16 +246,38 @@ export class ApplicationDetailComponent implements OnInit {
   readonly optionalDocuments = computed(() =>
     (this.application()?.documents ?? []).filter((doc) => !doc.required && !doc.completed),
   );
+  readonly documentCollectionStatus = computed<{
+    label: 'Document Collection Pending' | 'Document Collection Incomplete' | 'Document Collection Complete';
+    type: 'default' | 'secondary' | 'warning' | 'success' | 'destructive';
+  }>(() => {
+    const documents = this.application()?.documents ?? [];
+    const uploadedCount = documents.filter((doc) => doc.completed).length;
+    const requiredDocuments = documents.filter((doc) => doc.required);
+    const uploadedRequiredCount = requiredDocuments.filter((doc) => doc.completed).length;
+
+    if (uploadedCount === 0) {
+      return { label: 'Document Collection Pending', type: 'warning' };
+    }
+
+    if (uploadedRequiredCount === requiredDocuments.length) {
+      return { label: 'Document Collection Complete', type: 'success' };
+    }
+
+    return { label: 'Document Collection Incomplete', type: 'secondary' };
+  });
 
   readonly sortedWorkflows = computed(() => {
     const workflows = this.application()?.workflows ?? [];
     return [...workflows].sort((a, b) => (a.task?.step ?? 0) - (b.task?.step ?? 0));
   });
 
-  readonly canAdvanceWorkflow = computed(() => {
-    const app = this.application();
-    if (!app) return false;
-    return !!app.isDocumentCollectionCompleted && !!app.hasNextTask && !app.isApplicationCompleted;
+  readonly timelineItems = computed<TimelineWorkflowItem[]>(() => {
+    const workflows = this.sortedWorkflows();
+    return workflows.map((workflow, index) => ({
+      workflow,
+      gapDaysFromPrevious:
+        index > 0 ? this.calculateGapDays(workflows[index - 1], workflow) : null,
+    }));
   });
 
   readonly canReopen = computed(() => !!this.application()?.isApplicationCompleted);
@@ -575,6 +607,11 @@ export class ApplicationDetailComponent implements OnInit {
   updateWorkflowStatus(workflowId: number, status: string | null): void {
     const app = this.application();
     if (!app || !status) return;
+    const workflow = this.sortedWorkflows().find((entry) => entry.id === workflowId);
+    if (workflow && this.isWorkflowStatusChangeBlocked(workflow, status)) {
+      this.toast.error(this.getWorkflowStatusBlockedMessage(workflow));
+      return;
+    }
 
     this.workflowAction.set(`status-${workflowId}`);
     this.applicationsService.updateWorkflowStatus(app.id, workflowId, status).subscribe({
@@ -585,6 +622,55 @@ export class ApplicationDetailComponent implements OnInit {
       },
       error: (error) => {
         this.toast.error(extractServerErrorMessage(error) || 'Failed to update workflow status');
+        this.workflowAction.set(null);
+      },
+    });
+  }
+
+  updateWorkflowDueDate(workflow: ApplicationWorkflow, value: Date | null): void {
+    const app = this.application();
+    if (!app || !value || !this.isWorkflowDueDateEditable(workflow)) {
+      return;
+    }
+
+    const dueDate = this.formatDateForApi(value);
+    this.workflowAction.set(`due-${workflow.id}`);
+    this.applicationsService.updateWorkflowDueDate(app.id, workflow.id, dueDate).subscribe({
+      next: () => {
+        this.toast.success('Task due date updated');
+        this.loadApplication(app.id);
+        this.workflowAction.set(null);
+      },
+      error: (error) => {
+        this.toast.error(extractServerErrorMessage(error) || 'Failed to update task due date');
+        this.workflowAction.set(null);
+      },
+    });
+  }
+
+  rollbackWorkflow(workflow: ApplicationWorkflow): void {
+    const app = this.application();
+    if (!app || !this.canRollbackWorkflow(workflow)) {
+      return;
+    }
+
+    if (
+      !confirm(
+        `Rollback Step ${workflow.task.step}? This removes the current task and reopens the previous task.`,
+      )
+    ) {
+      return;
+    }
+
+    this.workflowAction.set(`rollback-${workflow.id}`);
+    this.applicationsService.rollbackWorkflow(app.id, workflow.id).subscribe({
+      next: () => {
+        this.toast.success('Current task rolled back');
+        this.loadApplication(app.id);
+        this.workflowAction.set(null);
+      },
+      error: (error) => {
+        this.toast.error(extractServerErrorMessage(error) || 'Failed to rollback current task');
         this.workflowAction.set(null);
       },
     });
@@ -614,6 +700,7 @@ export class ApplicationDetailComponent implements OnInit {
       app &&
       (app as any).canForceClose &&
       app.status !== 'completed' &&
+      app.status !== 'rejected' &&
       !app.isDocumentCollectionCompleted
     );
   }
@@ -646,7 +733,7 @@ export class ApplicationDetailComponent implements OnInit {
 
   canCreateInvoice(): boolean {
     const app = this.application();
-    return !!(app && app.status === 'completed' && !app.hasInvoice);
+    return !!(app && (app.status === 'completed' || app.status === 'rejected') && !app.hasInvoice);
   }
 
   createInvoice(): void {
@@ -661,6 +748,20 @@ export class ApplicationDetailComponent implements OnInit {
         searchQuery: this.originSearchQuery(),
       },
     });
+  }
+
+  getApplicationStatusVariant(status: string): 'default' | 'secondary' | 'warning' | 'success' | 'destructive' {
+    switch (status) {
+      case 'completed':
+        return 'success';
+      case 'rejected':
+        return 'destructive';
+      case 'processing':
+        return 'warning';
+      case 'pending':
+      default:
+        return 'secondary';
+    }
   }
 
   getWorkflowStatusVariant(
@@ -681,6 +782,96 @@ export class ApplicationDetailComponent implements OnInit {
       default:
         return 'secondary';
     }
+  }
+
+  getWorkflowDotClass(status: string): string {
+    switch (status) {
+      case 'completed':
+        return 'timeline-dot-completed';
+      case 'rejected':
+        return 'timeline-dot-rejected';
+      case 'processing':
+        return 'timeline-dot-processing';
+      case 'pending':
+      default:
+        return 'timeline-dot-pending';
+    }
+  }
+
+  isWorkflowEditable(workflow: ApplicationWorkflow): boolean {
+    const app = this.application();
+    if (!app) {
+      return false;
+    }
+    if (app.status === 'completed' || app.status === 'rejected') {
+      return false;
+    }
+    if (workflow.status === 'completed' || workflow.status === 'rejected') {
+      return false;
+    }
+    const currentWorkflow = this.sortedWorkflows().at(-1);
+    return !!currentWorkflow && currentWorkflow.id === workflow.id;
+  }
+
+  isWorkflowDueDateEditable(workflow: ApplicationWorkflow): boolean {
+    return this.isWorkflowEditable(workflow);
+  }
+
+  canRollbackWorkflow(workflow: ApplicationWorkflow): boolean {
+    const app = this.application();
+    if (!app || app.status === 'completed' || app.status === 'rejected') {
+      return false;
+    }
+    if (workflow.task.step <= 1) {
+      return false;
+    }
+    const currentWorkflow = this.sortedWorkflows().at(-1);
+    return !!currentWorkflow && currentWorkflow.id === workflow.id;
+  }
+
+  getWorkflowDueDateAsDate(workflow: ApplicationWorkflow): Date | null {
+    return workflow.dueDate ? new Date(workflow.dueDate) : null;
+  }
+
+  getWorkflowStatusOptions(workflow: ApplicationWorkflow): ZardComboboxOption[] {
+    const options: ZardComboboxOption[] = [
+      { value: 'pending', label: 'Pending' },
+      { value: 'processing', label: 'Processing' },
+      { value: 'completed', label: 'Completed' },
+      { value: 'rejected', label: 'Rejected' },
+    ];
+    return options.map((option) => ({
+      ...option,
+      disabled:
+        option.value !== workflow.status && this.isWorkflowStatusChangeBlocked(workflow, option.value),
+    }));
+  }
+
+  getWorkflowStatusGuardMessage(workflow: ApplicationWorkflow): string | null {
+    const isBlocked =
+      this.isWorkflowStatusChangeBlocked(workflow, 'processing') ||
+      this.isWorkflowStatusChangeBlocked(workflow, 'completed');
+    if (!isBlocked) {
+      return null;
+    }
+    const previousWorkflow = this.getPreviousWorkflow(workflow);
+    if (!previousWorkflow?.dueDate) {
+      return null;
+    }
+    return `Processing/Completed available on or after ${previousWorkflow.dueDate} (GMT+8).`;
+  }
+
+  getTimelineGapLabel(days: number | null): string {
+    if (days === null) {
+      return '';
+    }
+    if (days <= 0) {
+      return 'Started same day';
+    }
+    if (days === 1) {
+      return 'Started after 1 day';
+    }
+    return `Started after ${days} days`;
   }
 
   /**
@@ -719,6 +910,10 @@ export class ApplicationDetailComponent implements OnInit {
 
   onInlineDateChange(field: 'docDate' | 'dueDate', value: Date | null): void {
     if (!value) return;
+    if (field === 'dueDate' && this.isDueDateLocked()) {
+      this.toast.error(this.dueDateLockedTooltip);
+      return;
+    }
     const iso = this.formatDateForApi(value);
     this.updateApplicationPartial(
       { [field]: iso } as any,
@@ -846,7 +1041,7 @@ export class ApplicationDetailComponent implements OnInit {
           id: `/applications/${id}`,
           briefExplanation: `Application #${id} for ${cust} (${product}).`,
           details:
-            'Manage documents, workflow steps, and application-specific actions. Use the upload area to add documents and the actions menu to run workflow steps or create invoices.',
+            'Use Tasks Timeline to follow each stage of the application from top to bottom. Update only the latest task status, and the next task appears automatically. Completed or rejected tasks stay in history, and you can still create an invoice if the application is completed or rejected.',
         });
       },
       error: (error) => {
@@ -854,7 +1049,89 @@ export class ApplicationDetailComponent implements OnInit {
         this.isLoading.set(false);
         this.isSavingMeta.set(false);
       },
-    });
+      });
+  }
+
+  private calculateGapDays(previous: ApplicationWorkflow, current: ApplicationWorkflow): number | null {
+    const previousEnd = this.parseIsoDate(previous.completionDate);
+    const currentStart = this.parseIsoDate(current.startDate);
+    if (!previousEnd || !currentStart) {
+      return null;
+    }
+    const msInDay = 24 * 60 * 60 * 1000;
+    const diff = Math.round((currentStart.getTime() - previousEnd.getTime()) / msInDay);
+    return Math.max(0, diff);
+  }
+
+  private getPreviousWorkflow(workflow: ApplicationWorkflow): ApplicationWorkflow | null {
+    const workflows = this.sortedWorkflows();
+    const index = workflows.findIndex((item) => item.id === workflow.id);
+    if (index <= 0) {
+      return null;
+    }
+    return workflows[index - 1] ?? null;
+  }
+
+  private isWorkflowStatusChangeBlocked(workflow: ApplicationWorkflow, nextStatus: string): boolean {
+    if (nextStatus === 'rejected') {
+      return false;
+    }
+    if (workflow.status !== 'pending') {
+      return false;
+    }
+    if (nextStatus !== 'processing' && nextStatus !== 'completed') {
+      return false;
+    }
+
+    const previousWorkflow = this.getPreviousWorkflow(workflow);
+    const previousDueDate = this.parseIsoDate(previousWorkflow?.dueDate);
+    if (!previousDueDate) {
+      return false;
+    }
+
+    const today = this.getTodayInWorkflowTimezoneDate();
+    return previousDueDate.getTime() > today.getTime();
+  }
+
+  private getWorkflowStatusBlockedMessage(workflow: ApplicationWorkflow): string {
+    const previousWorkflow = this.getPreviousWorkflow(workflow);
+    if (!previousWorkflow?.dueDate) {
+      return 'Status can be updated to Rejected only until previous step due date is reached.';
+    }
+    return `You can set Processing/Completed only on or after ${previousWorkflow.dueDate} (GMT+8).`;
+  }
+
+  private getTodayInWorkflowTimezoneDate(): Date {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: this.workflowTimezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(new Date());
+    const year = Number(parts.find((part) => part.type === 'year')?.value);
+    const month = Number(parts.find((part) => part.type === 'month')?.value);
+    const day = Number(parts.find((part) => part.type === 'day')?.value);
+    if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+      return new Date();
+    }
+    return new Date(Date.UTC(year, month - 1, day));
+  }
+
+  private parseIsoDate(value?: string | null): Date | null {
+    if (!value) {
+      return null;
+    }
+    const parts = value.split('-');
+    if (parts.length !== 3) {
+      return null;
+    }
+    const year = Number(parts[0]);
+    const month = Number(parts[1]);
+    const day = Number(parts[2]);
+    if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+      return null;
+    }
+    return new Date(Date.UTC(year, month - 1, day));
   }
 
   private pollOcrStatus(statusUrl: string, attempt: number): void {

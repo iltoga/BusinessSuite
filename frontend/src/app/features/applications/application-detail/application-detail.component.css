@@ -1,3 +1,71 @@
 :host {
   display: block;
 }
+
+.timeline-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.timeline-item {
+  display: grid;
+  grid-template-columns: 1.5rem minmax(0, 1fr);
+  column-gap: 0.75rem;
+}
+
+.timeline-track {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.timeline-dot {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 9999px;
+  margin-top: 0.35rem;
+  border: 2px solid transparent;
+}
+
+.timeline-line {
+  width: 2px;
+  flex: 1;
+  background: color-mix(in srgb, var(--border) 78%, transparent);
+  margin-top: 0.4rem;
+  min-height: 2.3rem;
+}
+
+.timeline-dot-pending {
+  background: color-mix(in srgb, var(--muted-foreground) 18%, transparent);
+  border-color: color-mix(in srgb, var(--muted-foreground) 40%, transparent);
+}
+
+.timeline-dot-processing {
+  background: color-mix(in srgb, var(--warning) 25%, transparent);
+  border-color: color-mix(in srgb, var(--warning) 70%, transparent);
+}
+
+.timeline-dot-completed {
+  background: color-mix(in srgb, var(--success) 28%, transparent);
+  border-color: color-mix(in srgb, var(--success) 80%, transparent);
+}
+
+.timeline-dot-rejected {
+  background: color-mix(in srgb, var(--destructive) 22%, transparent);
+  border-color: color-mix(in srgb, var(--destructive) 72%, transparent);
+}
+
+.timeline-content {
+  min-width: 0;
+}
+
+.timeline-gap-label {
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: var(--muted-foreground);
+  margin-bottom: 0.5rem;
+}

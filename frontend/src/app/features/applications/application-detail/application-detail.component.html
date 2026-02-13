@@ -78,14 +78,17 @@
       <div class="grid gap-6">
         <div class="flex flex-wrap items-end gap-6">
           <div class="w-full sm:w-48">
-            <div class="text-sm text-muted-foreground mb-1">Document Date</div>
+            <div class="text-sm text-muted-foreground mb-1">Application Date</div>
             <z-date-input
               [ngModel]="docDateAsDate()"
               (ngModelChange)="onInlineDateChange('docDate', $event)"
             />
           </div>
           @if (application()!.dueDate) {
-            <div class="w-full sm:flex-1 sm:min-w-[18rem] sm:max-w-md">
+            <div
+              class="w-full sm:flex-1 sm:min-w-[18rem] sm:max-w-md"
+              [zTooltip]="isDueDateLocked() ? dueDateLockedTooltip : null"
+            >
               <div class="text-sm text-muted-foreground mb-1 flex items-center gap-1 min-h-5">
                 <span class="min-w-0 truncate" [title]="dueDateContextLabel()">
                   {{ dueDateContextLabel() }}
@@ -93,13 +96,14 @@
               </div>
               <z-date-input
                 [ngModel]="dueDateAsDate()"
+                [disabled]="isDueDateLocked() || isSavingMeta()"
                 (ngModelChange)="onInlineDateChange('dueDate', $event)"
               />
             </div>
           }
           <div class="ml-auto flex flex-col items-end">
             <div class="text-sm text-muted-foreground mb-1 text-right">Application Status</div>
-            <z-badge [zType]="application()!.status === 'completed' ? 'success' : 'warning'">
+            <z-badge [zType]="getApplicationStatusVariant(application()!.status)">
               {{ application()!.status | titlecase }}
             </z-badge>
           </div>
@@ -169,20 +173,6 @@
       <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
         <h3 class="text-lg font-semibold">Tasks Timeline</h3>
         <div class="flex flex-wrap gap-2">
-          @if (canAdvanceWorkflow()) {
-            <button
-              z-button
-              zType="warning"
-              (click)="advanceWorkflow()"
-              [disabled]="workflowAction() !== null"
-            >
-              @if (application()!.nextTask?.step === 1) {
-                Start
-              } @else {
-                Next Step
-              }
-            </button>
-          }
           @if (canReopen()) {
             <button
               z-button
@@ -196,60 +186,118 @@
         </div>
       </div>
 
-      @if (!application()!.isDocumentCollectionCompleted) {
-        <div class="mb-4">
-          <z-badge zType="warning">Document Collection Pending</z-badge>
-        </div>
-      }
+      <div class="mb-4">
+        <z-badge [zType]="documentCollectionStatus().type">
+          {{ documentCollectionStatus().label }}
+        </z-badge>
+      </div>
 
       @if (sortedWorkflows().length === 0) {
         <div class="text-sm text-muted-foreground">Not started yet</div>
       } @else {
-        <ol class="space-y-4">
-          @for (workflow of sortedWorkflows(); track workflow.id) {
-            <li class="rounded-lg border p-4">
-              <div class="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <div class="text-sm text-muted-foreground">Step {{ workflow.task.step }}</div>
-                  <div class="font-medium">{{ workflow.task.name }}</div>
-                </div>
-                <div class="flex items-center gap-2">
-                  <z-badge [zType]="getWorkflowStatusVariant(workflow.status, workflow.isOverdue)">
-                    {{ workflow.status | titlecase }}
-                  </z-badge>
-                  @if (workflow.hasNotes) {
-                    <span class="text-warning">&#9888;</span>
+        <ol class="timeline-list">
+          @for (item of timelineItems(); track item.workflow.id; let isLast = $last) {
+            <li class="timeline-item">
+              <div class="timeline-track">
+                <span
+                  class="timeline-dot"
+                  [ngClass]="getWorkflowDotClass(item.workflow.status)"
+                ></span>
+                @if (!isLast) {
+                  <span class="timeline-line"></span>
+                }
+              </div>
+
+              <div class="timeline-content">
+                @if (item.gapDaysFromPrevious !== null) {
+                  <div class="timeline-gap-label">
+                    {{ getTimelineGapLabel(item.gapDaysFromPrevious) }}
+                  </div>
+                }
+
+                <div class="rounded-lg border p-4">
+                  <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <div class="text-sm text-muted-foreground">
+                        Step {{ item.workflow.task.step }}
+                      </div>
+                      <div class="font-medium">{{ item.workflow.task.name }}</div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <z-badge
+                        [zType]="
+                          getWorkflowStatusVariant(item.workflow.status, item.workflow.isOverdue)
+                        "
+                      >
+                        {{ item.workflow.status | titlecase }}
+                      </z-badge>
+                      @if (canRollbackWorkflow(item.workflow)) {
+                        <button
+                          z-button
+                          zType="outline"
+                          zSize="sm"
+                          (click)="rollbackWorkflow(item.workflow)"
+                          [disabled]="workflowAction() !== null"
+                        >
+                          Cancel Task
+                        </button>
+                      }
+                      @if (item.workflow.hasNotes) {
+                        <span class="text-warning">&#9888;</span>
+                      }
+                    </div>
+                  </div>
+
+                  <div
+                    class="mt-2 grid items-center gap-3 text-sm text-muted-foreground md:grid-cols-3"
+                  >
+                    <div class="flex items-center gap-2">
+                      <span class="font-medium text-foreground shrink-0">Start:</span>
+                      <span>{{ item.workflow.startDate | appDate }}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <span class="font-medium text-foreground shrink-0">Due:</span>
+                      @if (isWorkflowDueDateEditable(item.workflow)) {
+                        <div class="w-full max-w-[140px]">
+                          <z-date-input
+                            [ngModel]="getWorkflowDueDateAsDate(item.workflow)"
+                            [disabled]="workflowAction() !== null"
+                            (ngModelChange)="updateWorkflowDueDate(item.workflow, $event)"
+                          />
+                        </div>
+                      } @else {
+                        <span>{{ item.workflow.dueDate | appDate }}</span>
+                      }
+                    </div>
+                    @if (item.workflow.completionDate) {
+                      <div class="flex items-center gap-2">
+                        <span class="font-medium text-foreground shrink-0">
+                          {{ item.workflow.status === 'rejected' ? 'Rejected:' : 'Completed:' }}
+                        </span>
+                        <span>{{ item.workflow.completionDate | appDate }}</span>
+                      </div>
+                    }
+                  </div>
+
+                  @if (isWorkflowEditable(item.workflow)) {
+                    <div class="mt-3 max-w-xs">
+                      <z-combobox
+                        [value]="item.workflow.status"
+                        [options]="getWorkflowStatusOptions(item.workflow)"
+                        [searchable]="false"
+                        [zWidth]="'full'"
+                        [disabled]="workflowAction() !== null"
+                        (zValueChange)="updateWorkflowStatus(item.workflow.id, $event)"
+                      />
+                    </div>
+                    @if (getWorkflowStatusGuardMessage(item.workflow)) {
+                      <div class="mt-2 text-xs text-muted-foreground">
+                        {{ getWorkflowStatusGuardMessage(item.workflow) }}
+                      </div>
+                    }
                   }
                 </div>
               </div>
-
-              <div class="mt-2 grid gap-2 text-sm text-muted-foreground md:grid-cols-3">
-                <div>
-                  <span class="font-medium text-foreground">Start:</span>
-                  {{ workflow.startDate | appDate }}
-                </div>
-                <div>
-                  <span class="font-medium text-foreground">Due:</span>
-                  {{ workflow.dueDate | appDate }}
-                </div>
-                <div>
-                  <span class="font-medium text-foreground">Completed:</span>
-                  {{ workflow.completionDate ? (workflow.completionDate | appDate) : '—' }}
-                </div>
-              </div>
-
-              @if (workflow.isCurrentStep && !application()!.isApplicationCompleted) {
-                <div class="mt-3 max-w-xs">
-                  <z-combobox
-                    [value]="workflow.status"
-                    [options]="workflowStatusOptions"
-                    [searchable]="false"
-                    [zWidth]="'full'"
-                    [disabled]="workflowAction() !== null"
-                    (zValueChange)="updateWorkflowStatus(workflow.id, $event)"
-                  />
-                </div>
-              }
             </li>
           }
         </ol>

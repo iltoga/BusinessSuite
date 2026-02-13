@@ -1,8 +1,7 @@
-from django import forms
-from django.utils import timezone
-
 from core.models import CountryCode
 from customers.models import Customer
+from django import forms
+from django.utils import timezone
 
 
 class CountryIdnModelChoiceField(forms.ModelChoiceField):
@@ -22,7 +21,7 @@ class SuratPermohonanForm(forms.Form):
         widget=forms.DateInput(attrs={"type": "date"}),
         initial=timezone.now,
         required=True,
-        label="Document Date",
+        label="Application Date",
     )
     name = forms.CharField(max_length=255, required=True, label="Customer Name")
     VISA_TYPE_CHOICES = [

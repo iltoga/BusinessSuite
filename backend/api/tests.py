@@ -251,14 +251,8 @@ class CustomerApplicationDetailAPITestCase(TestCase):
         wf.due_date = wf.calculate_workflow_due_date()
         wf.save()
         url = reverse("customer-applications-advance-workflow", kwargs={"pk": app.id})
-        # can't advance since document collection isn't complete
-        response = self.client.post(url)
-        self.assertEqual(response.status_code, 400)
-        # mark document collection completed and try again
-        # add a required passport document
-        d = Document.objects.create(
-            doc_application=app, doc_type=self.doc_type, created_by=self.user, completed=True, required=True
-        )
+
+        # Workflow progression is independent from document collection completion.
         response = self.client.post(url)
         self.assertEqual(response.status_code, 200)
         app.refresh_from_db()

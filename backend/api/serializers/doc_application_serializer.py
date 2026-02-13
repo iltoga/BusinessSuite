@@ -76,7 +76,7 @@ class DocApplicationSerializerWithRelations(serializers.ModelSerializer):
         Ready if all required documents are completed OR if the application
         has been marked as completed (e.g. force closed).
         """
-        if instance.status == DocApplication.STATUS_COMPLETED:
+        if instance.status in (DocApplication.STATUS_COMPLETED, DocApplication.STATUS_REJECTED):
             return True
         return instance.total_required_documents == instance.completed_required_documents
 
@@ -87,7 +87,7 @@ class DocApplicationSerializerWithRelations(serializers.ModelSerializer):
             return False
         return (
             request.user.has_perm("customer_applications.change_docapplication")
-            and instance.status != DocApplication.STATUS_COMPLETED
+            and instance.status not in (DocApplication.STATUS_COMPLETED, DocApplication.STATUS_REJECTED)
         )
 
     def to_representation(self, instance):
@@ -182,7 +182,7 @@ class DocApplicationDetailSerializer(serializers.ModelSerializer):
             return False
         return (
             request.user.has_perm("customer_applications.change_docapplication")
-            and instance.status != DocApplication.STATUS_COMPLETED
+            and instance.status not in (DocApplication.STATUS_COMPLETED, DocApplication.STATUS_REJECTED)
         )
 
 

@@ -94,6 +94,7 @@ export class DataTableComponent<T = Record<string, any>> implements AfterViewIni
   data = input.required<readonly T[]>();
   columns = input.required<readonly ColumnConfig<T>[]>();
   actions = input<readonly DataTableAction<T>[] | null>(null);
+  rowClass = input<((row: T) => string | null | undefined) | null>(null);
   totalItems = input<number>(0);
   isLoading = input<boolean>(false);
   skeletonRows = input<number>(10);
