@@ -2,6 +2,7 @@ import datetime
 import json
 
 from customer_applications.models import DocApplication, Document
+from core.models import Holiday
 from customers.models import Customer
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -572,3 +573,38 @@ class InvoiceDownloadAPITestCase(TestCase):
         response = self.client.get(url)
         self.assertNotEqual(response.status_code, 404)
 
+
+
+class HolidayAPIPermissionsTestCase(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.superuser = User.objects.create_superuser(
+            username="holidayadmin", email="holidayadmin@example.com", password="password"
+        )
+        self.user = User.objects.create_user(username="holidayuser", email="holidayuser@example.com", password="password")
+        self.holiday = Holiday.objects.create(name="Independence Day", date=datetime.date(2025, 8, 17), country="Indonesia")
+
+    def test_non_superuser_can_list_and_retrieve_holidays(self):
+        self.client.force_login(self.user)
+
+        list_response = self.client.get(reverse("holidays-list"))
+        self.assertEqual(list_response.status_code, 200)
+        self.assertEqual(len(list_response.json()), 1)
+
+        detail_response = self.client.get(reverse("holidays-detail", args=[self.holiday.id]))
+        self.assertEqual(detail_response.status_code, 200)
+        self.assertEqual(detail_response.json()["name"], "Independence Day")
+
+    def test_non_superuser_cannot_create_holiday(self):
+        self.client.force_login(self.user)
+        response = self.client.post(
+            reverse("holidays-list"), {"name": "Nyepi", "date": "2025-03-29", "country": "Indonesia"}
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_superuser_can_create_holiday(self):
+        self.client.force_login(self.superuser)
+        response = self.client.post(
+            reverse("holidays-list"), {"name": "Nyepi", "date": "2025-03-29", "country": "Indonesia"}
+        )
+        self.assertEqual(response.status_code, 201)

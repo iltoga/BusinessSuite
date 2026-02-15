@@ -15,6 +15,7 @@ api/dashboard-stats.service.ts
 api/document-ocr.service.ts
 api/document-types.service.ts
 api/documents.service.ts
+api/holidays.service.ts
 api/invoices.service.ts
 api/letters.service.ts
 api/mock.service.ts
@@ -54,6 +55,7 @@ model/get-app-config200-response.ts
 model/get-mock-auth-config200-response.ts
 model/google-calendar-event.ts
 model/google-task.ts
+model/holiday.ts
 model/invoice-application-detail.ts
 model/invoice-application-summary.ts
 model/invoice-application-write.ts

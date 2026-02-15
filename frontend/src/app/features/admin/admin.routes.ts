@@ -33,6 +33,14 @@ export const adminRoutes: Routes = [
         (c) => c.WorkflowNotificationsComponent,
       ),
   },
+
+  {
+    path: 'holidays',
+    title: 'National Holidays',
+    canActivate: [superuserGuard],
+    loadComponent: () => import('./holidays/holidays.component').then((c) => c.HolidaysComponent),
+  },
+
   {
     path: '',
     redirectTo: 'document-types',
