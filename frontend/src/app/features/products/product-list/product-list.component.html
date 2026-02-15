@@ -17,28 +17,44 @@
         [placeholder]="'Search Products...'"
         (queryChange)="onQueryChange($event)"
         (tabOut)="dataTable.focusFirstRowIfNone()"
-        [contextHelp]="{
-          id: '/products/search',
-          briefExplanation: 'Search Products',
-          details: 'Search by product code, name, or description. Use sort to change ordering.',
-        }"
+        [contextHelp]="'/products/search'"
       >
+        <z-button
+          zType="default"
+          zSize="sm"
+          [zLoading]="exportInProgress()"
+          [zDisabled]="exportInProgress() || importInProgress()"
+          (click)="startExport()"
+        >
+          Export @if (exportInProgress() && exportProgress() !== null) { ({{ exportProgress() }}%) }
+        </z-button>
+        <z-button
+          zType="default"
+          zSize="sm"
+          [zLoading]="importInProgress()"
+          [zDisabled]="importInProgress() || exportInProgress()"
+          (click)="openImportPicker()"
+        >
+          Import @if (importInProgress() && importProgress() !== null) { ({{ importProgress() }}%) }
+        </z-button>
         @if (isSuperuser() && totalItems() > 0) {
           <z-button
             zType="destructive"
             zSize="sm"
             (click)="openBulkDeleteDialog()"
-            [contextHelp]="{
-              id: '/products/bulk-delete',
-              briefExplanation: 'Bulk delete products',
-              details:
-                'Deletes selected or all products and their associated tasks. Use search to filter.',
-            }"
+            [contextHelp]="'/products/bulk-delete'"
           >
             {{ bulkDeleteLabel() }}
           </z-button>
         }
       </app-search-toolbar>
+      <input
+        #importFileInput
+        type="file"
+        accept=".xlsx"
+        class="hidden"
+        (change)="onImportFileSelected($event)"
+      />
     </div>
 
     <div class="p-0">

@@ -30,12 +30,7 @@
               zType="destructive"
               zSize="sm"
               (click)="openBulkDeleteDialog()"
-              [contextHelp]="{
-                id: '/customers/bulk-delete',
-                briefExplanation: 'Bulk delete customers',
-                details:
-                  'Deletes selected or all customers and their related data. Use filters or search to limit the affected set.',
-              }"
+              [contextHelp]="'/customers/bulk-delete'"
             >
               {{ bulkDeleteLabel() }}
             </z-button>

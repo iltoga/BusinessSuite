@@ -165,17 +165,33 @@
         <!-- Passport Image -->
         <div>
           @if (customer()!.passportFile) {
-            <a href="{{ customer()!.passportFile }}" target="_blank" rel="noopener noreferrer">
-              <img
-                src="{{ customer()!.passportFile }}"
-                alt="Passport Image"
-                class="w-full max-w-sm h-auto rounded-lg shadow-sm border"
-              />
+            <a [href]="customer()!.passportFile" target="_blank" rel="noopener noreferrer">
+              <div class="passport-magnifier-wrapper">
+                <img
+                  [src]="customer()!.passportFile"
+                  alt="Passport Image"
+                  class="passport-image w-full max-w-sm h-auto rounded-lg shadow-sm border"
+                  (mouseenter)="onPassportMouseEnter()"
+                  (mouseleave)="onPassportMouseLeave()"
+                  (mousemove)="onPassportMouseMove($event)"
+                />
+                <div
+                  class="passport-magnifier-lens"
+                  [class.active]="magnifierActive()"
+                  [style.width.px]="magnifierLensSize"
+                  [style.height.px]="magnifierLensSize"
+                  [style.left.px]="magnifierLensX()"
+                  [style.top.px]="magnifierLensY()"
+                  [style.background-image]="'url(' + customer()!.passportFile + ')'"
+                  [style.background-size.%]="magnifierZoom * 100"
+                  [style.background-position]="magnifierBgX() + '% ' + magnifierBgY() + '%'"
+                ></div>
+              </div>
             </a>
             <div class="text-xs text-muted-foreground mt-2">
               File:
               <a
-                href="{{ customer()!.passportFile }}"
+                [href]="customer()!.passportFile"
                 target="_blank"
                 rel="noopener noreferrer"
                 class="text-primary hover:underline"

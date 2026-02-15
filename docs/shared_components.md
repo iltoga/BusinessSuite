@@ -1,452 +1,92 @@
 # Shared Components Registry
 
-## Rules of Engagement
-
-- **ALWAYS** check this list before building a new UI component
-- If a component exists here, reuse it; do not rebuild
-- Document new shared components immediately after creation
-
-## Component Index
-
-> **UI note:** Prefer using `z-combobox` (searchable combobox) for long/static lists where typeahead improves UX (e.g., country, customer, product selections). Use the standard select only for short, non-searchable lists. This helps provide consistent keyboard navigation, search filtering, and accessibility across forms.
-
-| Component Name        | Selector                      | Location                                                             | ZardUI Deps             | Status          | Used In         |
-| --------------------- | ----------------------------- | -------------------------------------------------------------------- | ----------------------- | --------------- | --------------- |
-| HelpDrawer            | z-help-drawer                 | src/app/shared/components/help-drawer                                | Sheet, Button           | Beta            | Global (F1)     |
-| DataTable             | app-data-table                | src/app/shared/components/data-table                                 | Table                   | ✅ Ready        |                 |
-| ConfirmDialog         | app-confirm-dialog            | src/app/shared/components/confirm-dialog                             | Dialog, Button          | ✅ Ready        |                 |
-| SearchToolbar         | app-search-toolbar            | src/app/shared/components/search-toolbar                             | Input, Button           | ✅ Ready        |                 |
-| Pagination            | app-pagination-controls       | src/app/shared/components/pagination-controls                        | Button, Icon            | ✅ Ready        |                 |
-| ExpiryBadge           | app-expiry-badge              | src/app/shared/components/expiry-badge                               | Badge                   | ✅ Ready        |                 |
-| Checkbox              | z-checkbox                    | src/app/shared/components/checkbox                                   | Icon                    | ✅ Ready        | Admin (Backups) |
-| BulkDeleteDialog      | app-bulk-delete-dialog        | src/app/shared/components/bulk-delete-dialog                         | Dialog, Button          | ✅ Ready        |                 |
-| InvoiceDeleteDialog   | app-invoice-delete-dialog     | src/app/shared/components/invoice-delete-dialog                      | Dialog, Button          | ✅ Ready        |                 |
-| FileUpload            | app-file-upload               | src/app/shared/components/file-upload                                | Button                  | ✅ Ready        | Applications    |
-| DocumentPreview       | app-document-preview          | src/app/shared/components/document-preview                           | Popover, Icon           | ✅ Ready        | Applications    |
-| PdfViewerHost         | app-pdf-viewer-host           | src/app/shared/components/pdf-viewer-host                            | ngx-extended-pdf-viewer | ✅ Ready (lazy) | Applications    |
-| SortableMultiSelect   | app-sortable-multi-select     | src/app/shared/components/sortable-multi-select                      | DragDrop                | ✅ Ready        | Applications    |
-| CustomerSelect        | app-customer-select           | src/app/shared/components/customer-select                            | Combobox                | ✅ Ready        |                 |
-| TableSkeleton         | app-table-skeleton            | src/app/shared/components/skeleton                                   | Table, Skeleton         | ✅ Ready        |                 |
-| CardSkeleton          | app-card-skeleton             | src/app/shared/components/skeleton                                   | Card, Skeleton          | ✅ Ready        |                 |
-| InvoiceDownload       | app-invoice-download-dropdown | src/app/shared/components/invoice-download-dropdown                  | Dropdown, Button, Icon  | ✅ Ready        | Invoices        |
-| CalendarIntegration   | app-calendar-integration      | src/app/shared/components/calendar/calendar-integration.component.ts | HttpClient, FormsModule | Beta            | Dashboard       |
-| QuickApplicationModal | app-quick-application-modal   | src/app/features/applications/quick-application-modal                | Dialog, Button, Form    | ✅ Ready        | Invoices        |
-| JobProgress           | app-job-progress-dialog       | src/app/shared/components/job-progress-dialog                        | Dialog, Loader, Icon    | ✅ Ready        | Global (Jobs)   |
-
-## Component Details
-
-### HelpDrawerComponent
-
-**Location:** `src/app/shared/components/help-drawer/help-drawer.component.ts`
-
-**Selector:** `z-help-drawer`
-
-**Behavior:** Global contextual help drawer built on top of Zard UI's `z-sheet`. Open by pressing `F1` (handled in `App` via `window:keydown`) or by clicking the floating help button (`z-button`). Exposes dynamic content via `HelpService` (singleton) and can be updated by using the `[contextHelp]` directive on elements or by registering contexts with `HelpService.register(id, ctx)`.
-
-**HelpContext interface:**
-
-```ts
-export interface HelpContext {
-  id?: string;
-  title: string;
-  description?: string;
-  links?: { label: string; url: string }[];
-}
-```
-
-**Usage examples:**
-
-- Per-component: add `[contextHelp]="{ id: '/customers', title: 'Customers', description: 'Manage customers...' }"` to an element.
-- Global routing: help text updates automatically for registered paths inside `HelpService` (e.g., `/customers`, `/invoices`, `/applications`, `/products`).
-
-**Recent:** Help contexts were expanded to cover `applications` (list, new, detail), additional invoice pages (import, new, detail), and product detail/new pages. Use `[contextHelp]` on list containers or specific controls (search toolbar, bulk actions) to expose view-level or control-level guidance in the global help drawer.
-
-**Telemetry:** `HelpService` exposes an `openCount()` signal that tracks how many times users open the help drawer. The service will also attempt to send a `help_open` event to a global analytics provider (e.g., `gtag`, `mixpanel`, or `analytics.track`) if available on `window`.
-
----
-
-### DataTableComponent
-
-**Location:** `src/app/shared/components/data-table/data-table.component.ts`
-
-**Interface:**
-
-```typescript
-@Component({
-  selector: "app-data-table",
-  standalone: true,
-})
-export class DataTableComponent<T> {
-  data = input.required<readonly T[]>();
-  columns = input.required<readonly ColumnConfig[]>();
-  totalItems = input<number>(0);
-  isLoading = input<boolean>(false);
-  pageChange = output<PageEvent>();
-  sortChange = output<SortEvent>();
-}
-```
-
-**ColumnConfig:**
-
-```typescript
-export interface ColumnConfig {
-  key: string;
-  header: string;
-  sortable?: boolean;
-  sortKey?: string;
-  template?: TemplateRef<unknown>;
-}
-```
-
-### ConfirmDialogComponent
-
-**Location:** `src/app/shared/components/confirm-dialog/confirm-dialog.component.ts`
-
-**Interface:**
-
-```typescript
-@Component({
-  selector: "app-confirm-dialog",
-  standalone: true,
-})
-export class ConfirmDialogComponent {
-  isOpen = input<boolean>(false);
-  title = input<string>("Confirm Action");
-  message = input<string>("Are you sure?");
-  confirmText = input<string>("Confirm");
-  cancelText = input<string>("Cancel");
-  destructive = input<boolean>(false);
-  confirmed = output<void>();
-  cancelled = output<void>();
-}
-```
-
-### SearchToolbarComponent
-
-**Location:** `src/app/shared/components/search-toolbar/search-toolbar.component.ts`
-
-**Interface:**
-
-```typescript
-@Component({
-  selector: "app-search-toolbar",
-  standalone: true,
-})
-export class SearchToolbarComponent {
-  query = input<string>("");
-  placeholder = input<string>("Search...");
-  debounceMs = input<number>(500);
-  isLoading = input<boolean>(false);
-  disabled = input<boolean>(false);
-  queryChange = output<string>();
-  submitted = output<string>();
-}
-```
-
-### BulkDeleteDialogComponent
-
-**Location:** `src/app/shared/components/bulk-delete-dialog/bulk-delete-dialog.component.ts`
-
-**Interface:**
-
-```typescript
-@Component({
-  selector: "app-bulk-delete-dialog",
-  standalone: true,
-})
-export class BulkDeleteDialogComponent {
-  isOpen = input<boolean>(false);
-  data = input<BulkDeleteDialogData | null>(null);
-  confirmed = output<BulkDeleteDialogResult>();
-  cancelled = output<void>();
-}
-```
-
-**Notes:** Use for delete-all/selected confirmation dialogs with optional cascade checkbox.
-
-### InvoiceDeleteDialogComponent
-
-**Location:** `src/app/shared/components/invoice-delete-dialog/invoice-delete-dialog.component.ts`
-
-**Interface:**
-
-```typescript
-@Component({
-  selector: "app-invoice-delete-dialog",
-  standalone: true,
-})
-export class InvoiceDeleteDialogComponent {
-  isOpen = input<boolean>(false);
-  data = input<InvoiceDeletePreviewData | null>(null);
-  confirmed = output<InvoiceDeleteDialogResult>();
-  cancelled = output<void>();
-}
-```
-
-**Notes:** Matches legacy invoice force-delete flow with mandatory confirmation checkbox and cascade preview.
-
-### PaginationControlsComponent
-
-**Location:** `src/app/shared/components/pagination-controls/pagination-controls.component.ts`
-
-**Interface:**
-
-```typescript
-@Component({
-  selector: "app-pagination-controls",
-  standalone: true,
-})
-export class PaginationControlsComponent {
-  page = input<number>(1);
-  totalPages = input<number>(1);
-  disabled = input<boolean>(false);
-  pageChange = output<number>();
-}
-```
-
-### ExpiryBadgeComponent
-
-**Location:** `src/app/shared/components/expiry-badge/expiry-badge.component.ts`
-
-**Interface:**
-
-`````typescript
-@Component({
-  selector: "app-expiry-badge",
-  standalone: true,
-})
-export class ExpiryBadgeComponent {
-  date = input<string | Date | null>(null);
-  warningDays = input<number>(183);
-  emptyLabel = input<string>("—");
-}
-
-### FileUploadComponent
-
-**Location:** `src/app/shared/components/file-upload/file-upload.component.ts`
-
-**Interface:**
-
-```typescript
-@Component({
-  selector: "app-file-upload",
-  standalone: true,
-})
-export class FileUploadComponent {
-  label = input<string>("Upload file");
-  accept = input<string>("*/*");
-  disabled = input<boolean>(false);
-  progress = input<number | null>(null);
-  fileName = input<string | null>(null);
-  helperText = input<string | null>(null);
-  fileSelected = output<File>();
-  cleared = output<void>();
-}
-```
-
-**Used In:** Applications (used to upload application documents — also used by the auto-passport import flow).
-
-
-### Checkbox (ZardCheckboxComponent)
-
-**Location:** `src/app/shared/components/checkbox`
-
-**Selector:** `z-checkbox`
-
-**Interface / Behavior:**
-
-```typescript
-@Component({
-  selector: 'z-checkbox',
-  standalone: true,
-})
-export class ZardCheckboxComponent implements ControlValueAccessor {
-  // Supports reactive forms/ngModel via ControlValueAccessor
-  // Project content for the checkbox label: <z-checkbox>Label</z-checkbox>
-  // Accepts disabled state through ControlValueAccessor API
-}
-```
-
-**ZardUI Deps:** `z-icon` (uses check icon), accessible keyboard support, aria attributes
-
-**Status:** ✅ Ready
-
-**Used In:** Admin Backups (and available for reuse in forms)
-
-
-### DocumentPreviewComponent
-
-**Location:** `src/app/shared/components/document-preview/document-preview.component.ts`
-
-**Interface:**
-
-```typescript
-@Component({
-  selector: "app-document-preview",
-  standalone: true,
-})
-export class DocumentPreviewComponent {
-  documentId = input.required<number>();
-  fileLink = input<string | null>(null);
-  label = input<string>("Preview");
-  zType = input<ZardButtonTypeVariants>("outline");
-  zSize = input<ZardButtonSizeVariants>("sm");
-  viewFull = output<void>();
-}
-```
-
-**Behavior:** For image files (PNG/JPG) it shows an inline thumbnail. For PDFs it shows a small PDF icon and a "View Full" button which opens a lazily-loaded full PDF viewer.
-
-**Used In:** Applications (used in Application detail to preview uploaded documents and open PDFs in the `PdfViewerHost`).
-
----
-
-### PdfViewerHostComponent
-
-**Location:** `src/app/shared/components/pdf-viewer-host/pdf-viewer-host.component.ts`
-
-**Interface:**
-
-```typescript
-@Component({
-  selector: "app-pdf-viewer-host",
-  standalone: true,
-  imports: [NgxExtendedPdfViewerModule],
-})
-export class PdfViewerHostComponent {
-  src = input<Blob | string | null>(null);
-  closed = output<void>();
-}
-```
-
-**Notes:** This component is intended to be lazy-loaded and created dynamically by `DocumentPreviewComponent` to avoid shipping the PDF viewer until needed. It accepts a `Blob` or object-URL as `src` and emits `closed` when the user closes the overlay.
-
-**Used In:** Applications (used to display uploaded application PDFs from the Application detail view).
-
-### InvoiceDownloadDropdownComponent
-
-**Location:** `src/app/shared/components/invoice-download-dropdown/invoice-download-dropdown.component.ts`
-
-**Interface:**
-
-```typescript
-@Component({
-  selector: "app-invoice-download-dropdown",
-  standalone: true,
-})
-export class InvoiceDownloadDropdownComponent {
-  invoiceId = input.required<number>();
-  invoiceNumber = input.required<string>();
-  customerName = input.required<string>();
-  zType = input<"secondary" | "outline" | "ghost" | "default">("secondary");
-  zSize = input<"default" | "sm" | "lg">("sm");
-}
-```
-
-**Behavior:** Displays a dropdown button that allows the user to download the invoice in DOCX or PDF format. It handles the download request and file saving automatically.
-
-**Used In:** Invoices (List and Detail views).
-
-**Important (server config):** Ensure the ngx-extended-pdf-viewer assets are available under `/assets/` (avoid SPA fallback to index.html). This project copies `node_modules/ngx-extended-pdf-viewer/assets/` into `/assets/` via `angular.json` and configures `pdfDefaultOptions.assetsFolder = 'assets'` and `pdfDefaultOptions.workerSrc = () => '/assets/pdf.worker-5.4.1105.min.mjs'`. This prevents the "Expected a JavaScript-or-Wasm module script but the server responded with a MIME type of 'text/html'" error when the dev server returns `index.html` for missing asset paths.
-
-### SortableMultiSelectComponent
-
-**Location:** `src/app/shared/components/sortable-multi-select/sortable-multi-select.component.ts`
-
-**Interface:**
-
-````typescript
-@Component({
-  selector: "app-sortable-multi-select",
-  standalone: true,
-})
-export class SortableMultiSelectComponent {
-  options = input.required<readonly { id: number; label: string }[]>();
-  selectedIds = input<number[]>([]);
-  label = input<string>("");
-  selectedIdsChange = output<number[]>();
-}
-
-### CustomerSelectComponent
-
-**Location:** `src/app/shared/components/customer-select/customer-select.component.ts`
-
-**Interface:**
-
-```typescript
-@Component({
-  selector: "app-customer-select",
-  standalone: true,
-})
-export class CustomerSelectComponent {
-  label = input<string>("Customer");
-  placeholder = input<string>("Select a customer...");
-  searchPlaceholder = input<string>("Search customers...");
-  selectedId = input<number | null>(null);
-  selectedIdChange = output<number | null>();
-}
-`````
-
-### TableSkeletonComponent
-
-**Location:** `src/app/shared/components/skeleton/table-skeleton.component.ts`
-
-**Interface:**
-
-```typescript
-@Component({
-  selector: "app-table-skeleton",
-  standalone: true,
-})
-export class TableSkeletonComponent {
-  columns = input<number>(5);
-  rows = input<number>(5);
-}
-```
-
-### CardSkeletonComponent
-
-**Location:** `src/app/shared/components/skeleton/card-skeleton.component.ts`
-
-**Interface:**
-
-```typescript
-@Component({
-  selector: "app-card-skeleton",
-  standalone: true,
-})
-export class CardSkeletonComponent {
-  showHeader = input<boolean>(true);
-  lines = input<number>(3);
-}
-```
-
-### JobProgressDialogComponent
-
-**Location:** `src/app/shared/components/job-progress-dialog/job-progress-dialog.component.ts`
-
-**Interface:**
-
-```typescript
-export interface JobProgressData {
-  jobId: string;
-  title?: string;
-}
-
-@Component({
-  selector: "app-job-progress-dialog",
-  standalone: true,
-})
-export class JobProgressDialogComponent {
-  // Uses DIALOG_DATA to receive JobProgressData
-}
-```
-
-**Behavior:** Reusable dialog for tracking background tasks via SSE. It displays a loader, progress bar, and final status (success/failure). It automatically connects to the `JobService` to stream updates. Returns the final `AsyncJob` state on close.
-
-**Used In:** Global (Applications list/detail/form). Usually triggered via `JobService.openProgressDialog(jobId, title)`.
-
-## Updates
-
-- **2026-02-12:** Implemented generic Asynchronous Job & SSE Framework. Added `JobProgressDialogComponent` and `JobService` to handle background tasks for Applications (CRUD, workflow, calendar sync). Updated Application list, detail, and form to use the new async pattern. Added `AsyncJob` model and Huey task integration in the backend.
-- **2026-02-06:** Added `QuickApplicationModalComponent` to provide a fast way to create and force-close applications directly from the invoice creation form. This simplifies the UX when document tracking is not required for a specific invoice item.
+This is the canonical registry for reusable Angular components.
+
+Rules:
+
+- Check this file before creating new UI components.
+- Prefer extending existing shared components over creating duplicates.
+- Update this registry in the same PR when adding/reworking shared components.
+- When adding a new shared component, include:
+  - selector
+  - path
+  - intended use
+  - whether it is generic or domain-specific
+- All new shared components must be documented here to ensure discoverability and consistency across the app.
+- All new shared components should extend existing (zadrUI) primitives where possible, rather than creating new low-level UI elements.
+- NEVER update zadrUI primitives. Only compose/extend them in this directory for app-specific shared components.
+
+Base path: `frontend/src/app/shared/components/`
+
+## Feature-level shared components
+
+| Component               | Selector                        | Path                                         | Notes                                                                |
+| ----------------------- | ------------------------------- | -------------------------------------------- | -------------------------------------------------------------------- |
+| DataTable               | `app-data-table`                | `data-table/`                                | Generic tabular list rendering with column config and sorting hooks. |
+| SearchToolbar           | `app-search-toolbar`            | `search-toolbar/`                            | Shared query/submit/search interaction.                              |
+| PaginationControls      | `app-pagination-controls`       | `pagination-controls/`                       | Reusable page navigation controls.                                   |
+| ConfirmDialog           | `app-confirm-dialog`            | `confirm-dialog/`                            | Generic confirmation dialog.                                         |
+| BulkDeleteDialog        | `app-bulk-delete-dialog`        | `bulk-delete-dialog/`                        | Bulk-delete confirmation with payload/result contract.               |
+| InvoiceDeleteDialog     | `app-invoice-delete-dialog`     | `invoice-delete-dialog/`                     | Invoice-specific delete confirmation flow.                           |
+| ApplicationDeleteDialog | `app-application-delete-dialog` | `application-delete-dialog/`                 | Application delete confirmation.                                     |
+| CustomerSelect          | `app-customer-select`           | `customer-select/`                           | Async customer search/select control.                                |
+| ProductSelect           | `app-product-select`            | `product-select/`                            | Product selection control.                                           |
+| SortableMultiSelect     | `app-sortable-multi-select`     | `sortable-multi-select/`                     | Ordered multi-select (drag/drop) for task/document flows.            |
+| FileUpload              | `app-file-upload`               | `file-upload/`                               | Generic upload with progress/reset events.                           |
+| DocumentPreview         | `app-document-preview`          | `document-preview/`                          | Inline preview launcher for uploaded docs.                           |
+| PdfViewerHost           | `app-pdf-viewer-host`           | `pdf-viewer-host/`                           | Lazy PDF viewer wrapper.                                             |
+| InvoiceDownloadDropdown | `app-invoice-download-dropdown` | `invoice-download-dropdown/`                 | Invoice download action menu.                                        |
+| JobProgressDialog       | `app-job-progress-dialog`       | `job-progress-dialog/`                       | Async job progress modal.                                            |
+| ExpiryBadge             | `app-expiry-badge`              | `expiry-badge/`                              | Date-based status badge (expiring/expired).                          |
+| DashboardWidget         | `app-dashboard-widget`          | `dashboard-widget/`                          | Reusable widget container for dashboard stats/charts.                |
+| FormErrorSummary        | `app-form-error-summary`        | `form-error-summary/`                        | Consolidates form validation errors into a summary block.            |
+| HelpDrawer              | `z-help-drawer`                 | `help-drawer/`                               | Global contextual help + hotkeys drawer.                             |
+| CalendarIntegration     | `app-calendar-integration`      | `calendar/calendar-integration.component.ts` | Calendar integration panel and sync UX.                              |
+| Calendar                | `z-calendar`                    | `calendar/calendar.component.ts`             | Reusable calendar view primitives (grid/navigation/types).           |
+
+## Reusable UI primitives (Zard-style)
+
+These are low-level building blocks used across features:
+
+- `avatar/`
+- `badge/`
+- `button/`
+- `card/`
+- `checkbox/`
+- `combobox/`
+- `command/`
+- `date-input/`
+- `date-picker/`
+- `dialog/`
+- `dropdown/`
+- `empty/`
+- `icon/`
+- `input/`
+- `input-group/`
+- `loader/`
+- `popover/`
+- `select/`
+- `sheet/`
+- `skeleton/`
+- `table/`
+- `theme-switcher/`
+- `toast/`
+- `tooltip/`
+- `typeahead-combobox/`
+
+## Usage guidance
+
+- Use composable primitives for small/contained UI.
+- Use feature-level shared components for repeated business flows (tables, selectors, dialogs, upload, calendar integration).
+- Keep app/page components in `features/`; move only reusable logic/UI into `shared/components/`.
+
+## Documentation contract
+
+When adding a new shared component, include:
+
+When adding a new shared component, include:
+
+- selector
+- path
+- intended use
+- whether it is generic or domain-specific

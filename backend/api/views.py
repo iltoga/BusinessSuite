@@ -57,7 +57,7 @@ from core.tasks.document_ocr import run_document_ocr_job
 from core.tasks.ocr import run_ocr_job
 from core.utils.dateutils import calculate_due_date
 from core.utils.pdf_converter import PDFConverter, PDFConverterError
-from customer_applications.models import DocApplication, Document, WorkflowNotification
+from customer_applications.models import DocApplication, DocWorkflow, Document, WorkflowNotification
 from customers.models import Customer
 from django.conf import settings
 from django.contrib.auth import logout as django_logout
@@ -69,7 +69,7 @@ from django.http import FileResponse, HttpResponse, JsonResponse, StreamingHttpR
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.utils import timezone
-from django.utils.text import slugify
+from django.utils.text import get_valid_filename, slugify
 from django.views.decorators.csrf import csrf_exempt
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema, extend_schema_view
@@ -93,19 +93,16 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 
-@api_view(["POST"])
-@permission_classes([AllowAny])
-def observability_log(request):
-    """Proxy endpoint for frontend observability logs.
+class OCRPlaceholderSerializer(serializers.Serializer):
+    """Schema placeholder for OCR viewset endpoints."""
 
-    Accepts JSON payloads with 'level', 'message', and optional 'metadata'.
-    Forwards message to the Django logger and returns 204 No Content so browser requests don't show 404s in dev.
-    """
-    payload = request.data
-    logger = logging.getLogger("observability")
-    # Log at info level; tests patch Logger.info
-    logger.info(payload.get("message", ""), extra={"level": payload.get("level"), "metadata": payload.get("metadata")})
-    return Response(status=status.HTTP_204_NO_CONTENT)
+
+class DocumentOCRPlaceholderSerializer(serializers.Serializer):
+    """Schema placeholder for Document OCR viewset endpoints."""
+
+
+class ComputePlaceholderSerializer(serializers.Serializer):
+    """Schema placeholder for Compute viewset endpoints."""
 
 
 @csrf_exempt
@@ -621,37 +618,95 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         serializer = self.get_serializer(products, many=True)
         return Response(serializer.data)
 
+    @action(detail=False, methods=["post"], url_path="export/start")
+    def export_start(self, request):
+        from products.tasks import run_product_export_job
 
-@extend_schema_view(
-    download_async_status=extend_schema(
-        parameters=[
-            OpenApiParameter(
-                "job_id", OpenApiTypes.UUID, OpenApiParameter.PATH, required=True, description="Download job UUID"
-            )
-        ]
-    ),
-    download_async_stream=extend_schema(
-        parameters=[
-            OpenApiParameter(
-                "job_id", OpenApiTypes.UUID, OpenApiParameter.PATH, required=True, description="Download job UUID"
-            )
-        ]
-    ),
-    download_async_file=extend_schema(
-        parameters=[
-            OpenApiParameter(
-                "job_id", OpenApiTypes.UUID, OpenApiParameter.PATH, required=True, description="Download job UUID"
-            )
-        ]
-    ),
-    import_job_status=extend_schema(
-        parameters=[
-            OpenApiParameter(
-                "job_id", OpenApiTypes.UUID, OpenApiParameter.PATH, required=True, description="Import job UUID"
-            )
-        ]
-    ),
-)
+        query = (
+            request.data.get("search_query") or request.data.get("searchQuery") or request.data.get("query") or ""
+        ).strip()
+
+        job = AsyncJob.objects.create(
+            task_name="products_export_excel",
+            status=AsyncJob.STATUS_PENDING,
+            progress=0,
+            message="Queued product export...",
+            created_by=request.user,
+        )
+
+        run_product_export_job(str(job.id), request.user.id if request.user else None, query)
+
+        return Response(
+            {
+                "job_id": str(job.id),
+                "status": job.status,
+                "progress": job.progress,
+            },
+            status=status.HTTP_202_ACCEPTED,
+        )
+
+    @action(detail=False, methods=["get"], url_path=r"export/download/(?P<job_id>[^/.]+)")
+    def export_download(self, request, job_id=None):
+        try:
+            job = AsyncJob.objects.get(id=job_id, created_by=request.user)
+        except AsyncJob.DoesNotExist:
+            return self.error_response("Job not found", status.HTTP_404_NOT_FOUND)
+
+        if job.status != AsyncJob.STATUS_COMPLETED:
+            return self.error_response("Job not completed yet", status.HTTP_400_BAD_REQUEST)
+
+        result = job.result or {}
+        file_path = result.get("file_path")
+        filename = result.get("filename") or "products_export.xlsx"
+        if not file_path:
+            return self.error_response("Export file not available", status.HTTP_400_BAD_REQUEST)
+        if not default_storage.exists(file_path):
+            return self.error_response("Export file not found", status.HTTP_404_NOT_FOUND)
+
+        response = FileResponse(
+            default_storage.open(file_path, "rb"),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
+    @action(detail=False, methods=["post"], url_path="import/start", parser_classes=[MultiPartParser, FormParser])
+    def import_start(self, request):
+        from products.tasks import run_product_import_job
+
+        uploaded = request.FILES.get("file")
+        if not uploaded:
+            return self.error_response("No file uploaded", status.HTTP_400_BAD_REQUEST)
+
+        filename = uploaded.name or "products_import.xlsx"
+        ext = os.path.splitext(filename.lower())[1]
+        if ext != ".xlsx":
+            return self.error_response("Only .xlsx files are supported", status.HTTP_400_BAD_REQUEST)
+
+        job = AsyncJob.objects.create(
+            task_name="products_import_excel",
+            status=AsyncJob.STATUS_PENDING,
+            progress=0,
+            message="Queued product import...",
+            created_by=request.user,
+        )
+
+        safe_name = get_valid_filename(os.path.basename(filename))
+        input_path = os.path.join("tmpfiles", "product_imports", str(job.id), safe_name)
+        saved_path = default_storage.save(input_path, uploaded)
+
+        run_product_import_job(str(job.id), request.user.id if request.user else None, saved_path)
+
+        return Response(
+            {
+                "job_id": str(job.id),
+                "status": job.status,
+                "progress": job.progress,
+            },
+            status=status.HTTP_202_ACCEPTED,
+        )
+
+
 class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     pagination_class = StandardResultsSetPagination
@@ -729,7 +784,7 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             invoice_applications_qs = invoice_applications_qs.prefetch_related("payments")
 
         return (
-            queryset.select_related("customer")
+            queryset.select_related("customer", "created_by", "updated_by")
             .prefetch_related(Prefetch("invoice_applications", queryset=invoice_applications_qs))
             .annotate(total_paid=Coalesce(Subquery(payment_subquery), Value(0), output_field=DecimalField()))
             .annotate(total_due=F("total_amount") - F("total_paid"))
@@ -937,7 +992,11 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             )
         ]
     )
-    @action(detail=False, methods=["get"], url_path=r"download-async/status/(?P<job_id>[^/.]+)")
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("job_id", OpenApiTypes.UUID, OpenApiParameter.PATH, required=True),
+        ]
+    )
     def download_async_status(self, request, job_id: uuid.UUID | None = None):
         try:
             job = InvoiceDownloadJob.objects.select_related("invoice").get(id=job_id)
@@ -965,7 +1024,11 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             )
         ]
     )
-    @action(detail=False, methods=["get"], url_path=r"download-async/stream/(?P<job_id>[^/.]+)")
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("job_id", OpenApiTypes.UUID, OpenApiParameter.PATH, required=True),
+        ]
+    )
     def download_async_stream(self, request, job_id: uuid.UUID | None = None):
         response = StreamingHttpResponse(self._stream_download_job(request, job_id), content_type="text/event-stream")
         response["Cache-Control"] = "no-cache"
@@ -1028,7 +1091,11 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             )
         ]
     )
-    @action(detail=False, methods=["get"], url_path=r"download-async/file/(?P<job_id>[^/.]+)")
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("job_id", OpenApiTypes.UUID, OpenApiParameter.PATH, required=True),
+        ]
+    )
     def download_async_file(self, request, job_id: uuid.UUID | None = None):
         try:
             job = InvoiceDownloadJob.objects.select_related("invoice", "invoice__customer").get(id=job_id)
@@ -1406,7 +1473,11 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             )
         ]
     )
-    @action(detail=False, methods=["get"], url_path=r"import/status/(?P<job_id>[^/.]+)")
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("job_id", OpenApiTypes.UUID, OpenApiParameter.PATH, required=True),
+        ]
+    )
     def import_job_status(self, request, job_id: uuid.UUID | None = None):
         """Get status of an import job."""
         from invoices.models import InvoiceImportJob
@@ -1429,6 +1500,11 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             }
         )
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("job_id", OpenApiTypes.UUID, OpenApiParameter.PATH, required=True),
+        ]
+    )
     @action(detail=False, methods=["get"], url_path=r"import/stream/(?P<job_id>[^/.]+)")
     def import_job_stream(self, request, job_id=None):
         """Stream SSE updates for a running import job."""
@@ -1641,7 +1717,20 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
         return (
             DocApplication.objects.select_related("customer", "product")
-            .prefetch_related("documents__doc_type", "workflows__task", "invoice_applications__invoice")
+            .prefetch_related(
+                Prefetch(
+                    "documents",
+                    queryset=Document.objects.select_related("doc_type", "created_by", "updated_by"),
+                ),
+                Prefetch(
+                    "workflows",
+                    queryset=DocWorkflow.objects.select_related("task", "created_by", "updated_by"),
+                ),
+                Prefetch(
+                    "invoice_applications",
+                    queryset=InvoiceApplication.objects.select_related("invoice"),
+                ),
+            )
             .annotate(
                 total_required_documents=Count("documents", filter=Q(documents__required=True)),
                 completed_required_documents=Count(
@@ -1685,6 +1774,30 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                 start_date=start_date_value,
             )
         )
+
+    def _get_application_workflow_or_none(self, *, application_id: int, workflow_id: int):
+        from customer_applications.models.doc_workflow import DocWorkflow
+
+        return (
+            DocWorkflow.objects.select_related("doc_application", "task")
+            .filter(pk=workflow_id, doc_application_id=application_id)
+            .first()
+        )
+
+    def _get_previous_workflow(self, workflow):
+        return (
+            workflow.doc_application.workflows.filter(task__step__lt=workflow.task.step)
+            .order_by("-task__step", "-created_at", "-id")
+            .first()
+        )
+
+    def _parse_request_date(self, value):
+        if not value:
+            return None
+        try:
+            return datetime.fromisoformat(str(value)).date()
+        except (TypeError, ValueError):
+            return None
 
     @extend_schema(responses={201: DocApplicationDetailSerializer})
     def create(self, request, *args, **kwargs):
@@ -1737,11 +1850,6 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         except DocApplication.DoesNotExist:
             return self.error_response("Application not found", status.HTTP_404_NOT_FOUND)
 
-        # If product requires documents but none exist at all -> incomplete
-        if application.product and (application.product.required_documents or "").strip():
-            if not application.documents.filter(required=True).exists():
-                return self.error_response("Document collection is not completed", status.HTTP_400_BAD_REQUEST)
-
         result = ApplicationLifecycleService().advance_workflow(application=application, user=request.user)
         self._queue_calendar_sync(
             application_id=result.application.id,
@@ -1789,30 +1897,135 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path=r"workflows/(?P<workflow_id>[^/.]+)/status")
     def update_workflow_status(self, request, pk=None, workflow_id=None):
         """Update the status of a workflow step for an application."""
-        from customer_applications.models.doc_workflow import DocWorkflow
+        from customer_applications.services.workflow_status_transition_service import (
+            WorkflowStatusTransitionError,
+            WorkflowStatusTransitionService,
+        )
 
         status_value = request.data.get("status")
-        valid_statuses = {choice[0] for choice in DocWorkflow.STATUS_CHOICES}
+        valid_statuses = WorkflowStatusTransitionService.valid_statuses()
 
         if not status_value or status_value not in valid_statuses:
             return self.error_response("Invalid workflow status", status.HTTP_400_BAD_REQUEST)
 
-        workflow = (
-            DocWorkflow.objects.select_related("doc_application").filter(pk=workflow_id, doc_application_id=pk).first()
-        )
+        workflow = self._get_application_workflow_or_none(application_id=pk, workflow_id=workflow_id)
         if not workflow:
             return self.error_response("Workflow not found", status.HTTP_404_NOT_FOUND)
 
-        workflow.status = status_value
-        workflow.updated_by = request.user
-        workflow.save()
-
-        workflow.doc_application.updated_by = request.user
-        workflow.doc_application.save()
-
         from api.serializers.doc_workflow_serializer import DocWorkflowSerializer
 
+        if workflow.status == status_value:
+            return Response(DocWorkflowSerializer(workflow).data)
+
+        try:
+            transition_result = WorkflowStatusTransitionService().transition(
+                workflow=workflow,
+                status_value=status_value,
+                user=request.user,
+            )
+        except WorkflowStatusTransitionError as exc:
+            return self.error_response(str(exc), status.HTTP_400_BAD_REQUEST)
+
+        if transition_result.changed:
+            self._queue_calendar_sync(
+                application_id=transition_result.application.id,
+                user_id=request.user.id,
+                previous_due_date=transition_result.previous_due_date,
+                start_date=transition_result.next_start_date,
+            )
+
         return Response(DocWorkflowSerializer(workflow).data)
+
+    @extend_schema(
+        request=OpenApiTypes.OBJECT,
+        responses=DocWorkflowSerializer,
+        parameters=[OpenApiParameter("workflow_id", OpenApiTypes.INT, OpenApiParameter.PATH)],
+    )
+    @action(detail=True, methods=["post"], url_path=r"workflows/(?P<workflow_id>[^/.]+)/due-date")
+    def update_workflow_due_date(self, request, pk=None, workflow_id=None):
+        """Update the due date for the current workflow step and sync application due date."""
+        from api.serializers.doc_workflow_serializer import DocWorkflowSerializer
+
+        workflow = self._get_application_workflow_or_none(application_id=pk, workflow_id=workflow_id)
+        if not workflow:
+            return self.error_response("Workflow not found", status.HTTP_404_NOT_FOUND)
+
+        due_date = self._parse_request_date(request.data.get("due_date"))
+        if due_date is None:
+            return self.error_response("Invalid workflow due date", status.HTTP_400_BAD_REQUEST)
+        if workflow.start_date and due_date < workflow.start_date:
+            return self.error_response("Workflow due date cannot be before start date", status.HTTP_400_BAD_REQUEST)
+
+        application = workflow.doc_application
+        current_workflow = application.current_workflow
+        if not current_workflow or current_workflow.id != workflow.id:
+            return self.error_response("Only the current task due date can be updated", status.HTTP_400_BAD_REQUEST)
+
+        previous_due_date = application.due_date
+        with transaction.atomic():
+            workflow.due_date = due_date
+            workflow.updated_by = request.user
+            workflow.save()
+
+            application.due_date = due_date
+            application.updated_by = request.user
+            application.save()
+            self._queue_calendar_sync(
+                application_id=application.id,
+                user_id=request.user.id,
+                previous_due_date=previous_due_date,
+            )
+
+        return Response(DocWorkflowSerializer(workflow).data, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        request=OpenApiTypes.OBJECT,
+        responses=DocApplicationDetailSerializer,
+        parameters=[OpenApiParameter("workflow_id", OpenApiTypes.INT, OpenApiParameter.PATH)],
+    )
+    @action(detail=True, methods=["post"], url_path=r"workflows/(?P<workflow_id>[^/.]+)/rollback")
+    def rollback_workflow(self, request, pk=None, workflow_id=None):
+        """Remove the current workflow step and reopen the previous step."""
+        from customer_applications.models.doc_workflow import DocWorkflow
+
+        workflow = self._get_application_workflow_or_none(application_id=pk, workflow_id=workflow_id)
+        if not workflow:
+            return self.error_response("Workflow not found", status.HTTP_404_NOT_FOUND)
+
+        application = workflow.doc_application
+        current_workflow = application.current_workflow
+        if not current_workflow or current_workflow.id != workflow.id:
+            return self.error_response("Only the current task can be rolled back", status.HTTP_400_BAD_REQUEST)
+        if workflow.task.step <= 1:
+            return self.error_response("Step 1 cannot be rolled back", status.HTTP_400_BAD_REQUEST)
+
+        previous_workflow = self._get_previous_workflow(workflow)
+        if not previous_workflow:
+            return self.error_response("Previous workflow not found", status.HTTP_400_BAD_REQUEST)
+
+        previous_due_date = application.due_date
+        with transaction.atomic():
+            workflow.delete()
+
+            previous_workflow.status = DocWorkflow.STATUS_PENDING
+            previous_workflow.updated_by = request.user
+            previous_workflow.save()
+
+            application.refresh_from_db()
+            current_after_rollback = application.current_workflow
+            if current_after_rollback and current_after_rollback.due_date:
+                application.due_date = current_after_rollback.due_date
+            application.updated_by = request.user
+            application.save()
+
+            self._queue_calendar_sync(
+                application_id=application.id,
+                user_id=request.user.id,
+                previous_due_date=previous_due_date,
+            )
+
+        application.refresh_from_db()
+        return Response(self._serialize_application_detail(application), status=status.HTTP_200_OK)
 
     @extend_schema(responses=OpenApiTypes.OBJECT)
     @action(detail=True, methods=["post"], url_path="reopen")
@@ -1842,6 +2055,8 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
         if application.status == DocApplication.STATUS_COMPLETED:
             return self.error_response("Application already completed", status.HTTP_400_BAD_REQUEST)
+        if application.status == DocApplication.STATUS_REJECTED:
+            return self.error_response("Rejected applications cannot be force closed", status.HTTP_400_BAD_REQUEST)
 
         application.status = DocApplication.STATUS_COMPLETED
         application.updated_by = request.user
@@ -2032,7 +2247,7 @@ class DocumentViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
 
 class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
-    serializer_class = serializers.Serializer
+    serializer_class = OCRPlaceholderSerializer
     """
     API endpoint for passport OCR extraction.
 
@@ -2156,7 +2371,7 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
 
 
 class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
-    serializer_class = serializers.Serializer
+    serializer_class = DocumentOCRPlaceholderSerializer
     """
     API endpoint for document OCR text extraction.
 
@@ -2270,7 +2485,7 @@ class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
 
 
 class ComputeViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
-    serializer_class = serializers.Serializer
+    serializer_class = ComputePlaceholderSerializer
     permission_classes = [IsAuthenticated]
 
     @action(detail=False, methods=["get"], url_path="doc_workflow_due_date/(?P<task_id>[^/.]+)/(?P<start_date>[^/.]+)")
@@ -2578,6 +2793,19 @@ class WorkflowNotificationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
 class PushNotificationViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
+    serializer_class = WebPushSubscriptionSerializer
+
+    def get_serializer_class(self):
+        action = getattr(self, "action", None)
+        action_map = {
+            "subscriptions": WebPushSubscriptionSerializer,
+            "register": WebPushSubscriptionUpsertSerializer,
+            "unregister": WebPushSubscriptionDeleteSerializer,
+            "test": PushNotificationTestSerializer,
+            "send_test": AdminPushNotificationSendSerializer,
+            "send_test_whatsapp": AdminWhatsappTestSendSerializer,
+        }
+        return action_map.get(action, self.serializer_class)
 
     def _ensure_admin(self, request):
         if not request.user or not request.user.is_staff:

@@ -228,6 +228,12 @@ export class ProductFormComponent implements OnInit {
     });
   }
 
+  documentsMinValidityLabel(): string {
+    return this.form.get('productType')?.value === 'visa'
+      ? 'Passport min validity (days)'
+      : 'Documents min validity (days)';
+  }
+
   save(): void {
     if (this.form.invalid || this.hasMultipleLastSteps()) {
       this.form.markAllAsTouched();

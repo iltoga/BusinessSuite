@@ -1,9 +1,8 @@
 import os
 
+from core.services.google_calendar_event_colors import GoogleCalendarEventColors
 from django.conf import settings
 from rest_framework.exceptions import APIException
-
-from core.services.google_calendar_event_colors import GoogleCalendarEventColors
 
 # Lazy import of google libraries so tests or environments without them fail fast with clear message
 try:
@@ -72,7 +71,7 @@ class GoogleClient:
 
         if time_min is None and not include_past:
             # Default to now to show upcoming events
-            time_min = datetime.datetime.utcnow().isoformat() + "Z"
+            time_min = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
         try:
             request_data = {
@@ -150,9 +149,13 @@ class GoogleClient:
                 "overrides": [{"method": "email", "minutes": 60}, {"method": "popup", "minutes": 10}],
             },
         }
+        if data.get("attendees"):
+            event_body["attendees"] = data.get("attendees")
         if data.get("extended_properties"):
             event_body["extendedProperties"] = data.get("extended_properties")
-        if data.get("color_id") is not None:
+        if data.get("colorId") is not None:
+            event_body["colorId"] = GoogleCalendarEventColors.validate_color_id(data.get("colorId"))
+        elif data.get("color_id") is not None:
             event_body["colorId"] = GoogleCalendarEventColors.validate_color_id(data.get("color_id"))
 
         if start_date and end_date:
@@ -184,8 +187,24 @@ class GoogleClient:
                 body["description"] = data["description"]
             if "extended_properties" in data:
                 body["extendedProperties"] = data["extended_properties"]
-            if "color_id" in data:
+            if "attendees" in data:
+                body["attendees"] = data["attendees"]
+            if "reminders" in data:
+                body["reminders"] = data["reminders"]
+            if "colorId" in data:
+                body["colorId"] = GoogleCalendarEventColors.validate_color_id(data["colorId"])
+            elif "color_id" in data:
                 body["colorId"] = GoogleCalendarEventColors.validate_color_id(data["color_id"])
+
+            if "start_date" in data:
+                body.setdefault("start", {})["date"] = data["start_date"]
+                body["start"].pop("dateTime", None)
+                body["start"].pop("timeZone", None)
+
+            if "end_date" in data:
+                body.setdefault("end", {})["date"] = data["end_date"]
+                body["end"].pop("dateTime", None)
+                body["end"].pop("timeZone", None)
 
             if "start_time" in data:
                 start_time = data["start_time"]
@@ -193,6 +212,7 @@ class GoogleClient:
                     start_time = start_time.isoformat()
                 body.setdefault("start", {})["dateTime"] = start_time
                 body.setdefault("start", {})["timeZone"] = TIMEZONE
+                body["start"].pop("date", None)
 
             if "end_time" in data:
                 end_time = data["end_time"]
@@ -200,6 +220,7 @@ class GoogleClient:
                     end_time = end_time.isoformat()
                 body.setdefault("end", {})["dateTime"] = end_time
                 body.setdefault("end", {})["timeZone"] = TIMEZONE
+                body["end"].pop("date", None)
 
             event = self.calendar_service.events().patch(calendarId=calendar_id, eventId=event_id, body=body).execute()
             return event

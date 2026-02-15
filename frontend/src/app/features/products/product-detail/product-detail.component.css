@@ -1,3 +1,38 @@
 :host {
   display: block;
 }
+
+.product-identity {
+  font-size: clamp(1.75rem, 3.2vw, 2.5rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+}
+
+.base-price-chip {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid hsl(var(--border));
+  border-radius: 9999px;
+  padding: 0.25rem 0.75rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: hsl(var(--foreground));
+  background: hsl(var(--accent) / 0.25);
+}
+
+.task-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.task-name {
+  font-weight: 500;
+}
+
+.task-description {
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: hsl(var(--muted-foreground));
+}

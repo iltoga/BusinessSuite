@@ -21,40 +21,104 @@
   <form [formGroup]="form" (ngSubmit)="onSubmit()" class="space-y-6">
     <app-form-error-summary [form]="form" [labels]="formErrorLabels" />
 
-    <!-- 1) Customer Type -->
+    <!-- 1) Identification & Documents -->
     <z-card class="overflow-hidden">
       <div class="bg-accent/30 px-6 py-4 border-b">
         <h2 class="text-sm font-semibold uppercase tracking-wider flex items-center gap-2">
-          <z-icon zType="users" class="h-4 w-4 text-primary" />
-          1. Customer Type
+          <z-icon zType="file-text" class="h-4 w-4 text-primary" />
+          1. Identification & Documents
         </h2>
       </div>
-      <div class="p-6">
-        <div class="space-y-2">
-          <label class="text-sm font-medium">Type <span class="text-destructive">*</span></label>
-          <div class="flex gap-6">
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input type="radio" formControlName="customer_type" value="person" class="w-4 h-4" />
-              <span>Person</span>
-            </label>
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input type="radio" formControlName="customer_type" value="company" class="w-4 h-4" />
-              <span>Company</span>
-            </label>
-          </div>
-        </div>
-      </div>
-    </z-card>
+      <div class="p-6 space-y-4">
+        <!-- Passport import area keeps same logic -->
+        @if (isPerson()) {
+          <div class="space-y-4 mb-6">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h4 class="text-base font-semibold">Import data from Passport</h4>
+                <p class="text-sm text-muted-foreground">
+                  Upload a passport image or PDF to auto-fill the form fields.
+                </p>
+              </div>
+              <label class="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  class="h-4 w-4"
+                  [checked]="ocrUseAi()"
+                  (change)="onToggleUseAi($event)"
+                />
+                <span>Use AI-enhanced extraction</span>
+              </label>
+            </div>
 
-    <!-- 2) Basic Information -->
-    <z-card class="overflow-hidden">
-      <div class="bg-accent/30 px-6 py-4 border-b">
-        <h2 class="text-sm font-semibold uppercase tracking-wider flex items-center gap-2">
-          <z-icon zType="user" class="h-4 w-4 text-primary" />
-          2. Basic Information
-        </h2>
-      </div>
-      <div class="p-6">
+            <app-file-upload
+              [label]="'Passport file (image or PDF)'"
+              [accept]="'image/*,application/pdf'"
+              [disabled]="ocrProcessing()"
+              [fileName]="passportFile()?.name ?? null"
+              [helperText]="'Supported: JPG, PNG, PDF'"
+              (fileSelected)="onPassportFileSelected($event)"
+              (cleared)="onPassportFileCleared()"
+            ></app-file-upload>
+
+            <div class="flex flex-wrap gap-3">
+              <button
+                type="button"
+                z-button
+                zType="default"
+                [zDisabled]="ocrProcessing()"
+                (click)="onPassportImport()"
+              >
+                {{ ocrProcessing() ? 'Processing...' : 'Import' }}
+              </button>
+              @if (ocrProcessing()) {
+                <span class="text-sm text-muted-foreground">Please wait while OCR runs.</span>
+              }
+            </div>
+
+            @if (ocrMessage()) {
+              <div
+                class="rounded-md border p-3 text-sm"
+                [class.border-green-500]="ocrMessageTone() === 'success'"
+                [class.text-green-600]="ocrMessageTone() === 'success'"
+                [class.border-yellow-500]="ocrMessageTone() === 'warning'"
+                [class.text-yellow-600]="ocrMessageTone() === 'warning'"
+                [class.border-red-500]="ocrMessageTone() === 'error'"
+                [class.text-red-600]="ocrMessageTone() === 'error'"
+                [class.border-slate-300]="ocrMessageTone() === 'info'"
+                [class.text-slate-600]="ocrMessageTone() === 'info'"
+              >
+                {{ ocrMessage() }}
+              </div>
+            }
+
+            @if (passportPreviewUrl()) {
+              <img class="passport-preview" [src]="passportPreviewUrl()" alt="Passport preview" />
+            }
+
+            <div class="space-y-2">
+              <label class="text-sm font-medium">Paste image from clipboard</label>
+              <div
+                class="passport-clipboard"
+                contenteditable="true"
+                (paste)="onPastePassport($event)"
+              >
+                Click here and press Cmd+V / Ctrl+V to paste an image
+              </div>
+              @if (passportPastePreviewUrl()) {
+                <img
+                  class="passport-preview"
+                  [src]="passportPastePreviewUrl()"
+                  alt="Clipboard preview"
+                />
+              }
+              @if (passportPasteStatus()) {
+                <p class="text-sm text-muted-foreground">{{ passportPasteStatus() }}</p>
+              }
+            </div>
+          </div>
+        }
+
         <div class="grid gap-6 md:grid-cols-12">
           @if (isPerson()) {
             <div class="md:col-span-2 space-y-2">
@@ -124,107 +188,6 @@
             </div>
           }
         </div>
-      </div>
-    </z-card>
-
-    <!-- 3) Identification & Documents -->
-    <z-card class="overflow-hidden">
-      <div class="bg-accent/30 px-6 py-4 border-b">
-        <h2 class="text-sm font-semibold uppercase tracking-wider flex items-center gap-2">
-          <z-icon zType="file-text" class="h-4 w-4 text-primary" />
-          3. Identification & Documents
-        </h2>
-      </div>
-      <div class="p-6 space-y-4">
-        <!-- Passport import area keeps same logic -->
-        @if (isPerson()) {
-          <div class="space-y-4 mb-6">
-            <div class="flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <h4 class="text-base font-semibold">Import data from Passport</h4>
-                <p class="text-sm text-muted-foreground">
-                  Upload a passport image or PDF to auto-fill the form fields.
-                </p>
-              </div>
-              <label class="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  class="h-4 w-4"
-                  [checked]="ocrUseAi()"
-                  (change)="onToggleUseAi($event)"
-                />
-                <span>Use AI-enhanced extraction</span>
-              </label>
-            </div>
-
-            <app-file-upload
-              [label]="'Passport file (image or PDF)'"
-              [accept]="'image/*,application/pdf'"
-              [disabled]="ocrProcessing()"
-              [progress]="ocrProcessing() ? 10 : null"
-              [fileName]="passportFile()?.name ?? null"
-              [helperText]="'Supported: JPG, PNG, PDF'"
-              (fileSelected)="onPassportFileSelected($event)"
-              (cleared)="onPassportFileCleared()"
-            ></app-file-upload>
-
-            <div class="flex flex-wrap gap-3">
-              <button
-                type="button"
-                z-button
-                zType="default"
-                [zDisabled]="ocrProcessing()"
-                (click)="onPassportImport()"
-              >
-                {{ ocrProcessing() ? 'Processing...' : 'Import' }}
-              </button>
-              @if (ocrProcessing()) {
-                <span class="text-sm text-muted-foreground">Please wait while OCR runs.</span>
-              }
-            </div>
-
-            @if (ocrMessage()) {
-              <div
-                class="rounded-md border p-3 text-sm"
-                [class.border-green-500]="ocrMessageTone() === 'success'"
-                [class.text-green-600]="ocrMessageTone() === 'success'"
-                [class.border-yellow-500]="ocrMessageTone() === 'warning'"
-                [class.text-yellow-600]="ocrMessageTone() === 'warning'"
-                [class.border-red-500]="ocrMessageTone() === 'error'"
-                [class.text-red-600]="ocrMessageTone() === 'error'"
-                [class.border-slate-300]="ocrMessageTone() === 'info'"
-                [class.text-slate-600]="ocrMessageTone() === 'info'"
-              >
-                {{ ocrMessage() }}
-              </div>
-            }
-
-            @if (passportPreviewUrl()) {
-              <img class="passport-preview" [src]="passportPreviewUrl()" alt="Passport preview" />
-            }
-
-            <div class="space-y-2">
-              <label class="text-sm font-medium">Paste image from clipboard</label>
-              <div
-                class="passport-clipboard"
-                contenteditable="true"
-                (paste)="onPastePassport($event)"
-              >
-                Click here and press Cmd+V / Ctrl+V to paste an image
-              </div>
-              @if (passportPastePreviewUrl()) {
-                <img
-                  class="passport-preview"
-                  [src]="passportPastePreviewUrl()"
-                  alt="Clipboard preview"
-                />
-              }
-              @if (passportPasteStatus()) {
-                <p class="text-sm text-muted-foreground">{{ passportPasteStatus() }}</p>
-              }
-            </div>
-          </div>
-        }
 
         <div class="grid gap-4 md:grid-cols-2">
           <div class="space-y-2">
@@ -290,12 +253,38 @@
       </div>
     </z-card>
 
-    <!-- 4) Contact Information -->
+    <!-- 2) Customer Type -->
+    <z-card class="overflow-hidden">
+      <div class="bg-accent/30 px-6 py-4 border-b">
+        <h2 class="text-sm font-semibold uppercase tracking-wider flex items-center gap-2">
+          <z-icon zType="users" class="h-4 w-4 text-primary" />
+          2. Customer Type
+        </h2>
+      </div>
+      <div class="p-6">
+        <div class="space-y-2">
+          <label class="text-sm font-medium">Type <span class="text-destructive">*</span></label>
+          <div class="flex gap-6">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="radio" formControlName="customer_type" value="person" class="w-4 h-4" />
+              <span>Person</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="radio" formControlName="customer_type" value="company" class="w-4 h-4" />
+              <span>Company</span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </z-card>
+
+
+    <!-- 3) Contact Information -->
     <z-card class="overflow-hidden">
       <div class="bg-accent/30 px-6 py-4 border-b">
         <h2 class="text-sm font-semibold uppercase tracking-wider flex items-center gap-2">
           <z-icon zType="mail" class="h-4 w-4 text-primary" />
-          4. Contact Information
+          3. Contact Information
         </h2>
       </div>
       <div class="p-6">
@@ -318,6 +307,38 @@
           <div class="space-y-2">
             <label class="text-sm font-medium">Telegram</label>
             <input z-input formControlName="telegram" placeholder="Telegram username/number" />
+          </div>
+        </div>
+      </div>
+    </z-card>
+
+    <!-- 4) Addresses -->
+    <z-card class="overflow-hidden">
+      <div class="bg-accent/30 px-6 py-4 border-b">
+        <h2 class="text-sm font-semibold uppercase tracking-wider flex items-center gap-2">
+          <z-icon zType="map-pin" class="h-4 w-4 text-primary" />
+          4. Addresses
+        </h2>
+      </div>
+      <div class="p-6">
+        <div class="grid gap-4 md:grid-cols-2">
+          <div class="space-y-2">
+            <label class="text-sm font-medium">Address Bali</label>
+            <textarea
+              z-input
+              formControlName="address_bali"
+              placeholder="Address in Bali"
+              rows="3"
+            ></textarea>
+          </div>
+          <div class="space-y-2">
+            <label class="text-sm font-medium">Address Abroad</label>
+            <textarea
+              z-input
+              formControlName="address_abroad"
+              placeholder="Address abroad"
+              rows="3"
+            ></textarea>
           </div>
         </div>
       </div>
@@ -349,44 +370,12 @@
       </div>
     </z-card>
 
-    <!-- 6) Addresses -->
-    <z-card class="overflow-hidden">
-      <div class="bg-accent/30 px-6 py-4 border-b">
-        <h2 class="text-sm font-semibold uppercase tracking-wider flex items-center gap-2">
-          <z-icon zType="map-pin" class="h-4 w-4 text-primary" />
-          6. Addresses
-        </h2>
-      </div>
-      <div class="p-6">
-        <div class="grid gap-4 md:grid-cols-2">
-          <div class="space-y-2">
-            <label class="text-sm font-medium">Address Bali</label>
-            <textarea
-              z-input
-              formControlName="address_bali"
-              placeholder="Address in Bali"
-              rows="3"
-            ></textarea>
-          </div>
-          <div class="space-y-2">
-            <label class="text-sm font-medium">Address Abroad</label>
-            <textarea
-              z-input
-              formControlName="address_abroad"
-              placeholder="Address abroad"
-              rows="3"
-            ></textarea>
-          </div>
-        </div>
-      </div>
-    </z-card>
-
-    <!-- 7) Notification Preferences -->
+    <!-- 6) Notification Preferences -->
     <z-card class="overflow-hidden">
       <div class="bg-accent/30 px-6 py-4 border-b">
         <h2 class="text-sm font-semibold uppercase tracking-wider flex items-center gap-2">
           <z-icon zType="bell" class="h-4 w-4 text-primary" />
-          7. Notification Preferences
+          6. Notification Preferences
         </h2>
       </div>
       <div class="p-6">

@@ -15,8 +15,32 @@ export interface GoogleCalendarEvent {
     description?: string;
     startTime: string;
     endTime: string;
+    attendees?: any | null;
+    notifications?: any | null;
+    /**
+     * * `1` - 1 * `2` - 2 * `3` - 3 * `4` - 4 * `5` - 5 * `6` - 6 * `7` - 7 * `8` - 8 * `9` - 9 * `10` - 10 * `11` - 11
+     */
+    colorId?: GoogleCalendarEvent.ColorIdEnum;
+    done?: boolean;
     readonly start: any | null;
     readonly end: any | null;
     readonly htmlLink: string;
 }
+export namespace GoogleCalendarEvent {
+    export const ColorIdEnum = {
+        _1: '1',
+        _2: '2',
+        _3: '3',
+        _4: '4',
+        _5: '5',
+        _6: '6',
+        _7: '7',
+        _8: '8',
+        _9: '9',
+        _10: '10',
+        _11: '11'
+    } as const;
+    export type ColorIdEnum = typeof ColorIdEnum[keyof typeof ColorIdEnum];
+}
+
 

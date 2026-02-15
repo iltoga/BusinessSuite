@@ -224,6 +224,16 @@ def _send_due_tomorrow_notification_for_application(
             notification.sent_at = timezone.now()
             result = "sent"
     except Exception as exc:
+        logger.error(
+            "Failed to deliver due-tomorrow customer notification: application_id=%s channel=%s recipient=%s "
+            "target_date=%s error_type=%s error=%s",
+            application.id,
+            channel,
+            recipient,
+            application.due_date.isoformat() if application.due_date else None,
+            type(exc).__name__,
+            str(exc),
+        )
         notification.status = WorkflowNotification.STATUS_FAILED
         notification.provider_message = str(exc)
         notification.external_reference = ""

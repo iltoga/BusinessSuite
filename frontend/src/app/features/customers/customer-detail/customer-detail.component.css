@@ -1,3 +1,37 @@
 :host {
   display: block;
 }
+
+.passport-magnifier-wrapper {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.passport-image {
+  display: block;
+}
+
+.passport-magnifier-lens {
+  position: absolute;
+  z-index: 2;
+  border: 2px solid rgb(255 255 255 / 70%);
+  border-radius: 9999px;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 30%);
+  pointer-events: none;
+  opacity: 0;
+  transform: scale(0.96);
+  transition: opacity 120ms ease, transform 120ms ease;
+  background-repeat: no-repeat;
+}
+
+.passport-magnifier-lens.active {
+  opacity: 1;
+  transform: scale(1);
+}
+
+@media (hover: none), (pointer: coarse) {
+  .passport-magnifier-lens {
+    display: none;
+  }
+}

@@ -87,6 +87,18 @@ def _parse_list(value, default=None):
     return [item for item in items if item]
 
 
+def _resolved_db_host():
+    host = (os.getenv("DB_HOST") or "").strip()
+    if not host:
+        return "localhost"
+
+    # Inside Docker, localhost points to the current container.
+    # If env still provides loopback, prefer the Compose service name.
+    if os.path.exists("/.dockerenv") and host in {"localhost", "127.0.0.1", "::1"}:
+        return "db"
+    return host
+
+
 MOCK_AUTH_ENABLED = _parse_bool(os.getenv("MOCK_AUTH_ENABLED", "False"))
 MOCK_AUTH_USERNAME = os.getenv("MOCK_AUTH_USERNAME", "mockuser")
 MOCK_AUTH_EMAIL = os.getenv("MOCK_AUTH_EMAIL", "mock@example.com")
@@ -259,7 +271,7 @@ else:
             "NAME": os.getenv("DB_NAME"),
             "USER": os.getenv("DB_USER"),
             "PASSWORD": os.getenv("DB_PASS"),
-            "HOST": os.getenv("DB_HOST"),
+            "HOST": _resolved_db_host(),
             "PORT": os.getenv("DB_PORT"),
             # Connection pooling - keep connections alive for 600 seconds
             "CONN_MAX_AGE": 600,
@@ -361,6 +373,12 @@ LOGIN_EXEMPT_URLS = (
     r"^logout/$",
     r"^api/.*$",  # match 'api/' and any subpaths
     r"^api-token-auth/$",
+    # Media/static assets are requested by the browser without Bearer headers.
+    # Keep these paths public so file/image URLs in the SPA can render.
+    r"^uploads/.*$",
+    r"^media/.*$",
+    r"^static/.*$",
+    r"^staticfiles/.*$",
 )
 
 LOGIN_REDIRECT_URL = "/"
@@ -445,6 +463,7 @@ SPECTACULAR_SETTINGS = {
     "PREPROCESSING_HOOKS": ["core.openapi.preprocess_exclude_api_views_without_serializer"],
     "POSTPROCESSING_HOOKS": [
         "core.openapi.postprocess_add_job_id_param",
+        "core.openapi.postprocess_fix_empty_204_responses",
         "core.openapi.postprocess_add_mock_paths",
     ],
     # ENUM_NAME_OVERRIDES maps a friendly enum name to a choices definition (import path or callable)
@@ -564,7 +583,7 @@ else:
         os.getenv("DB_NAME"),
         user=os.getenv("DB_USER"),
         password=os.getenv("DB_PASS"),
-        host=os.getenv("DB_HOST") or "localhost",
+        host=_resolved_db_host(),
         port=int(os.getenv("DB_PORT")) if os.getenv("DB_PORT") else 5432,
     )
 
@@ -736,6 +755,11 @@ LOGGING = {
             "level": DJANGO_LOG_LEVEL,
             "propagate": False,
         },
+        "django.request": {
+            "handlers": ["console", PRIMARY_HANDLER],
+            "level": "ERROR",
+            "propagate": False,
+        },
         "huey": {
             "handlers": ["console", PRIMARY_HANDLER],
             "level": "INFO",
@@ -749,6 +773,21 @@ LOGGING = {
         "core": {
             "handlers": ["console", PRIMARY_HANDLER],
             "level": "INFO",
+            "propagate": False,
+        },
+        "core.tasks.calendar_sync": {
+            "handlers": ["console", PRIMARY_HANDLER],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "core.signals_calendar": {
+            "handlers": ["console", PRIMARY_HANDLER],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "customer_applications.services.application_calendar_service": {
+            "handlers": ["console", PRIMARY_HANDLER],
+            "level": "DEBUG",
             "propagate": False,
         },
     },
@@ -774,13 +813,6 @@ OPENROUTER_API_BASE_URL = os.getenv("OPENROUTER_API_BASE_URL", "https://openrout
 # LLM Provider: "openrouter" for multi-provider access, "openai" for direct OpenAI API
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openrouter")
 LLM_DEFAULT_MODEL = os.getenv("LLM_DEFAULT_MODEL", "google/gemini-2.5-flash-lite")
-
-# Python 3.14+ Logging Performance Optimizations
-# Disable gathering of thread, process, and asyncio information to reduce overhead
-logging.logThreads = False
-logging.logProcesses = False
-logging.logMultiprocessing = False
-logging.logAsyncioTasks = False
 
 NOTIFICATION_FROM_EMAIL = os.getenv("NOTIFICATION_FROM_EMAIL", "dewi@revisbali.com")
 GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD")

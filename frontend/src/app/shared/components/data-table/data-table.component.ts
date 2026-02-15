@@ -20,7 +20,6 @@ import { FormsModule } from '@angular/forms';
 import { ShortcutHighlightPipe } from './shortcut-highlight.pipe';
 
 import { ZardButtonComponent } from '@/shared/components/button';
-import { ZardCheckboxComponent } from '@/shared/components/checkbox';
 import { ZardDropdownImports } from '@/shared/components/dropdown/dropdown.imports';
 import { ZardIconComponent, type ZardIcon } from '@/shared/components/icon';
 import { ZardSkeletonComponent } from '@/shared/components/skeleton';
@@ -33,6 +32,19 @@ export interface ColumnConfig<T = any> {
   sortable?: boolean;
   sortKey?: string;
   template?: TemplateRef<{ $implicit: T; value: any; row: T }>;
+  filter?: ColumnFilterConfig;
+}
+
+export interface ColumnFilterOption {
+  value: string;
+  label: string;
+}
+
+export interface ColumnFilterConfig {
+  options: readonly ColumnFilterOption[];
+  selectedValues?: readonly string[];
+  emptyLabel?: string;
+  searchPlaceholder?: string;
 }
 
 export interface PageEvent {
@@ -68,6 +80,11 @@ export interface SortEvent {
   direction: 'asc' | 'desc';
 }
 
+export interface ColumnFilterChangeEvent {
+  column: string;
+  values: string[];
+}
+
 @Component({
   selector: 'app-data-table',
   standalone: true,
@@ -79,7 +96,6 @@ export interface SortEvent {
     ...ZardDropdownImports,
     ...ZardTableImports,
     ZardSkeletonComponent,
-    ZardCheckboxComponent,
     // shortcut pipe for highlighting first letter
     ShortcutHighlightPipe,
   ],
@@ -94,6 +110,7 @@ export class DataTableComponent<T = Record<string, any>> implements AfterViewIni
   data = input.required<readonly T[]>();
   columns = input.required<readonly ColumnConfig<T>[]>();
   actions = input<readonly DataTableAction<T>[] | null>(null);
+  rowClass = input<((row: T) => string | null | undefined) | null>(null);
   totalItems = input<number>(0);
   isLoading = input<boolean>(false);
   skeletonRows = input<number>(10);
@@ -104,9 +121,11 @@ export class DataTableComponent<T = Record<string, any>> implements AfterViewIni
 
   pageChange = output<number>();
   sortChange = output<SortEvent>();
+  columnFilterChange = output<ColumnFilterChangeEvent>();
 
   private sortState = signal<SortEvent | null>(null);
   currentSort = computed(() => this.sortState());
+  readonly filterSearch = signal<Record<string, string>>({});
 
   // Speed dial / selection
   selectedRow = signal<T | null>(null);
@@ -494,5 +513,51 @@ export class DataTableComponent<T = Record<string, any>> implements AfterViewIni
         break;
       }
     }
+  }
+
+  hasActiveFilter(column: ColumnConfig<T>): boolean {
+    return Boolean(column.filter?.selectedValues?.length);
+  }
+
+  getSelectedFilterValues(column: ColumnConfig<T>): string[] {
+    return [...(column.filter?.selectedValues ?? [])];
+  }
+
+  isFilterValueSelected(column: ColumnConfig<T>, value: string): boolean {
+    return this.getSelectedFilterValues(column).includes(value);
+  }
+
+  onFilterSearchChange(columnKey: string, value: string): void {
+    this.filterSearch.update((current) => ({ ...current, [columnKey]: value }));
+  }
+
+  clearColumnFilter(column: ColumnConfig<T>, event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    this.columnFilterChange.emit({ column: column.key, values: [] });
+  }
+
+  toggleFilterValue(column: ColumnConfig<T>, value: string, event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    const selected = new Set(this.getSelectedFilterValues(column));
+    if (selected.has(value)) {
+      selected.delete(value);
+    } else {
+      selected.add(value);
+    }
+    this.columnFilterChange.emit({ column: column.key, values: [...selected] });
+  }
+
+  getFilteredOptions(column: ColumnConfig<T>): ColumnFilterOption[] {
+    const all = [...(column.filter?.options ?? [])];
+    const query = (this.filterSearch()[column.key] ?? '').trim().toLowerCase();
+    if (!query) {
+      return all;
+    }
+    return all.filter(
+      (option) =>
+        option.label.toLowerCase().includes(query) || option.value.toLowerCase().includes(query),
+    );
   }
 }

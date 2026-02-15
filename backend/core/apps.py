@@ -20,7 +20,8 @@ class CoreConfig(AppConfig):
         # so that our signal handlers integrate with the patched behavior.
         # Register our signal forwarder (if present)
         import core.signals  # noqa: F401
-        from core.tasks import cron_jobs, document_ocr, ocr  # noqa: F401
+        import core.signals_calendar  # noqa: F401
+        from core.tasks import calendar_sync, cron_jobs, document_ocr, ocr  # noqa: F401
 
         # Register models with django-auditlog automatically for apps listed in LOGGING_MODE
         try:

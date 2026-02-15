@@ -21,6 +21,11 @@ export interface DocApplicationDetail {
     readonly docDate: string;
     readonly dueDate: string | null;
     readonly addDeadlinesToCalendar: boolean;
+    readonly notifyCustomerToo: boolean;
+    /**
+     * * `email` - Email * `whatsapp` - WhatsApp
+     */
+    readonly notifyCustomerChannel: DocApplicationDetail.NotifyCustomerChannelEnum | null;
     /**
      * * `pending` - Pending * `processing` - Processing * `completed` - Completed * `rejected` - Rejected
      */
@@ -42,6 +47,11 @@ export interface DocApplicationDetail {
     readonly canForceClose: boolean;
 }
 export namespace DocApplicationDetail {
+    export const NotifyCustomerChannelEnum = {
+        Email: 'email',
+        Whatsapp: 'whatsapp'
+    } as const;
+    export type NotifyCustomerChannelEnum = typeof NotifyCustomerChannelEnum[keyof typeof NotifyCustomerChannelEnum];
     export const StatusEnum = {
         Pending: 'pending',
         Processing: 'processing',

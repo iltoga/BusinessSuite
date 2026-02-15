@@ -35,11 +35,10 @@ export class HelpDrawerComponent implements OnDestroy {
 
   private openSheet() {
     // Use service to open sheet with our content component
-    const ctx = this.help.context();
     this.sheetRef = this.sheet.create({
       zContent: HelpDrawerContentComponent,
-      zTitle: 'Help',
-      zDescription: '',
+      // Header and close button are rendered by HelpDrawerContentComponent
+      zClosable: false,
       zSide: 'right',
       zSize: 'default',
       zWidth: '420px',

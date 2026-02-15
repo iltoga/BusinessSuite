@@ -76,7 +76,7 @@ class DocApplicationSerializerWithRelations(serializers.ModelSerializer):
         Ready if all required documents are completed OR if the application
         has been marked as completed (e.g. force closed).
         """
-        if instance.status == DocApplication.STATUS_COMPLETED:
+        if instance.status in (DocApplication.STATUS_COMPLETED, DocApplication.STATUS_REJECTED):
             return True
         return instance.total_required_documents == instance.completed_required_documents
 
@@ -87,7 +87,7 @@ class DocApplicationSerializerWithRelations(serializers.ModelSerializer):
             return False
         return (
             request.user.has_perm("customer_applications.change_docapplication")
-            and instance.status != DocApplication.STATUS_COMPLETED
+            and instance.status not in (DocApplication.STATUS_COMPLETED, DocApplication.STATUS_REJECTED)
         )
 
     def to_representation(self, instance):
@@ -182,7 +182,7 @@ class DocApplicationDetailSerializer(serializers.ModelSerializer):
             return False
         return (
             request.user.has_perm("customer_applications.change_docapplication")
-            and instance.status != DocApplication.STATUS_COMPLETED
+            and instance.status not in (DocApplication.STATUS_COMPLETED, DocApplication.STATUS_REJECTED)
         )
 
 
@@ -263,13 +263,22 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
         # Pre-check if passport can be auto-imported to avoid creating placeholder
         has_auto_passport = self._can_auto_import_passport(application)
 
-        # Create provided documents
+        # Resolve document types once to avoid per-item queries.
+        normalized_doc_type_ids = []
         for dt in document_types:
-            doc_type_id = dt.get("doc_type_id") or dt.get("id")
-            required = dt.get("required", True)
+            raw_id = dt.get("doc_type_id") or dt.get("id")
             try:
-                doc_type = DocumentType.objects.get(pk=doc_type_id)
-            except DocumentType.DoesNotExist:
+                normalized_id = int(raw_id)
+            except (TypeError, ValueError):
+                normalized_id = None
+            normalized_doc_type_ids.append(normalized_id)
+        document_types_by_id = DocumentType.objects.in_bulk([doc_type_id for doc_type_id in normalized_doc_type_ids if doc_type_id])
+
+        # Create provided documents
+        for dt, doc_type_id in zip(document_types, normalized_doc_type_ids):
+            required = dt.get("required", True)
+            doc_type = document_types_by_id.get(doc_type_id)
+            if not doc_type:
                 raise serializers.ValidationError({"document_types": f"Invalid document type id: {doc_type_id}"})
 
             # Skip creating placeholder if passport will be auto-imported
@@ -296,7 +305,8 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
                 created_by=user,
                 status=DocWorkflow.STATUS_PENDING,
             )
-            step1.due_date = step1.calculate_workflow_due_date()
+            # Keep step 1 in sync with the application due date selected/saved at creation time.
+            step1.due_date = application.due_date or step1.calculate_workflow_due_date()
             step1.save()
 
         # Perform auto-import

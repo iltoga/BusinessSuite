@@ -26,10 +26,21 @@ tr.selected {
   }
 }
 
+/* Soft highlight for warning rows such as rejected applications. */
+tr.row-danger-soft:not(.selected) {
+  background-color: rgba(220, 38, 38, 0.075);
+}
+
 /* Styling for the highlighted shortcut letter in the menu */
 .dt-shortcut b {
   font-weight: 700;
   margin-right: 0.25rem;
+}
+
+.filter-active {
+  color: hsl(var(--primary));
+  border-color: hsl(var(--primary) / 0.35) !important;
+  background-color: hsl(var(--primary) / 0.08);
 }
 
 /* Make Added/Updated column wide enough for two datetime lines (createdAt / updatedAt)

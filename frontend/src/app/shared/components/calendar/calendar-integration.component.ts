@@ -7,6 +7,7 @@ import { DashboardWidgetComponent } from '@/shared/components/dashboard-widget/d
 import { ZardDialogService } from '@/shared/components/dialog';
 import type { ZardDialogRef } from '@/shared/components/dialog/dialog-ref';
 import { ZardIconComponent } from '@/shared/components/icon';
+import { ZardSkeletonComponent } from '@/shared/components/skeleton/skeleton.component';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import {
@@ -45,6 +46,7 @@ type CalendarEventViewModel = CalendarEventWithColor & {
     DashboardWidgetComponent,
     ZardButtonComponent,
     ZardIconComponent,
+    ZardSkeletonComponent,
     AppDatePipe,
   ],
   templateUrl: './calendar-integration.component.html',
@@ -117,9 +119,25 @@ export class CalendarIntegrationComponent implements OnInit {
       return [];
     }
 
-    return this.normalizedEvents().filter(
-      (event) => event.startDate >= tomorrowStart && event.startDate < weekEnd,
-    );
+    return this.normalizedEvents()
+      .filter((event) => event.startDate >= tomorrowStart && event.startDate < weekEnd)
+      .sort((left, right) => left.startDate.getTime() - right.startDate.getTime());
+  });
+
+  readonly overdueApplications = computed(() => {
+    const todayStart = this.startOfDay(new Date());
+    const oldestOverdueStart = new Date(todayStart);
+    oldestOverdueStart.setDate(oldestOverdueStart.getDate() - 14);
+
+    return this.normalizedEvents()
+      .filter(
+        (event) =>
+          this.isApplicationEvent(event) &&
+          !event.isDone &&
+          event.startDate.getTime() < todayStart.getTime() &&
+          event.startDate.getTime() >= oldestOverdueStart.getTime(),
+      )
+      .sort((left, right) => right.startDate.getTime() - left.startDate.getTime());
   });
 
   readonly monthGrid = computed(() => {
@@ -227,15 +245,15 @@ export class CalendarIntegrationComponent implements OnInit {
 
   toggleEventDone(event: CalendarEventViewModel, domEvent?: Event): void {
     domEvent?.stopPropagation();
-    if (!event.id || this.isEventUpdating(event.id)) {
+    if (!event.id || event.isDone || this.isEventUpdating(event.id)) {
       return;
     }
 
     this.setEventUpdating(event.id, true);
-    const targetColorId = event.isDone ? this.todoColorId() : this.doneColorId();
+    const targetColorId = this.doneColorId();
 
     this.calendarService
-      .calendarPartialUpdate(event.id, { done: !event.isDone } as unknown as GoogleCalendarEvent)
+      .calendarPartialUpdate(event.id, { done: true } as unknown as GoogleCalendarEvent)
       .pipe(finalize(() => this.setEventUpdating(event.id, false)))
       .subscribe({
         next: (updatedEvent) => {
@@ -253,6 +271,24 @@ export class CalendarIntegrationComponent implements OnInit {
           this.ensureSelectedTodayEvent();
         },
       });
+  }
+
+  confirmOverdueApplicationDone(event: CalendarEventViewModel, domEvent?: Event): void {
+    domEvent?.stopPropagation();
+    if (!event.id || event.isDone || this.isEventUpdating(event.id)) {
+      return;
+    }
+
+    this.dialogService.create({
+      zTitle: 'Complete overdue application',
+      zContent: `Mark "${event.summary}" as completed?`,
+      zOkText: 'Complete',
+      zCancelText: 'Cancel',
+      zOkDestructive: false,
+      zOnOk: () => {
+        this.toggleEventDone(event);
+      },
+    });
   }
 
   isEventUpdating(eventId: string): boolean {
@@ -330,6 +366,16 @@ export class CalendarIntegrationComponent implements OnInit {
 
   private isDoneEvent(event: CalendarEventWithColor): boolean {
     return event.colorId === this.doneColorId();
+  }
+
+  private isApplicationEvent(event: CalendarEventViewModel): boolean {
+    return event.summary.trimStart().startsWith('[Application #');
+  }
+
+  private startOfDay(date: Date): Date {
+    const normalized = new Date(date);
+    normalized.setHours(0, 0, 0, 0);
+    return normalized;
   }
 
   private getConfigColorId<K extends keyof AppConfig>(key: K, fallback: string): string {

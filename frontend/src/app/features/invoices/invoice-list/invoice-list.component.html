@@ -22,12 +22,7 @@
         [placeholder]="'Search invoices...'"
         (queryChange)="onQueryChange($event)"
         (tabOut)="dataTable.focusFirstRowIfNone()"
-        [contextHelp]="{
-          id: '/invoices/search',
-          briefExplanation: 'Search Invoices',
-          details:
-            'Search invoices by invoice number, customer, or notes. Use the checkbox to hide paid invoices.',
-        }"
+        [contextHelp]="'/invoices/search'"
       >
         <div class="flex items-center gap-3">
           <div class="flex items-center gap-2">
@@ -50,12 +45,7 @@
               zType="destructive"
               zSize="sm"
               (click)="openBulkDeleteDialog()"
-              [contextHelp]="{
-                id: '/invoices/bulk-delete',
-                briefExplanation: 'Bulk delete invoices',
-                details:
-                  'Deletes selected or all invoices. Optionally also delete related applications when chosen.',
-              }"
+              [contextHelp]="'/invoices/bulk-delete'"
             >
               {{ bulkDeleteLabel() }}
             </z-button>

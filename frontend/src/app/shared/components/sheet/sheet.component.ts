@@ -90,11 +90,11 @@ export class ZardSheetOptions<T, U> {
       </header>
     }
 
-    <main class="flex w-full flex-col space-y-4">
+    <main class="flex-1 w-full flex flex-col overflow-hidden">
       <ng-template cdkPortalOutlet />
 
       @if (isStringContent) {
-        <div data-testid="z-content" data-slot="sheet-content" [innerHTML]="config.zContent"></div>
+        <div data-testid="z-content" data-slot="sheet-content" class="overflow-y-auto p-4" [innerHTML]="config.zContent"></div>
       }
     </main>
 

@@ -33,7 +33,6 @@ import {
   ZardSkeletonComponent,
 } from '@/shared/components/skeleton';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
-import { HelpService } from '@/shared/services/help.service';
 
 @Component({
   selector: 'app-product-detail',
@@ -60,7 +59,6 @@ export class ProductDetailComponent implements OnInit {
   private productsApi = inject(ProductsService);
   private toast = inject(GlobalToastService);
   private platformId = inject(PLATFORM_ID);
-  private help = inject(HelpService);
 
   private readonly lastStepTemplate =
     viewChild.required<TemplateRef<{ $implicit: TaskNested; value: any; row: TaskNested }>>(
@@ -69,6 +67,14 @@ export class ProductDetailComponent implements OnInit {
   private readonly notifyCustomerTemplate =
     viewChild.required<TemplateRef<{ $implicit: TaskNested; value: any; row: TaskNested }>>(
       'notifyCustomerTemplate',
+    );
+  private readonly taskTemplate =
+    viewChild.required<TemplateRef<{ $implicit: TaskNested; value: any; row: TaskNested }>>(
+      'taskTemplate',
+    );
+  private readonly addToCalendarTemplate =
+    viewChild.required<TemplateRef<{ $implicit: TaskNested; value: any; row: TaskNested }>>(
+      'addToCalendarTemplate',
     );
 
   readonly product = signal<ProductDetail | null>(null);
@@ -89,9 +95,10 @@ export class ProductDetailComponent implements OnInit {
 
   readonly taskColumns = computed<ColumnConfig<TaskNested>[]>(() => [
     { key: 'step', header: 'Step' },
-    { key: 'name', header: 'Task' },
+    { key: 'name', header: 'Task', template: this.taskTemplate() },
     { key: 'duration', header: 'Duration (days)' },
-    { key: 'notifyDaysBefore', header: 'Notify (days)' },
+    { key: 'addTaskToCalendar', header: 'Add to calendar', template: this.addToCalendarTemplate() },
+    { key: 'notifyDaysBefore', header: 'Notify days before' },
     { key: 'notifyCustomer', header: 'Notify user', template: this.notifyCustomerTemplate() },
     { key: 'lastStep', header: 'Last step', template: this.lastStepTemplate() },
   ]);
@@ -155,20 +162,16 @@ export class ProductDetailComponent implements OnInit {
     return type ?? '—';
   }
 
+  documentsMinValidityLabel(type?: string | null): string {
+    return type === 'visa' ? 'Passport min validity (days)' : 'Docs min validity (days)';
+  }
+
   private loadProduct(id: number): void {
     this.isLoading.set(true);
     this.productsApi.productsRetrieve(id).subscribe({
       next: (product) => {
         this.product.set(product);
         this.isLoading.set(false);
-
-        // Update contextual help for this specific product
-        this.help.setContext({
-          id: `/products/${id}`,
-          briefExplanation: `Product: ${product.name || product.id}. Manage pricing, required documents, and workflow steps.`,
-          details:
-            'Edit pricing, required documents, and workflow steps. Use the task list to define the application workflow for this product.',
-        });
       },
       error: () => {
         this.toast.error('Failed to load product');

@@ -114,7 +114,9 @@ The Angular app initializes Firebase using these settings.
 ### Backend Services
 
 - **`core.services.push_notifications.PushNotificationService`**: High-level service to send messages.
+  - File: `backend/core/services/push_notifications/push_notification_service.py`
 - **`core.services.push_notifications.FcmClient`**: Low-level client wrapping HTTP v1 API.
+  - File: `backend/core/services/push_notifications/fcm_client.py`
 
 ## 5. Usage
 

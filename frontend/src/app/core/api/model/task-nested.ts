@@ -18,7 +18,8 @@ export interface TaskNested {
     duration?: number;
     durationIsBusinessDays?: boolean;
     notifyDaysBefore?: number;
-    addTaskToCalendar?: boolean;
     notifyCustomer?: boolean;
+    addTaskToCalendar?: boolean;
     lastStep?: boolean;
 }
+

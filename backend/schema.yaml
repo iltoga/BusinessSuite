@@ -296,8 +296,11 @@ paths:
   /api/calendar/:
     get:
       operationId: calendarList
-      description: A simple ViewSet for listing, creating, retrieving, updating and
-        deleting Google Calendar Events.
+      description: |-
+        Local-mirror calendar API.
+
+        CRUD operations update `CalendarEvent` records and signals queue asynchronous
+        synchronization to Google Calendar through Huey tasks.
       tags:
       - calendar
       security:
@@ -314,8 +317,11 @@ paths:
           description: ''
     post:
       operationId: calendarCreate
-      description: A simple ViewSet for listing, creating, retrieving, updating and
-        deleting Google Calendar Events.
+      description: |-
+        Local-mirror calendar API.
+
+        CRUD operations update `CalendarEvent` records and signals queue asynchronous
+        synchronization to Google Calendar through Huey tasks.
       tags:
       - calendar
       requestBody:
@@ -346,8 +352,11 @@ paths:
   /api/calendar/{id}/:
     get:
       operationId: calendarRetrieve
-      description: A simple ViewSet for listing, creating, retrieving, updating and
-        deleting Google Calendar Events.
+      description: |-
+        Local-mirror calendar API.
+
+        CRUD operations update `CalendarEvent` records and signals queue asynchronous
+        synchronization to Google Calendar through Huey tasks.
       parameters:
       - in: path
         name: id
@@ -368,7 +377,11 @@ paths:
           description: ''
     put:
       operationId: calendarUpdate
-      description: Full update (PUT) - delegates to patch behavior in Google API.
+      description: |-
+        Local-mirror calendar API.
+
+        CRUD operations update `CalendarEvent` records and signals queue asynchronous
+        synchronization to Google Calendar through Huey tasks.
       parameters:
       - in: path
         name: id
@@ -404,8 +417,11 @@ paths:
           description: ''
     patch:
       operationId: calendarPartialUpdate
-      description: A simple ViewSet for listing, creating, retrieving, updating and
-        deleting Google Calendar Events.
+      description: |-
+        Local-mirror calendar API.
+
+        CRUD operations update `CalendarEvent` records and signals queue asynchronous
+        synchronization to Google Calendar through Huey tasks.
       parameters:
       - in: path
         name: id
@@ -441,8 +457,11 @@ paths:
           description: ''
     delete:
       operationId: calendarDestroy
-      description: A simple ViewSet for listing, creating, retrieving, updating and
-        deleting Google Calendar Events.
+      description: |-
+        Local-mirror calendar API.
+
+        CRUD operations update `CalendarEvent` records and signals queue asynchronous
+        synchronization to Google Calendar through Huey tasks.
       parameters:
       - in: path
         name: id
@@ -573,7 +592,7 @@ paths:
           description: ''
     post:
       operationId: customerApplicationsCreate
-      description: Create application asynchronously.
+      description: Create application synchronously and queue calendar sync in Huey.
       tags:
       - customer-applications
       requestBody:
@@ -595,11 +614,11 @@ paths:
       - jwtAuth: []
       - cookieAuth: []
       responses:
-        '202':
+        '201':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AsyncJob'
+                $ref: '#/components/schemas/DocApplicationDetail'
           description: ''
   /api/customer-applications/{id}/:
     get:
@@ -625,7 +644,7 @@ paths:
           description: ''
     put:
       operationId: customerApplicationsUpdate
-      description: Update application asynchronously.
+      description: Update application synchronously and queue calendar sync in Huey.
       parameters:
       - in: path
         name: id
@@ -654,11 +673,11 @@ paths:
       - jwtAuth: []
       - cookieAuth: []
       responses:
-        '202':
+        '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AsyncJob'
+                $ref: '#/components/schemas/DocApplicationDetail'
           description: ''
     patch:
       operationId: customerApplicationsPartialUpdate
@@ -698,8 +717,8 @@ paths:
           description: ''
     delete:
       operationId: customerApplicationsDestroy
-      description: Allow optional deletion of linked invoices when deleting an application
-        asynchronously.
+      description: Delete application synchronously and queue calendar cleanup in
+        Huey.
       parameters:
       - in: query
         name: deleteInvoices
@@ -721,16 +740,13 @@ paths:
       - jwtAuth: []
       - cookieAuth: []
       responses:
-        '202':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AsyncJob'
+        '204':
           description: ''
   /api/customer-applications/{id}/advance-workflow/:
     post:
       operationId: customerApplicationsAdvanceWorkflowCreate
-      description: Complete current workflow and create next step asynchronously.
+      description: Complete current workflow synchronously and queue calendar sync
+        in Huey.
       parameters:
       - in: path
         name: id
@@ -845,6 +861,99 @@ paths:
               schema:
                 type: object
                 additionalProperties: {}
+          description: ''
+  /api/customer-applications/{id}/workflows/{workflowId}/due-date/:
+    post:
+      operationId: customerApplicationsWorkflowsDueDateCreate
+      description: Update the due date for the current workflow step and sync application
+        due date.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this doc application.
+        required: true
+      - in: path
+        name: workflowId
+        schema:
+          type: integer
+        required: true
+      tags:
+      - customer-applications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+          '*/*':
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocWorkflow'
+          description: ''
+  /api/customer-applications/{id}/workflows/{workflowId}/rollback/:
+    post:
+      operationId: customerApplicationsWorkflowsRollbackCreate
+      description: Remove the current workflow step and reopen the previous step.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this doc application.
+        required: true
+      - in: path
+        name: workflowId
+        schema:
+          type: integer
+        required: true
+      tags:
+      - customer-applications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+          '*/*':
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocApplicationDetail'
           description: ''
   /api/customer-applications/{id}/workflows/{workflowId}/status/:
     post:
@@ -2339,6 +2448,7 @@ paths:
         name: jobId
         schema:
           type: string
+          format: uuid
         required: true
       tags:
       - invoices
@@ -2854,6 +2964,57 @@ paths:
               schema:
                 $ref: '#/components/schemas/Product'
           description: ''
+  /api/products/export/download/{jobId}/:
+    get:
+      operationId: productsExportDownloadRetrieve
+      parameters:
+      - in: path
+        name: jobId
+        schema:
+          type: string
+        required: true
+      tags:
+      - products
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+          description: ''
+  /api/products/export/start/:
+    post:
+      operationId: productsExportStartCreate
+      tags:
+      - products
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Product'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Product'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Product'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/Product'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+          description: ''
   /api/products/get_product_by_id/{productId}/:
     get:
       operationId: productsGetProductByIdRetrieve
@@ -2902,6 +3063,208 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Product'
+          description: ''
+  /api/products/import/start/:
+    post:
+      operationId: productsImportStartCreate
+      tags:
+      - products
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Product'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Product'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+          description: ''
+  /api/push-notifications/register/:
+    post:
+      operationId: pushNotificationsRegisterCreate
+      tags:
+      - push-notifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebPushSubscriptionUpsert'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WebPushSubscriptionUpsert'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WebPushSubscriptionUpsert'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/WebPushSubscriptionUpsert'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebPushSubscriptionUpsert'
+          description: ''
+  /api/push-notifications/send-test/:
+    post:
+      operationId: pushNotificationsSendTestCreate
+      tags:
+      - push-notifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminPushNotificationSend'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AdminPushNotificationSend'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AdminPushNotificationSend'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/AdminPushNotificationSend'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminPushNotificationSend'
+          description: ''
+  /api/push-notifications/send-test-whatsapp/:
+    post:
+      operationId: pushNotificationsSendTestWhatsappCreate
+      tags:
+      - push-notifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminWhatsappTestSend'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AdminWhatsappTestSend'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AdminWhatsappTestSend'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/AdminWhatsappTestSend'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminWhatsappTestSend'
+          description: ''
+  /api/push-notifications/subscriptions/:
+    get:
+      operationId: pushNotificationsSubscriptionsRetrieve
+      tags:
+      - push-notifications
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebPushSubscription'
+          description: ''
+  /api/push-notifications/test/:
+    post:
+      operationId: pushNotificationsTestCreate
+      tags:
+      - push-notifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PushNotificationTest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PushNotificationTest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PushNotificationTest'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/PushNotificationTest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PushNotificationTest'
+          description: ''
+  /api/push-notifications/unregister/:
+    post:
+      operationId: pushNotificationsUnregisterCreate
+      tags:
+      - push-notifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebPushSubscriptionDelete'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WebPushSubscriptionDelete'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WebPushSubscriptionDelete'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/WebPushSubscriptionDelete'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebPushSubscriptionDelete'
+          description: ''
+  /api/push-notifications/users/:
+    get:
+      operationId: pushNotificationsUsersRetrieve
+      tags:
+      - push-notifications
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebPushSubscription'
           description: ''
   /api/server-management/clear-cache/:
     post:
@@ -3572,8 +3935,11 @@ paths:
   /api/v1/calendar/:
     get:
       operationId: v1CalendarList
-      description: A simple ViewSet for listing, creating, retrieving, updating and
-        deleting Google Calendar Events.
+      description: |-
+        Local-mirror calendar API.
+
+        CRUD operations update `CalendarEvent` records and signals queue asynchronous
+        synchronization to Google Calendar through Huey tasks.
       tags:
       - v1
       security:
@@ -3590,8 +3956,11 @@ paths:
           description: ''
     post:
       operationId: v1CalendarCreate
-      description: A simple ViewSet for listing, creating, retrieving, updating and
-        deleting Google Calendar Events.
+      description: |-
+        Local-mirror calendar API.
+
+        CRUD operations update `CalendarEvent` records and signals queue asynchronous
+        synchronization to Google Calendar through Huey tasks.
       tags:
       - v1
       requestBody:
@@ -3622,8 +3991,11 @@ paths:
   /api/v1/calendar/{id}/:
     get:
       operationId: v1CalendarRetrieve
-      description: A simple ViewSet for listing, creating, retrieving, updating and
-        deleting Google Calendar Events.
+      description: |-
+        Local-mirror calendar API.
+
+        CRUD operations update `CalendarEvent` records and signals queue asynchronous
+        synchronization to Google Calendar through Huey tasks.
       parameters:
       - in: path
         name: id
@@ -3644,7 +4016,11 @@ paths:
           description: ''
     put:
       operationId: v1CalendarUpdate
-      description: Full update (PUT) - delegates to patch behavior in Google API.
+      description: |-
+        Local-mirror calendar API.
+
+        CRUD operations update `CalendarEvent` records and signals queue asynchronous
+        synchronization to Google Calendar through Huey tasks.
       parameters:
       - in: path
         name: id
@@ -3680,8 +4056,11 @@ paths:
           description: ''
     patch:
       operationId: v1CalendarPartialUpdate
-      description: A simple ViewSet for listing, creating, retrieving, updating and
-        deleting Google Calendar Events.
+      description: |-
+        Local-mirror calendar API.
+
+        CRUD operations update `CalendarEvent` records and signals queue asynchronous
+        synchronization to Google Calendar through Huey tasks.
       parameters:
       - in: path
         name: id
@@ -3717,8 +4096,11 @@ paths:
           description: ''
     delete:
       operationId: v1CalendarDestroy
-      description: A simple ViewSet for listing, creating, retrieving, updating and
-        deleting Google Calendar Events.
+      description: |-
+        Local-mirror calendar API.
+
+        CRUD operations update `CalendarEvent` records and signals queue asynchronous
+        synchronization to Google Calendar through Huey tasks.
       parameters:
       - in: path
         name: id
@@ -3849,7 +4231,7 @@ paths:
           description: ''
     post:
       operationId: v1CustomerApplicationsCreate
-      description: Create application asynchronously.
+      description: Create application synchronously and queue calendar sync in Huey.
       tags:
       - v1
       requestBody:
@@ -3871,11 +4253,11 @@ paths:
       - jwtAuth: []
       - cookieAuth: []
       responses:
-        '202':
+        '201':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AsyncJob'
+                $ref: '#/components/schemas/DocApplicationDetail'
           description: ''
   /api/v1/customer-applications/{id}/:
     get:
@@ -3901,7 +4283,7 @@ paths:
           description: ''
     put:
       operationId: v1CustomerApplicationsUpdate
-      description: Update application asynchronously.
+      description: Update application synchronously and queue calendar sync in Huey.
       parameters:
       - in: path
         name: id
@@ -3930,11 +4312,11 @@ paths:
       - jwtAuth: []
       - cookieAuth: []
       responses:
-        '202':
+        '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AsyncJob'
+                $ref: '#/components/schemas/DocApplicationDetail'
           description: ''
     patch:
       operationId: v1CustomerApplicationsPartialUpdate
@@ -3974,8 +4356,8 @@ paths:
           description: ''
     delete:
       operationId: v1CustomerApplicationsDestroy
-      description: Allow optional deletion of linked invoices when deleting an application
-        asynchronously.
+      description: Delete application synchronously and queue calendar cleanup in
+        Huey.
       parameters:
       - in: query
         name: deleteInvoices
@@ -3997,16 +4379,13 @@ paths:
       - jwtAuth: []
       - cookieAuth: []
       responses:
-        '202':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AsyncJob'
+        '204':
           description: ''
   /api/v1/customer-applications/{id}/advance-workflow/:
     post:
       operationId: v1CustomerApplicationsAdvanceWorkflowCreate
-      description: Complete current workflow and create next step asynchronously.
+      description: Complete current workflow synchronously and queue calendar sync
+        in Huey.
       parameters:
       - in: path
         name: id
@@ -4121,6 +4500,99 @@ paths:
               schema:
                 type: object
                 additionalProperties: {}
+          description: ''
+  /api/v1/customer-applications/{id}/workflows/{workflowId}/due-date/:
+    post:
+      operationId: v1CustomerApplicationsWorkflowsDueDateCreate
+      description: Update the due date for the current workflow step and sync application
+        due date.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this doc application.
+        required: true
+      - in: path
+        name: workflowId
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+          '*/*':
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocWorkflow'
+          description: ''
+  /api/v1/customer-applications/{id}/workflows/{workflowId}/rollback/:
+    post:
+      operationId: v1CustomerApplicationsWorkflowsRollbackCreate
+      description: Remove the current workflow step and reopen the previous step.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this doc application.
+        required: true
+      - in: path
+        name: workflowId
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+          '*/*':
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocApplicationDetail'
           description: ''
   /api/v1/customer-applications/{id}/workflows/{workflowId}/status/:
     post:
@@ -5615,6 +6087,7 @@ paths:
         name: jobId
         schema:
           type: string
+          format: uuid
         required: true
       tags:
       - v1
@@ -6130,6 +6603,57 @@ paths:
               schema:
                 $ref: '#/components/schemas/Product'
           description: ''
+  /api/v1/products/export/download/{jobId}/:
+    get:
+      operationId: v1ProductsExportDownloadRetrieve
+      parameters:
+      - in: path
+        name: jobId
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+          description: ''
+  /api/v1/products/export/start/:
+    post:
+      operationId: v1ProductsExportStartCreate
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Product'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Product'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Product'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/Product'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+          description: ''
   /api/v1/products/get_product_by_id/{productId}/:
     get:
       operationId: v1ProductsGetProductByIdRetrieve
@@ -6178,6 +6702,208 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Product'
+          description: ''
+  /api/v1/products/import/start/:
+    post:
+      operationId: v1ProductsImportStartCreate
+      tags:
+      - v1
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Product'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Product'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+          description: ''
+  /api/v1/push-notifications/register/:
+    post:
+      operationId: v1PushNotificationsRegisterCreate
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebPushSubscriptionUpsert'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WebPushSubscriptionUpsert'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WebPushSubscriptionUpsert'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/WebPushSubscriptionUpsert'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebPushSubscriptionUpsert'
+          description: ''
+  /api/v1/push-notifications/send-test/:
+    post:
+      operationId: v1PushNotificationsSendTestCreate
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminPushNotificationSend'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AdminPushNotificationSend'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AdminPushNotificationSend'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/AdminPushNotificationSend'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminPushNotificationSend'
+          description: ''
+  /api/v1/push-notifications/send-test-whatsapp/:
+    post:
+      operationId: v1PushNotificationsSendTestWhatsappCreate
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminWhatsappTestSend'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AdminWhatsappTestSend'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AdminWhatsappTestSend'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/AdminWhatsappTestSend'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminWhatsappTestSend'
+          description: ''
+  /api/v1/push-notifications/subscriptions/:
+    get:
+      operationId: v1PushNotificationsSubscriptionsRetrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebPushSubscription'
+          description: ''
+  /api/v1/push-notifications/test/:
+    post:
+      operationId: v1PushNotificationsTestCreate
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PushNotificationTest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PushNotificationTest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PushNotificationTest'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/PushNotificationTest'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PushNotificationTest'
+          description: ''
+  /api/v1/push-notifications/unregister/:
+    post:
+      operationId: v1PushNotificationsUnregisterCreate
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebPushSubscriptionDelete'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WebPushSubscriptionDelete'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WebPushSubscriptionDelete'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/WebPushSubscriptionDelete'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebPushSubscriptionDelete'
+          description: ''
+  /api/v1/push-notifications/users/:
+    get:
+      operationId: v1PushNotificationsUsersRetrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebPushSubscription'
           description: ''
   /api/v1/server-management/clear-cache/:
     post:
@@ -7113,29 +7839,44 @@ paths:
       summary: Mock Auth Config
       tags:
       - Mock
-  /api/client-logs/:
-    post:
-      operationId: postClientLogs
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                level:
-                  type: string
-                message:
-                  type: string
-                metadata:
-                  type: object
-      responses:
-        '204':
-          description: No Content
-      summary: Mocked Client Logs for Prism
-      tags:
-      - Mock
 components:
   schemas:
+    AdminPushNotificationSend:
+      type: object
+      properties:
+        title:
+          type: string
+          default: Revis Bali CRM Notification
+          maxLength: 120
+        body:
+          type: string
+          default: Push notification test completed.
+          maxLength: 500
+        data:
+          type: object
+          additionalProperties: {}
+        link:
+          type: string
+          default: ''
+        user_id:
+          type: integer
+          minimum: 1
+      required:
+      - user_id
+    AdminWhatsappTestSend:
+      type: object
+      properties:
+        to:
+          type: string
+          default: ''
+        subject:
+          type: string
+          default: Revis Bali CRM WhatsApp Test
+          maxLength: 120
+        body:
+          type: string
+          default: WhatsApp test message from Revis Bali CRM.
+          maxLength: 1000
     AsyncJob:
       type: object
       properties:
@@ -7485,6 +8226,20 @@ components:
           nullable: true
         add_deadlines_to_calendar:
           type: boolean
+        notify_customer_too:
+          type: boolean
+        notify_customer_channel:
+          enum:
+          - email
+          - whatsapp
+          - ''
+          - null
+          type: string
+          description: |-
+            * `email` - Email
+            * `whatsapp` - WhatsApp
+          x-spec-enum-id: 419230b23f0b5bdd
+          nullable: true
         document_types:
           type: array
           items:
@@ -7522,6 +8277,21 @@ components:
         add_deadlines_to_calendar:
           type: boolean
           readOnly: true
+        notify_customer_too:
+          type: boolean
+          readOnly: true
+        notify_customer_channel:
+          enum:
+          - email
+          - whatsapp
+          - null
+          type: string
+          description: |-
+            * `email` - Email
+            * `whatsapp` - WhatsApp
+          x-spec-enum-id: 419230b23f0b5bdd
+          readOnly: true
+          nullable: true
         status:
           enum:
           - pending
@@ -7608,6 +8378,8 @@ components:
       - is_document_collection_completed
       - next_task
       - notes
+      - notify_customer_channel
+      - notify_customer_too
       - product
       - status
       - str_field
@@ -7993,6 +8765,38 @@ components:
         end_time:
           type: string
           format: date-time
+          writeOnly: true
+        attendees: {}
+        notifications: {}
+        colorId:
+          enum:
+          - '1'
+          - '2'
+          - '3'
+          - '4'
+          - '5'
+          - '6'
+          - '7'
+          - '8'
+          - '9'
+          - '10'
+          - '11'
+          type: string
+          description: |-
+            * `1` - 1
+            * `2` - 2
+            * `3` - 3
+            * `4` - 4
+            * `5` - 5
+            * `6` - 6
+            * `7` - 7
+            * `8` - 8
+            * `9` - 9
+            * `10` - 10
+            * `11` - 11
+          x-spec-enum-id: 288816a990461073
+        done:
+          type: boolean
           writeOnly: true
         start:
           readOnly: true
@@ -8829,6 +9633,23 @@ components:
       - tasks
       - updated_at
       - updated_by
+    PushNotificationTest:
+      type: object
+      properties:
+        title:
+          type: string
+          default: Revis Bali CRM Notification
+          maxLength: 120
+        body:
+          type: string
+          default: Push notification test completed.
+          maxLength: 500
+        data:
+          type: object
+          additionalProperties: {}
+        link:
+          type: string
+          default: ''
     SuratPermohonanCustomerData:
       type: object
       properties:
@@ -8903,6 +9724,8 @@ components:
           type: integer
           maximum: 2147483647
           minimum: 0
+        notify_customer:
+          type: boolean
         last_step:
           type: boolean
       required:
@@ -8939,6 +9762,8 @@ components:
           type: integer
           maximum: 2147483647
           minimum: 0
+        notify_customer:
+          type: boolean
         add_task_to_calendar:
           type: boolean
         last_step:
@@ -9006,6 +9831,64 @@ components:
         dark_mode:
           type: boolean
         preferences: {}
+    WebPushSubscription:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        device_label:
+          type: string
+          readOnly: true
+        is_active:
+          type: boolean
+          readOnly: true
+        last_error:
+          type: string
+          readOnly: true
+        last_seen_at:
+          type: string
+          format: date-time
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - device_label
+      - id
+      - is_active
+      - last_error
+      - last_seen_at
+      - updated_at
+    WebPushSubscriptionDelete:
+      type: object
+      properties:
+        token:
+          type: string
+          maxLength: 512
+      required:
+      - token
+    WebPushSubscriptionUpsert:
+      type: object
+      properties:
+        token:
+          type: string
+          maxLength: 512
+        device_label:
+          type: string
+          default: ''
+          maxLength: 255
+        user_agent:
+          type: string
+          default: ''
+      required:
+      - token
     WorkflowNotification:
       type: object
       properties:
@@ -9030,6 +9913,7 @@ components:
           x-spec-enum-id: a046de4b9ad561bf
         channel:
           type: string
+          default: email
           maxLength: 20
         subject:
           type: string
@@ -9038,11 +9922,10 @@ components:
           type: string
         recipient:
           type: string
-          format: email
-          maxLength: 254
+          maxLength: 255
         scheduled_for:
           type: string
-          format: date
+          format: date-time
           nullable: true
         sent_at:
           type: string
@@ -9055,6 +9938,14 @@ components:
         external_reference:
           type: string
           readOnly: true
+        notification_type:
+          type: string
+          default: ''
+          maxLength: 64
+        target_date:
+          type: string
+          format: date
+          nullable: true
         created_at:
           type: string
           format: date-time

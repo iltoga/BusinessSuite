@@ -19,7 +19,9 @@ EXEMPT_PREFIXES = (
     "api",
     "__debug__",
     "static",
+    "staticfiles",
     "media",
+    "uploads",
     # Keep auth routes available even when Django views are disabled
     "login",
     "logout",

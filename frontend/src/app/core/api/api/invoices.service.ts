@@ -1258,7 +1258,7 @@ export class InvoicesService extends BaseService {
             }
         }
 
-        let localVarPath = `/api/invoices/import/stream/${this.configuration.encodeParam({name: "jobId", value: jobId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: undefined})}/`;
+        let localVarPath = `/api/invoices/import/stream/${this.configuration.encodeParam({name: "jobId", value: jobId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/`;
         const { basePath, withCredentials } = this.configuration;
         return this.httpClient.request<InvoiceList>('get', `${basePath}${localVarPath}`,
             {

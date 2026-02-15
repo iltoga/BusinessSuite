@@ -26,24 +26,137 @@ try {
 import express from 'express';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import { promises as fs } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { generateNonce } from './csp';
 
 const browserDistFolder = join(import.meta.dirname, '../browser');
 
 const app = express();
 const angularApp = new AngularNodeAppEngine();
+const clientLogPath = '/_observability/client-logs';
+const clientLogWindowMs = Number(process.env['CLIENT_LOG_RATE_LIMIT_WINDOW_MS'] || '60000');
+const clientLogMaxPerWindow = Number(process.env['CLIENT_LOG_RATE_LIMIT_MAX'] || '60');
+
+type ClientLogBucket = {
+  windowStartMs: number;
+  count: number;
+};
+
+const clientLogBuckets = new Map<string, ClientLogBucket>();
+
+const frontendLogPath =
+  process.env['FE_LOG_FILE_PATH'] ||
+  (process.env['NODE_ENV'] === 'production'
+    ? '/logs/frontend.log'
+    : join(process.cwd(), '..', 'backend', 'logs', 'frontend.log'));
+
+const appendServerLog = (level: string, args: unknown[]) => {
+  const timestamp = new Date().toISOString();
+  const serialized = args
+    .map((arg) => {
+      if (typeof arg === 'string') return arg;
+      try {
+        return JSON.stringify(arg);
+      } catch {
+        return String(arg);
+      }
+    })
+    .join(' ');
+  const line = `[SSR] [${level.toUpperCase()}] [${timestamp}] ${serialized}\n`;
+  fs.mkdir(dirname(frontendLogPath), { recursive: true })
+    .then(() => fs.appendFile(frontendLogPath, line))
+    .catch(() => {
+      // Best effort only; do not break request handling on log write failures.
+    });
+};
+
+const originalConsole = {
+  log: console.log.bind(console),
+  info: console.info.bind(console),
+  warn: console.warn.bind(console),
+  error: console.error.bind(console),
+  debug: console.debug.bind(console),
+};
+
+console.log = (...args: unknown[]) => {
+  originalConsole.log(...args);
+  appendServerLog('log', args);
+};
+console.info = (...args: unknown[]) => {
+  originalConsole.info(...args);
+  appendServerLog('info', args);
+};
+console.warn = (...args: unknown[]) => {
+  originalConsole.warn(...args);
+  appendServerLog('warn', args);
+};
+console.error = (...args: unknown[]) => {
+  originalConsole.error(...args);
+  appendServerLog('error', args);
+};
+console.debug = (...args: unknown[]) => {
+  originalConsole.debug(...args);
+  appendServerLog('debug', args);
+};
+
+const getClientRateKey = (req: express.Request) => {
+  const xff = req.headers['x-forwarded-for'];
+  const forwardedIp = Array.isArray(xff) ? xff[0] : typeof xff === 'string' ? xff.split(',')[0] : '';
+  const ip = forwardedIp?.trim() || req.ip || 'unknown';
+  const userAgent = String(req.headers['user-agent'] || '').slice(0, 120);
+  return `${ip}|${userAgent}`;
+};
+
+const isClientLogRateLimited = (key: string, nowMs: number) => {
+  if (clientLogBuckets.size > 2000) {
+    for (const [bucketKey, bucket] of clientLogBuckets.entries()) {
+      if (nowMs - bucket.windowStartMs > clientLogWindowMs * 2) {
+        clientLogBuckets.delete(bucketKey);
+      }
+    }
+  }
+
+  const existing = clientLogBuckets.get(key);
+  if (!existing || nowMs - existing.windowStartMs >= clientLogWindowMs) {
+    clientLogBuckets.set(key, { windowStartMs: nowMs, count: 1 });
+    return false;
+  }
+
+  existing.count += 1;
+  if (existing.count > clientLogMaxPerWindow) {
+    // Avoid flooding SSR logs while still indicating drops happened.
+    if (existing.count === clientLogMaxPerWindow + 1) {
+      console.warn(
+        `[BROWSER] [WARN] [${new Date(nowMs).toISOString()}] client log rate limit reached key=${key} window_ms=${clientLogWindowMs} max=${clientLogMaxPerWindow}`,
+      );
+    }
+    return true;
+  }
+
+  return false;
+};
 
 /**
  * Handle browser-side logs - Must be defined BEFORE proxy to avoid being forwarded to Django backend
  */
-app.post('/api/client-logs', express.json(), (req, res) => {
-  const { level, message, details, url } = req.body;
-  const timestamp = new Date().toISOString();
-  // Prefix helps Grafana/Alloy filters
-  const logMessage = `[BROWSER] [${level?.toUpperCase() || 'INFO'}] [${timestamp}] ${url ? '(' + url + ') ' : ''}${message}${details ? ' ' + JSON.stringify(details) : ''}`;
+app.post(clientLogPath, express.json({ limit: '16kb' }), (req, res) => {
+  const nowMs = Date.now();
+  const rateKey = getClientRateKey(req);
+  if (isClientLogRateLimited(rateKey, nowMs)) {
+    // Return 204 to keep browser console/network noise low.
+    res.sendStatus(204);
+    return;
+  }
 
-  switch (level) {
+  const { level, message, details, url } = req.body || {};
+  const timestamp = new Date().toISOString();
+  const normalizedLevel =
+    level === 'error' || level === 'warn' || level === 'debug' || level === 'info' ? level : 'info';
+  const truncatedMessage = String(message || '').slice(0, 4000);
+  // Prefix helps Grafana/Alloy filters
+  const logMessage = `[BROWSER] [${normalizedLevel.toUpperCase()}] [${timestamp}] ${url ? '(' + url + ') ' : ''}${truncatedMessage}${details ? ' ' + JSON.stringify(details) : ''}`;
+
+  switch (normalizedLevel) {
     case 'error':
       console.error(logMessage);
       break;
@@ -56,6 +169,7 @@ app.post('/api/client-logs', express.json(), (req, res) => {
     default:
       console.info(logMessage);
   }
+
   res.sendStatus(204);
 });
 
@@ -71,7 +185,7 @@ app.use(
     changeOrigin: true,
     secure: false,
     logger: console,
-    pathFilter: ['/api', '/media', '/staticfiles'],
+    pathFilter: ['/api', '/media', '/uploads', '/staticfiles'],
   }),
 );
 

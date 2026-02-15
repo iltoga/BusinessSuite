@@ -1,6 +1,6 @@
 FROM oven/bun:latest AS bun
 
-FROM node:20-slim AS builder
+FROM node:24-slim AS builder
 
 WORKDIR /app
 
@@ -34,5 +34,5 @@ ENV NODE_ENV=production
 ENV PORT=4000
 
 EXPOSE 4000
-# Ensure logs directory exists and redirect stdout/stderr to /logs/frontend.log and stdout via tee so Grafana Alloy can scrape both
-CMD ["sh", "-c", "mkdir -p /logs && exec bun dist/business-suite-frontend/server/server.mjs 2>&1 | tee -a /logs/frontend.log"]
+# Ensure logs directory exists; frontend server writes logs to file and console.
+CMD ["sh", "-c", "mkdir -p /logs && exec bun dist/business-suite-frontend/server/server.mjs"]

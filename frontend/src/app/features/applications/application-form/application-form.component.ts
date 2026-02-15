@@ -1,5 +1,5 @@
-import { CustomerApplicationsService } from '@/core/api/api/customer-applications.service';
 import { ComputeService } from '@/core/api/api/compute.service';
+import { CustomerApplicationsService } from '@/core/api/api/customer-applications.service';
 import { CustomersService } from '@/core/api/api/customers.service';
 import { DocumentTypesService } from '@/core/api/api/document-types.service';
 import { ProductsService } from '@/core/api/api/products.service';
@@ -109,7 +109,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
   readonly formErrorLabels: Record<string, string> = {
     customer: 'Customer',
     product: 'Product',
-    docDate: 'Document Date',
+    docDate: 'Application Date',
     dueDate: 'Due Date',
     addDeadlinesToCalendar: 'Add deadlines to calendar',
     notifyCustomer: 'Notify customer',
@@ -309,18 +309,21 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
         const docDate = app.docDate ? new Date(app.docDate) : new Date();
         const customerId = Number(app.customer?.id ?? app.customer);
         const productId = Number(app.product?.id ?? app.product);
-        this.form.patchValue({
-          customer: String(customerId),
-          product: productId ? String(productId) : null,
-          docDate: docDate,
-          dueDate: app.dueDate ? new Date(app.dueDate) : docDate,
-          addDeadlinesToCalendar: app.addDeadlinesToCalendar ?? true,
-          notifyCustomer:
-            app.notifyCustomer ?? app.notifyCustomerToo ?? app.notify_customer_too ?? false,
-          notifyCustomerChannel:
-            app.notifyCustomerChannel ?? app.notify_customer_channel ?? 'whatsapp',
-          notes: app.notes ?? '',
-        }, { emitEvent: false });
+        this.form.patchValue(
+          {
+            customer: String(customerId),
+            product: productId ? String(productId) : null,
+            docDate: docDate,
+            dueDate: app.dueDate ? new Date(app.dueDate) : docDate,
+            addDeadlinesToCalendar: app.addDeadlinesToCalendar ?? true,
+            notifyCustomer:
+              app.notifyCustomer ?? app.notifyCustomerToo ?? app.notify_customer_too ?? false,
+            notifyCustomerChannel:
+              app.notifyCustomerChannel ?? app.notify_customer_channel ?? 'whatsapp',
+            notes: app.notes ?? '',
+          },
+          { emitEvent: false },
+        );
         if (customerId) {
           this.loadCustomerDetail(customerId);
         }
@@ -375,7 +378,11 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
     this.productsService.productsGetProductByIdRetrieve(productId).subscribe({
       next: (data: any) => {
         const deadlineTask = this.getCalendarTaskFromProduct(data);
-        this.nextDeadlineTaskName.set(this.getTaskName(deadlineTask));
+        // Do not clear an already computed label from productsRetrieve() if this
+        // lighter endpoint does not include task details.
+        if (deadlineTask) {
+          this.nextDeadlineTaskName.set(this.getTaskName(deadlineTask));
+        }
 
         this.documentsArray.clear();
         let passportAutoImported = false;
@@ -504,12 +511,16 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
 
   private getCalendarTaskFromProduct(product: any): any | null {
     const tasks = Array.isArray(product?.tasks) ? product.tasks : [];
-    return (
-      tasks.find(
-        (task: any) => task?.addTaskToCalendar === true || task?.add_task_to_calendar === true,
-      ) ??
-      null
+    if (!tasks.length) return null;
+
+    const calendarTask = tasks.find(
+      (task: any) => task?.addTaskToCalendar === true || task?.add_task_to_calendar === true,
     );
+
+    // Fallback: if no explicit calendar flag is available, infer from earliest step.
+    if (calendarTask) return calendarTask;
+    const sortedTasks = [...tasks].sort((a: any, b: any) => (a?.step ?? 0) - (b?.step ?? 0));
+    return sortedTasks[0] ?? null;
   }
 
   private getTaskName(task: any): string | null {
