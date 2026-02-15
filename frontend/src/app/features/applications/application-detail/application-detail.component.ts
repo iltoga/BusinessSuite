@@ -46,7 +46,6 @@ import {
 } from '@/shared/components/skeleton';
 import { ZardTooltipImports } from '@/shared/components/tooltip';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
-import { HelpService } from '@/shared/services/help.service';
 import { downloadBlob } from '@/shared/utils/file-download';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 
@@ -97,7 +96,6 @@ export class ApplicationDetailComponent implements OnInit {
   private destroyRef = inject(DestroyRef);
   private platformId = inject(PLATFORM_ID);
   private readonly isBrowser = isPlatformBrowser(this.platformId);
-  private help = inject(HelpService);
   private http = inject(HttpClient);
 
   readonly application = signal<ApplicationDetail | null>(null);
@@ -1033,16 +1031,6 @@ export class ApplicationDetailComponent implements OnInit {
         this.editableNotes.set(normalized?.notes ?? '');
         this.isLoading.set(false);
         this.isSavingMeta.set(false);
-
-        // Update contextual help for this specific application
-        const cust = normalized?.customer?.fullName ?? 'unknown customer';
-        const product = normalized?.product?.name ?? 'unknown product';
-        this.help.setContext({
-          id: `/applications/${id}`,
-          briefExplanation: `Application #${id} for ${cust} (${product}).`,
-          details:
-            'Use Tasks Timeline to follow each stage of the application from top to bottom. Update only the latest task status, and the next task appears automatically. Completed or rejected tasks stay in history, and you can still create an invoice if the application is completed or rejected.',
-        });
       },
       error: (error) => {
         this.toast.error(extractServerErrorMessage(error) || 'Failed to load application');

@@ -150,6 +150,7 @@ services:
       PORT: 4000
       BACKEND_URL: http://bs-core:8000
       # LOKI_URL: http://bs-loki:3100/loki/api/v1/push
+      FE_LOG_FILE_PATH: /logs/frontend.log
     ports:
       - 4200:4000
     volumes:
@@ -167,7 +168,6 @@ services:
       - bs-loki
     volumes:
       - ./grafana/alloy/config-local.alloy:/etc/alloy/config.alloy:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
       - type: bind
         source: ./backend/logs
         target: /host_logs

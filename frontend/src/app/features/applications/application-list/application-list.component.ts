@@ -38,7 +38,6 @@ import { PaginationControlsComponent } from '@/shared/components/pagination-cont
 import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
 import { ContextHelpDirective } from '@/shared/directives';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
-import { HelpService } from '@/shared/services/help.service';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 
 @Component({
@@ -68,7 +67,6 @@ export class ApplicationListComponent implements OnInit {
   private toast = inject(GlobalToastService);
   private router = inject(Router);
   private platformId = inject(PLATFORM_ID);
-  private help = inject(HelpService);
 
   readonly items = signal<DocApplicationSerializerWithRelations[]>([]);
   readonly isLoading = signal(false);
@@ -261,9 +259,6 @@ export class ApplicationListComponent implements OnInit {
     if (st.searchQuery) {
       this.query.set(String(st.searchQuery));
     }
-    // Ensure help context is set immediately for this view
-    this.help.setContextForPath('/applications');
-
     this.load();
   }
 

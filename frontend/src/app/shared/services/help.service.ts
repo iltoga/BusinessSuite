@@ -1,4 +1,5 @@
-import { Injectable, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Injectable, inject, signal } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { filter } from 'rxjs/operators';
 
@@ -9,12 +10,14 @@ export interface HelpLink {
 
 export interface HelpContext {
   id?: string;
-  briefExplanation: string;
+  briefExplanation?: string;
   details?: string;
+  contentUrl?: string;
 }
 
 @Injectable({ providedIn: 'root' })
 export class HelpService {
+  private readonly http = inject(HttpClient);
   private readonly _visible = signal(false);
   readonly visible = this._visible.asReadonly();
 
@@ -25,161 +28,55 @@ export class HelpService {
   private readonly _context = signal<HelpContext | null>(null);
   readonly context = this._context.asReadonly();
 
+  private readonly _helpContent = signal<string | null>(null);
+  readonly helpContent = this._helpContent.asReadonly();
+
+  private readonly _isLoading = signal(false);
+  readonly isLoading = this._isLoading.asReadonly();
+
   // Simple registry for help contexts by id or path prefix
   private readonly registry = new Map<string, HelpContext>([
+    ['/', { id: '/', contentUrl: '/help/dashboard/index.md' }],
+    ['/customers', { id: '/customers', contentUrl: '/help/customers/list.md' }],
+    ['/customers/new', { id: '/customers/new', contentUrl: '/help/customers/new.md' }],
+    ['/customers/', { id: '/customers/', contentUrl: '/help/customers/detail.md' }],
     [
-      '/',
-      {
-        id: '/',
-        briefExplanation:
-          'The Dashboard provides an overview of the visa processing system, including quick links to key features and recent activities.',
-        details:
-          'Use the navigation menu to access different sections. Check the summary cards for quick stats.',
-      },
+      '/customers/bulk-delete',
+      { id: '/customers/bulk-delete', contentUrl: '/help/customers/bulk-delete.md' },
+    ],
+    ['/applications', { id: '/applications', contentUrl: '/help/applications/list.md' }],
+    ['/applications/new', { id: '/applications/new', contentUrl: '/help/applications/new.md' }],
+    ['/applications/', { id: '/applications/', contentUrl: '/help/applications/detail.md' }],
+    [
+      '/applications/search',
+      { id: '/applications/search', contentUrl: '/help/applications/search.md' },
     ],
     [
-      '/customers',
-      {
-        id: '/customers',
-        briefExplanation:
-          'The Customers view is used to manage customer records in the visa processing system. It allows searching, viewing, editing, and creating new customers.',
-        details:
-          'Use the search bar to find customers by name, email, or passport. Filter by status (active/disabled). Click on a customer to view details. Use the actions menu for editing or creating applications. The table supports sorting and pagination.',
-      },
+      '/applications/bulk-delete',
+      { id: '/applications/bulk-delete', contentUrl: '/help/applications/bulk-delete.md' },
     ],
-    // More specific customer routes
+    ['/products', { id: '/products', contentUrl: '/help/products/list.md' }],
+    ['/products/new', { id: '/products/new', contentUrl: '/help/products/new.md' }],
+    ['/products/', { id: '/products/', contentUrl: '/help/products/detail.md' }],
+    ['/products/search', { id: '/products/search', contentUrl: '/help/products/search.md' }],
     [
-      '/customers/new',
-      {
-        id: '/customers/new',
-        briefExplanation: 'Create a new customer record in the system.',
-        details:
-          'Fill in the customer details form. Required fields include name, email, and nationality. Save to add the customer.',
-      },
+      '/products/bulk-delete',
+      { id: '/products/bulk-delete', contentUrl: '/help/products/bulk-delete.md' },
     ],
+    ['/invoices', { id: '/invoices', contentUrl: '/help/invoices/list.md' }],
+    ['/invoices/new', { id: '/invoices/new', contentUrl: '/help/invoices/new.md' }],
+    ['/invoices/import', { id: '/invoices/import', contentUrl: '/help/invoices/import.md' }],
+    ['/invoices/', { id: '/invoices/', contentUrl: '/help/invoices/detail.md' }],
+    ['/invoices/search', { id: '/invoices/search', contentUrl: '/help/invoices/search.md' }],
     [
-      '/customers/',
-      {
-        id: '/customers/',
-        briefExplanation:
-          'View and edit customer profile details, including personal information, applications, and invoices.',
-        details:
-          'Navigate through tabs to see customer info, applications, and invoices. Use edit buttons to modify details.',
-      },
+      '/invoices/bulk-delete',
+      { id: '/invoices/bulk-delete', contentUrl: '/help/invoices/bulk-delete.md' },
     ],
-    [
-      '/invoices',
-      {
-        id: '/invoices',
-        briefExplanation:
-          'The Invoices view allows managing invoice creation, listing, and payment tracking for customer applications.',
-        details: 'View all invoices, filter by status, create new invoices, and track payments.',
-      },
-    ],
-    [
-      '/products',
-      {
-        id: '/products',
-        briefExplanation: 'Manage the product catalog and pricing for visa services.',
-        details: 'Add, edit, or remove products. Set pricing and descriptions.',
-      },
-    ],
-    // Applications
-    [
-      '/applications',
-      {
-        id: '/applications',
-        briefExplanation:
-          'The Applications view lists customer applications (DocApplication). Use it to search, filter, and take bulk actions on applications.',
-        details:
-          'Click an application to open its detail view. Use the search bar to filter by customer, product, or notes. Use the actions menu to edit, create invoices (shortcut: i), or force-close applications.',
-      },
-    ],
-    [
-      '/applications/new',
-      {
-        id: '/applications/new',
-        briefExplanation: 'Create a new customer application.',
-        details:
-          'Select a customer and product, fill document and workflow details, then save to create the application.',
-      },
-    ],
-    // Application detail prefix
-    [
-      '/applications/',
-      {
-        id: '/applications/',
-        briefExplanation:
-          'View and manage one application from start to finish.',
-        details:
-          'Use Tasks Timeline to see each stage in order. Update only the latest task status, and the next task appears automatically. Finished tasks stay visible as history. If an application is completed or rejected, you can still create an invoice.',
-      },
-    ],
-    // Invoices additional entries
-    [
-      '/invoices/new',
-      {
-        id: '/invoices/new',
-        briefExplanation: 'Create a new invoice.',
-        details:
-          'Select customer and add invoice lines. You can pre-fill from an application using the create invoice action.',
-      },
-    ],
-    [
-      '/invoices/import',
-      {
-        id: '/invoices/import',
-        briefExplanation: 'Import invoices from a CSV file.',
-        details:
-          'Upload a properly formatted CSV to import invoices in bulk. Check the sample CSV layout before uploading.',
-      },
-    ],
-    [
-      '/invoices/',
-      {
-        id: '/invoices/',
-        briefExplanation: 'View and manage an invoice.',
-        details:
-          'Review invoice items, payments, and download or send the invoice. Add payments using the payments modal.',
-      },
-    ],
-    // Product new / detail
-    [
-      '/products/new',
-      {
-        id: '/products/new',
-        briefExplanation: 'Create a new product.',
-        details:
-          'Add the product code, name, price, required documents, and workflow tasks. This defines new application types for customers.',
-      },
-    ],
-    [
-      '/products/',
-      {
-        id: '/products/',
-        briefExplanation: 'View product details, required documents, and workflow steps.',
-        details:
-          'Edit pricing, required documents, and workflow steps for the product. Changes affect new applications created after the update.',
-      },
-    ],
-    // Misc pages
     [
       '/letters/surat-permohonan',
-      {
-        id: '/letters/surat-permohonan',
-        briefExplanation: 'Generate Surat Permohonan (request letters) for applications.',
-        details:
-          'Choose the application and export the generated Surat Permohonan document. Customize letter content if needed.',
-      },
+      { id: '/letters/surat-permohonan', contentUrl: '/help/letters/surat-permohonan.md' },
     ],
-    [
-      '/profile',
-      {
-        id: '/profile',
-        briefExplanation: 'Your user profile.',
-        details: 'Update your personal details and preferences.',
-      },
-    ],
+    ['/profile', { id: '/profile', contentUrl: '/help/profile/index.md' }],
   ]);
 
   private readonly _openCount = signal(0);
@@ -235,6 +132,23 @@ export class HelpService {
 
   setContext(ctx: HelpContext) {
     this._context.set(ctx);
+
+    if (ctx.contentUrl) {
+      this._isLoading.set(true);
+      this.http.get(ctx.contentUrl, { responseType: 'text' }).subscribe({
+        next: (content) => {
+          this._helpContent.set(content);
+          this._isLoading.set(false);
+        },
+        error: (err) => {
+          console.error('Failed to load help content', err);
+          this._helpContent.set('Failed to load help content.');
+          this._isLoading.set(false);
+        },
+      });
+    } else {
+      this._helpContent.set(null);
+    }
   }
 
   register(id: string, ctx: HelpContext) {
@@ -276,21 +190,25 @@ export class HelpService {
     // Simple telemetry hook: increment local counter and attempt to send to global analytics
     try {
       const w: any = window as any;
+      const contextId = this._context()?.id || 'unknown';
+      const totalOpens = this._openCount();
+      console.info(`[HelpService] Help drawer opened context=${contextId} open_count=${totalOpens}`);
+
       // Google Analytics / gtag
       if (typeof w.gtag === 'function') {
-        w.gtag('event', 'help_open', { method: 'F1_or_button' });
+        w.gtag('event', 'help_open', { method: 'F1_or_button', context: contextId, open_count: totalOpens });
         return;
       }
 
       // Generic analytics object (custom)
       if (w.analytics && typeof w.analytics.track === 'function') {
-        w.analytics.track('help_open');
+        w.analytics.track('help_open', { context: contextId, open_count: totalOpens });
         return;
       }
 
       // Mixpanel
       if (w.mixpanel && typeof w.mixpanel.track === 'function') {
-        w.mixpanel.track('help_open');
+        w.mixpanel.track('help_open', { context: contextId, open_count: totalOpens });
         return;
       }
     } catch (err) {

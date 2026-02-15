@@ -74,6 +74,32 @@ def postprocess_add_job_id_param(result, generator, **kwargs):
     return result
 
 
+def postprocess_fix_empty_204_responses(result, generator, **kwargs):
+    """Normalize 204 responses so they do not include invalid JSON schema payloads."""
+    paths = result.get("paths", {})
+
+    for _, path_item in paths.items():
+        if not isinstance(path_item, dict):
+            continue
+
+        for _, operation in path_item.items():
+            if not isinstance(operation, dict):
+                continue
+
+            responses = operation.get("responses", {})
+            if not isinstance(responses, dict):
+                continue
+
+            no_content = responses.get("204")
+            if not isinstance(no_content, dict):
+                continue
+
+            # 204 means "No Content". Remove any accidental body definitions.
+            no_content.pop("content", None)
+
+    return result
+
+
 def postprocess_add_mock_paths(result, generator, **kwargs):
     """
     Inject missing paths for Prism mock server that are not part of the standard API
@@ -138,30 +164,6 @@ def postprocess_add_mock_paths(result, generator, **kwargs):
                     }
                 },
                 "summary": "Mock Auth Config",
-                "tags": ["Mock"],
-            }
-        }
-    # Add /api/client-logs/
-    if "/api/client-logs/" not in paths:
-        paths["/api/client-logs/"] = {
-            "post": {
-                "operationId": "postClientLogs",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object",
-                                "properties": {
-                                    "level": {"type": "string"},
-                                    "message": {"type": "string"},
-                                    "metadata": {"type": "object"},
-                                },
-                            }
-                        }
-                    }
-                },
-                "responses": {"204": {"description": "No Content"}},
-                "summary": "Mocked Client Logs for Prism",
                 "tags": ["Mock"],
             }
         }

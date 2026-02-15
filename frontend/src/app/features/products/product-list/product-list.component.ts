@@ -34,7 +34,6 @@ import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
 import { ZardTooltipImports } from '@/shared/components/tooltip';
 import { ContextHelpDirective } from '@/shared/directives';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
-import { HelpService } from '@/shared/services/help.service';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 
 @Component({
@@ -64,7 +63,6 @@ export class ProductListComponent implements OnInit {
   private toast = inject(GlobalToastService);
   private platformId = inject(PLATFORM_ID);
   private router = inject(Router);
-  private help = inject(HelpService);
 
   private readonly nameTemplate =
     viewChild.required<TemplateRef<{ $implicit: Product; value: any; row: Product }>>(
@@ -208,9 +206,6 @@ export class ProductListComponent implements OnInit {
     if (st.searchQuery) {
       this.query.set(String(st.searchQuery));
     }
-    // Ensure page context is set for products list
-    this.help.setContextForPath('/products');
-
     this.loadProducts();
   }
 

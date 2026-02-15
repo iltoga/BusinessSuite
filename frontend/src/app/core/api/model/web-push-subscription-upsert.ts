@@ -9,9 +9,9 @@
  */
 
 
-export interface PostClientLogsRequest { 
-    level?: string;
-    message?: string;
-    metadata?: object;
+export interface WebPushSubscriptionUpsert { 
+    token: string;
+    deviceLabel?: string;
+    userAgent?: string;
 }
 

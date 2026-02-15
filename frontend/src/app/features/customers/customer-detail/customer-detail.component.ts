@@ -25,7 +25,6 @@ import {
   ZardSkeletonComponent,
 } from '@/shared/components/skeleton';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
-import { HelpService } from '@/shared/services/help.service';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 
 @Component({
@@ -52,7 +51,6 @@ export class CustomerDetailComponent implements OnInit {
   private customersService = inject(CustomersService);
   private authService = inject(AuthService);
   private toast = inject(GlobalToastService);
-  private help = inject(HelpService);
 
   readonly customer = signal<CustomerDetail | null>(null);
   readonly uninvoicedApplications = signal<UninvoicedApplication[]>([]);
@@ -126,13 +124,6 @@ export class CustomerDetailComponent implements OnInit {
     this.customersService.getCustomer(id).subscribe({
       next: (data) => {
         this.customer.set(data);
-
-        // Update contextual help for this specific customer (dynamic title)
-        this.help.setContext({
-          id: `/customers/${id}`,
-          briefExplanation: `Customer profile for ${data.fullNameWithCompany}. View and manage customer details, applications, and invoices.`,
-          details: `Email: ${data.email ?? 'no email'}. Use tabs to navigate between profile, applications, and invoices. Edit customer information or create new applications.`,
-        });
       },
       error: () => {
         this.toast.error('Failed to load customer');

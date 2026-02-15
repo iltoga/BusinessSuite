@@ -17,23 +17,14 @@
         [placeholder]="'Search Products...'"
         (queryChange)="onQueryChange($event)"
         (tabOut)="dataTable.focusFirstRowIfNone()"
-        [contextHelp]="{
-          id: '/products/search',
-          briefExplanation: 'Search Products',
-          details: 'Search by product code, name, or description. Use sort to change ordering.',
-        }"
+        [contextHelp]="'/products/search'"
       >
         @if (isSuperuser() && totalItems() > 0) {
           <z-button
             zType="destructive"
             zSize="sm"
             (click)="openBulkDeleteDialog()"
-            [contextHelp]="{
-              id: '/products/bulk-delete',
-              briefExplanation: 'Bulk delete products',
-              details:
-                'Deletes selected or all products and their associated tasks. Use search to filter.',
-            }"
+            [contextHelp]="'/products/bulk-delete'"
           >
             {{ bulkDeleteLabel() }}
           </z-button>

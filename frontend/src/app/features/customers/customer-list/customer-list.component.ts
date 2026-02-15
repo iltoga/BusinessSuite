@@ -34,7 +34,6 @@ import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
 import { ZardSelectImports } from '@/shared/components/select';
 import { ContextHelpDirective } from '@/shared/directives';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
-import { HelpService } from '@/shared/services/help.service';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 
 @Component({
@@ -65,7 +64,6 @@ export class CustomerListComponent implements OnInit {
   private toast = inject(GlobalToastService);
   private platformId = inject(PLATFORM_ID);
   private router = inject(Router);
-  private help = inject(HelpService);
 
   /** Access the data table for focus management */
   private readonly dataTable = viewChild.required(DataTableComponent);
@@ -253,9 +251,6 @@ export class CustomerListComponent implements OnInit {
     if (st.searchQuery) {
       this.query.set(String(st.searchQuery));
     }
-    // Ensure page-level help context is active for this view
-    this.help.setContextForPath('/customers');
-
     this.loadCustomers();
   }
 

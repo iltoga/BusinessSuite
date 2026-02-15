@@ -572,10 +572,3 @@ class InvoiceDownloadAPITestCase(TestCase):
         response = self.client.get(url)
         self.assertNotEqual(response.status_code, 404)
 
-
-class ObservabilityLogTestCase(TestCase):
-    def test_client_logs_accepts_anonymous_post(self):
-        url = reverse("api-client-logs")
-        payload = {"level": "info", "message": "test", "metadata": {"foo": "bar"}}
-        response = self.client.post(url, data=json.dumps(payload), content_type="application/json")
-        self.assertEqual(response.status_code, 204)

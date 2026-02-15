@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 from .base import *
+from .base import _resolved_db_host
 
 ALLOWED_HOSTS = [
     f"www.{APP_DOMAIN}",
@@ -129,7 +130,7 @@ DATABASES = {
         "NAME": os.getenv("DB_NAME"),
         "USER": os.getenv("DB_USER"),
         "PASSWORD": os.getenv("DB_PASS"),
-        "HOST": os.getenv("DB_HOST"),
+        "HOST": _resolved_db_host(),
         "PORT": os.getenv("DB_PORT"),
         # Connection pooling - keep connections alive for 600 seconds
         "CONN_MAX_AGE": None,

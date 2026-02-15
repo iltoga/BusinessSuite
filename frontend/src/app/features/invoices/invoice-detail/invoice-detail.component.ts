@@ -31,7 +31,6 @@ import {
 } from '@/shared/components/skeleton';
 import { ZardTooltipImports } from '@/shared/components/tooltip';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
-import { HelpService } from '@/shared/services/help.service';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 import { PaymentModalComponent } from '../payment-modal/payment-modal.component';
 
@@ -64,7 +63,6 @@ export class InvoiceDetailComponent implements OnInit {
   private paymentsApi = inject(PaymentsService);
   private toast = inject(GlobalToastService);
   private platformId = inject(PLATFORM_ID);
-  private help = inject(HelpService);
 
   readonly invoice = signal<InvoiceDetail | null>(null);
   readonly isLoading = signal(false);
@@ -293,16 +291,6 @@ export class InvoiceDetailComponent implements OnInit {
       next: (invoice: InvoiceDetail) => {
         this.invoice.set(invoice);
         this.isLoading.set(false);
-
-        // Update contextual help for this specific invoice
-        const cust =
-          invoice.customer?.fullNameWithCompany ?? invoice.customer?.fullName ?? 'unknown customer';
-        this.help.setContext({
-          id: `/invoices/${invoice.id}`,
-          briefExplanation: `Invoice ${invoice.invoiceNoDisplay || invoice.invoiceNo || invoice.id} for ${cust}.`,
-          details:
-            'Review invoice items, payments, and download or send the invoice. Use the payments modal to record payments and update invoice totals.',
-        });
       },
       error: () => {
         this.toast.error('Failed to load invoice');

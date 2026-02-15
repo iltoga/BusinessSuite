@@ -7,6 +7,14 @@ import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 export class LoggerService {
   private platformId = inject(PLATFORM_ID);
   private isBrowser = isPlatformBrowser(this.platformId);
+  private readonly clientLogEndpoint = '/_observability/client-logs';
+  private readonly ignoredPatterns = [
+    'trackMicrotaskNotificationForDebugging',
+    '_ChangeDetectionSchedulerImpl.notify',
+    'markAncestorsForTraversal',
+    'signalSetFn',
+    '/_observability/client-logs',
+  ];
 
   private originalConsole = {
     log: console.log,
@@ -59,6 +67,7 @@ export class LoggerService {
 
   private sendToServer(level: string, args: any[]) {
     if (!this.isBrowser) return;
+    if (this.shouldSkipForwarding(level, args)) return;
 
     try {
       const message = args
@@ -78,18 +87,43 @@ export class LoggerService {
         .join(' ');
 
       const url = window.location.pathname;
+      const payload = JSON.stringify({ level, message, url });
 
-      // Use fetch instead of HttpClient to bypass interceptors and avoid circular dependencies
-      fetch('/api/client-logs/', {
+      // Prefer sendBeacon to avoid Promise/microtask feedback loops in dev-mode tracing.
+      if (navigator.sendBeacon) {
+        const blob = new Blob([payload], { type: 'application/json' });
+        navigator.sendBeacon(this.clientLogEndpoint, blob);
+        return;
+      }
+
+      // Fallback for browsers without sendBeacon support.
+      fetch(this.clientLogEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ level, message, url }),
+        body: payload,
         keepalive: true,
       }).catch(() => {
-        /* Fail silently to avoid infinite loops or flooding and disrupting user experience */
+        /* Fail silently to avoid flooding and disrupting user experience */
       });
     } catch (e) {
       /* ignore */
     }
+  }
+
+  private shouldSkipForwarding(level: string, args: any[]): boolean {
+    if (level === 'debug') {
+      return true;
+    }
+
+    const combined = args
+      .map((arg) => {
+        if (arg instanceof Error) {
+          return `${arg.message}\n${arg.stack ?? ''}`;
+        }
+        return typeof arg === 'string' ? arg : '';
+      })
+      .join(' ');
+
+    return this.ignoredPatterns.some((pattern) => combined.includes(pattern));
   }
 }

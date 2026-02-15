@@ -93,19 +93,16 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 
-@api_view(["POST"])
-@permission_classes([AllowAny])
-def observability_log(request):
-    """Proxy endpoint for frontend observability logs.
+class OCRPlaceholderSerializer(serializers.Serializer):
+    """Schema placeholder for OCR viewset endpoints."""
 
-    Accepts JSON payloads with 'level', 'message', and optional 'metadata'.
-    Forwards message to the Django logger and returns 204 No Content so browser requests don't show 404s in dev.
-    """
-    payload = request.data
-    logger = logging.getLogger("observability")
-    # Log at info level; tests patch Logger.info
-    logger.info(payload.get("message", ""), extra={"level": payload.get("level"), "metadata": payload.get("metadata")})
-    return Response(status=status.HTTP_204_NO_CONTENT)
+
+class DocumentOCRPlaceholderSerializer(serializers.Serializer):
+    """Schema placeholder for Document OCR viewset endpoints."""
+
+
+class ComputePlaceholderSerializer(serializers.Serializer):
+    """Schema placeholder for Compute viewset endpoints."""
 
 
 @csrf_exempt
@@ -622,36 +619,6 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-@extend_schema_view(
-    download_async_status=extend_schema(
-        parameters=[
-            OpenApiParameter(
-                "job_id", OpenApiTypes.UUID, OpenApiParameter.PATH, required=True, description="Download job UUID"
-            )
-        ]
-    ),
-    download_async_stream=extend_schema(
-        parameters=[
-            OpenApiParameter(
-                "job_id", OpenApiTypes.UUID, OpenApiParameter.PATH, required=True, description="Download job UUID"
-            )
-        ]
-    ),
-    download_async_file=extend_schema(
-        parameters=[
-            OpenApiParameter(
-                "job_id", OpenApiTypes.UUID, OpenApiParameter.PATH, required=True, description="Download job UUID"
-            )
-        ]
-    ),
-    import_job_status=extend_schema(
-        parameters=[
-            OpenApiParameter(
-                "job_id", OpenApiTypes.UUID, OpenApiParameter.PATH, required=True, description="Import job UUID"
-            )
-        ]
-    ),
-)
 class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     pagination_class = StandardResultsSetPagination
@@ -937,7 +904,11 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             )
         ]
     )
-    @action(detail=False, methods=["get"], url_path=r"download-async/status/(?P<job_id>[^/.]+)")
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("job_id", OpenApiTypes.UUID, OpenApiParameter.PATH, required=True),
+        ]
+    )
     def download_async_status(self, request, job_id: uuid.UUID | None = None):
         try:
             job = InvoiceDownloadJob.objects.select_related("invoice").get(id=job_id)
@@ -965,7 +936,11 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             )
         ]
     )
-    @action(detail=False, methods=["get"], url_path=r"download-async/stream/(?P<job_id>[^/.]+)")
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("job_id", OpenApiTypes.UUID, OpenApiParameter.PATH, required=True),
+        ]
+    )
     def download_async_stream(self, request, job_id: uuid.UUID | None = None):
         response = StreamingHttpResponse(self._stream_download_job(request, job_id), content_type="text/event-stream")
         response["Cache-Control"] = "no-cache"
@@ -1028,7 +1003,11 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             )
         ]
     )
-    @action(detail=False, methods=["get"], url_path=r"download-async/file/(?P<job_id>[^/.]+)")
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("job_id", OpenApiTypes.UUID, OpenApiParameter.PATH, required=True),
+        ]
+    )
     def download_async_file(self, request, job_id: uuid.UUID | None = None):
         try:
             job = InvoiceDownloadJob.objects.select_related("invoice", "invoice__customer").get(id=job_id)
@@ -1406,7 +1385,11 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             )
         ]
     )
-    @action(detail=False, methods=["get"], url_path=r"import/status/(?P<job_id>[^/.]+)")
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("job_id", OpenApiTypes.UUID, OpenApiParameter.PATH, required=True),
+        ]
+    )
     def import_job_status(self, request, job_id: uuid.UUID | None = None):
         """Get status of an import job."""
         from invoices.models import InvoiceImportJob
@@ -1429,6 +1412,11 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             }
         )
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("job_id", OpenApiTypes.UUID, OpenApiParameter.PATH, required=True),
+        ]
+    )
     @action(detail=False, methods=["get"], url_path=r"import/stream/(?P<job_id>[^/.]+)")
     def import_job_stream(self, request, job_id=None):
         """Stream SSE updates for a running import job."""
@@ -2171,7 +2159,7 @@ class DocumentViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
 
 class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
-    serializer_class = serializers.Serializer
+    serializer_class = OCRPlaceholderSerializer
     """
     API endpoint for passport OCR extraction.
 
@@ -2295,7 +2283,7 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
 
 
 class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
-    serializer_class = serializers.Serializer
+    serializer_class = DocumentOCRPlaceholderSerializer
     """
     API endpoint for document OCR text extraction.
 
@@ -2409,7 +2397,7 @@ class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
 
 
 class ComputeViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
-    serializer_class = serializers.Serializer
+    serializer_class = ComputePlaceholderSerializer
     permission_classes = [IsAuthenticated]
 
     @action(detail=False, methods=["get"], url_path="doc_workflow_due_date/(?P<task_id>[^/.]+)/(?P<start_date>[^/.]+)")
@@ -2717,6 +2705,19 @@ class WorkflowNotificationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
 class PushNotificationViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
+    serializer_class = WebPushSubscriptionSerializer
+
+    def get_serializer_class(self):
+        action = getattr(self, "action", None)
+        action_map = {
+            "subscriptions": WebPushSubscriptionSerializer,
+            "register": WebPushSubscriptionUpsertSerializer,
+            "unregister": WebPushSubscriptionDeleteSerializer,
+            "test": PushNotificationTestSerializer,
+            "send_test": AdminPushNotificationSendSerializer,
+            "send_test_whatsapp": AdminWhatsappTestSendSerializer,
+        }
+        return action_map.get(action, self.serializer_class)
 
     def _ensure_admin(self, request):
         if not request.user or not request.user.is_staff:

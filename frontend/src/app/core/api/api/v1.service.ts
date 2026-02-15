@@ -17,6 +17,10 @@ import { Observable }                                        from 'rxjs';
 import { OpenApiHttpParams, QueryParamStyle } from '../query.params';
 
 // @ts-ignore
+import { AdminPushNotificationSend } from '../model/admin-push-notification-send';
+// @ts-ignore
+import { AdminWhatsappTestSend } from '../model/admin-whatsapp-test-send';
+// @ts-ignore
 import { AsyncJob } from '../model/async-job';
 // @ts-ignore
 import { CountryCode } from '../model/country-code';
@@ -73,6 +77,8 @@ import { ProductCreateUpdate } from '../model/product-create-update';
 // @ts-ignore
 import { ProductDetail } from '../model/product-detail';
 // @ts-ignore
+import { PushNotificationTest } from '../model/push-notification-test';
+// @ts-ignore
 import { SuratPermohonanCustomerData } from '../model/surat-permohonan-customer-data';
 // @ts-ignore
 import { SuratPermohonanRequest } from '../model/surat-permohonan-request';
@@ -80,6 +86,12 @@ import { SuratPermohonanRequest } from '../model/surat-permohonan-request';
 import { UserProfile } from '../model/user-profile';
 // @ts-ignore
 import { UserSettings } from '../model/user-settings';
+// @ts-ignore
+import { WebPushSubscription } from '../model/web-push-subscription';
+// @ts-ignore
+import { WebPushSubscriptionDelete } from '../model/web-push-subscription-delete';
+// @ts-ignore
+import { WebPushSubscriptionUpsert } from '../model/web-push-subscription-upsert';
 // @ts-ignore
 import { WorkflowNotification } from '../model/workflow-notification';
 
@@ -799,7 +811,7 @@ export class V1Service extends BaseService {
     }
 
     /**
-     * A simple ViewSet for listing, creating, retrieving, updating and deleting Google Calendar Events.
+     * Local-mirror calendar API.  CRUD operations update &#x60;CalendarEvent&#x60; records and signals queue asynchronous synchronization to Google Calendar through Huey tasks.
      * @endpoint post /api/v1/calendar/
      * @param googleCalendarEvent 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -872,7 +884,7 @@ export class V1Service extends BaseService {
     }
 
     /**
-     * A simple ViewSet for listing, creating, retrieving, updating and deleting Google Calendar Events.
+     * Local-mirror calendar API.  CRUD operations update &#x60;CalendarEvent&#x60; records and signals queue asynchronous synchronization to Google Calendar through Huey tasks.
      * @endpoint delete /api/v1/calendar/{id}/
      * @param id 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -932,7 +944,7 @@ export class V1Service extends BaseService {
     }
 
     /**
-     * A simple ViewSet for listing, creating, retrieving, updating and deleting Google Calendar Events.
+     * Local-mirror calendar API.  CRUD operations update &#x60;CalendarEvent&#x60; records and signals queue asynchronous synchronization to Google Calendar through Huey tasks.
      * @endpoint get /api/v1/calendar/
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
@@ -989,7 +1001,7 @@ export class V1Service extends BaseService {
     }
 
     /**
-     * A simple ViewSet for listing, creating, retrieving, updating and deleting Google Calendar Events.
+     * Local-mirror calendar API.  CRUD operations update &#x60;CalendarEvent&#x60; records and signals queue asynchronous synchronization to Google Calendar through Huey tasks.
      * @endpoint patch /api/v1/calendar/{id}/
      * @param id 
      * @param googleCalendarEvent 
@@ -1066,7 +1078,7 @@ export class V1Service extends BaseService {
     }
 
     /**
-     * A simple ViewSet for listing, creating, retrieving, updating and deleting Google Calendar Events.
+     * Local-mirror calendar API.  CRUD operations update &#x60;CalendarEvent&#x60; records and signals queue asynchronous synchronization to Google Calendar through Huey tasks.
      * @endpoint get /api/v1/calendar/{id}/
      * @param id 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -1127,7 +1139,7 @@ export class V1Service extends BaseService {
     }
 
     /**
-     * Full update (PUT) - delegates to patch behavior in Google API.
+     * Local-mirror calendar API.  CRUD operations update &#x60;CalendarEvent&#x60; records and signals queue asynchronous synchronization to Google Calendar through Huey tasks.
      * @endpoint put /api/v1/calendar/{id}/
      * @param id 
      * @param googleCalendarEvent 
@@ -1637,10 +1649,10 @@ export class V1Service extends BaseService {
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public v1CustomerApplicationsDestroy(id: number, deleteInvoices?: boolean, deleteInvoices2?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any>;
-    public v1CustomerApplicationsDestroy(id: number, deleteInvoices?: boolean, deleteInvoices2?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<any>>;
-    public v1CustomerApplicationsDestroy(id: number, deleteInvoices?: boolean, deleteInvoices2?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<any>>;
-    public v1CustomerApplicationsDestroy(id: number, deleteInvoices?: boolean, deleteInvoices2?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+    public v1CustomerApplicationsDestroy(id: number, deleteInvoices?: boolean, deleteInvoices2?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<any>;
+    public v1CustomerApplicationsDestroy(id: number, deleteInvoices?: boolean, deleteInvoices2?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<any>>;
+    public v1CustomerApplicationsDestroy(id: number, deleteInvoices?: boolean, deleteInvoices2?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<any>>;
+    public v1CustomerApplicationsDestroy(id: number, deleteInvoices?: boolean, deleteInvoices2?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<any> {
         if (id === null || id === undefined) {
             throw new Error('Required parameter id was null or undefined when calling v1CustomerApplicationsDestroy.');
         }
@@ -1673,7 +1685,6 @@ export class V1Service extends BaseService {
         localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
 
         const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
-            'application/json'
         ]);
         if (localVarHttpHeaderAcceptSelected !== undefined) {
             localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
@@ -6044,7 +6055,7 @@ export class V1Service extends BaseService {
             }
         }
 
-        let localVarPath = `/api/v1/invoices/import/stream/${this.configuration.encodeParam({name: "jobId", value: jobId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: undefined})}/`;
+        let localVarPath = `/api/v1/invoices/import/stream/${this.configuration.encodeParam({name: "jobId", value: jobId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/`;
         const { basePath, withCredentials } = this.configuration;
         return this.httpClient.request<InvoiceList>('get', `${basePath}${localVarPath}`,
             {
@@ -7876,14 +7887,18 @@ export class V1Service extends BaseService {
 
     /**
      * @endpoint post /api/v1/push-notifications/register/
+     * @param webPushSubscriptionUpsert 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public v1PushNotificationsRegisterCreate(observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<any>;
-    public v1PushNotificationsRegisterCreate(observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<any>>;
-    public v1PushNotificationsRegisterCreate(observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<any>>;
-    public v1PushNotificationsRegisterCreate(observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<any> {
+    public v1PushNotificationsRegisterCreate(webPushSubscriptionUpsert: WebPushSubscriptionUpsert, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<WebPushSubscriptionUpsert>;
+    public v1PushNotificationsRegisterCreate(webPushSubscriptionUpsert: WebPushSubscriptionUpsert, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<WebPushSubscriptionUpsert>>;
+    public v1PushNotificationsRegisterCreate(webPushSubscriptionUpsert: WebPushSubscriptionUpsert, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<WebPushSubscriptionUpsert>>;
+    public v1PushNotificationsRegisterCreate(webPushSubscriptionUpsert: WebPushSubscriptionUpsert, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+        if (webPushSubscriptionUpsert === null || webPushSubscriptionUpsert === undefined) {
+            throw new Error('Required parameter webPushSubscriptionUpsert was null or undefined when calling v1PushNotificationsRegisterCreate.');
+        }
 
         let localVarHeaders = this.defaultHeaders;
 
@@ -7893,6 +7908,7 @@ export class V1Service extends BaseService {
         localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
 
         const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            'application/json'
         ]);
         if (localVarHttpHeaderAcceptSelected !== undefined) {
             localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
@@ -7902,6 +7918,17 @@ export class V1Service extends BaseService {
 
         const localVarTransferCache: boolean = options?.transferCache ?? true;
 
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json',
+            'application/x-www-form-urlencoded',
+            'multipart/form-data'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
 
         let responseType_: 'text' | 'json' | 'blob' = 'json';
         if (localVarHttpHeaderAcceptSelected) {
@@ -7916,9 +7943,10 @@ export class V1Service extends BaseService {
 
         let localVarPath = `/api/v1/push-notifications/register/`;
         const { basePath, withCredentials } = this.configuration;
-        return this.httpClient.request<any>('post', `${basePath}${localVarPath}`,
+        return this.httpClient.request<WebPushSubscriptionUpsert>('post', `${basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
+                body: webPushSubscriptionUpsert,
                 responseType: <any>responseType_,
                 ...(withCredentials ? { withCredentials } : {}),
                 headers: localVarHeaders,
@@ -7931,14 +7959,18 @@ export class V1Service extends BaseService {
 
     /**
      * @endpoint post /api/v1/push-notifications/send-test/
+     * @param adminPushNotificationSend 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public v1PushNotificationsSendTestCreate(observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<any>;
-    public v1PushNotificationsSendTestCreate(observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<any>>;
-    public v1PushNotificationsSendTestCreate(observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<any>>;
-    public v1PushNotificationsSendTestCreate(observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<any> {
+    public v1PushNotificationsSendTestCreate(adminPushNotificationSend: AdminPushNotificationSend, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<AdminPushNotificationSend>;
+    public v1PushNotificationsSendTestCreate(adminPushNotificationSend: AdminPushNotificationSend, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<AdminPushNotificationSend>>;
+    public v1PushNotificationsSendTestCreate(adminPushNotificationSend: AdminPushNotificationSend, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<AdminPushNotificationSend>>;
+    public v1PushNotificationsSendTestCreate(adminPushNotificationSend: AdminPushNotificationSend, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+        if (adminPushNotificationSend === null || adminPushNotificationSend === undefined) {
+            throw new Error('Required parameter adminPushNotificationSend was null or undefined when calling v1PushNotificationsSendTestCreate.');
+        }
 
         let localVarHeaders = this.defaultHeaders;
 
@@ -7948,6 +7980,7 @@ export class V1Service extends BaseService {
         localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
 
         const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            'application/json'
         ]);
         if (localVarHttpHeaderAcceptSelected !== undefined) {
             localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
@@ -7957,6 +7990,17 @@ export class V1Service extends BaseService {
 
         const localVarTransferCache: boolean = options?.transferCache ?? true;
 
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json',
+            'application/x-www-form-urlencoded',
+            'multipart/form-data'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
 
         let responseType_: 'text' | 'json' | 'blob' = 'json';
         if (localVarHttpHeaderAcceptSelected) {
@@ -7971,9 +8015,10 @@ export class V1Service extends BaseService {
 
         let localVarPath = `/api/v1/push-notifications/send-test/`;
         const { basePath, withCredentials } = this.configuration;
-        return this.httpClient.request<any>('post', `${basePath}${localVarPath}`,
+        return this.httpClient.request<AdminPushNotificationSend>('post', `${basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
+                body: adminPushNotificationSend,
                 responseType: <any>responseType_,
                 ...(withCredentials ? { withCredentials } : {}),
                 headers: localVarHeaders,
@@ -7986,14 +8031,15 @@ export class V1Service extends BaseService {
 
     /**
      * @endpoint post /api/v1/push-notifications/send-test-whatsapp/
+     * @param adminWhatsappTestSend 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public v1PushNotificationsSendTestWhatsappCreate(observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<any>;
-    public v1PushNotificationsSendTestWhatsappCreate(observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<any>>;
-    public v1PushNotificationsSendTestWhatsappCreate(observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<any>>;
-    public v1PushNotificationsSendTestWhatsappCreate(observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<any> {
+    public v1PushNotificationsSendTestWhatsappCreate(adminWhatsappTestSend?: AdminWhatsappTestSend, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<AdminWhatsappTestSend>;
+    public v1PushNotificationsSendTestWhatsappCreate(adminWhatsappTestSend?: AdminWhatsappTestSend, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<AdminWhatsappTestSend>>;
+    public v1PushNotificationsSendTestWhatsappCreate(adminWhatsappTestSend?: AdminWhatsappTestSend, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<AdminWhatsappTestSend>>;
+    public v1PushNotificationsSendTestWhatsappCreate(adminWhatsappTestSend?: AdminWhatsappTestSend, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
 
         let localVarHeaders = this.defaultHeaders;
 
@@ -8003,6 +8049,7 @@ export class V1Service extends BaseService {
         localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
 
         const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            'application/json'
         ]);
         if (localVarHttpHeaderAcceptSelected !== undefined) {
             localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
@@ -8012,6 +8059,17 @@ export class V1Service extends BaseService {
 
         const localVarTransferCache: boolean = options?.transferCache ?? true;
 
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json',
+            'application/x-www-form-urlencoded',
+            'multipart/form-data'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
 
         let responseType_: 'text' | 'json' | 'blob' = 'json';
         if (localVarHttpHeaderAcceptSelected) {
@@ -8026,9 +8084,10 @@ export class V1Service extends BaseService {
 
         let localVarPath = `/api/v1/push-notifications/send-test-whatsapp/`;
         const { basePath, withCredentials } = this.configuration;
-        return this.httpClient.request<any>('post', `${basePath}${localVarPath}`,
+        return this.httpClient.request<AdminWhatsappTestSend>('post', `${basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
+                body: adminWhatsappTestSend,
                 responseType: <any>responseType_,
                 ...(withCredentials ? { withCredentials } : {}),
                 headers: localVarHeaders,
@@ -8045,10 +8104,10 @@ export class V1Service extends BaseService {
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public v1PushNotificationsSubscriptionsRetrieve(observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<any>;
-    public v1PushNotificationsSubscriptionsRetrieve(observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<any>>;
-    public v1PushNotificationsSubscriptionsRetrieve(observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<any>>;
-    public v1PushNotificationsSubscriptionsRetrieve(observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<any> {
+    public v1PushNotificationsSubscriptionsRetrieve(observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<WebPushSubscription>;
+    public v1PushNotificationsSubscriptionsRetrieve(observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<WebPushSubscription>>;
+    public v1PushNotificationsSubscriptionsRetrieve(observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<WebPushSubscription>>;
+    public v1PushNotificationsSubscriptionsRetrieve(observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
 
         let localVarHeaders = this.defaultHeaders;
 
@@ -8058,6 +8117,7 @@ export class V1Service extends BaseService {
         localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
 
         const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            'application/json'
         ]);
         if (localVarHttpHeaderAcceptSelected !== undefined) {
             localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
@@ -8081,7 +8141,7 @@ export class V1Service extends BaseService {
 
         let localVarPath = `/api/v1/push-notifications/subscriptions/`;
         const { basePath, withCredentials } = this.configuration;
-        return this.httpClient.request<any>('get', `${basePath}${localVarPath}`,
+        return this.httpClient.request<WebPushSubscription>('get', `${basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 responseType: <any>responseType_,
@@ -8096,14 +8156,15 @@ export class V1Service extends BaseService {
 
     /**
      * @endpoint post /api/v1/push-notifications/test/
+     * @param pushNotificationTest 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public v1PushNotificationsTestCreate(observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<any>;
-    public v1PushNotificationsTestCreate(observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<any>>;
-    public v1PushNotificationsTestCreate(observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<any>>;
-    public v1PushNotificationsTestCreate(observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<any> {
+    public v1PushNotificationsTestCreate(pushNotificationTest?: PushNotificationTest, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<PushNotificationTest>;
+    public v1PushNotificationsTestCreate(pushNotificationTest?: PushNotificationTest, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<PushNotificationTest>>;
+    public v1PushNotificationsTestCreate(pushNotificationTest?: PushNotificationTest, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<PushNotificationTest>>;
+    public v1PushNotificationsTestCreate(pushNotificationTest?: PushNotificationTest, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
 
         let localVarHeaders = this.defaultHeaders;
 
@@ -8113,6 +8174,7 @@ export class V1Service extends BaseService {
         localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
 
         const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            'application/json'
         ]);
         if (localVarHttpHeaderAcceptSelected !== undefined) {
             localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
@@ -8122,6 +8184,17 @@ export class V1Service extends BaseService {
 
         const localVarTransferCache: boolean = options?.transferCache ?? true;
 
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json',
+            'application/x-www-form-urlencoded',
+            'multipart/form-data'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
 
         let responseType_: 'text' | 'json' | 'blob' = 'json';
         if (localVarHttpHeaderAcceptSelected) {
@@ -8136,9 +8209,10 @@ export class V1Service extends BaseService {
 
         let localVarPath = `/api/v1/push-notifications/test/`;
         const { basePath, withCredentials } = this.configuration;
-        return this.httpClient.request<any>('post', `${basePath}${localVarPath}`,
+        return this.httpClient.request<PushNotificationTest>('post', `${basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
+                body: pushNotificationTest,
                 responseType: <any>responseType_,
                 ...(withCredentials ? { withCredentials } : {}),
                 headers: localVarHeaders,
@@ -8151,14 +8225,18 @@ export class V1Service extends BaseService {
 
     /**
      * @endpoint post /api/v1/push-notifications/unregister/
+     * @param webPushSubscriptionDelete 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public v1PushNotificationsUnregisterCreate(observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<any>;
-    public v1PushNotificationsUnregisterCreate(observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<any>>;
-    public v1PushNotificationsUnregisterCreate(observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<any>>;
-    public v1PushNotificationsUnregisterCreate(observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<any> {
+    public v1PushNotificationsUnregisterCreate(webPushSubscriptionDelete: WebPushSubscriptionDelete, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<WebPushSubscriptionDelete>;
+    public v1PushNotificationsUnregisterCreate(webPushSubscriptionDelete: WebPushSubscriptionDelete, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<WebPushSubscriptionDelete>>;
+    public v1PushNotificationsUnregisterCreate(webPushSubscriptionDelete: WebPushSubscriptionDelete, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<WebPushSubscriptionDelete>>;
+    public v1PushNotificationsUnregisterCreate(webPushSubscriptionDelete: WebPushSubscriptionDelete, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+        if (webPushSubscriptionDelete === null || webPushSubscriptionDelete === undefined) {
+            throw new Error('Required parameter webPushSubscriptionDelete was null or undefined when calling v1PushNotificationsUnregisterCreate.');
+        }
 
         let localVarHeaders = this.defaultHeaders;
 
@@ -8168,6 +8246,7 @@ export class V1Service extends BaseService {
         localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
 
         const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            'application/json'
         ]);
         if (localVarHttpHeaderAcceptSelected !== undefined) {
             localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
@@ -8177,6 +8256,17 @@ export class V1Service extends BaseService {
 
         const localVarTransferCache: boolean = options?.transferCache ?? true;
 
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json',
+            'application/x-www-form-urlencoded',
+            'multipart/form-data'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
 
         let responseType_: 'text' | 'json' | 'blob' = 'json';
         if (localVarHttpHeaderAcceptSelected) {
@@ -8191,9 +8281,10 @@ export class V1Service extends BaseService {
 
         let localVarPath = `/api/v1/push-notifications/unregister/`;
         const { basePath, withCredentials } = this.configuration;
-        return this.httpClient.request<any>('post', `${basePath}${localVarPath}`,
+        return this.httpClient.request<WebPushSubscriptionDelete>('post', `${basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
+                body: webPushSubscriptionDelete,
                 responseType: <any>responseType_,
                 ...(withCredentials ? { withCredentials } : {}),
                 headers: localVarHeaders,
@@ -8210,10 +8301,10 @@ export class V1Service extends BaseService {
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public v1PushNotificationsUsersRetrieve(observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<any>;
-    public v1PushNotificationsUsersRetrieve(observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<any>>;
-    public v1PushNotificationsUsersRetrieve(observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<any>>;
-    public v1PushNotificationsUsersRetrieve(observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: undefined, context?: HttpContext, transferCache?: boolean}): Observable<any> {
+    public v1PushNotificationsUsersRetrieve(observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<WebPushSubscription>;
+    public v1PushNotificationsUsersRetrieve(observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<WebPushSubscription>>;
+    public v1PushNotificationsUsersRetrieve(observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<WebPushSubscription>>;
+    public v1PushNotificationsUsersRetrieve(observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
 
         let localVarHeaders = this.defaultHeaders;
 
@@ -8223,6 +8314,7 @@ export class V1Service extends BaseService {
         localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
 
         const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            'application/json'
         ]);
         if (localVarHttpHeaderAcceptSelected !== undefined) {
             localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
@@ -8246,7 +8338,7 @@ export class V1Service extends BaseService {
 
         let localVarPath = `/api/v1/push-notifications/users/`;
         const { basePath, withCredentials } = this.configuration;
-        return this.httpClient.request<any>('get', `${basePath}${localVarPath}`,
+        return this.httpClient.request<WebPushSubscription>('get', `${basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 responseType: <any>responseType_,

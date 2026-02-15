@@ -33,7 +33,6 @@ import {
   ZardSkeletonComponent,
 } from '@/shared/components/skeleton';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
-import { HelpService } from '@/shared/services/help.service';
 
 @Component({
   selector: 'app-product-detail',
@@ -60,7 +59,6 @@ export class ProductDetailComponent implements OnInit {
   private productsApi = inject(ProductsService);
   private toast = inject(GlobalToastService);
   private platformId = inject(PLATFORM_ID);
-  private help = inject(HelpService);
 
   private readonly lastStepTemplate =
     viewChild.required<TemplateRef<{ $implicit: TaskNested; value: any; row: TaskNested }>>(
@@ -174,14 +172,6 @@ export class ProductDetailComponent implements OnInit {
       next: (product) => {
         this.product.set(product);
         this.isLoading.set(false);
-
-        // Update contextual help for this specific product
-        this.help.setContext({
-          id: `/products/${id}`,
-          briefExplanation: `Product: ${product.name || product.id}. Manage pricing, required documents, and workflow steps.`,
-          details:
-            'Edit pricing, required documents, and workflow steps. Use the task list to define the application workflow for this product.',
-        });
       },
       error: () => {
         this.toast.error('Failed to load product');

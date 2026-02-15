@@ -14,13 +14,28 @@ from customer_applications.services.workflow_status_transition_service import (
 )
 from django.db import transaction
 from django.utils import timezone
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 from rest_framework import status, viewsets
 from rest_framework.exceptions import APIException, NotFound, ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 
+@extend_schema_view(
+    retrieve=extend_schema(
+        parameters=[OpenApiParameter("id", OpenApiTypes.STR, OpenApiParameter.PATH, required=True)]
+    ),
+    update=extend_schema(
+        parameters=[OpenApiParameter("id", OpenApiTypes.STR, OpenApiParameter.PATH, required=True)]
+    ),
+    partial_update=extend_schema(
+        parameters=[OpenApiParameter("id", OpenApiTypes.STR, OpenApiParameter.PATH, required=True)]
+    ),
+    destroy=extend_schema(
+        parameters=[OpenApiParameter("id", OpenApiTypes.STR, OpenApiParameter.PATH, required=True)]
+    ),
+)
 class GoogleCalendarViewSet(viewsets.ViewSet):
     """Local-mirror calendar API.
 
@@ -421,6 +436,20 @@ class GoogleCalendarViewSet(viewsets.ViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+@extend_schema_view(
+    retrieve=extend_schema(
+        parameters=[OpenApiParameter("id", OpenApiTypes.STR, OpenApiParameter.PATH, required=True)]
+    ),
+    update=extend_schema(
+        parameters=[OpenApiParameter("id", OpenApiTypes.STR, OpenApiParameter.PATH, required=True)]
+    ),
+    partial_update=extend_schema(
+        parameters=[OpenApiParameter("id", OpenApiTypes.STR, OpenApiParameter.PATH, required=True)]
+    ),
+    destroy=extend_schema(
+        parameters=[OpenApiParameter("id", OpenApiTypes.STR, OpenApiParameter.PATH, required=True)]
+    ),
+)
 class GoogleTasksViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = GoogleTaskSerializer

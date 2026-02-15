@@ -22,6 +22,14 @@ from rest_framework.response import Response
 User = get_user_model()
 
 
+class BackupsPlaceholderSerializer(serializers.Serializer):
+    """Schema placeholder for backup utility endpoints."""
+
+
+class ServerManagementPlaceholderSerializer(serializers.Serializer):
+    """Schema placeholder for server management utility endpoints."""
+
+
 def is_superuser(user):
     return user.is_superuser
 
@@ -104,7 +112,7 @@ def backup_restore_sse(request):
 
 
 class BackupsViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
-    serializer_class = serializers.Serializer
+    serializer_class = BackupsPlaceholderSerializer
     permission_classes = [IsAuthenticated, IsSuperuser]
 
     def _parse_backup_datetime(self, filename: str) -> datetime.datetime | None:
@@ -397,7 +405,7 @@ class BackupsViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
 
 
 class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
-    serializer_class = serializers.Serializer
+    serializer_class = ServerManagementPlaceholderSerializer
     permission_classes = [IsAuthenticated, IsSuperuser]
 
     @extend_schema(summary="Clear application cache", responses={200: OpenApiTypes.OBJECT})

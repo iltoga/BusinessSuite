@@ -17,24 +17,14 @@
         [placeholder]="'Search Applications...'"
         (queryChange)="onQueryChange($event)"
         (tabOut)="dataTable.focusFirstRowIfNone()"
-        [contextHelp]="{
-          id: '/applications/search',
-          briefExplanation: 'Search Applications',
-          details:
-            'Type to search by customer name, product, or notes. Press Enter to focus the table.',
-        }"
+        [contextHelp]="'/applications/search'"
       >
         @if (isSuperuser() && totalItems() > 0) {
           <z-button
             zType="destructive"
             zSize="sm"
             (click)="openBulkDeleteDialog()"
-            [contextHelp]="{
-              id: '/applications/bulk-delete',
-              briefExplanation: 'Bulk delete applications',
-              details:
-                'Deletes selected or all applications and their associated documents and workflows.',
-            }"
+            [contextHelp]="'/applications/bulk-delete'"
           >
             {{ bulkDeleteLabel() }}
           </z-button>
