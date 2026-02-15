@@ -330,13 +330,18 @@ class IsSuperuser(BasePermission):
 
 
 class HolidayViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated, IsSuperuser]
+    permission_classes = [IsAuthenticated]
     serializer_class = HolidaySerializer
     queryset = Holiday.objects.all()
     pagination_class = None
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["name", "description", "country"]
     ordering = ["date", "name"]
+
+    def get_permissions(self):
+        if self.action in ["create", "update", "partial_update", "destroy"]:
+            return [IsAuthenticated(), IsSuperuser()]
+        return super().get_permissions()
 
     def get_queryset(self):
         queryset = super().get_queryset()
