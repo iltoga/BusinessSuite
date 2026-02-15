@@ -29,6 +29,8 @@ import {
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ConfirmDialogComponent } from '@/shared/components/confirm-dialog/confirm-dialog.component';
 import {
+  type ColumnFilterChangeEvent,
+  type ColumnFilterOption,
   DataTableComponent,
   type ColumnConfig,
   type DataTableAction,
@@ -76,6 +78,10 @@ export class ApplicationListComponent implements OnInit {
   readonly totalItems = signal(0);
   // default ordering: ID descending
   readonly ordering = signal<string | undefined>('-id');
+  readonly columnFilters = signal<Record<string, string[]>>({
+    product: [],
+    status: [],
+  });
   readonly isSuperuser = this.authService.isSuperuser;
 
   // When navigating back to the list we may want to focus a specific id or the table
@@ -135,6 +141,12 @@ export class ApplicationListComponent implements OnInit {
       sortable: true,
       sortKey: 'product__name',
       template: this.productTemplate(),
+      filter: {
+        options: this.productFilterOptions(),
+        selectedValues: this.columnFilters()['product'] ?? [],
+        emptyLabel: 'No products found',
+        searchPlaceholder: 'Search products...',
+      },
     },
     {
       key: 'docDate',
@@ -149,6 +161,12 @@ export class ApplicationListComponent implements OnInit {
       sortable: true,
       sortKey: 'status',
       template: this.statusTemplate(),
+      filter: {
+        options: this.statusFilterOptions(),
+        selectedValues: this.columnFilters()['status'] ?? [],
+        emptyLabel: 'No statuses found',
+        searchPlaceholder: 'Search statuses...',
+      },
     },
     {
       key: 'createdAt',
@@ -229,6 +247,43 @@ export class ApplicationListComponent implements OnInit {
   readonly rowClassFn = (row: DocApplicationSerializerWithRelations): string =>
     row.status === 'rejected' ? 'row-danger-soft' : '';
 
+  readonly filteredItems = computed(() => {
+    const selectedProducts = new Set(this.columnFilters()['product'] ?? []);
+    const selectedStatuses = new Set(this.columnFilters()['status'] ?? []);
+
+    return this.items().filter((item) => {
+      const productName = this.getProductLabel(item);
+      const statusValue = this.getStatusValue(item);
+
+      const productMatch = selectedProducts.size === 0 || selectedProducts.has(productName);
+      const statusMatch = selectedStatuses.size === 0 || selectedStatuses.has(statusValue);
+      return productMatch && statusMatch;
+    });
+  });
+
+  readonly productFilterOptions = computed<ColumnFilterOption[]>(() => {
+    const unique = new Set<string>();
+    for (const item of this.items()) {
+      const label = this.getProductLabel(item);
+      if (label) {
+        unique.add(label);
+      }
+    }
+    return [...unique]
+      .sort((a, b) => a.localeCompare(b))
+      .map((value) => ({ value, label: value }));
+  });
+
+  readonly statusFilterOptions = computed<ColumnFilterOption[]>(() => {
+    const unique = new Set<string>();
+    for (const item of this.items()) {
+      unique.add(this.getStatusValue(item));
+    }
+    return [...unique]
+      .sort((a, b) => a.localeCompare(b))
+      .map((value) => ({ value, label: this.getStatusLabel(value) }));
+  });
+
   @HostListener('window:keydown', ['$event'])
   handleGlobalKeydown(event: KeyboardEvent): void {
     const activeElement = document.activeElement;
@@ -278,6 +333,13 @@ export class ApplicationListComponent implements OnInit {
     this.ordering.set(ordering);
     this.page.set(1);
     this.load();
+  }
+
+  onColumnFilterChange(event: ColumnFilterChangeEvent): void {
+    this.columnFilters.update((current) => ({
+      ...current,
+      [event.column]: event.values,
+    }));
   }
 
   confirmDelete(row: DocApplicationSerializerWithRelations) {
@@ -482,5 +544,26 @@ export class ApplicationListComponent implements OnInit {
           this.isLoading.set(false);
         },
       });
+  }
+
+  private getProductLabel(item: DocApplicationSerializerWithRelations): string {
+    return (item as any)?.product?.name?.trim() || '';
+  }
+
+  private getStatusValue(item: DocApplicationSerializerWithRelations): string {
+    return (item?.status || 'pending').toString();
+  }
+
+  private getStatusLabel(value: string): string {
+    switch (value) {
+      case 'completed':
+        return 'Completed';
+      case 'processing':
+        return 'Processing';
+      case 'rejected':
+        return 'Rejected';
+      default:
+        return 'Pending';
+    }
   }
 }

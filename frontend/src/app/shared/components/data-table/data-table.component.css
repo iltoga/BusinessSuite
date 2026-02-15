@@ -37,6 +37,12 @@ tr.row-danger-soft:not(.selected) {
   margin-right: 0.25rem;
 }
 
+.filter-active {
+  color: hsl(var(--primary));
+  border-color: hsl(var(--primary) / 0.35) !important;
+  background-color: hsl(var(--primary) / 0.08);
+}
+
 /* Make Added/Updated column wide enough for two datetime lines (createdAt / updatedAt)
    Support both snake_case sortKey (created_at) and camelCase key (createdAt) */
 .col-created_at,

@@ -1,10 +1,11 @@
-import { CommonModule } from '@angular/common';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
   HostListener,
-  OnInit,
   inject,
+  OnInit,
+  PLATFORM_ID,
   signal,
 } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -46,16 +47,25 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CustomerDetailComponent implements OnInit {
+  private platformId = inject(PLATFORM_ID);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private customersService = inject(CustomersService);
   private authService = inject(AuthService);
   private toast = inject(GlobalToastService);
+  private readonly isBrowser = isPlatformBrowser(this.platformId);
 
   readonly customer = signal<CustomerDetail | null>(null);
   readonly uninvoicedApplications = signal<UninvoicedApplication[]>([]);
   readonly isLoading = signal(true);
   readonly isSuperuser = this.authService.isSuperuser;
+  readonly magnifierActive = signal(false);
+  readonly magnifierLensX = signal(0);
+  readonly magnifierLensY = signal(0);
+  readonly magnifierBgX = signal(0);
+  readonly magnifierBgY = signal(0);
+  readonly magnifierLensSize = 300;
+  readonly magnifierZoom = 4;
 
   @HostListener('window:keydown', ['$event'])
   handleGlobalKeydown(event: KeyboardEvent): void {
@@ -109,7 +119,7 @@ export class CustomerDetailComponent implements OnInit {
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
     // capture searchQuery if navigated from a list
-    const st = (window as any).history.state || {};
+    const st = this.isBrowser ? (window as any).history.state || {} : {};
     this.originSearchQuery.set(st.searchQuery ?? null);
 
     if (!id) {
@@ -179,5 +189,30 @@ export class CustomerDetailComponent implements OnInit {
       default:
         return 'outline';
     }
+  }
+
+  onPassportMouseEnter(): void {
+    this.magnifierActive.set(true);
+  }
+
+  onPassportMouseLeave(): void {
+    this.magnifierActive.set(false);
+  }
+
+  onPassportMouseMove(event: MouseEvent): void {
+    const image = event.currentTarget as HTMLImageElement | null;
+    if (!image) return;
+
+    const rect = image.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    const clampedX = Math.max(0, Math.min(x, rect.width));
+    const clampedY = Math.max(0, Math.min(y, rect.height));
+    const halfLens = this.magnifierLensSize / 2;
+
+    this.magnifierLensX.set(clampedX - halfLens);
+    this.magnifierLensY.set(clampedY - halfLens);
+    this.magnifierBgX.set((clampedX / rect.width) * 100);
+    this.magnifierBgY.set((clampedY / rect.height) * 100);
   }
 }

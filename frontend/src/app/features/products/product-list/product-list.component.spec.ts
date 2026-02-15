@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 
 import { ProductsService } from '@/core/api';
+import { ProductImportExportService } from '@/core/services/product-import-export.service';
 import { RouterTestingModule } from '@angular/router/testing';
 import { ProductListComponent } from './product-list.component';
 
@@ -26,11 +27,20 @@ describe('ProductListComponent', () => {
       }),
     productsCanDeleteRetrieve: () => of({ can_delete: true }),
   };
+  const mockProductImportExportService: any = {
+    startExport: () => of({ job_id: 'job-1', status: 'pending', progress: 0 }),
+    startImport: () => of({ job_id: 'job-2', status: 'pending', progress: 0 }),
+    downloadExport: () => of({ body: new Blob(), headers: { get: () => null } }),
+    pollJob: () => of({ status: 'completed', progress: 100 }),
+  };
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [ProductListComponent, RouterTestingModule],
-      providers: [{ provide: ProductsService, useValue: mockProductsService }],
+      providers: [
+        { provide: ProductsService, useValue: mockProductsService },
+        { provide: ProductImportExportService, useValue: mockProductImportExportService },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(ProductListComponent);

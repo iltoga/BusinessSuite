@@ -373,6 +373,12 @@ LOGIN_EXEMPT_URLS = (
     r"^logout/$",
     r"^api/.*$",  # match 'api/' and any subpaths
     r"^api-token-auth/$",
+    # Media/static assets are requested by the browser without Bearer headers.
+    # Keep these paths public so file/image URLs in the SPA can render.
+    r"^uploads/.*$",
+    r"^media/.*$",
+    r"^static/.*$",
+    r"^staticfiles/.*$",
 )
 
 LOGIN_REDIRECT_URL = "/"

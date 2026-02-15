@@ -105,6 +105,8 @@ export class ApplicationDetailComponent implements OnInit {
   readonly selectedFile = signal<File | null>(null);
   readonly uploadPreviewUrl = signal<string | null>(null);
   readonly uploadPreviewType = signal<'image' | 'pdf' | 'unknown'>('unknown');
+  readonly existingPreviewUrl = signal<string | null>(null);
+  readonly existingPreviewType = signal<'image' | 'pdf' | 'unknown'>('unknown');
   readonly uploadProgress = signal<number | null>(null);
   readonly isSaving = signal(false);
   readonly inlinePreviewUrl = computed(() => {
@@ -112,18 +114,13 @@ export class ApplicationDetailComponent implements OnInit {
     if (uploadUrl) {
       return uploadUrl;
     }
-    const fileLink = this.selectedDocument()?.fileLink ?? null;
-    if (!fileLink) {
-      return null;
-    }
-    return this.getPreviewTypeFromUrl(fileLink) === 'unknown' ? null : fileLink;
+    return this.existingPreviewUrl();
   });
   readonly inlinePreviewType = computed(() => {
     if (this.uploadPreviewUrl()) {
       return this.uploadPreviewType();
     }
-    const fileLink = this.selectedDocument()?.fileLink ?? null;
-    return this.getPreviewTypeFromUrl(fileLink);
+    return this.existingPreviewType();
   });
 
   readonly ocrPolling = signal(false);
@@ -327,6 +324,8 @@ export class ApplicationDetailComponent implements OnInit {
           window.clearTimeout(this.pollTimer);
         }
       }
+      this.clearUploadPreview();
+      this.clearExistingPreview();
     });
   }
 
@@ -334,6 +333,7 @@ export class ApplicationDetailComponent implements OnInit {
     this.selectedDocument.set(document);
     this.selectedFile.set(null);
     this.clearUploadPreview();
+    this.loadExistingDocumentPreview(document);
     this.uploadProgress.set(null);
     this.ocrPreviewImage.set(null);
     this.ocrReviewOpen.set(false);
@@ -352,6 +352,7 @@ export class ApplicationDetailComponent implements OnInit {
     this.selectedDocument.set(null);
     this.selectedFile.set(null);
     this.clearUploadPreview();
+    this.clearExistingPreview();
     this.uploadProgress.set(null);
     this.ocrPolling.set(false);
     this.ocrStatus.set(null);
@@ -365,6 +366,10 @@ export class ApplicationDetailComponent implements OnInit {
   onFileCleared(): void {
     this.selectedFile.set(null);
     this.clearUploadPreview();
+    const document = this.selectedDocument();
+    if (document) {
+      this.loadExistingDocumentPreview(document);
+    }
   }
 
   onSaveDocument(): void {
@@ -801,11 +806,7 @@ export class ApplicationDetailComponent implements OnInit {
   }
 
   isWorkflowEditable(workflow: ApplicationWorkflow): boolean {
-    const app = this.application();
-    if (!app) {
-      return false;
-    }
-    if (app.status === 'completed' || app.status === 'rejected') {
+    if (!this.application()) {
       return false;
     }
     if (workflow.status === 'completed' || workflow.status === 'rejected') {
@@ -1190,7 +1191,6 @@ export class ApplicationDetailComponent implements OnInit {
     this.application.set({
       ...application,
       documents,
-      status: allRequiredCompleted ? 'completed' : application.status,
       isDocumentCollectionCompleted: allRequiredCompleted,
     });
   }
@@ -1210,6 +1210,46 @@ export class ApplicationDetailComponent implements OnInit {
       return;
     }
     this.uploadPreviewUrl.set(URL.createObjectURL(file));
+  }
+
+  private loadExistingDocumentPreview(document: ApplicationDocument): void {
+    this.clearExistingPreview();
+    if (!document.fileLink) {
+      return;
+    }
+
+    this.documentsService.downloadDocumentFile(document.id).subscribe({
+      next: (blob) => {
+        // Ignore stale async result if user switched document while request was in flight.
+        if (this.selectedDocument()?.id !== document.id) {
+          return;
+        }
+
+        const url = URL.createObjectURL(blob);
+        const mime = (blob.type || '').toLowerCase();
+        const urlType = this.getPreviewTypeFromUrl(document.fileLink);
+
+        let type: 'image' | 'pdf' | 'unknown' = 'unknown';
+        if (mime.startsWith('image/')) {
+          type = 'image';
+        } else if (mime === 'application/pdf') {
+          type = 'pdf';
+        } else {
+          type = urlType;
+        }
+
+        if (type === 'unknown') {
+          URL.revokeObjectURL(url);
+          return;
+        }
+
+        this.existingPreviewType.set(type);
+        this.existingPreviewUrl.set(url);
+      },
+      error: () => {
+        this.clearExistingPreview();
+      },
+    });
   }
 
   private getPreviewTypeFromUrl(url?: string | null): 'image' | 'pdf' | 'unknown' {
@@ -1237,6 +1277,19 @@ export class ApplicationDetailComponent implements OnInit {
     }
     this.uploadPreviewUrl.set(null);
     this.uploadPreviewType.set('unknown');
+  }
+
+  private clearExistingPreview(): void {
+    const url = this.existingPreviewUrl();
+    if (url && url.startsWith('blob:')) {
+      try {
+        URL.revokeObjectURL(url);
+      } catch (e) {
+        // ignore
+      }
+    }
+    this.existingPreviewUrl.set(null);
+    this.existingPreviewType.set('unknown');
   }
 
   private formatDateForApi(value: Date): string {

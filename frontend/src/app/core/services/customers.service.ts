@@ -234,10 +234,34 @@ export class CustomersService {
     nationality: item.nationality ?? null,
     gender: item.gender ?? null,
     npwp: item.npwp ?? null,
-    passportFile: item.passport_file ?? item.passportFile ?? null,
+    passportFile: this.normalizeFileUrl(item.passport_file ?? item.passportFile ?? null),
     passportMetadata: item.passport_metadata ?? item.passportMetadata ?? null,
     notifyDocumentsExpiration:
       item.notify_documents_expiration ?? item.notifyDocumentsExpiration ?? null,
     notifyBy: item.notify_by ?? item.notifyBy ?? null,
   });
+
+  private normalizeFileUrl(value: unknown): string | null {
+    if (typeof value !== 'string') {
+      return null;
+    }
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+    // Keep already-absolute/special URLs intact.
+    if (
+      trimmed.startsWith('http://') ||
+      trimmed.startsWith('https://') ||
+      trimmed.startsWith('data:') ||
+      trimmed.startsWith('blob:')
+    ) {
+      return trimmed;
+    }
+    // Convert relative storage paths (e.g. "documents/...") to root-relative URLs.
+    if (!trimmed.startsWith('/')) {
+      return `/${trimmed}`;
+    }
+    return trimmed;
+  }
 }

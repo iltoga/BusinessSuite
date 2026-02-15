@@ -11,34 +11,97 @@
       <tr z-table-row>
         @for (column of columns(); track column.key) {
           <th z-table-head [class]="'col-' + (column.sortKey ?? column.key)">
-            <button
-              type="button"
-              class="flex items-center gap-2"
-              [class.w-full]="column.key === 'actions'"
-              tabindex="-1"
-              [class.cursor-pointer]="column.sortable"
-              [class.justify-end]="column.key === 'actions'"
-              [ngClass]="{ 'text-foreground/70': !column.sortable }"
-              (click)="onSort(column)"
-            >
-              <div
-                class="flex flex-col"
-                [class.items-end]="column.key === 'actions'"
-                [class.items-start]="column.key !== 'actions'"
+            <div class="flex items-center gap-2" [class.justify-end]="column.key === 'actions'">
+              <button
+                type="button"
+                class="flex items-center gap-2"
+                tabindex="-1"
+                [class.cursor-pointer]="column.sortable"
+                [ngClass]="{ 'text-foreground/70': !column.sortable }"
+                (click)="onSort(column)"
               >
-                <span [class.text-right]="column.key === 'actions'">{{ column.header }}</span>
-                @if (column.subtitle) {
-                  <span class="text-xs font-normal text-foreground/70 normal-case">{{
-                    column.subtitle
-                  }}</span>
+                <div
+                  class="flex flex-col"
+                  [class.items-end]="column.key === 'actions'"
+                  [class.items-start]="column.key !== 'actions'"
+                >
+                  <span [class.text-right]="column.key === 'actions'">{{ column.header }}</span>
+                  @if (column.subtitle) {
+                    <span class="text-xs font-normal text-foreground/70 normal-case">{{
+                      column.subtitle
+                    }}</span>
+                  }
+                </div>
+                @if (currentSort()?.column === (column.sortKey ?? column.key)) {
+                  <span class="text-xs text-muted-foreground">
+                    {{ currentSort()?.direction === 'asc' ? '▲' : '▼' }}
+                  </span>
                 }
-              </div>
-              @if (currentSort()?.column === (column.sortKey ?? column.key)) {
-                <span class="text-xs text-muted-foreground">
-                  {{ currentSort()?.direction === 'asc' ? '▲' : '▼' }}
-                </span>
+              </button>
+
+              @if (column.filter) {
+                <button
+                  z-dropdown
+                  [zDropdownMenu]="filterMenu"
+                  type="button"
+                  class="inline-flex h-6 w-6 items-center justify-center rounded border border-transparent text-foreground/70 hover:border-border hover:text-foreground"
+                  [class.filter-active]="hasActiveFilter(column)"
+                  [attr.aria-label]="'Filter ' + column.header"
+                  (click)="$event.stopPropagation()"
+                >
+                  <z-icon zType="list-filter-plus" class="h-4 w-4" />
+                </button>
+
+                <z-dropdown-menu-content #filterMenu class="w-64 p-2">
+                  <div class="mb-2 flex items-center justify-between gap-2">
+                    <span class="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      {{ column.header }}
+                    </span>
+                    <button
+                      type="button"
+                      class="text-xs font-medium text-primary hover:underline disabled:text-muted-foreground disabled:no-underline"
+                      [disabled]="!hasActiveFilter(column)"
+                      (click)="clearColumnFilter(column, $event)"
+                    >
+                      Clear
+                    </button>
+                  </div>
+
+                  <input
+                    type="text"
+                    class="mb-2 h-8 w-full rounded border border-input bg-background px-2 text-xs outline-none focus:border-primary"
+                    [value]="filterSearch()[column.key]"
+                    [placeholder]="column.filter.searchPlaceholder || 'Search values...'"
+                    (input)="onFilterSearchChange(column.key, $any($event.target).value)"
+                    (click)="$event.stopPropagation()"
+                  />
+
+                  <div class="max-h-60 overflow-auto pr-1">
+                    @if (getFilteredOptions(column).length === 0) {
+                      <div class="px-1 py-2 text-xs text-muted-foreground">
+                        {{ column.filter.emptyLabel || 'No values found' }}
+                      </div>
+                    } @else {
+                      @for (option of getFilteredOptions(column); track option.value) {
+                        <button
+                          type="button"
+                          class="flex cursor-pointer items-center gap-2 rounded px-1 py-1 text-xs hover:bg-muted/60"
+                          (click)="toggleFilterValue(column, option.value, $event)"
+                        >
+                          <input
+                            type="checkbox"
+                            class="h-3.5 w-3.5 accent-primary"
+                            [checked]="isFilterValueSelected(column, option.value)"
+                            tabindex="-1"
+                          />
+                          <span class="truncate">{{ option.label }}</span>
+                        </button>
+                      }
+                    }
+                  </div>
+                </z-dropdown-menu-content>
               }
-            </button>
+            </div>
           </th>
         }
       </tr>

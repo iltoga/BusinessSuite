@@ -3,6 +3,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  ElementRef,
   HostListener,
   inject,
   PLATFORM_ID,
@@ -12,9 +13,12 @@ import {
   type TemplateRef,
 } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
+import { catchError, Observable, takeWhile } from 'rxjs';
 
 import { ProductsService, type PaginatedProductList, type Product } from '@/core/api';
 import { AuthService } from '@/core/services/auth.service';
+import { ProductImportExportService } from '@/core/services/product-import-export.service';
+import { SseService } from '@/core/services/sse.service';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import {
@@ -35,6 +39,7 @@ import { ZardTooltipImports } from '@/shared/components/tooltip';
 import { ContextHelpDirective } from '@/shared/directives';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
+import { downloadBlob } from '@/shared/utils/file-download';
 
 @Component({
   selector: 'app-product-list',
@@ -59,6 +64,8 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 })
 export class ProductListComponent implements OnInit {
   private productsApi = inject(ProductsService);
+  private productImportExportApi = inject(ProductImportExportService);
+  private sseService = inject(SseService);
   private authService = inject(AuthService);
   private toast = inject(GlobalToastService);
   private platformId = inject(PLATFORM_ID);
@@ -84,6 +91,7 @@ export class ProductListComponent implements OnInit {
     viewChild.required<TemplateRef<{ $implicit: Product; value: any; row: Product }>>(
       'createdAtTemplate',
     );
+  private readonly importFileInput = viewChild<ElementRef<HTMLInputElement>>('importFileInput');
 
   // Access the data table for focus management
   private readonly dataTable = viewChild.required(DataTableComponent);
@@ -108,6 +116,10 @@ export class ProductListComponent implements OnInit {
   readonly bulkDeleteLabel = computed(() =>
     this.query().trim() ? 'Delete Selected Products' : 'Delete All Products',
   );
+  readonly exportInProgress = signal(false);
+  readonly exportProgress = signal<number | null>(null);
+  readonly importInProgress = signal(false);
+  readonly importProgress = signal<number | null>(null);
 
   // When navigating back to the list we may want to focus a specific id or the table
   private readonly focusTableOnInit = signal(false);
@@ -327,6 +339,81 @@ export class ProductListComponent implements OnInit {
     this.bulkDeleteQuery.set('');
   }
 
+  startExport(): void {
+    if (this.exportInProgress()) {
+      return;
+    }
+    this.exportInProgress.set(true);
+    this.exportProgress.set(0);
+
+    this.productImportExportApi.startExport(this.query().trim() || undefined).subscribe({
+      next: (response) => {
+        const jobId = (response as any)?.job_id ?? (response as any)?.jobId;
+        if (!jobId) {
+          this.toast.error('Export job was started but no job id was returned');
+          this.exportInProgress.set(false);
+          this.exportProgress.set(null);
+          return;
+        }
+        this.watchExportJob(String(jobId));
+      },
+      error: (error) => {
+        const message = extractServerErrorMessage(error);
+        this.toast.error(message ? `Failed to start export: ${message}` : 'Failed to start export');
+        this.exportInProgress.set(false);
+        this.exportProgress.set(null);
+      },
+    });
+  }
+
+  openImportPicker(): void {
+    if (this.importInProgress()) {
+      return;
+    }
+    const input = this.importFileInput()?.nativeElement;
+    if (!input) {
+      return;
+    }
+    input.value = '';
+    input.click();
+  }
+
+  onImportFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement | null;
+    const file = input?.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    const name = file.name.toLowerCase();
+    if (!name.endsWith('.xlsx')) {
+      this.toast.error('Only .xlsx files are supported');
+      return;
+    }
+
+    this.importInProgress.set(true);
+    this.importProgress.set(0);
+
+    this.productImportExportApi.startImport(file).subscribe({
+      next: (response) => {
+        const jobId = (response as any)?.job_id ?? (response as any)?.jobId;
+        if (!jobId) {
+          this.toast.error('Import job was started but no job id was returned');
+          this.importInProgress.set(false);
+          this.importProgress.set(null);
+          return;
+        }
+        this.watchImportJob(String(jobId));
+      },
+      error: (error) => {
+        const message = extractServerErrorMessage(error);
+        this.toast.error(message ? `Failed to start import: ${message}` : 'Failed to start import');
+        this.importInProgress.set(false);
+        this.importProgress.set(null);
+      },
+    });
+  }
+
   productTypeLabel(type?: string | null): string {
     if (type === 'visa') return 'Visa';
     if (type === 'other') return 'Other';
@@ -343,6 +430,101 @@ export class ProductListComponent implements OnInit {
       currency: 'IDR',
       maximumFractionDigits: 0,
     }).format(n);
+  }
+
+  private watchExportJob(jobId: string): void {
+    this.watchJob(jobId).subscribe({
+      next: (job: any) => {
+        this.exportProgress.set(Number(job?.progress ?? 0));
+
+        if (job?.status === 'completed') {
+          this.downloadExport(jobId);
+          this.exportInProgress.set(false);
+          this.exportProgress.set(null);
+        } else if (job?.status === 'failed') {
+          this.toast.error(job?.errorMessage || job?.error_message || 'Product export failed');
+          this.exportInProgress.set(false);
+          this.exportProgress.set(null);
+        }
+      },
+      error: () => {
+        this.toast.error('Failed to track export progress');
+        this.exportInProgress.set(false);
+        this.exportProgress.set(null);
+      },
+    });
+  }
+
+  private watchImportJob(jobId: string): void {
+    this.watchJob(jobId).subscribe({
+      next: (job: any) => {
+        this.importProgress.set(Number(job?.progress ?? 0));
+        if (job?.status === 'completed') {
+          const result = (job?.result ?? {}) as Record<string, unknown>;
+          const created = Number(result['created'] ?? 0);
+          const updated = Number(result['updated'] ?? 0);
+          const errors = Number(result['errors'] ?? 0);
+          this.toast.success(
+            `Import completed: ${created} created, ${updated} updated, ${errors} error(s).`,
+          );
+          this.importInProgress.set(false);
+          this.importProgress.set(null);
+          this.page.set(1);
+          this.loadProducts();
+        } else if (job?.status === 'failed') {
+          this.toast.error(job?.errorMessage || job?.error_message || 'Product import failed');
+          this.importInProgress.set(false);
+          this.importProgress.set(null);
+        }
+      },
+      error: () => {
+        this.toast.error('Failed to track import progress');
+        this.importInProgress.set(false);
+        this.importProgress.set(null);
+      },
+    });
+  }
+
+  private downloadExport(jobId: string): void {
+    this.productImportExportApi.downloadExport(jobId).subscribe({
+      next: (response) => {
+        const filename = this.resolveFilename(response) || 'products_export.xlsx';
+        downloadBlob(response.body ?? new Blob(), filename);
+        this.toast.success('Product export ready');
+      },
+      error: (error) => {
+        const message = extractServerErrorMessage(error);
+        this.toast.error(message ? `Failed to download export: ${message}` : 'Failed to download export');
+      },
+    });
+  }
+
+  private resolveFilename(response: { headers?: { get(name: string): string | null } }): string | null {
+    const contentDisposition = response.headers?.get('content-disposition');
+    if (!contentDisposition) return null;
+    const filenameStarMatch = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+    if (filenameStarMatch?.[1]) {
+      return decodeURIComponent(filenameStarMatch[1]);
+    }
+    const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/i);
+    return filenameMatch?.[1] ?? null;
+  }
+
+  private watchJob(jobId: string): Observable<any> {
+    const token = this.authService.getToken();
+    const params = new URLSearchParams();
+    if (token) {
+      params.set('token', token);
+    } else if (this.authService.isMockEnabled()) {
+      params.set('token', 'mock-token');
+    }
+    const query = params.toString();
+    const url = `/api/async-jobs/status/${jobId}/${query ? `?${query}` : ''}`;
+
+    return this.sseService.connect<any>(url).pipe(
+      catchError(() => this.productImportExportApi.pollJob(jobId)),
+      takeWhile((job) => job?.status !== 'completed' && job?.status !== 'failed', true),
+    );
   }
 
   private loadProducts(): void {

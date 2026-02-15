@@ -126,11 +126,16 @@ export class CalendarIntegrationComponent implements OnInit {
 
   readonly overdueApplications = computed(() => {
     const todayStart = this.startOfDay(new Date());
+    const oldestOverdueStart = new Date(todayStart);
+    oldestOverdueStart.setDate(oldestOverdueStart.getDate() - 14);
 
     return this.normalizedEvents()
       .filter(
         (event) =>
-          this.isApplicationEvent(event) && !event.isDone && event.startDate.getTime() < todayStart.getTime(),
+          this.isApplicationEvent(event) &&
+          !event.isDone &&
+          event.startDate.getTime() < todayStart.getTime() &&
+          event.startDate.getTime() >= oldestOverdueStart.getTime(),
       )
       .sort((left, right) => right.startDate.getTime() - left.startDate.getTime());
   });
@@ -266,6 +271,24 @@ export class CalendarIntegrationComponent implements OnInit {
           this.ensureSelectedTodayEvent();
         },
       });
+  }
+
+  confirmOverdueApplicationDone(event: CalendarEventViewModel, domEvent?: Event): void {
+    domEvent?.stopPropagation();
+    if (!event.id || event.isDone || this.isEventUpdating(event.id)) {
+      return;
+    }
+
+    this.dialogService.create({
+      zTitle: 'Complete overdue application',
+      zContent: `Mark "${event.summary}" as completed?`,
+      zOkText: 'Complete',
+      zCancelText: 'Cancel',
+      zOkDestructive: false,
+      zOnOk: () => {
+        this.toggleEventDone(event);
+      },
+    });
   }
 
   isEventUpdating(eventId: string): boolean {

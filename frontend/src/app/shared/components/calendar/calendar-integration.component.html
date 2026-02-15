@@ -173,9 +173,22 @@
         <ul class="space-y-2 text-sm">
           @for (event of overdueApplications(); track event.id) {
             <li class="rounded border border-border/50 px-3 py-2">
-              <div class="font-medium">{{ event.summary }}</div>
-              <div class="text-xs text-muted-foreground">
-                Due {{ event.startDate | appDate }}
+              <div class="flex items-start gap-2">
+                <button
+                  type="button"
+                  class="mt-0.5 rounded-full text-muted-foreground transition hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                  [disabled]="isEventUpdating(event.id)"
+                  [attr.aria-label]="'Mark overdue ' + event.summary + ' done'"
+                  (click)="confirmOverdueApplicationDone(event, $event)"
+                >
+                  <z-icon zType="circle" class="h-4 w-4" />
+                </button>
+                <div class="min-w-0 flex-1">
+                  <div class="font-medium">{{ event.summary }}</div>
+                  <div class="text-xs text-muted-foreground">
+                    Due {{ event.startDate | appDate }}
+                  </div>
+                </div>
               </div>
             </li>
           }

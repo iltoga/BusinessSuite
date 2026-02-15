@@ -2,6 +2,7 @@ import { CalendarService } from '@/core/api/api/calendar.service';
 import { DEFAULT_APP_CONFIG } from '@/core/config/app.config';
 import { ConfigService } from '@/core/services/config.service';
 import { CalendarIntegrationComponent } from '@/shared/components/calendar/calendar-integration.component';
+import { ZardDialogService } from '@/shared/components/dialog';
 import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 
@@ -27,6 +28,7 @@ describe('CalendarIntegrationComponent', () => {
   });
 
   it('splits today events into todo and done buckets', () => {
+    const dialogServiceMock = { create: vi.fn() };
     const calendarServiceMock = {
       calendarList: vi.fn().mockReturnValue(of([makeEvent('1', 'Todo Event', '5'), makeEvent('2', 'Done Event', '10')])),
       calendarPartialUpdate: vi.fn().mockReturnValue(of(makeEvent('1', 'Todo Event', '10'))),
@@ -41,6 +43,7 @@ describe('CalendarIntegrationComponent', () => {
       providers: [
         { provide: CalendarService, useValue: calendarServiceMock },
         { provide: ConfigService, useValue: configServiceMock },
+        { provide: ZardDialogService, useValue: dialogServiceMock },
       ],
     });
 
@@ -53,6 +56,7 @@ describe('CalendarIntegrationComponent', () => {
   });
 
   it('marks a todo event as done via backend patch', () => {
+    const dialogServiceMock = { create: vi.fn() };
     const calendarServiceMock = {
       calendarList: vi.fn().mockReturnValue(of([makeEvent('1', 'Todo Event', '5')])),
       calendarPartialUpdate: vi.fn().mockReturnValue(of(makeEvent('1', 'Todo Event', '10'))),
@@ -67,6 +71,7 @@ describe('CalendarIntegrationComponent', () => {
       providers: [
         { provide: CalendarService, useValue: calendarServiceMock },
         { provide: ConfigService, useValue: configServiceMock },
+        { provide: ZardDialogService, useValue: dialogServiceMock },
       ],
     });
 
@@ -87,6 +92,7 @@ describe('CalendarIntegrationComponent', () => {
   });
 
   it('does not allow moving a done event back to todo', () => {
+    const dialogServiceMock = { create: vi.fn() };
     const calendarServiceMock = {
       calendarList: vi.fn().mockReturnValue(of([makeEvent('1', 'Done Event', '10')])),
       calendarPartialUpdate: vi.fn().mockReturnValue(of(makeEvent('1', 'Done Event', '5'))),
@@ -101,6 +107,7 @@ describe('CalendarIntegrationComponent', () => {
       providers: [
         { provide: CalendarService, useValue: calendarServiceMock },
         { provide: ConfigService, useValue: configServiceMock },
+        { provide: ZardDialogService, useValue: dialogServiceMock },
       ],
     });
 
@@ -116,10 +123,12 @@ describe('CalendarIntegrationComponent', () => {
     expect(component.todayDoneEvents().length).toBe(1);
   });
 
-  it('lists overdue application events from newest due date to oldest', () => {
+  it('lists overdue application events from newest due date to oldest within last 14 days', () => {
+    const dialogServiceMock = { create: vi.fn() };
     const calendarServiceMock = {
       calendarList: vi.fn().mockReturnValue(
         of([
+          makeEvent('too-old', '[Application #100] Too Old Overdue', '5', isoAtOffset(-15)),
           makeEvent('old', '[Application #101] Old Overdue', '5', isoAtOffset(-5)),
           makeEvent('new', '[Application #102] New Overdue', '5', isoAtOffset(-1)),
           makeEvent('done', '[Application #103] Done Overdue', '10', isoAtOffset(-2)),
@@ -138,6 +147,7 @@ describe('CalendarIntegrationComponent', () => {
       providers: [
         { provide: CalendarService, useValue: calendarServiceMock },
         { provide: ConfigService, useValue: configServiceMock },
+        { provide: ZardDialogService, useValue: dialogServiceMock },
       ],
     });
 
@@ -146,5 +156,41 @@ describe('CalendarIntegrationComponent', () => {
 
     const component = fixture.componentInstance;
     expect(component.overdueApplications().map((event) => event.id)).toEqual(['new', 'old']);
+  });
+
+  it('opens a confirmation dialog before completing an overdue application', () => {
+    const dialogServiceMock = { create: vi.fn() };
+    const calendarServiceMock = {
+      calendarList: vi.fn().mockReturnValue(of([makeEvent('1', '[Application #101] Overdue', '5', isoAtOffset(-1))])),
+      calendarPartialUpdate: vi.fn().mockReturnValue(of(makeEvent('1', '[Application #101] Overdue', '10'))),
+    };
+
+    const configServiceMock = {
+      settings: { ...DEFAULT_APP_CONFIG, calendarTodoColorId: '5', calendarDoneColorId: '10' },
+    };
+
+    TestBed.configureTestingModule({
+      imports: [CalendarIntegrationComponent],
+      providers: [
+        { provide: CalendarService, useValue: calendarServiceMock },
+        { provide: ConfigService, useValue: configServiceMock },
+        { provide: ZardDialogService, useValue: dialogServiceMock },
+      ],
+    });
+
+    const fixture = TestBed.createComponent(CalendarIntegrationComponent);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    const overdueEvent = component.overdueApplications()[0];
+
+    component.confirmOverdueApplicationDone(overdueEvent);
+
+    expect(dialogServiceMock.create).toHaveBeenCalled();
+    const config = dialogServiceMock.create.mock.calls[0][0];
+    config.zOnOk();
+    expect(calendarServiceMock.calendarPartialUpdate).toHaveBeenCalledWith(
+      '1',
+      expect.objectContaining({ done: true }),
+    );
   });
 });

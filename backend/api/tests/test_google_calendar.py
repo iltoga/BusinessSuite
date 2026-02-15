@@ -339,3 +339,76 @@ class TestGoogleCalendarAPI:
 
         event = CalendarEvent.objects.get(pk="evt-app-1")
         assert event.color_id == GoogleCalendarEventColors.done_color_id()
+
+    @pytest.mark.django_db
+    def test_partial_update_done_on_overdue_application_force_completes_application(self):
+        from django.contrib.auth import get_user_model
+        from django.utils import timezone
+
+        from customer_applications.models import DocApplication
+        from customers.models import Customer
+        from products.models import Product
+
+        User = get_user_model()
+        user = User.objects.create_superuser(username="testadmin6", email="test6@local", password="test")
+        self.client.force_authenticate(user=user)
+
+        customer = Customer.objects.create(first_name="Overdue", last_name="App")
+        product = Product.objects.create(
+            name="Overdue Product",
+            code="OD-1",
+            product_type="visa",
+            required_documents="Passport",
+        )
+        task = product.tasks.create(
+            step=1,
+            name="Step 1",
+            duration=1,
+            duration_is_business_days=True,
+            add_task_to_calendar=True,
+            last_step=False,
+        )
+        application = DocApplication.objects.create(
+            customer=customer,
+            product=product,
+            doc_date=timezone.localdate() - datetime.timedelta(days=20),
+            due_date=timezone.localdate() - datetime.timedelta(days=2),
+            calendar_event_id="evt-overdue-1",
+            add_deadlines_to_calendar=True,
+            created_by=user,
+            status=DocApplication.STATUS_PENDING,
+        )
+        application.workflows.create(
+            start_date=timezone.localdate() - datetime.timedelta(days=20),
+            due_date=timezone.localdate() - datetime.timedelta(days=2),
+            task=task,
+            created_by=user,
+            status="pending",
+        )
+        CalendarEvent.objects.create(
+            id="evt-overdue-1",
+            source=CalendarEvent.SOURCE_APPLICATION,
+            application=application,
+            title="Overdue task",
+            description="desc",
+            start_date=timezone.localdate() - datetime.timedelta(days=2),
+            end_date=timezone.localdate() - datetime.timedelta(days=1),
+            color_id=GoogleCalendarEventColors.todo_color_id(),
+        )
+
+        with (
+            patch("customer_applications.tasks.sync_application_calendar_task") as sync_mock,
+            patch("django.db.transaction.on_commit", side_effect=lambda callback: callback()),
+            patch("core.signals_calendar.update_google_event_task") as update_sync_mock,
+        ):
+            resp = self.client.patch("/api/calendar/evt-overdue-1/", {"done": True}, format="json")
+
+        assert resp.status_code == status.HTTP_200_OK
+        application.refresh_from_db()
+        assert application.status == DocApplication.STATUS_COMPLETED
+        assert resp.data["colorId"] == GoogleCalendarEventColors.done_color_id()
+        sync_mock.assert_called_once()
+        update_sync_mock.assert_called_once_with(event_id="evt-overdue-1")
+
+        event = CalendarEvent.objects.get(pk="evt-overdue-1")
+        assert event.color_id == GoogleCalendarEventColors.done_color_id()

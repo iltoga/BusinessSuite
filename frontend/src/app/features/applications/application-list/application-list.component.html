@@ -36,7 +36,7 @@
       <app-data-table
         #dataTable
         [columns]="columns()"
-        [data]="items()"
+        [data]="filteredItems()"
         [actions]="actions()"
         [rowClass]="rowClassFn"
         [isLoading]="isLoading()"
@@ -44,6 +44,7 @@
         [totalPages]="totalPages()"
         (pageChange)="onPageChange($event)"
         (sortChange)="onSortChange($event)"
+        (columnFilterChange)="onColumnFilterChange($event)"
       >
         <ng-template #columnCustomer let-row>
           <a [routerLink]="['/customers', row.customer?.id]" class="font-medium hover:underline">{{

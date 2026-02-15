@@ -1,10 +1,12 @@
 <div class="space-y-4">
   <div class="flex items-center justify-between">
-    <h1 class="text-xl font-semibold">Workflow Notifications</h1>
+    <h1 class="text-xl font-semibold">Notifications Center</h1>
     <div class="flex items-center gap-2">
       <button z-button zType="secondary" (click)="load()">Refresh</button>
       <button z-button zType="default" (click)="openPushTestDialog()">Send Test Push</button>
-      <button z-button zType="default" (click)="openWhatsappTestDialog()">Send Test WhatsApp</button>
+      <button z-button zType="default" (click)="openWhatsappTestDialog()">
+        Send Test WhatsApp
+      </button>
     </div>
   </div>
 
@@ -30,8 +32,12 @@
             <td class="p-2">{{ item.scheduled_for || '-' }}</td>
             <td class="p-2 flex gap-2">
               <button z-button zSize="sm" (click)="resend(item.id)">Resend</button>
-              <button z-button zType="secondary" zSize="sm" (click)="cancel(item.id)">Cancel</button>
-              <button z-button zType="destructive" zSize="sm" (click)="remove(item.id)">Delete</button>
+              <button z-button zType="secondary" zSize="sm" (click)="cancel(item.id)">
+                Cancel
+              </button>
+              <button z-button zType="destructive" zSize="sm" (click)="remove(item.id)">
+                Delete
+              </button>
             </td>
           </tr>
         }
@@ -44,7 +50,12 @@
   <form [formGroup]="pushTestForm" class="space-y-4" (ngSubmit)="sendTestPush()">
     <div>
       <label class="mb-1 block text-sm font-medium">User</label>
-      <z-combobox formControlName="userId" [options]="userOptions()" [searchable]="true" [zWidth]="'full'" />
+      <z-combobox
+        formControlName="userId"
+        [options]="userOptions()"
+        [searchable]="true"
+        [zWidth]="'full'"
+      />
       @if (pushTestForm.get('userId')?.invalid && pushTestForm.get('userId')?.touched) {
         <p class="mt-1 text-xs text-destructive">User is required.</p>
       }
@@ -92,7 +103,10 @@
         z-button
         zType="default"
         type="submit"
-        [disabled]="sendingPush() || (pushTestForm.get('userId')?.value && selectedUserActiveSubscriptions() === 0)"
+        [disabled]="
+          sendingPush() ||
+          (pushTestForm.get('userId')?.value && selectedUserActiveSubscriptions() === 0)
+        "
       >
         {{ sendingPush() ? 'Sending...' : 'Send' }}
       </button>

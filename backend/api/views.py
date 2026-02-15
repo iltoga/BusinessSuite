@@ -69,7 +69,7 @@ from django.http import FileResponse, HttpResponse, JsonResponse, StreamingHttpR
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.utils import timezone
-from django.utils.text import slugify
+from django.utils.text import get_valid_filename, slugify
 from django.views.decorators.csrf import csrf_exempt
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema, extend_schema_view
@@ -617,6 +617,94 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             return self.get_paginated_response(serializer.data)
         serializer = self.get_serializer(products, many=True)
         return Response(serializer.data)
+
+    @action(detail=False, methods=["post"], url_path="export/start")
+    def export_start(self, request):
+        from products.tasks import run_product_export_job
+
+        query = (
+            request.data.get("search_query") or request.data.get("searchQuery") or request.data.get("query") or ""
+        ).strip()
+
+        job = AsyncJob.objects.create(
+            task_name="products_export_excel",
+            status=AsyncJob.STATUS_PENDING,
+            progress=0,
+            message="Queued product export...",
+            created_by=request.user,
+        )
+
+        run_product_export_job(str(job.id), request.user.id if request.user else None, query)
+
+        return Response(
+            {
+                "job_id": str(job.id),
+                "status": job.status,
+                "progress": job.progress,
+            },
+            status=status.HTTP_202_ACCEPTED,
+        )
+
+    @action(detail=False, methods=["get"], url_path=r"export/download/(?P<job_id>[^/.]+)")
+    def export_download(self, request, job_id=None):
+        try:
+            job = AsyncJob.objects.get(id=job_id, created_by=request.user)
+        except AsyncJob.DoesNotExist:
+            return self.error_response("Job not found", status.HTTP_404_NOT_FOUND)
+
+        if job.status != AsyncJob.STATUS_COMPLETED:
+            return self.error_response("Job not completed yet", status.HTTP_400_BAD_REQUEST)
+
+        result = job.result or {}
+        file_path = result.get("file_path")
+        filename = result.get("filename") or "products_export.xlsx"
+        if not file_path:
+            return self.error_response("Export file not available", status.HTTP_400_BAD_REQUEST)
+        if not default_storage.exists(file_path):
+            return self.error_response("Export file not found", status.HTTP_404_NOT_FOUND)
+
+        response = FileResponse(
+            default_storage.open(file_path, "rb"),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
+    @action(detail=False, methods=["post"], url_path="import/start", parser_classes=[MultiPartParser, FormParser])
+    def import_start(self, request):
+        from products.tasks import run_product_import_job
+
+        uploaded = request.FILES.get("file")
+        if not uploaded:
+            return self.error_response("No file uploaded", status.HTTP_400_BAD_REQUEST)
+
+        filename = uploaded.name or "products_import.xlsx"
+        ext = os.path.splitext(filename.lower())[1]
+        if ext != ".xlsx":
+            return self.error_response("Only .xlsx files are supported", status.HTTP_400_BAD_REQUEST)
+
+        job = AsyncJob.objects.create(
+            task_name="products_import_excel",
+            status=AsyncJob.STATUS_PENDING,
+            progress=0,
+            message="Queued product import...",
+            created_by=request.user,
+        )
+
+        safe_name = get_valid_filename(os.path.basename(filename))
+        input_path = os.path.join("tmpfiles", "product_imports", str(job.id), safe_name)
+        saved_path = default_storage.save(input_path, uploaded)
+
+        run_product_import_job(str(job.id), request.user.id if request.user else None, saved_path)
+
+        return Response(
+            {
+                "job_id": str(job.id),
+                "status": job.status,
+                "progress": job.progress,
+            },
+            status=status.HTTP_202_ACCEPTED,
+        )
 
 
 class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
