@@ -140,6 +140,20 @@ class DocApplication(models.Model):
             models.Index(fields=["customer", "status"], name="docapp_customer_status_idx"),
         ]
 
+    def _get_prefetched_list(self, related_name: str):
+        cache = getattr(self, "_prefetched_objects_cache", None) or {}
+        return cache.get(related_name)
+
+    def _get_current_workflow_from_prefetch(self):
+        workflows = self._get_prefetched_list("workflows")
+        if workflows is None:
+            return False, None
+        return True, max(
+            workflows,
+            key=lambda wf: ((wf.task.step if wf.task else -1), wf.created_at, wf.id),
+            default=None,
+        )
+
     def __str__(self):
         return self.product.name + " - " + self.customer.full_name + f" #{self.pk}"
 
@@ -173,6 +187,9 @@ class DocApplication(models.Model):
         """
         Gets the current workflow.
         """
+        has_prefetch, prefetched = self._get_current_workflow_from_prefetch()
+        if has_prefetch:
+            return prefetched
         return self.workflows.order_by("-task__step", "-created_at", "-id").first()
 
     @property
@@ -203,23 +220,43 @@ class DocApplication(models.Model):
         """
         Gets the next task.
         """
-        tasks = self.product.tasks.order_by("step")
+        prefetched_tasks = None
+        product_cache = getattr(self.product, "_prefetched_objects_cache", None) or {}
+        if "tasks" in product_cache:
+            prefetched_tasks = sorted(product_cache["tasks"], key=lambda task: task.step)
         current_workflow = self.current_workflow
 
         if current_workflow and current_workflow.status == self.STATUS_COMPLETED:
-            return tasks.filter(step=current_workflow.task.step + 1).first()
+            if prefetched_tasks is not None:
+                return next((task for task in prefetched_tasks if task.step == current_workflow.task.step + 1), None)
+            return self.product.tasks.filter(step=current_workflow.task.step + 1).first()
         elif current_workflow and current_workflow.status == self.STATUS_REJECTED:
             return None
         elif current_workflow:
             return current_workflow.task
         else:
-            return tasks.first()
+            if prefetched_tasks is not None:
+                return prefetched_tasks[0] if prefetched_tasks else None
+            return self.product.tasks.order_by("step").first()
 
     def get_next_calendar_task(self):
         """Return next workflow task configured for calendar reminders."""
-        tasks = self.product.tasks.order_by("step")
+        prefetched_tasks = None
+        product_cache = getattr(self.product, "_prefetched_objects_cache", None) or {}
+        if "tasks" in product_cache:
+            prefetched_tasks = sorted(product_cache["tasks"], key=lambda task: task.step)
         current_workflow = self.current_workflow
 
+        if prefetched_tasks is not None:
+            if current_workflow and current_workflow.status == self.STATUS_COMPLETED:
+                prefetched_tasks = [task for task in prefetched_tasks if task.step > current_workflow.task.step]
+            elif current_workflow and current_workflow.status == self.STATUS_REJECTED:
+                return None
+            elif current_workflow:
+                prefetched_tasks = [task for task in prefetched_tasks if task.step >= current_workflow.task.step]
+            return next((task for task in prefetched_tasks if task.add_task_to_calendar), None)
+
+        tasks = self.product.tasks.order_by("step")
         if current_workflow and current_workflow.status == self.STATUS_COMPLETED:
             tasks = tasks.filter(step__gt=current_workflow.task.step)
         elif current_workflow and current_workflow.status == self.STATUS_REJECTED:
@@ -341,6 +378,9 @@ class DocApplication(models.Model):
         """
         Returns all documents for this application, ordered by the product's document list.
         """
+        prefetched_documents = self._get_prefetched_list("documents")
+        if prefetched_documents is not None:
+            return self.order_documents_by_product(prefetched_documents)
         return self.order_documents_by_product(self.documents.all())
 
     def get_completed_documents(self, type="all"):
@@ -371,12 +411,19 @@ class DocApplication(models.Model):
         """
         Checks whether the application has an invoice.
         """
+        prefetched_invoice_apps = self._get_prefetched_list("invoice_applications")
+        if prefetched_invoice_apps is not None:
+            return bool(prefetched_invoice_apps)
         return self.invoice_applications.exists()
 
     def get_invoice(self):
         """
         Gets the application's invoice.
         """
+        prefetched_invoice_apps = self._get_prefetched_list("invoice_applications")
+        if prefetched_invoice_apps is not None:
+            first = prefetched_invoice_apps[0] if prefetched_invoice_apps else None
+            return first.invoice if first else None
         return self.invoice_applications.first().invoice if self.has_invoice() else None
 
     def reopen(self, user) -> bool:

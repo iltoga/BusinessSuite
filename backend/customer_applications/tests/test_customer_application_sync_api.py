@@ -63,6 +63,8 @@ class CustomerApplicationSyncApiTests(TestCase):
         self.assertIn("id", response.data)
         application_id = response.data["id"]
         self.assertTrue(DocApplication.objects.filter(pk=application_id).exists())
+        first_workflow = DocWorkflow.objects.get(doc_application_id=application_id, task__step=1)
+        self.assertEqual(first_workflow.due_date, date(2026, 1, 12))
 
         sync_task_mock.assert_called_once()
         kwargs = sync_task_mock.call_args.kwargs

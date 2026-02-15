@@ -57,7 +57,7 @@ from core.tasks.document_ocr import run_document_ocr_job
 from core.tasks.ocr import run_ocr_job
 from core.utils.dateutils import calculate_due_date
 from core.utils.pdf_converter import PDFConverter, PDFConverterError
-from customer_applications.models import DocApplication, Document, WorkflowNotification
+from customer_applications.models import DocApplication, DocWorkflow, Document, WorkflowNotification
 from customers.models import Customer
 from django.conf import settings
 from django.contrib.auth import logout as django_logout
@@ -729,7 +729,7 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             invoice_applications_qs = invoice_applications_qs.prefetch_related("payments")
 
         return (
-            queryset.select_related("customer")
+            queryset.select_related("customer", "created_by", "updated_by")
             .prefetch_related(Prefetch("invoice_applications", queryset=invoice_applications_qs))
             .annotate(total_paid=Coalesce(Subquery(payment_subquery), Value(0), output_field=DecimalField()))
             .annotate(total_due=F("total_amount") - F("total_paid"))
@@ -1641,7 +1641,20 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
         return (
             DocApplication.objects.select_related("customer", "product")
-            .prefetch_related("documents__doc_type", "workflows__task", "invoice_applications__invoice")
+            .prefetch_related(
+                Prefetch(
+                    "documents",
+                    queryset=Document.objects.select_related("doc_type", "created_by", "updated_by"),
+                ),
+                Prefetch(
+                    "workflows",
+                    queryset=DocWorkflow.objects.select_related("task", "created_by", "updated_by"),
+                ),
+                Prefetch(
+                    "invoice_applications",
+                    queryset=InvoiceApplication.objects.select_related("invoice"),
+                ),
+            )
             .annotate(
                 total_required_documents=Count("documents", filter=Q(documents__required=True)),
                 completed_required_documents=Count(

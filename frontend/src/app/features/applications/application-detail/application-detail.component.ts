@@ -47,8 +47,8 @@ import {
 import { ZardTooltipImports } from '@/shared/components/tooltip';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 import { HelpService } from '@/shared/services/help.service';
-import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 import { downloadBlob } from '@/shared/utils/file-download';
+import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 
 interface TimelineWorkflowItem {
   workflow: ApplicationWorkflow;
@@ -247,7 +247,10 @@ export class ApplicationDetailComponent implements OnInit {
     (this.application()?.documents ?? []).filter((doc) => !doc.required && !doc.completed),
   );
   readonly documentCollectionStatus = computed<{
-    label: 'Document Collection Pending' | 'Document Collection Incomplete' | 'Document Collection Complete';
+    label:
+      | 'Document Collection Pending'
+      | 'Document Collection Incomplete'
+      | 'Document Collection Complete';
     type: 'default' | 'secondary' | 'warning' | 'success' | 'destructive';
   }>(() => {
     const documents = this.application()?.documents ?? [];
@@ -275,8 +278,7 @@ export class ApplicationDetailComponent implements OnInit {
     const workflows = this.sortedWorkflows();
     return workflows.map((workflow, index) => ({
       workflow,
-      gapDaysFromPrevious:
-        index > 0 ? this.calculateGapDays(workflows[index - 1], workflow) : null,
+      gapDaysFromPrevious: index > 0 ? this.calculateGapDays(workflows[index - 1], workflow) : null,
     }));
   });
 
@@ -750,7 +752,9 @@ export class ApplicationDetailComponent implements OnInit {
     });
   }
 
-  getApplicationStatusVariant(status: string): 'default' | 'secondary' | 'warning' | 'success' | 'destructive' {
+  getApplicationStatusVariant(
+    status: string,
+  ): 'default' | 'secondary' | 'warning' | 'success' | 'destructive' {
     switch (status) {
       case 'completed':
         return 'success';
@@ -768,7 +772,7 @@ export class ApplicationDetailComponent implements OnInit {
     status: string,
     isOverdue?: boolean,
   ): 'default' | 'secondary' | 'warning' | 'success' | 'destructive' {
-    if (isOverdue) {
+    if (isOverdue && status !== 'completed' && status !== 'rejected') {
       return 'destructive';
     }
     switch (status) {
@@ -843,7 +847,8 @@ export class ApplicationDetailComponent implements OnInit {
     return options.map((option) => ({
       ...option,
       disabled:
-        option.value !== workflow.status && this.isWorkflowStatusChangeBlocked(workflow, option.value),
+        option.value !== workflow.status &&
+        this.isWorkflowStatusChangeBlocked(workflow, option.value),
     }));
   }
 
@@ -1020,14 +1025,9 @@ export class ApplicationDetailComponent implements OnInit {
         const normalized = {
           ...data,
           notifyCustomer:
-            data?.notifyCustomer ??
-            data?.notifyCustomerToo ??
-            data?.notify_customer_too ??
-            false,
+            data?.notifyCustomer ?? data?.notifyCustomerToo ?? data?.notify_customer_too ?? false,
           notifyCustomerChannel:
-            data?.notifyCustomerChannel ??
-            data?.notify_customer_channel ??
-            null,
+            data?.notifyCustomerChannel ?? data?.notify_customer_channel ?? null,
         };
         this.application.set(normalized);
         this.editableNotes.set(normalized?.notes ?? '');
@@ -1049,10 +1049,13 @@ export class ApplicationDetailComponent implements OnInit {
         this.isLoading.set(false);
         this.isSavingMeta.set(false);
       },
-      });
+    });
   }
 
-  private calculateGapDays(previous: ApplicationWorkflow, current: ApplicationWorkflow): number | null {
+  private calculateGapDays(
+    previous: ApplicationWorkflow,
+    current: ApplicationWorkflow,
+  ): number | null {
     const previousEnd = this.parseIsoDate(previous.completionDate);
     const currentStart = this.parseIsoDate(current.startDate);
     if (!previousEnd || !currentStart) {
@@ -1072,7 +1075,10 @@ export class ApplicationDetailComponent implements OnInit {
     return workflows[index - 1] ?? null;
   }
 
-  private isWorkflowStatusChangeBlocked(workflow: ApplicationWorkflow, nextStatus: string): boolean {
+  private isWorkflowStatusChangeBlocked(
+    workflow: ApplicationWorkflow,
+    nextStatus: string,
+  ): boolean {
     if (nextStatus === 'rejected') {
       return false;
     }

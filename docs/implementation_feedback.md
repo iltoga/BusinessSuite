@@ -2,7 +2,9 @@
 
 ## Progress Log
 
-- **2026-02-02:** Completed Phase 11 - Integration & Finalization (Feature flagging implemented: `DISABLE_DJANGO_VIEWS` and middleware to protect legacy views; added CSP nonce middleware and tests; added Playwright + axe accessibility tests for key pages)
+- **2026-02-13:** Calendar integration refactor completed (local `CalendarEvent` mirror model, signal-driven Huey sync, Google Calendar API adjustments, workflow transition-on-done behavior, docs updated for new flow)
+- **2026-02-13:** Documentation alignment pass completed for `/.github/copilot-instructions.md` and `/docs/*`
+- **2026-02-02:** Completed Phase 11 - Integration & Finalization (feature flagging via `DISABLE_DJANGO_VIEWS`, CSP nonce middleware/tests, Playwright + axe accessibility coverage)
 - **2026-01-24:** Completed Phase 0 - Foundation setup
 - **2026-01-24:** Added shared docs registry and custom API exception handler
 - **2026-01-24:** Initialized ZardUI and added shared DataTable/ConfirmDialog components
@@ -17,40 +19,30 @@
 
 ## Reuse Hints
 
-- Search, pagination, and expiry badge components are reusable across list views
-- FileUpload component can be reused for invoice attachments and payment proofs
-- CustomerSelect component works well for pre-filling form fields based on customer selection
+- Reuse calendar mirror flow (`CalendarEvent` + async sync tasks) for any new calendar-producing domain logic.
+- Prefer existing shared selectors/dialogs/upload/table components before introducing new ones.
+- Keep API contract-first workflow: serializer change -> schema generation -> frontend client generation.
 
 ## Refactor Requests
 
-- _None yet_
+- None currently open.
 
 ## Technical Debt
 
-- _None yet_
+- Continue consolidating any remaining legacy direct Google API calls toward local mirror + queue-based sync where applicable.
 
 ## Wins & Lessons Learned
 
-- SortableMultiSelect simplifies ordered document selection for products and future formsets
-- CustomerSelect centralizes async customer lookup, reducing duplicated combobox logic
-- Invoice totals remain accurate when using annotated paid/due amounts from API
+- Local calendar mirror with async sync reduces request-path coupling to Google API availability.
+- Signal + task architecture keeps DB writes transactional while preserving external sync reliability.
+- Explicit docs updates immediately after refactors reduce drift for future feature work.
 
 ## Fixes
 
-- **2026-02-01: Full Backup restore fix** ✅
-  - Problem: Restoring a "Full Backup" (data + media + users) sometimes failed with a duplicate key error on `django_content_type` during `loaddata` because `post_migrate` re-created `ContentType`/`Permission` rows after a `flush`.
-  - Fix: When a backup includes system/user tables, the restore now deletes `ContentType` and `Permission` rows after `flush` and before `loaddata`. Also, `dumpdata` now uses `--natural-foreign` and `--natural-primary` to make future fixtures resilient to contenttype collisions.
-  - Files changed: `admin_tools/services.py`
-  - How to verify: Take a full backup (include users), restore it to a clean database; verify `loaddata` completes and media files are restored and models reference correct file paths.
-  - Note: This prevents regressions caused by automatic `post_migrate` behavior.
+- **2026-02-09: OpenAPI Schema & Build Integrity Fix**
+  - Added serializer fallbacks for ViewSets used with `@extend_schema`.
+  - Improved schema generation reliability and frontend build stability.
 
-- **2026-02-09: OpenAPI Schema & Build Integrity Fix** ✅
-  - Problem: ViewSets without `serializer_class` (like Backups or OCR) were ignored by `drf-spectacular` despite having `@extend_schema` on actions, leading to missing Angular services and build failures (TS2305).
-  - Fix:
-    - Added `serializer_class = serializers.Serializer` to all `viewsets.ViewSet` subclasses that use `@extend_schema`.
-    - Patched `core/openapi.py` preprocessing hook to explicitly allow ViewSets even without serializers.
-    - Implemented `generate_frontend_schema` management command for CI/CD and developer local use.
-    - Fixed type mismatches in `applications.service.ts` (string vs number) and `profile.component.ts`.
-  - Files changed: `api/views.py`, `api/views_admin.py`, `core/openapi.py`, `core/management/commands/generate_frontend_schema.py`, `frontend/src/app/core/services/applications.service.ts`, `frontend/src/app/features/profile/profile.component.ts`
-  - How to verify: Run `python manage.py generate_frontend_schema` and verify 0 errors; then `cd frontend && bun run build` should succeed.
-  - Note: Prevents silent API client drift when adding new admin ViewSets.
+- **2026-02-01: Full Backup restore fix**
+  - Resolved duplicate key issues on `django_content_type` during full restore.
+  - Improved fixture resilience with natural keys.

@@ -10,6 +10,8 @@ class GoogleCalendarEventSerializer(serializers.Serializer):
     description = serializers.CharField(required=False, allow_blank=True)
     start_time = serializers.DateTimeField(write_only=True)
     end_time = serializers.DateTimeField(write_only=True)
+    attendees = serializers.JSONField(required=False)
+    notifications = serializers.JSONField(required=False)
     colorId = serializers.ChoiceField(required=False, choices=COLOR_ID_CHOICES)
     done = serializers.BooleanField(required=False, write_only=True)
     start = serializers.JSONField(read_only=True)

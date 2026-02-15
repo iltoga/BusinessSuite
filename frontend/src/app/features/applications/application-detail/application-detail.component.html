@@ -86,7 +86,7 @@
           </div>
           @if (application()!.dueDate) {
             <div
-              class="w-full sm:flex-1 sm:min-w-[18rem] sm:max-w-md"
+              class="w-full sm:w-48"
               [zTooltip]="isDueDateLocked() ? dueDateLockedTooltip : null"
             >
               <div class="text-sm text-muted-foreground mb-1 flex items-center gap-1 min-h-5">
@@ -258,7 +258,7 @@
                     <div class="flex items-center gap-2">
                       <span class="font-medium text-foreground shrink-0">Due:</span>
                       @if (isWorkflowDueDateEditable(item.workflow)) {
-                        <div class="w-full max-w-[140px]">
+                        <div class="w-full max-w-50">
                           <z-date-input
                             [ngModel]="getWorkflowDueDateAsDate(item.workflow)"
                             [disabled]="workflowAction() !== null"

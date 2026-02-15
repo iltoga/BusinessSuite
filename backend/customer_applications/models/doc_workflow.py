@@ -66,7 +66,16 @@ class DocWorkflow(models.Model):
 
     @property
     def is_current_step(self):
-        current = self.doc_application.workflows.order_by("-task__step", "-created_at", "-id").first()
+        app_cache = getattr(self.doc_application, "_prefetched_objects_cache", None) or {}
+        prefetched_workflows = app_cache.get("workflows")
+        if prefetched_workflows is not None:
+            current = max(
+                prefetched_workflows,
+                key=lambda wf: ((wf.task.step if wf.task else -1), wf.created_at, wf.id),
+                default=None,
+            )
+        else:
+            current = self.doc_application.workflows.order_by("-task__step", "-created_at", "-id").first()
         return bool(current and current.pk == self.pk)
 
     @property

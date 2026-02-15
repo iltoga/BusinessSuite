@@ -1,6 +1,7 @@
 import logging
 import time
 
+from django.conf import settings
 from django.db import connection
 
 from core.services.logger_service import Logger
@@ -16,6 +17,7 @@ class PerformanceLoggingMiddleware:
 
     def __init__(self, get_response):
         self.get_response = get_response
+        self.slow_request_warning_ms = float(getattr(settings, "SLOW_REQUEST_WARNING_MS", 1000))
 
     def __call__(self, request):
         start_time = time.perf_counter()
@@ -34,7 +36,7 @@ class PerformanceLoggingMiddleware:
             f"Queries: {num_queries}"
         )
 
-        if duration > 500:
+        if duration > self.slow_request_warning_ms:
             logger.warning(f"SLOW REQUEST: {request.method} {request.path} took {duration:.2f} ms")
 
         return response
@@ -56,7 +58,7 @@ class PerformanceLoggingMiddleware:
             f"Queries: {num_queries}"
         )
 
-        if duration > 500:
+        if duration > self.slow_request_warning_ms:
             logger.warning(f"SLOW ASYNC REQUEST: {request.method} {request.path} took {duration:.2f} ms")
 
         return response

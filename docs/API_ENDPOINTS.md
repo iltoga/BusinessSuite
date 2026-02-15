@@ -295,6 +295,58 @@ This document lists the main API endpoints exposed by the application in this re
 
 ---
 
+## Calendar & Tasks 📅
+
+- **GET `/api/calendar/`**
+  - **Description:** List Google Calendar events (integration).
+  - **Actions:** `sync` (POST) to trigger synchronization.
+
+- **GET `/api/tasks/`**
+  - **Description:** List Google Tasks (integration).
+  - **Actions:** `sync` (POST) to trigger synchronization.
+
+---
+
+## Notifications & Messaging 📨
+
+- **GET `/api/workflow-notifications/`**
+  - **Description:** List workflow notifications.
+  - **Actions:** `resend` (POST), `cancel` (POST).
+
+- **GET `/api/letters/`**
+  - **Description:** Manage letter templates and generation.
+
+- **POST `/api/push-notifications/register/`**, **POST `/api/push-notifications/unregister/`**
+  - **Description:** Register/unregister for push notifications.
+
+- **POST `/api/push-notifications/test/`**
+  - **Description:** Send a test notification to the current user's active devices.
+
+- **POST `/api/push-notifications/send-test/`**, **POST `/api/push-notifications/send-test-whatsapp/`**
+  - **Permissions:** Admin/Staff only.
+  - **Description:** Send test push or WhatsApp messages to specific users.
+
+- **POST `/api/notifications/whatsapp/webhook/`**
+  - **Description:** Webhook for WhatsApp Business API.
+
+---
+
+## System & Config 🛠️
+
+- **GET `/api/app-config/`**
+  - **Description:** Public application configuration (feature flags, formats).
+
+- **POST `/api/client-logs/`**
+  - **Description:** Endpoint for client-side logging (forwarded to backend logs).
+
+- **GET `/api/async-jobs/`**
+  - **Description:** Monitor async job status (polling).
+
+- **GET `/api/async-jobs/status/<job_id>/`**
+  - **Description:** SSE stream for async job status updates.
+
+---
+
 ## Notes & Authentication
 
 - Most endpoints require authentication (JWT or session). Some admin actions are restricted to superusers or users with specific permissions.

@@ -41,6 +41,11 @@ try:
 except Exception:  # pragma: no cover
     WebPushSubscription = None
 
+try:
+    from .calendar_event import CalendarEvent
+except Exception:  # pragma: no cover
+    CalendarEvent = None
+
 __all__ = [
     "CountryCode",
     "DocumentOCRJob",
@@ -50,4 +55,5 @@ __all__ = [
     "UserProfile",
     "UserSettings",
     "WebPushSubscription",
+    "CalendarEvent",
 ]

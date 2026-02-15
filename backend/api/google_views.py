@@ -1,25 +1,32 @@
 from datetime import timedelta
-
-from drf_spectacular.utils import extend_schema
-from rest_framework import status, viewsets
-from rest_framework.decorators import action
-from rest_framework.exceptions import APIException, ValidationError
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
+from typing import Any, cast
 
 from api.serializers.google_calendar_serializer import GoogleCalendarEventSerializer, GoogleTaskSerializer
+from core.models.calendar_event import CalendarEvent
 from core.services.google_calendar_event_colors import GoogleCalendarEventColors
-from core.utils.google_client import DEFAULT_CALENDAR_ID, GoogleClient
+from core.utils.dateutils import calculate_due_date
+from core.utils.google_client import GoogleClient
 from customer_applications.models import DocApplication
+from customer_applications.models.doc_workflow import DocWorkflow
 from customer_applications.services.workflow_status_transition_service import (
     WorkflowStatusTransitionError,
     WorkflowStatusTransitionService,
 )
 from django.db import transaction
+from django.utils import timezone
+from drf_spectacular.utils import extend_schema
+from rest_framework import status, viewsets
+from rest_framework.exceptions import APIException, NotFound, ValidationError
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
 
 class GoogleCalendarViewSet(viewsets.ViewSet):
-    """A simple ViewSet for listing, creating, retrieving, updating and deleting Google Calendar Events."""
+    """Local-mirror calendar API.
+
+    CRUD operations update `CalendarEvent` records and signals queue asynchronous
+    synchronization to Google Calendar through Huey tasks.
+    """
 
     LOCAL_EVENT_ID_PREFIX = "local-app-"
 
@@ -37,12 +44,8 @@ class GoogleCalendarViewSet(viewsets.ViewSet):
         payload = dict(data)
         if "color_id" in payload and "colorId" not in payload:
             payload["colorId"] = payload["color_id"]
-        return payload
-
-    def _serializer_payload_for_google(self, validated_data):
-        payload = dict(validated_data)
-        if "colorId" in payload and "color_id" not in payload:
-            payload["color_id"] = payload.pop("colorId")
+        if "reminders" in payload and "notifications" not in payload:
+            payload["notifications"] = payload["reminders"]
         return payload
 
     def _parse_local_application_id(self, event_id: str):
@@ -66,7 +69,11 @@ class GoogleCalendarViewSet(viewsets.ViewSet):
         if local_app_id is not None:
             return queryset.filter(id=local_app_id).first()
 
-        return queryset.filter(calendar_event_id=event_id).first()
+        direct = queryset.filter(calendar_event_id=event_id).first()
+        if direct:
+            return direct
+
+        return queryset.filter(calendar_events__google_event_id=event_id).distinct().first()
 
     def _queue_application_calendar_sync(
         self,
@@ -91,6 +98,74 @@ class GoogleCalendarViewSet(viewsets.ViewSet):
             )
         )
 
+    def _serialize_calendar_event(self, event: CalendarEvent) -> dict:
+        data = {
+            "id": event.id,
+            "summary": event.title,
+            "description": event.description or "",
+        }
+        if event.color_id:
+            data["colorId"] = event.color_id
+        if event.attendees:
+            data["attendees"] = event.attendees
+        if event.notifications:
+            data["notifications"] = event.notifications
+
+        if event.start_date and event.end_date:
+            data["start"] = {"date": event.start_date.isoformat()}
+            data["end"] = {"date": event.end_date.isoformat()}
+        else:
+            data["start"] = {"dateTime": event.start_time.isoformat()} if event.start_time else None
+            data["end"] = {"dateTime": event.end_time.isoformat()} if event.end_time else None
+            if event.start_time:
+                data["startTime"] = event.start_time.isoformat()
+            if event.end_time:
+                data["endTime"] = event.end_time.isoformat()
+        return data
+
+    def _lookup_calendar_event(self, event_identifier: str) -> CalendarEvent | None:
+        event = CalendarEvent.objects.filter(pk=event_identifier).first()
+        if event:
+            return event
+        return CalendarEvent.objects.filter(google_event_id=event_identifier).first()
+
+    def _get_calendar_event_or_404(self, event_identifier: str) -> CalendarEvent:
+        event = self._lookup_calendar_event(event_identifier)
+        if not event:
+            raise NotFound("Calendar event not found.")
+        return event
+
+    def _apply_calendar_update(self, event: CalendarEvent, validated_data: dict) -> list[str]:
+        update_fields: list[str] = []
+        if "summary" in validated_data:
+            event.title = validated_data["summary"]
+            update_fields.append("title")
+        if "description" in validated_data:
+            event.description = validated_data["description"] or ""
+            update_fields.append("description")
+        if "start_time" in validated_data:
+            event.start_time = validated_data["start_time"]
+            event.start_date = None
+            update_fields.extend(["start_time", "start_date"])
+        if "end_time" in validated_data:
+            event.end_time = validated_data["end_time"]
+            event.end_date = None
+            update_fields.extend(["end_time", "end_date"])
+        if "colorId" in validated_data:
+            event.color_id = validated_data["colorId"]
+            update_fields.append("color_id")
+        if "attendees" in validated_data:
+            event.attendees = validated_data["attendees"] or []
+            update_fields.append("attendees")
+        if "notifications" in validated_data:
+            event.notifications = validated_data["notifications"] or {}
+            update_fields.append("notifications")
+
+        if update_fields:
+            event.sync_status = CalendarEvent.SYNC_STATUS_PENDING
+            update_fields.append("sync_status")
+        return update_fields
+
     def _serialize_local_event_for_application(
         self,
         application,
@@ -104,8 +179,10 @@ class GoogleCalendarViewSet(viewsets.ViewSet):
         if not task:
             return None
 
-        due_date = due_date or application.due_date or application.calculate_next_calendar_due_date(
-            start_date=application.doc_date
+        due_date = (
+            due_date
+            or application.due_date
+            or application.calculate_next_calendar_due_date(start_date=application.doc_date)
         )
         event_id = event_id or application.calendar_event_id or f"{self.LOCAL_EVENT_ID_PREFIX}{application.id}"
         color_id = GoogleCalendarEventColors.done_color_id() if is_done else GoogleCalendarEventColors.todo_color_id()
@@ -156,26 +233,64 @@ class GoogleCalendarViewSet(viewsets.ViewSet):
 
         events = []
         for application in applications:
-            task = application.get_next_calendar_task()
-            event = self._serialize_local_event_for_application(application, task=task)
+            # Use prefetched data to avoid N+1 DB queries from model helper properties.
+            tasks = list(application.product.tasks.all())
+            workflows = list(application.workflows.all())
+            current_workflow = max(
+                workflows,
+                key=lambda wf: ((wf.task.step if wf.task else -1), wf.created_at, wf.id),
+                default=None,
+            )
+
+            next_task = None
+            if current_workflow and current_workflow.status == DocApplication.STATUS_COMPLETED:
+                next_task = next(
+                    (t for t in tasks if t.add_task_to_calendar and t.step > current_workflow.task.step),
+                    None,
+                )
+            elif current_workflow and current_workflow.status == DocApplication.STATUS_REJECTED:
+                next_task = None
+            elif current_workflow:
+                if current_workflow.task and current_workflow.task.add_task_to_calendar:
+                    next_task = current_workflow.task
+                else:
+                    next_task = next(
+                        (t for t in tasks if t.add_task_to_calendar and t.step >= current_workflow.task.step),
+                        None,
+                    )
+            else:
+                next_task = next((t for t in tasks if t.add_task_to_calendar), None)
+
+            due_date = application.due_date
+            if not due_date and next_task:
+                due_date = calculate_due_date(
+                    application.doc_date or timezone.localdate(),
+                    next_task.duration,
+                    next_task.duration_is_business_days,
+                )
+
+            event = self._serialize_local_event_for_application(application, task=next_task, due_date=due_date)
             if event:
                 events.append(event)
 
-            done_workflows = (
-                application.workflows.filter(
-                    status__in=["completed", "rejected"],
-                    task__add_task_to_calendar=True,
-                    due_date__isnull=False,
-                )
-                .select_related("task")
-                .order_by("-due_date", "-id")
+            done_workflows = sorted(
+                (
+                    wf
+                    for wf in workflows
+                    if wf.status in [DocWorkflow.STATUS_COMPLETED, DocWorkflow.STATUS_REJECTED]
+                    and wf.task
+                    and wf.task.add_task_to_calendar
+                    and wf.due_date
+                ),
+                key=lambda wf: (wf.due_date, wf.id),
+                reverse=True,
             )
             for workflow in done_workflows:
                 done_event = self._serialize_local_done_event_for_workflow(application, workflow)
                 if done_event:
                     events.append(done_event)
 
-        events.sort(key=lambda item: (item["start"]["date"], item["summary"]))
+        events.sort(key=lambda item: (item.get("start", {}).get("date"), item.get("summary", "")))
         return events
 
     @extend_schema(responses={200: GoogleCalendarEventSerializer(many=True)})
@@ -183,73 +298,57 @@ class GoogleCalendarViewSet(viewsets.ViewSet):
         source = (request.query_params.get("source") or "local").strip().lower()
         if source == "local":
             return Response(self._list_local_application_events())
-        if source != "google":
-            raise ValidationError({"source": "Invalid source. Use 'local' or 'google'."})
+        if source not in {"google", "mirror"}:
+            raise ValidationError({"source": "Invalid source. Use 'local', 'mirror', or 'google'."})
 
-        calendar_id = request.query_params.get("calendar_id")
-        client = GoogleClient()
-        try:
-            events = client.list_events(calendar_id=calendar_id)
-            return Response(events)
-        except Exception as e:
-            # Use DEFAULT_CALENDAR_ID if no calendar_id was provided
-            used_id = calendar_id or DEFAULT_CALENDAR_ID
-            if "notFound" in str(e) or "404" in str(e):
-                raise APIException(
-                    f"Calendar '{used_id}' not found. Make sure you shared your Google Calendar with the service account email."
-                )
-            raise APIException(f"Failed to list events: {str(e)}")
+        queryset = CalendarEvent.objects.all().order_by("start_date", "start_time", "id")
+        return Response([self._serialize_calendar_event(event) for event in queryset])
 
     @extend_schema(request=GoogleCalendarEventSerializer, responses={201: GoogleCalendarEventSerializer})
     def create(self, request):
         serializer = GoogleCalendarEventSerializer(data=self._normalize_calendar_request_data(request.data))
         serializer.is_valid(raise_exception=True)
+        validated_data = cast(dict[str, Any], serializer.validated_data)
 
-        calendar_id = request.query_params.get("calendar_id")
-        client = GoogleClient()
-        try:
-            event = client.create_event(
-                self._serializer_payload_for_google(serializer.validated_data),
-                calendar_id=calendar_id,
-            )
-            return Response(event, status=status.HTTP_201_CREATED)
-        except Exception as e:
-            used_id = calendar_id or DEFAULT_CALENDAR_ID
-            if "notFound" in str(e) or "404" in str(e):
-                raise APIException(
-                    f"Calendar '{used_id}' not found. Make sure you shared your Google Calendar with the service account email."
-                )
-            raise APIException(f"Failed to create event: {str(e)}")
+        event = CalendarEvent.objects.create(
+            source=CalendarEvent.SOURCE_MANUAL,
+            title=validated_data["summary"],
+            description=validated_data.get("description", ""),
+            start_time=validated_data.get("start_time"),
+            end_time=validated_data.get("end_time"),
+            color_id=validated_data.get("colorId"),
+            attendees=validated_data.get("attendees") or [],
+            notifications=validated_data.get("notifications") or {},
+            sync_status=CalendarEvent.SYNC_STATUS_PENDING,
+        )
+        return Response(self._serialize_calendar_event(event), status=status.HTTP_201_CREATED)
 
     @extend_schema(responses={200: GoogleCalendarEventSerializer})
     def retrieve(self, request, pk=None):
-        calendar_id = request.query_params.get("calendar_id")
-        client = GoogleClient()
-        event = client.get_event(event_id=pk, calendar_id=calendar_id)
-        return Response(event)
+        event = self._get_calendar_event_or_404(pk)
+        return Response(self._serialize_calendar_event(event))
 
     @extend_schema(request=GoogleCalendarEventSerializer, responses={200: GoogleCalendarEventSerializer})
     def update(self, request, pk=None):
-        """Full update (PUT) - delegates to patch behavior in Google API."""
         serializer = GoogleCalendarEventSerializer(
             data=self._normalize_calendar_request_data(request.data),
             partial=True,
         )
         serializer.is_valid(raise_exception=True)
-        calendar_id = request.query_params.get("calendar_id")
-        client = GoogleClient()
-        updated = client.update_event(
-            event_id=pk,
-            data=self._serializer_payload_for_google(serializer.validated_data),
-            calendar_id=calendar_id,
-        )
-        return Response(updated)
+        validated_data = cast(dict[str, Any], serializer.validated_data)
+
+        event = self._get_calendar_event_or_404(pk)
+        update_fields = self._apply_calendar_update(event, validated_data)
+        if update_fields:
+            event.save(update_fields=[*set(update_fields), "updated_at"])
+        return Response(self._serialize_calendar_event(event))
 
     @extend_schema(request=GoogleCalendarEventSerializer, responses={200: GoogleCalendarEventSerializer})
     def partial_update(self, request, pk=None):
         normalized_request_data = self._normalize_calendar_request_data(request.data)
         serializer = GoogleCalendarEventSerializer(data=normalized_request_data, partial=True)
         serializer.is_valid(raise_exception=True)
+        validated_data = cast(dict[str, Any], serializer.validated_data)
         done_key_present = "done" in request.data
         done_value = self._coerce_bool(request.data.get("done")) if done_key_present else None
 
@@ -260,7 +359,9 @@ class GoogleCalendarViewSet(viewsets.ViewSet):
             application = self._resolve_application_for_event(event_id=pk)
             if application:
                 current_workflow = application.current_workflow
-                completed_workflow = current_workflow if current_workflow and not current_workflow.is_terminal_status else None
+                completed_workflow = (
+                    current_workflow if current_workflow and not current_workflow.is_terminal_status else None
+                )
                 if current_workflow and not current_workflow.is_terminal_status:
                     try:
                         transition_result = WorkflowStatusTransitionService().transition(
@@ -279,19 +380,17 @@ class GoogleCalendarViewSet(viewsets.ViewSet):
                             start_date=transition_result.next_start_date,
                         )
                 else:
-                    # Keep Google Calendar eventually consistent with local application state.
                     self._queue_application_calendar_sync(
                         application_id=application.id,
                         user_id=request.user.id,
                     )
 
-                if self._parse_local_application_id(pk) is None:
-                    calendar_id = request.query_params.get("calendar_id")
-                    GoogleClient().update_event(
-                        event_id=pk,
-                        data={"color_id": GoogleCalendarEventColors.done_color_id()},
-                        calendar_id=calendar_id,
-                    )
+                mirror_event = self._lookup_calendar_event(pk)
+                if mirror_event:
+                    mirror_event.color_id = GoogleCalendarEventColors.done_color_id()
+                    mirror_event.sync_status = CalendarEvent.SYNC_STATUS_PENDING
+                    mirror_event.save(update_fields=["color_id", "sync_status", "updated_at"])
+                    return Response(self._serialize_calendar_event(mirror_event))
 
                 local_event = self._serialize_local_event_for_application(
                     application,
@@ -304,19 +403,21 @@ class GoogleCalendarViewSet(viewsets.ViewSet):
                     return Response(local_event)
                 return Response({"id": pk, "colorId": GoogleCalendarEventColors.done_color_id()})
 
-        calendar_id = request.query_params.get("calendar_id")
-        client = GoogleClient()
-        updated = client.update_event(
-            event_id=pk,
-            data=self._serializer_payload_for_google(serializer.validated_data),
-            calendar_id=calendar_id,
-        )
-        return Response(updated)
+            mirror_event = self._get_calendar_event_or_404(pk)
+            mirror_event.color_id = GoogleCalendarEventColors.done_color_id()
+            mirror_event.sync_status = CalendarEvent.SYNC_STATUS_PENDING
+            mirror_event.save(update_fields=["color_id", "sync_status", "updated_at"])
+            return Response(self._serialize_calendar_event(mirror_event))
+
+        event = self._get_calendar_event_or_404(pk)
+        update_fields = self._apply_calendar_update(event, validated_data)
+        if update_fields:
+            event.save(update_fields=[*set(update_fields), "updated_at"])
+        return Response(self._serialize_calendar_event(event))
 
     def destroy(self, request, pk=None):
-        calendar_id = request.query_params.get("calendar_id")
-        client = GoogleClient()
-        client.delete_event(event_id=pk, calendar_id=calendar_id)
+        event = self._get_calendar_event_or_404(pk)
+        event.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -341,7 +442,7 @@ class GoogleTasksViewSet(viewsets.ViewSet):
 
         tasklist = request.query_params.get("tasklist")
         client = GoogleClient()
-        event_data = serializer.validated_data
+        event_data = cast(dict[str, Any], serializer.validated_data)
         try:
             task = client.create_task(
                 title=event_data.get("title"),
@@ -364,18 +465,20 @@ class GoogleTasksViewSet(viewsets.ViewSet):
     def update(self, request, pk=None):
         serializer = GoogleTaskSerializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
+        validated_data = cast(dict[str, Any], serializer.validated_data)
         tasklist = request.query_params.get("tasklist")
         client = GoogleClient()
-        updated = client.update_task(task_id=pk, data=serializer.validated_data, tasklist=tasklist)
+        updated = client.update_task(task_id=pk, data=validated_data, tasklist=tasklist)
         return Response(updated)
 
     @extend_schema(request=GoogleTaskSerializer, responses={200: GoogleTaskSerializer})
     def partial_update(self, request, pk=None):
         serializer = GoogleTaskSerializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
+        validated_data = cast(dict[str, Any], serializer.validated_data)
         tasklist = request.query_params.get("tasklist")
         client = GoogleClient()
-        updated = client.update_task(task_id=pk, data=serializer.validated_data, tasklist=tasklist)
+        updated = client.update_task(task_id=pk, data=validated_data, tasklist=tasklist)
         return Response(updated)
 
     def destroy(self, request, pk=None):

@@ -1,29 +1,12 @@
-import pytest
-
-# Skip these tests gracefully if Django is not installed in this environment
-pytest.importorskip("django")
-
 import datetime
-from contextlib import ExitStack
 from unittest.mock import patch
 
+import pytest
 from rest_framework import status
 from rest_framework.test import APIClient
 
+from core.models.calendar_event import CalendarEvent
 from core.services.google_calendar_event_colors import GoogleCalendarEventColors
-
-
-def make_event(summary="Test event"):
-    now = datetime.datetime.now(datetime.UTC)
-    start = now.replace(microsecond=0)
-    end = start + datetime.timedelta(hours=1)
-    return {
-        "id": "evt-1",
-        "summary": summary,
-        "description": "desc",
-        "start": {"dateTime": start.isoformat().replace("+00:00", "Z"), "timeZone": "UTC"},
-        "end": {"dateTime": end.isoformat().replace("+00:00", "Z"), "timeZone": "UTC"},
-    }
 
 
 class TestGoogleCalendarAPI:
@@ -32,7 +15,6 @@ class TestGoogleCalendarAPI:
 
     @pytest.mark.django_db
     def test_calendar_crud_flow(self):
-        # Create
         now = datetime.datetime.now(datetime.UTC)
         payload = {
             "summary": "Meeting",
@@ -43,59 +25,41 @@ class TestGoogleCalendarAPI:
 
         from django.contrib.auth import get_user_model
 
-        # Create a superuser and authenticate the test client so DRF permissions allow access
         User = get_user_model()
         user = User.objects.create_superuser(username="testadmin", email="test@local", password="test")
         self.client.force_authenticate(user=user)
 
-        with ExitStack() as stack:
-            # Mock __init__ so it doesn't try to load real credentials
-            stack.enter_context(patch("core.utils.google_client.GoogleClient.__init__", return_value=None))
-
-            mock_create = stack.enter_context(patch("core.utils.google_client.GoogleClient.create_event"))
-            mock_list = stack.enter_context(patch("core.utils.google_client.GoogleClient.list_events"))
-            mock_get = stack.enter_context(patch("core.utils.google_client.GoogleClient.get_event"))
-            mock_update = stack.enter_context(patch("core.utils.google_client.GoogleClient.update_event"))
-            mock_delete = stack.enter_context(patch("core.utils.google_client.GoogleClient.delete_event"))
-
-            created = make_event("Meeting")
-            mock_create.return_value = created
-
+        with (
+            patch("core.signals_calendar.create_google_event_task") as create_sync_mock,
+            patch("core.signals_calendar.update_google_event_task") as update_sync_mock,
+            patch("core.signals_calendar.delete_google_event_task") as delete_sync_mock,
+            patch("django.db.transaction.on_commit", side_effect=lambda callback: callback()),
+        ):
             resp = self.client.post("/api/calendar/", payload, format="json")
             assert resp.status_code == status.HTTP_201_CREATED
-            assert resp.data["id"] == "evt-1"
+            event_id = resp.data["id"]
+            assert CalendarEvent.objects.filter(pk=event_id).exists()
+            create_sync_mock.assert_called_once_with(event_id=event_id)
 
-            # List should include created event
-            mock_list.return_value = [created]
             resp = self.client.get("/api/calendar/?source=google")
             assert resp.status_code == status.HTTP_200_OK
-            assert any(e["id"] == "evt-1" for e in resp.data)
+            assert any(e["id"] == event_id for e in resp.data)
 
-            # Update
-            updated = dict(created)
-            updated["summary"] = "Updated Meeting"
-            mock_update.return_value = updated
+            resp = self.client.put(f"/api/calendar/{event_id}/", {"summary": "Updated Meeting"}, format="json")
+            assert resp.status_code == status.HTTP_200_OK
+            assert resp.data["summary"] == "Updated Meeting"
+            update_sync_mock.assert_called_once_with(event_id=event_id)
 
-            resp = self.client.put(f"/api/calendar/{created['id']}/", {"summary": "Updated Meeting"}, format="json")
+            resp = self.client.get(f"/api/calendar/{event_id}/")
             assert resp.status_code == status.HTTP_200_OK
             assert resp.data["summary"] == "Updated Meeting"
 
-            # Retrieve single
-            mock_get.return_value = updated
-            resp = self.client.get(f"/api/calendar/{created['id']}/")
-            assert resp.status_code == status.HTTP_200_OK
-            assert resp.data["summary"] == "Updated Meeting"
+            CalendarEvent.objects.filter(pk=event_id).update(google_event_id="g-evt-1")
 
-            # Delete
-            mock_delete.return_value = True
-            resp = self.client.delete(f"/api/calendar/{created['id']}/")
+            resp = self.client.delete(f"/api/calendar/{event_id}/")
             assert resp.status_code == status.HTTP_204_NO_CONTENT
-
-            # After delete, list empty
-            mock_list.return_value = []
-            resp = self.client.get("/api/calendar/?source=google")
-            assert resp.status_code == status.HTTP_200_OK
-            assert resp.data == []
+            assert not CalendarEvent.objects.filter(pk=event_id).exists()
+            delete_sync_mock.assert_called_once_with(google_event_id="g-evt-1")
 
     @pytest.mark.django_db
     def test_calendar_list_uses_local_application_source_by_default(self):
@@ -228,22 +192,27 @@ class TestGoogleCalendarAPI:
         user = User.objects.create_superuser(username="testadmin2", email="test2@local", password="test")
         self.client.force_authenticate(user=user)
 
-        with ExitStack() as stack:
-            stack.enter_context(patch("core.utils.google_client.GoogleClient.__init__", return_value=None))
-            mock_update = stack.enter_context(patch("core.utils.google_client.GoogleClient.update_event"))
+        now = datetime.datetime.now(datetime.UTC)
+        event = CalendarEvent.objects.create(
+            id="evt-1",
+            title="Done Task",
+            description="desc",
+            start_time=now,
+            end_time=now + datetime.timedelta(hours=1),
+            source=CalendarEvent.SOURCE_MANUAL,
+        )
 
-            updated = make_event("Done Task")
-            updated["colorId"] = GoogleCalendarEventColors.done_color_id()
-            mock_update.return_value = updated
-
+        with (
+            patch("core.signals_calendar.update_google_event_task") as update_sync_mock,
+            patch("django.db.transaction.on_commit", side_effect=lambda callback: callback()),
+        ):
             resp = self.client.patch("/api/calendar/evt-1/", {"done": True}, format="json")
             assert resp.status_code == status.HTTP_200_OK
             assert resp.data["colorId"] == GoogleCalendarEventColors.done_color_id()
+            update_sync_mock.assert_called_once_with(event_id="evt-1")
 
-            mock_update.assert_called_once()
-            kwargs = mock_update.call_args.kwargs
-            assert kwargs["event_id"] == "evt-1"
-            assert kwargs["data"]["color_id"] == GoogleCalendarEventColors.done_color_id()
+        event.refresh_from_db()
+        assert event.color_id == GoogleCalendarEventColors.done_color_id()
 
     @pytest.mark.django_db
     def test_partial_update_rejects_invalid_color_id(self):
@@ -253,11 +222,10 @@ class TestGoogleCalendarAPI:
         user = User.objects.create_superuser(username="testadmin3", email="test3@local", password="test")
         self.client.force_authenticate(user=user)
 
-        with patch("core.utils.google_client.GoogleClient.__init__", return_value=None):
-            resp = self.client.patch("/api/calendar/evt-1/", {"colorId": "99"}, format="json")
-            assert resp.status_code == status.HTTP_400_BAD_REQUEST
-            assert "errors" in resp.data
-            assert "colorId" in resp.data["errors"]
+        resp = self.client.patch("/api/calendar/evt-1/", {"colorId": "99"}, format="json")
+        assert resp.status_code == status.HTTP_400_BAD_REQUEST
+        assert "errors" in resp.data
+        assert "colorId" in resp.data["errors"]
 
     @pytest.mark.django_db
     def test_partial_update_rejects_done_false(self):
@@ -267,13 +235,11 @@ class TestGoogleCalendarAPI:
         user = User.objects.create_superuser(username="testadmin4", email="test4@local", password="test")
         self.client.force_authenticate(user=user)
 
-        with patch("core.utils.google_client.GoogleClient.update_event") as update_mock:
-            resp = self.client.patch("/api/calendar/evt-1/", {"done": False}, format="json")
+        resp = self.client.patch("/api/calendar/evt-1/", {"done": False}, format="json")
 
         assert resp.status_code == status.HTTP_400_BAD_REQUEST
         errors = resp.data.get("errors", resp.data)
         assert "done" in errors
-        update_mock.assert_not_called()
 
     @pytest.mark.django_db
     def test_partial_update_done_completes_application_current_task_and_queues_calendar_sync(self):
@@ -323,6 +289,17 @@ class TestGoogleCalendarAPI:
             add_deadlines_to_calendar=True,
             created_by=user,
         )
+        CalendarEvent.objects.create(
+            id="evt-app-1",
+            source=CalendarEvent.SOURCE_APPLICATION,
+            application=application,
+            title="App task",
+            description="desc",
+            start_date=timezone.localdate(),
+            end_date=timezone.localdate() + datetime.timedelta(days=1),
+            color_id=GoogleCalendarEventColors.todo_color_id(),
+        )
+
         doc_type = DocumentType.objects.create(name="Passport", has_doc_number=True)
         Document.objects.create(
             doc_application=application,
@@ -341,9 +318,11 @@ class TestGoogleCalendarAPI:
         workflow.due_date = workflow.calculate_workflow_due_date()
         workflow.save()
 
-        with patch("customer_applications.tasks.sync_application_calendar_task") as sync_mock, patch(
-            "django.db.transaction.on_commit", side_effect=lambda callback: callback()
-        ), patch("core.utils.google_client.GoogleClient.update_event") as update_mock:
+        with (
+            patch("customer_applications.tasks.sync_application_calendar_task") as sync_mock,
+            patch("django.db.transaction.on_commit", side_effect=lambda callback: callback()),
+            patch("core.signals_calendar.update_google_event_task") as update_sync_mock,
+        ):
             resp = self.client.patch("/api/calendar/evt-app-1/", {"done": True}, format="json")
 
         assert resp.status_code == status.HTTP_200_OK
@@ -356,7 +335,7 @@ class TestGoogleCalendarAPI:
         assert next_workflow.status == DocWorkflow.STATUS_PENDING
 
         sync_mock.assert_called_once()
-        update_mock.assert_called_once()
-        kwargs = update_mock.call_args.kwargs
-        assert kwargs["event_id"] == "evt-app-1"
-        assert kwargs["data"]["color_id"] == GoogleCalendarEventColors.done_color_id()
+        update_sync_mock.assert_called_once_with(event_id="evt-app-1")
+
+        event = CalendarEvent.objects.get(pk="evt-app-1")
+        assert event.color_id == GoogleCalendarEventColors.done_color_id()

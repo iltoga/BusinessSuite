@@ -169,7 +169,7 @@ services:
       - ./grafana/alloy/config-local.alloy:/etc/alloy/config.alloy:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - type: bind
-        source: ./logs
+        source: ./backend/logs
         target: /host_logs
         read_only: true
       - alloy-data:/var/lib/alloy/data

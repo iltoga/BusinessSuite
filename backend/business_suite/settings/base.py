@@ -736,6 +736,11 @@ LOGGING = {
             "level": DJANGO_LOG_LEVEL,
             "propagate": False,
         },
+        "django.request": {
+            "handlers": ["console", PRIMARY_HANDLER],
+            "level": "ERROR",
+            "propagate": False,
+        },
         "huey": {
             "handlers": ["console", PRIMARY_HANDLER],
             "level": "INFO",
@@ -749,6 +754,21 @@ LOGGING = {
         "core": {
             "handlers": ["console", PRIMARY_HANDLER],
             "level": "INFO",
+            "propagate": False,
+        },
+        "core.tasks.calendar_sync": {
+            "handlers": ["console", PRIMARY_HANDLER],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "core.signals_calendar": {
+            "handlers": ["console", PRIMARY_HANDLER],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+        "customer_applications.services.application_calendar_service": {
+            "handlers": ["console", PRIMARY_HANDLER],
+            "level": "DEBUG",
             "propagate": False,
         },
     },
@@ -774,13 +794,6 @@ OPENROUTER_API_BASE_URL = os.getenv("OPENROUTER_API_BASE_URL", "https://openrout
 # LLM Provider: "openrouter" for multi-provider access, "openai" for direct OpenAI API
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openrouter")
 LLM_DEFAULT_MODEL = os.getenv("LLM_DEFAULT_MODEL", "google/gemini-2.5-flash-lite")
-
-# Python 3.14+ Logging Performance Optimizations
-# Disable gathering of thread, process, and asyncio information to reduce overhead
-logging.logThreads = False
-logging.logProcesses = False
-logging.logMultiprocessing = False
-logging.logAsyncioTasks = False
 
 NOTIFICATION_FROM_EMAIL = os.getenv("NOTIFICATION_FROM_EMAIL", "dewi@revisbali.com")
 GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD")

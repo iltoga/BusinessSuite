@@ -4,6 +4,7 @@ from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
+from core.models.calendar_event import CalendarEvent
 from customer_applications.models import DocApplication, WorkflowNotification
 from customer_applications.services.application_calendar_service import ApplicationCalendarService
 from customers.models import Customer
@@ -35,75 +36,72 @@ class ApplicationCalendarServiceTests(TestCase):
             created_by=self.user,
         )
 
-    @patch("customer_applications.services.application_calendar_service.GoogleClient")
-    def test_sync_creates_calendar_event_with_pinned_application_id(self, google_client_cls):
-        mock_client = google_client_cls.return_value
-        mock_client.create_event.return_value = {"id": "evt-created"}
-        mock_client.list_events.return_value = []
+    def test_sync_creates_local_calendar_event_with_pinned_application_id(self):
+        with patch("core.signals_calendar.create_google_event_task") as create_sync_mock:
+            with self.captureOnCommitCallbacks(execute=True):
+                event = ApplicationCalendarService().sync_next_task_deadline(self.application)
 
-        ApplicationCalendarService().sync_next_task_deadline(self.application)
-
-        payload = mock_client.create_event.call_args.args[0]
-        self.assertEqual(payload["start_date"], "2026-01-20")
-        self.assertEqual(payload["reminders"]["overrides"][0]["minutes"], 2 * 24 * 60)
+        self.assertIsNotNone(event)
+        self.assertEqual(event.start_date.isoformat(), "2026-01-20")
+        self.assertEqual(event.notifications["overrides"][0]["minutes"], 2 * 24 * 60)
         self.assertEqual(
-            payload["extended_properties"]["private"]["revisbali_customer_application_id"],
+            event.extended_properties["private"]["revisbali_customer_application_id"],
             str(self.application.id),
         )
-        self.assertEqual(payload["extended_properties"]["private"]["revisbali_entity"], "customer_application")
+        self.assertEqual(event.extended_properties["private"]["revisbali_entity"], "customer_application")
+        self.assertEqual(event.source, CalendarEvent.SOURCE_APPLICATION)
+        create_sync_mock.assert_called_once_with(event_id=event.id)
 
         self.application.refresh_from_db()
-        self.assertEqual(self.application.calendar_event_id, "evt-created")
+        self.assertEqual(self.application.calendar_event_id, event.id)
 
-    @patch("customer_applications.services.application_calendar_service.GoogleClient")
-    def test_sync_creates_new_calendar_event_when_due_date_changes_without_deleting_history(self, google_client_cls):
-        self.application.calendar_event_id = "evt-old"
-        self.application.save(update_fields=["calendar_event_id", "updated_at"])
+    def test_sync_creates_new_calendar_event_when_due_date_changes_without_deleting_history(self):
+        with patch("core.signals_calendar.create_google_event_task"):
+            with self.captureOnCommitCallbacks(execute=True):
+                old_event = ApplicationCalendarService().sync_next_task_deadline(self.application)
 
         previous_due_date = self.application.due_date
         self.application.due_date = date(2026, 1, 25)
         self.application.save(update_fields=["due_date", "updated_at"])
 
-        mock_client = google_client_cls.return_value
-        mock_client.list_events.return_value = []
-        mock_client.create_event.return_value = {"id": "evt-new"}
+        with patch("core.signals_calendar.create_google_event_task"):
+            with self.captureOnCommitCallbacks(execute=True):
+                new_event = ApplicationCalendarService().sync_next_task_deadline(
+                    self.application,
+                    previous_due_date=previous_due_date,
+                )
 
-        ApplicationCalendarService().sync_next_task_deadline(
-            self.application,
-            previous_due_date=previous_due_date,
-        )
-
-        mock_client.delete_event.assert_not_called()
-        payload = mock_client.create_event.call_args.args[0]
-        self.assertEqual(payload["start_date"], "2026-01-25")
+        self.assertNotEqual(old_event.id, new_event.id)
+        self.assertEqual(new_event.start_date.isoformat(), "2026-01-25")
+        self.assertTrue(CalendarEvent.objects.filter(pk=old_event.id).exists())
+        self.assertEqual(CalendarEvent.objects.filter(application=self.application).count(), 2)
 
         self.application.refresh_from_db()
-        self.assertEqual(self.application.calendar_event_id, "evt-new")
+        self.assertEqual(self.application.calendar_event_id, new_event.id)
 
-    @patch("customer_applications.services.application_calendar_service.GoogleClient")
-    def test_sync_keeps_existing_events_when_no_next_calendar_task(self, google_client_cls):
+    def test_sync_keeps_existing_events_when_no_next_calendar_task(self):
+        with patch("core.signals_calendar.create_google_event_task"):
+            with self.captureOnCommitCallbacks(execute=True):
+                old_event = ApplicationCalendarService().sync_next_task_deadline(self.application)
+
         self.task.add_task_to_calendar = False
         self.task.save(update_fields=["add_task_to_calendar"])
-        self.application.calendar_event_id = "evt-old"
-        self.application.save(update_fields=["calendar_event_id", "updated_at"])
 
         result = ApplicationCalendarService().sync_next_task_deadline(self.application)
 
         self.assertIsNone(result)
-        mock_client = google_client_cls.return_value
-        mock_client.delete_event.assert_not_called()
-        mock_client.create_event.assert_not_called()
+        self.assertTrue(CalendarEvent.objects.filter(pk=old_event.id).exists())
         self.application.refresh_from_db()
         self.assertIsNone(self.application.calendar_event_id)
 
-    @patch("customer_applications.services.application_calendar_service.GoogleClient")
-    def test_sync_logs_error_with_payload_when_event_create_fails(self, google_client_cls):
-        mock_client = google_client_cls.return_value
-        mock_client.list_events.return_value = []
-        mock_client.create_event.side_effect = RuntimeError("calendar write timeout")
-
-        with self.assertLogs("customer_applications.services.application_calendar_service", level="ERROR") as logs:
-            event = ApplicationCalendarService().sync_next_task_deadline(self.application)
+    def test_sync_logs_error_with_payload_when_event_create_fails(self):
+        with patch.object(
+            ApplicationCalendarService,
+            "_create_calendar_event",
+            side_effect=RuntimeError("calendar write timeout"),
+        ):
+            with self.assertLogs("customer_applications.services.application_calendar_service", level="ERROR") as logs:
+                event = ApplicationCalendarService().sync_next_task_deadline(self.application)
 
         self.assertIsNone(event)
         self.assertTrue(any("error_type=RuntimeError" in line for line in logs.output))
@@ -112,7 +110,7 @@ class ApplicationCalendarServiceTests(TestCase):
     @patch("customer_applications.tasks.sync_application_calendar_task")
     def test_delete_signal_queues_calendar_cleanup_task(self, sync_task_mock):
         application_id = self.application.id
-        self.application.calendar_event_id = "evt-primary"
+        self.application.calendar_event_id = "local-app-100"
         self.application.save(update_fields=["calendar_event_id", "updated_at"])
         WorkflowNotification.objects.create(
             channel=WorkflowNotification.CHANNEL_EMAIL,
@@ -132,5 +130,5 @@ class ApplicationCalendarServiceTests(TestCase):
         self.assertEqual(kwargs["action"], "delete")
         self.assertSetEqual(
             set(kwargs["known_event_ids"]),
-            {"evt-primary", "evt-from-notification"},
+            {"local-app-100", "evt-from-notification"},
         )

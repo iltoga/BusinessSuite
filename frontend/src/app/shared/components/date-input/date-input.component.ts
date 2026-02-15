@@ -56,6 +56,7 @@ type SupportedDateFormat = 'dd-MM-yyyy' | 'yyyy-MM-dd' | 'dd/MM/yyyy' | 'MM/dd/y
         zPopover
         #popoverDirective="zPopover"
         [zContent]="calendarTemplate"
+        [zMatchTriggerWidth]="false"
         zTrigger="click"
         (zVisibleChange)="onPopoverVisibilityChange($event)"
       >

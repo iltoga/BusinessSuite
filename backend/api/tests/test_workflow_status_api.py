@@ -1,14 +1,12 @@
-from django.contrib.auth import get_user_model
-from django.test import TestCase
-from django.utils import timezone
-from rest_framework.test import APIClient
-
 from customer_applications.models import DocApplication, Document
 from customer_applications.models.doc_workflow import DocWorkflow
 from customers.models import Customer
+from django.contrib.auth import get_user_model
+from django.test import TestCase
+from django.utils import timezone
 from products.models import Product
 from products.models.document_type import DocumentType
-
+from rest_framework.test import APIClient
 
 User = get_user_model()
 
@@ -45,7 +43,7 @@ class WorkflowStatusApiTests(TestCase):
         app = DocApplication.objects.create(
             customer=self.customer,
             product=product,
-            doc_date=timezone.now().date(),
+            doc_date=timezone.localdate(),
             created_by=self.user,
         )
         Document.objects.create(
@@ -56,7 +54,7 @@ class WorkflowStatusApiTests(TestCase):
             created_by=self.user,
         )
         workflow = DocWorkflow(
-            start_date=timezone.now().date(),
+            start_date=timezone.localdate(),
             task=first_task,
             doc_application=app,
             created_by=self.user,

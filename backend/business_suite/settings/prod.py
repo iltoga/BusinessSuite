@@ -93,6 +93,11 @@ LOGGING = {
             "level": os.getenv("DJANGO_LOG_LEVEL", "INFO"),
             "propagate": False,
         },
+        "django.request": {
+            "handlers": ["console", "file"],
+            "level": "ERROR",
+            "propagate": False,
+        },
         # Suppress noisy Dropbox SDK logging
         "dropbox": {
             "handlers": ["file"],  # Only log to file, not console
