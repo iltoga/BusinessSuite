@@ -9371,9 +9371,8 @@ components:
           readOnly: true
         invoice_no:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         invoice_no_display:
           type: string
           readOnly: true
@@ -9491,9 +9490,8 @@ components:
           readOnly: true
         invoice_no:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         invoice_no_display:
           type: string
           readOnly: true
@@ -9809,9 +9807,8 @@ components:
           x-spec-enum-id: baefb5ad11fd4bd8
         validity:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
           nullable: true
         required_documents:
           type: string
@@ -9821,9 +9818,8 @@ components:
           maxLength: 1024
         documents_min_validity:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
           nullable: true
         created_at:
           type: string
@@ -9885,15 +9881,13 @@ components:
           x-spec-enum-id: baefb5ad11fd4bd8
         validity:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
           nullable: true
         documents_min_validity:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
           nullable: true
         tasks:
           type: array
@@ -9947,9 +9941,8 @@ components:
           x-spec-enum-id: baefb5ad11fd4bd8
         validity:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
           nullable: true
         required_documents:
           type: string
@@ -9959,9 +9952,8 @@ components:
           maxLength: 1024
         documents_min_validity:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
           nullable: true
         tasks:
           type: array
@@ -10086,21 +10078,18 @@ components:
           maxLength: 100
         step:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         duration:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         duration_is_business_days:
           type: boolean
         notify_days_before:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         notify_customer:
           type: boolean
         last_step:
@@ -10117,9 +10106,8 @@ components:
           nullable: true
         step:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         name:
           type: string
           maxLength: 100
@@ -10132,16 +10120,14 @@ components:
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
         duration:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         duration_is_business_days:
           type: boolean
         notify_days_before:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 2147483647
           minimum: 0
-          format: int64
         notify_customer:
           type: boolean
         add_task_to_calendar:
