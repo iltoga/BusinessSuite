@@ -20,6 +20,7 @@ export * from './get-app-config200-response';
 export * from './get-mock-auth-config200-response';
 export * from './google-calendar-event';
 export * from './google-task';
+export * from './holiday';
 export * from './invoice-application-detail';
 export * from './invoice-application-summary';
 export * from './invoice-application-write';

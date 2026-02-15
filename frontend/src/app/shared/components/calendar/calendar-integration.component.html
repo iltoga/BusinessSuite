@@ -151,6 +151,8 @@
               [class.border-primary/40]="day.hasEvents"
               [class.border-border/50]="!day.hasEvents"
               [class.text-muted-foreground]="!day.inMonth"
+              [class.text-red-600]="day.isHoliday"
+              [attr.title]="day.holidayName || null"
               (click)="openDay(day.date)"
             >
               {{ day.date.getDate() }}
@@ -259,6 +261,12 @@
           <z-icon zType="x" />
         </button>
       </div>
+      @if (selectedDayHolidayNames().length > 0) {
+        <div class="mb-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <div class="font-medium">National holiday</div>
+          <div class="text-xs">{{ selectedDayHolidayNames().join(', ') }}</div>
+        </div>
+      }
       @if (selectedDayEvents().length === 0) {
         <div class="text-sm text-muted-foreground">No events for this day.</div>
       } @else {

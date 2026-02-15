@@ -1,4 +1,6 @@
 import { CalendarService } from '@/core/api/api/calendar.service';
+import { HolidaysService as HolidayService } from '@/core/api/api/holidays.service';
+import { Holiday } from '@/core/api/model/holiday';
 import { GoogleCalendarEvent } from '@/core/api/model/google-calendar-event';
 import { AppConfig } from '@/core/config/app.config';
 import { ConfigService } from '@/core/services/config.service';
@@ -56,11 +58,13 @@ type CalendarEventViewModel = CalendarEventWithColor & {
 export class CalendarIntegrationComponent implements OnInit {
   private calendarService = inject(CalendarService);
   private configService = inject(ConfigService);
+  private holidayService = inject(HolidayService);
   private platformId = inject(PLATFORM_ID);
   private dialogService = inject(ZardDialogService);
   private destroyRef = inject(DestroyRef);
 
   events = signal<GoogleCalendarEvent[]>([]);
+  holidays = signal<Holiday[]>([]);
   loading = signal<boolean>(false);
   openDayEventsDate = signal<Date | null>(null);
   selectedTodayEventId = signal<string | null>(null);
@@ -148,20 +152,24 @@ export class CalendarIntegrationComponent implements OnInit {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const monthEvents = this.normalizedEvents();
+    const monthHolidays = this.holidays();
 
     return Array.from({ length: 42 }).map((_, index) => {
       const date = new Date(start);
       date.setDate(start.getDate() + index);
       const isHighlightableDay = date >= todayStart && date < endOfMonth;
       const hasEvents =
-        isHighlightableDay &&
-        this.normalizedEvents().some((event) => this.isSameDay(event.startDate, date));
+        isHighlightableDay && monthEvents.some((event) => this.isSameDay(event.startDate, date));
+      const holiday = monthHolidays.find((item) => this.isSameDay(new Date(item.date), date));
 
       return {
         key: `${date.toISOString()}-${index}`,
         date,
         inMonth: date.getMonth() === now.getMonth(),
         hasEvents,
+        isHoliday: Boolean(holiday),
+        holidayName: holiday?.name ?? null,
       };
     });
   });
@@ -170,6 +178,15 @@ export class CalendarIntegrationComponent implements OnInit {
     const day = this.openDayEventsDate();
     if (!day) return [];
     return this.normalizedEvents().filter((event) => this.isSameDay(event.startDate, day));
+  });
+
+  readonly selectedDayHolidayNames = computed(() => {
+    const day = this.openDayEventsDate();
+    if (!day) return [];
+
+    return this.holidays()
+      .filter((holiday) => this.isSameDay(new Date(holiday.date), day))
+      .map((holiday) => holiday.name);
   });
 
   constructor() {
@@ -208,6 +225,7 @@ export class CalendarIntegrationComponent implements OnInit {
   ngOnInit() {
     if (isPlatformBrowser(this.platformId)) {
       this.loadEvents();
+      this.loadHolidays();
     }
   }
 
@@ -220,6 +238,16 @@ export class CalendarIntegrationComponent implements OnInit {
         this.loading.set(false);
       },
       error: () => this.loading.set(false),
+    });
+  }
+
+  loadHolidays(): void {
+    this.holidayService.holidaysList('date').subscribe({
+      next: (data) => {
+        const indonesiaHolidays = (data ?? []).filter((holiday) => holiday.country === 'Indonesia');
+        this.holidays.set(indonesiaHolidays);
+      },
+      error: () => this.holidays.set([]),
     });
   }
 

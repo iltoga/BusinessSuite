@@ -26,6 +26,7 @@ from api.serializers import (
     DocumentSerializer,
     DocumentTypeSerializer,
     DocWorkflowSerializer,
+    HolidaySerializer,
     InvoiceCreateUpdateSerializer,
     InvoiceDetailSerializer,
     InvoiceListSerializer,
@@ -48,7 +49,7 @@ from api.serializers import (
 from api.serializers.auth_serializer import CustomTokenObtainSerializer
 from api.utils.sse_auth import sse_token_auth_required
 from business_suite.authentication import JwtOrMockAuthentication
-from core.models import AsyncJob, CountryCode, DocumentOCRJob, OCRJob, UserProfile, UserSettings, WebPushSubscription
+from core.models import AsyncJob, CountryCode, DocumentOCRJob, Holiday, OCRJob, UserProfile, UserSettings, WebPushSubscription
 from core.services.document_merger import DocumentMerger, DocumentMergerError
 from core.services.push_notifications import FcmConfigurationError, PushNotificationService
 from core.services.quick_create import create_quick_customer, create_quick_customer_application, create_quick_product
@@ -87,7 +88,7 @@ from rest_framework.authentication import SessionAuthentication
 from rest_framework.decorators import action, api_view, authentication_classes, permission_classes, throttle_classes
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
-from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
+from rest_framework.permissions import AllowAny, BasePermission, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -321,6 +322,28 @@ class CountryCodeViewSet(viewsets.ReadOnlyModelViewSet):
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["country", "country_idn", "alpha3_code"]
     ordering = ["country"]
+
+
+class IsSuperuser(BasePermission):
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated and request.user.is_superuser)
+
+
+class HolidayViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated, IsSuperuser]
+    serializer_class = HolidaySerializer
+    queryset = Holiday.objects.all()
+    pagination_class = None
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["name", "description", "country"]
+    ordering = ["date", "name"]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        country = self.request.query_params.get("country")
+        if country:
+            queryset = queryset.filter(country=country)
+        return queryset
 
 
 class LettersViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
