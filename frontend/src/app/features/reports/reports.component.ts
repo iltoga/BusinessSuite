@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { ChartData } from 'chart.js';
+import type { ChartData } from 'chart.js';
 import { BaseChartDirective } from 'ng2-charts';
 
 import { ReportsService } from '@/core/services/reports.service';
