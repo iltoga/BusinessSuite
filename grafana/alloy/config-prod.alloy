@@ -1,7 +1,7 @@
 // 1. Discover Docker containers - increased refresh interval to 60s to save CPU
 discovery.docker "docker_loader" {
   host             = "unix:///var/run/docker.sock"
-  refresh_interval = "60s"
+  refresh_interval = "15s"
 }
 
 // 2. Filter targets
