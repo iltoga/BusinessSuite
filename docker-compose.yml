@@ -176,6 +176,8 @@ services:
       - alloy
     image: grafana/alloy:latest
     restart: unless-stopped
+    env_file:
+      - ./.env
     volumes:
       - ./grafana/alloy/config-prod.alloy:/etc/alloy/config.alloy:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -185,11 +187,6 @@ services:
         read_only: true
       - alloy-data:/var/lib/alloy/data
     environment:
-      # --- Credentials ---
-      GRAFANA_CLOUD_LOKI_URL: ${GRAFANA_CLOUD_LOKI_URL}
-      GRAFANA_CLOUD_LOKI_USER: ${GRAFANA_CLOUD_LOKI_USER}
-      GRAFANA_CLOUD_LOKI_API_KEY: ${GRAFANA_CLOUD_LOKI_API_KEY}
-
       # --- Low-Resource Tuning ---
       GOMEMLIMIT: 250MiB # Soft limit: triggers GC before hitting 250MB
       GOGC: 50 # More aggressive garbage collection
