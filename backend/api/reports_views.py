@@ -200,7 +200,6 @@ class CustomerLifetimeValueApiView(_BaseReportAPIView):
         ctx = self.build_context(request)
         keys = [
             "top_customers",
-            "all_customers",
             "total_customers",
             "total_revenue",
             "total_revenue_formatted",
