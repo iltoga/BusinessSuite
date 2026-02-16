@@ -50,6 +50,18 @@ router.register(r"dashboard-stats", views.DashboardStatsView, basename="dashboar
 
 # Google Calendar & Tasks integration
 from .google_views import GoogleCalendarViewSet, GoogleTasksViewSet
+from .reports_views import (
+    ApplicationPipelineApiView,
+    CashFlowAnalysisApiView,
+    CustomerLifetimeValueApiView,
+    InvoiceStatusDashboardApiView,
+    KPIDashboardApiView,
+    MonthlyInvoiceDetailApiView,
+    ProductDemandForecastApiView,
+    ProductRevenueAnalysisApiView,
+    ReportsIndexApiView,
+    RevenueReportApiView,
+)
 
 router.register(r"calendar", GoogleCalendarViewSet, basename="calendar")
 router.register(r"tasks", GoogleTasksViewSet, basename="tasks")
@@ -154,6 +166,16 @@ urlpatterns = [
     # Public application configuration
     path("app-config/", core_views.public_app_config, name="api-public-app-config"),
     path("notifications/whatsapp/webhook/", views.whatsapp_webhook, name="api-whatsapp-webhook"),
+    path("reports/", ReportsIndexApiView.as_view(), name="api-reports-index"),
+    path("reports/revenue/", RevenueReportApiView.as_view(), name="api-report-revenue"),
+    path("reports/kpi-dashboard/", KPIDashboardApiView.as_view(), name="api-report-kpi-dashboard"),
+    path("reports/invoice-status/", InvoiceStatusDashboardApiView.as_view(), name="api-report-invoice-status"),
+    path("reports/monthly-invoices/", MonthlyInvoiceDetailApiView.as_view(), name="api-report-monthly-invoices"),
+    path("reports/cash-flow/", CashFlowAnalysisApiView.as_view(), name="api-report-cash-flow"),
+    path("reports/customer-ltv/", CustomerLifetimeValueApiView.as_view(), name="api-report-customer-ltv"),
+    path("reports/application-pipeline/", ApplicationPipelineApiView.as_view(), name="api-report-application-pipeline"),
+    path("reports/product-revenue/", ProductRevenueAnalysisApiView.as_view(), name="api-report-product-revenue"),
+    path("reports/product-demand/", ProductDemandForecastApiView.as_view(), name="api-report-product-demand"),
     # Include all router URLs - main REST API endpoints for Angular
     path("", include(router.urls)),
 ]

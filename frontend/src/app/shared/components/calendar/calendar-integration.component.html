@@ -145,12 +145,8 @@
         }
       </app-dashboard-widget>
 
-      <app-dashboard-widget widgetTitle="Month" widgetSubtitle="Hover days for details">
-        <div
-          #monthWidgetContainerRef
-          class="relative"
-          (mouseleave)="cancelScheduledOpenDay()"
-        >
+      <app-dashboard-widget widgetTitle="Month" widgetSubtitle="Hover or click days for details">
+        <div #monthWidgetContainerRef class="relative">
           <div class="mb-2 flex items-center justify-center gap-2 text-xs font-medium text-muted-foreground">
             <button
               type="button"
@@ -197,45 +193,12 @@
                 [class.text-destructive]="day.isHoliday"
                 (mouseenter)="scheduleOpenDay(day, $event)"
                 (mouseleave)="onMonthDayMouseLeave()"
+                (click)="onMonthDayClick(day)"
               >
                 <span class="block text-center">{{ day.date.getDate() }}</span>
               </button>
             }
           </div>
-
-          @if (openDayEventsDate()) {
-            <div
-              class="absolute left-0 right-0 top-full z-20 mt-2 rounded-lg border border-border bg-card p-4 shadow-xl"
-            >
-              <div class="mb-3 flex items-center justify-between">
-                <h3 class="text-sm font-semibold">{{ openDayEventsDate() | appDate }}</h3>
-                <div class="text-xs text-muted-foreground">{{ selectedDayEvents().length }} event(s)</div>
-              </div>
-
-              <div class="mb-3 flex flex-wrap gap-2">
-                @if (selectedDayWeekendLabel(); as weekendLabel) {
-                  <span
-                    class="inline-flex items-center rounded border border-muted bg-muted/60 px-2 py-1 text-xs text-foreground/80"
-                  >
-                    Weekend: {{ weekendLabel }}
-                  </span>
-                }
-                @if (selectedDayNationalHolidayNames().length > 0) {
-                  <span
-                    class="inline-flex items-center rounded border border-destructive/30 bg-destructive/10 px-2 py-1 text-xs text-destructive"
-                  >
-                    Holiday: {{ selectedDayNationalHolidayNames().join(', ') }}
-                  </span>
-                }
-              </div>
-
-              <ul class="space-y-2 text-sm">
-                @for (event of selectedDayEvents(); track event.id) {
-                  <li class="rounded border border-border/50 px-3 py-2">{{ event.summary }}</li>
-                }
-              </ul>
-            </div>
-          }
 
           @if (!openDayEventsDate() && hoverInfoLabel(); as infoLabel) {
             <div
@@ -285,6 +248,66 @@
         </ul>
       }
     </app-dashboard-widget>
+
+    @if (openDayEventsDate()) {
+      <div class="pointer-events-none fixed inset-0 z-[10000] flex items-center justify-center p-4">
+        <div class="pointer-events-auto w-full max-w-2xl rounded-lg border-2 border-primary/50 bg-card p-4 shadow-xl">
+          <div class="mb-3 flex items-center justify-between">
+            <h3 class="text-sm font-semibold">{{ openDayEventsDate() | appDate }}</h3>
+            <div class="flex items-center gap-2">
+              <div class="text-xs text-muted-foreground">{{ selectedDayEvents().length }} event(s)</div>
+              <button
+                type="button"
+                z-button
+                zType="ghost"
+                zSize="sm"
+                class="h-7 w-7 p-0"
+                aria-label="Close day details"
+                (click)="closeDayEventsDialog()"
+              >
+                <z-icon zType="x" class="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          <div class="mb-3 flex flex-wrap gap-2">
+            @if (selectedDayWeekendLabel(); as weekendLabel) {
+              <span
+                class="inline-flex items-center rounded border border-muted bg-muted/60 px-2 py-1 text-xs text-foreground/80"
+              >
+                Weekend: {{ weekendLabel }}
+              </span>
+            }
+            @if (selectedDayNationalHolidayNames().length > 0) {
+              <span
+                class="inline-flex items-center rounded border border-destructive/30 bg-destructive/10 px-2 py-1 text-xs text-destructive"
+              >
+                Holiday: {{ selectedDayNationalHolidayNames().join(', ') }}
+              </span>
+            }
+          </div>
+
+          <ul class="space-y-2 text-sm">
+            @for (event of selectedDayEvents(); track event.id) {
+              @if (applicationIdFromSummary(event.summary); as applicationId) {
+                <li>
+                  <button
+                    type="button"
+                    class="flex w-full items-center justify-between rounded border border-border/50 px-3 py-2 text-left transition hover:border-primary/40 hover:bg-muted/40"
+                    (click)="openApplicationDetail(applicationId)"
+                  >
+                    <span>{{ event.summary }}</span>
+                    <z-icon zType="arrow-up-right" class="h-4 w-4 text-muted-foreground" />
+                  </button>
+                </li>
+              } @else {
+                <li class="rounded border border-border/50 px-3 py-2">{{ event.summary }}</li>
+              }
+            }
+          </ul>
+        </div>
+      </div>
+    }
   </div>
 </div>
 

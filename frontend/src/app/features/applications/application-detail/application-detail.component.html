@@ -40,6 +40,16 @@
         </p>
       </div>
       <div class="flex gap-2">
+        @if (canCreateInvoice()) {
+          <button
+            z-button
+            zType="success"
+            (click)="createInvoice()"
+            [disabled]="workflowAction() !== null"
+          >
+            Create Invoice
+          </button>
+        }
         @if (isSuperuser()) {
           <button
             z-button
@@ -58,16 +68,6 @@
             [disabled]="workflowAction() !== null"
           >
             Force Close
-          </button>
-        }
-        @if (canCreateInvoice()) {
-          <button
-            z-button
-            zType="success"
-            (click)="createInvoice()"
-            [disabled]="workflowAction() !== null"
-          >
-            Create Invoice
           </button>
         }
         <button z-button zType="ghost" (click)="goBack()">Back</button>
@@ -322,21 +322,15 @@
                 Merge & Download PDF ({{ selectedDocumentIds().size }})
               }
             </button>
-            <button z-button zType="outline" (click)="deselectAllDocuments()">Deselect All</button>
-          } @else {
-            <z-combobox
-              [options]="filteredDocTypeOptions()"
-              [value]="selectedNewDocType()"
-              [searchable]="true"
-              placeholder="Select doc type"
-              [zWidth]="'full'"
-              (zValueChange)="selectedNewDocType.set($event)"
-            />
-            <button z-button zType="outline" (click)="addApplicationDocument()">
-              Add application document
-            </button>
-            <button z-button zType="outline" (click)="selectAllDocuments()">Select All</button>
           }
+          <button
+            z-button
+            zType="outline"
+            (click)="openAddDocumentDialog()"
+            [disabled]="filteredDocTypeOptions().length === 0"
+          >
+            Add Document
+          </button>
         </div>
       </div>
       @if (localUploadedDocuments().length === 0) {
@@ -347,7 +341,15 @@
             <thead>
               <tr class="border-b text-sm text-muted-foreground">
                 <th class="w-10"></th>
-                <th class="w-10"></th>
+                <th class="w-10 py-2 px-2">
+                  <input
+                    type="checkbox"
+                    [checked]="areAllUploadedDocumentsSelected()"
+                    [indeterminate]="isUploadedDocumentSelectionPartial()"
+                    (change)="toggleAllUploadedDocumentsSelection()"
+                    class="h-4 w-4 rounded border text-primary"
+                  />
+                </th>
                 <th class="text-left py-2">Document</th>
                 <th class="text-left py-2">Doc Number</th>
                 <th class="text-left py-2">Expiration</th>
@@ -486,6 +488,43 @@
         </div>
       </z-card>
     }
+  </div>
+}
+
+@if (isAddDocumentDialogOpen()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div class="w-full max-w-lg rounded-lg bg-card p-6 shadow-lg">
+      <div class="flex items-start justify-between">
+        <div>
+          <h3 class="text-lg font-semibold">Add Document</h3>
+          <p class="text-sm text-muted-foreground">Select the document type you want to add.</p>
+        </div>
+        <button z-button zType="ghost" zSize="sm" (click)="closeAddDocumentDialog()">x</button>
+      </div>
+
+      <div class="mt-6 space-y-4">
+        <z-combobox
+          [options]="filteredDocTypeOptions()"
+          [value]="selectedNewDocType()"
+          [searchable]="true"
+          placeholder="Select doc type"
+          [zWidth]="'full'"
+          (zValueChange)="selectedNewDocType.set($event)"
+        />
+      </div>
+
+      <div class="mt-6 flex justify-end gap-2">
+        <button z-button zType="outline" (click)="closeAddDocumentDialog()">Cancel</button>
+        <button
+          z-button
+          zType="default"
+          (click)="addApplicationDocument()"
+          [disabled]="!selectedNewDocType()"
+        >
+          Add Document
+        </button>
+      </div>
+    </div>
   </div>
 }
 

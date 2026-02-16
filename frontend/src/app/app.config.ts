@@ -19,6 +19,7 @@ import { LoggerService } from '@/core/services/logger.service';
 import { ThemeService } from '@/core/services/theme.service';
 import { provideZard } from '@/shared/core/provider/providezard';
 import { provideClientHydration, withEventReplay } from '@angular/platform-browser';
+import { provideCharts, withDefaultRegisterables } from 'ng2-charts';
 import { firstValueFrom } from 'rxjs';
 import { routes } from './app.routes';
 
@@ -33,6 +34,7 @@ export const appConfig: ApplicationConfig = {
     provideHttpClient(withFetch(), withInterceptors([authInterceptor])),
     provideApi(''),
     provideZard(),
+    provideCharts(withDefaultRegisterables()),
     provideClientHydration(withEventReplay()),
 
     // Load runtime config then initialize theme and auth

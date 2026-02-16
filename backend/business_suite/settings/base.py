@@ -588,6 +588,9 @@ else:
     )
 
 _HUEY_WORKERS = int(os.getenv("HUEY_WORKERS", "2"))
+_HUEY_INITIAL_DELAY = float(os.getenv("HUEY_INITIAL_DELAY", "0.05"))
+_HUEY_BACKOFF = float(os.getenv("HUEY_BACKOFF", "1.05"))
+_HUEY_MAX_DELAY = float(os.getenv("HUEY_MAX_DELAY", "1.0"))
 HUEY = {
     "huey_class": "huey.contrib.sql_huey.SqlHuey",
     "name": "business_suite",
@@ -597,6 +600,10 @@ HUEY = {
     "consumer": {
         "workers": _HUEY_WORKERS,
         "worker_type": os.getenv("HUEY_WORKER_TYPE", "thread"),
+        # SqlHuey is polling-based; tighter bounds reduce idle pickup latency.
+        "initial_delay": _HUEY_INITIAL_DELAY,
+        "backoff": _HUEY_BACKOFF,
+        "max_delay": _HUEY_MAX_DELAY,
         "scheduler_interval": 1,
         "check_worker_health": True,
         "health_check_interval": 1,

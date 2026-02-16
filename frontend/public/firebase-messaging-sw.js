@@ -5,6 +5,20 @@ importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-com
 
 let initialized = false;
 
+function configFromWorkerUrl() {
+  try {
+    const url = new URL(self.location.href);
+    const config = {};
+    url.searchParams.forEach((value, key) => {
+      if (!value) return;
+      config[key] = value;
+    });
+    return Object.keys(config).length > 0 ? config : null;
+  } catch {
+    return null;
+  }
+}
+
 function initializeFirebase(config) {
   if (initialized) return;
   if (!config || !config.messagingSenderId) return;
@@ -36,6 +50,10 @@ function initializeFirebase(config) {
 
   initialized = true;
 }
+
+// Firebase messaging must be initialized during initial script evaluation
+// so push-related handlers are registered immediately.
+initializeFirebase(configFromWorkerUrl());
 
 self.addEventListener('message', (event) => {
   if (event?.data?.type !== 'FIREBASE_CONFIG') return;

@@ -51,7 +51,9 @@ export class PushNotificationsService {
 
     try {
       await this.ensureFirebaseScripts();
-      const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+      const registration = await navigator.serviceWorker.register(
+        this.buildServiceWorkerUrl(firebaseConfig),
+      );
       const readyRegistration = await navigator.serviceWorker.ready;
       const activeRegistration = readyRegistration || registration;
       if (!activeRegistration) {
@@ -209,6 +211,12 @@ export class PushNotificationsService {
         payload: firebaseConfig,
       });
     });
+  }
+
+  private buildServiceWorkerUrl(firebaseConfig: Record<string, string>): string {
+    const params = new URLSearchParams(firebaseConfig);
+    const query = params.toString();
+    return query ? `/firebase-messaging-sw.js?${query}` : '/firebase-messaging-sw.js';
   }
 
   private async registerToken(token: string): Promise<void> {
