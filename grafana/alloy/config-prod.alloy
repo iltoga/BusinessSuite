@@ -47,9 +47,9 @@ loki.source.docker "bs_log_scraper" {
 // 5. Scrape persisted host log files from the shared DATA_PATH logs volume
 local.file_match "host_log_files" {
   path_targets = [
-    { "__path__" = "/host_logs/django.log", "job" = "host_logs", "service" = "backend" },
-    { "__path__" = "/host_logs/task_worker.log", "job" = "host_logs", "service" = "task_worker" },
-    { "__path__" = "/host_logs/frontend.log", "job" = "host_logs", "service" = "frontend" },
+    { "__path__" = "/host_logs/django.log", "job" = "host_logs", "service" = "bs-core" },
+    { "__path__" = "/host_logs/task_worker.log", "job" = "host_logs", "service" = "bs-worker" },
+    { "__path__" = "/host_logs/frontend.log", "job" = "host_logs", "service" = "bs-frontend" },
   ]
 }
 
