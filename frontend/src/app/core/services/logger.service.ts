@@ -14,7 +14,12 @@ export class LoggerService {
     'markAncestorsForTraversal',
     'signalSetFn',
     '/_observability/client-logs',
+    '[LoggerService] Console overrides initialized.',
+    'Angular is running in development mode.',
+    'Angular hydrated ',
   ];
+  private readonly dedupWindowMs = 3000;
+  private readonly dedupCache = new Map<string, number>();
 
   private originalConsole = {
     log: console.log,
@@ -124,6 +129,25 @@ export class LoggerService {
       })
       .join(' ');
 
-    return this.ignoredPatterns.some((pattern) => combined.includes(pattern));
+    if (this.ignoredPatterns.some((pattern) => combined.includes(pattern))) {
+      return true;
+    }
+
+    // Drop repeated identical lines in a short window to reduce observability noise.
+    const key = `${level}|${combined}`.slice(0, 1024);
+    const now = Date.now();
+    const lastSeen = this.dedupCache.get(key);
+    this.dedupCache.set(key, now);
+
+    // Opportunistic cleanup to prevent unbounded growth.
+    if (this.dedupCache.size > 500) {
+      for (const [cacheKey, seenAt] of this.dedupCache.entries()) {
+        if (now - seenAt > this.dedupWindowMs * 5) {
+          this.dedupCache.delete(cacheKey);
+        }
+      }
+    }
+
+    return typeof lastSeen === 'number' && now - lastSeen < this.dedupWindowMs;
   }
 }

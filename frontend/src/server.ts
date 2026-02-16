@@ -24,8 +24,9 @@ try {
 }
 
 import express from 'express';
-import { createProxyMiddleware } from 'http-proxy-middleware';
 import { promises as fs } from 'node:fs';
+import { request as httpRequest, type OutgoingHttpHeaders, type RequestOptions } from 'node:http';
+import { request as httpsRequest } from 'node:https';
 import { dirname, join } from 'node:path';
 import { generateNonce } from './csp';
 
@@ -49,6 +50,43 @@ const frontendLogPath =
   (process.env['NODE_ENV'] === 'production'
     ? '/logs/frontend.log'
     : join(process.cwd(), '..', 'backend', 'logs', 'frontend.log'));
+const serverLogDedupWindowMs = Number(process.env['SERVER_LOG_DEDUP_WINDOW_MS'] || '4000');
+const serverLogDedupCache = new Map<string, number>();
+const noisyServerLogPatterns = [
+  '[Server] increased EventEmitter.defaultMaxListeners to 20',
+  '[Server] setMaxListeners(20) applied to Node server',
+  '[SSR Server] Proxying API to:',
+  '[SSR] Handling request:',
+  '[LoggerService] Console overrides initialized. Client logs will be forwarded to server.',
+  'Angular is running in development mode.',
+  'Angular hydrated ',
+];
+
+const normalizeLogForDedup = (value: string) =>
+  value
+    .replace(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z/g, '<ts>')
+    .replace(/\b\d{10,13}\b/g, '<epoch>');
+
+const shouldDropServerLog = (level: string, serialized: string) => {
+  if (noisyServerLogPatterns.some((pattern) => serialized.includes(pattern))) {
+    return true;
+  }
+
+  const now = Date.now();
+  const dedupKey = `${level}|${normalizeLogForDedup(serialized)}`.slice(0, 1500);
+  const lastSeen = serverLogDedupCache.get(dedupKey);
+  serverLogDedupCache.set(dedupKey, now);
+
+  if (serverLogDedupCache.size > 1500) {
+    for (const [cacheKey, seenAt] of serverLogDedupCache.entries()) {
+      if (now - seenAt > serverLogDedupWindowMs * 5) {
+        serverLogDedupCache.delete(cacheKey);
+      }
+    }
+  }
+
+  return typeof lastSeen === 'number' && now - lastSeen < serverLogDedupWindowMs;
+};
 
 const appendServerLog = (level: string, args: unknown[]) => {
   const timestamp = new Date().toISOString();
@@ -62,6 +100,9 @@ const appendServerLog = (level: string, args: unknown[]) => {
       }
     })
     .join(' ');
+  if (shouldDropServerLog(level, serialized)) {
+    return;
+  }
   const line = `[SSR] [${level.toUpperCase()}] [${timestamp}] ${serialized}\n`;
   fs.mkdir(dirname(frontendLogPath), { recursive: true })
     .then(() => fs.appendFile(frontendLogPath, line))
@@ -177,17 +218,72 @@ app.post(clientLogPath, express.json({ limit: '16kb' }), (req, res) => {
  * Proxy API requests to the backend
  */
 const backendUrl = process.env['BACKEND_URL'] || 'http://127.0.0.1:8000';
+const proxiedPathPrefixes = ['/api', '/media', '/uploads', '/staticfiles'] as const;
 console.log(`[SSR Server] Proxying API to: ${backendUrl}`);
 
-app.use(
-  createProxyMiddleware({
-    target: backendUrl,
-    changeOrigin: true,
-    secure: false,
-    logger: console,
-    pathFilter: ['/api', '/media', '/uploads', '/staticfiles'],
-  }),
-);
+const shouldProxyPath = (urlPath: string): boolean =>
+  proxiedPathPrefixes.some((prefix) => urlPath === prefix || urlPath.startsWith(`${prefix}/`));
+
+app.use((req, res, next) => {
+  const requestPath = req.originalUrl || req.url || '/';
+  if (!shouldProxyPath(requestPath)) {
+    next();
+    return;
+  }
+
+  const target = new URL(requestPath, backendUrl);
+  const isHttps = target.protocol === 'https:';
+  const requestImpl = isHttps ? httpsRequest : httpRequest;
+  const headers: OutgoingHttpHeaders = {
+    ...req.headers,
+    host: target.host,
+  };
+
+  if (!headers['x-forwarded-host'] && req.headers.host) {
+    headers['x-forwarded-host'] = req.headers.host;
+  }
+  if (!headers['x-forwarded-proto']) {
+    headers['x-forwarded-proto'] = req.protocol;
+  }
+
+  const options: RequestOptions = {
+    protocol: target.protocol,
+    hostname: target.hostname,
+    port: target.port || (isHttps ? 443 : 80),
+    method: req.method,
+    path: `${target.pathname}${target.search}`,
+    headers,
+  };
+  const backendRequest = requestImpl(
+    isHttps ? { ...options, rejectUnauthorized: false } : options,
+    (backendResponse) => {
+      res.status(backendResponse.statusCode ?? 502);
+
+      for (const [headerName, headerValue] of Object.entries(backendResponse.headers)) {
+        if (headerValue !== undefined) {
+          res.setHeader(headerName, headerValue);
+        }
+      }
+
+      backendResponse.pipe(res);
+    },
+  );
+
+  backendRequest.on('error', (error) => {
+    console.error(`[SSR Server] API proxy error for ${requestPath}:`, error);
+    if (!res.headersSent) {
+      res.status(502).json({ detail: 'Failed to reach backend API.' });
+    } else {
+      res.end();
+    }
+  });
+
+  req.on('aborted', () => {
+    backendRequest.destroy();
+  });
+
+  req.pipe(backendRequest);
+});
 
 /**
  * Serve static files from /browser

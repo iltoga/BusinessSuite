@@ -1,8 +1,9 @@
-import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { CommonModule, formatDate, isPlatformBrowser } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
   HostListener,
+  LOCALE_ID,
   PLATFORM_ID,
   computed,
   inject,
@@ -18,6 +19,7 @@ import {
   type InvoiceDetail,
   type Payment,
 } from '@/core/api';
+import { ConfigService } from '@/core/services/config.service';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
@@ -63,6 +65,8 @@ export class InvoiceDetailComponent implements OnInit {
   private paymentsApi = inject(PaymentsService);
   private toast = inject(GlobalToastService);
   private platformId = inject(PLATFORM_ID);
+  private locale = inject(LOCALE_ID);
+  private configService = inject(ConfigService);
 
   readonly invoice = signal<InvoiceDetail | null>(null);
   readonly isLoading = signal(false);
@@ -82,7 +86,7 @@ export class InvoiceDetailComponent implements OnInit {
     }
 
     const amount = this.formatCurrency(payment.amount);
-    const date = payment.paymentDate ?? '—';
+    const date = this.formatDateForDisplay(payment.paymentDate);
     return `Delete payment of ${amount} dated ${date}? This will update invoice totals.`;
   });
 
@@ -283,6 +287,52 @@ export class InvoiceDetailComponent implements OnInit {
       currency: 'IDR',
       maximumFractionDigits: 0,
     }).format(n);
+  }
+
+  private formatDateForDisplay(value: string | null | undefined): string {
+    if (!value) {
+      return '—';
+    }
+    const parsed = this.parseApiDate(value);
+    if (!parsed) {
+      return value;
+    }
+    return formatDate(
+      parsed,
+      this.normalizeDateFormat(this.configService.settings.dateFormat),
+      this.locale,
+    );
+  }
+
+  private parseApiDate(value: string): Date | null {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+    const match = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (!match) {
+      const parsed = new Date(trimmed);
+      if (Number.isNaN(parsed.getTime())) {
+        return null;
+      }
+      return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+    }
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const date = new Date(year, month - 1, day);
+    if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+      return null;
+    }
+    return date;
+  }
+
+  private normalizeDateFormat(format: string | null | undefined): string {
+    const normalized = (format ?? '').trim();
+    if (['dd-MM-yyyy', 'yyyy-MM-dd', 'dd/MM/yyyy', 'MM/dd/yyyy'].includes(normalized)) {
+      return normalized;
+    }
+    return 'dd-MM-yyyy';
   }
 
   private loadInvoice(id: number): void {

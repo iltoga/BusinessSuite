@@ -1,0 +1,137 @@
+<div class="space-y-6">
+  <div class="flex items-center justify-between">
+    <h1 class="text-2xl font-bold tracking-tight">National Holidays</h1>
+    <button z-button (click)="createHoliday()" [zDisabled]="isDialogOpen()">Add Holiday</button>
+  </div>
+
+  <z-card class="p-4">
+    <form
+      [formGroup]="filterForm"
+      class="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_8rem_7rem_minmax(0,1fr)_auto] lg:items-end"
+    >
+      <div class="space-y-2">
+        <label class="text-sm font-medium" for="holiday-filter-date">Date</label>
+        <z-date-input id="holiday-filter-date" formControlName="date"></z-date-input>
+      </div>
+
+      <div class="space-y-2">
+        <label class="text-sm font-medium" for="holiday-filter-year">Year</label>
+        <input
+          z-input
+          id="holiday-filter-year"
+          type="number"
+          min="1"
+          formControlName="year"
+          placeholder="Year"
+        />
+      </div>
+
+      <div class="space-y-2">
+        <label class="text-sm font-medium" for="holiday-filter-month">Month</label>
+        <input
+          z-input
+          id="holiday-filter-month"
+          type="number"
+          min="1"
+          max="12"
+          formControlName="month"
+          placeholder="Month"
+        />
+      </div>
+
+      <div class="space-y-2">
+        <label class="text-sm font-medium" for="holiday-filter-country">Country</label>
+        <input
+          z-input
+          id="holiday-filter-country"
+          formControlName="country"
+          placeholder="ID"
+          maxlength="3"
+          (input)="onCountryFilterInput($event)"
+        />
+      </div>
+
+      <div class="lg:self-end">
+        <button
+          z-button
+          type="button"
+          zType="outline"
+          zSize="sm"
+          class="whitespace-nowrap"
+          (click)="clearDateFilter()"
+          [zDisabled]="!filterForm.controls.date.value && !filterForm.controls.month.value"
+        >
+          Clear Date
+        </button>
+      </div>
+    </form>
+  </z-card>
+
+  <ng-template #holidayModalTemplate>
+    <form [formGroup]="holidayForm" (ngSubmit)="saveHoliday()" class="space-y-4 py-4">
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div class="space-y-2 md:col-span-2">
+          <label class="text-sm font-medium" for="holiday-name">Name *</label>
+          <input z-input id="holiday-name" formControlName="name" placeholder="Holiday name" />
+        </div>
+
+        <div class="space-y-2">
+          <label class="text-sm font-medium" for="holiday-date">Date *</label>
+          <z-date-input formControlName="date"></z-date-input>
+        </div>
+
+        <div class="space-y-2">
+          <label class="text-sm font-medium" for="holiday-country">Country *</label>
+          <input z-input id="holiday-country" formControlName="country" placeholder="ID" />
+        </div>
+
+        <div class="space-y-2 md:col-span-2">
+          <label class="text-sm font-medium" for="holiday-description">Description</label>
+          <textarea
+            z-input
+            id="holiday-description"
+            formControlName="description"
+            rows="3"
+            placeholder="Optional notes"
+          ></textarea>
+        </div>
+      </div>
+
+      <div class="mt-6 flex justify-end gap-2">
+        <button z-button type="button" variant="ghost" (click)="closeForm()">Cancel</button>
+        <button z-button type="submit" [zLoading]="isSaving()" [zDisabled]="holidayForm.invalid">
+          {{ editingHoliday() ? 'Update' : 'Create' }}
+        </button>
+      </div>
+    </form>
+  </ng-template>
+
+  <z-card class="p-0">
+    <app-data-table
+      [data]="filteredHolidays()"
+      [columns]="columns"
+      [isLoading]="isLoading()"
+      (sortChange)="onSortChange($event)"
+    />
+  </z-card>
+
+  <app-confirm-dialog
+    [isOpen]="showConfirmDelete()"
+    title="Delete Holiday"
+    [message]="'Delete ' + (editingHoliday()?.name || 'this holiday') + '?'"
+    [destructive]="true"
+    (confirmed)="confirmDelete()"
+    (cancelled)="showConfirmDelete.set(false)"
+  />
+</div>
+
+<ng-template #dateTemplate let-value="value">
+  {{ value | appDate }}
+</ng-template>
+
+<ng-template #actionsTemplate let-item>
+  <div class="flex items-center gap-2 whitespace-nowrap">
+    <z-button zType="warning" zSize="sm" (click)="editHoliday(item)">Edit</z-button>
+    <z-button zType="destructive" zSize="sm" (click)="deleteHoliday(item)">Delete</z-button>
+  </div>
+</ng-template>

@@ -659,6 +659,22 @@ STORAGES = {
 
 # Folders to exclude from media backup
 DBBACKUP_EXCLUDE_MEDIA_FODERS = ["tmpfiles"]
+# Force dbbackup to use a compatible PostgreSQL client wrapper by default.
+# This avoids pg_dump major-version mismatches on developer machines where the
+# database server (e.g., in Docker) is newer than the local Homebrew client.
+DBBACKUP_DUMP_CMD = os.getenv("DBBACKUP_DUMP_CMD", str(ROOT_DIR / "scripts" / "pg_dump_compat.sh"))
+DBBACKUP_RESTORE_CMD = os.getenv(
+    "DBBACKUP_RESTORE_CMD",
+    str(ROOT_DIR / "scripts" / "pg_restore_compat.sh"),
+)
+DBBACKUP_CONNECTORS = {
+    database_alias: {
+        "DUMP_CMD": DBBACKUP_DUMP_CMD,
+        "RESTORE_CMD": DBBACKUP_RESTORE_CMD,
+    }
+    for database_alias, database_config in DATABASES.items()
+    if "postgresql" in database_config.get("ENGINE", "")
+}
 
 FULL_BACKUP_SCHEDULE = "02:00"
 CLEAR_CACHE_SCHEDULE = ["03:00"]

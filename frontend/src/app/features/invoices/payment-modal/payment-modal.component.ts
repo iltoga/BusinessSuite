@@ -17,6 +17,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { PaymentsService, type InvoiceApplicationDetail, type Payment } from '@/core/api';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardButtonComponent } from '@/shared/components/button';
+import { ZardDateInputComponent } from '@/shared/components/date-input';
 import { ZardDialogService } from '@/shared/components/dialog';
 import { FormErrorSummaryComponent } from '@/shared/components/form-error-summary/form-error-summary.component';
 import { ZardInputDirective } from '@/shared/components/input';
@@ -29,6 +30,7 @@ import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/uti
     CommonModule,
     ReactiveFormsModule,
     ZardButtonComponent,
+    ZardDateInputComponent,
     ZardInputDirective,
     FormErrorSummaryComponent,
   ],
@@ -72,7 +74,7 @@ export class PaymentModalComponent {
   });
 
   readonly form = this.fb.group({
-    paymentDate: [this.todayIsoLocal(), Validators.required],
+    paymentDate: [this.todayLocalDate(), Validators.required],
     paymentType: ['cash', Validators.required],
     amount: [0, [Validators.required, Validators.min(1)]],
     notes: [''],
@@ -122,7 +124,7 @@ export class PaymentModalComponent {
 
   private resetForm(): void {
     this.form.reset({
-      paymentDate: this.todayIsoLocal(),
+      paymentDate: this.todayLocalDate(),
       paymentType: 'cash',
       amount: 0,
       notes: '',
@@ -132,11 +134,11 @@ export class PaymentModalComponent {
   private prefillForm(): void {
     const app = this.invoiceApplication();
     const payment = this.payment();
-    const defaultDate = this.todayIsoLocal();
+    const defaultDate = this.todayLocalDate();
 
     if (payment) {
       this.form.patchValue({
-        paymentDate: payment.paymentDate ?? defaultDate,
+        paymentDate: this.parseApiDate(payment.paymentDate) ?? defaultDate,
         paymentType: payment.paymentType ?? 'cash',
         amount: Number(payment.amount ?? 0),
         notes: payment.notes ?? '',
@@ -179,10 +181,16 @@ export class PaymentModalComponent {
     }
 
     this.isSaving.set(true);
+    const paymentDate = this.toApiDate(raw.paymentDate);
+    if (!paymentDate) {
+      this.toast.error('Invalid payment date.');
+      this.isSaving.set(false);
+      return;
+    }
 
     const payload = {
       invoiceApplication: invoiceApplicationId,
-      paymentDate: raw.paymentDate,
+      paymentDate,
       paymentType: raw.paymentType,
       amount: String(amount),
       notes: raw.notes ?? '',
@@ -246,11 +254,49 @@ export class PaymentModalComponent {
     this.closed.emit();
   }
 
-  private todayIsoLocal(): string {
+  private todayLocalDate(): Date {
     const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  }
+
+  private toApiDate(value: unknown): string | null {
+    const parsed = this.parseApiDate(value);
+    if (!parsed) {
+      return null;
+    }
+    const year = parsed.getFullYear();
+    const month = String(parsed.getMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  }
+
+  private parseApiDate(value: unknown): Date | null {
+    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+      return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+    }
+    if (typeof value !== 'string') {
+      return null;
+    }
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+    const match = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (!match) {
+      const parsed = new Date(trimmed);
+      if (Number.isNaN(parsed.getTime())) {
+        return null;
+      }
+      return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+    }
+
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const date = new Date(year, month - 1, day);
+    if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+      return null;
+    }
+    return date;
   }
 }

@@ -546,7 +546,7 @@
         @if (selectedDocument()!.docType.hasExpirationDate) {
           <div class="space-y-2">
             <label class="text-sm font-medium">Expiration Date</label>
-            <input z-input type="date" formControlName="expirationDate" />
+            <z-date-input formControlName="expirationDate"></z-date-input>
           </div>
         }
 
@@ -634,7 +634,7 @@
         @if (ocrReviewData()!.mrzData?.expirationDateYyyyMmDd) {
           <div class="flex justify-between">
             <span class="text-muted-foreground">Expiration Date</span>
-            <span>{{ ocrReviewData()!.mrzData?.expirationDateYyyyMmDd }}</span>
+            <span>{{ ocrReviewData()!.mrzData?.expirationDateYyyyMmDd | appDate }}</span>
           </div>
         }
         @if (ocrReviewData()!.aiWarning) {

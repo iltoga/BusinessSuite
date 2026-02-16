@@ -1,5 +1,5 @@
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
-import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { CommonModule, formatDate, isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
@@ -10,6 +10,7 @@ import {
   HostListener,
   inject,
   PLATFORM_ID,
+  LOCALE_ID,
   signal,
   untracked,
   type OnInit,
@@ -29,6 +30,7 @@ import {
 import { AuthService } from '@/core/services/auth.service';
 import { DocumentsService } from '@/core/services/documents.service';
 import { GlobalToastService } from '@/core/services/toast.service';
+import { ConfigService } from '@/core/services/config.service';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
@@ -95,6 +97,8 @@ export class ApplicationDetailComponent implements OnInit {
   private fb = inject(FormBuilder);
   private destroyRef = inject(DestroyRef);
   private platformId = inject(PLATFORM_ID);
+  private locale = inject(LOCALE_ID);
+  private configService = inject(ConfigService);
   private readonly isBrowser = isPlatformBrowser(this.platformId);
   private http = inject(HttpClient);
 
@@ -281,7 +285,7 @@ export class ApplicationDetailComponent implements OnInit {
 
   readonly uploadForm = this.fb.group({
     docNumber: [''],
-    expirationDate: [''],
+    expirationDate: [null as Date | null],
     details: [''],
   });
 
@@ -341,7 +345,7 @@ export class ApplicationDetailComponent implements OnInit {
     this.ocrMetadata.set(document.metadata ?? null);
     this.uploadForm.reset({
       docNumber: document.docNumber ?? '',
-      expirationDate: document.expirationDate ?? '',
+      expirationDate: this.parseApiDate(document.expirationDate),
       details: document.details ?? '',
     });
     this.isUploadOpen.set(true);
@@ -388,7 +392,7 @@ export class ApplicationDetailComponent implements OnInit {
         document.id,
         {
           docNumber: formValue.docNumber || null,
-          expirationDate: formValue.expirationDate || null,
+          expirationDate: this.toApiDate(formValue.expirationDate),
           details: formValue.details || null,
           metadata: this.ocrMetadata(),
         },
@@ -454,7 +458,7 @@ export class ApplicationDetailComponent implements OnInit {
 
     this.uploadForm.patchValue({
       docNumber: data.mrzData.number ?? '',
-      expirationDate: data.mrzData.expirationDateYyyyMmDd ?? '',
+      expirationDate: this.parseApiDate(data.mrzData.expirationDateYyyyMmDd),
     });
     this.ocrMetadata.set(data.mrzData ?? {});
     this.ocrReviewOpen.set(false);
@@ -862,7 +866,8 @@ export class ApplicationDetailComponent implements OnInit {
     if (!previousWorkflow?.dueDate) {
       return null;
     }
-    return `Processing/Completed available on or after ${previousWorkflow.dueDate} (GMT+8).`;
+    const formattedDate = this.formatDateForDisplay(previousWorkflow.dueDate);
+    return `Processing/Completed available on or after ${formattedDate} (GMT+8).`;
   }
 
   getTimelineGapLabel(days: number | null): string {
@@ -1093,7 +1098,8 @@ export class ApplicationDetailComponent implements OnInit {
     if (!previousWorkflow?.dueDate) {
       return 'Status can be updated to Rejected only until previous step due date is reached.';
     }
-    return `You can set Processing/Completed only on or after ${previousWorkflow.dueDate} (GMT+8).`;
+    const formattedDate = this.formatDateForDisplay(previousWorkflow.dueDate);
+    return `You can set Processing/Completed only on or after ${formattedDate} (GMT+8).`;
   }
 
   private getTodayInWorkflowTimezoneDate(): Date {
@@ -1297,5 +1303,62 @@ export class ApplicationDetailComponent implements OnInit {
     const month = String(value.getMonth() + 1).padStart(2, '0');
     const day = String(value.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  }
+
+  private toApiDate(value: unknown): string | null {
+    const parsed = this.parseApiDate(value);
+    if (!parsed) {
+      return null;
+    }
+    return this.formatDateForApi(parsed);
+  }
+
+  private parseApiDate(value: unknown): Date | null {
+    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+      return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+    }
+    if (typeof value !== 'string') {
+      return null;
+    }
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+    const match = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (!match) {
+      const parsed = new Date(trimmed);
+      if (Number.isNaN(parsed.getTime())) {
+        return null;
+      }
+      return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+    }
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const date = new Date(year, month - 1, day);
+    if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+      return null;
+    }
+    return date;
+  }
+
+  private formatDateForDisplay(value: string): string {
+    const parsed = this.parseApiDate(value);
+    if (!parsed) {
+      return value;
+    }
+    return formatDate(
+      parsed,
+      this.normalizeDateFormat(this.configService.settings.dateFormat),
+      this.locale,
+    );
+  }
+
+  private normalizeDateFormat(format: string | null | undefined): string {
+    const normalized = (format ?? '').trim();
+    if (['dd-MM-yyyy', 'yyyy-MM-dd', 'dd/MM/yyyy', 'MM/dd/yyyy'].includes(normalized)) {
+      return normalized;
+    }
+    return 'dd-MM-yyyy';
   }
 }
