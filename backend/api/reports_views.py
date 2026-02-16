@@ -220,7 +220,8 @@ class ApplicationPipelineApiView(_BaseReportAPIView):
         recent_applications = [
             {
                 "id": application.id,
-                "doc_no": application.doc_no,
+                # DocApplication has no doc_no field; expose a stable readable reference.
+                "doc_no": getattr(application, "doc_no", f"APP-{application.id}"),
                 "doc_date": application.doc_date.isoformat() if application.doc_date else None,
                 "status": application.status,
                 "status_label": application.get_status_display(),

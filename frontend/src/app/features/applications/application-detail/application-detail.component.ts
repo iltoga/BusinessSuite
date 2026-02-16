@@ -133,6 +133,7 @@ export class ApplicationDetailComponent implements OnInit {
   readonly ocrReviewOpen = signal(false);
   readonly ocrReviewData = signal<OcrStatusResponse | null>(null);
   readonly ocrMetadata = signal<Record<string, unknown> | null>(null);
+  readonly isAddDocumentDialogOpen = signal(false);
   readonly actionLoading = signal<string | null>(null);
   readonly workflowAction = signal<string | null>(null);
   readonly originSearchQuery = signal<string | null>(null);
@@ -206,6 +207,29 @@ export class ApplicationDetailComponent implements OnInit {
   // PDF Merge and Selection
   readonly localUploadedDocuments = signal<ApplicationDocument[]>([]);
   readonly selectedDocumentIds = signal<Set<number>>(new Set());
+  readonly areAllUploadedDocumentsSelected = computed(() => {
+    const documents = this.localUploadedDocuments();
+    if (documents.length === 0) {
+      return false;
+    }
+
+    const selectedIds = this.selectedDocumentIds();
+    return documents.every((document) => selectedIds.has(document.id));
+  });
+  readonly isUploadedDocumentSelectionPartial = computed(() => {
+    const documents = this.localUploadedDocuments();
+    if (documents.length === 0) {
+      return false;
+    }
+
+    const selectedIds = this.selectedDocumentIds();
+    const selectedCount = documents.reduce(
+      (count, document) => count + (selectedIds.has(document.id) ? 1 : 0),
+      0,
+    );
+
+    return selectedCount > 0 && selectedCount < documents.length;
+  });
   readonly isMerging = signal(false);
   private readonly workflowTimezone = 'Asia/Singapore';
 
@@ -540,6 +564,14 @@ export class ApplicationDetailComponent implements OnInit {
     this.selectedDocumentIds.set(new Set());
   }
 
+  toggleAllUploadedDocumentsSelection(): void {
+    if (this.areAllUploadedDocumentsSelected()) {
+      this.deselectAllDocuments();
+      return;
+    }
+    this.selectAllDocuments();
+  }
+
   onDocumentDrop(event: CdkDragDrop<ApplicationDocument[]>): void {
     const docs = [...this.localUploadedDocuments()];
     moveItemInArray(docs, event.previousIndex, event.currentIndex);
@@ -742,7 +774,7 @@ export class ApplicationDetailComponent implements OnInit {
 
   canCreateInvoice(): boolean {
     const app = this.application();
-    return !!(app && (app.status === 'completed' || app.status === 'rejected') && !app.hasInvoice);
+    return !!(app && this.isReadyForInvoice(app));
   }
 
   createInvoice(): void {
@@ -986,6 +1018,20 @@ export class ApplicationDetailComponent implements OnInit {
       payloadDocs.push({ id: Number(docTypeId), required: true });
     }
     this.updateApplicationPartial({ documentTypes: payloadDocs }, 'Document added');
+    this.closeAddDocumentDialog();
+  }
+
+  openAddDocumentDialog(): void {
+    if (this.filteredDocTypeOptions().length === 0) {
+      this.toast.error('No additional document types available');
+      return;
+    }
+    this.selectedNewDocType.set(null);
+    this.isAddDocumentDialogOpen.set(true);
+  }
+
+  closeAddDocumentDialog(): void {
+    this.isAddDocumentDialogOpen.set(false);
     this.selectedNewDocType.set(null);
   }
 
@@ -1032,6 +1078,7 @@ export class ApplicationDetailComponent implements OnInit {
             data?.notifyCustomer ?? data?.notifyCustomerToo ?? data?.notify_customer_too ?? false,
           notifyCustomerChannel:
             data?.notifyCustomerChannel ?? data?.notify_customer_channel ?? null,
+          readyForInvoice: data?.readyForInvoice ?? data?.ready_for_invoice ?? undefined,
         };
         this.application.set(normalized);
         this.editableNotes.set(normalized?.notes ?? '');
@@ -1044,6 +1091,20 @@ export class ApplicationDetailComponent implements OnInit {
         this.isSavingMeta.set(false);
       },
     });
+  }
+
+  private isReadyForInvoice(app: ApplicationDetail): boolean {
+    if (typeof app.readyForInvoice === 'boolean') {
+      return app.readyForInvoice;
+    }
+
+    if (app.status === 'completed' || app.status === 'rejected') {
+      return true;
+    }
+
+    const requiredDocuments = app.documents.filter((document) => document.required);
+    const completedRequiredDocuments = requiredDocuments.filter((document) => document.completed);
+    return requiredDocuments.length === completedRequiredDocuments.length;
   }
 
   private calculateGapDays(

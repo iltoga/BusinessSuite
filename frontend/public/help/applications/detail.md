@@ -7,8 +7,8 @@ Manage the entire lifecycle of a customer application from start to finish.
 The header displays the Application ID, Product, and Customer.
 
 - **Create Invoice**: Generate an invoice based on this application.
-- **Force Close**: Manually close the application (e.g., if cancelled).
-- **Delete**: Remove the application permanently (superuser only).
+- **Force Close**: Manually close the application (e.g., if we want to invoice the customer without having collected all required documents).
+- **Delete**: Remove the application permanently (admin only).
 
 ## 2. Application Info
 

@@ -111,6 +111,7 @@ export interface ApplicationDetail {
   nextTask?: ApplicationTask | null;
   hasInvoice?: boolean;
   invoiceId?: number | null;
+  readyForInvoice?: boolean;
   strField?: string;
 }
 
