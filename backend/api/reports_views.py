@@ -32,6 +32,20 @@ def _to_json_value(value: Any) -> Any:
     return value
 
 
+def _serialize_ltv_customers(customers: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Return JSON-safe LTV rows and strip non-serializable model references."""
+
+    serialized_customers: list[dict[str, Any]] = []
+    for customer_row in customers:
+        if not isinstance(customer_row, dict):
+            continue
+
+        serialized_row = {k: v for k, v in customer_row.items() if k != "customer"}
+        serialized_customers.append(_to_json_value(serialized_row))
+
+    return serialized_customers
+
+
 class _BaseReportAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -198,8 +212,12 @@ class CustomerLifetimeValueApiView(_BaseReportAPIView):
 
     def get(self, request):
         ctx = self.build_context(request)
+
+        top_customers = _serialize_ltv_customers(ctx.get("top_customers", []))
+        if not top_customers:
+            top_customers = _serialize_ltv_customers(ctx.get("all_customers", []))
+
         keys = [
-            "top_customers",
             "total_customers",
             "total_revenue",
             "total_revenue_formatted",
@@ -209,7 +227,9 @@ class CustomerLifetimeValueApiView(_BaseReportAPIView):
             "medium_value_count",
             "low_value_count",
         ]
-        return Response({k: _to_json_value(ctx.get(k)) for k in keys})
+        payload = {k: _to_json_value(ctx.get(k)) for k in keys}
+        payload["top_customers"] = top_customers
+        return Response(payload)
 
 
 class ApplicationPipelineApiView(_BaseReportAPIView):
