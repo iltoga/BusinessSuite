@@ -179,6 +179,10 @@ services:
     volumes:
       - ./grafana/alloy/config-prod.alloy:/etc/alloy/config.alloy:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - type: bind
+        source: ${DATA_PATH}/logs
+        target: /host_logs
+        read_only: true
       - alloy-data:/var/lib/alloy/data
     environment:
       # --- Credentials ---

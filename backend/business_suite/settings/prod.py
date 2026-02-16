@@ -49,6 +49,12 @@ STATIC_ROOT = "/staticfiles/"
 
 TESSERACT_CMD = "/usr/bin/tesseract"
 
+# Route production file logs per runtime component.
+# - bs-core (COMPONENT=backend) -> /logs/django.log
+# - bs-worker (COMPONENT=task_worker) -> /logs/task_worker.log
+COMPONENT = os.getenv("COMPONENT", "backend")
+LOG_FILE_PATH = "/logs/task_worker.log" if COMPONENT == "task_worker" else "/logs/django.log"
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -75,7 +81,7 @@ LOGGING = {
         },
         "file": {
             "class": "logging.FileHandler",
-            "filename": "/logs/django.log",  # Do not change this path; it's set in the docker-compose.yml
+            "filename": LOG_FILE_PATH,
             "formatter": "verbose",
         },
         # "mail_admins": {

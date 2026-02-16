@@ -44,7 +44,21 @@ loki.source.docker "bs_log_scraper" {
   forward_to = [loki.process.filter_logs.receiver]
 }
 
-// 5. Send logs to Grafana Cloud
+// 5. Scrape persisted host log files from the shared DATA_PATH logs volume
+local.file_match "host_log_files" {
+  path_targets = [
+    { "__path__" = "/host_logs/django.log", "job" = "host_logs", "service" = "backend" },
+    { "__path__" = "/host_logs/task_worker.log", "job" = "host_logs", "service" = "task_worker" },
+    { "__path__" = "/host_logs/frontend.log", "job" = "host_logs", "service" = "frontend" },
+  ]
+}
+
+loki.source.file "host_logs" {
+  targets    = local.file_match.host_log_files.targets
+  forward_to = [loki.process.filter_logs.receiver]
+}
+
+// 6. Send logs to Grafana Cloud
 loki.write "grafana_cloud" {
   endpoint {
     url = sys.env("GRAFANA_CLOUD_LOKI_URL")
