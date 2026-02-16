@@ -2,11 +2,13 @@
   <h2 class="text-2xl font-bold">Calendar Overview</h2>
 
   <div class="grid gap-4">
-    <app-dashboard-widget title="Today" subtitle="Todo and done">
+    <app-dashboard-widget widgetTitle="Today" widgetSubtitle="Todo and done">
       @if (loading()) {
         <div class="grid gap-4 md:grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)] md:items-start">
           <div class="space-y-2 md:pr-4">
-            <div class="flex items-center justify-between text-xs uppercase tracking-wide text-muted-foreground">
+            <div
+              class="flex items-center justify-between text-xs uppercase tracking-wide text-muted-foreground"
+            >
               <z-skeleton class="h-3 w-12" />
               <z-skeleton class="h-3 w-6" />
             </div>
@@ -16,7 +18,9 @@
           <div class="hidden w-px bg-border/70 md:block"></div>
 
           <div class="space-y-2 md:pl-4">
-            <div class="flex items-center justify-between text-xs uppercase tracking-wide text-muted-foreground">
+            <div
+              class="flex items-center justify-between text-xs uppercase tracking-wide text-muted-foreground"
+            >
               <z-skeleton class="h-3 w-12" />
               <z-skeleton class="h-3 w-6" />
             </div>
@@ -114,7 +118,11 @@
     </app-dashboard-widget>
 
     <div class="grid gap-4 lg:grid-cols-3">
-      <app-dashboard-widget title="Rest of the Week" subtitle="Tomorrow to week end" class="lg:col-span-2">
+      <app-dashboard-widget
+        widgetTitle="Rest of the Week"
+        widgetSubtitle="Tomorrow to week end"
+        class="lg:col-span-2"
+      >
         @if (loading()) {
           <div class="space-y-2">
             <z-skeleton class="h-12 w-full rounded" />
@@ -137,32 +145,112 @@
         }
       </app-dashboard-widget>
 
-      <app-dashboard-widget title="Month" subtitle="Click day for details">
-        <div class="mb-2 grid grid-cols-7 gap-1 text-center text-xs text-muted-foreground">
-          @for (day of ['S', 'M', 'T', 'W', 'T', 'F', 'S']; track day + $index) {
-            <div>{{ day }}</div>
-          }
-        </div>
-        <div class="grid grid-cols-7 gap-1">
-          @for (day of monthGrid(); track day.key) {
+      <app-dashboard-widget widgetTitle="Month" widgetSubtitle="Hover days for details">
+        <div
+          #monthWidgetContainerRef
+          class="relative"
+          (mouseleave)="cancelScheduledOpenDay()"
+        >
+          <div class="mb-2 flex items-center justify-center gap-2 text-xs font-medium text-muted-foreground">
             <button
-              class="h-8 rounded border text-xs transition"
-              [class.bg-primary/15]="day.hasEvents"
-              [class.border-primary/40]="day.hasEvents"
-              [class.border-border/50]="!day.hasEvents"
-              [class.text-muted-foreground]="!day.inMonth"
-              [class.text-red-600]="day.isHoliday"
-              [attr.title]="day.holidayName || null"
-              (click)="openDay(day.date)"
+              type="button"
+              z-button
+              zType="ghost"
+              zSize="sm"
+              class="h-6 w-6 p-0"
+              aria-label="Previous month"
+              (click)="showPreviousMonth()"
             >
-              {{ day.date.getDate() }}
+              <z-icon zType="chevron-left" class="h-4 w-4" />
             </button>
+            <span class="min-w-28 text-center">{{ activeMonthLabel() }}</span>
+            <button
+              type="button"
+              z-button
+              zType="ghost"
+              zSize="sm"
+              class="h-6 w-6 p-0"
+              aria-label="Next month"
+              (click)="showNextMonth()"
+            >
+              <z-icon zType="chevron-right" class="h-4 w-4" />
+            </button>
+          </div>
+          <div
+            class="mb-2 text-center text-xs text-muted-foreground"
+            style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0.25rem"
+          >
+            @for (day of ['S', 'M', 'T', 'W', 'T', 'F', 'S']; track day + $index) {
+              <div>{{ day }}</div>
+            }
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0.25rem">
+            @for (day of monthGrid(); track day.key) {
+              <button
+                data-month-day="true"
+                class="relative h-8 w-full rounded border text-xs transition"
+                [class.bg-primary/15]="day.hasEvents"
+                [class.border-primary/40]="day.hasEvents"
+                [class.border-border/50]="!day.hasEvents"
+                [class.text-foreground/40]="day.isWeekend && !day.isHoliday"
+                [class.text-muted-foreground]="!day.inMonth && !(day.isWeekend && !day.isHoliday)"
+                [class.text-destructive]="day.isHoliday"
+                (mouseenter)="scheduleOpenDay(day, $event)"
+                (mouseleave)="onMonthDayMouseLeave()"
+              >
+                <span class="block text-center">{{ day.date.getDate() }}</span>
+              </button>
+            }
+          </div>
+
+          @if (openDayEventsDate()) {
+            <div
+              class="absolute left-0 right-0 top-full z-20 mt-2 rounded-lg border border-border bg-card p-4 shadow-xl"
+            >
+              <div class="mb-3 flex items-center justify-between">
+                <h3 class="text-sm font-semibold">{{ openDayEventsDate() | appDate }}</h3>
+                <div class="text-xs text-muted-foreground">{{ selectedDayEvents().length }} event(s)</div>
+              </div>
+
+              <div class="mb-3 flex flex-wrap gap-2">
+                @if (selectedDayWeekendLabel(); as weekendLabel) {
+                  <span
+                    class="inline-flex items-center rounded border border-muted bg-muted/60 px-2 py-1 text-xs text-foreground/80"
+                  >
+                    Weekend: {{ weekendLabel }}
+                  </span>
+                }
+                @if (selectedDayNationalHolidayNames().length > 0) {
+                  <span
+                    class="inline-flex items-center rounded border border-destructive/30 bg-destructive/10 px-2 py-1 text-xs text-destructive"
+                  >
+                    Holiday: {{ selectedDayNationalHolidayNames().join(', ') }}
+                  </span>
+                }
+              </div>
+
+              <ul class="space-y-2 text-sm">
+                @for (event of selectedDayEvents(); track event.id) {
+                  <li class="rounded border border-border/50 px-3 py-2">{{ event.summary }}</li>
+                }
+              </ul>
+            </div>
+          }
+
+          @if (!openDayEventsDate() && hoverInfoLabel(); as infoLabel) {
+            <div
+              class="pointer-events-none absolute z-30 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-md border border-border bg-card px-2 py-1 text-xs text-foreground shadow-lg"
+              [style.left.px]="hoverTooltipPosition()?.left"
+              [style.top.px]="hoverTooltipPosition()?.top"
+            >
+              {{ infoLabel }}
+            </div>
           }
         </div>
       </app-dashboard-widget>
     </div>
 
-    <app-dashboard-widget title="Overdue Applications" subtitle="Due date passed">
+    <app-dashboard-widget widgetTitle="Overdue Applications" widgetSubtitle="Due date passed">
       @if (loading()) {
         <div class="space-y-2">
           <z-skeleton class="h-12 w-full rounded" />
@@ -245,37 +333,3 @@
     </div>
   }
 </ng-template>
-
-@if (openDayEventsDate()) {
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-    <div class="w-full max-w-xl rounded-lg border border-border bg-card p-4">
-      <div class="mb-3 flex items-center justify-between">
-        <h3 class="text-lg font-semibold">{{ openDayEventsDate() | appDate }}</h3>
-        <button
-          z-button
-          zType="ghost"
-          zSize="sm"
-          aria-label="Close dialog"
-          (click)="openDayEventsDate.set(null)"
-        >
-          <z-icon zType="x" />
-        </button>
-      </div>
-      @if (selectedDayHolidayNames().length > 0) {
-        <div class="mb-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          <div class="font-medium">National holiday</div>
-          <div class="text-xs">{{ selectedDayHolidayNames().join(', ') }}</div>
-        </div>
-      }
-      @if (selectedDayEvents().length === 0) {
-        <div class="text-sm text-muted-foreground">No events for this day.</div>
-      } @else {
-        <ul class="space-y-2 text-sm">
-          @for (event of selectedDayEvents(); track event.id) {
-            <li class="rounded border border-border/50 px-3 py-2">{{ event.summary }}</li>
-          }
-        </ul>
-      }
-    </div>
-  </div>
-}

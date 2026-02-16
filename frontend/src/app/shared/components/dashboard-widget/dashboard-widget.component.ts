@@ -10,8 +10,8 @@ import { ZardCardComponent } from '@/shared/components/card';
   template: `
     <z-card class="p-4 h-full bg-card/80 backdrop-blur border-border/60">
       <div class="flex items-center justify-between mb-3">
-        <h3 class="font-semibold text-base">{{ title() }}</h3>
-        <span class="text-xs text-muted-foreground">{{ subtitle() }}</span>
+        <h3 class="font-semibold text-base">{{ widgetTitle() }}</h3>
+        <span class="text-xs text-muted-foreground">{{ widgetSubtitle() }}</span>
       </div>
       <ng-content />
     </z-card>
@@ -19,6 +19,6 @@ import { ZardCardComponent } from '@/shared/components/card';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DashboardWidgetComponent {
-  readonly title = input.required<string>();
-  readonly subtitle = input<string>('');
+  readonly widgetTitle = input.required<string>();
+  readonly widgetSubtitle = input<string>('');
 }

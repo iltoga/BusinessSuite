@@ -1,7 +1,7 @@
 import { CalendarService } from '@/core/api/api/calendar.service';
 import { HolidaysService as HolidayService } from '@/core/api/api/holidays.service';
-import { Holiday } from '@/core/api/model/holiday';
 import { GoogleCalendarEvent } from '@/core/api/model/google-calendar-event';
+import { Holiday } from '@/core/api/model/holiday';
 import { AppConfig } from '@/core/config/app.config';
 import { ConfigService } from '@/core/services/config.service';
 import { ZardButtonComponent } from '@/shared/components/button';
@@ -18,6 +18,7 @@ import {
   computed,
   DestroyRef,
   effect,
+  ElementRef,
   HostListener,
   inject,
   OnInit,
@@ -38,6 +39,19 @@ type CalendarEventViewModel = CalendarEventWithColor & {
   startDate: Date;
   endDate: Date | null;
   isDone: boolean;
+};
+
+type MonthGridDay = {
+  key: string;
+  index: number;
+  date: Date;
+  inMonth: boolean;
+  hasEvents: boolean;
+  isHoliday: boolean;
+  holidayName: string | null;
+  isWeekend: boolean;
+  weekendName: string | null;
+  tooltip: string | null;
 };
 
 @Component({
@@ -67,14 +81,19 @@ export class CalendarIntegrationComponent implements OnInit {
   holidays = signal<Holiday[]>([]);
   loading = signal<boolean>(false);
   openDayEventsDate = signal<Date | null>(null);
+  hoverInfoDay = signal<MonthGridDay | null>(null);
+  hoverTooltipPosition = signal<{ left: number; top: number } | null>(null);
   selectedTodayEventId = signal<string | null>(null);
   isTodayEventDialogOpen = signal<boolean>(false);
   private eventUpdatingState = signal<Record<string, boolean>>({});
   private todayEventDialogRef = signal<ZardDialogRef | null>(null);
+  // Timer used for delayed weekend/holiday tooltip (cancellable)
+  private openDayTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly todayEventDetailsTemplate = viewChild.required<TemplateRef<unknown>>(
     'todayEventDetailsTemplate',
   );
+  readonly monthWidgetContainerRef = viewChild<ElementRef<HTMLElement>>('monthWidgetContainerRef');
 
   readonly todoColorId = computed(() => this.getConfigColorId('calendarTodoColorId', '5'));
   readonly doneColorId = computed(() => this.getConfigColorId('calendarDoneColorId', '10'));
@@ -144,34 +163,21 @@ export class CalendarIntegrationComponent implements OnInit {
       .sort((left, right) => right.startDate.getTime() - left.startDate.getTime());
   });
 
-  readonly monthGrid = computed(() => {
-    const now = new Date();
-    const first = new Date(now.getFullYear(), now.getMonth(), 1);
-    const start = new Date(first);
-    start.setDate(first.getDate() - first.getDay());
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-    const monthEvents = this.normalizedEvents();
-    const monthHolidays = this.holidays();
+  displayedMonth = signal<Date>(this.startOfMonth(new Date()));
 
-    return Array.from({ length: 42 }).map((_, index) => {
-      const date = new Date(start);
-      date.setDate(start.getDate() + index);
-      const isHighlightableDay = date >= todayStart && date < endOfMonth;
-      const hasEvents =
-        isHighlightableDay && monthEvents.some((event) => this.isSameDay(event.startDate, date));
-      const holiday = monthHolidays.find((item) => this.isSameDay(new Date(item.date), date));
+  readonly activeMonthLabel = computed(() =>
+    new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(
+      this.displayedMonth(),
+    ),
+  );
 
-      return {
-        key: `${date.toISOString()}-${index}`,
-        date,
-        inMonth: date.getMonth() === now.getMonth(),
-        hasEvents,
-        isHoliday: Boolean(holiday),
-        holidayName: holiday?.name ?? null,
-      };
-    });
+  readonly monthGrid = computed<MonthGridDay[]>(() => {
+    const month = this.displayedMonth();
+    return this.buildMonthGrid(
+      month,
+      this.filterEventsByMonth(this.normalizedEvents(), month),
+      this.filterHolidaysByMonth(this.holidays(), month),
+    );
   });
 
   readonly selectedDayEvents = computed(() => {
@@ -180,13 +186,51 @@ export class CalendarIntegrationComponent implements OnInit {
     return this.normalizedEvents().filter((event) => this.isSameDay(event.startDate, day));
   });
 
-  readonly selectedDayHolidayNames = computed(() => {
+  readonly selectedDayNationalHolidayNames = computed(() => {
     const day = this.openDayEventsDate();
     if (!day) return [];
 
     return this.holidays()
-      .filter((holiday) => this.isSameDay(new Date(holiday.date), day))
+      .filter((holiday) => {
+        const holidayDate = this.parseHolidayDate(holiday.date);
+        return holidayDate
+          ? this.isSameDay(holidayDate, day) && !this.isWeekendHoliday(holiday)
+          : false;
+      })
       .map((holiday) => holiday.name);
+  });
+
+  readonly selectedDayWeekendLabel = computed(() => {
+    const day = this.openDayEventsDate();
+    if (!day) return null;
+
+    if (this.isWeekendDate(day)) {
+      return this.weekendLabelForDate(day);
+    }
+
+    const weekendHoliday = this.holidays().find((holiday) => {
+      const holidayDate = this.parseHolidayDate(holiday.date);
+      return holidayDate
+        ? this.isSameDay(holidayDate, day) && this.isWeekendHoliday(holiday)
+        : false;
+    });
+
+    return weekendHoliday?.name ?? null;
+  });
+
+  readonly hoverInfoLabel = computed(() => {
+    const day = this.hoverInfoDay();
+    if (!day) return null;
+
+    const labels: string[] = [];
+    if (day.isWeekend && day.weekendName) {
+      labels.push(day.weekendName);
+    }
+    if (day.isHoliday && day.holidayName) {
+      labels.push(day.holidayName);
+    }
+
+    return labels.join(' • ') || day.tooltip || null;
   });
 
   constructor() {
@@ -219,6 +263,7 @@ export class CalendarIntegrationComponent implements OnInit {
       if (current) {
         current.close();
       }
+      this.clearOpenDayTimer();
     });
   }
 
@@ -244,15 +289,79 @@ export class CalendarIntegrationComponent implements OnInit {
   loadHolidays(): void {
     this.holidayService.holidaysList('date').subscribe({
       next: (data) => {
-        const indonesiaHolidays = (data ?? []).filter((holiday) => holiday.country === 'Indonesia');
+        const indonesiaHolidays = (data ?? []).filter((holiday) =>
+          this.isIndonesiaHolidayCountry(holiday.country),
+        );
         this.holidays.set(indonesiaHolidays);
       },
-      error: () => this.holidays.set([]),
+      error: () => {
+        this.holidays.set([]);
+      },
     });
   }
 
   openDay(date: Date): void {
-    this.openDayEventsDate.set(date);
+    if (this.hasEventsForDate(date)) {
+      this.openDayEventsDate.set(date);
+    } else {
+      this.openDayEventsDate.set(null);
+    }
+  }
+
+  showPreviousMonth(): void {
+    this.shiftDisplayedMonth(-1);
+  }
+
+  showNextMonth(): void {
+    this.shiftDisplayedMonth(1);
+  }
+
+  // Event day: open immediately. Weekend/holiday without events: show tooltip after 1s.
+  scheduleOpenDay(day: MonthGridDay, event?: MouseEvent): void {
+    if (!day.inMonth) {
+      this.cancelScheduledOpenDay();
+      return;
+    }
+
+    this.clearOpenDayTimer();
+    this.hoverInfoDay.set(null);
+    this.hoverTooltipPosition.set(null);
+
+    if (day.hasEvents) {
+      this.openDay(day.date);
+      return;
+    }
+
+    this.openDayEventsDate.set(null);
+    if (day.isWeekend || day.isHoliday) {
+      const tooltipPosition = this.resolveTooltipPosition(event);
+      this.openDayTimer = setTimeout(() => {
+        this.hoverInfoDay.set(day);
+        if (tooltipPosition) {
+          this.hoverTooltipPosition.set(tooltipPosition);
+        }
+      }, 100);
+    }
+  }
+
+  cancelScheduledOpenDay(): void {
+    this.clearOpenDayTimer();
+    this.openDayEventsDate.set(null);
+    this.hoverInfoDay.set(null);
+    this.hoverTooltipPosition.set(null);
+  }
+
+  onMonthDayMouseLeave(): void {
+    this.clearOpenDayTimer();
+    this.hoverInfoDay.set(null);
+    this.hoverTooltipPosition.set(null);
+  }
+
+  private clearOpenDayTimer(): void {
+    if (this.openDayTimer !== null) {
+      clearTimeout(this.openDayTimer);
+      this.openDayTimer = null;
+    }
   }
 
   @HostListener('document:keydown.escape')
@@ -260,6 +369,11 @@ export class CalendarIntegrationComponent implements OnInit {
     if (this.openDayEventsDate()) {
       this.openDayEventsDate.set(null);
     }
+    if (this.hoverInfoDay()) {
+      this.hoverInfoDay.set(null);
+    }
+    this.hoverTooltipPosition.set(null);
+    this.clearOpenDayTimer();
   }
 
   selectTodayEvent(eventId: string): void {
@@ -380,6 +494,98 @@ export class CalendarIntegrationComponent implements OnInit {
     });
   }
 
+  private shiftDisplayedMonth(offset: number): void {
+    this.displayedMonth.set(this.addMonths(this.displayedMonth(), offset));
+    this.cancelScheduledOpenDay();
+  }
+
+  private buildMonthGrid(
+    month: Date,
+    monthEvents: CalendarEventViewModel[],
+    monthHolidays: Holiday[],
+  ): MonthGridDay[] {
+    const first = this.startOfMonth(month);
+    const start = new Date(first);
+    start.setDate(first.getDate() - first.getDay());
+    const endOfMonth = this.addMonths(first, 1);
+
+    return Array.from({ length: 42 }).map((_, index) => {
+      const date = new Date(start);
+      date.setDate(start.getDate() + index);
+      const isHighlightableDay = date >= first && date < endOfMonth;
+      const hasEvents =
+        isHighlightableDay && monthEvents.some((event) => this.isSameDay(event.startDate, date));
+      const holidaysForDay = monthHolidays.filter((item) => {
+        const holidayDate = this.parseHolidayDate(item.date);
+        return holidayDate ? this.isSameDay(holidayDate, date) : false;
+      });
+      const nationalHoliday = holidaysForDay.find((item) => !this.isWeekendHoliday(item));
+      const weekendHoliday = holidaysForDay.find((item) => this.isWeekendHoliday(item));
+
+      const isWeekend = this.isWeekendDate(date) || Boolean(weekendHoliday);
+      const weekendName = this.isWeekendDate(date)
+        ? this.weekendLabelForDate(date)
+        : (weekendHoliday?.name ?? null);
+      const holidayName = nationalHoliday?.name ?? null;
+      const tooltipParts = [isWeekend && weekendName ? weekendName : null, holidayName].filter(
+        (value): value is string => Boolean(value),
+      );
+
+      return {
+        key: `${this.monthKey(month)}-${index}`,
+        index,
+        date,
+        inMonth: this.isDateInMonth(date, month),
+        hasEvents,
+        isHoliday: Boolean(nationalHoliday),
+        holidayName,
+        isWeekend,
+        weekendName,
+        tooltip: tooltipParts.join(' • ') || null,
+      };
+    });
+  }
+
+  private filterEventsByMonth(
+    events: CalendarEventViewModel[],
+    month: Date,
+  ): CalendarEventViewModel[] {
+    return events.filter((event) => this.isDateInMonth(event.startDate, month));
+  }
+
+  private filterHolidaysByMonth(holidays: Holiday[], month: Date): Holiday[] {
+    return holidays.filter((holiday) => {
+      const holidayDate = this.parseHolidayDate(holiday.date);
+      return holidayDate ? this.isDateInMonth(holidayDate, month) : false;
+    });
+  }
+
+  private monthKey(month: Date): string {
+    return `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}`;
+  }
+
+  private hasEventsForDate(date: Date): boolean {
+    return this.normalizedEvents().some((event) => this.isSameDay(event.startDate, date));
+  }
+
+  private resolveTooltipPosition(event?: MouseEvent): { left: number; top: number } | null {
+    if (!event) return null;
+
+    const cellElement = event.currentTarget;
+    if (!(cellElement instanceof HTMLElement)) return null;
+
+    const containerElement = this.monthWidgetContainerRef()?.nativeElement;
+    if (!containerElement) return null;
+
+    const cellRect = cellElement.getBoundingClientRect();
+    const containerRect = containerElement.getBoundingClientRect();
+
+    return {
+      left: cellRect.left - containerRect.left + cellRect.width / 2,
+      top: cellRect.top - containerRect.top - 6,
+    };
+  }
+
   private extractStartDate(event: CalendarEventWithColor): Date {
     const start = event.start;
     const source = start?.dateTime || start?.date || event.startTime;
@@ -406,6 +612,14 @@ export class CalendarIntegrationComponent implements OnInit {
     return normalized;
   }
 
+  private startOfMonth(date: Date): Date {
+    return new Date(date.getFullYear(), date.getMonth(), 1);
+  }
+
+  private addMonths(date: Date, offset: number): Date {
+    return new Date(date.getFullYear(), date.getMonth() + offset, 1);
+  }
+
   private getConfigColorId<K extends keyof AppConfig>(key: K, fallback: string): string {
     const value = this.configService.settings[key];
     if (typeof value === 'string' && value.trim().length > 0) {
@@ -420,5 +634,56 @@ export class CalendarIntegrationComponent implements OnInit {
       a.getMonth() === b.getMonth() &&
       a.getDate() === b.getDate()
     );
+  }
+
+  private isDateInMonth(date: Date, month: Date): boolean {
+    return date.getFullYear() === month.getFullYear() && date.getMonth() === month.getMonth();
+  }
+
+  private isWeekendDate(date: Date): boolean {
+    const dayOfWeek = date.getDay();
+    return dayOfWeek === 0 || dayOfWeek === 6;
+  }
+
+  private weekendLabelForDate(date: Date): string {
+    return date.getDay() === 0 ? 'Sunday' : 'Saturday';
+  }
+
+  private isWeekendHoliday(holiday: Holiday): boolean {
+    if (holiday.isWeekend) return true;
+    const normalized = holiday.name.trim().toLowerCase();
+    return normalized === 'saturday' || normalized === 'sunday';
+  }
+
+  private isIndonesiaHolidayCountry(country: string | null | undefined): boolean {
+    const normalized = (country ?? '').trim().toUpperCase();
+    return normalized === 'INDONESIA' || normalized === 'ID';
+  }
+
+  private parseHolidayDate(value: string | null | undefined): Date | null {
+    const raw = (value ?? '').trim();
+    if (!raw) return null;
+
+    const isoMatch = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (isoMatch) {
+      const year = Number(isoMatch[1]);
+      const month = Number(isoMatch[2]);
+      const day = Number(isoMatch[3]);
+      const localDate = new Date(year, month - 1, day);
+      if (
+        localDate.getFullYear() === year &&
+        localDate.getMonth() === month - 1 &&
+        localDate.getDate() === day
+      ) {
+        return localDate;
+      }
+      return null;
+    }
+
+    const parsed = new Date(raw);
+    if (Number.isNaN(parsed.getTime())) {
+      return null;
+    }
+    return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
   }
 }
