@@ -18,7 +18,6 @@ Thumbs.db
 
 # Project infrastructure
 nginx/
-grafana/
 testfiles/
 .playwright-mcp
 .kiro
