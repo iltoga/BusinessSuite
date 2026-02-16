@@ -27,6 +27,7 @@ import {
   viewChild,
   type TemplateRef,
 } from '@angular/core';
+import { Router } from '@angular/router';
 import { finalize } from 'rxjs';
 
 type CalendarEventWithColor = GoogleCalendarEvent & {
@@ -76,11 +77,13 @@ export class CalendarIntegrationComponent implements OnInit {
   private platformId = inject(PLATFORM_ID);
   private dialogService = inject(ZardDialogService);
   private destroyRef = inject(DestroyRef);
+  private router = inject(Router);
 
   events = signal<GoogleCalendarEvent[]>([]);
   holidays = signal<Holiday[]>([]);
   loading = signal<boolean>(false);
   openDayEventsDate = signal<Date | null>(null);
+  dayEventsDialogPinned = signal<boolean>(false);
   hoverInfoDay = signal<MonthGridDay | null>(null);
   hoverTooltipPosition = signal<{ left: number; top: number } | null>(null);
   selectedTodayEventId = signal<string | null>(null);
@@ -316,10 +319,29 @@ export class CalendarIntegrationComponent implements OnInit {
     this.shiftDisplayedMonth(1);
   }
 
-  // Event day: open immediately. Weekend/holiday without events: show tooltip after 1s.
+  onMonthDayClick(day: MonthGridDay): void {
+    if (!day.inMonth || !day.hasEvents || this.dayEventsDialogPinned()) {
+      return;
+    }
+
+    this.clearOpenDayTimer();
+    this.hoverInfoDay.set(null);
+    this.hoverTooltipPosition.set(null);
+    this.dayEventsDialogPinned.set(true);
+    this.openDay(day.date);
+  }
+
+  // Hover: show event popover or weekend/holiday tooltip when no pinned dialog is active.
   scheduleOpenDay(day: MonthGridDay, event?: MouseEvent): void {
+    if (this.dayEventsDialogPinned()) {
+      return;
+    }
+
     if (!day.inMonth) {
-      this.cancelScheduledOpenDay();
+      this.clearOpenDayTimer();
+      this.hoverInfoDay.set(null);
+      this.hoverTooltipPosition.set(null);
+      this.openDayEventsDate.set(null);
       return;
     }
 
@@ -346,15 +368,25 @@ export class CalendarIntegrationComponent implements OnInit {
 
   cancelScheduledOpenDay(): void {
     this.clearOpenDayTimer();
-    this.openDayEventsDate.set(null);
     this.hoverInfoDay.set(null);
     this.hoverTooltipPosition.set(null);
   }
 
+  closeDayEventsDialog(): void {
+    this.dayEventsDialogPinned.set(false);
+    this.openDayEventsDate.set(null);
+    this.cancelScheduledOpenDay();
+  }
+
   onMonthDayMouseLeave(): void {
+    if (this.dayEventsDialogPinned()) {
+      return;
+    }
+
     this.clearOpenDayTimer();
     this.hoverInfoDay.set(null);
     this.hoverTooltipPosition.set(null);
+    this.openDayEventsDate.set(null);
   }
 
   private clearOpenDayTimer(): void {
@@ -366,14 +398,7 @@ export class CalendarIntegrationComponent implements OnInit {
 
   @HostListener('document:keydown.escape')
   closeDayDialogOnEscape(): void {
-    if (this.openDayEventsDate()) {
-      this.openDayEventsDate.set(null);
-    }
-    if (this.hoverInfoDay()) {
-      this.hoverInfoDay.set(null);
-    }
-    this.hoverTooltipPosition.set(null);
-    this.clearOpenDayTimer();
+    this.closeDayEventsDialog();
   }
 
   selectTodayEvent(eventId: string): void {
@@ -383,6 +408,22 @@ export class CalendarIntegrationComponent implements OnInit {
   openTodayEventDialog(eventId: string): void {
     this.selectTodayEvent(eventId);
     this.isTodayEventDialogOpen.set(true);
+  }
+
+  applicationIdFromSummary(summary: string | null | undefined): number | null {
+    const normalized = (summary ?? '').trim();
+    if (!normalized) return null;
+
+    const match = normalized.match(/\[\s*Application\s*#(\d+)\s*\]/i);
+    if (!match) return null;
+
+    const applicationId = Number(match[1]);
+    return Number.isInteger(applicationId) && applicationId > 0 ? applicationId : null;
+  }
+
+  openApplicationDetail(applicationId: number): void {
+    this.closeDayEventsDialog();
+    void this.router.navigate(['/applications', applicationId]);
   }
 
   toggleEventDone(event: CalendarEventViewModel, domEvent?: Event): void {
@@ -496,6 +537,8 @@ export class CalendarIntegrationComponent implements OnInit {
 
   private shiftDisplayedMonth(offset: number): void {
     this.displayedMonth.set(this.addMonths(this.displayedMonth(), offset));
+    this.dayEventsDialogPinned.set(false);
+    this.openDayEventsDate.set(null);
     this.cancelScheduledOpenDay();
   }
 
