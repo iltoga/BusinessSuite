@@ -49,6 +49,7 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
 
   sidebarOpen = signal(true);
   lettersExpanded = signal(true);
+  reportsExpanded = signal(true);
   adminExpanded = signal(false);
 
   @ViewChildren('sidebarItem', { read: ElementRef })
@@ -150,6 +151,17 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
         return;
       }
 
+
+      if (key === 'R') {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!this.sidebarOpen()) {
+          this.sidebarOpen.set(true);
+        }
+        this.reportsExpanded.set(true);
+        this.router.navigate(['/reports']);
+        return;
+      }
       // Shift+T -> Focus table view if present
       if (key === 'T') {
         event.preventDefault();
@@ -180,6 +192,7 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
         A: '/applications',
         P: '/products',
         I: '/invoices',
+        R: '/reports',
       };
       const target = routeMap[key];
       if (target) {
@@ -252,6 +265,10 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
 
   toggleLetters() {
     this.lettersExpanded.update((v) => !v);
+  }
+
+  toggleReports() {
+    this.reportsExpanded.update((v) => !v);
   }
 
   toggleAdmin() {
