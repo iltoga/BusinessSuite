@@ -1,0 +1,80 @@
+<div class="space-y-6">
+  <div>
+    <h1 class="text-2xl font-semibold">{{ reportTitle() }}</h1>
+    <p class="text-sm text-muted-foreground">Interactive visual reports migrated from legacy views.</p>
+  </div>
+
+  <div *ngIf="!slug()" class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+    <a
+      *ngFor="let report of reportList()"
+      [routerLink]="['/reports', report.url.replace('report-', '')]"
+      class="block rounded-lg border bg-card p-4 transition hover:border-primary"
+    >
+      <div class="font-medium">{{ report.name }}</div>
+      <p class="text-sm text-muted-foreground mt-1">{{ report.description }}</p>
+    </a>
+  </div>
+
+  <div *ngIf="loading()" class="text-sm text-muted-foreground">Loading report data…</div>
+
+  <ng-container *ngIf="!loading() && data() as d">
+    <div
+      class="grid gap-4 md:grid-cols-2 xl:grid-cols-4"
+      *ngIf="slug() === 'revenue' || slug() === 'kpi-dashboard' || slug() === 'cash-flow'"
+    >
+      <z-card class="p-4" *ngIf="d.total_invoiced_formatted"><div class="text-sm">Invoiced</div><div class="text-2xl font-semibold">{{ d.total_invoiced_formatted }}</div></z-card>
+      <z-card class="p-4" *ngIf="d.total_paid_formatted"><div class="text-sm">Paid</div><div class="text-2xl font-semibold">{{ d.total_paid_formatted }}</div></z-card>
+      <z-card class="p-4" *ngIf="d.total_outstanding_formatted"><div class="text-sm">Outstanding</div><div class="text-2xl font-semibold">{{ d.total_outstanding_formatted }}</div></z-card>
+      <z-card class="p-4" *ngIf="d.total_cashflow_formatted"><div class="text-sm">Total Cashflow</div><div class="text-2xl font-semibold">{{ d.total_cashflow_formatted }}</div></z-card>
+    </div>
+
+    <div class="grid gap-6 md:grid-cols-2" *ngIf="slug() === 'revenue'">
+      <z-card class="p-4"><canvas baseChart [type]="'bar'" [data]="chart('revenueMonthly')" [options]="{responsive:true}"></canvas></z-card>
+      <z-card class="p-4"><canvas baseChart [type]="'line'" [data]="chart('revenueMonthly')" [options]="{responsive:true}"></canvas></z-card>
+    </div>
+
+    <div class="grid gap-6 md:grid-cols-2" *ngIf="slug() === 'kpi-dashboard'">
+      <z-card class="p-4"><canvas baseChart [type]="'line'" [data]="chart('kpiRevenue')" [options]="{responsive:true}"></canvas></z-card>
+      <z-card class="p-4"><canvas baseChart [type]="'bar'" [data]="chart('kpiCustomers')" [options]="{responsive:true}"></canvas></z-card>
+    </div>
+
+    <div class="grid gap-6 md:grid-cols-2" *ngIf="slug() === 'invoice-status'">
+      <z-card class="p-4"><canvas baseChart [type]="'doughnut'" [data]="chart('statusCounts')" [options]="{responsive:true}"></canvas></z-card>
+      <z-card class="p-4"><canvas baseChart [type]="'bar'" [data]="chart('aging')" [options]="{responsive:true}"></canvas></z-card>
+    </div>
+
+    <div class="grid gap-6 md:grid-cols-2" *ngIf="slug() === 'customer-ltv'">
+      <z-card class="p-4"><canvas baseChart [type]="'bar'" [data]="chart('ltvTop')" [options]="{responsive:true, indexAxis:'y'}"></canvas></z-card>
+      <z-card class="p-4"><canvas baseChart [type]="'pie'" [data]="chart('ltvSegment')" [options]="{responsive:true}"></canvas></z-card>
+    </div>
+
+    <div class="grid gap-6 md:grid-cols-2" *ngIf="slug() === 'product-revenue'">
+      <z-card class="p-4"><canvas baseChart [type]="'bar'" [data]="chart('productRevenue')" [options]="{responsive:true}"></canvas></z-card>
+      <z-card class="p-4"><canvas baseChart [type]="'doughnut'" [data]="chart('typeRevenue')" [options]="{responsive:true}"></canvas></z-card>
+    </div>
+
+    <div class="grid gap-6 md:grid-cols-2" *ngIf="slug() === 'cash-flow'">
+      <z-card class="p-4"><canvas baseChart [type]="'line'" [data]="chart('cashflowMonthly')" [options]="{responsive:true}"></canvas></z-card>
+      <z-card class="p-4"><canvas baseChart [type]="'bar'" [data]="chart('paymentTypes')" [options]="{responsive:true}"></canvas></z-card>
+    </div>
+
+    <div class="grid gap-6 md:grid-cols-2" *ngIf="slug() === 'application-pipeline'">
+      <z-card class="p-4"><canvas baseChart [type]="'doughnut'" [data]="chart('statusCounts')" [options]="{responsive:true}"></canvas></z-card>
+      <z-card class="p-4"><canvas baseChart [type]="'bar'" [data]="chart('processingTime')" [options]="{responsive:true}"></canvas></z-card>
+    </div>
+
+    <div class="grid gap-6 md:grid-cols-2" *ngIf="slug() === 'product-demand'">
+      <z-card class="p-4"><canvas baseChart [type]="'line'" [data]="chart('demandTotal')" [options]="{responsive:true}"></canvas></z-card>
+      <z-card class="p-4"><canvas baseChart [type]="'bar'" [data]="chart('demandGrowth')" [options]="{responsive:true}"></canvas></z-card>
+    </div>
+
+    <div *ngIf="slug() === 'monthly-invoices'" class="rounded-lg border bg-card overflow-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-muted/50"><tr><th class="p-2 text-left">Invoice</th><th class="p-2 text-left">Customer</th><th class="p-2 text-left">Date</th><th class="p-2 text-right">Amount</th><th class="p-2 text-right">Due</th></tr></thead>
+        <tbody>
+          <tr *ngFor="let row of d.invoices" class="border-t"><td class="p-2">{{ row.invoice_number }}</td><td class="p-2">{{ row.customer_name }}</td><td class="p-2">{{ row.invoice_date | date }}</td><td class="p-2 text-right">{{ row.total_amount_formatted }}</td><td class="p-2 text-right">{{ row.total_due_formatted }}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </ng-container>
+</div>
