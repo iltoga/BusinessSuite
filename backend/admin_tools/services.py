@@ -19,6 +19,7 @@ from django.db.models.fields.files import FileField
 from django.utils.module_loading import import_string
 
 BACKUPS_DIR = getattr(settings, "BACKUPS_ROOT", os.path.join(settings.BASE_DIR, "backups"))
+USER_RELATED_MODELS = {"core.userprofile", "core.usersettings", "core.webpushsubscription"}
 
 
 def _is_external_object_storage(storage) -> bool:
@@ -174,6 +175,42 @@ def _build_source_storage_from_manifest(manifest: dict):
     return storage, None
 
 
+def _strip_user_related_objects_from_fixture(fixture_path: str, model_labels: set[str]) -> tuple[str | None, int]:
+    """Remove user-bound objects from a fixture used for partial (no-users) restores."""
+    try:
+        with open(fixture_path, "r", encoding="utf-8") as handle:
+            objects = json.load(handle)
+    except Exception:
+        return None, 0
+
+    if not isinstance(objects, list):
+        return None, 0
+
+    filtered = []
+    removed = 0
+    for obj in objects:
+        if isinstance(obj, dict) and obj.get("model") in model_labels:
+            removed += 1
+            continue
+        filtered.append(obj)
+
+    if removed == 0:
+        return None, 0
+
+    fd, sanitized_path = tempfile.mkstemp(prefix="restore-sanitized-", suffix=".json")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as out:
+            json.dump(filtered, out)
+    except Exception:
+        try:
+            os.unlink(sanitized_path)
+        except Exception:
+            pass
+        return None, 0
+
+    return sanitized_path, removed
+
+
 def ensure_backups_dir():
     os.makedirs(BACKUPS_DIR, exist_ok=True)
 
@@ -199,6 +236,8 @@ def backup_all(include_users=False):
     if not include_users:
         for prefix in excluded_prefixes:
             dump_args.append(f"--exclude={prefix}")
+        for model_label in USER_RELATED_MODELS:
+            dump_args.append(f"--exclude={model_label}")
     with open(tmp_path, "w+") as tmpf:
         call_command(*dump_args, stdout=tmpf)
 
@@ -326,6 +365,7 @@ def restore_from_file(path, include_users=False):
     tmp_path = None
     extracted_tmp = None
     extracted_media_tmpdir = None
+    sanitized_fixture_path = None
     manifest = {}
     signals_disconnected = False
 
@@ -366,12 +406,20 @@ def restore_from_file(path, include_users=False):
         try:
             with open(fixture_path, "r") as f:
                 objs = json.load(f)
-                for obj in objs[:1000]:
+                for obj in objs:
                     if "model" in obj and obj["model"].startswith(user_system_prefixes):
                         includes_users = True
                         break
         except Exception as e:
             yield f"Warning: Could not inspect backup for user tables: {e}"
+
+        if not includes_users:
+            sanitized_fixture_path, removed_count = _strip_user_related_objects_from_fixture(
+                fixture_path, USER_RELATED_MODELS
+            )
+            if sanitized_fixture_path:
+                fixture_path = sanitized_fixture_path
+                yield f"Skipped {removed_count} user-related records from fixture for partial restore."
 
         # Disable foreign key checks
         engine = connection.vendor
@@ -421,7 +469,7 @@ def restore_from_file(path, include_users=False):
                 tables_to_flush = []
                 for model in apps.get_models():
                     label = model._meta.label_lower
-                    if not label.startswith(excluded_prefixes):
+                    if not label.startswith(excluded_prefixes) and label not in USER_RELATED_MODELS:
                         tables_to_flush.append(model._meta.db_table)
                 if tables_to_flush:
                     with connection.cursor() as cursor:
@@ -584,6 +632,11 @@ def restore_from_file(path, include_users=False):
         if tmp_path and os.path.exists(tmp_path):
             try:
                 os.unlink(tmp_path)
+            except Exception:
+                pass
+        if sanitized_fixture_path and os.path.exists(sanitized_fixture_path):
+            try:
+                os.unlink(sanitized_fixture_path)
             except Exception:
                 pass
         if extracted_tmp and os.path.exists(extracted_tmp):
