@@ -160,7 +160,9 @@
 
     <!-- Passport Details Section -->
     <z-card class="p-6">
-      <h3 class="text-lg font-semibold mb-4 border-b pb-2">Passport Details</h3>
+      <div class="mb-4 border-b pb-2">
+        <h3 class="text-lg font-semibold">Passport Details</h3>
+      </div>
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- Passport Image -->
         <div>
@@ -177,7 +179,7 @@
                 />
                 <div
                   class="passport-magnifier-lens"
-                  [class.active]="magnifierActive()"
+                  [class.active]="magnifierEnabled() && magnifierActive()"
                   [style.width.px]="magnifierLensSize"
                   [style.height.px]="magnifierLensSize"
                   [style.left.px]="magnifierLensX()"
@@ -188,15 +190,37 @@
                 ></div>
               </div>
             </a>
-            <div class="text-xs text-muted-foreground mt-2">
-              File:
-              <a
-                [href]="customer()!.passportFile"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="text-primary hover:underline"
-                >{{ customer()!.passportFile | slice: -40 }}</a
+            <div class="mt-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+              <div>
+                File:
+                <a
+                  [href]="customer()!.passportFile"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-primary hover:underline"
+                  >{{ customer()!.passportFile | slice: -40 }}</a
+                >
+              </div>
+              <button
+                type="button"
+                z-button
+                zType="ghost"
+                zSize="sm"
+                class="h-8 w-8 shrink-0 p-0"
+                [attr.aria-label]="
+                  magnifierEnabled()
+                    ? 'Disable passport magnifier lens on hover'
+                    : 'Enable passport magnifier lens on hover'
+                "
+                [attr.title]="
+                  magnifierEnabled()
+                    ? 'Disable passport magnifier lens on hover'
+                    : 'Enable passport magnifier lens on hover'
+                "
+                (click)="toggleMagnifier()"
               >
+                <z-icon [zType]="magnifierEnabled() ? 'zoom-out' : 'zoom-in'" class="h-4 w-4" />
+              </button>
             </div>
           } @else {
             <div class="text-muted-foreground text-sm">No passport file uploaded.</div>
@@ -243,7 +267,9 @@
     <z-card class="p-6">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold border-b pb-2">Uninvoiced Applications</h3>
-        <span class="text-sm text-muted-foreground">Coming soon</span>
+        <button type="button" z-button zType="outline" zSize="sm" (click)="onCreateApplication()">
+          New application
+        </button>
       </div>
 
       @if (uninvoicedApplications().length > 0) {
@@ -263,7 +289,7 @@
                   Status
                 </th>
                 <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
-                  Actions
+                  Invoice Actions
                 </th>
               </tr>
             </thead>
@@ -276,17 +302,38 @@
                   <td class="py-3 px-4 text-sm">
                     <span class="text-primary">{{ app.product.name }}</span>
                   </td>
-                  <td class="py-3 px-4 text-sm">{{ app.product.product_type | titlecase }}</td>
-                  <td class="py-3 px-4 text-sm">{{ app.doc_date | appDate }}</td>
+                  <td class="py-3 px-4 text-sm">
+                    {{ app.product.productTypeDisplay || (app.product.productType | titlecase) }}
+                  </td>
+                  <td class="py-3 px-4 text-sm">{{ app.docDate | appDate }}</td>
                   <td class="py-3 px-4 text-sm">
                     <z-badge [zType]="getStatusBadgeType(app.status)">{{
-                      app.status | titlecase
+                      app.statusDisplay || (app.status | titlecase)
                     }}</z-badge>
                   </td>
                   <td class="py-3 px-4 text-sm">
-                    <a z-button zType="outline" zSize="sm" [routerLink]="['/applications', app.id]">
-                      View
-                    </a>
+                    <div class="flex flex-wrap items-center gap-2">
+                      <a z-button zType="outline" zSize="sm" [routerLink]="['/applications', app.id]">
+                        View App
+                      </a>
+                      @if (app.hasInvoice && app.invoiceId) {
+                        <a z-button zType="outline" zSize="sm" [routerLink]="['/invoices', app.invoiceId]">
+                          View Invoice
+                        </a>
+                      } @else if (canCreateInvoice(app)) {
+                        <button
+                          type="button"
+                          z-button
+                          zType="success"
+                          zSize="sm"
+                          (click)="onCreateInvoice(app.id)"
+                        >
+                          Create Invoice
+                        </button>
+                      } @else {
+                        <z-badge zType="warning">Not Ready</z-badge>
+                      }
+                    </div>
                   </td>
                 </tr>
               }

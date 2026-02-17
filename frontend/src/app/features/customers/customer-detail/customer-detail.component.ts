@@ -20,6 +20,7 @@ import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
+import { ZardIconComponent } from '@/shared/components/icon';
 import {
   CardSkeletonComponent,
   TableSkeletonComponent,
@@ -36,6 +37,7 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
     RouterLink,
     ZardButtonComponent,
     ZardCardComponent,
+    ZardIconComponent,
     ZardBadgeComponent,
     CardSkeletonComponent,
     TableSkeletonComponent,
@@ -66,6 +68,7 @@ export class CustomerDetailComponent implements OnInit {
   readonly magnifierBgY = signal(0);
   readonly magnifierLensSize = 300;
   readonly magnifierZoom = 4;
+  readonly magnifierEnabled = signal(false);
 
   @HostListener('window:keydown', ['$event'])
   handleGlobalKeydown(event: KeyboardEvent): void {
@@ -178,6 +181,22 @@ export class CustomerDetailComponent implements OnInit {
     });
   }
 
+  onCreateApplication(): void {
+    const customer = this.customer();
+    if (!customer) return;
+    this.router.navigate(['/customers', customer.id, 'applications', 'new']);
+  }
+
+  onCreateInvoice(applicationId: number): void {
+    this.router.navigate(['/invoices', 'new'], {
+      queryParams: { applicationId },
+    });
+  }
+
+  canCreateInvoice(application: UninvoicedApplication): boolean {
+    return !!application.readyForInvoice && !application.hasInvoice;
+  }
+
   getStatusBadgeType(status: string): any {
     switch (status.toLowerCase()) {
       case 'completed':
@@ -191,7 +210,16 @@ export class CustomerDetailComponent implements OnInit {
     }
   }
 
+  toggleMagnifier(): void {
+    const enabled = !this.magnifierEnabled();
+    this.magnifierEnabled.set(enabled);
+    if (!enabled) {
+      this.magnifierActive.set(false);
+    }
+  }
+
   onPassportMouseEnter(): void {
+    if (!this.magnifierEnabled()) return;
     this.magnifierActive.set(true);
   }
 
@@ -200,6 +228,8 @@ export class CustomerDetailComponent implements OnInit {
   }
 
   onPassportMouseMove(event: MouseEvent): void {
+    if (!this.magnifierEnabled()) return;
+
     const image = event.currentTarget as HTMLImageElement | null;
     if (!image) return;
 

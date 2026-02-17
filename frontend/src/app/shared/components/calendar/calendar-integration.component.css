@@ -1,1 +1,149 @@
-/* Styles for CalendarIntegrationComponent */
+:host {
+  --week-grid-gap: 0.85rem;
+}
+
+.week-calendar-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  touch-action: pan-x;
+}
+
+.week-calendar-scroll,
+.week-calendar-scroll * {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.week-calendar-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.week-calendar-drag-strip {
+  margin-top: 0.5rem;
+  height: 1.5rem;
+  border: 1px dashed color-mix(in oklab, var(--border) 70%, transparent);
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.week-calendar-drag-strip--dragging {
+  cursor: grabbing;
+}
+
+.week-calendar-drag-strip__hint {
+  font-size: 0.68rem;
+  color: var(--muted-foreground);
+  line-height: 1;
+}
+
+.week-calendar-grid {
+  display: grid;
+  gap: var(--week-grid-gap);
+  grid-auto-flow: column;
+  grid-auto-columns: calc((100% - (var(--week-grid-gap) * 2)) / 3);
+}
+
+.week-calendar-day {
+  box-sizing: border-box;
+  border: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
+  border-radius: 0.75rem;
+  background: color-mix(in oklab, var(--card) 90%, transparent);
+  padding: 0.75rem;
+  min-height: 14rem;
+  scroll-snap-align: start;
+}
+
+.week-calendar-day--weekend {
+  background: color-mix(in oklab, var(--muted) 45%, transparent);
+}
+
+.week-calendar-day__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.625rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid color-mix(in oklab, var(--border) 60%, transparent);
+}
+
+.week-calendar-day__label {
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--muted-foreground) 95%, transparent);
+}
+
+.week-calendar-day__date {
+  font-size: 0.78rem;
+  color: color-mix(in oklab, var(--foreground) 72%, transparent);
+}
+
+.week-calendar-events {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.week-calendar-event {
+  border: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
+  border-radius: 0.625rem;
+  background: color-mix(in oklab, var(--background) 80%, transparent);
+  padding: 0.42rem 0.52rem;
+}
+
+.week-calendar-event__title {
+  font-size: 0.75rem;
+  line-height: 1.3;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.week-calendar-event__title--button {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  width: 100%;
+  display: inline-flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.25rem;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.week-calendar-event__title--button:hover {
+  color: var(--primary);
+}
+
+.week-calendar-event__title-text {
+  min-width: 0;
+}
+
+.week-calendar-event__meta {
+  margin-top: 0.12rem;
+  font-size: 0.65rem;
+  color: var(--muted-foreground);
+}
+
+.week-calendar-empty {
+  border: 1px dashed color-mix(in oklab, var(--border) 75%, transparent);
+  border-radius: 0.625rem;
+  padding: 0.6rem;
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  text-align: center;
+  background: color-mix(in oklab, var(--muted) 28%, transparent);
+}

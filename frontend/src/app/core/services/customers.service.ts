@@ -48,23 +48,22 @@ export interface CustomerDetail extends CustomerListItem {
 
 export interface UninvoicedApplication {
   id: number;
-  customer: CustomerDetail;
   product: {
     id: number;
     name: string;
     code: string;
-    product_type: string;
-    base_price: string;
+    productType: string;
+    productTypeDisplay: string;
+    basePrice: string;
   };
-  doc_date: string;
-  due_date: string;
+  docDate: string;
+  dueDate: string | null;
   status: string;
-  notes: string;
-  created_at: string;
-  updated_at: string;
-  created_by: number;
-  updated_by: number;
-  str_field: string;
+  statusDisplay: string;
+  hasInvoice: boolean;
+  invoiceId: number | null;
+  isDocumentCollectionCompleted: boolean;
+  readyForInvoice: boolean;
 }
 
 export interface CountryCode {
@@ -184,10 +183,14 @@ export class CustomersService {
 
   getUninvoicedApplications(customerId: number): Observable<UninvoicedApplication[]> {
     const headers = this.buildHeaders();
-    return this.http.get<UninvoicedApplication[]>(
-      `/api/invoices/get_customer_applications/${customerId}/`,
-      { headers },
-    );
+    return this.http
+      .get<any>(`/api/customers/${customerId}/uninvoiced-applications/`, { headers })
+      .pipe(
+        map((response) => {
+          const rows = Array.isArray(response) ? response : (response?.results ?? []);
+          return rows.map((item: any) => this.mapUninvoicedApplication(item));
+        }),
+      );
   }
 
   getCountries(): Observable<CountryCode[]> {
@@ -263,5 +266,34 @@ export class CustomersService {
       return `/${trimmed}`;
     }
     return trimmed;
+  }
+
+  private mapUninvoicedApplication(item: any): UninvoicedApplication {
+    const product = item?.product ?? {};
+    const productType = product.productType ?? product.product_type ?? '';
+    const productTypeDisplay =
+      product.productTypeDisplay ?? product.product_type_display ?? item?.productTypeDisplay ?? '';
+
+    return {
+      id: Number(item?.id ?? 0),
+      product: {
+        id: Number(product.id ?? 0),
+        name: product.name ?? '',
+        code: product.code ?? '',
+        productType,
+        productTypeDisplay: productTypeDisplay || productType,
+        basePrice: String(product.basePrice ?? product.base_price ?? '0'),
+      },
+      docDate: item?.docDate ?? item?.doc_date ?? '',
+      dueDate: item?.dueDate ?? item?.due_date ?? null,
+      status: item?.status ?? '',
+      statusDisplay: item?.statusDisplay ?? item?.status_display ?? item?.status ?? '',
+      hasInvoice: Boolean(item?.hasInvoice ?? item?.has_invoice ?? false),
+      invoiceId: item?.invoiceId ?? item?.invoice_id ?? null,
+      isDocumentCollectionCompleted: Boolean(
+        item?.isDocumentCollectionCompleted ?? item?.is_document_collection_completed ?? false,
+      ),
+      readyForInvoice: Boolean(item?.readyForInvoice ?? item?.ready_for_invoice ?? false),
+    };
   }
 }

@@ -55,6 +55,15 @@ type MonthGridDay = {
   tooltip: string | null;
 };
 
+type WeekCalendarDay = {
+  key: string;
+  date: Date;
+  label: string;
+  shortDate: string;
+  isWeekend: boolean;
+  events: CalendarEventViewModel[];
+};
+
 @Component({
   selector: 'app-calendar-integration',
   standalone: true,
@@ -92,11 +101,17 @@ export class CalendarIntegrationComponent implements OnInit {
   private todayEventDialogRef = signal<ZardDialogRef | null>(null);
   // Timer used for delayed weekend/holiday tooltip (cancellable)
   private openDayTimer: ReturnType<typeof setTimeout> | null = null;
+  private weekCalendarDragPointerId: number | null = null;
+  private weekCalendarDragStartX = 0;
+  private weekCalendarDragStartScrollLeft = 0;
+  private weekCalendarDragHandle: HTMLElement | null = null;
 
   readonly todayEventDetailsTemplate = viewChild.required<TemplateRef<unknown>>(
     'todayEventDetailsTemplate',
   );
   readonly monthWidgetContainerRef = viewChild<ElementRef<HTMLElement>>('monthWidgetContainerRef');
+  readonly weekCalendarScrollRef = viewChild<ElementRef<HTMLElement>>('weekCalendarScrollRef');
+  readonly weekCalendarDragging = signal(false);
 
   readonly todoColorId = computed(() => this.getConfigColorId('calendarTodoColorId', '5'));
   readonly doneColorId = computed(() => this.getConfigColorId('calendarDoneColorId', '10'));
@@ -133,13 +148,7 @@ export class CalendarIntegrationComponent implements OnInit {
     const tomorrowStart = new Date(today);
     tomorrowStart.setDate(today.getDate() + 1);
     tomorrowStart.setHours(0, 0, 0, 0);
-
-    const weekStart = new Date(today);
-    weekStart.setDate(today.getDate() - today.getDay());
-    weekStart.setHours(0, 0, 0, 0);
-
-    const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekStart.getDate() + 7);
+    const weekEnd = this.endOfCurrentWeek(today);
 
     if (tomorrowStart >= weekEnd) {
       return [];
@@ -148,6 +157,37 @@ export class CalendarIntegrationComponent implements OnInit {
     return this.normalizedEvents()
       .filter((event) => event.startDate >= tomorrowStart && event.startDate < weekEnd)
       .sort((left, right) => left.startDate.getTime() - right.startDate.getTime());
+  });
+
+  readonly restOfWeekCalendarDays = computed<WeekCalendarDay[]>(() => {
+    const today = new Date();
+    const tomorrowStart = this.startOfDay(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1));
+    const weekEnd = this.endOfCurrentWeek(today);
+
+    if (tomorrowStart >= weekEnd) {
+      return [];
+    }
+
+    const days: WeekCalendarDay[] = [];
+    for (let cursor = new Date(tomorrowStart); cursor < weekEnd; cursor.setDate(cursor.getDate() + 1)) {
+      const dayDate = new Date(cursor);
+      const dayEvents = this.normalizedEvents()
+        .filter((event) => this.isSameDay(event.startDate, dayDate))
+        .sort((left, right) => left.startDate.getTime() - right.startDate.getTime());
+
+      days.push({
+        key: dayDate.toISOString(),
+        date: dayDate,
+        label: new Intl.DateTimeFormat('en-US', { weekday: 'short' }).format(dayDate),
+        shortDate: new Intl.DateTimeFormat('en-US', { day: 'numeric', month: 'short' }).format(
+          dayDate,
+        ),
+        isWeekend: this.isWeekendDate(dayDate),
+        events: dayEvents,
+      });
+    }
+
+    return days;
   });
 
   readonly overdueApplications = computed(() => {
@@ -422,8 +462,96 @@ export class CalendarIntegrationComponent implements OnInit {
   }
 
   openApplicationDetail(applicationId: number): void {
-    this.closeDayEventsDialog();
-    void this.router.navigate(['/applications', applicationId]);
+    this.openApplicationDetailWithOptions(applicationId, true);
+  }
+
+  openWeeklyApplicationDetail(applicationId: number): void {
+    this.openApplicationDetailWithOptions(applicationId, false);
+  }
+
+  onWeekCalendarDragStart(event: PointerEvent): void {
+    if (event.pointerType === 'mouse' && event.button !== 0) {
+      return;
+    }
+
+    const scrollContainer = this.weekCalendarScrollRef()?.nativeElement;
+    const handle = event.currentTarget;
+    if (!scrollContainer || !(handle instanceof HTMLElement)) {
+      return;
+    }
+
+    this.weekCalendarDragPointerId = event.pointerId;
+    this.weekCalendarDragStartX = event.clientX;
+    this.weekCalendarDragStartScrollLeft = scrollContainer.scrollLeft;
+    this.weekCalendarDragHandle = handle;
+    this.weekCalendarDragging.set(true);
+    handle.setPointerCapture(event.pointerId);
+    event.preventDefault();
+  }
+
+  onWeekCalendarDragMove(event: PointerEvent): void {
+    if (this.weekCalendarDragPointerId !== event.pointerId) {
+      return;
+    }
+
+    const scrollContainer = this.weekCalendarScrollRef()?.nativeElement;
+    if (!scrollContainer) {
+      return;
+    }
+
+    const deltaX = event.clientX - this.weekCalendarDragStartX;
+    scrollContainer.scrollLeft = this.weekCalendarDragStartScrollLeft - deltaX;
+    event.preventDefault();
+  }
+
+  onWeekCalendarDragEnd(event: PointerEvent): void {
+    if (this.weekCalendarDragPointerId !== event.pointerId) {
+      return;
+    }
+    this.endWeekCalendarDrag();
+  }
+
+  @HostListener('document:pointerup', ['$event'])
+  onWeekCalendarDragDocumentUp(event: PointerEvent): void {
+    if (this.weekCalendarDragPointerId !== event.pointerId) {
+      return;
+    }
+    this.endWeekCalendarDrag();
+  }
+
+  @HostListener('document:pointercancel', ['$event'])
+  onWeekCalendarDragDocumentCancel(event: PointerEvent): void {
+    if (this.weekCalendarDragPointerId !== event.pointerId) {
+      return;
+    }
+    this.endWeekCalendarDrag();
+  }
+
+  private endWeekCalendarDrag(): void {
+    const pointerId = this.weekCalendarDragPointerId;
+    const handle = this.weekCalendarDragHandle;
+
+    if (
+      handle &&
+      pointerId !== null &&
+      handle.hasPointerCapture &&
+      handle.hasPointerCapture(pointerId)
+    ) {
+      handle.releasePointerCapture(pointerId);
+    }
+
+    this.weekCalendarDragPointerId = null;
+    this.weekCalendarDragHandle = null;
+    this.weekCalendarDragging.set(false);
+  }
+
+  private openApplicationDetailWithOptions(applicationId: number, closeDayDialog: boolean): void {
+    if (closeDayDialog) {
+      this.closeDayEventsDialog();
+    }
+    void this.router.navigate(['/applications', applicationId], {
+      state: { from: 'dashboard' },
+    });
   }
 
   toggleEventDone(event: CalendarEventViewModel, domEvent?: Event): void {
@@ -653,6 +781,16 @@ export class CalendarIntegrationComponent implements OnInit {
     const normalized = new Date(date);
     normalized.setHours(0, 0, 0, 0);
     return normalized;
+  }
+
+  private endOfCurrentWeek(date: Date): Date {
+    // Week is Monday -> Sunday; return end as next Monday (exclusive boundary).
+    const weekStart = this.startOfDay(new Date(date));
+    const dayIndex = (weekStart.getDay() + 6) % 7;
+    weekStart.setDate(weekStart.getDate() - dayIndex);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 7);
+    return weekEnd;
   }
 
   private startOfMonth(date: Date): Date {

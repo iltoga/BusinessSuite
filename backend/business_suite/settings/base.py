@@ -434,6 +434,8 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "EXCEPTION_HANDLER": "api.utils.exception_handler.custom_exception_handler",
+    # Ensure FileField/ImageField serializers expose URL values (not plain storage keys).
+    "UPLOADED_FILES_USE_URL": True,
     "DEFAULT_THROTTLE_CLASSES": [
         "rest_framework.throttling.AnonRateThrottle",
         "rest_framework.throttling.UserRateThrottle",
@@ -623,7 +625,6 @@ TESSERACT_CMD = "/opt/homebrew/bin/tesseract"
 
 
 # Settings for Django static and media files
-DEFAULT_FILE_STORAGE = "django.core.files.storage.FileSystemStorage"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 
@@ -647,22 +648,62 @@ def get_dropbox_token():
 
 
 # Storage configuration
-STORAGES = {
-    "default": {
-        "BACKEND": "django.core.files.storage.FileSystemStorage",
-    },
-    "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-    },
-    "dbbackup": {
-        "BACKEND": "storages.backends.dropbox.DropBoxStorage",
-        "OPTIONS": {
-            "oauth2_access_token": get_dropbox_token(),
-            "app_key": os.getenv("DROPBOX_APP_KEY"),
-            "app_secret": os.getenv("DROPBOX_APP_SECRET"),
+USE_CLOUD_STORAGE = _parse_bool(os.getenv("USE_CLOUD_STORAGE", "False"))
+_settings_module = os.getenv("DJANGO_SETTINGS_MODULE", "")
+_default_bucket_name = "crmrevisbali" if _settings_module.endswith(".prod") else "crmrevisbalidev"
+
+AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME", _default_bucket_name)
+AWS_S3_ENDPOINT_URL = os.getenv("AWS_S3_ENDPOINT_URL")
+AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "auto")
+AWS_S3_SIGNATURE_VERSION = os.getenv("AWS_S3_SIGNATURE_VERSION", "s3v4")
+AWS_S3_ADDRESSING_STYLE = os.getenv("AWS_S3_ADDRESSING_STYLE", "virtual")
+AWS_S3_CUSTOM_DOMAIN = os.getenv("AWS_S3_CUSTOM_DOMAIN")
+AWS_QUERYSTRING_AUTH = _parse_bool(os.getenv("AWS_QUERYSTRING_AUTH", "True"))
+AWS_QUERYSTRING_EXPIRE = int(os.getenv("AWS_QUERYSTRING_EXPIRE", "3600"))
+AWS_DEFAULT_ACL = None
+AWS_DBBACKUP_LOCATION = os.getenv("AWS_DBBACKUP_LOCATION", "backups")
+
+if USE_CLOUD_STORAGE:
+    DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
         },
-    },
-}
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+        "dbbackup": {
+            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+            "OPTIONS": {
+                "location": AWS_DBBACKUP_LOCATION,
+            },
+        },
+    }
+    DBBACKUP_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
+    DBBACKUP_STORAGE_OPTIONS = {"location": AWS_DBBACKUP_LOCATION}
+else:
+    DEFAULT_FILE_STORAGE = "django.core.files.storage.FileSystemStorage"
+    _dropbox_storage_options = {
+        "oauth2_access_token": get_dropbox_token(),
+        "app_key": os.getenv("DROPBOX_APP_KEY"),
+        "app_secret": os.getenv("DROPBOX_APP_SECRET"),
+    }
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+        "dbbackup": {
+            "BACKEND": "storages.backends.dropbox.DropBoxStorage",
+            "OPTIONS": _dropbox_storage_options,
+        },
+    }
+    DBBACKUP_STORAGE = "storages.backends.dropbox.DropBoxStorage"
+    DBBACKUP_STORAGE_OPTIONS = _dropbox_storage_options
 
 # Folders to exclude from media backup
 DBBACKUP_EXCLUDE_MEDIA_FODERS = ["tmpfiles"]

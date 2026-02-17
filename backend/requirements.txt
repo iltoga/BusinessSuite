@@ -16,6 +16,12 @@ attrs==25.4.0
     #   referencing
 beautifulsoup4==4.14.3
     # via django-unicorn
+boto3==1.42.50
+    # via django-storages
+botocore==1.42.50
+    # via
+    #   boto3
+    #   s3transfer
 cachetools==6.2.4
     # via django-unicorn
 certifi==2026.1.4
@@ -41,7 +47,7 @@ decorator==5.2.1
     # via django-unicorn
 distro==1.9.0
     # via openai
-django==6.0
+django==6.0.2
     # via
     #   business-suite (pyproject.toml)
     #   crispy-bootstrap5
@@ -91,7 +97,7 @@ djangorestframework==3.16.1
     #   drf-spectacular
 djangorestframework-camel-case==1.4.2
     # via business-suite (pyproject.toml)
-djangorestframework-simplejwt==5.3.1
+djangorestframework-simplejwt==5.5.1
     # via business-suite (pyproject.toml)
 docx-mailmerge==0.5.0
     # via business-suite (pyproject.toml)
@@ -144,8 +150,14 @@ imageio==2.37.2
     #   scikit-image
 inflection==0.5.1
     # via drf-spectacular
+iniconfig==2.3.0
+    # via pytest
 jiter==0.12.0
     # via openai
+jmespath==1.1.0
+    # via
+    #   boto3
+    #   botocore
 joblib==1.5.3
     # via scikit-learn
 jsonschema==4.26.0
@@ -190,6 +202,7 @@ packaging==25.0
     #   lazy-loader
     #   matplotlib
     #   pytesseract
+    #   pytest
     #   scikit-image
 pandas==2.3.3
     # via seaborn
@@ -201,7 +214,7 @@ pdfminer==20191125
     # via passporteye
 peewee==3.19.0
     # via business-suite (pyproject.toml)
-pillow==12.1.0
+pillow==12.1.1
     # via
     #   business-suite (pyproject.toml)
     #   imageio
@@ -209,6 +222,8 @@ pillow==12.1.0
     #   pdf2image
     #   pytesseract
     #   scikit-image
+pluggy==1.6.0
+    # via pytest
 ply==3.11
     # via stone
 portalocker==3.2.0
@@ -236,6 +251,8 @@ pydantic==2.12.5
     # via openai
 pydantic-core==2.41.5
     # via pydantic
+pygments==2.19.2
+    # via pytest
 pyjwt==2.11.0
     # via djangorestframework-simplejwt
 pymemcache==4.0.0
@@ -244,12 +261,15 @@ pyparsing==3.3.1
     # via
     #   httplib2
     #   matplotlib
-pypdf==6.5.0
+pypdf==6.7.0
     # via business-suite (pyproject.toml)
 pytesseract==0.3.13
     # via passporteye
+pytest==9.0.2
+    # via business-suite (pyproject.toml)
 python-dateutil==2.9.0.post0
     # via
+    #   botocore
     #   django-auditlog
     #   matplotlib
     #   pandas
@@ -282,6 +302,8 @@ rpds-py==0.30.0
     #   referencing
 rsa==4.9.1
     # via google-auth
+s3transfer==0.16.0
+    # via boto3
 scikit-image==0.26.0
     # via passporteye
 scikit-learn==1.8.0
@@ -342,8 +364,11 @@ uritemplate==4.2.0
     # via
     #   drf-spectacular
     #   google-api-python-client
-urllib3==2.6.2
-    # via requests
+urllib3==2.6.3
+    # via
+    #   business-suite (pyproject.toml)
+    #   botocore
+    #   requests
 user-agents==2.2.0
     # via
     #   business-suite (pyproject.toml)

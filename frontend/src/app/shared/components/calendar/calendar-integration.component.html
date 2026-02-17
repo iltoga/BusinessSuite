@@ -119,35 +119,101 @@
 
     <div class="grid gap-4 lg:grid-cols-3">
       <app-dashboard-widget
-        widgetTitle="Rest of the Week"
+        widgetTitle="Next Up: Your Upcoming Tasks"
         widgetSubtitle="Tomorrow to week end"
         class="lg:col-span-2"
       >
         @if (loading()) {
-          <div class="space-y-2">
-            <z-skeleton class="h-12 w-full rounded" />
-            <z-skeleton class="h-12 w-full rounded" />
-            <z-skeleton class="h-12 w-full rounded" />
+          <div #weekCalendarScrollRef class="week-calendar-scroll">
+            <div class="week-calendar-grid">
+              @for (col of [1, 2, 3, 4, 5, 6]; track col) {
+                <div class="week-calendar-day">
+                  <z-skeleton class="mb-3 h-4 w-24 rounded" />
+                  <z-skeleton class="mb-2 h-10 w-full rounded" />
+                  <z-skeleton class="h-10 w-full rounded" />
+                </div>
+              }
+            </div>
           </div>
-        } @else if (restOfWeekEvents().length === 0) {
+          <div
+            class="week-calendar-drag-strip"
+            [class.week-calendar-drag-strip--dragging]="weekCalendarDragging()"
+            (pointerdown)="onWeekCalendarDragStart($event)"
+            (pointermove)="onWeekCalendarDragMove($event)"
+            (pointerup)="onWeekCalendarDragEnd($event)"
+            (pointercancel)="onWeekCalendarDragEnd($event)"
+          >
+            <span class="week-calendar-drag-strip__hint">Click and drag here to scroll</span>
+          </div>
+        } @else if (restOfWeekCalendarDays().length === 0) {
           <div class="text-sm text-muted-foreground">Nothing yet for the rest of the week.</div>
         } @else {
-          <ul class="space-y-2 text-sm">
-            @for (event of restOfWeekEvents(); track event.id) {
-              <li class="rounded border border-border/50 px-3 py-2">
-                <div class="font-medium">{{ event.summary }}</div>
-                <div class="text-xs text-muted-foreground">
-                  {{ event.startDate | appDate }}
-                </div>
-              </li>
-            }
-          </ul>
+          <div #weekCalendarScrollRef class="week-calendar-scroll">
+            <div class="week-calendar-grid">
+              @for (day of restOfWeekCalendarDays(); track day.key) {
+                <section
+                  class="week-calendar-day"
+                  [class.week-calendar-day--weekend]="day.isWeekend"
+                >
+                  <header class="week-calendar-day__header">
+                    <span class="week-calendar-day__label">{{ day.label }}</span>
+                    <span class="week-calendar-day__date">{{ day.shortDate }}</span>
+                  </header>
+
+                  @if (day.events.length === 0) {
+                    <div class="week-calendar-empty">No tasks</div>
+                  } @else {
+                    <ul class="week-calendar-events">
+                      @for (event of day.events; track event.id) {
+                        <li class="week-calendar-event">
+                          @if (applicationIdFromSummary(event.summary); as applicationId) {
+                            <button
+                              type="button"
+                              class="week-calendar-event__title week-calendar-event__title--button"
+                              (click)="openWeeklyApplicationDetail(applicationId)"
+                            >
+                              <span class="week-calendar-event__title-text">{{
+                                event.summary
+                              }}</span>
+                              <z-icon zType="arrow-up-right" class="h-3.5 w-3.5 shrink-0" />
+                            </button>
+                          } @else {
+                            <div class="week-calendar-event__title">{{ event.summary }}</div>
+                          }
+                          <div class="week-calendar-event__meta">
+                            {{ event.startDate | appDate }}
+                          </div>
+                        </li>
+                      }
+                    </ul>
+                  }
+                </section>
+              }
+            </div>
+          </div>
+          <div
+            class="week-calendar-drag-strip"
+            [class.week-calendar-drag-strip--dragging]="weekCalendarDragging()"
+            (pointerdown)="onWeekCalendarDragStart($event)"
+            (pointermove)="onWeekCalendarDragMove($event)"
+            (pointerup)="onWeekCalendarDragEnd($event)"
+            (pointercancel)="onWeekCalendarDragEnd($event)"
+          >
+            <span class="week-calendar-drag-strip__hint">Click and drag here to scroll</span>
+          </div>
+          @if (restOfWeekEvents().length === 0) {
+            <div class="mt-3 text-xs text-muted-foreground">
+              No tasks scheduled for the remaining days.
+            </div>
+          }
         }
       </app-dashboard-widget>
 
       <app-dashboard-widget widgetTitle="Month" widgetSubtitle="Hover or click days for details">
         <div #monthWidgetContainerRef class="relative">
-          <div class="mb-2 flex items-center justify-center gap-2 text-xs font-medium text-muted-foreground">
+          <div
+            class="mb-2 flex items-center justify-center gap-2 text-xs font-medium text-muted-foreground"
+          >
             <button
               type="button"
               z-button
@@ -180,7 +246,9 @@
               <div>{{ day }}</div>
             }
           </div>
-          <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0.25rem">
+          <div
+            style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0.25rem"
+          >
             @for (day of monthGrid(); track day.key) {
               <button
                 data-month-day="true"
@@ -250,12 +318,16 @@
     </app-dashboard-widget>
 
     @if (openDayEventsDate()) {
-      <div class="pointer-events-none fixed inset-0 z-[10000] flex items-center justify-center p-4">
-        <div class="pointer-events-auto w-full max-w-2xl rounded-lg border-2 border-primary/50 bg-card p-4 shadow-xl">
+      <div class="pointer-events-none fixed inset-0 z-10000 flex items-center justify-center p-4">
+        <div
+          class="pointer-events-auto w-full max-w-2xl rounded-lg border-2 border-primary/50 bg-card p-4 shadow-xl"
+        >
           <div class="mb-3 flex items-center justify-between">
             <h3 class="text-sm font-semibold">{{ openDayEventsDate() | appDate }}</h3>
             <div class="flex items-center gap-2">
-              <div class="text-xs text-muted-foreground">{{ selectedDayEvents().length }} event(s)</div>
+              <div class="text-xs text-muted-foreground">
+                {{ selectedDayEvents().length }} event(s)
+              </div>
               <button
                 type="button"
                 z-button

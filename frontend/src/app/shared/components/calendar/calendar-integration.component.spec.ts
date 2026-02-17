@@ -318,6 +318,8 @@ describe('CalendarIntegrationComponent', () => {
 
     expect(component.applicationIdFromSummary('[Application #316] Test Event')).toBe(316);
     component.openApplicationDetail(316);
-    expect(routerMock.navigate).toHaveBeenCalledWith(['/applications', 316]);
+    expect(routerMock.navigate).toHaveBeenCalledWith(['/applications', 316], {
+      state: { from: 'dashboard' },
+    });
   });
 });

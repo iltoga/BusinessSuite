@@ -29,19 +29,24 @@ from django.core.exceptions import ImproperlyConfigured
 MEDIA_ROOT = os.getenv("MEDIA_ROOT")
 BACKUPS_ROOT = os.getenv("BACKUPS_ROOT")
 
-if not MEDIA_ROOT:
-    raise ImproperlyConfigured(
-        "MEDIA_ROOT environment variable must be set in production and point to the host-mounted media directory (e.g., /media)"
-    )
-if not os.path.isabs(MEDIA_ROOT):
-    raise ImproperlyConfigured("MEDIA_ROOT must be an absolute path")
+if USE_CLOUD_STORAGE:
+    # In cloud mode MEDIA_ROOT/BACKUPS_ROOT are optional local fallbacks.
+    MEDIA_ROOT = os.getenv("MEDIA_ROOT", MEDIA_ROOT or str(BASE_DIR / "files" / "media"))
+    BACKUPS_ROOT = os.getenv("BACKUPS_ROOT", BACKUPS_ROOT or str(BASE_DIR / "backups"))
+else:
+    if not MEDIA_ROOT:
+        raise ImproperlyConfigured(
+            "MEDIA_ROOT environment variable must be set in production and point to the host-mounted media directory (e.g., /media)"
+        )
+    if not os.path.isabs(MEDIA_ROOT):
+        raise ImproperlyConfigured("MEDIA_ROOT must be an absolute path")
 
-if not BACKUPS_ROOT:
-    raise ImproperlyConfigured(
-        "BACKUPS_ROOT environment variable must be set in production and point to the host-mounted backups directory (e.g., /backups)"
-    )
-if not os.path.isabs(BACKUPS_ROOT):
-    raise ImproperlyConfigured("BACKUPS_ROOT must be an absolute path")
+    if not BACKUPS_ROOT:
+        raise ImproperlyConfigured(
+            "BACKUPS_ROOT environment variable must be set in production and point to the host-mounted backups directory (e.g., /backups)"
+        )
+    if not os.path.isabs(BACKUPS_ROOT):
+        raise ImproperlyConfigured("BACKUPS_ROOT must be an absolute path")
 
 MEDIA_URL = os.getenv("MEDIA_URL", "/media/")
 

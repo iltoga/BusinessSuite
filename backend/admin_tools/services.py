@@ -2,6 +2,7 @@
 import datetime
 import gzip
 import io
+import json
 import os
 import shutil
 import tarfile
@@ -10,11 +11,167 @@ from pathlib import Path
 
 from django.apps import apps
 from django.conf import settings
+from django.core.files import File
+from django.core.files.storage import FileSystemStorage
 from django.core.files.storage import default_storage
 from django.core.management import call_command
 from django.db.models.fields.files import FileField
+from django.utils.module_loading import import_string
 
 BACKUPS_DIR = getattr(settings, "BACKUPS_ROOT", os.path.join(settings.BASE_DIR, "backups"))
+
+
+def _is_external_object_storage(storage) -> bool:
+    # Treat non-filesystem storage as external object storage.
+    return not isinstance(storage, FileSystemStorage)
+
+
+def _detect_storage_provider(storage) -> str:
+    backend_path = f"{storage.__class__.__module__}.{storage.__class__.__name__}".lower()
+    if "s3" in backend_path:
+        return "s3"
+    if "azure" in backend_path:
+        return "azure"
+    if "gcloud" in backend_path or "google" in backend_path:
+        return "gcs"
+    if "dropbox" in backend_path:
+        return "dropbox"
+    return "unknown"
+
+
+def _build_storage_descriptor(storage) -> dict:
+    return {
+        "backend": f"{storage.__class__.__module__}.{storage.__class__.__name__}",
+        "provider": _detect_storage_provider(storage),
+        "bucket": (
+            getattr(storage, "bucket_name", None)
+            or getattr(storage, "container_name", None)
+            or getattr(settings, "AWS_STORAGE_BUCKET_NAME", None)
+        ),
+        "location": getattr(storage, "location", ""),
+        "endpoint_url": getattr(storage, "endpoint_url", None) or getattr(settings, "AWS_S3_ENDPOINT_URL", None),
+        "region_name": getattr(storage, "region_name", None) or getattr(settings, "AWS_S3_REGION_NAME", None),
+        "signature_version": getattr(storage, "signature_version", None)
+        or getattr(settings, "AWS_S3_SIGNATURE_VERSION", None),
+        "addressing_style": getattr(storage, "addressing_style", None)
+        or getattr(settings, "AWS_S3_ADDRESSING_STYLE", None),
+        "custom_domain": getattr(storage, "custom_domain", None) or getattr(settings, "AWS_S3_CUSTOM_DOMAIN", None),
+    }
+
+
+def _collect_referenced_filepaths() -> list[str]:
+    filepaths = set()
+    for model in apps.get_models():
+        for field in model._meta.get_fields():
+            if not isinstance(field, FileField):
+                continue
+            field_name = field.name
+            try:
+                qs = model.objects.exclude(**{f"{field_name}": ""}).values_list(field_name, flat=True)
+            except Exception:
+                continue
+            for rel_path in qs:
+                if rel_path:
+                    filepaths.add(rel_path)
+    return sorted(filepaths)
+
+
+def _manifest_filepaths(manifest: dict) -> list[str]:
+    paths = []
+    for entry in manifest.get("files", []):
+        if isinstance(entry, str):
+            if entry:
+                paths.append(entry)
+            continue
+        if isinstance(entry, dict):
+            path = entry.get("path")
+            if path:
+                paths.append(path)
+    return paths
+
+
+def _load_manifest(extracted_tmp: str | None) -> dict:
+    if not extracted_tmp:
+        return {}
+    manifest_path = os.path.join(extracted_tmp, "manifest.json")
+    if not os.path.exists(manifest_path):
+        return {}
+    try:
+        with open(manifest_path, "r", encoding="utf-8") as handle:
+            data = json.load(handle)
+            if isinstance(data, dict):
+                return data
+    except Exception:
+        return {}
+    return {}
+
+
+def _build_source_storage_from_manifest(manifest: dict):
+    media_meta = manifest.get("media", {}) if isinstance(manifest, dict) else {}
+    storage_meta = media_meta.get("storage", {}) if isinstance(media_meta, dict) else {}
+
+    backend_path = storage_meta.get("backend")
+    provider = storage_meta.get("provider")
+
+    if not backend_path:
+        if provider == "s3":
+            backend_path = "storages.backends.s3boto3.S3Boto3Storage"
+        else:
+            return None, "Missing source storage backend in backup manifest"
+
+    try:
+        storage_cls = import_string(backend_path)
+    except Exception as exc:
+        return None, f"Cannot import source storage backend '{backend_path}': {exc}"
+
+    options = {}
+    if storage_meta.get("bucket"):
+        options["bucket_name"] = storage_meta.get("bucket")
+    if storage_meta.get("location"):
+        options["location"] = storage_meta.get("location")
+    if storage_meta.get("endpoint_url"):
+        options["endpoint_url"] = storage_meta.get("endpoint_url")
+    if storage_meta.get("region_name"):
+        options["region_name"] = storage_meta.get("region_name")
+    if storage_meta.get("signature_version"):
+        options["signature_version"] = storage_meta.get("signature_version")
+    if storage_meta.get("addressing_style"):
+        options["addressing_style"] = storage_meta.get("addressing_style")
+    if storage_meta.get("custom_domain"):
+        options["custom_domain"] = storage_meta.get("custom_domain")
+
+    # Explicit restore-source overrides for cross-bucket / cross-account migrations.
+    if "s3" in backend_path.lower() or provider == "s3":
+        options["access_key"] = os.getenv("RESTORE_SOURCE_AWS_ACCESS_KEY_ID", os.getenv("AWS_ACCESS_KEY_ID"))
+        options["secret_key"] = os.getenv("RESTORE_SOURCE_AWS_SECRET_ACCESS_KEY", os.getenv("AWS_SECRET_ACCESS_KEY"))
+        options["bucket_name"] = os.getenv(
+            "RESTORE_SOURCE_AWS_STORAGE_BUCKET_NAME",
+            options.get("bucket_name") or os.getenv("AWS_STORAGE_BUCKET_NAME"),
+        )
+        options["endpoint_url"] = os.getenv(
+            "RESTORE_SOURCE_AWS_S3_ENDPOINT_URL",
+            options.get("endpoint_url") or os.getenv("AWS_S3_ENDPOINT_URL"),
+        )
+        options["region_name"] = os.getenv(
+            "RESTORE_SOURCE_AWS_S3_REGION_NAME",
+            options.get("region_name") or os.getenv("AWS_S3_REGION_NAME"),
+        )
+        options["signature_version"] = os.getenv(
+            "RESTORE_SOURCE_AWS_S3_SIGNATURE_VERSION",
+            options.get("signature_version") or os.getenv("AWS_S3_SIGNATURE_VERSION"),
+        )
+        options["addressing_style"] = os.getenv(
+            "RESTORE_SOURCE_AWS_S3_ADDRESSING_STYLE",
+            options.get("addressing_style") or os.getenv("AWS_S3_ADDRESSING_STYLE"),
+        )
+        options["location"] = os.getenv("RESTORE_SOURCE_AWS_LOCATION", options.get("location"))
+
+    options = {key: value for key, value in options.items() if value not in (None, "")}
+    try:
+        storage = storage_cls(**options)
+    except Exception as exc:
+        return None, f"Failed to initialize source storage backend '{backend_path}': {exc}"
+    return storage, None
 
 
 def ensure_backups_dir():
@@ -29,7 +186,7 @@ def backup_all(include_users=False):
     ensure_backups_dir()
     ts = datetime.datetime.utcnow().strftime("%Y%m%d-%H%M%S")
     suffix = "_with_users" if include_users else ""
-    # Use tar.zst archive (Python 3.14+) to store JSON dump + media files
+    # Use tar.zst archive (Python 3.14+) to store JSON dump + manifest (+ media payload only for local storage).
     filename = f"backup-{ts}{suffix}.tar.zst"
     out_path = os.path.join(BACKUPS_DIR, filename)
 
@@ -52,87 +209,80 @@ def backup_all(include_users=False):
         temp_json = os.path.join(temp_dir, "data.json")
         shutil.copy(tmp_path, temp_json)
 
-        # Collect all FileField paths referenced in DB (e.g., Document.file, Customer.passport_file)
-        filepaths = set()
-        try:
-            from django.apps import apps
+        filepaths = _collect_referenced_filepaths()
+        uses_external_media_storage = _is_external_object_storage(default_storage)
+        storage_descriptor = _build_storage_descriptor(default_storage)
 
-            for model in apps.get_models():
-                for field in model._meta.get_fields():
-                    if isinstance(field, FileField):
-                        field_name = field.name
-                        # Query for non-null/non-empty values
-                        try:
-                            qs = model.objects.exclude(**{f"{field_name}": ""}).values_list(field_name, flat=True)
-                        except Exception:
-                            # If model has no data or queryset fails, skip
-                            continue
-                        for rel_path in qs:
-                            if not rel_path:
-                                continue
-                            # some storage backends may not implement path
-                            try:
-                                storage_path = default_storage.path(rel_path)
-                            except Exception:
-                                # Fallback: we can't get filesystem path; we'll include via default_storage.open during tar creation
-                                storage_path = None
-                            # Keep entries even if storage_path is None (to include via open)
-                            filepaths.add((rel_path, storage_path))
-        except Exception:
-            filepaths = set()
-
-        yield f"Found {len(filepaths)} media files referenced in DB to include in backup"
+        yield f"Found {len(filepaths)} media files referenced in DB"
+        if uses_external_media_storage:
+            yield (
+                "Media storage is external object storage "
+                f"({storage_descriptor.get('provider')}:{storage_descriptor.get('bucket')}); "
+                "skipping media file embedding in backup archive."
+            )
+        else:
+            yield "Media storage is local filesystem; embedding media files in backup archive."
 
         # Create tar.zst with JSON, manifest and files under 'media/' prefix
         with tarfile.open(out_path, "w:zst") as tar:
             tar.add(temp_json, arcname="data.json")
-            for i, (rel_path, storage_path) in enumerate(sorted(filepaths)):
-                # store under media/relative_path so we can restore to MEDIA_ROOT
-                arcname = os.path.join("media", rel_path)
-                if storage_path and os.path.exists(storage_path):
-                    tar.add(storage_path, arcname=arcname)
-                else:
+
+            embedded_file_count = 0
+            if not uses_external_media_storage:
+                for i, rel_path in enumerate(filepaths):
+                    # store under media/relative_path so we can restore to MEDIA_ROOT
+                    arcname = os.path.join("media", rel_path)
                     # open via default_storage and add as fileobj
                     try:
-                        f = default_storage.open(rel_path, "rb")
-                        info = tarfile.TarInfo(name=arcname)
-                        # Get size from fileobj if possible
-                        try:
-                            f.seek(0, os.SEEK_END)
-                            size = f.tell()
-                            f.seek(0)
-                        except Exception:
-                            size = None
-                        if size is None:
-                            # read to memory
-                            data = f.read()
-                            info.size = len(data)
-                            tar.addfile(info, io.BytesIO(data))
-                        else:
-                            info.size = size
-                            tar.addfile(info, f)
-                        f.close()
+                        with default_storage.open(rel_path, "rb") as f:
+                            info = tarfile.TarInfo(name=arcname)
+                            # Get size from fileobj if possible
+                            try:
+                                f.seek(0, os.SEEK_END)
+                                size = f.tell()
+                                f.seek(0)
+                            except Exception:
+                                size = None
+                            if size is None:
+                                # read to memory
+                                data = f.read()
+                                info.size = len(data)
+                                tar.addfile(info, io.BytesIO(data))
+                            else:
+                                info.size = size
+                                tar.addfile(info, f)
+                            embedded_file_count += 1
                     except Exception:
                         yield f"Warning: could not include file: {rel_path}"
 
-                if (i + 1) % 10 == 0 or (i + 1) == len(filepaths):
-                    yield f"Included {i + 1}/{len(filepaths)} media files in backup"
+                    if (i + 1) % 10 == 0 or (i + 1) == len(filepaths):
+                        yield f"Included {i + 1}/{len(filepaths)} media files in backup"
 
             # write a manifest.json with included files metadata
             manifest_files = []
-            for rel_path, storage_path in sorted(filepaths):
-                try:
-                    if storage_path:
-                        size = os.path.getsize(storage_path)
-                    else:
-                        size = default_storage.size(rel_path)
-                except Exception:
-                    size = None
-                manifest_files.append({"path": rel_path, "size": size})
-            manifest = {"timestamp": ts, "included_files_count": len(filepaths), "files": manifest_files}
-            import json as _json
+            for rel_path in filepaths:
+                manifest_entry = {"path": rel_path}
+                # Preserve sizes only when we embed media in backup archive.
+                if not uses_external_media_storage:
+                    try:
+                        manifest_entry["size"] = default_storage.size(rel_path)
+                    except Exception:
+                        manifest_entry["size"] = None
+                manifest_files.append(manifest_entry)
 
-            manifest_bytes = _json.dumps(manifest).encode("utf-8")
+            manifest = {
+                "timestamp": ts,
+                "included_files_count": embedded_file_count,
+                "referenced_files_count": len(filepaths),
+                "media": {
+                    "included_in_archive": not uses_external_media_storage,
+                    "mode": "embedded" if not uses_external_media_storage else "external_storage_reference",
+                    "storage": storage_descriptor,
+                },
+                "files": manifest_files,
+            }
+
+            manifest_bytes = json.dumps(manifest).encode("utf-8")
             manifest_info = tarfile.TarInfo(name="manifest.json")
             manifest_info.size = len(manifest_bytes)
             tar.addfile(manifest_info, fileobj=io.BytesIO(manifest_bytes))
@@ -166,8 +316,6 @@ def restore_from_file(path, include_users=False):
     if not os.path.exists(path):
         raise FileNotFoundError(path)
 
-    import json
-
     # Import the signal handlers so we can disconnect them
     from core.models.user_profile import UserProfile, create_user_profile, save_user_profile
     from django.apps import apps
@@ -178,6 +326,7 @@ def restore_from_file(path, include_users=False):
     tmp_path = None
     extracted_tmp = None
     extracted_media_tmpdir = None
+    manifest = {}
     signals_disconnected = False
 
     try:
@@ -190,6 +339,7 @@ def restore_from_file(path, include_users=False):
             os.makedirs(extracted_media_tmpdir, exist_ok=True)
             with tarfile.open(path, f"r:{comp}") as tar:
                 tar.extractall(path=extracted_tmp)
+            manifest = _load_manifest(extracted_tmp)
             fixture_path = os.path.join(extracted_tmp, "data.json")
         elif path.endswith((".gz", ".zst")):
             try:
@@ -310,66 +460,111 @@ def restore_from_file(path, include_users=False):
                 post_save.connect(create_user_profile, sender=User)
                 post_save.connect(save_user_profile, sender=User)
 
-        # If archive included media files, restore them (outside transaction since it's filesystem)
-        if extracted_media_tmpdir and os.path.exists(extracted_media_tmpdir):
-            from django.core.files import File
+        saved_path_map = {}
 
-            all_files = []
+        # If archive included media files, restore them from archive payload.
+        embedded_media_present = False
+        if extracted_media_tmpdir and os.path.exists(extracted_media_tmpdir):
+            embedded_files = []
             for root, dirs, files in Path(extracted_media_tmpdir).walk():
                 for fname in files:
-                    all_files.append(str(root / fname))
+                    embedded_files.append(str(root / fname))
 
-            total_files = len(all_files)
-            yield f"Restoring {total_files} media files..."
+            if embedded_files:
+                embedded_media_present = True
+                total_files = len(embedded_files)
+                yield f"Restoring {total_files} media files from backup archive..."
 
-            saved_path_map = {}
+                for i, src in enumerate(embedded_files):
+                    rel = os.path.relpath(src, extracted_media_tmpdir)
+                    try:
+                        with open(src, "rb") as fsrc:
+                            django_file = File(fsrc)
+                            if default_storage.exists(rel):
+                                try:
+                                    default_storage.delete(rel)
+                                except Exception:
+                                    pass
+                            saved_path = default_storage.save(rel, django_file)
+                            if saved_path != rel:
+                                saved_path_map[rel] = saved_path
 
-            for i, src in enumerate(all_files):
-                rel = os.path.relpath(src, extracted_media_tmpdir)
-                try:
-                    with open(src, "rb") as fsrc:
-                        django_file = File(fsrc)
-                        if default_storage.exists(rel):
-                            try:
-                                default_storage.delete(rel)
-                            except Exception:
-                                pass
-                        saved_path = default_storage.save(rel, django_file)
-                        if saved_path != rel:
-                            saved_path_map[rel] = saved_path
+                        if (i + 1) % 10 == 0 or (i + 1) == total_files:
+                            progress = int(((i + 1) / total_files) * 100)
+                            yield f"PROGRESS:{progress}"
+                            yield f"Restored {i + 1}/{total_files} files..."
+                    except Exception as e:
+                        yield f"Warning: could not restore media file {rel}: {e}"
 
-                    if (i + 1) % 10 == 0 or (i + 1) == total_files:
-                        progress = int(((i + 1) / total_files) * 100)
-                        yield f"PROGRESS:{progress}"
-                        yield f"Restored {i + 1}/{total_files} files..."
-                except Exception as e:
-                    yield f"Warning: could not restore media file {rel}: {e}"
+        # If media was intentionally not embedded (cloud/object storage), copy it from source storage.
+        media_meta = manifest.get("media", {}) if isinstance(manifest, dict) else {}
+        manifest_filepaths = _manifest_filepaths(manifest)
+        uses_external_reference = bool(
+            manifest_filepaths
+            and (
+                not media_meta
+                or media_meta.get("mode") == "external_storage_reference"
+                or not media_meta.get("included_in_archive", True)
+            )
+        )
+        if uses_external_reference and not embedded_media_present:
+            source_storage, storage_error = _build_source_storage_from_manifest(manifest)
+            if source_storage is None:
+                yield f"Warning: cannot restore external media files: {storage_error}"
+            else:
+                source_storage_info = media_meta.get("storage", {}) if isinstance(media_meta, dict) else {}
+                source_provider = source_storage_info.get("provider", "unknown")
+                source_bucket = source_storage_info.get("bucket", "unknown")
+                total_files = len(manifest_filepaths)
+                yield (
+                    f"Restoring {total_files} media files from source object storage "
+                    f"(provider={source_provider}, bucket={source_bucket})..."
+                )
+                for i, rel in enumerate(manifest_filepaths):
+                    try:
+                        with source_storage.open(rel, "rb") as source_handle:
+                            django_file = File(source_handle)
+                            if default_storage.exists(rel):
+                                try:
+                                    default_storage.delete(rel)
+                                except Exception:
+                                    pass
+                            saved_path = default_storage.save(rel, django_file)
+                            if saved_path != rel:
+                                saved_path_map[rel] = saved_path
 
-            # Sync renamed media paths in DB
-            if saved_path_map:
-                try:
-                    yield f"Syncing {len(saved_path_map)} renamed media paths..."
-                    with transaction.atomic():
-                        for model in apps.get_models():
-                            for field in model._meta.get_fields():
-                                if isinstance(field, FileField):
-                                    field_name = field.name
-                                    old_paths = list(saved_path_map.keys())
-                                    try:
-                                        qs = model.objects.filter(**{f"{field_name}__in": old_paths})
-                                    except Exception:
+                        if (i + 1) % 10 == 0 or (i + 1) == total_files:
+                            progress = int(((i + 1) / total_files) * 100)
+                            yield f"PROGRESS:{progress}"
+                            yield f"Restored {i + 1}/{total_files} files..."
+                    except Exception as e:
+                        yield f"Warning: could not copy media file {rel} from source storage: {e}"
+
+        # Sync renamed media paths in DB
+        if saved_path_map:
+            try:
+                yield f"Syncing {len(saved_path_map)} renamed media paths..."
+                with transaction.atomic():
+                    for model in apps.get_models():
+                        for field in model._meta.get_fields():
+                            if isinstance(field, FileField):
+                                field_name = field.name
+                                old_paths = list(saved_path_map.keys())
+                                try:
+                                    qs = model.objects.filter(**{f"{field_name}__in": old_paths})
+                                except Exception:
+                                    continue
+                                for obj in qs:
+                                    current_value = getattr(obj, field_name)
+                                    if not current_value:
                                         continue
-                                    for obj in qs:
-                                        current_value = getattr(obj, field_name)
-                                        if not current_value:
-                                            continue
-                                        old_path = current_value.name
-                                        new_path = saved_path_map.get(old_path)
-                                        if new_path and new_path != old_path:
-                                            setattr(obj, field_name, new_path)
-                                            obj.save(update_fields=[field_name])
-                except Exception as e:
-                    yield f"Warning: could not sync renamed media paths: {e}"
+                                    old_path = current_value.name
+                                    new_path = saved_path_map.get(old_path)
+                                    if new_path and new_path != old_path:
+                                        setattr(obj, field_name, new_path)
+                                        obj.save(update_fields=[field_name])
+            except Exception as e:
+                yield f"Warning: could not sync renamed media paths: {e}"
 
         yield "Restore completed successfully."
         return True
@@ -423,7 +618,7 @@ def check_media_files():
                     try:
                         url = file_field.url
                         try:
-                            abs_path = default_storage.path(path)
+                            abs_path = file_field.path
                         except Exception:
                             abs_path = "N/A (not on local filesystem)"
                     except Exception as e:

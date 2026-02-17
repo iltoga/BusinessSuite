@@ -141,8 +141,14 @@ export class HelpService {
           this._isLoading.set(false);
         },
         error: (err) => {
-          console.error('Failed to load help content', err);
-          this._helpContent.set('Failed to load help content.');
+          if (!this.isTokenExpiredError(err)) {
+            console.error('Failed to load help content', err);
+            this._helpContent.set('Failed to load help content.');
+          } else {
+            // Expired auth token is handled globally via redirect to /login.
+            // Avoid noisy console errors from background help content fetches.
+            this._helpContent.set(null);
+          }
           this._isLoading.set(false);
         },
       });
@@ -215,5 +221,9 @@ export class HelpService {
       // swallow telemetry errors; not critical
       // console.debug('Help telemetry failed', err);
     }
+  }
+
+  private isTokenExpiredError(err: unknown): boolean {
+    return err instanceof Error && err.message === 'Token expired';
   }
 }

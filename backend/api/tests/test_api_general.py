@@ -8,7 +8,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
-from invoices.models import Invoice
+from invoices.models import Invoice, InvoiceApplication
 from products.models import Product
 from products.models.document_type import DocumentType
 
@@ -154,6 +154,75 @@ class CustomerListAPITestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         customer.refresh_from_db()
         self.assertFalse(customer.active)
+
+    def test_uninvoiced_applications_endpoint(self):
+        customer = Customer.objects.create(customer_type="person", first_name="Nina", last_name="Stone")
+        product = Product.objects.create(name="KITAS", code="KITAS-1", product_type="visa")
+
+        ready_app = DocApplication.objects.create(
+            customer=customer,
+            product=product,
+            doc_date=timezone.now().date(),
+            created_by=self.user,
+        )
+
+        not_ready_app = DocApplication.objects.create(
+            customer=customer,
+            product=product,
+            doc_date=timezone.now().date(),
+            created_by=self.user,
+        )
+
+        doc_type = DocumentType.objects.create(name="Passport Scan")
+        Document.objects.create(
+            doc_application=not_ready_app,
+            doc_type=doc_type,
+            required=True,
+            created_by=self.user,
+        )
+
+        invoiced_app = DocApplication.objects.create(
+            customer=customer,
+            product=product,
+            doc_date=timezone.now().date(),
+            created_by=self.user,
+        )
+        invoice = Invoice.objects.create(
+            customer=customer,
+            invoice_date=timezone.now().date(),
+            due_date=timezone.now().date(),
+            created_by=self.user,
+        )
+        InvoiceApplication.objects.create(
+            invoice=invoice,
+            customer_application=invoiced_app,
+            amount="100.00",
+        )
+
+        url = reverse("customers-uninvoiced-applications", args=[customer.id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+
+        self.assertEqual(len(payload), 2)
+        ids = {item["id"] for item in payload}
+        self.assertSetEqual(ids, {ready_app.id, not_ready_app.id})
+
+        ready_row = next(item for item in payload if item["id"] == ready_app.id)
+        not_ready_row = next(item for item in payload if item["id"] == not_ready_app.id)
+
+        ready_app.refresh_from_db()
+        self.assertEqual(ready_row["statusDisplay"], ready_app.get_status_display())
+        self.assertEqual(ready_row["productTypeDisplay"], "Visa")
+        self.assertFalse(ready_row["hasInvoice"])
+        self.assertIsNone(ready_row["invoiceId"])
+        self.assertTrue(ready_row["isDocumentCollectionCompleted"])
+        self.assertTrue(ready_row["readyForInvoice"])
+
+        not_ready_app.refresh_from_db()
+        self.assertFalse(not_ready_row["isDocumentCollectionCompleted"])
+        expected_ready = not_ready_app.status in ("completed", "rejected")
+        self.assertEqual(not_ready_row["readyForInvoice"], expected_ready)
 
 
 class CustomerApplicationDetailAPITestCase(TestCase):
