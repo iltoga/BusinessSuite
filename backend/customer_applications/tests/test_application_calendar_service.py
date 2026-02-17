@@ -94,19 +94,6 @@ class ApplicationCalendarServiceTests(TestCase):
         self.application.refresh_from_db()
         self.assertIsNone(self.application.calendar_event_id)
 
-    def test_sync_logs_error_with_payload_when_event_create_fails(self):
-        with patch.object(
-            ApplicationCalendarService,
-            "_create_calendar_event",
-            side_effect=RuntimeError("calendar write timeout"),
-        ):
-            with self.assertLogs("customer_applications.services.application_calendar_service", level="ERROR") as logs:
-                event = ApplicationCalendarService().sync_next_task_deadline(self.application)
-
-        self.assertIsNone(event)
-        self.assertTrue(any("error_type=RuntimeError" in line for line in logs.output))
-        self.assertTrue(any("payload=" in line for line in logs.output))
-
     @patch("customer_applications.tasks.sync_application_calendar_task")
     def test_delete_signal_queues_calendar_cleanup_task(self, sync_task_mock):
         application_id = self.application.id

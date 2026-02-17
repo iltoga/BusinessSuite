@@ -2,6 +2,7 @@ import datetime
 import logging
 from typing import Iterable, Tuple
 
+import requests
 from django.conf import settings
 from django.core.management import call_command
 from huey import crontab
@@ -52,6 +53,12 @@ def run_clear_cache_now() -> None:
 def run_auditlog_prune_now() -> None:
     """Immediate task to prune auditlog DB entries older than configured retention."""
     _perform_prune_auditlog()
+
+
+@db_task()
+def run_openrouter_health_check_now() -> None:
+    """Immediate task to run OpenRouter API health check."""
+    _perform_openrouter_health_check()
 
 
 def _register_full_backup() -> None:
@@ -125,6 +132,82 @@ def _register_auditlog_prune() -> None:
     globals()["_auditlog_prune_daily"] = _auditlog_prune_daily
 
 
+def _perform_openrouter_health_check() -> bool:
+    """
+    Check OpenRouter API health using GET /api/v1/key.
+
+    This endpoint validates connectivity and authentication and returns usage/limit metadata.
+    """
+    if not getattr(settings, "OPENROUTER_HEALTHCHECK_ENABLED", True):
+        logger.info("OpenRouter health check is disabled by settings.")
+        return True
+
+    api_key = getattr(settings, "OPENROUTER_API_KEY", None)
+    if not api_key:
+        logger.warning("OpenRouter health check skipped: OPENROUTER_API_KEY is not configured.")
+        return False
+
+    base_url = getattr(settings, "OPENROUTER_API_BASE_URL", "https://openrouter.ai/api/v1").rstrip("/")
+    timeout = float(getattr(settings, "OPENROUTER_HEALTHCHECK_TIMEOUT", 10.0))
+    endpoint = f"{base_url}/key"
+
+    try:
+        response = requests.get(
+            endpoint,
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Accept": "application/json",
+            },
+            timeout=timeout,
+        )
+    except requests.RequestException as exc:
+        logger.error("OpenRouter health check request failed: %s", str(exc))
+        return False
+
+    if response.status_code != 200:
+        body_excerpt = (response.text or "").replace("\n", " ").strip()[:200]
+        logger.error(
+            "OpenRouter health check failed (HTTP %s). Response: %s",
+            response.status_code,
+            body_excerpt or "<empty>",
+        )
+        return False
+
+    try:
+        payload = response.json()
+    except ValueError as exc:
+        logger.error("OpenRouter health check returned invalid JSON: %s", str(exc))
+        return False
+
+    remaining = None
+    if isinstance(payload, dict):
+        data = payload.get("data")
+        if isinstance(data, dict):
+            remaining = data.get("limit_remaining")
+
+    logger.info("OpenRouter health check OK (limit_remaining=%s)", remaining if remaining is not None else "n/a")
+    return True
+
+
+def _register_openrouter_health_check() -> None:
+    if not getattr(settings, "OPENROUTER_HEALTHCHECK_ENABLED", True):
+        return
+
+    minute_expr = getattr(settings, "OPENROUTER_HEALTHCHECK_CRON_MINUTE", "*/5")
+    try:
+        schedule = crontab(minute=minute_expr)
+    except Exception as exc:
+        logger.error("Invalid OPENROUTER_HEALTHCHECK_CRON_MINUTE '%s': %s", minute_expr, str(exc))
+        return
+
+    @db_periodic_task(schedule, name="core.openrouter_health_check")
+    def _openrouter_health_check_periodic() -> None:
+        _perform_openrouter_health_check()
+
+    globals()["_openrouter_health_check_periodic"] = _openrouter_health_check_periodic
+
+
 _register_full_backup()
 _register_clear_cache()
 _register_auditlog_prune()
+_register_openrouter_health_check()

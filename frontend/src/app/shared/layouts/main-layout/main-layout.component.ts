@@ -48,8 +48,8 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
   private readonly isBrowser = isPlatformBrowser(this.platformId);
 
   sidebarOpen = signal(true);
-  lettersExpanded = signal(true);
-  reportsExpanded = signal(true);
+  lettersExpanded = signal(false);
+  reportsExpanded = signal(false);
   adminExpanded = signal(false);
 
   @ViewChildren('sidebarItem', { read: ElementRef })
@@ -150,7 +150,6 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
         }, 0);
         return;
       }
-
 
       if (key === 'R') {
         event.preventDefault();

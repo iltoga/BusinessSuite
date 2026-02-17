@@ -13,12 +13,13 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 import json
 import logging
 import os
+import sys
+from importlib import import_module
 from datetime import timedelta
 from pathlib import Path
 
 from core.utils.dropbox_refresh_token import refresh_dropbox_token
 from dotenv import load_dotenv
-from peewee import PostgresqlDatabase
 
 # Load environment variables from .env file
 load_dotenv()
@@ -97,6 +98,19 @@ def _resolved_db_host():
     if os.path.exists("/.dockerenv") and host in {"localhost", "127.0.0.1", "::1"}:
         return "db"
     return host
+
+
+def _resolved_redis_host():
+    host = (os.getenv("REDIS_HOST") or "").strip()
+    if host:
+        return host
+
+    # Host-run local development should connect via the published port.
+    if not os.path.exists("/.dockerenv"):
+        return "localhost"
+
+    # Inside Docker, use the Redis container name configured in compose.
+    return "bs-redis"
 
 
 MOCK_AUTH_ENABLED = _parse_bool(os.getenv("MOCK_AUTH_ENABLED", "False"))
@@ -253,9 +267,15 @@ WSGI_APPLICATION = "business_suite.wsgi.application"
 #     }
 # }
 # Use an in-memory SQLite DB when running tests to avoid requiring Postgres.
-import sys
-
-TESTING = any("pytest" in arg for arg in sys.argv) or os.getenv("PYTEST_CURRENT_TEST") is not None
+# Do not infer testing from PYTEST_CURRENT_TEST alone, as leaked shell env can
+# incorrectly force non-test processes (e.g. run_huey) into test mode.
+_DJANGO_TESTING_ENV = os.getenv("DJANGO_TESTING")
+if _DJANGO_TESTING_ENV is not None:
+    TESTING = _parse_bool(_DJANGO_TESTING_ENV)
+else:
+    _is_pytest = any("pytest" in Path(arg).name for arg in sys.argv)
+    _is_django_test_cmd = len(sys.argv) > 1 and sys.argv[1] == "test"
+    TESTING = _is_pytest or _is_django_test_cmd
 
 if TESTING:
     DATABASES = {
@@ -574,43 +594,68 @@ CACHES = {
 CSP_ENABLED = _parse_bool(os.getenv("CSP_ENABLED", "False"))
 CSP_MODE = os.getenv("CSP_MODE", "report-only")  # report-only|enforce
 
-# Configure Huey. Use an in-memory Sqlite DB while running tests to avoid connecting to
-# external Postgres at import time (pytest imports Django settings early).
-if TESTING:
-    from peewee import SqliteDatabase
-
-    huey_database = SqliteDatabase(":memory:")
-else:
-    huey_database = PostgresqlDatabase(
-        os.getenv("DB_NAME"),
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASS"),
-        host=_resolved_db_host(),
-        port=int(os.getenv("DB_PORT")) if os.getenv("DB_PORT") else 5432,
-    )
-
 _HUEY_WORKERS = int(os.getenv("HUEY_WORKERS", "2"))
 _HUEY_INITIAL_DELAY = float(os.getenv("HUEY_INITIAL_DELAY", "0.05"))
 _HUEY_BACKOFF = float(os.getenv("HUEY_BACKOFF", "1.05"))
 _HUEY_MAX_DELAY = float(os.getenv("HUEY_MAX_DELAY", "1.0"))
-HUEY = {
-    "huey_class": "huey.contrib.sql_huey.SqlHuey",
-    "name": "business_suite",
-    "results": True,
-    "immediate": False,
-    "database": huey_database,
-    "consumer": {
-        "workers": _HUEY_WORKERS,
-        "worker_type": os.getenv("HUEY_WORKER_TYPE", "thread"),
-        # SqlHuey is polling-based; tighter bounds reduce idle pickup latency.
-        "initial_delay": _HUEY_INITIAL_DELAY,
-        "backoff": _HUEY_BACKOFF,
-        "max_delay": _HUEY_MAX_DELAY,
-        "scheduler_interval": 1,
-        "check_worker_health": True,
-        "health_check_interval": 1,
-    },
-}
+
+
+def _build_huey_settings(testing: bool) -> dict:
+    if testing:
+        from peewee import SqliteDatabase
+
+        huey_database = SqliteDatabase(":memory:")
+        return {
+            "huey_class": "huey.contrib.sql_huey.SqlHuey",
+            "name": "business_suite",
+            "results": True,
+            "immediate": False,
+            "database": huey_database,
+            "consumer": {
+                "workers": _HUEY_WORKERS,
+                "worker_type": os.getenv("HUEY_WORKER_TYPE", "thread"),
+                # SqlHuey is polling-based; tighter bounds reduce idle pickup latency.
+                "initial_delay": _HUEY_INITIAL_DELAY,
+                "backoff": _HUEY_BACKOFF,
+                "max_delay": _HUEY_MAX_DELAY,
+                "scheduler_interval": 1,
+                "check_worker_health": True,
+                "health_check_interval": 1,
+            },
+        }
+
+    # Prefer the explicit contrib path when available, but support newer Huey
+    # versions that expose RedisHuey at package root.
+    redis_huey_class = "huey.contrib.redis_huey.RedisHuey"
+    try:
+        import_module("huey.contrib.redis_huey")
+    except ModuleNotFoundError:
+        redis_huey_class = "huey.RedisHuey"
+
+    # production / non-testing Huey -> Redis
+    return {
+        "huey_class": redis_huey_class,
+        "name": "business_suite",
+        "immediate": False,
+        "connection": {
+            "host": _resolved_redis_host(),
+            "port": int(os.getenv("REDIS_PORT", "6379")),
+            "db": int(os.getenv("HUEY_REDIS_DB", "0")),
+        },
+        "consumer": {
+            "workers": _HUEY_WORKERS,
+            "worker_type": os.getenv("HUEY_WORKER_TYPE", "thread"),
+            "initial_delay": _HUEY_INITIAL_DELAY,
+            "backoff": _HUEY_BACKOFF,
+            "max_delay": _HUEY_MAX_DELAY,
+            "scheduler_interval": 1,
+            "check_worker_health": True,
+            "health_check_interval": 1,
+        },
+    }
+
+
+HUEY = _build_huey_settings(TESTING)
 
 # select2
 SELECT2_CACHE_BACKEND = "select2"
@@ -873,6 +918,11 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 OPENROUTER_API_BASE_URL = os.getenv("OPENROUTER_API_BASE_URL", "https://openrouter.ai/api/v1")
+OPENROUTER_HEALTHCHECK_ENABLED = _parse_bool(
+    os.getenv("OPENROUTER_HEALTHCHECK_ENABLED", "True" if OPENROUTER_API_KEY else "False")
+)
+OPENROUTER_HEALTHCHECK_TIMEOUT = float(os.getenv("OPENROUTER_HEALTHCHECK_TIMEOUT", "10"))
+OPENROUTER_HEALTHCHECK_CRON_MINUTE = os.getenv("OPENROUTER_HEALTHCHECK_CRON_MINUTE", "*/5")
 
 # LLM Provider: "openrouter" for multi-provider access, "openai" for direct OpenAI API
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openrouter")

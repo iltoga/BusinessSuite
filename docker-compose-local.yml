@@ -31,33 +31,43 @@ services:
     ports:
       - 5432:5432
 
-  pgadmin:
-    container_name: pgadmin
-    image: dpage/pgadmin4
-    depends_on:
-      - db
+  redis:
+    container_name: bs-redis
+    image: redis:7-alpine
     restart: unless-stopped
-    environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASS}
+    command:
+      - "redis-server"
+      - "--save"
+      - "300"
+      - "10"
+      - "--appendonly"
+      - "no"
+      - "--maxmemory"
+      - "96mb"
+      - "--maxmemory-policy"
+      - "allkeys-lru"
+      - "--tcp-keepalive"
+      - "60"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     ports:
-      - 5050:80
-    networks:
-      - dockernet
-
-  memcached:
-    container_name: memcached
-    image: bitnami/memcached:latest
-    restart: unless-stopped
-    ports:
-      - "11211:11211"
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    mem_limit: 128m
+    cpus: 0.5
     networks:
       - dockernet
 
   bs-core:
     container_name: bs-core
+    profiles:
+      - app
     depends_on:
-      - memcached
+      - redis
       - db
     image: bs-app:web
     build:
@@ -75,12 +85,13 @@ services:
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASS: ${DB_PASS}
+      REDIS_HOST: bs-redis
+      REDIS_PORT: 6379
+      HUEY_REDIS_DB: ${HUEY_REDIS_DB:-0}
       COMPONENT: backend
       MEDIA_ROOT: /media
       MEDIA_URL: /media/
-      # Loki settings commented out; Alloy handles log collection via Docker socket
       LOKI_ENABLED: "false"
-      # LOKI_URL: "http://bs-loki:3100/loki/api/v1/push"
     volumes:
       - type: bind
         source: ./backend
@@ -100,9 +111,12 @@ services:
 
   bs-worker:
     container_name: bs-worker
+    profiles:
+      - app
     depends_on:
       - db
       - bs-core
+      - redis
     image: bs-app:web
     restart: unless-stopped
     networks:
@@ -113,12 +127,13 @@ services:
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASS: ${DB_PASS}
+      REDIS_HOST: bs-redis
+      REDIS_PORT: 6379
+      HUEY_REDIS_DB: ${HUEY_REDIS_DB:-0}
       COMPONENT: task_worker
       MEDIA_ROOT: /media
       MEDIA_URL: /media/
-      # Loki settings commented out; Alloy handles log collection via Docker socket
       LOKI_ENABLED: "false"
-      # LOKI_URL: "http://bs-loki:3100/loki/api/v1/push"
     volumes:
       - type: bind
         source: ./backend
@@ -139,6 +154,8 @@ services:
 
   bs-frontend:
     container_name: bs-frontend
+    profiles:
+      - app
     depends_on:
       - bs-core
     image: bs-frontend:web
@@ -149,7 +166,6 @@ services:
     environment:
       PORT: 4000
       BACKEND_URL: http://bs-core:8000
-      # LOKI_URL: http://bs-loki:3100/loki/api/v1/push
       FE_LOG_FILE_PATH: /logs/frontend.log
     ports:
       - 4200:4000
@@ -235,3 +251,4 @@ networks:
 volumes:
   grafana-storage:
   alloy-data:
+  redis_data:

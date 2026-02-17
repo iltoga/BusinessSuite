@@ -78,6 +78,8 @@ django-dbbackup==5.1.0
     # via business-suite (pyproject.toml)
 django-debug-toolbar==6.1.0
     # via business-suite (pyproject.toml)
+django-redis==6.0.0
+    # via business-suite (pyproject.toml)
 django-nested-admin==4.1.6
     # via business-suite (pyproject.toml)
 django-storages==1.14.6
@@ -255,8 +257,6 @@ pygments==2.19.2
     # via pytest
 pyjwt==2.11.0
     # via djangorestframework-simplejwt
-pymemcache==4.0.0
-    # via business-suite (pyproject.toml)
 pyparsing==3.3.1
     # via
     #   httplib2
@@ -286,6 +286,8 @@ pyyaml==6.0.3
     #   business-suite (pyproject.toml)
     #   drf-spectacular
 rapidfuzz==3.14.3
+    # via business-suite (pyproject.toml)
+redis==6.4.0
     # via business-suite (pyproject.toml)
 referencing==0.37.0
     # via
