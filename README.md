@@ -27,6 +27,7 @@ This is a powerful and flexible web-based ERP system designed to streamline the 
 - 🐍 **Backend**: Django 5, Django REST Framework
 - 🖥️ **Frontend**: Django Templates, Bootstrap 5, FontAwesome, Django Unicorn
 - 🗃️ **Database**: PostgreSQL
+- ⚡ **Cache / Queue Broker**: Redis (`django-redis` cache backend + Huey `RedisHuey`)
 - ⏲️ **Task Queue**: Django Cron
 - 🗂️ **File Storage**: Local storage, with support for Dropbox
 - 🚢 **Deployment**: Gunicorn, Whitenoise, Docker
@@ -58,6 +59,14 @@ To get started with the application, you will need to have Python, Django, and a
 4. 🛠️ Run the database migrations using `python backend/manage.py migrate`.
 5. 🚀 Start the development server using `python backend/manage.py runserver`.
 
+For local development infrastructure (Postgres, Redis, Loki, Grafana, Alloy), use:
+
+```sh
+docker compose -f docker-compose-local.yml up -d db redis bs-loki bs-grafana bs-alloy
+```
+
+In this project setup, backend, Huey worker, and frontend run directly on the host during development.
+
 For a production environment, it is recommended to use the provided Docker setup.
 
 ## 📚 Useful Knowledge
@@ -65,6 +74,7 @@ For a production environment, it is recommended to use the provided Docker setup
 This section provides links to detailed guides and how-tos for advanced setup and configuration:
 
 - **[GRAFANA_CLOUD_SETUP.md](howtos/GRAFANA_CLOUD_SETUP.md)**: Comprehensive guide to setting up Grafana Alloy for shipping logs from Docker containers (bs-core, bs-worker, bs-frontend) to Grafana Cloud, including credential setup, configuration, and verification steps.
+- **[REDIS_MIGRATION.md](howtos/REDIS_MIGRATION.md)**: Redis cutover and rollout guide (cache + Huey broker), including rollback steps.
 
 ## Development Utilities
 

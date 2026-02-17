@@ -43,18 +43,45 @@ services:
   #   networks:
   #     - dockernet
 
-  memcached:
-    container_name: memcached
-    image: bitnami/memcached:latest
+  redis:
+    container_name: bs-redis
+    image: redis:7-alpine
     restart: unless-stopped
+    command:
+      - "redis-server"
+      - "--save"
+      - "300"
+      - "10"
+      - "--appendonly"
+      - "no"
+      - "--maxmemory"
+      - "200mb"
+      - "--maxmemory-policy"
+      - "allkeys-lru"
+      - "--tcp-keepalive"
+      - "60"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - redis_data:/data
     networks:
       dockernet:
         ipv4_address: 192.168.2.62
+    ports:
+      - "6379:6379"
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
 
   bs-core:
     container_name: bs-core
     depends_on:
-      - memcached
+      - redis
       - db
     image: bs-app:web
     build:
@@ -70,10 +97,20 @@ services:
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASS: ${DB_PASS}
+      REDIS_HOST: ${REDIS_HOST:-bs-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_URL: ${REDIS_URL:-redis://bs-redis:6379/1}
+      HUEY_REDIS_DB: ${HUEY_REDIS_DB:-0}
       COMPONENT: backend
       MEDIA_ROOT: /media
       MEDIA_URL: /media/
       BACKUPS_ROOT: /backups
+      OTEL_SERVICE_NAME: bs-core
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://bs-alloy:4318/v1/traces
+      OTEL_PROPAGATORS: tracecontext,baggage
+      OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=production,service.namespace=revisbali"
     volumes:
       - ./.env:/usr/src/app/.env:ro
       - type: bind
@@ -104,6 +141,7 @@ services:
     depends_on:
       - db
       - bs-core
+      - redis
     image: bs-app:web
     networks:
       dockernet:
@@ -114,10 +152,19 @@ services:
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASS: ${DB_PASS}
+      REDIS_HOST: bs-redis
+      REDIS_PORT: 6379
+      HUEY_REDIS_DB: ${HUEY_REDIS_DB:-0}
       COMPONENT: task_worker
       MEDIA_ROOT: /media
       MEDIA_URL: /media/
       BACKUPS_ROOT: /backups
+      OTEL_SERVICE_NAME: bs-worker
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://bs-alloy:4318/v1/traces
+      OTEL_PROPAGATORS: tracecontext,baggage
+      OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=production,service.namespace=revisbali"
     volumes:
       - ./.env:/usr/src/app/.env:ro
       - type: bind
@@ -164,6 +211,12 @@ services:
       CSP_ENABLED: ${CSP_ENABLED}
       CSP_MODE: ${CSP_MODE}
       FE_LOG_FILE_PATH: /logs/frontend.log
+      OTEL_SERVICE_NAME: bs-frontend
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://bs-alloy:4318/v1/traces
+      OTEL_PROPAGATORS: tracecontext,baggage
+      OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=production,service.namespace=revisbali"
     volumes:
       - type: bind
         source: ${DATA_PATH}/logs
@@ -198,6 +251,7 @@ services:
       - /etc/alloy/config.alloy
     ports:
       - "12345:12345"
+      - "4318:4318"
     networks:
       - dockernet
     deploy:
@@ -216,3 +270,4 @@ volumes:
     external: true
   alloy-data:
     name: alloy-data
+  redis_data:

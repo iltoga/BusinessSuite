@@ -55,3 +55,18 @@ class InvoiceNumberLogicTestCase(TestCase):
 
         next_no = Invoice.get_next_invoice_no_for_year(2026)
         self.assertEqual(next_no, 20260013)
+
+    def test_invoice_sequence_cache_incr_semantics(self):
+        from django.core.cache import cache
+
+        cache_key = Invoice._get_invoice_seq_cache_key(2026)
+        cache.delete(cache_key)
+
+        primed = Invoice._prime_invoice_sequence_cache(2026)
+        self.assertEqual(primed, 0)
+
+        incremented = cache.incr(cache_key)
+        self.assertEqual(incremented, 1)
+
+        next_no = Invoice.get_next_invoice_no_for_year(2026)
+        self.assertEqual(next_no, 20260002)

@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 from .base import *
 from .base import _resolved_db_host
+from .cache_backends import build_prod_redis_caches
 
 ALLOWED_HOSTS = [
     f"www.{APP_DOMAIN}",
@@ -150,17 +151,7 @@ DATABASES = {
     }
 }
 
-CACHES = {
-    "default": {
-        "BACKEND": "django.core.cache.backends.memcached.PyMemcacheCache",
-        "LOCATION": os.getenv("MEMCACHED_HOST", "memcached") + ":11211",
-        "TIMEOUT": 300,
-    },
-    "select2": {
-        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-        "TIMEOUT": 300,
-    },
-}
+CACHES = build_prod_redis_caches()
 
 SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
 # When the cookie expires the user will be required to log in again (after 20 minutes of inactivity)

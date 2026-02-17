@@ -7,6 +7,7 @@ All AI-powered services should use this base client for consistency.
 import base64
 import json
 import logging
+import re
 from pathlib import Path
 from typing import Any, Optional, Union
 
@@ -207,8 +208,8 @@ class AIClient:
         Returns:
             Parsed JSON response as dict
         """
-        # Both OpenRouter and OpenAI use the same json_schema format
-        # OpenRouter docs: https://openrouter.ai/docs/guides/features/structured-outputs
+        logger.debug(f"Using json_schema mode for model: {self.model} (strict={strict})")
+
         response_format = {
             "type": "json_schema",
             "json_schema": {
@@ -218,16 +219,12 @@ class AIClient:
             },
         }
 
-        logger.debug(f"Using json_schema mode for model: {self.model} (strict={strict})")
-
-        response_text = self.chat_completion(
+        return self._request_json_with_retry(
             messages=messages,
             temperature=temperature,
             response_format=response_format,
             **kwargs,
         )
-
-        return json.loads(response_text)
 
     def chat_completion_simple_json(
         self,
@@ -246,14 +243,229 @@ class AIClient:
         Returns:
             Parsed JSON response as dict
         """
-        response_text = self.chat_completion(
+        return self._request_json_with_retry(
             messages=messages,
             temperature=temperature,
             response_format={"type": "json_object"},
             **kwargs,
         )
 
-        return json.loads(response_text)
+    def _request_json_with_retry(
+        self,
+        messages: list,
+        temperature: float,
+        response_format: dict,
+        **kwargs,
+    ) -> dict:
+        """
+        Request JSON output with one automatic retry when the model emits invalid JSON.
+
+        Some models occasionally return malformed JSON despite response_format hints.
+        We attempt local repair first, then retry once with a corrective prompt.
+        """
+        response_text = self.chat_completion(
+            messages=messages,
+            temperature=temperature,
+            response_format=response_format,
+            **kwargs,
+        )
+        try:
+            return self._parse_json_dict(response_text)
+        except ValueError as first_exc:
+            logger.warning(
+                "Received malformed JSON from %s. Retrying once with corrective prompt. Error: %s",
+                self.provider_name,
+                str(first_exc),
+            )
+
+            retry_messages = list(messages) + [
+                {
+                    "role": "user",
+                    "content": (
+                        "Your previous answer was not valid JSON. "
+                        "Return ONLY a valid JSON object. "
+                        "Do not use markdown code fences."
+                    ),
+                }
+            ]
+
+            retry_text = self.chat_completion(
+                messages=retry_messages,
+                temperature=0.0,
+                response_format=response_format,
+                **kwargs,
+            )
+            try:
+                return self._parse_json_dict(retry_text)
+            except ValueError as retry_exc:
+                raise ValueError(f"Invalid JSON response from {self.provider_name} after retry: {retry_exc}") from retry_exc
+
+    @classmethod
+    def _parse_json_dict(cls, response_text: Any) -> dict:
+        """Parse a response into a JSON object with lightweight repair heuristics."""
+        if isinstance(response_text, dict):
+            return response_text
+
+        if response_text is None:
+            raise ValueError("AI response was empty.")
+
+        if not isinstance(response_text, str):
+            raise ValueError(f"AI response is not text (got {type(response_text).__name__}).")
+
+        parse_errors: list[str] = []
+        for candidate in cls._extract_json_candidates(response_text):
+            tried: list[str] = [candidate]
+            repaired = cls._repair_common_json_issues(candidate)
+            if repaired != candidate:
+                tried.append(repaired)
+
+            for current in tried:
+                try:
+                    parsed = json.loads(current)
+                except json.JSONDecodeError as exc:
+                    parse_errors.append(str(exc))
+                    continue
+
+                if not isinstance(parsed, dict):
+                    raise ValueError("AI response JSON must be an object.")
+                return parsed
+
+        if parse_errors:
+            raise ValueError(parse_errors[-1])
+        raise ValueError("No JSON object found in AI response.")
+
+    @classmethod
+    def _extract_json_candidates(cls, response_text: str) -> list[str]:
+        """
+        Build parse candidates from plain text and markdown-fenced JSON blocks.
+        """
+        candidates: list[str] = []
+        seen: set[str] = set()
+
+        def add(value: Optional[str]) -> None:
+            if not value:
+                return
+            candidate = value.strip()
+            if not candidate or candidate in seen:
+                return
+            seen.add(candidate)
+            candidates.append(candidate)
+
+        add(response_text)
+
+        for match in re.finditer(r"```(?:json)?\s*(.*?)\s*```", response_text, flags=re.IGNORECASE | re.DOTALL):
+            add(match.group(1))
+
+        add(cls._extract_first_json_block(response_text))
+        return candidates
+
+    @staticmethod
+    def _extract_first_json_block(text: str) -> Optional[str]:
+        """Extract the first balanced JSON object/array block from arbitrary text."""
+        start_obj = text.find("{")
+        start_arr = text.find("[")
+
+        starts = [pos for pos in (start_obj, start_arr) if pos >= 0]
+        if not starts:
+            return None
+
+        start_index = min(starts)
+        stack: list[str] = []
+        in_string = False
+        escaped = False
+
+        for index in range(start_index, len(text)):
+            ch = text[index]
+            if in_string:
+                if escaped:
+                    escaped = False
+                elif ch == "\\":
+                    escaped = True
+                elif ch == '"':
+                    in_string = False
+                continue
+
+            if ch == '"':
+                in_string = True
+                continue
+
+            if ch == "{":
+                stack.append("}")
+            elif ch == "[":
+                stack.append("]")
+            elif ch in ("}", "]"):
+                if not stack or ch != stack[-1]:
+                    return None
+                stack.pop()
+                if not stack:
+                    return text[start_index : index + 1]
+
+        return text[start_index:] if stack else None
+
+    @staticmethod
+    def _repair_common_json_issues(text: str) -> str:
+        """
+        Repair common malformed JSON patterns seen in model outputs.
+        """
+        src = text.strip()
+        src = re.sub(r",\s*([}\]])", r"\1", src)
+
+        repaired_chars: list[str] = []
+        in_string = False
+        escaped = False
+
+        for i, ch in enumerate(src):
+            if in_string:
+                if escaped:
+                    repaired_chars.append(ch)
+                    escaped = False
+                    continue
+
+                if ch == "\\":
+                    repaired_chars.append(ch)
+                    escaped = True
+                    continue
+
+                if ch == '"':
+                    next_non_space = None
+                    for j in range(i + 1, len(src)):
+                        if not src[j].isspace():
+                            next_non_space = src[j]
+                            break
+
+                    # If next token is not a valid string terminator context, treat quote as unescaped content.
+                    if next_non_space in (None, ":", ",", "}", "]"):
+                        in_string = False
+                        repaired_chars.append(ch)
+                    else:
+                        repaired_chars.append('\\"')
+                    continue
+
+                if ch == "\n":
+                    repaired_chars.append("\\n")
+                    continue
+                if ch == "\r":
+                    repaired_chars.append("\\r")
+                    continue
+                if ch == "\t":
+                    repaired_chars.append("\\t")
+                    continue
+                if ord(ch) < 0x20:
+                    repaired_chars.append(f"\\u{ord(ch):04x}")
+                    continue
+
+                repaired_chars.append(ch)
+                continue
+
+            if ch == '"':
+                in_string = True
+            repaired_chars.append(ch)
+
+        if in_string:
+            repaired_chars.append('"')
+
+        repaired = "".join(repaired_chars)
+        return re.sub(r",\s*([}\]])", r"\1", repaired)
 
     @staticmethod
     def read_file_bytes(file_content: Union[bytes, UploadedFile]) -> tuple[bytes, str]:

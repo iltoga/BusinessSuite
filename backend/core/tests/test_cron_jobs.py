@@ -1,6 +1,7 @@
 import datetime
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
+import requests
 from django.test import TestCase, override_settings
 
 from core.tasks import cron_jobs
@@ -24,3 +25,60 @@ class AuditLogPruneTests(TestCase):
         with patch("core.tasks.cron_jobs.call_command") as mock_call:
             cron_jobs._perform_prune_auditlog()
             mock_call.assert_not_called()
+
+
+class OpenRouterHealthCheckTests(TestCase):
+    @override_settings(
+        OPENROUTER_HEALTHCHECK_ENABLED=True,
+        OPENROUTER_API_KEY="test-key",
+        OPENROUTER_API_BASE_URL="https://openrouter.ai/api/v1",
+        OPENROUTER_HEALTHCHECK_TIMEOUT=7.0,
+    )
+    def test_health_check_success(self):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"data": {"limit_remaining": 123.45}}
+
+        with patch("core.tasks.cron_jobs.requests.get", return_value=mock_response) as mock_get:
+            result = cron_jobs._perform_openrouter_health_check()
+
+        self.assertTrue(result)
+        mock_get.assert_called_once_with(
+            "https://openrouter.ai/api/v1/key",
+            headers={"Authorization": "Bearer test-key", "Accept": "application/json"},
+            timeout=7.0,
+        )
+
+    @override_settings(OPENROUTER_HEALTHCHECK_ENABLED=False)
+    def test_health_check_skipped_when_disabled(self):
+        with patch("core.tasks.cron_jobs.requests.get") as mock_get:
+            result = cron_jobs._perform_openrouter_health_check()
+
+        self.assertTrue(result)
+        mock_get.assert_not_called()
+
+    @override_settings(
+        OPENROUTER_HEALTHCHECK_ENABLED=True,
+        OPENROUTER_API_KEY="test-key",
+        OPENROUTER_API_BASE_URL="https://openrouter.ai/api/v1",
+    )
+    def test_health_check_http_failure(self):
+        mock_response = MagicMock()
+        mock_response.status_code = 401
+        mock_response.text = "Unauthorized"
+
+        with patch("core.tasks.cron_jobs.requests.get", return_value=mock_response):
+            result = cron_jobs._perform_openrouter_health_check()
+
+        self.assertFalse(result)
+
+    @override_settings(
+        OPENROUTER_HEALTHCHECK_ENABLED=True,
+        OPENROUTER_API_KEY="test-key",
+        OPENROUTER_API_BASE_URL="https://openrouter.ai/api/v1",
+    )
+    def test_health_check_request_exception(self):
+        with patch("core.tasks.cron_jobs.requests.get", side_effect=requests.RequestException("network down")):
+            result = cron_jobs._perform_openrouter_health_check()
+
+        self.assertFalse(result)

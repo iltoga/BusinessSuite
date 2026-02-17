@@ -107,10 +107,28 @@ services:
       timeout: 5s
       retries: 5
 
-  memcached:
-    container_name: memcached
-    image: bitnami/memcached:latest
+  redis:
+    container_name: bs-redis
+    image: redis:7-alpine
     restart: unless-stopped
+    command:
+      - "redis-server"
+      - "--save"
+      - "300"
+      - "10"
+      - "--appendonly"
+      - "no"
+      - "--maxmemory"
+      - "200mb"
+      - "--maxmemory-policy"
+      - "allkeys-lru"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - redis_data:/data
     networks:
       dockernet:
         ipv4_address: 192.168.2.62
@@ -118,7 +136,7 @@ services:
   bs-core:
     container_name: bs-core
     depends_on:
-      - memcached
+      - redis
       - db
     image: bs-app:web
     build:
@@ -160,6 +178,7 @@ services:
     depends_on:
       - db
       - bs-core
+      - redis
     image: bs-app:web
     networks:
       dockernet:
@@ -242,6 +261,7 @@ volumes:
     external: true
   alloy-data:
     name: alloy-data
+  redis_data:
 ```
 
 ---

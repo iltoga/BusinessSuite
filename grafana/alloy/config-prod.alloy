@@ -72,3 +72,46 @@ loki.write "grafana_cloud" {
     batch_wait = "5s"
   }
 }
+
+// 7. Trace export auth for Grafana Cloud OTLP/Tempo
+otelcol.auth.basic "grafana_cloud_otlp" {
+  username = sys.env("GRAFANA_CLOUD_OTLP_USER")
+  password = sys.env("GRAFANA_CLOUD_OTLP_API_KEY")
+}
+
+// 8. Export traces to Grafana Cloud
+otelcol.exporter.otlphttp "grafana_cloud_traces" {
+  client {
+    endpoint = sys.env("GRAFANA_CLOUD_OTLP_ENDPOINT")
+    auth     = otelcol.auth.basic.grafana_cloud_otlp.handler
+  }
+}
+
+// 9. Batch traces before export
+otelcol.processor.batch "trace_batch" {
+  output {
+    traces = [otelcol.exporter.otlphttp.grafana_cloud_traces.input]
+  }
+}
+
+// 10. Receive OTLP traces from backend, worker, and frontend clients
+otelcol.receiver.otlp "app_traces" {
+  grpc {
+    endpoint = "0.0.0.0:4317"
+  }
+
+  http {
+    endpoint = "0.0.0.0:4318"
+
+    // Keep broad CORS for browser OTLP; restrict this list if you proxy OTLP through a single origin.
+    cors {
+      allowed_origins = ["*"]
+      allowed_headers = ["*"]
+      max_age         = 7200
+    }
+  }
+
+  output {
+    traces = [otelcol.processor.batch.trace_batch.input]
+  }
+}

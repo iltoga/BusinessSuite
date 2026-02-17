@@ -26,7 +26,12 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         """Execute all cron jobs."""
-        from core.tasks.cron_jobs import run_auditlog_prune_now, run_clear_cache_now, run_full_backup_now
+        from core.tasks.cron_jobs import (
+            run_auditlog_prune_now,
+            run_clear_cache_now,
+            run_full_backup_now,
+            run_openrouter_health_check_now,
+        )
 
         force = options.get("force", False)
 
@@ -34,6 +39,7 @@ class Command(BaseCommand):
             ("FullBackupJob", run_full_backup_now),
             ("ClearCacheJob", run_clear_cache_now),
             ("AuditlogPruneJob", run_auditlog_prune_now),
+            ("OpenRouterHealthCheckJob", run_openrouter_health_check_now),
         ]
 
         self.stdout.write(self.style.SUCCESS(f"Starting cron jobs execution at {timezone.now()}"))
