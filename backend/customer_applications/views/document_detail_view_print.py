@@ -5,6 +5,7 @@ from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.views.generic import DetailView
 from pdf2image.pdf2image import convert_from_path
 
+from core.utils.storage_helpers import get_local_file_path
 from customer_applications.models import Document
 
 
@@ -19,7 +20,8 @@ class DocumentDetailViewPrint(PermissionRequiredMixin, DetailView):
         #  - if the file is a pdf, convert it to an in-memory image and pass the image url to the template
         file = context["object"].file
         if file and file.name and file.url and file.name.endswith(".pdf"):
-            images = convert_from_path(file.path)
+            with get_local_file_path(file) as local_file_path:
+                images = convert_from_path(local_file_path)
             if images:
                 # Size of A4 paper in pixels at 300 dpi
                 a4_paper_size = (2480, 3508)

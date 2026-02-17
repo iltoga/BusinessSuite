@@ -1,4 +1,3 @@
-import logging
 import mimetypes
 import os
 import traceback
@@ -29,14 +28,13 @@ def run_ocr_job(job_id: str, task=None) -> None:
     job.progress = 5
     job.save(update_fields=["status", "progress", "updated_at"])
 
-    abs_path = default_storage.path(job.file_path)
     logger.info(f"Processing file: {job.file_path}")
 
     try:
-        file_name = os.path.basename(abs_path)
+        file_name = os.path.basename(job.file_path)
         file_type = mimetypes.guess_type(file_name)[0]
 
-        with open(abs_path, "rb") as handle:
+        with default_storage.open(job.file_path, "rb") as handle:
             file_bytes = handle.read()
 
         uploaded_file = SimpleUploadedFile(
@@ -71,7 +69,7 @@ def run_ocr_job(job_id: str, task=None) -> None:
         img_str = None
         if img_preview or resize:
             logger.info("Generating image preview/resized version")
-            with open(abs_path, "rb") as handle:
+            with default_storage.open(job.file_path, "rb") as handle:
                 _, img_bytes = convert_and_resize_image(
                     handle,
                     file_type,

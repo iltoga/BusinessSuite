@@ -15,6 +15,7 @@ from api.serializers import (
     AvatarUploadSerializer,
     ChangePasswordSerializer,
     CountryCodeSerializer,
+    CustomerUninvoicedApplicationSerializer,
     CustomerApplicationQuickCreateSerializer,
     CustomerQuickCreateSerializer,
     CustomerSerializer,
@@ -546,6 +547,20 @@ class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         customer.active = not customer.active
         customer.save(update_fields=["active"])
         return Response({"id": customer.id, "active": customer.active})
+
+    @extend_schema(responses=CustomerUninvoicedApplicationSerializer(many=True))
+    @action(detail=True, methods=["get"], url_path="uninvoiced-applications")
+    def uninvoiced_applications(self, request, pk=None):
+        customer = self.get_object()
+        applications = (
+            customer.doc_applications.filter(invoice_applications__isnull=True)
+            .select_related("customer", "product")
+            .prefetch_related("invoice_applications__invoice")
+            .distinct()
+            .order_by("-id")
+        )
+        serializer = CustomerUninvoicedApplicationSerializer(applications, many=True)
+        return Response(serializer.data)
 
     @action(detail=False, methods=["post"], url_path="bulk-delete")
     def bulk_delete(self, request):
@@ -2386,7 +2401,7 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             if job.result:
                 response_data.update(job.result)
             if job.save_session and not job.session_saved and job.result:
-                request.session["file_path"] = default_storage.path(job.file_path)
+                request.session["file_path"] = job.file_path
                 request.session["file_url"] = job.file_url
                 request.session["mrz_data"] = job.result.get("mrz_data")
                 request.session.save()

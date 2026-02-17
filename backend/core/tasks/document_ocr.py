@@ -1,12 +1,11 @@
-import logging
 import os
 import traceback
 
-from django.core.files.storage import default_storage
 from huey.contrib.djhuey import db_task
 
 from core.models import DocumentOCRJob
 from core.services.logger_service import Logger
+from core.utils.storage_helpers import get_local_file_path
 from invoices.services.document_parser import DocumentParser
 
 logger = Logger.get_logger(__name__)
@@ -25,23 +24,23 @@ def run_document_ocr_job(job_id: str) -> None:
     job.progress = 5
     job.save(update_fields=["status", "progress", "updated_at"])
 
-    abs_path = default_storage.path(job.file_path)
     try:
-        if not os.path.exists(abs_path):
-            raise FileNotFoundError(f"File not found: {abs_path}")
+        with get_local_file_path(job.file_path) as abs_path:
+            if not os.path.exists(abs_path):
+                raise FileNotFoundError(f"File not found: {abs_path}")
 
-        job.progress = 35
-        job.save(update_fields=["progress", "updated_at"])
+            job.progress = 35
+            job.save(update_fields=["progress", "updated_at"])
 
-        extracted_text = DocumentParser.extract_text_from_file(abs_path)
-        job.progress = 85
-        job.save(update_fields=["progress", "updated_at"])
+            extracted_text = DocumentParser.extract_text_from_file(abs_path)
+            job.progress = 85
+            job.save(update_fields=["progress", "updated_at"])
 
-        job.result_text = extracted_text or ""
-        job.status = DocumentOCRJob.STATUS_COMPLETED
-        job.progress = 100
-        job.save(update_fields=["status", "progress", "result_text", "updated_at"])
-        logger.info(f"Document OCR job {job_id} completed")
+            job.result_text = extracted_text or ""
+            job.status = DocumentOCRJob.STATUS_COMPLETED
+            job.progress = 100
+            job.save(update_fields=["status", "progress", "result_text", "updated_at"])
+            logger.info(f"Document OCR job {job_id} completed")
 
     except Exception as exc:
         full_traceback = traceback.format_exc()

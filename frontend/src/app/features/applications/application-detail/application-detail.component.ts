@@ -944,6 +944,10 @@ export class ApplicationDetailComponent implements OnInit {
       this.router.navigate(['/customers'], { state: focusState });
       return;
     }
+    if (st.from === 'dashboard') {
+      this.router.navigate(['/dashboard']);
+      return;
+    }
 
     // Edge case: newly created applications should return to the list and focus the first row.
     this.router.navigate(['/applications'], { state: { focusTable: true } });

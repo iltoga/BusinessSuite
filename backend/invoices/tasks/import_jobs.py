@@ -36,8 +36,7 @@ def run_invoice_import_item(item_id: str) -> None:
     item.save(update_fields=["status", "result", "updated_at"])
 
     try:
-        abs_path = default_storage.path(item.file_path)
-        file_name = os.path.basename(abs_path)
+        file_name = os.path.basename(item.file_path)
 
         allowed_extensions = [".pdf", ".xlsx", ".xls", ".docx", ".doc"]
         file_ext = os.path.splitext(file_name.lower())[-1]
@@ -55,7 +54,7 @@ def run_invoice_import_item(item_id: str) -> None:
             item.save(update_fields=["status", "result", "error_message", "updated_at"])
             return
 
-        with open(abs_path, "rb") as handle:
+        with default_storage.open(item.file_path, "rb") as handle:
             file_bytes = handle.read()
 
         item.result = {"stage": "parsing"}

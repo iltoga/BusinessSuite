@@ -119,7 +119,7 @@ class DocApplicationCreateView(PermissionRequiredMixin, SuccessMessageMixin, Cre
                     previous_passport_document = self.get_previous_valid_passport_document(False)
                     if previous_passport_document and previous_passport_document.file:
                         try:
-                            if os.path.isfile(previous_passport_document.file.path):
+                            if default_storage.exists(previous_passport_document.file.name):
                                 continue
                         except Exception:
                             pass

@@ -122,6 +122,41 @@ class DocApplicationInvoiceSerializer(serializers.ModelSerializer):
         return str(instance)
 
 
+class CustomerUninvoicedApplicationSerializer(DocApplicationInvoiceSerializer):
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    product_type_display = serializers.SerializerMethodField()
+    has_invoice = serializers.SerializerMethodField()
+    invoice_id = serializers.SerializerMethodField()
+    is_document_collection_completed = serializers.BooleanField(read_only=True)
+    ready_for_invoice = serializers.SerializerMethodField()
+
+    class Meta(DocApplicationInvoiceSerializer.Meta):
+        fields = DocApplicationInvoiceSerializer.Meta.fields + [
+            "status_display",
+            "product_type_display",
+            "has_invoice",
+            "invoice_id",
+            "is_document_collection_completed",
+            "ready_for_invoice",
+        ]
+        read_only_fields = fields
+
+    def get_product_type_display(self, instance) -> str:
+        return instance.product.get_product_type_display() if instance.product else ""
+
+    def get_has_invoice(self, instance) -> bool:
+        return instance.has_invoice()
+
+    def get_invoice_id(self, instance) -> int | None:
+        invoice = instance.get_invoice()
+        return invoice.id if invoice else None
+
+    def get_ready_for_invoice(self, instance) -> bool:
+        if instance.status in (DocApplication.STATUS_COMPLETED, DocApplication.STATUS_REJECTED):
+            return True
+        return instance.is_document_collection_completed
+
+
 class DocApplicationDetailSerializer(serializers.ModelSerializer):
     product = ProductSerializer(read_only=True)
     customer = CustomerSerializer(read_only=True)

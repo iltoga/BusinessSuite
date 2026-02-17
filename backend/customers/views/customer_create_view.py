@@ -56,7 +56,7 @@ class CustomerCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateVie
     def form_valid(self, form):
         form.instance.created_by = self.request.user
         mrz_data = self.request.session.get("mrz_data", None)
-        file_path = self.request.session.get("file_path", None)
+        file_storage_path = self.request.session.get("file_path", None)
 
         if mrz_data and form.is_valid():
             form.instance.names = form.cleaned_data.get("first_name")
@@ -98,9 +98,10 @@ class CustomerCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateVie
         # After saving customer, copy passport file from session temp location to customer folder
         # Only if passport number is populated (at least passport number requirement)
         # Use self.object which is the saved instance
-        if self.object.passport_number and file_path and os.path.isfile(file_path):
+        source_file_exists = self._source_file_exists(file_storage_path)
+        if self.object.passport_number and source_file_exists:
             try:
-                self._save_passport_file_to_customer(self.object, file_path)
+                self._save_passport_file_to_customer(self.object, file_storage_path)
                 # Clear session data after successful save
                 for key in ["mrz_data", "file_path", "file_url"]:
                     self.request.session.pop(key, None)
@@ -109,17 +110,33 @@ class CustomerCreateView(PermissionRequiredMixin, SuccessMessageMixin, CreateVie
         else:
             logger.warning(
                 f"Passport file not saved. passport_number={self.object.passport_number}, "
-                f"file_path={file_path}, exists={os.path.isfile(file_path) if file_path else False}"
+                f"file_path={file_storage_path}, "
+                f"exists={source_file_exists}"
             )
 
         return response
 
+    def _source_file_exists(self, source_file_path):
+        if not source_file_path:
+            return False
+        if os.path.isabs(source_file_path):
+            return os.path.isfile(source_file_path)
+        try:
+            return default_storage.exists(source_file_path)
+        except Exception:
+            return False
+
     def _save_passport_file_to_customer(self, customer, source_file_path):
         """
-        Copy the passport file from session temp location to the customer's folder.
+        Copy the passport file from session temp storage location to the customer's folder.
         """
         try:
-            with open(source_file_path, "rb") as f:
+            if os.path.isabs(source_file_path):
+                source_handle = open(source_file_path, "rb")
+            else:
+                source_handle = default_storage.open(source_file_path, "rb")
+
+            with source_handle as f:
                 file = File(f)
                 # Generate the upload path
                 filename = os.path.basename(source_file_path)

@@ -18,6 +18,7 @@ from skimage import filters
 from core.services.logger_service import Logger
 from core.utils.check_country import check_country_by_code
 from core.utils.imgutils import convert_and_resize_image
+from core.utils.storage_helpers import get_local_file_path
 
 pytesseract.pytesseract.tesseract_cmd = settings.TESSERACT_CMD
 
@@ -42,23 +43,38 @@ MRZ_FORMAT = {
 
 
 def extract_mrz_data(file, check_expiration=True, expiration_days=180) -> dict:
-    converted_file_name = ""
-    file_to_delete = ""
-    file_name, file_ext = os.path.splitext(file.name)
+    _, file_ext = os.path.splitext(file.name)
 
-    # Check if file is an instance of InMemoryUploadedFile
-    # Check if file is an instance of InMemoryUploadedFile or TemporaryUploadedFile
     if isinstance(file, (InMemoryUploadedFile, TemporaryUploadedFile)):
-        # If the file is in memory, create a temporary file and write the contents of the uploaded file to it
         temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=file_ext)
         for chunk in file.chunks():
             temp_file.write(chunk)
         temp_file.close()
-        file_path = temp_file.name
-        file_to_delete = file_path
-    else:
-        # If the file is not in memory, it's already a temporary file on disk
-        file_path = file.path
+        return _extract_mrz_data_from_file_path(
+            file=file,
+            file_path=temp_file.name,
+            check_expiration=check_expiration,
+            expiration_days=expiration_days,
+            file_to_delete=temp_file.name,
+        )
+
+    with get_local_file_path(file) as file_path:
+        return _extract_mrz_data_from_file_path(
+            file=file,
+            file_path=file_path,
+            check_expiration=check_expiration,
+            expiration_days=expiration_days,
+        )
+
+
+def _extract_mrz_data_from_file_path(
+    file,
+    file_path: str,
+    check_expiration: bool = True,
+    expiration_days: int = 180,
+    file_to_delete: str = "",
+) -> dict:
+    converted_file_name = ""
 
     # Convert PDF to image
     content_type = ""
@@ -217,7 +233,7 @@ def extract_mrz_data(file, check_expiration=True, expiration_days=180) -> dict:
         except Exception:
             pass
         # if e is "mrz_type" or e is "mrz_format" translate the error to a more user friendly message
-        if e.args[0] == "mrz_type" or e.args[0] == "mrz_format":
+        if e.args and (e.args[0] == "mrz_type" or e.args[0] == "mrz_format"):
             raise Exception("The specified file is not a valid passport")
         raise Exception(str(e))
 

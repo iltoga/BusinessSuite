@@ -1,6 +1,8 @@
+import { HttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { NavigationEnd, Router } from '@angular/router';
-import { Subject } from 'rxjs';
+import { Subject, throwError } from 'rxjs';
+import { vi } from 'vitest';
 import { HelpService } from './help.service';
 
 class RouterMock {
@@ -10,11 +12,18 @@ class RouterMock {
 describe('HelpService', () => {
   let service: HelpService;
   let router: RouterMock;
+  let mockHttp: { get: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
     router = new RouterMock();
+    mockHttp = {
+      get: vi.fn(),
+    };
     TestBed.configureTestingModule({
-      providers: [{ provide: Router, useValue: router } as any],
+      providers: [
+        { provide: Router, useValue: router } as any,
+        { provide: HttpClient, useValue: mockHttp },
+      ],
     });
 
     service = TestBed.inject(HelpService);
@@ -94,5 +103,29 @@ describe('HelpService', () => {
     service.toggle(); // opens
     expect(service.visible()).toBe(true);
     expect(service.openCount()).toBe(2);
+  });
+
+  it('should not log error when help load fails because token expired', () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockHttp.get.mockReturnValue(throwError(() => new Error('Token expired')));
+
+    service.setContext({ id: '/foo', contentUrl: '/help/foo.md' });
+
+    expect(mockHttp.get).toHaveBeenCalledWith('/help/foo.md', { responseType: 'text' });
+    expect(consoleErrorSpy).not.toHaveBeenCalled();
+    expect(service.helpContent()).toBeNull();
+    expect(service.isLoading()).toBe(false);
+  });
+
+  it('should log and set fallback message when help load fails for other reasons', () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockHttp.get.mockReturnValue(throwError(() => new Error('Network down')));
+
+    service.setContext({ id: '/foo', contentUrl: '/help/foo.md' });
+
+    expect(mockHttp.get).toHaveBeenCalledWith('/help/foo.md', { responseType: 'text' });
+    expect(consoleErrorSpy).toHaveBeenCalled();
+    expect(service.helpContent()).toBe('Failed to load help content.');
+    expect(service.isLoading()).toBe(false);
   });
 });

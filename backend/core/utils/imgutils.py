@@ -1,8 +1,11 @@
 import base64
+import os
 from io import BytesIO
 
 from pdf2image.pdf2image import convert_from_bytes, convert_from_path
 from PIL import Image
+
+from core.utils.storage_helpers import get_local_file_path
 
 
 def convert_and_resize_image(file, file_type, return_encoded=True, resize=False, base_width=400, dpi=300):
@@ -24,8 +27,12 @@ def convert_and_resize_image(file, file_type, return_encoded=True, resize=False,
             file.seek(0)  # Ensure cursor is at start of file
             # Use high DPI for better OCR quality
             images = convert_from_bytes(file.read(), dpi=dpi)
-        except Exception as e:
-            images = convert_from_path(file, dpi=dpi)
+        except Exception:
+            if isinstance(file, (str, os.PathLike)) and os.path.exists(file):
+                images = convert_from_path(file, dpi=dpi)
+            else:
+                with get_local_file_path(file) as local_pdf_path:
+                    images = convert_from_path(local_pdf_path, dpi=dpi)
 
         if len(images) == 0:
             raise ValueError("Could not convert the pdf to an image!")

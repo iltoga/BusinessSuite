@@ -98,6 +98,8 @@ import {
   Users,
   X,
   Zap,
+  ZoomIn,
+  ZoomOut,
 } from 'lucide-angular';
 
 const DarkMode: LucideIconData = [
@@ -209,6 +211,8 @@ export const ZARD_ICONS = {
   activity: Activity,
   camera: Camera,
   upload: Upload,
+  'zoom-in': ZoomIn,
+  'zoom-out': ZoomOut,
 } as const satisfies Record<string, LucideIconData>;
 
 export declare type ZardIcon = keyof typeof ZARD_ICONS | LucideIconData;
