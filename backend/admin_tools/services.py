@@ -357,6 +357,7 @@ def restore_from_file(path, include_users=False):
 
     # Import the signal handlers so we can disconnect them
     from core.models.user_profile import UserProfile, create_user_profile, save_user_profile
+    from core.models.user_settings import create_user_settings, save_user_settings
     from django.apps import apps
     from django.contrib.auth.models import User
     from django.db import connection, transaction
@@ -459,10 +460,12 @@ def restore_from_file(path, include_users=False):
                 except Exception as e:
                     yield f"Warning: Could not clear content types/permissions/users: {e}"
 
-                # Disconnect UserProfile signals to prevent auto-creation during loaddata
-                yield "Disconnecting UserProfile signals for clean restore..."
+                # Disconnect per-user auto-create/save signals to prevent duplicates during loaddata.
+                yield "Disconnecting UserProfile/UserSettings signals for clean restore..."
                 post_save.disconnect(create_user_profile, sender=User)
                 post_save.disconnect(save_user_profile, sender=User)
+                post_save.disconnect(create_user_settings, sender=User)
+                post_save.disconnect(save_user_settings, sender=User)
                 signals_disconnected = True
             else:
                 # Only flush non-system tables
@@ -504,9 +507,11 @@ def restore_from_file(path, include_users=False):
         finally:
             # Reconnect signals regardless of success/failure
             if signals_disconnected:
-                yield "Reconnecting UserProfile signals..."
+                yield "Reconnecting UserProfile/UserSettings signals..."
                 post_save.connect(create_user_profile, sender=User)
                 post_save.connect(save_user_profile, sender=User)
+                post_save.connect(create_user_settings, sender=User)
+                post_save.connect(save_user_settings, sender=User)
 
         saved_path_map = {}
 
