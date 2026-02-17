@@ -23,6 +23,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY pyproject.toml uv.lock ./
 
+RUN uv lock --check
 RUN uv venv /opt/venv
 RUN uv sync --frozen --no-dev --no-install-project
 
@@ -61,4 +62,3 @@ USER appuser
 CMD /bin/bash -c "chmod +x /usr/src/app/scripts/* && /usr/src/app/start.sh"
 
 EXPOSE 8000
-

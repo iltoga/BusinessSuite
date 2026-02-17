@@ -56,6 +56,7 @@ django==6.0.2
     #   django-crispy-forms
     #   django-dbbackup
     #   django-debug-toolbar
+    #   django-redis
     #   django-storages
     #   django-unicorn
     #   django-user-agents
@@ -78,9 +79,9 @@ django-dbbackup==5.1.0
     # via business-suite (pyproject.toml)
 django-debug-toolbar==6.1.0
     # via business-suite (pyproject.toml)
-django-redis==6.0.0
-    # via business-suite (pyproject.toml)
 django-nested-admin==4.1.6
+    # via business-suite (pyproject.toml)
+django-redis==6.0.0
     # via business-suite (pyproject.toml)
 django-storages==1.14.6
     # via business-suite (pyproject.toml)
@@ -288,7 +289,9 @@ pyyaml==6.0.3
 rapidfuzz==3.14.3
     # via business-suite (pyproject.toml)
 redis==6.4.0
-    # via business-suite (pyproject.toml)
+    # via
+    #   business-suite (pyproject.toml)
+    #   django-redis
 referencing==0.37.0
     # via
     #   jsonschema
