@@ -79,6 +79,10 @@ export class AuthService {
   });
   claims = this._claims.asReadonly();
   isSuperuser = computed(() => this._claims()?.isSuperuser ?? false);
+  isInAdminGroup = computed(() => {
+    const groups = this._claims()?.groups ?? [];
+    return groups.some((group) => String(group).toLowerCase() === 'admin');
+  });
   isLoading = this._isLoading.asReadonly();
   error = this._error.asReadonly();
 

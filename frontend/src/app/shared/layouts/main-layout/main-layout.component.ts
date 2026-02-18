@@ -69,7 +69,9 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
     return this.themeService.isDarkMode() ? inverted : normal;
   });
 
-  isAdminUser = computed(() => this.authService.isSuperuser());
+  isAdminUser = computed(() => this.authService.isSuperuser() || this.authService.isInAdminGroup());
+  isSuperuser = computed(() => this.authService.isSuperuser());
+  isInAdminGroup = computed(() => this.authService.isInAdminGroup());
   userFullName = computed(() => this.authService.claims()?.fullName || 'User');
   userEmail = computed(() => this.authService.claims()?.email || '');
   userAvatar = computed(() => this.authService.claims()?.avatar || undefined);

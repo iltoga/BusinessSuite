@@ -139,7 +139,7 @@
           </div>
         </div>
 
-        <!-- Admin Section - Only visible for superusers -->
+        <!-- Admin Section -->
         <div *ngIf="isAdminUser()" class="pt-4 pb-1">
           <button
             #sidebarItem
@@ -157,6 +157,7 @@
             <a
               #sidebarItem
               routerLink="/admin/document-types"
+              *ngIf="isSuperuser()"
               routerLinkActive="bg-accent text-foreground"
               class="block rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
             >
@@ -164,7 +165,26 @@
             </a>
             <a
               #sidebarItem
+              routerLink="/admin/holidays"
+              *ngIf="isSuperuser()"
+              routerLinkActive="bg-accent text-foreground"
+              class="block rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
+            >
+              National Holidays
+            </a>
+            <a
+              #sidebarItem
+              routerLink="/admin/workflow-notifications"
+              *ngIf="isSuperuser()"
+              routerLinkActive="bg-accent text-foreground"
+              class="block rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
+            >
+              Notifications Center
+            </a>
+            <a
+              #sidebarItem
               routerLink="/admin/backups"
+              *ngIf="isInAdminGroup()"
               routerLinkActive="bg-accent text-foreground"
               class="block rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
             >
@@ -173,28 +193,11 @@
             <a
               #sidebarItem
               routerLink="/admin/server"
+              *ngIf="isInAdminGroup()"
               routerLinkActive="bg-accent text-foreground"
               class="block rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
             >
               Server Management
-            </a>
-
-            <a
-              #sidebarItem
-              routerLink="/admin/holidays"
-              routerLinkActive="bg-accent text-foreground"
-              class="block rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
-            >
-              National Holidays
-            </a>
-
-            <a
-              #sidebarItem
-              routerLink="/admin/workflow-notifications"
-              routerLinkActive="bg-accent text-foreground"
-              class="block rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
-            >
-              Notifications Center
             </a>
           </div>
         </div>
