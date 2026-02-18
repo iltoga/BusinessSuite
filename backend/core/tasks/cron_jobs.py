@@ -180,12 +180,41 @@ def _perform_openrouter_health_check() -> bool:
         return False
 
     remaining = None
-    if isinstance(payload, dict):
-        data = payload.get("data")
-        if isinstance(data, dict):
-            remaining = data.get("limit_remaining")
+    min_remaining = float(getattr(settings, "OPENROUTER_HEALTHCHECK_MIN_CREDIT_REMAINING", 0.0))
+    if not isinstance(payload, dict):
+        logger.error("OpenRouter health check returned a non-object JSON payload.")
+        return False
 
-    logger.info("OpenRouter health check OK (limit_remaining=%s)", remaining if remaining is not None else "n/a")
+    data = payload.get("data")
+    if not isinstance(data, dict):
+        logger.error("OpenRouter health check response is missing the data object.")
+        return False
+
+    remaining = data.get("limit_remaining")
+    if "limit_remaining" not in data:
+        logger.error("OpenRouter health check response is missing data.limit_remaining.")
+        return False
+
+    if remaining is not None:
+        try:
+            remaining_value = float(remaining)
+        except (TypeError, ValueError):
+            logger.error("OpenRouter health check returned non-numeric limit_remaining=%r", remaining)
+            return False
+
+        if remaining_value <= min_remaining:
+            logger.error(
+                "OpenRouter health check failed: low credit remaining (limit_remaining=%s, threshold=%s)",
+                remaining_value,
+                min_remaining,
+            )
+            return False
+
+    logger.info(
+        "OpenRouter health check OK (limit_remaining=%s, threshold=%s)",
+        remaining if remaining is not None else "n/a",
+        min_remaining,
+    )
     return True
 
 

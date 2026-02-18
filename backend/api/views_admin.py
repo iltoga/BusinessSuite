@@ -11,9 +11,11 @@ from api.utils.sse_auth import sse_token_auth_required
 from api.views import ApiErrorHandlingMixin
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.contrib.staticfiles import finders
 from django.http import FileResponse, JsonResponse, StreamingHttpResponse
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
+import requests
 from rest_framework import permissions, serializers, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -39,6 +41,14 @@ class IsSuperuser(permissions.BasePermission):
 
     def has_permission(self, request, view):
         return request.user and request.user.is_superuser
+
+
+class IsAdminGroupMember(permissions.BasePermission):
+    """Permission class that allows only users in the 'admin' group."""
+
+    def has_permission(self, request, view):
+        user = request.user
+        return bool(user and user.is_authenticated and user.groups.filter(name="admin").exists())
 
 
 # ============================================================================
@@ -113,7 +123,7 @@ def backup_restore_sse(request):
 
 class BackupsViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
     serializer_class = BackupsPlaceholderSerializer
-    permission_classes = [IsAuthenticated, IsSuperuser]
+    permission_classes = [IsAuthenticated, IsAdminGroupMember]
 
     def _parse_backup_datetime(self, filename: str) -> datetime.datetime | None:
         """Parse datetime from backup filename like backup-20260131-045527.tar.zst
@@ -406,7 +416,7 @@ class BackupsViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
 
 class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
     serializer_class = ServerManagementPlaceholderSerializer
-    permission_classes = [IsAuthenticated, IsSuperuser]
+    permission_classes = [IsAuthenticated, IsAdminGroupMember]
 
     @extend_schema(summary="Clear application cache", responses={200: OpenApiTypes.OBJECT})
     @action(detail=False, methods=["post"], url_path="clear-cache")
@@ -444,3 +454,170 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             return Response({"ok": True, "repairs": repairs})
         except Exception as e:
             return Response({"ok": False, "message": str(e)}, status=500)
+
+    @extend_schema(summary="Get OpenRouter status and AI model usage", responses={200: OpenApiTypes.OBJECT})
+    @action(detail=False, methods=["get"], url_path="openrouter-status")
+    def openrouter_status(self, request):
+        """Return OpenRouter credit status and AI model usage by feature."""
+
+        def _to_float(value):
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                return None
+
+        def _load_llm_models_config():
+            llm_config_path = finders.find("llm_models.json")
+            if not llm_config_path:
+                llm_config_path = settings.BASE_DIR / "business_suite" / "static" / "llm_models.json"
+
+            try:
+                with open(llm_config_path, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                return {"providers": {}}
+
+        api_key = getattr(settings, "OPENROUTER_API_KEY", None)
+        base_url = getattr(settings, "OPENROUTER_API_BASE_URL", "https://openrouter.ai/api/v1").rstrip("/")
+        timeout = float(getattr(settings, "OPENROUTER_HEALTHCHECK_TIMEOUT", 10.0))
+
+        key_status = {
+            "ok": False,
+            "httpStatus": None,
+            "message": "OPENROUTER_API_KEY is not configured.",
+            "label": None,
+            "limit": None,
+            "limitRemaining": None,
+            "limitReset": None,
+            "usage": None,
+            "usageDaily": None,
+            "usageWeekly": None,
+            "usageMonthly": None,
+            "isFreeTier": None,
+            "endpoint": f"{base_url}/key",
+        }
+        credits_status = {
+            "ok": False,
+            "available": False,
+            "httpStatus": None,
+            "message": "Management key required for /credits endpoint.",
+            "totalCredits": None,
+            "totalUsage": None,
+            "remaining": None,
+            "endpoint": f"{base_url}/credits",
+        }
+
+        if api_key:
+            headers = {"Authorization": f"Bearer {api_key}", "Accept": "application/json"}
+
+            try:
+                key_resp = requests.get(key_status["endpoint"], headers=headers, timeout=timeout)
+                key_status["httpStatus"] = key_resp.status_code
+                if key_resp.status_code == 200:
+                    payload = key_resp.json()
+                    data = payload.get("data", {}) if isinstance(payload, dict) else {}
+                    key_status.update(
+                        {
+                            "ok": True,
+                            "message": None,
+                            "label": data.get("label"),
+                            "limit": _to_float(data.get("limit")),
+                            "limitRemaining": _to_float(data.get("limit_remaining")),
+                            "limitReset": data.get("limit_reset"),
+                            "usage": _to_float(data.get("usage")),
+                            "usageDaily": _to_float(data.get("usage_daily")),
+                            "usageWeekly": _to_float(data.get("usage_weekly")),
+                            "usageMonthly": _to_float(data.get("usage_monthly")),
+                            "isFreeTier": data.get("is_free_tier"),
+                        }
+                    )
+                else:
+                    body_excerpt = (key_resp.text or "").replace("\n", " ").strip()[:200]
+                    key_status["message"] = body_excerpt or f"HTTP {key_resp.status_code}"
+            except requests.RequestException as exc:
+                key_status["message"] = str(exc)
+            except ValueError:
+                key_status["message"] = "Invalid JSON response from /key endpoint."
+
+            try:
+                credits_resp = requests.get(credits_status["endpoint"], headers=headers, timeout=timeout)
+                credits_status["httpStatus"] = credits_resp.status_code
+                if credits_resp.status_code == 200:
+                    payload = credits_resp.json()
+                    data = payload.get("data", {}) if isinstance(payload, dict) else {}
+                    total_credits = _to_float(data.get("total_credits"))
+                    total_usage = _to_float(data.get("total_usage"))
+                    remaining = None
+                    if total_credits is not None and total_usage is not None:
+                        remaining = total_credits - total_usage
+                    credits_status.update(
+                        {
+                            "ok": True,
+                            "available": True,
+                            "message": None,
+                            "totalCredits": total_credits,
+                            "totalUsage": total_usage,
+                            "remaining": remaining,
+                        }
+                    )
+                elif credits_resp.status_code in (401, 403):
+                    credits_status["message"] = "Management key required to read /credits."
+                else:
+                    body_excerpt = (credits_resp.text or "").replace("\n", " ").strip()[:200]
+                    credits_status["message"] = body_excerpt or f"HTTP {credits_resp.status_code}"
+            except requests.RequestException as exc:
+                credits_status["message"] = str(exc)
+            except ValueError:
+                credits_status["message"] = "Invalid JSON response from /credits endpoint."
+
+        llm_config = _load_llm_models_config()
+        providers = llm_config.get("providers", {}) if isinstance(llm_config, dict) else {}
+        current_provider = getattr(settings, "LLM_PROVIDER", "openrouter")
+        default_model = getattr(settings, "LLM_DEFAULT_MODEL", "google/gemini-2.5-flash-lite")
+        provider_info = providers.get(current_provider, {}) if isinstance(providers, dict) else {}
+        available_models = provider_info.get("models", []) if isinstance(provider_info, dict) else []
+
+        ai_model_usage = {
+            "provider": current_provider,
+            "providerName": provider_info.get("name", current_provider),
+            "defaultModel": default_model,
+            "availableModels": available_models,
+            "features": [
+                {
+                    "feature": "Invoice Import AI Parser",
+                    "purpose": "Extracts invoice/customer data from uploaded invoice files.",
+                    "modelStrategy": "Uses request llm_model override, otherwise LLM_DEFAULT_MODEL.",
+                    "effectiveModel": default_model,
+                    "provider": current_provider,
+                },
+                {
+                    "feature": "Passport OCR AI Extractor",
+                    "purpose": "Extracts structured passport fields in hybrid MRZ + AI flow.",
+                    "modelStrategy": "Uses LLM_DEFAULT_MODEL unless parser is explicitly instantiated with a model.",
+                    "effectiveModel": default_model,
+                    "provider": current_provider,
+                },
+            ],
+        }
+
+        effective_credit_remaining = key_status.get("limitRemaining")
+        effective_credit_source = "key.limit_remaining"
+        if effective_credit_remaining is None and credits_status.get("remaining") is not None:
+            effective_credit_remaining = credits_status["remaining"]
+            effective_credit_source = "credits.total_credits-total_usage"
+
+        return Response(
+            {
+                "ok": True,
+                "openrouter": {
+                    "configured": bool(api_key),
+                    "baseUrl": base_url,
+                    "checkedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                    "keyStatus": key_status,
+                    "creditsStatus": credits_status,
+                    "effectiveCreditRemaining": effective_credit_remaining,
+                    "effectiveCreditSource": effective_credit_source if effective_credit_remaining is not None else None,
+                },
+                "aiModels": ai_model_usage,
+            }
+        )

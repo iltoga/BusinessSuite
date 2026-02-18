@@ -33,6 +33,7 @@ class OpenRouterHealthCheckTests(TestCase):
         OPENROUTER_API_KEY="test-key",
         OPENROUTER_API_BASE_URL="https://openrouter.ai/api/v1",
         OPENROUTER_HEALTHCHECK_TIMEOUT=7.0,
+        OPENROUTER_HEALTHCHECK_MIN_CREDIT_REMAINING=0.0,
     )
     def test_health_check_success(self):
         mock_response = MagicMock()
@@ -79,6 +80,59 @@ class OpenRouterHealthCheckTests(TestCase):
     )
     def test_health_check_request_exception(self):
         with patch("core.tasks.cron_jobs.requests.get", side_effect=requests.RequestException("network down")):
+            result = cron_jobs._perform_openrouter_health_check()
+
+        self.assertFalse(result)
+
+    @override_settings(
+        OPENROUTER_HEALTHCHECK_ENABLED=True,
+        OPENROUTER_API_KEY="test-key",
+        OPENROUTER_API_BASE_URL="https://openrouter.ai/api/v1",
+        OPENROUTER_HEALTHCHECK_MIN_CREDIT_REMAINING=1.0,
+    )
+    def test_health_check_low_credit_logs_error_and_fails(self):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"data": {"limit_remaining": 0.5}}
+
+        with (
+            patch("core.tasks.cron_jobs.requests.get", return_value=mock_response),
+            patch("core.tasks.cron_jobs.logger.error") as mock_error,
+        ):
+            result = cron_jobs._perform_openrouter_health_check()
+
+        self.assertFalse(result)
+        self.assertTrue(
+            any("low credit remaining" in str(call.args[0]) for call in mock_error.call_args_list),
+            "Expected low-credit error log to be emitted",
+        )
+
+    @override_settings(
+        OPENROUTER_HEALTHCHECK_ENABLED=True,
+        OPENROUTER_API_KEY="test-key",
+        OPENROUTER_API_BASE_URL="https://openrouter.ai/api/v1",
+    )
+    def test_health_check_invalid_limit_remaining_fails(self):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"data": {"limit_remaining": "not-a-number"}}
+
+        with patch("core.tasks.cron_jobs.requests.get", return_value=mock_response):
+            result = cron_jobs._perform_openrouter_health_check()
+
+        self.assertFalse(result)
+
+    @override_settings(
+        OPENROUTER_HEALTHCHECK_ENABLED=True,
+        OPENROUTER_API_KEY="test-key",
+        OPENROUTER_API_BASE_URL="https://openrouter.ai/api/v1",
+    )
+    def test_health_check_missing_limit_remaining_fails(self):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"data": {"usage_monthly": 10}}
+
+        with patch("core.tasks.cron_jobs.requests.get", return_value=mock_response):
             result = cron_jobs._perform_openrouter_health_check()
 
         self.assertFalse(result)

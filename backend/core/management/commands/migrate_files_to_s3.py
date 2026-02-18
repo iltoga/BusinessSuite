@@ -114,51 +114,52 @@ class Command(BaseCommand):
                     return _normalize_storage_key(normalized)
             return _normalize_storage_key(normalized)
 
-        def _migrate_path(storage_key: str):
+        def _migrate_path(storage_key: str) -> bool:
             if not storage_key:
-                return
+                return False
             counters["checked"] += 1
             if storage_key in path_mappings:
-                return
+                return True
 
             try:
                 local_path = safe_join(str(source_root), storage_key)
             except SuspiciousFileOperation:
                 _record_error(f"[ERROR] Suspicious storage key: {storage_key}")
-                return
+                return False
 
             local_file = Path(local_path)
             if not local_file.exists():
                 counters["missing_local"] += 1
-                return
+                return False
 
             try:
                 object_exists = default_storage.exists(storage_key)
             except Exception as exc:
                 _record_error(f"[ERROR] Could not check destination object for {storage_key}: {exc}")
-                return
+                return False
 
             if object_exists:
                 counters["already_present"] += 1
                 path_mappings[storage_key] = storage_key
-                return
+                return True
 
             if dry_run:
                 counters["would_upload"] += 1
                 path_mappings[storage_key] = storage_key
                 self.stdout.write(f"[DRY RUN] Would upload: {storage_key}")
-                return
+                return True
 
             try:
                 with local_file.open("rb") as source_handle, default_storage.open(storage_key, "wb") as target_handle:
                     shutil.copyfileobj(source_handle, target_handle, length=1024 * 1024)
             except Exception as exc:
                 _record_error(f"[ERROR] Failed to upload {storage_key}: {exc}")
-                return
+                return False
 
             counters["uploaded"] += 1
             path_mappings[storage_key] = storage_key
             self.stdout.write(f"[UPLOADED] {storage_key}")
+            return True
 
         # Pass 1: FileField/ImageField references.
         for model in apps.get_models():
@@ -183,9 +184,8 @@ class Command(BaseCommand):
                     if not storage_key:
                         continue
 
-                    _migrate_path(storage_key)
-
-                    if raw_path != storage_key:
+                    is_migrated = _migrate_path(storage_key)
+                    if raw_path != storage_key and is_migrated:
                         if dry_run:
                             self.stdout.write(
                                 f"[DRY RUN] Would rewire {model._meta.label}#{obj.pk}.{field.name}: "
