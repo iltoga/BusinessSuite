@@ -24,6 +24,7 @@ try {
 }
 
 import express from 'express';
+import { randomBytes } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import { request as httpRequest, type OutgoingHttpHeaders, type RequestOptions } from 'node:http';
 import { request as httpsRequest } from 'node:https';
@@ -34,6 +35,7 @@ const browserDistFolder = join(import.meta.dirname, '../browser');
 
 const app = express();
 const angularApp = new AngularNodeAppEngine();
+const traceContextSymbol = Symbol('traceContext');
 const clientLogPath = '/_observability/client-logs';
 const clientLogWindowMs = Number(process.env['CLIENT_LOG_RATE_LIMIT_WINDOW_MS'] || '60000');
 const clientLogMaxPerWindow = Number(process.env['CLIENT_LOG_RATE_LIMIT_MAX'] || '60');
@@ -62,6 +64,177 @@ const noisyServerLogPatterns = [
   'Angular hydrated ',
 ];
 
+type OtlpPrimitive = string | number | boolean;
+
+type RequestTraceContext = {
+  traceId: string;
+  spanId: string;
+  traceFlags: string;
+  parentSpanId?: string;
+  spanName: string;
+  requestPath: string;
+  requestQuery: string;
+  requestHost: string;
+  startTimeUnixNano: string;
+};
+
+type TracedRequest = express.Request & {
+  [traceContextSymbol]?: RequestTraceContext;
+};
+
+type ParsedTraceparent = {
+  traceId: string;
+  spanId: string;
+  traceFlags: string;
+};
+
+const OTLP_TRACES_ENDPOINT =
+  process.env['OTEL_EXPORTER_OTLP_TRACES_ENDPOINT'] ||
+  (process.env['OTEL_EXPORTER_OTLP_ENDPOINT']
+    ? `${String(process.env['OTEL_EXPORTER_OTLP_ENDPOINT']).replace(/\/+$/, '')}/v1/traces`
+    : '');
+const OTLP_TRACES_ENABLED =
+  Boolean(OTLP_TRACES_ENDPOINT) &&
+  String(process.env['OTEL_TRACES_EXPORTER'] || 'otlp').toLowerCase() !== 'none';
+const OTLP_SERVICE_NAME = process.env['OTEL_SERVICE_NAME'] || 'frontend';
+const OTLP_SCOPE_NAME = process.env['OTEL_INSTRUMENTATION_SCOPE_NAME'] || 'revisbali.manual.frontend';
+const OTLP_EXPORT_TIMEOUT_MS = Number(process.env['OTEL_EXPORTER_OTLP_TIMEOUT_MS'] || '1000');
+const OTLP_RESOURCE_ATTRIBUTES = parseKvCsv(process.env['OTEL_RESOURCE_ATTRIBUTES'] || '');
+OTLP_RESOURCE_ATTRIBUTES['service.name'] = OTLP_RESOURCE_ATTRIBUTES['service.name'] || OTLP_SERVICE_NAME;
+let lastOtlpErrorLogAtMs = 0;
+
+function parseKvCsv(rawValue: string): Record<string, string> {
+  const parsed: Record<string, string> = {};
+  for (const part of rawValue.split(',')) {
+    const pair = part.trim();
+    if (!pair) continue;
+    const separatorIndex = pair.indexOf('=');
+    if (separatorIndex <= 0) continue;
+    const key = pair.slice(0, separatorIndex).trim();
+    const value = pair.slice(separatorIndex + 1).trim();
+    if (key) parsed[key] = value;
+  }
+  return parsed;
+}
+
+function nowUnixNano(): string {
+  return (BigInt(Date.now()) * 1_000_000n).toString();
+}
+
+function randomHex(byteLength: number): string {
+  return randomBytes(byteLength).toString('hex');
+}
+
+function parseTraceparent(value: string | string[] | undefined): ParsedTraceparent | undefined {
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (!raw) return undefined;
+  const trimmed = raw.trim().toLowerCase();
+  const match = /^([\da-f]{2})-([\da-f]{32})-([\da-f]{16})-([\da-f]{2})$/.exec(trimmed);
+  if (!match) return undefined;
+  return {
+    traceId: match[2],
+    spanId: match[3],
+    traceFlags: match[4],
+  };
+}
+
+function buildTraceparent(ctx: RequestTraceContext): string {
+  return `00-${ctx.traceId}-${ctx.spanId}-${ctx.traceFlags}`;
+}
+
+function shouldTraceRequest(req: express.Request): boolean {
+  const path = req.path || '/';
+  if (path === clientLogPath) return false;
+  if (path.startsWith('/assets/')) return false;
+  if (path.startsWith('/favicon')) return false;
+  if (/\.(?:js|mjs|css|map|png|jpe?g|gif|svg|ico|webp|woff2?)$/i.test(path)) return false;
+  return true;
+}
+
+function toOtlpAttribute(key: string, value: OtlpPrimitive): Record<string, unknown> {
+  if (typeof value === 'boolean') {
+    return { key, value: { boolValue: value } };
+  }
+  if (typeof value === 'number' && Number.isInteger(value)) {
+    return { key, value: { intValue: String(value) } };
+  }
+  if (typeof value === 'number') {
+    return { key, value: { doubleValue: value } };
+  }
+  return { key, value: { stringValue: value } };
+}
+
+function logOtlpExportWarning(message: string): void {
+  const now = Date.now();
+  if (now - lastOtlpErrorLogAtMs < 10_000) {
+    return;
+  }
+  lastOtlpErrorLogAtMs = now;
+  console.warn(message);
+}
+
+async function exportSpan(
+  ctx: RequestTraceContext,
+  attributes: Record<string, OtlpPrimitive>,
+  statusCode: number,
+): Promise<void> {
+  if (!OTLP_TRACES_ENABLED || !OTLP_TRACES_ENDPOINT) {
+    return;
+  }
+
+  const span: Record<string, unknown> = {
+    traceId: ctx.traceId,
+    spanId: ctx.spanId,
+    name: ctx.spanName.slice(0, 300),
+    kind: 2, // SPAN_KIND_SERVER
+    startTimeUnixNano: ctx.startTimeUnixNano,
+    endTimeUnixNano: nowUnixNano(),
+    attributes: Object.entries(attributes).map(([key, value]) => toOtlpAttribute(key, value)),
+    status: { code: statusCode >= 500 ? 2 : 1 },
+  };
+
+  if (ctx.parentSpanId) {
+    span['parentSpanId'] = ctx.parentSpanId;
+  }
+
+  const payload = {
+    resourceSpans: [
+      {
+        resource: {
+          attributes: Object.entries(OTLP_RESOURCE_ATTRIBUTES).map(([key, value]) =>
+            toOtlpAttribute(key, value),
+          ),
+        },
+        scopeSpans: [
+          {
+            scope: { name: OTLP_SCOPE_NAME },
+            spans: [span],
+          },
+        ],
+      },
+    ],
+  };
+
+  const abortController = new AbortController();
+  const timeout = setTimeout(() => abortController.abort(), OTLP_EXPORT_TIMEOUT_MS);
+  try {
+    const response = await fetch(OTLP_TRACES_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: abortController.signal,
+    });
+    if (!response.ok) {
+      const body = (await response.text()).slice(0, 600);
+      logOtlpExportWarning(`[OTLP] export failed (${response.status}): ${body}`);
+    }
+  } catch (error) {
+    logOtlpExportWarning(`[OTLP] export error: ${String(error)}`);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 const normalizeLogForDedup = (value: string) =>
   value
     .replace(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z/g, '<ts>')
@@ -87,6 +260,10 @@ const shouldDropServerLog = (level: string, serialized: string) => {
 
   return typeof lastSeen === 'number' && now - lastSeen < serverLogDedupWindowMs;
 };
+
+if (OTLP_TRACES_ENABLED) {
+  console.info(`[OTLP] frontend tracing enabled, exporting to ${OTLP_TRACES_ENDPOINT}`);
+}
 
 const appendServerLog = (level: string, args: unknown[]) => {
   const timestamp = new Date().toISOString();
@@ -214,6 +391,53 @@ app.post(clientLogPath, express.json({ limit: '16kb' }), (req, res) => {
   res.sendStatus(204);
 });
 
+app.use((req, res, next) => {
+  if (!OTLP_TRACES_ENABLED || !shouldTraceRequest(req)) {
+    next();
+    return;
+  }
+
+  const parsedParent = parseTraceparent(req.headers['traceparent']);
+  const traceContext: RequestTraceContext = {
+    traceId: parsedParent?.traceId || randomHex(16),
+    spanId: randomHex(8),
+    traceFlags: parsedParent?.traceFlags || '01',
+    parentSpanId: parsedParent?.spanId,
+    spanName: `${req.method} ${req.path || '/'}`,
+    requestPath: req.path || '/',
+    requestQuery: req.url.includes('?') ? req.url.split('?').slice(1).join('?') : '',
+    requestHost: req.get('host') || '',
+    startTimeUnixNano: nowUnixNano(),
+  };
+  (req as TracedRequest)[traceContextSymbol] = traceContext;
+
+  let exported = false;
+  const finishSpan = (statusCode: number) => {
+    if (exported) return;
+    exported = true;
+
+    const attributes: Record<string, OtlpPrimitive> = {
+      'http.request.method': req.method,
+      'http.response.status_code': statusCode,
+      'url.path': traceContext.requestPath,
+      'url.query': traceContext.requestQuery,
+      'server.address': traceContext.requestHost,
+      'http.route': req.route?.path ? String(req.route.path) : traceContext.requestPath,
+    };
+
+    void exportSpan(traceContext, attributes, statusCode);
+  };
+
+  res.on('finish', () => finishSpan(res.statusCode || 200));
+  res.on('close', () => {
+    if (!res.writableEnded) {
+      finishSpan(res.statusCode || 499);
+    }
+  });
+
+  next();
+});
+
 /**
  * Proxy API requests to the backend
  */
@@ -238,6 +462,16 @@ app.use((req, res, next) => {
     ...req.headers,
     host: target.host,
   };
+
+  const traceContext = (req as TracedRequest)[traceContextSymbol];
+  if (traceContext) {
+    headers['traceparent'] = buildTraceparent(traceContext);
+    if (!headers['tracestate'] && req.headers['tracestate']) {
+      headers['tracestate'] = Array.isArray(req.headers['tracestate'])
+        ? req.headers['tracestate'].join(',')
+        : req.headers['tracestate'];
+    }
+  }
 
   if (!headers['x-forwarded-host'] && req.headers.host) {
     headers['x-forwarded-host'] = req.headers.host;

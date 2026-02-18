@@ -91,7 +91,7 @@ from rest_framework.authentication import SessionAuthentication
 from rest_framework.decorators import action, api_view, authentication_classes, permission_classes, throttle_classes
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
-from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
+from rest_framework.permissions import AllowAny, BasePermission, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -327,6 +327,14 @@ class CountryCodeViewSet(viewsets.ReadOnlyModelViewSet):
     ordering = ["country"]
 
 
+class IsStaffOrAdminGroup(BasePermission):
+    def has_permission(self, request, view):
+        user = request.user
+        return bool(
+            user and user.is_authenticated and (user.is_staff or user.groups.filter(name="admin").exists())
+        )
+
+
 class HolidayViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = HolidaySerializer
@@ -338,7 +346,7 @@ class HolidayViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action in ["create", "update", "partial_update", "destroy"]:
-            return [IsAuthenticated(), IsAdminUser()]
+            return [IsAuthenticated(), IsStaffOrAdminGroup()]
         return super().get_permissions()
 
     def get_queryset(self):
@@ -447,9 +455,9 @@ class DocumentTypeViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     ordering = ["name"]
 
     def get_permissions(self):
-        """Only staff can create/update/delete document types."""
+        """Only staff or admin-group members can create/update/delete document types."""
         if self.action in ["create", "update", "partial_update", "destroy"]:
-            return [IsAuthenticated(), IsAdminUser()]
+            return [IsAuthenticated(), IsStaffOrAdminGroup()]
         return super().get_permissions()
 
     @extend_schema(summary="Check if a document type can be deleted", responses={200: OpenApiTypes.OBJECT})
@@ -2792,7 +2800,7 @@ def product_quick_create(request):
 
 
 class WorkflowNotificationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAuthenticated, IsStaffOrAdminGroup]
     serializer_class = WorkflowNotificationSerializer
     queryset = WorkflowNotification.objects.select_related("doc_application", "doc_workflow").all()
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]

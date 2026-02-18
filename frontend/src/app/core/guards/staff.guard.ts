@@ -7,7 +7,7 @@ export const staffGuard: CanActivateFn = () => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
-  if (authService.isAuthenticated() && authService.isStaff()) {
+  if (authService.isAuthenticated() && (authService.isStaff() || authService.isInAdminGroup())) {
     return true;
   }
 
@@ -16,6 +16,6 @@ export const staffGuard: CanActivateFn = () => {
   }
 
   return router.createUrlTree(['/dashboard'], {
-    queryParams: { error: 'Access denied. Staff privileges required.' },
+    queryParams: { error: 'Access denied. Staff or admin-group privileges required.' },
   });
 };

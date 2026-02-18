@@ -83,7 +83,7 @@
         </a>
 
 
-        <div class="pt-4 pb-1">
+        <div *ngIf="canAccessReports()" class="pt-4 pb-1">
           <button
             #sidebarItem
             (click)="toggleReports()"
@@ -157,7 +157,7 @@
             <a
               #sidebarItem
               routerLink="/admin/document-types"
-              *ngIf="isStaff()"
+              *ngIf="canAccessStaffAdminItems()"
               routerLinkActive="bg-accent text-foreground"
               class="block rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
             >
@@ -166,7 +166,7 @@
             <a
               #sidebarItem
               routerLink="/admin/holidays"
-              *ngIf="isStaff()"
+              *ngIf="canAccessStaffAdminItems()"
               routerLinkActive="bg-accent text-foreground"
               class="block rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
             >
@@ -175,7 +175,7 @@
             <a
               #sidebarItem
               routerLink="/admin/workflow-notifications"
-              *ngIf="isStaff()"
+              *ngIf="canAccessStaffAdminItems()"
               routerLinkActive="bg-accent text-foreground"
               class="block rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
             >

@@ -7,7 +7,7 @@ export const superuserGuard: CanActivateFn = () => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
-  if (authService.isAuthenticated() && authService.isSuperuser()) {
+  if (authService.isAuthenticated() && (authService.isSuperuser() || authService.isInAdminGroup())) {
     return true;
   }
 
@@ -17,6 +17,6 @@ export const superuserGuard: CanActivateFn = () => {
 
   // User is authenticated but not a superuser - show access denied
   return router.createUrlTree(['/dashboard'], {
-    queryParams: { error: 'Access denied. Admin privileges required.' },
+    queryParams: { error: 'Access denied. Superuser or admin-group privileges required.' },
   });
 };

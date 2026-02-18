@@ -72,9 +72,17 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
   isStaff = computed(() => this.authService.isStaff());
   isSuperuser = computed(() => this.authService.isSuperuser());
   isInAdminGroup = computed(() => this.authService.isInAdminGroup());
-  canAccessBackups = computed(() => this.isSuperuser());
+  isInControllerGroup = computed(() => {
+    const groups = this.authService.claims()?.groups ?? [];
+    return groups.some((group) => String(group).toLowerCase() === 'controller');
+  });
+  canAccessReports = computed(
+    () => this.isInControllerGroup() || this.isInAdminGroup() || this.isStaff() || this.isSuperuser(),
+  );
+  canAccessStaffAdminItems = computed(() => this.isStaff() || this.isInAdminGroup());
+  canAccessBackups = computed(() => this.isSuperuser() || this.isInAdminGroup());
   canAccessAdminSection = computed(
-    () => this.isStaff() || this.canAccessBackups() || this.isInAdminGroup(),
+    () => this.canAccessStaffAdminItems() || this.canAccessBackups() || this.isInAdminGroup(),
   );
   userFullName = computed(() => this.authService.claims()?.fullName || 'User');
   userEmail = computed(() => this.authService.claims()?.email || '');
@@ -158,6 +166,9 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
       }
 
       if (key === 'R') {
+        if (!this.canAccessReports()) {
+          return;
+        }
         event.preventDefault();
         event.stopPropagation();
         if (!this.sidebarOpen()) {
@@ -201,6 +212,9 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
       };
       const target = routeMap[key];
       if (target) {
+        if (target === '/reports' && !this.canAccessReports()) {
+          return;
+        }
         event.preventDefault();
         event.stopPropagation();
         this.router.navigate([target]);

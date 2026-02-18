@@ -1,27 +1,4 @@
-// 1. Discover Docker containers - increased refresh interval to 60s to save CPU
-discovery.docker "docker_loader" {
-  host             = "unix:///var/run/docker.sock"
-  refresh_interval = "15s"
-}
-
-// 2. Filter targets
-discovery.relabel "bs_services" {
-  targets = discovery.docker.docker_loader.targets
-
-  rule {
-    source_labels = ["__meta_docker_container_name"]
-    regex         = "/?(bs-core|bs-worker|bs-frontend)"
-    action        = "keep"
-  }
-
-  rule {
-    source_labels = ["__meta_docker_container_name"]
-    regex         = "/?(.*)"
-    target_label  = "service"
-  }
-}
-
-// 3. LOG PROCESSING PIPELINE (Filters noise here)
+// 1. LOG PROCESSING PIPELINE (Filters noise here)
 loki.process "filter_logs" {
   forward_to = [loki.write.grafana_cloud.receiver]
 
@@ -36,20 +13,12 @@ loki.process "filter_logs" {
   }
 }
 
-// 4. Scrape logs from Docker
-loki.source.docker "bs_log_scraper" {
-  host       = "unix:///var/run/docker.sock"
-  targets    = discovery.relabel.bs_services.output
-  // Forward to the filter instead of directly to cloud
-  forward_to = [loki.process.filter_logs.receiver]
-}
-
-// 5. Scrape persisted host log files from the shared DATA_PATH logs volume
+// 2. Scrape persisted host log files from the shared DATA_PATH logs volume
 local.file_match "host_log_files" {
   path_targets = [
-    { "__path__" = "/host_logs/django.log", "job" = "host_logs", "service" = "bs-core" },
-    { "__path__" = "/host_logs/task_worker.log", "job" = "host_logs", "service" = "bs-worker" },
-    { "__path__" = "/host_logs/frontend.log", "job" = "host_logs", "service" = "bs-frontend" },
+    { "__path__" = "/host_logs/django.log", "job" = "host_logs", "service" = "backend" },
+    { "__path__" = "/host_logs/task_worker.log", "job" = "host_logs", "service" = "task_worker" },
+    { "__path__" = "/host_logs/frontend.log", "job" = "host_logs", "service" = "frontend" },
   ]
 }
 
@@ -58,7 +27,7 @@ loki.source.file "host_logs" {
   forward_to = [loki.process.filter_logs.receiver]
 }
 
-// 6. Send logs to Grafana Cloud
+// 3. Send logs to Grafana Cloud
 loki.write "grafana_cloud" {
   endpoint {
     url = sys.env("GRAFANA_CLOUD_LOKI_URL")
@@ -73,28 +42,39 @@ loki.write "grafana_cloud" {
   }
 }
 
-// 7. Trace export auth for Grafana Cloud OTLP/Tempo
+// 4. Trace export auth for Grafana Cloud OTLP/Tempo
 otelcol.auth.basic "grafana_cloud_otlp" {
-  username = sys.env("GRAFANA_CLOUD_OTLP_USER")
-  password = sys.env("GRAFANA_CLOUD_OTLP_API_KEY")
+  username = coalesce(
+    sys.env("GRAFANA_CLOUD_OTLP_USER"),
+    sys.env("GRAFANA_CLOUD_INSTANCE_ID"),
+    sys.env("GRAFANA_CLOUD_LOKI_USER"),
+  )
+  password = coalesce(
+    sys.env("GRAFANA_CLOUD_OTLP_API_KEY"),
+    sys.env("GRAFANA_CLOUD_API_KEY"),
+    sys.env("GRAFANA_CLOUD_LOKI_API_KEY"),
+  )
 }
 
-// 8. Export traces to Grafana Cloud
+// 5. Export traces to Grafana Cloud
 otelcol.exporter.otlphttp "grafana_cloud_traces" {
   client {
-    endpoint = sys.env("GRAFANA_CLOUD_OTLP_ENDPOINT")
+    endpoint = coalesce(
+      sys.env("GRAFANA_CLOUD_OTLP_ENDPOINT"),
+      sys.env("GRAFANA_CLOUD_OTLP_URL"),
+    )
     auth     = otelcol.auth.basic.grafana_cloud_otlp.handler
   }
 }
 
-// 9. Batch traces before export
+// 6. Batch traces before export
 otelcol.processor.batch "trace_batch" {
   output {
     traces = [otelcol.exporter.otlphttp.grafana_cloud_traces.input]
   }
 }
 
-// 10. Receive OTLP traces from backend, worker, and frontend clients
+// 7. Receive OTLP traces from backend, worker, and frontend clients
 otelcol.receiver.otlp "app_traces" {
   grpc {
     endpoint = "0.0.0.0:4317"

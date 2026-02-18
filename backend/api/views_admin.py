@@ -52,14 +52,27 @@ class IsAdminGroupMember(permissions.BasePermission):
         return bool(user and user.is_authenticated and user.groups.filter(name="admin").exists())
 
 
+class IsSuperuserOrAdminGroup(permissions.BasePermission):
+    """Permission class that allows superusers or users in the 'admin' group."""
+
+    def has_permission(self, request, view):
+        user = request.user
+        return bool(
+            user and user.is_authenticated and (user.is_superuser or user.groups.filter(name="admin").exists())
+        )
+
+
 # ============================================================================
 # Plain Django views for SSE endpoints (bypass DRF content negotiation)
 # ============================================================================
 
 
-@sse_token_auth_required(superuser_only=True)
+@sse_token_auth_required()
 def backup_start_sse(request):
     """SSE endpoint for backup - bypasses DRF content negotiation."""
+    if not (request.user.is_superuser or request.user.groups.filter(name="admin").exists()):
+        return JsonResponse({"error": "Superuser or 'admin' group permission required"}, status=403)
+
     include_users = request.GET.get("include_users", "0") in ("1", "true", "True")
 
     def _sse_event(data: str):
@@ -84,9 +97,12 @@ def backup_start_sse(request):
     return response
 
 
-@sse_token_auth_required(superuser_only=True)
+@sse_token_auth_required()
 def backup_restore_sse(request):
     """SSE endpoint for restore - bypasses DRF content negotiation."""
+    if not (request.user.is_superuser or request.user.groups.filter(name="admin").exists()):
+        return JsonResponse({"error": "Superuser or 'admin' group permission required"}, status=403)
+
     filename = request.GET.get("file")
     if not filename:
         return JsonResponse({"error": "Missing file parameter"}, status=400)
@@ -124,7 +140,7 @@ def backup_restore_sse(request):
 
 class BackupsViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
     serializer_class = BackupsPlaceholderSerializer
-    permission_classes = [IsAuthenticated, IsSuperuser]
+    permission_classes = [IsAuthenticated, IsSuperuserOrAdminGroup]
 
     def _parse_backup_datetime(self, filename: str, path: str | None = None) -> datetime.datetime | None:
         """Parse datetime from backup filename like backup-20260131-045527.tar.zst
@@ -438,7 +454,7 @@ class BackupsViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
 
 class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
     serializer_class = ServerManagementPlaceholderSerializer
-    permission_classes = [IsAuthenticated, IsAdminGroupMember]
+    permission_classes = [IsAuthenticated, IsSuperuserOrAdminGroup]
 
     @extend_schema(summary="Clear application cache", responses={200: OpenApiTypes.OBJECT})
     @action(detail=False, methods=["post"], url_path="clear-cache")
