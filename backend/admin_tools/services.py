@@ -20,6 +20,7 @@ from django.utils.module_loading import import_string
 
 BACKUPS_DIR = getattr(settings, "BACKUPS_ROOT", os.path.join(settings.BASE_DIR, "backups"))
 USER_RELATED_MODELS = {"core.userprofile", "core.usersettings", "core.webpushsubscription"}
+_MISSING = object()
 
 
 def _is_external_object_storage(storage) -> bool:
@@ -211,6 +212,225 @@ def _strip_user_related_objects_from_fixture(fixture_path: str, model_labels: se
     return sanitized_path, removed
 
 
+def _customer_full_name_from_fields(fields: dict) -> str:
+    customer_type = fields.get("customer_type")
+    first_name = fields.get("first_name")
+    last_name = fields.get("last_name")
+    company_name = fields.get("company_name")
+
+    if customer_type == "company" and not (first_name and last_name):
+        return company_name or "Unknown Company"
+    if first_name and last_name:
+        return f"{first_name} {last_name}"
+    return company_name or "Unknown"
+
+
+def _resolve_field_like_value(model_label: str, fields: dict, key: str):
+    if key in fields:
+        return fields.get(key)
+    if model_label == "customers.customer" and key == "full_name":
+        return _customer_full_name_from_fields(fields)
+    return _MISSING
+
+
+def _normalize_legacy_natural_key_fixture(fixture_path: str) -> tuple[str | None, int, int, int]:
+    """
+    Normalize legacy fixtures generated with broken dict-based natural keys.
+
+    The legacy format can contain:
+    - dict-valued FK/M2M references
+    - missing primary keys for objects serialized with --natural-primary
+
+    Returns (normalized_path, assigned_pk_count, converted_ref_count, unresolved_ref_count).
+    """
+    try:
+        with open(fixture_path, "r", encoding="utf-8") as handle:
+            objects = json.load(handle)
+    except Exception:
+        return None, 0, 0, 0
+
+    if not isinstance(objects, list):
+        return None, 0, 0, 0
+
+    objects_by_model = {}
+    needs_normalization = False
+
+    for obj in objects:
+        if not isinstance(obj, dict):
+            continue
+        model_label = obj.get("model")
+        fields = obj.get("fields")
+        if not isinstance(model_label, str) or not isinstance(fields, dict):
+            continue
+        objects_by_model.setdefault(model_label, []).append(obj)
+
+        if "pk" not in obj:
+            needs_normalization = True
+        for value in fields.values():
+            if isinstance(value, dict):
+                needs_normalization = True
+                break
+            if isinstance(value, list) and any(isinstance(item, dict) for item in value):
+                needs_normalization = True
+                break
+
+    if not needs_normalization:
+        return None, 0, 0, 0
+
+    assigned_pk_count = 0
+    converted_ref_count = 0
+    unresolved_ref_count = 0
+
+    # Step 1: assign synthetic PKs when omitted by legacy natural-primary dumps.
+    for model_label, entries in objects_by_model.items():
+        try:
+            model = apps.get_model(model_label)
+        except Exception:
+            continue
+
+        pk_field = model._meta.pk
+        if pk_field.get_internal_type() not in {
+            "AutoField",
+            "BigAutoField",
+            "SmallAutoField",
+            "IntegerField",
+            "PositiveIntegerField",
+            "PositiveSmallIntegerField",
+        }:
+            continue
+
+        current_max = 0
+        for entry in entries:
+            if "pk" not in entry:
+                continue
+            try:
+                current_max = max(current_max, int(entry.get("pk")))
+            except Exception:
+                continue
+
+        for entry in entries:
+            if "pk" in entry:
+                continue
+            current_max += 1
+            entry["pk"] = current_max
+            assigned_pk_count += 1
+
+    # Cached candidate maps keyed by (model_label, sorted_keys_tuple)
+    lookup_cache: dict[tuple[str, tuple[str, ...]], dict[tuple[str, ...], list[object]]] = {}
+
+    def _value_signature(value) -> str:
+        return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+    def _build_lookup(model_label: str, keys_tuple: tuple[str, ...]) -> dict[tuple[str, ...], list[object]]:
+        cache_key = (model_label, keys_tuple)
+        if cache_key in lookup_cache:
+            return lookup_cache[cache_key]
+
+        lookup: dict[tuple[str, ...], list[object]] = {}
+        for candidate in objects_by_model.get(model_label, []):
+            fields = candidate.get("fields")
+            if not isinstance(fields, dict):
+                continue
+            if "pk" not in candidate:
+                continue
+
+            signature_values = []
+            missing_key = False
+            for key in keys_tuple:
+                value = _resolve_field_like_value(model_label, fields, key)
+                if value is _MISSING:
+                    missing_key = True
+                    break
+                signature_values.append(_value_signature(value))
+
+            if missing_key:
+                continue
+
+            signature = tuple(signature_values)
+            lookup.setdefault(signature, []).append(candidate.get("pk"))
+
+        lookup_cache[cache_key] = lookup
+        return lookup
+
+    def _resolve_pk(model_label: str, natural_dict: dict):
+        keys_tuple = tuple(sorted(str(key) for key in natural_dict.keys()))
+        lookup = _build_lookup(model_label, keys_tuple)
+        signature = tuple(_value_signature(natural_dict.get(key)) for key in keys_tuple)
+        matches = lookup.get(signature, [])
+        if len(matches) == 1:
+            return matches[0]
+        return None
+
+    # Step 2: convert dict FK/M2M references into plain PK values.
+    for obj in objects:
+        if not isinstance(obj, dict):
+            continue
+        model_label = obj.get("model")
+        fields = obj.get("fields")
+        if not isinstance(model_label, str) or not isinstance(fields, dict):
+            continue
+
+        try:
+            model = apps.get_model(model_label)
+        except Exception:
+            continue
+
+        for field_name, field_value in list(fields.items()):
+            try:
+                field = model._meta.get_field(field_name)
+            except Exception:
+                continue
+
+            if field.remote_field and hasattr(field.remote_field, "model"):
+                target_model = field.remote_field.model
+                target_label = target_model._meta.label_lower
+
+                # FK / OneToOne
+                if field.one_to_one or field.many_to_one:
+                    if isinstance(field_value, dict):
+                        resolved_pk = _resolve_pk(target_label, field_value)
+                        if resolved_pk is not None:
+                            fields[field_name] = resolved_pk
+                            converted_ref_count += 1
+                        else:
+                            unresolved_ref_count += 1
+
+                # M2M
+                elif field.many_to_many and isinstance(field_value, list):
+                    updated_values = []
+                    changed = False
+                    for item in field_value:
+                        if isinstance(item, dict):
+                            resolved_pk = _resolve_pk(target_label, item)
+                            if resolved_pk is not None:
+                                updated_values.append(resolved_pk)
+                                converted_ref_count += 1
+                                changed = True
+                            else:
+                                updated_values.append(item)
+                                unresolved_ref_count += 1
+                        else:
+                            updated_values.append(item)
+                    if changed:
+                        fields[field_name] = updated_values
+
+    if assigned_pk_count == 0 and converted_ref_count == 0:
+        return None, 0, 0, unresolved_ref_count
+
+    fd, normalized_path = tempfile.mkstemp(prefix="restore-normalized-", suffix=".json")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as out:
+            json.dump(objects, out)
+    except Exception:
+        try:
+            os.unlink(normalized_path)
+        except Exception:
+            pass
+        return None, 0, 0, unresolved_ref_count
+
+    return normalized_path, assigned_pk_count, converted_ref_count, unresolved_ref_count
+
+
 def _format_bytes(size_bytes: int) -> str:
     units = ["B", "KB", "MB", "GB", "TB"]
     size = float(max(size_bytes, 0))
@@ -264,7 +484,9 @@ def backup_all(include_users=False):
 
     # Build dumpdata args
     tmp_path = os.path.join(BACKUPS_DIR, f"tmp-{ts}.json")
-    dump_args = ["dumpdata", "--natural-foreign", "--natural-primary"]
+    # Use PK-based dumpdata for compatibility:
+    # some legacy model natural_key() implementations are not loaddata-safe.
+    dump_args = ["dumpdata"]
     excluded_prefixes = ("auth", "admin", "sessions", "contenttypes", "debug_toolbar")
     if not include_users:
         for prefix in excluded_prefixes:
@@ -415,6 +637,7 @@ def restore_from_file(path, include_users=False):
     tmp_path = None
     extracted_tmp = None
     extracted_media_tmpdir = None
+    normalized_fixture_path = None
     sanitized_fixture_path = None
     manifest = {}
     signals_disconnected = False
@@ -449,6 +672,21 @@ def restore_from_file(path, include_users=False):
             fixture_path = tmp_path
         else:
             fixture_path = path
+
+        normalized_fixture_path, assigned_pk_count, converted_ref_count, unresolved_ref_count = (
+            _normalize_legacy_natural_key_fixture(fixture_path)
+        )
+        if normalized_fixture_path:
+            fixture_path = normalized_fixture_path
+            yield (
+                "Normalized legacy fixture references: "
+                f"assigned_pks={assigned_pk_count}, converted_refs={converted_ref_count}"
+            )
+            if unresolved_ref_count:
+                yield (
+                    "Warning: some legacy natural-key references could not be normalized "
+                    f"(count={unresolved_ref_count})."
+                )
 
         # --- Automatic detection of user/system tables in backup ---
         user_system_prefixes = ("auth.", "admin.", "sessions.", "contenttypes.", "debug_toolbar.")
@@ -691,6 +929,11 @@ def restore_from_file(path, include_users=False):
         if sanitized_fixture_path and os.path.exists(sanitized_fixture_path):
             try:
                 os.unlink(sanitized_fixture_path)
+            except Exception:
+                pass
+        if normalized_fixture_path and os.path.exists(normalized_fixture_path):
+            try:
+                os.unlink(normalized_fixture_path)
             except Exception:
                 pass
         if extracted_tmp and os.path.exists(extracted_tmp):
