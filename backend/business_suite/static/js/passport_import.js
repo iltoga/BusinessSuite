@@ -514,8 +514,12 @@
 
         handleResponse(config, data);
         // Check both camelCase and snake_case for image preview
+        var previewUrl = data.previewUrl || data.preview_url;
         var previewImage = data.b64ResizedImage || data.b64_resized_image;
-        if (previewImage && previewEl) {
+        if (previewEl && previewUrl) {
+          previewEl.src = previewUrl;
+          previewEl.classList.remove("d-none");
+        } else if (previewImage && previewEl) {
           previewEl.src = "data:image/jpeg;base64," + previewImage;
           previewEl.classList.remove("d-none");
         }

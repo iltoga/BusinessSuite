@@ -158,6 +158,24 @@ export class InvoiceFormComponent implements OnInit {
       return;
     }
 
+    if (typeof st?.returnUrl === 'string' && st.returnUrl.startsWith('/')) {
+      this.router.navigateByUrl(st.returnUrl, {
+        state: {
+          searchQuery: st.searchQuery ?? null,
+        },
+      });
+      return;
+    }
+
+    if (st?.from === 'customer-detail' && st?.customerId) {
+      this.router.navigate(['/customers', st.customerId], {
+        state: {
+          searchQuery: st.searchQuery ?? null,
+        },
+      });
+      return;
+    }
+
     this.router.navigate(['/invoices'], { state: focusState });
   }
 
@@ -317,12 +335,21 @@ export class InvoiceFormComponent implements OnInit {
     } as InvoiceCreateUpdate;
 
     const fromState = history.state?.from;
+    const returnUrl = history.state?.returnUrl;
+    const customerId = history.state?.customerId;
+    const searchQuery = history.state?.searchQuery;
+    const detailState: Record<string, unknown> = {
+      from: fromState,
+      returnUrl,
+      customerId,
+      searchQuery,
+    };
 
     if (this.isEditMode() && this.invoice()) {
       this.invoicesApi.invoicesUpdate(this.invoice()!.id, payload).subscribe({
         next: (invoice: InvoiceCreateUpdate) => {
           this.toast.success('Invoice updated');
-          this.router.navigate(['/invoices', invoice.id], { state: { from: fromState } });
+          this.router.navigate(['/invoices', invoice.id], { state: detailState });
         },
         error: (error) => {
           applyServerErrorsToForm(this.form, error);
@@ -340,7 +367,7 @@ export class InvoiceFormComponent implements OnInit {
     this.invoicesApi.invoicesCreate(payload).subscribe({
       next: (invoice: InvoiceCreateUpdate) => {
         this.toast.success('Invoice created');
-        this.router.navigate(['/invoices', invoice.id], { state: { from: fromState } });
+        this.router.navigate(['/invoices', invoice.id], { state: detailState });
       },
       error: (error) => {
         applyServerErrorsToForm(this.form, error);

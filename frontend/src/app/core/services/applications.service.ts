@@ -133,6 +133,7 @@ export interface OcrStatusResponse {
   };
   aiWarning?: string;
   b64ResizedImage?: string;
+  previewUrl?: string;
 }
 
 export type UploadState =

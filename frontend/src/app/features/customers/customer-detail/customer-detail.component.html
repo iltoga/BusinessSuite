@@ -263,16 +263,30 @@
       </div>
     </z-card>
 
-    <!-- Uninvoiced Applications Section -->
+    <!-- Applications Section -->
     <z-card class="p-6">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="text-lg font-semibold border-b pb-2">Uninvoiced Applications</h3>
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <h3 class="text-lg font-semibold border-b pb-2">Applications</h3>
         <button type="button" z-button zType="outline" zSize="sm" (click)="onCreateApplication()">
           New application
         </button>
       </div>
 
-      @if (uninvoicedApplications().length > 0) {
+      <div class="flex flex-wrap gap-2 mb-4">
+        @for (option of applicationFilterOptions; track option.value) {
+          <button
+            type="button"
+            z-button
+            zSize="sm"
+            [zType]="applicationsFilter() === option.value ? 'default' : 'outline'"
+            (click)="onApplicationsFilterChange(option.value)"
+          >
+            {{ option.label }}
+          </button>
+        }
+      </div>
+
+      @if (pagedApplications().length > 0) {
         <div class="overflow-x-auto">
           <table class="w-full border-collapse">
             <thead>
@@ -289,13 +303,24 @@
                   Status
                 </th>
                 <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
-                  Invoice Actions
+                  Invoice Status
+                </th>
+                <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Payment</th>
+                <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
+                  Actions
                 </th>
               </tr>
             </thead>
             <tbody>
-              @for (app of uninvoicedApplications(); track app.id) {
-                <tr class="border-b hover:bg-muted/50">
+              @for (app of pagedApplications(); track app.id) {
+                <tr
+                  class="border-b hover:bg-muted/50 cursor-pointer"
+                  role="button"
+                  tabindex="0"
+                  (click)="openApplicationDetails(app.id)"
+                  (keydown.enter)="openApplicationDetails(app.id)"
+                  (keydown.space)="$event.preventDefault(); openApplicationDetails(app.id)"
+                >
                   <td class="py-3 px-4 text-sm">
                     <span class="text-primary font-medium">{{ app.id }}</span>
                   </td>
@@ -312,12 +337,42 @@
                     }}</z-badge>
                   </td>
                   <td class="py-3 px-4 text-sm">
+                    @if (app.hasInvoice && app.invoiceId) {
+                      <div class="flex items-center gap-2">
+                        <z-badge zType="secondary">
+                          {{ app.invoiceStatusDisplay || (app.invoiceStatus | titlecase) }}
+                        </z-badge>
+                        <span class="text-xs text-muted-foreground">#{{ app.invoiceId }}</span>
+                      </div>
+                    } @else {
+                      <span class="text-muted-foreground">Uninvoiced</span>
+                    }
+                  </td>
+                  <td class="py-3 px-4 text-sm">
+                    <z-badge [zType]="getPaymentStatusBadgeType(app.paymentStatus)">
+                      {{ app.paymentStatusDisplay }}
+                    </z-badge>
+                  </td>
+                  <td class="py-3 px-4 text-sm">
                     <div class="flex flex-wrap items-center gap-2">
-                      <a z-button zType="outline" zSize="sm" [routerLink]="['/applications', app.id]">
+                      <button
+                        type="button"
+                        z-button
+                        zType="outline"
+                        zSize="sm"
+                        (click)="$event.stopPropagation(); openApplicationDetails(app.id)"
+                      >
                         View App
-                      </a>
+                      </button>
                       @if (app.hasInvoice && app.invoiceId) {
-                        <a z-button zType="outline" zSize="sm" [routerLink]="['/invoices', app.invoiceId]">
+                        <a
+                          z-button
+                          zType="outline"
+                          zSize="sm"
+                          [routerLink]="['/invoices', app.invoiceId]"
+                          [state]="invoiceNavigationState()"
+                          (click)="$event.stopPropagation()"
+                        >
                           View Invoice
                         </a>
                       } @else if (canCreateInvoice(app)) {
@@ -326,7 +381,7 @@
                           z-button
                           zType="success"
                           zSize="sm"
-                          (click)="onCreateInvoice(app.id)"
+                          (click)="$event.stopPropagation(); onCreateInvoice(app.id)"
                         >
                           Create Invoice
                         </button>
@@ -340,8 +395,40 @@
             </tbody>
           </table>
         </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-3 mt-4">
+          <div class="text-sm text-muted-foreground">
+            Showing {{ applicationsStartIndex() }}-{{ applicationsEndIndex() }} of
+            {{ totalApplications() }}
+          </div>
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              z-button
+              zType="outline"
+              zSize="sm"
+              [disabled]="!hasPreviousApplicationsPage()"
+              (click)="goToPreviousApplicationsPage()"
+            >
+              Previous
+            </button>
+            <span class="text-sm text-muted-foreground">
+              Page {{ applicationsPage() }} / {{ totalApplicationsPages() }}
+            </span>
+            <button
+              type="button"
+              z-button
+              zType="outline"
+              zSize="sm"
+              [disabled]="!hasNextApplicationsPage()"
+              (click)="goToNextApplicationsPage()"
+            >
+              Next
+            </button>
+          </div>
+        </div>
       } @else {
-        <div class="text-muted-foreground text-sm">No uninvoiced applications found.</div>
+        <div class="text-muted-foreground text-sm">No applications found for this filter.</div>
       }
     </z-card>
   </div>

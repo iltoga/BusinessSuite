@@ -66,6 +66,15 @@ export interface UninvoicedApplication {
   readyForInvoice: boolean;
 }
 
+export type CustomerApplicationPaymentStatus = 'uninvoiced' | 'pending_payment' | 'paid';
+
+export interface CustomerApplicationHistory extends UninvoicedApplication {
+  paymentStatus: CustomerApplicationPaymentStatus;
+  paymentStatusDisplay: string;
+  invoiceStatus: string | null;
+  invoiceStatusDisplay: string;
+}
+
 export interface CountryCode {
   country: string;
   countryIdn: string;
@@ -193,6 +202,16 @@ export class CustomersService {
       );
   }
 
+  getApplicationsHistory(customerId: number): Observable<CustomerApplicationHistory[]> {
+    const headers = this.buildHeaders();
+    return this.http.get<any>(`/api/customers/${customerId}/applications-history/`, { headers }).pipe(
+      map((response) => {
+        const rows = Array.isArray(response) ? response : (response?.results ?? []);
+        return rows.map((item: any) => this.mapCustomerApplicationHistory(item));
+      }),
+    );
+  }
+
   getCountries(): Observable<CountryCode[]> {
     const headers = this.buildHeaders();
     return this.http.get<CountryCode[]>('/api/country-codes/', { headers });
@@ -294,6 +313,32 @@ export class CustomersService {
         item?.isDocumentCollectionCompleted ?? item?.is_document_collection_completed ?? false,
       ),
       readyForInvoice: Boolean(item?.readyForInvoice ?? item?.ready_for_invoice ?? false),
+    };
+  }
+
+  private mapCustomerApplicationHistory(item: any): CustomerApplicationHistory {
+    const base = this.mapUninvoicedApplication(item);
+    const paymentStatus =
+      (item?.paymentStatus ?? item?.payment_status ?? 'uninvoiced') as CustomerApplicationPaymentStatus;
+
+    return {
+      ...base,
+      paymentStatus,
+      paymentStatusDisplay:
+        item?.paymentStatusDisplay ??
+        item?.payment_status_display ??
+        (paymentStatus === 'paid'
+          ? 'Paid'
+          : paymentStatus === 'pending_payment'
+            ? 'Pending Payment'
+            : 'Uninvoiced'),
+      invoiceStatus: item?.invoiceStatus ?? item?.invoice_status ?? null,
+      invoiceStatusDisplay:
+        item?.invoiceStatusDisplay ??
+        item?.invoice_status_display ??
+        item?.invoiceStatus ??
+        item?.invoice_status ??
+        (paymentStatus === 'uninvoiced' ? 'Uninvoiced' : '—'),
     };
   }
 }

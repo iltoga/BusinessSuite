@@ -503,7 +503,10 @@ export class CustomerFormComponent implements OnInit {
 
     const previewImage =
       status.b64ResizedImage ?? (status as { b64_resized_image?: string }).b64_resized_image;
-    if (previewImage) {
+    const previewUrl = status.previewUrl ?? (status as { preview_url?: string }).preview_url;
+    if (previewUrl) {
+      this.passportPreviewUrl.set(previewUrl);
+    } else if (previewImage) {
       this.passportPreviewUrl.set(`data:image/jpeg;base64,${previewImage}`);
     }
 

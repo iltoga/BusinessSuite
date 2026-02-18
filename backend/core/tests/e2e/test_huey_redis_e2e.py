@@ -6,9 +6,9 @@ import pytest
 from redis import Redis
 
 try:
-    from huey.contrib.redis_huey import RedisHuey
-except ModuleNotFoundError:  # pragma: no cover - compatibility with newer Huey import path.
     from huey import RedisHuey
+except ImportError:
+    from huey.contrib.redis_huey import RedisHuey  # type: ignore[import]
 
 
 def _running_inside_container() -> bool:
@@ -43,9 +43,7 @@ def test_huey_task_roundtrip_uses_redis_backend_e2e():
     try:
         redis_client.ping()
     except Exception as exc:
-        pytest.skip(
-            f"Redis is not reachable for Huey E2E on {redis_host}:{redis_port} (db {redis_db}): {exc}"
-        )
+        pytest.skip(f"Redis is not reachable for Huey E2E on {redis_host}:{redis_port} (db {redis_db}): {exc}")
 
     huey = RedisHuey(
         name=f"huey-e2e-{uuid.uuid4().hex}",

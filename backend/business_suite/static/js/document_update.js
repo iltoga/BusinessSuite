@@ -92,7 +92,11 @@
     setFormFieldValue("id_metadata_display", JSON.stringify(mrz));
     toggleSpinnerDisplay(false, "ocr_check_btn_id", "ocr_check_spinner");
 
-    if (data.b64_resized_image) {
+    var previewUrl = data.preview_url || data.previewUrl;
+    if (previewUrl && resizedImage) {
+      resizedImage.src = previewUrl;
+      resizedImage.style.display = "block";
+    } else if (data.b64_resized_image) {
       if (resizedImage) {
         resizedImage.src = "data:image/jpeg;base64," + data.b64_resized_image;
         resizedImage.style.display = "block";
