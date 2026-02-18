@@ -146,4 +146,6 @@ class Logger:
             file_handler.addFilter(NoHttpRequestFilter())
             logger.addHandler(file_handler)
 
+        logger.propagate = False
+
         return logger

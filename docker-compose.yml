@@ -106,7 +106,7 @@ services:
       MEDIA_URL: /media/
       BACKUPS_ROOT: /backups
       OTEL_SERVICE_NAME: bs-core
-      OTEL_TRACES_EXPORTER: otlp
+      OTEL_TRACES_EXPORTER: ${OTEL_TRACES_EXPORTER:-none}
       OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
       OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://bs-alloy:4318/v1/traces
       OTEL_PROPAGATORS: tracecontext,baggage
@@ -160,7 +160,7 @@ services:
       MEDIA_URL: /media/
       BACKUPS_ROOT: /backups
       OTEL_SERVICE_NAME: bs-worker
-      OTEL_TRACES_EXPORTER: otlp
+      OTEL_TRACES_EXPORTER: ${OTEL_TRACES_EXPORTER:-none}
       OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
       OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://bs-alloy:4318/v1/traces
       OTEL_PROPAGATORS: tracecontext,baggage
@@ -212,7 +212,7 @@ services:
       CSP_MODE: ${CSP_MODE}
       FE_LOG_FILE_PATH: /logs/frontend.log
       OTEL_SERVICE_NAME: bs-frontend
-      OTEL_TRACES_EXPORTER: otlp
+      OTEL_TRACES_EXPORTER: ${OTEL_TRACES_EXPORTER:-none}
       OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
       OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://bs-alloy:4318/v1/traces
       OTEL_PROPAGATORS: tracecontext,baggage
@@ -233,7 +233,6 @@ services:
       - ./.env
     volumes:
       - ./grafana/alloy/config-prod.alloy:/etc/alloy/config.alloy:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
       - type: bind
         source: ${DATA_PATH}/logs
         target: /host_logs

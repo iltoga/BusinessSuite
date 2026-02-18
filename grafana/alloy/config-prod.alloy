@@ -43,26 +43,16 @@ loki.write "grafana_cloud" {
 }
 
 // 4. Trace export auth for Grafana Cloud OTLP/Tempo
+// Required env vars: GRAFANA_CLOUD_OTLP_USER, GRAFANA_CLOUD_OTLP_API_KEY, GRAFANA_CLOUD_OTLP_ENDPOINT
 otelcol.auth.basic "grafana_cloud_otlp" {
-  username = coalesce(
-    sys.env("GRAFANA_CLOUD_OTLP_USER"),
-    sys.env("GRAFANA_CLOUD_INSTANCE_ID"),
-    sys.env("GRAFANA_CLOUD_LOKI_USER"),
-  )
-  password = coalesce(
-    sys.env("GRAFANA_CLOUD_OTLP_API_KEY"),
-    sys.env("GRAFANA_CLOUD_API_KEY"),
-    sys.env("GRAFANA_CLOUD_LOKI_API_KEY"),
-  )
+  username = sys.env("GRAFANA_CLOUD_OTLP_USER")
+  password = sys.env("GRAFANA_CLOUD_OTLP_API_KEY")
 }
 
 // 5. Export traces to Grafana Cloud
 otelcol.exporter.otlphttp "grafana_cloud_traces" {
   client {
-    endpoint = coalesce(
-      sys.env("GRAFANA_CLOUD_OTLP_ENDPOINT"),
-      sys.env("GRAFANA_CLOUD_OTLP_URL"),
-    )
+    endpoint = sys.env("GRAFANA_CLOUD_OTLP_ENDPOINT")
     auth     = otelcol.auth.basic.grafana_cloud_otlp.handler
   }
 }
