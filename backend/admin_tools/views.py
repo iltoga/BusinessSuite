@@ -7,6 +7,7 @@ from django.contrib.auth.decorators import user_passes_test
 from django.core.cache import caches
 from django.http import FileResponse, HttpResponse, JsonResponse, StreamingHttpResponse
 from django.shortcuts import redirect, render
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from . import services
@@ -277,9 +278,7 @@ def upload_backup(request):
     os.makedirs(backups_dir, exist_ok=True)
 
     # Generate unique filename with timestamp if needed
-    import datetime
-
-    timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    timestamp = timezone.localtime().strftime("%Y%m%d-%H%M%S")
     base_name = os.path.splitext(uploaded_file.name)[0]
     ext = uploaded_file.name[len(base_name) :]
     filename = f"uploaded-{timestamp}-{base_name}{ext}"
