@@ -694,6 +694,7 @@ def get_dropbox_token():
 
 # Storage configuration
 USE_CLOUD_STORAGE = _parse_bool(os.getenv("USE_CLOUD_STORAGE", "False"))
+OCR_PREVIEW_STORAGE_PREFIX = os.getenv("OCR_PREVIEW_STORAGE_PREFIX", "ocr_previews")
 _settings_module = os.getenv("DJANGO_SETTINGS_MODULE", "")
 _default_bucket_name = "crmrevisbali" if _settings_module.endswith(".prod") else "crmrevisbalidev"
 

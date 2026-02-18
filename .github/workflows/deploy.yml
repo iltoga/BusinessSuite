@@ -135,5 +135,27 @@ jobs:
               echo "ℹ️  INITIALIZE_DB != true — skipping one-off seeding tasks"
             fi
 
+            # Optionally run cloud-storage migration tasks if explicitly requested via .env (MIGRATE_STORAGE_ASSETS=true)
+            if [ "${MIGRATE_STORAGE_ASSETS:-false}" = "true" ]; then
+              echo "☁️  MIGRATE_STORAGE_ASSETS=true — running migrate_storage_assets inside bs-core container via exec with retries"
+
+              ATTEMPTS=0
+              MAX_ATTEMPTS=6
+              SLEEP_SECONDS=10
+              until docker compose exec -T bs-core /bin/bash -lc 'PYTHON_BIN="python"; if [ -x "/opt/venv/bin/python" ]; then PYTHON_BIN="/opt/venv/bin/python"; fi; $PYTHON_BIN manage.py migrate_storage_assets'; do
+                ATTEMPTS=$((ATTEMPTS + 1))
+                if [ "$ATTEMPTS" -ge "$MAX_ATTEMPTS" ]; then
+                  echo "❌ Failed to run migrate_storage_assets after $ATTEMPTS attempts. Aborting."
+                  exit 1
+                fi
+                echo "⚠️ bs-core not ready for exec (attempt $ATTEMPTS/$MAX_ATTEMPTS), retrying in ${SLEEP_SECONDS}s..."
+                sleep "$SLEEP_SECONDS"
+              done
+
+              echo "✅ Storage migration command completed."
+            else
+              echo "ℹ️  MIGRATE_STORAGE_ASSETS != true — skipping storage migration tasks"
+            fi
+
             echo "🧹  Cleaning up unused data …"
             docker system prune -f

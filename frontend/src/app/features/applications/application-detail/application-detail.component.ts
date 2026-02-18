@@ -940,6 +940,16 @@ export class ApplicationDetailComponent implements OnInit {
       this.router.navigate(['/applications'], { state: focusState });
       return;
     }
+    if (typeof st.returnUrl === 'string' && st.returnUrl.startsWith('/')) {
+      this.router.navigateByUrl(st.returnUrl, { state: { searchQuery: st.searchQuery ?? null } });
+      return;
+    }
+    if (st.from === 'customer-detail' && st.customerId) {
+      this.router.navigate(['/customers', st.customerId], {
+        state: { searchQuery: st.searchQuery ?? null },
+      });
+      return;
+    }
     if (st.from === 'customers') {
       this.router.navigate(['/customers'], { state: focusState });
       return;
@@ -1241,7 +1251,10 @@ export class ApplicationDetailComponent implements OnInit {
     this.ocrPolling.set(false);
     this.ocrStatus.set('Completed');
     this.ocrReviewData.set(status);
-    if (status.b64ResizedImage) {
+    const previewUrl = status.previewUrl ?? (status as { preview_url?: string }).preview_url;
+    if (previewUrl) {
+      this.ocrPreviewImage.set(previewUrl);
+    } else if (status.b64ResizedImage) {
       this.ocrPreviewImage.set(`data:image/jpeg;base64,${status.b64ResizedImage}`);
     }
     this.ocrReviewOpen.set(true);

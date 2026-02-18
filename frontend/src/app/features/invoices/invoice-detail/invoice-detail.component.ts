@@ -105,6 +105,24 @@ export class InvoiceDetailComponent implements OnInit {
       return;
     }
 
+    if (typeof st?.returnUrl === 'string' && st.returnUrl.startsWith('/')) {
+      this.router.navigateByUrl(st.returnUrl, {
+        state: {
+          searchQuery: st.searchQuery ?? this.originSearchQuery(),
+        },
+      });
+      return;
+    }
+
+    if (st?.from === 'customer-detail' && st?.customerId) {
+      this.router.navigate(['/customers', st.customerId], {
+        state: {
+          searchQuery: st.searchQuery ?? this.originSearchQuery(),
+        },
+      });
+      return;
+    }
+
     this.router.navigate(['/invoices'], { state: focusState });
   }
 
@@ -127,6 +145,8 @@ export class InvoiceDetailComponent implements OnInit {
       this.router.navigate(['/invoices', invoice.id, 'edit'], {
         state: {
           from: history.state?.from,
+          customerId: history.state?.customerId,
+          returnUrl: history.state?.returnUrl,
           focusId: invoice.id,
           searchQuery: this.originSearchQuery(),
         },

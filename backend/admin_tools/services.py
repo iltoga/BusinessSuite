@@ -211,6 +211,39 @@ def _strip_user_related_objects_from_fixture(fixture_path: str, model_labels: se
     return sanitized_path, removed
 
 
+def _format_bytes(size_bytes: int) -> str:
+    units = ["B", "KB", "MB", "GB", "TB"]
+    size = float(max(size_bytes, 0))
+    for unit in units:
+        if size < 1024.0 or unit == units[-1]:
+            return f"{size:.2f} {unit}"
+        size /= 1024.0
+    return f"{size_bytes} B"
+
+
+def _top_postgres_table_sizes(limit: int = 10) -> list[tuple[str, int]]:
+    from django.db import connection
+
+    if connection.vendor != "postgresql":
+        return []
+
+    sql = """
+        SELECT
+            n.nspname || '.' || c.relname AS table_name,
+            pg_total_relation_size(c.oid) AS total_bytes
+        FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE c.relkind = 'r'
+          AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+        ORDER BY total_bytes DESC
+        LIMIT %s;
+    """
+    with connection.cursor() as cursor:
+        cursor.execute(sql, [limit])
+        rows = cursor.fetchall()
+    return [(str(name), int(total_bytes or 0)) for name, total_bytes in rows]
+
+
 def ensure_backups_dir():
     os.makedirs(BACKUPS_DIR, exist_ok=True)
 
@@ -240,6 +273,16 @@ def backup_all(include_users=False):
             dump_args.append(f"--exclude={model_label}")
     with open(tmp_path, "w+") as tmpf:
         call_command(*dump_args, stdout=tmpf)
+    try:
+        json_size = os.path.getsize(tmp_path)
+        yield f"DB dump JSON size (uncompressed): {_format_bytes(json_size)}"
+    except Exception:
+        pass
+    try:
+        for idx, (table_name, total_bytes) in enumerate(_top_postgres_table_sizes(limit=10), start=1):
+            yield f"Top table {idx}: {table_name} ({_format_bytes(total_bytes)})"
+    except Exception as e:
+        yield f"Warning: could not compute top PostgreSQL table sizes: {e}"
 
     # Build a temporary directory to assemble our tar
     temp_dir = tempfile.mkdtemp(prefix=f"backup-{ts}-")
@@ -340,6 +383,12 @@ def backup_all(include_users=False):
 
     try:
         os.unlink(tmp_path)
+    except Exception:
+        pass
+
+    try:
+        archive_size = os.path.getsize(out_path)
+        yield f"Backup archive size: {_format_bytes(archive_size)}"
     except Exception:
         pass
 

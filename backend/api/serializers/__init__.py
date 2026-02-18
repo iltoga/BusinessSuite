@@ -3,6 +3,7 @@ from .country_code_serializer import CountryCodeSerializer
 from .customer_serializer import CustomerSerializer
 from .dashboard_serializer import DashboardStatsSerializer
 from .doc_application_serializer import (
+    CustomerApplicationHistorySerializer,
     CustomerUninvoicedApplicationSerializer,
     DocApplicationCreateUpdateSerializer,
     DocApplicationDetailSerializer,

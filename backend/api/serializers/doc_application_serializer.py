@@ -5,6 +5,7 @@ from api.serializers.doc_workflow_serializer import DocWorkflowSerializer, TaskS
 from api.serializers.document_serializer import DocumentSerializer
 from api.serializers.product_serializer import ProductSerializer
 from customer_applications.models import DocApplication
+from invoices.models.invoice import InvoiceApplication
 from rest_framework import serializers
 
 
@@ -155,6 +156,70 @@ class CustomerUninvoicedApplicationSerializer(DocApplicationInvoiceSerializer):
         if instance.status in (DocApplication.STATUS_COMPLETED, DocApplication.STATUS_REJECTED):
             return True
         return instance.is_document_collection_completed
+
+
+class CustomerApplicationHistorySerializer(CustomerUninvoicedApplicationSerializer):
+    payment_status = serializers.SerializerMethodField()
+    payment_status_display = serializers.SerializerMethodField()
+    invoice_status = serializers.SerializerMethodField()
+    invoice_status_display = serializers.SerializerMethodField()
+
+    class Meta(CustomerUninvoicedApplicationSerializer.Meta):
+        fields = CustomerUninvoicedApplicationSerializer.Meta.fields + [
+            "payment_status",
+            "payment_status_display",
+            "invoice_status",
+            "invoice_status_display",
+        ]
+        read_only_fields = fields
+
+    def _latest_invoice_application(self, instance):
+        cache_attr = "_latest_invoice_application_cache"
+        if hasattr(instance, cache_attr):
+            return getattr(instance, cache_attr)
+
+        # Use prefetched invoice_applications when available; fallback to a targeted query.
+        invoice_applications = list(instance.invoice_applications.all())
+        latest = (
+            max(invoice_applications, key=lambda invoice_application: invoice_application.id)
+            if invoice_applications
+            else None
+        )
+        setattr(instance, cache_attr, latest)
+        return latest
+
+    def get_has_invoice(self, instance) -> bool:
+        return self._latest_invoice_application(instance) is not None
+
+    def get_invoice_id(self, instance) -> int | None:
+        latest = self._latest_invoice_application(instance)
+        return latest.invoice_id if latest else None
+
+    def get_payment_status(self, instance) -> str:
+        latest = self._latest_invoice_application(instance)
+        if not latest:
+            return "uninvoiced"
+        if latest.status == InvoiceApplication.PAID:
+            return "paid"
+        return "pending_payment"
+
+    def get_payment_status_display(self, instance) -> str:
+        status = self.get_payment_status(instance)
+        if status == "paid":
+            return "Paid"
+        if status == "pending_payment":
+            return "Pending Payment"
+        return "Uninvoiced"
+
+    def get_invoice_status(self, instance) -> str | None:
+        latest = self._latest_invoice_application(instance)
+        return latest.invoice.status if latest else None
+
+    def get_invoice_status_display(self, instance) -> str:
+        latest = self._latest_invoice_application(instance)
+        if not latest:
+            return "Uninvoiced"
+        return latest.invoice.get_status_display()
 
 
 class DocApplicationDetailSerializer(serializers.ModelSerializer):

@@ -14,6 +14,7 @@ from api.serializers import (
     AsyncJobSerializer,
     AvatarUploadSerializer,
     ChangePasswordSerializer,
+    CustomerApplicationHistorySerializer,
     CountryCodeSerializer,
     CustomerUninvoicedApplicationSerializer,
     CustomerApplicationQuickCreateSerializer,
@@ -52,6 +53,7 @@ from api.utils.sse_auth import sse_token_auth_required
 from business_suite.authentication import JwtOrMockAuthentication
 from core.models import AsyncJob, CountryCode, DocumentOCRJob, Holiday, OCRJob, UserProfile, UserSettings, WebPushSubscription
 from core.services.document_merger import DocumentMerger, DocumentMergerError
+from core.services.ocr_preview_storage import get_ocr_preview_url
 from core.services.push_notifications import FcmConfigurationError, PushNotificationService
 from core.services.quick_create import create_quick_customer, create_quick_customer_application, create_quick_product
 from core.tasks.cron_jobs import run_clear_cache_now, run_full_backup_now
@@ -560,6 +562,24 @@ class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             .order_by("-id")
         )
         serializer = CustomerUninvoicedApplicationSerializer(applications, many=True)
+        return Response(serializer.data)
+
+    @extend_schema(responses=CustomerApplicationHistorySerializer(many=True))
+    @action(detail=True, methods=["get"], url_path="applications-history")
+    def applications_history(self, request, pk=None):
+        customer = self.get_object()
+        applications = (
+            customer.doc_applications.select_related("customer", "product")
+            .prefetch_related(
+                Prefetch(
+                    "invoice_applications",
+                    queryset=InvoiceApplication.objects.select_related("invoice"),
+                )
+            )
+            .order_by("-id")
+            .distinct()
+        )
+        serializer = CustomerApplicationHistorySerializer(applications, many=True)
         return Response(serializer.data)
 
     @action(detail=False, methods=["post"], url_path="bulk-delete")
@@ -2307,7 +2327,7 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
 
     Returns:
         - mrz_data: Extracted passport data (enhanced with AI data if use_ai=true)
-        - b64_resized_image: Base64 encoded preview (if img_preview=true)
+        - preview_url: Signed preview URL when available (if img_preview=true)
     """
 
     permission_classes = [IsAuthenticated]
@@ -2399,7 +2419,17 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
 
         if job.status == OCRJob.STATUS_COMPLETED:
             if job.result:
-                response_data.update(job.result)
+                result_data = dict(job.result)
+                preview_storage_path = result_data.get("preview_storage_path")
+                if preview_storage_path:
+                    try:
+                        preview_url = get_ocr_preview_url(preview_storage_path)
+                    except Exception:
+                        preview_url = None
+                    if preview_url:
+                        result_data["preview_url"] = preview_url
+                        result_data["previewUrl"] = preview_url
+                response_data.update(result_data)
             if job.save_session and not job.session_saved and job.result:
                 request.session["file_path"] = job.file_path
                 request.session["file_url"] = job.file_url
