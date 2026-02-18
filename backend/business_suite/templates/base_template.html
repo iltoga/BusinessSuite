@@ -189,16 +189,18 @@
                             <li><a class="dropdown-item" href="{% url 'report-product-revenue' %}">Product Revenue</a></li>
                         </ul>
                     </li>
-                        {% if user.is_superuser %}
+                        {% if user.is_superuser or ADMIN_TOOLS_ALLOW_AUTHENTICATED_BACKUP_ACCESS %}
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="adminToolsMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 Admin Tools
                             </a>
                             <ul class="dropdown-menu" aria-labelledby="adminToolsMenu">
                                 <li><a class="dropdown-item" href="{% url 'admin_tools:backup_page' %}">Backups</a></li>
+                                {% if user.is_superuser %}
                                 <li><a class="dropdown-item" href="{% url 'admin_tools:restore_page' %}">Restore</a></li>
                                 <li><a class="dropdown-item" href="{% url 'admin_tools:manage_server' %}">Manage Server</a></li>
                                 <li><a class="dropdown-item" href="{% url 'admin_tools:document_types' %}">Document Types</a></li>
+                                {% endif %}
                             </ul>
                         </li>
                         {% endif %}
@@ -395,7 +397,7 @@
                         </li>
                     </ul>
                 </li>
-                {% if user.is_superuser %}
+                {% if user.is_superuser or ADMIN_TOOLS_ALLOW_AUTHENTICATED_BACKUP_ACCESS %}
                 <li>
                     <a href="#adminToolsSubmenu"
                     data-bs-toggle="collapse"
@@ -406,6 +408,7 @@
                         <li>
                             <a href="{% url 'admin_tools:backup_page' %}">Backups</a>
                         </li>
+                        {% if user.is_superuser %}
                         <li>
                             <a href="{% url 'admin_tools:restore_page' %}">Restore</a>
                         </li>
@@ -415,6 +418,7 @@
                         <li>
                             <a href="{% url 'admin_tools:document_types' %}">Document Types</a>
                         </li>
+                        {% endif %}
                     </ul>
                 </li>
                 {% endif %}
