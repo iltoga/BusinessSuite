@@ -21,6 +21,7 @@ export interface AuthClaims {
   roles?: string[];
   groups?: string[];
   isSuperuser?: boolean;
+  isStaff?: boolean;
   iat?: number;
   exp?: number;
 }
@@ -33,6 +34,8 @@ interface MockAuthConfigResponse {
   groups?: string[];
   isSuperuser?: boolean;
   is_superuser?: boolean;
+  isStaff?: boolean;
+  is_staff?: boolean;
 }
 
 export interface LoginCredentials {
@@ -79,6 +82,7 @@ export class AuthService {
   });
   claims = this._claims.asReadonly();
   isSuperuser = computed(() => this._claims()?.isSuperuser ?? false);
+  isStaff = computed(() => this._claims()?.isStaff ?? false);
   isInAdminGroup = computed(() => {
     const groups = this._claims()?.groups ?? [];
     return groups.some((group) => String(group).toLowerCase() === 'admin');
@@ -345,6 +349,7 @@ export class AuthService {
       roles: payload['roles'] ?? payload['groups'] ?? [],
       groups: payload['groups'] ?? payload['roles'] ?? [],
       isSuperuser: payload['is_superuser'] ?? payload['isSuperuser'] ?? false,
+      isStaff: payload['is_staff'] ?? payload['isStaff'] ?? false,
       iat: payload['iat'],
       exp: payload['exp'],
     } satisfies AuthClaims;
@@ -358,6 +363,7 @@ export class AuthService {
       roles: ['admin'],
       groups: ['admin'],
       isSuperuser: true,
+      isStaff: true,
     };
   }
 
@@ -368,6 +374,7 @@ export class AuthService {
       roles: response.roles ?? response.groups ?? [],
       groups: response.groups ?? response.roles ?? [],
       isSuperuser: response.isSuperuser ?? response.is_superuser ?? false,
+      isStaff: response.isStaff ?? response.is_staff ?? false,
     } satisfies AuthClaims;
   }
 

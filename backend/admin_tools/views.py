@@ -17,19 +17,12 @@ def superuser_required(view_func):
     return user_passes_test(lambda u: u.is_superuser)(view_func)
 
 
-def backup_access_required(view_func):
-    return user_passes_test(
-        lambda u: u.is_authenticated
-        and (u.is_superuser or getattr(settings, "ADMIN_TOOLS_ALLOW_AUTHENTICATED_BACKUP_ACCESS", False))
-    )(view_func)
-
-
-@backup_access_required
+@superuser_required
 def dashboard(request):
     return redirect("admin_tools:backup_page")
 
 
-@backup_access_required
+@superuser_required
 def download_backup(request, filename):
     backups_dir = services.BACKUPS_DIR
     path = os.path.join(backups_dir, filename)
@@ -38,7 +31,7 @@ def download_backup(request, filename):
     return FileResponse(open(path, "rb"), as_attachment=True, filename=filename)
 
 
-@backup_access_required
+@superuser_required
 def backup_page(request):
     backups = []
     backups_dir = services.BACKUPS_DIR
@@ -84,7 +77,7 @@ def _sse_event(data: str):
     return f"data: {json.dumps({'message': data})}\n\n"
 
 
-@backup_access_required
+@superuser_required
 def backup_stream(request):
     """Start backup and stream progress via SSE."""
 
@@ -110,7 +103,7 @@ def backup_stream(request):
     return response
 
 
-@backup_access_required
+@superuser_required
 @require_POST
 def delete_backups(request):
     """Delete all files in the backups directory and return a JSON summary."""
@@ -136,7 +129,7 @@ def delete_backups(request):
         return JsonResponse({"ok": False, "error": str(e)}, status=500)
 
 
-@backup_access_required
+@superuser_required
 def restore_page(request):
     backups_dir = services.BACKUPS_DIR
     backups = []
@@ -178,7 +171,7 @@ def restore_page(request):
     return render(request, "admin_tools/restore.html", {"backups": backups})
 
 
-@backup_access_required
+@superuser_required
 def backups_json(request):
     """Return a JSON list of available backups (name/size/type/included_files)."""
     backups = []
@@ -221,7 +214,7 @@ def backups_json(request):
     return JsonResponse({"backups": backups})
 
 
-@backup_access_required
+@superuser_required
 def restore_stream(request):
     """Start restore from supplied `file` GET param and stream progress via SSE."""
     fn = request.GET.get("file")
@@ -250,7 +243,7 @@ def restore_stream(request):
     return response
 
 
-@backup_access_required
+@superuser_required
 @require_POST
 def upload_backup(request):
     """Handle backup file upload"""

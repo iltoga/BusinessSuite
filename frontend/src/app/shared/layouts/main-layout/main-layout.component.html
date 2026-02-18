@@ -140,7 +140,7 @@
         </div>
 
         <!-- Admin Section -->
-        <div *ngIf="isAdminUser() || canAccessBackups()" class="pt-4 pb-1">
+        <div *ngIf="canAccessAdminSection()" class="pt-4 pb-1">
           <button
             #sidebarItem
             (click)="toggleAdmin()"
@@ -157,7 +157,7 @@
             <a
               #sidebarItem
               routerLink="/admin/document-types"
-              *ngIf="isSuperuser()"
+              *ngIf="isStaff()"
               routerLinkActive="bg-accent text-foreground"
               class="block rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
             >
@@ -166,7 +166,7 @@
             <a
               #sidebarItem
               routerLink="/admin/holidays"
-              *ngIf="isSuperuser()"
+              *ngIf="isStaff()"
               routerLinkActive="bg-accent text-foreground"
               class="block rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
             >
@@ -175,7 +175,7 @@
             <a
               #sidebarItem
               routerLink="/admin/workflow-notifications"
-              *ngIf="isSuperuser()"
+              *ngIf="isStaff()"
               routerLinkActive="bg-accent text-foreground"
               class="block rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
             >

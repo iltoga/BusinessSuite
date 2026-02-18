@@ -1,5 +1,5 @@
-import { authGuard } from '@/core/guards/auth.guard';
 import { adminGroupGuard } from '@/core/guards/admin-group.guard';
+import { staffGuard } from '@/core/guards/staff.guard';
 import { superuserGuard } from '@/core/guards/superuser.guard';
 import { Routes } from '@angular/router';
 
@@ -7,14 +7,14 @@ export const adminRoutes: Routes = [
   {
     path: 'document-types',
     title: 'Document Types',
-    canActivate: [superuserGuard],
+    canActivate: [staffGuard],
     loadComponent: () =>
       import('./document-types/document-types.component').then((c) => c.DocumentTypesComponent),
   },
   {
     path: 'workflow-notifications',
     title: 'Notifications Center',
-    canActivate: [superuserGuard],
+    canActivate: [staffGuard],
     loadComponent: () =>
       import('./workflow-notifications/workflow-notifications.component').then(
         (c) => c.WorkflowNotificationsComponent,
@@ -24,13 +24,13 @@ export const adminRoutes: Routes = [
   {
     path: 'holidays',
     title: 'National Holidays',
-    canActivate: [superuserGuard],
+    canActivate: [staffGuard],
     loadComponent: () => import('./holidays/holidays.component').then((c) => c.HolidaysComponent),
   },
   {
     path: 'backups',
     title: 'Backups',
-    canActivate: [authGuard],
+    canActivate: [superuserGuard],
     loadComponent: () => import('./backups/backups.component').then((c) => c.BackupsComponent),
   },
   {

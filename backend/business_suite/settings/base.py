@@ -139,11 +139,6 @@ DATE_FORMAT_JS = os.getenv("DATE_FORMAT_JS", "dd-MM-yyyy")
 # When True, legacy Django views (non-admin, non-api) are disabled and return 403.
 # Can be toggled via env var DISABLE_DJANGO_VIEWS or managed via a waffle flag named "disable_django_views"
 DISABLE_DJANGO_VIEWS = _parse_bool(os.getenv("DISABLE_DJANGO_VIEWS", "False"))
-# Temporary toggle: allow any authenticated user to access Admin Tools backup pages.
-# Set to False to revert to superuser-only behavior.
-ADMIN_TOOLS_ALLOW_AUTHENTICATED_BACKUP_ACCESS = _parse_bool(
-    os.getenv("ADMIN_TOOLS_ALLOW_AUTHENTICATED_BACKUP_ACCESS", "False")
-)
 
 # If Django views are disabled, it's safer to redirect logins to the admin
 # interface (which is exempt). This prevents users from being redirected to

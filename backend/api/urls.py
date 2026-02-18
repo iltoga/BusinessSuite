@@ -66,7 +66,8 @@ from .reports_views import (
 router.register(r"calendar", GoogleCalendarViewSet, basename="calendar")
 router.register(r"tasks", GoogleTasksViewSet, basename="tasks")
 
-# Admin tools (superuser only) - used by Angular admin components
+# Admin tools endpoints used by Angular admin components.
+# Access is enforced in each ViewSet (staff/superuser/admin-group as needed).
 router.register(r"backups", BackupsViewSet, basename="backups")
 router.register(r"server-management", ServerManagementViewSet, basename="server-management")
 router.register(r"workflow-notifications", views.WorkflowNotificationViewSet, basename="workflow-notifications")

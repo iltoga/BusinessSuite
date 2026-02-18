@@ -69,10 +69,13 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
     return this.themeService.isDarkMode() ? inverted : normal;
   });
 
-  isAdminUser = computed(() => this.authService.isSuperuser() || this.authService.isInAdminGroup());
-  canAccessBackups = computed(() => this.authService.isAuthenticated());
+  isStaff = computed(() => this.authService.isStaff());
   isSuperuser = computed(() => this.authService.isSuperuser());
   isInAdminGroup = computed(() => this.authService.isInAdminGroup());
+  canAccessBackups = computed(() => this.isSuperuser());
+  canAccessAdminSection = computed(
+    () => this.isStaff() || this.canAccessBackups() || this.isInAdminGroup(),
+  );
   userFullName = computed(() => this.authService.claims()?.fullName || 'User');
   userEmail = computed(() => this.authService.claims()?.email || '');
   userAvatar = computed(() => this.authService.claims()?.avatar || undefined);

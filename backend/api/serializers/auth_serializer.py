@@ -11,6 +11,7 @@ class CustomTokenObtainSerializer(TokenObtainPairSerializer):
         token["roles"] = groups
         token["groups"] = groups
         token["is_superuser"] = user.is_superuser
+        token["is_staff"] = user.is_staff
         if hasattr(user, "profile") and user.profile.avatar:
             token["avatar"] = user.profile.avatar.url
         else:

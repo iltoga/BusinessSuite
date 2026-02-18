@@ -91,7 +91,7 @@ from rest_framework.authentication import SessionAuthentication
 from rest_framework.decorators import action, api_view, authentication_classes, permission_classes, throttle_classes
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
-from rest_framework.permissions import AllowAny, BasePermission, IsAdminUser, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -327,11 +327,6 @@ class CountryCodeViewSet(viewsets.ReadOnlyModelViewSet):
     ordering = ["country"]
 
 
-class IsSuperuser(BasePermission):
-    def has_permission(self, request, view):
-        return bool(request.user and request.user.is_authenticated and request.user.is_superuser)
-
-
 class HolidayViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = HolidaySerializer
@@ -343,7 +338,7 @@ class HolidayViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action in ["create", "update", "partial_update", "destroy"]:
-            return [IsAuthenticated(), IsSuperuser()]
+            return [IsAuthenticated(), IsAdminUser()]
         return super().get_permissions()
 
     def get_queryset(self):
@@ -452,16 +447,9 @@ class DocumentTypeViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     ordering = ["name"]
 
     def get_permissions(self):
-        """Only superusers can create/update/delete document types."""
+        """Only staff can create/update/delete document types."""
         if self.action in ["create", "update", "partial_update", "destroy"]:
-            from django.contrib.auth.decorators import user_passes_test
-            from rest_framework.permissions import BasePermission
-
-            class IsSuperuser(BasePermission):
-                def has_permission(self, request, view):
-                    return request.user and request.user.is_superuser
-
-            return [IsAuthenticated(), IsSuperuser()]
+            return [IsAuthenticated(), IsAdminUser()]
         return super().get_permissions()
 
     @extend_schema(summary="Check if a document type can be deleted", responses={200: OpenApiTypes.OBJECT})
