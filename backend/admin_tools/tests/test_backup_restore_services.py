@@ -9,6 +9,7 @@ from django.test import SimpleTestCase, TestCase
 
 from admin_tools import services
 from customers.models import Customer
+from invoices.models.invoice import Invoice
 from products.models.product import Product
 from products.models.task import Task
 
@@ -110,6 +111,88 @@ class RestoreCompatibilityTests(TestCase):
 
         task = Task.objects.select_related("product").get(pk=1)
         self.assertEqual(task.product.code, "WORK_PERMIT")
+
+    def test_restore_handles_ambiguous_legacy_customer_natural_key(self):
+        duplicate_customer_fields = {
+            "created_at": "2026-02-18T00:00:00Z",
+            "updated_at": "2026-02-18T00:00:00Z",
+            "title": None,
+            "customer_type": "person",
+            "first_name": "Daegel",
+            "last_name": "Reighard",
+            "company_name": None,
+            "email": None,
+            "telephone": None,
+            "whatsapp": None,
+            "telegram": None,
+            "facebook": None,
+            "instagram": None,
+            "twitter": None,
+            "npwp": None,
+            "nationality": None,
+            "birthdate": None,
+            "birth_place": None,
+            "passport_number": None,
+            "passport_issue_date": None,
+            "passport_expiration_date": None,
+            "passport_file": "",
+            "passport_metadata": None,
+            "gender": None,
+            "address_bali": None,
+            "address_abroad": None,
+            "notify_documents_expiration": False,
+            "notify_by": None,
+            "notification_sent": False,
+            "active": True,
+        }
+
+        legacy_objects = [
+            {
+                "model": "customers.customer",
+                "fields": duplicate_customer_fields,
+            },
+            {
+                "model": "customers.customer",
+                "fields": {**duplicate_customer_fields, "company_name": "PT Plumeria Paradise Estates"},
+            },
+            {
+                "model": "invoices.invoice",
+                "pk": 48,
+                "fields": {
+                    "customer": {
+                        "full_name": "Daegel Reighard",
+                        "email": None,
+                        "birthdate": None,
+                        "active": True,
+                    },
+                    "invoice_no": 20260048,
+                    "invoice_date": "2026-02-18",
+                    "due_date": "2026-02-25",
+                    "sent": False,
+                    "status": "created",
+                    "notes": "",
+                    "total_amount": "0.00",
+                    "imported": False,
+                    "imported_from_file": None,
+                    "raw_extracted_data": None,
+                    "mobile_phone": None,
+                    "bank_details": None,
+                    "created_at": "2026-02-18T00:00:00Z",
+                    "updated_at": "2026-02-18T00:00:00Z",
+                    "created_by": None,
+                    "updated_by": None,
+                },
+            },
+        ]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            archive_path = _build_archive(tmpdir, legacy_objects)
+            messages = list(services.restore_from_file(archive_path, include_users=False))
+
+        self.assertTrue(any("ambiguous_refs=" in message for message in messages))
+        self.assertEqual(Customer.objects.count(), 2)
+        invoice = Invoice.objects.get(pk=48)
+        self.assertIsNotNone(invoice.customer_id)
 
     def test_restore_external_storage_copies_files_and_rewires_filefields(self):
         fixture_objects = [

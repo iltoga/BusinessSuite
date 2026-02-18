@@ -233,7 +233,7 @@ def _resolve_field_like_value(model_label: str, fields: dict, key: str):
     return _MISSING
 
 
-def _normalize_legacy_natural_key_fixture(fixture_path: str) -> tuple[str | None, int, int, int]:
+def _normalize_legacy_natural_key_fixture(fixture_path: str) -> tuple[str | None, int, int, int, int]:
     """
     Normalize legacy fixtures generated with broken dict-based natural keys.
 
@@ -241,16 +241,22 @@ def _normalize_legacy_natural_key_fixture(fixture_path: str) -> tuple[str | None
     - dict-valued FK/M2M references
     - missing primary keys for objects serialized with --natural-primary
 
-    Returns (normalized_path, assigned_pk_count, converted_ref_count, unresolved_ref_count).
+    Returns (
+        normalized_path,
+        assigned_pk_count,
+        converted_ref_count,
+        unresolved_ref_count,
+        ambiguous_ref_count,
+    ).
     """
     try:
         with open(fixture_path, "r", encoding="utf-8") as handle:
             objects = json.load(handle)
     except Exception:
-        return None, 0, 0, 0
+        return None, 0, 0, 0, 0
 
     if not isinstance(objects, list):
-        return None, 0, 0, 0
+        return None, 0, 0, 0, 0
 
     objects_by_model = {}
     needs_normalization = False
@@ -275,11 +281,12 @@ def _normalize_legacy_natural_key_fixture(fixture_path: str) -> tuple[str | None
                 break
 
     if not needs_normalization:
-        return None, 0, 0, 0
+        return None, 0, 0, 0, 0
 
     assigned_pk_count = 0
     converted_ref_count = 0
     unresolved_ref_count = 0
+    ambiguous_ref_count = 0
 
     # Step 1: assign synthetic PKs when omitted by legacy natural-primary dumps.
     for model_label, entries in objects_by_model.items():
@@ -353,11 +360,17 @@ def _normalize_legacy_natural_key_fixture(fixture_path: str) -> tuple[str | None
         return lookup
 
     def _resolve_pk(model_label: str, natural_dict: dict):
+        nonlocal ambiguous_ref_count
         keys_tuple = tuple(sorted(str(key) for key in natural_dict.keys()))
         lookup = _build_lookup(model_label, keys_tuple)
         signature = tuple(_value_signature(natural_dict.get(key)) for key in keys_tuple)
         matches = lookup.get(signature, [])
         if len(matches) == 1:
+            return matches[0]
+        if len(matches) > 1:
+            # Legacy fixtures can contain non-unique natural-key dicts.
+            # Pick first deterministic fixture-order match so restore can proceed.
+            ambiguous_ref_count += 1
             return matches[0]
         return None
 
@@ -415,7 +428,7 @@ def _normalize_legacy_natural_key_fixture(fixture_path: str) -> tuple[str | None
                         fields[field_name] = updated_values
 
     if assigned_pk_count == 0 and converted_ref_count == 0:
-        return None, 0, 0, unresolved_ref_count
+        return None, 0, 0, unresolved_ref_count, ambiguous_ref_count
 
     fd, normalized_path = tempfile.mkstemp(prefix="restore-normalized-", suffix=".json")
     try:
@@ -426,9 +439,9 @@ def _normalize_legacy_natural_key_fixture(fixture_path: str) -> tuple[str | None
             os.unlink(normalized_path)
         except Exception:
             pass
-        return None, 0, 0, unresolved_ref_count
+        return None, 0, 0, unresolved_ref_count, ambiguous_ref_count
 
-    return normalized_path, assigned_pk_count, converted_ref_count, unresolved_ref_count
+    return normalized_path, assigned_pk_count, converted_ref_count, unresolved_ref_count, ambiguous_ref_count
 
 
 def _format_bytes(size_bytes: int) -> str:
@@ -673,15 +686,21 @@ def restore_from_file(path, include_users=False):
         else:
             fixture_path = path
 
-        normalized_fixture_path, assigned_pk_count, converted_ref_count, unresolved_ref_count = (
+        normalized_fixture_path, assigned_pk_count, converted_ref_count, unresolved_ref_count, ambiguous_ref_count = (
             _normalize_legacy_natural_key_fixture(fixture_path)
         )
         if normalized_fixture_path:
             fixture_path = normalized_fixture_path
             yield (
                 "Normalized legacy fixture references: "
-                f"assigned_pks={assigned_pk_count}, converted_refs={converted_ref_count}"
+                f"assigned_pks={assigned_pk_count}, converted_refs={converted_ref_count}, "
+                f"ambiguous_refs={ambiguous_ref_count}"
             )
+            if ambiguous_ref_count:
+                yield (
+                    "Warning: some legacy natural-key references were ambiguous; "
+                    f"using deterministic first match (count={ambiguous_ref_count})."
+                )
             if unresolved_ref_count:
                 yield (
                     "Warning: some legacy natural-key references could not be normalized "
@@ -728,77 +747,87 @@ def restore_from_file(path, include_users=False):
 
         excluded_prefixes = ("auth", "admin", "sessions", "contenttypes", "debug_toolbar")
 
-        # Use a savepoint for atomic rollback capability
-        sid = transaction.savepoint()
-        try:
-            if includes_users:
-                call_command("flush", "--noinput")
-                try:
-                    from django.contrib.auth import get_user_model
-                    from django.contrib.auth.models import Permission
-                    from django.contrib.contenttypes.models import ContentType
+        # Ensure flush + loaddata are atomic so failed restores cannot leave DB half-empty.
+        with transaction.atomic():
+            sid = transaction.savepoint()
+            try:
+                if includes_users:
+                    call_command("flush", "--noinput")
+                    try:
+                        from django.contrib.auth import get_user_model
+                        from django.contrib.auth.models import Permission
+                        from django.contrib.contenttypes.models import ContentType
 
-                    yield "Clearing content types, permissions, users, and profiles..."
-                    # Delete in order to respect FK constraints
-                    UserProfile.objects.all().delete()
-                    Permission.objects.all().delete()
-                    get_user_model().objects.all().delete()
-                    ContentType.objects.all().delete()
-                except Exception as e:
-                    yield f"Warning: Could not clear content types/permissions/users: {e}"
+                        yield "Clearing content types, permissions, users, and profiles..."
+                        # Delete in order to respect FK constraints. Guard each delete by
+                        # table existence to avoid breaking the transaction on partially
+                        # migrated/test databases.
+                        existing_tables = set(connection.introspection.table_names())
+                        user_model = get_user_model()
 
-                # Disconnect per-user auto-create/save signals to prevent duplicates during loaddata.
-                yield "Disconnecting UserProfile/UserSettings signals for clean restore..."
-                post_save.disconnect(create_user_profile, sender=User)
-                post_save.disconnect(save_user_profile, sender=User)
-                post_save.disconnect(create_user_settings, sender=User)
-                post_save.disconnect(save_user_settings, sender=User)
-                signals_disconnected = True
-            else:
-                # Only flush non-system tables
-                tables_to_flush = []
-                for model in apps.get_models():
-                    label = model._meta.label_lower
-                    if not label.startswith(excluded_prefixes) and label not in USER_RELATED_MODELS:
-                        tables_to_flush.append(model._meta.db_table)
-                if tables_to_flush:
-                    with connection.cursor() as cursor:
-                        for table in tables_to_flush:
-                            if engine == "sqlite":
-                                # SQLite does not support TRUNCATE; use DELETE
-                                cursor.execute(f'DELETE FROM "{table}";')
-                                # Reset sqlite sequence if present
-                                try:
-                                    cursor.execute(
-                                        "DELETE FROM sqlite_sequence WHERE name = ?;",
-                                        (table,),
-                                    )
-                                except Exception:
-                                    pass
-                            else:
-                                cursor.execute(f'TRUNCATE TABLE "{table}" RESTART IDENTITY CASCADE;')
+                        if UserProfile._meta.db_table in existing_tables:
+                            UserProfile.objects.all().delete()
+                        if Permission._meta.db_table in existing_tables:
+                            Permission.objects.all().delete()
+                        if user_model._meta.db_table in existing_tables:
+                            user_model.objects.all().delete()
+                        if ContentType._meta.db_table in existing_tables:
+                            ContentType.objects.all().delete()
+                    except Exception as e:
+                        yield f"Warning: Could not clear content types/permissions/users: {e}"
 
-            yield "Loading data via loaddata (this may take a few minutes)..."
-            call_command("loaddata", fixture_path)
-            yield "Data loading complete."
+                    # Disconnect per-user auto-create/save signals to prevent duplicates during loaddata.
+                    yield "Disconnecting UserProfile/UserSettings signals for clean restore..."
+                    post_save.disconnect(create_user_profile, sender=User)
+                    post_save.disconnect(save_user_profile, sender=User)
+                    post_save.disconnect(create_user_settings, sender=User)
+                    post_save.disconnect(save_user_settings, sender=User)
+                    signals_disconnected = True
+                else:
+                    # Only flush non-system tables
+                    tables_to_flush = []
+                    for model in apps.get_models():
+                        label = model._meta.label_lower
+                        if not label.startswith(excluded_prefixes) and label not in USER_RELATED_MODELS:
+                            tables_to_flush.append(model._meta.db_table)
+                    if tables_to_flush:
+                        with connection.cursor() as cursor:
+                            for table in tables_to_flush:
+                                if engine == "sqlite":
+                                    # SQLite does not support TRUNCATE; use DELETE
+                                    cursor.execute(f'DELETE FROM "{table}";')
+                                    # Reset sqlite sequence if present
+                                    try:
+                                        cursor.execute(
+                                            "DELETE FROM sqlite_sequence WHERE name = ?;",
+                                            (table,),
+                                        )
+                                    except Exception:
+                                        pass
+                                else:
+                                    cursor.execute(f'TRUNCATE TABLE "{table}" RESTART IDENTITY CASCADE;')
 
-            # Commit the savepoint
-            transaction.savepoint_commit(sid)
+                yield "Loading data via loaddata (this may take a few minutes)..."
+                call_command("loaddata", fixture_path)
+                yield "Data loading complete."
 
-        except Exception as e:
-            # Rollback to savepoint on any error
-            yield f"Error during restore, rolling back: {e}"
-            transaction.savepoint_rollback(sid)
-            raise
+                # Commit the savepoint
+                transaction.savepoint_commit(sid)
 
-        finally:
-            # Reconnect signals regardless of success/failure
-            if signals_disconnected:
-                yield "Reconnecting UserProfile/UserSettings signals..."
-                post_save.connect(create_user_profile, sender=User)
-                post_save.connect(save_user_profile, sender=User)
-                post_save.connect(create_user_settings, sender=User)
-                post_save.connect(save_user_settings, sender=User)
+            except Exception as e:
+                # Rollback to savepoint on any error
+                yield f"Error during restore, rolling back: {e}"
+                transaction.savepoint_rollback(sid)
+                raise
+
+            finally:
+                # Reconnect signals regardless of success/failure
+                if signals_disconnected:
+                    yield "Reconnecting UserProfile/UserSettings signals..."
+                    post_save.connect(create_user_profile, sender=User)
+                    post_save.connect(save_user_profile, sender=User)
+                    post_save.connect(create_user_settings, sender=User)
+                    post_save.connect(save_user_settings, sender=User)
 
         saved_path_map = {}
 
