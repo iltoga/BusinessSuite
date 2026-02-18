@@ -70,6 +70,7 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
   });
 
   isAdminUser = computed(() => this.authService.isSuperuser() || this.authService.isInAdminGroup());
+  canAccessBackups = computed(() => this.authService.isAuthenticated());
   isSuperuser = computed(() => this.authService.isSuperuser());
   isInAdminGroup = computed(() => this.authService.isInAdminGroup());
   userFullName = computed(() => this.authService.claims()?.fullName || 'User');

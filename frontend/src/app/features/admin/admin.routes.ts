@@ -1,3 +1,4 @@
+import { authGuard } from '@/core/guards/auth.guard';
 import { adminGroupGuard } from '@/core/guards/admin-group.guard';
 import { superuserGuard } from '@/core/guards/superuser.guard';
 import { Routes } from '@angular/router';
@@ -29,7 +30,7 @@ export const adminRoutes: Routes = [
   {
     path: 'backups',
     title: 'Backups',
-    canActivate: [adminGroupGuard],
+    canActivate: [authGuard],
     loadComponent: () => import('./backups/backups.component').then((c) => c.BackupsComponent),
   },
   {

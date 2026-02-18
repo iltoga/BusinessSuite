@@ -140,7 +140,7 @@
         </div>
 
         <!-- Admin Section -->
-        <div *ngIf="isAdminUser()" class="pt-4 pb-1">
+        <div *ngIf="isAdminUser() || canAccessBackups()" class="pt-4 pb-1">
           <button
             #sidebarItem
             (click)="toggleAdmin()"
@@ -184,7 +184,7 @@
             <a
               #sidebarItem
               routerLink="/admin/backups"
-              *ngIf="isInAdminGroup()"
+              *ngIf="canAccessBackups()"
               routerLinkActive="bg-accent text-foreground"
               class="block rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
             >
