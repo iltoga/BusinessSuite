@@ -1,6 +1,5 @@
-from django.apps import AppConfig
-
 from core.services.logger_service import Logger
+from django.apps import AppConfig
 
 logger = Logger.get_logger(__name__)
 
@@ -21,6 +20,7 @@ class CoreConfig(AppConfig):
         # Register our signal forwarder (if present)
         import core.signals  # noqa: F401
         import core.signals_calendar  # noqa: F401
+        import core.telemetry.huey_tracing  # noqa: F401
         from core.tasks import calendar_sync, cron_jobs, document_ocr, ocr  # noqa: F401
 
         # Register models with django-auditlog automatically for apps listed in LOGGING_MODE

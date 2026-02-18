@@ -8,7 +8,6 @@ from dataclasses import dataclass
 from typing import Any
 
 import requests
-
 from core.services.logger_service import Logger
 
 _TRACEPARENT_RE = re.compile(r"^[\da-f]{2}-([\da-f]{32})-([\da-f]{16})-([\da-f]{2})$")
@@ -133,9 +132,7 @@ class OtlpTraceExporter:
                 timeout=self.export_timeout,
             )
             if response.status_code >= 300:
-                self._log_rate_limited_error(
-                    f"OTLP export failed ({response.status_code}): {response.text[:600]}"
-                )
+                self._log_rate_limited_error(f"OTLP export failed ({response.status_code}): {response.text[:600]}")
         except Exception as exc:  # pylint: disable=broad-except
             self._log_rate_limited_error(f"OTLP export exception: {exc}")
 
@@ -179,15 +176,59 @@ class OtlpTraceExporter:
         if not self.enabled:
             return
 
+        self._enqueue_span(
+            span_context=span_context,
+            span_name=span_name,
+            span_kind=2,  # SPAN_KIND_SERVER
+            start_time_unix_nano=start_time_unix_nano,
+            end_time_unix_nano=end_time_unix_nano,
+            attributes=attributes,
+            is_error=status_code >= 500,
+        )
+
+    def export_internal_span(
+        self,
+        *,
+        span_context: SpanContext,
+        span_name: str,
+        start_time_unix_nano: str,
+        end_time_unix_nano: str,
+        attributes: dict[str, Any],
+        is_error: bool = False,
+    ) -> None:
+        if not self.enabled:
+            return
+
+        self._enqueue_span(
+            span_context=span_context,
+            span_name=span_name,
+            span_kind=1,  # SPAN_KIND_INTERNAL
+            start_time_unix_nano=start_time_unix_nano,
+            end_time_unix_nano=end_time_unix_nano,
+            attributes=attributes,
+            is_error=is_error,
+        )
+
+    def _enqueue_span(
+        self,
+        *,
+        span_context: SpanContext,
+        span_name: str,
+        span_kind: int,
+        start_time_unix_nano: str,
+        end_time_unix_nano: str,
+        attributes: dict[str, Any],
+        is_error: bool,
+    ) -> None:
         span_payload: dict[str, Any] = {
             "traceId": span_context.trace_id,
             "spanId": span_context.span_id,
             "name": span_name[:300],
-            "kind": 2,  # SPAN_KIND_SERVER
+            "kind": span_kind,
             "startTimeUnixNano": start_time_unix_nano,
             "endTimeUnixNano": end_time_unix_nano,
             "attributes": [_to_otlp_attribute(key, value) for key, value in attributes.items()],
-            "status": {"code": 2 if status_code >= 500 else 1},  # ERROR or OK
+            "status": {"code": 2 if is_error else 1},  # ERROR or OK
         }
 
         if span_context.parent_span_id:
@@ -218,4 +259,3 @@ trace_exporter = OtlpTraceExporter()
 
 def current_unix_nano() -> str:
     return _now_unix_nano()
-
