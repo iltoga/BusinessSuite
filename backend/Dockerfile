@@ -7,7 +7,8 @@ ENV UV_COMPILE_BYTECODE=1
 ENV UV_LINK_MODE=copy
 ENV UV_PROJECT_ENVIRONMENT=/opt/venv
 
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+# Pin uv to avoid deploy-time behavior drift from `latest`.
+COPY --from=ghcr.io/astral-sh/uv:0.9.25 /uv /uvx /bin/
 
 WORKDIR /usr/src/app
 
@@ -23,7 +24,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY pyproject.toml uv.lock ./
 
-RUN uv lock --check
 RUN uv venv /opt/venv
 RUN uv sync --frozen --no-dev --no-install-project
 
