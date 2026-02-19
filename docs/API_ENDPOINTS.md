@@ -336,8 +336,8 @@ This document lists the main API endpoints exposed by the application in this re
 - **GET `/api/app-config/`**
   - **Description:** Public application configuration (feature flags, formats).
 
-- **POST `/api/client-logs/`**
-  - **Description:** Endpoint for client-side logging (forwarded to backend logs).
+- **POST `/_observability/client-logs`**
+  - **Description:** Browser client-logs endpoint handled by the **Angular SSR** server — requests are rate-limited and deduped, and written to the frontend log (`backend/logs/frontend.log` or `/logs/frontend.log`). Not a Django `/api/` endpoint.
 
 - **GET `/api/async-jobs/`**
   - **Description:** Monitor async job status (polling).

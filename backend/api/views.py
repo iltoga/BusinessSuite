@@ -1423,7 +1423,6 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                     "totalAmount": str(result.invoice.total_amount),
                     "invoiceDate": result.invoice.invoice_date.strftime("%Y-%m-%d"),
                     "status": result.invoice.get_status_display(),
-                    "url": reverse("invoice-detail", kwargs={"pk": result.invoice.pk}),
                 }
 
             if result.customer:

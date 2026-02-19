@@ -3,8 +3,12 @@
     <app-form-error-summary [form]="form" [labels]="formErrorLabels" />
 
     <div class="text-sm text-muted-foreground">
-      {{ isEditMode() ? 'Editing' : 'Recording' }} payment for {{ getApplicationProductCode() }} -
-      {{ getApplicationCustomerName() || 'Customer' }}
+      @if (isFullPaymentMode()) {
+        Recording full payment for {{ getFullPaymentApplicationCount() }} applications
+      } @else {
+        {{ isEditMode() ? 'Editing' : 'Recording' }} payment for {{ getApplicationProductCode() }} -
+        {{ getApplicationCustomerName() || 'Customer' }}
+      }
     </div>
 
     <div class="grid gap-3 md:grid-cols-2">
@@ -27,9 +31,13 @@
       </div>
       <div class="flex flex-col gap-2">
         <label class="text-sm font-medium">Amount</label>
-        <input z-input type="number" formControlName="amount" />
+        <input z-input type="number" formControlName="amount" [readonly]="isFullPaymentMode()" />
         <span class="text-xs text-muted-foreground">
-          Max allowed: {{ maxEditableAmount() || 0 }}
+          @if (isFullPaymentMode()) {
+            Full amount: {{ maxEditableAmount() || 0 }}
+          } @else {
+            Max allowed: {{ maxEditableAmount() || 0 }}
+          }
         </span>
       </div>
       <div class="flex flex-col gap-2 md:col-span-2">

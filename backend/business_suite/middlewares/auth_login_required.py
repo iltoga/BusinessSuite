@@ -34,7 +34,7 @@ class AuthLoginRequiredMiddleware(MiddlewareMixin):
             # Avoid injecting a mock user for admin/api and other critical paths
             # that must require real authentication. This prevents a logout from
             # being effectively bypassed by mock authentication.
-            MOCK_AWAY_PREFIXES = ("admin", "nested_admin", "api", "admin-tools", "unicorn")
+            MOCK_AWAY_PREFIXES = ("admin", "nested_admin", "api")
             is_protected_for_mock = any(path == p or path.startswith(p + "/") for p in MOCK_AWAY_PREFIXES)
 
             if getattr(settings, "MOCK_AUTH_ENABLED", False) and not is_protected_for_mock:

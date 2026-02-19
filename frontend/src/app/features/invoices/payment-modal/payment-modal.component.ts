@@ -13,6 +13,7 @@ import {
   type TemplateRef,
 } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { forkJoin } from 'rxjs';
 
 import { PaymentsService, type InvoiceApplicationDetail, type Payment } from '@/core/api';
 import { GlobalToastService } from '@/core/services/toast.service';
@@ -47,8 +48,9 @@ export class PaymentModalComponent {
 
   readonly isOpen = input<boolean>(false);
   readonly invoiceApplication = input<InvoiceApplicationDetail | null>(null);
+  readonly invoiceApplications = input<InvoiceApplicationDetail[] | null>(null);
   readonly payment = input<Payment | null>(null);
-  readonly saved = output<Payment>();
+  readonly saved = output<void>();
   readonly closed = output<void>();
 
   private dialogRef = signal<ReturnType<ZardDialogService['create']> | null>(null);
@@ -58,9 +60,27 @@ export class PaymentModalComponent {
   readonly isSaving = signal(false);
 
   readonly isEditMode = computed(() => !!this.payment());
-  readonly modalTitle = computed(() => (this.isEditMode() ? 'Edit Payment' : 'Record Payment'));
+  readonly fullPaymentApplications = computed(() =>
+    (this.invoiceApplications() ?? []).filter((app) => Number(app.dueAmount ?? 0) > 0),
+  );
+  readonly isFullPaymentMode = computed(
+    () => !this.isEditMode() && this.fullPaymentApplications().length > 1,
+  );
+  readonly modalTitle = computed(() => {
+    if (this.isEditMode()) {
+      return 'Edit Payment';
+    }
+    return this.isFullPaymentMode() ? 'Record Full Payment' : 'Record Payment';
+  });
   readonly submitLabel = computed(() => (this.isEditMode() ? 'Save Changes' : 'Record Payment'));
   readonly maxEditableAmount = computed(() => {
+    if (this.isFullPaymentMode()) {
+      return this.fullPaymentApplications().reduce(
+        (sum, app) => sum + Number(app.dueAmount ?? 0),
+        0,
+      );
+    }
+
     const app = this.invoiceApplication();
     if (!app) {
       return 0;
@@ -129,6 +149,7 @@ export class PaymentModalComponent {
       amount: 0,
       notes: '',
     });
+    this.form.controls.amount.enable({ emitEvent: false });
   }
 
   private prefillForm(): void {
@@ -137,6 +158,7 @@ export class PaymentModalComponent {
     const defaultDate = this.todayLocalDate();
 
     if (payment) {
+      this.form.controls.amount.enable({ emitEvent: false });
       this.form.patchValue({
         paymentDate: this.parseApiDate(payment.paymentDate) ?? defaultDate,
         paymentType: payment.paymentType ?? 'cash',
@@ -146,6 +168,18 @@ export class PaymentModalComponent {
       return;
     }
 
+    if (this.isFullPaymentMode()) {
+      this.form.patchValue({
+        amount: this.maxEditableAmount(),
+        paymentDate: defaultDate,
+        paymentType: 'cash',
+        notes: '',
+      });
+      this.form.controls.amount.disable({ emitEvent: false });
+      return;
+    }
+
+    this.form.controls.amount.enable({ emitEvent: false });
     if (app) {
       this.form.patchValue({
         amount: Number(app.dueAmount ?? 0),
@@ -163,19 +197,13 @@ export class PaymentModalComponent {
       return;
     }
 
-    const app = this.invoiceApplication();
     const payment = this.payment();
     const raw = this.form.getRawValue();
     const amount = Number(raw.amount ?? 0);
     const maxAllowed = this.maxEditableAmount();
-    const invoiceApplicationId = app?.id ?? payment?.invoiceApplication;
+    const paymentType = this.normalizePaymentType(raw.paymentType);
 
-    if (!invoiceApplicationId) {
-      this.toast.error('Unable to locate invoice application for this payment.');
-      return;
-    }
-
-    if (amount > maxAllowed) {
+    if (amount > maxAllowed || amount <= 0) {
       this.toast.error('Payment amount exceeds the allowed amount.');
       return;
     }
@@ -188,10 +216,23 @@ export class PaymentModalComponent {
       return;
     }
 
+    if (this.isFullPaymentMode()) {
+      this.submitFullPayment(paymentDate, paymentType, raw.notes ?? '');
+      return;
+    }
+
+    const app = this.invoiceApplication();
+    const invoiceApplicationId = app?.id ?? payment?.invoiceApplication;
+    if (!invoiceApplicationId) {
+      this.toast.error('Unable to locate invoice application for this payment.');
+      this.isSaving.set(false);
+      return;
+    }
+
     const payload = {
       invoiceApplication: invoiceApplicationId,
       paymentDate,
-      paymentType: raw.paymentType,
+      paymentType,
       amount: String(amount),
       notes: raw.notes ?? '',
     } as Payment;
@@ -201,9 +242,9 @@ export class PaymentModalComponent {
       : this.paymentsApi.paymentsCreate(payload);
 
     request$.subscribe({
-      next: (updated: Payment) => {
+      next: () => {
         this.toast.success(payment ? 'Payment updated' : 'Payment recorded');
-        this.saved.emit(updated);
+        this.saved.emit();
         this.isSaving.set(false);
       },
       error: (error) => {
@@ -211,6 +252,51 @@ export class PaymentModalComponent {
         this.form.markAllAsTouched();
         const message = extractServerErrorMessage(error);
         const fallback = payment ? 'Failed to update payment' : 'Failed to record payment';
+        this.toast.error(message ? `${fallback}: ${message}` : fallback);
+        this.isSaving.set(false);
+      },
+    });
+  }
+
+  private submitFullPayment(
+    paymentDate: string,
+    paymentType: Payment.PaymentTypeEnum,
+    notes: string,
+  ): void {
+    const applications = this.fullPaymentApplications();
+    if (applications.length < 2) {
+      this.toast.error(
+        'Full payment is available only when multiple applications have outstanding due.',
+      );
+      this.isSaving.set(false);
+      return;
+    }
+
+    const requests = applications.map((application) =>
+      this.paymentsApi.paymentsCreate({
+        invoiceApplication: application.id,
+        paymentDate,
+        paymentType,
+        amount: String(Number(application.dueAmount ?? 0)),
+        notes,
+      } as Payment),
+    );
+
+    forkJoin(requests).subscribe({
+      next: () => {
+        this.toast.success(
+          applications.length === 1
+            ? 'Payment recorded'
+            : `${applications.length} payments recorded`,
+        );
+        this.saved.emit();
+        this.isSaving.set(false);
+      },
+      error: (error) => {
+        applyServerErrorsToForm(this.form, error);
+        this.form.markAllAsTouched();
+        const message = extractServerErrorMessage(error);
+        const fallback = 'Failed to record full payment';
         this.toast.error(message ? `${fallback}: ${message}` : fallback);
         this.isSaving.set(false);
       },
@@ -250,6 +336,10 @@ export class PaymentModalComponent {
     return customerApplication?.customer?.fullName ?? '—';
   }
 
+  getFullPaymentApplicationCount(): number {
+    return this.fullPaymentApplications().length;
+  }
+
   close(): void {
     this.closed.emit();
   }
@@ -268,6 +358,19 @@ export class PaymentModalComponent {
     const month = String(parsed.getMonth() + 1).padStart(2, '0');
     const day = String(parsed.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  }
+
+  private normalizePaymentType(value: unknown): Payment.PaymentTypeEnum {
+    switch (value) {
+      case 'credit_card':
+      case 'wire_transfer':
+      case 'crypto':
+      case 'paypal':
+      case 'cash':
+        return value;
+      default:
+        return 'cash';
+    }
   }
 
   private parseApiDate(value: unknown): Date | null {

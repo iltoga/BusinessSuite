@@ -1,6 +1,13 @@
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, inject, signal, TemplateRef, ViewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+  signal,
+  TemplateRef,
+  ViewChild,
+} from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardComboboxComponent, type ZardComboboxOption } from '@/shared/components/combobox';
@@ -19,6 +26,7 @@ import { GlobalToastService } from '@/core/services/toast.service';
     ZardInputDirective,
   ],
   templateUrl: './workflow-notifications.component.html',
+  styleUrls: ['./workflow-notifications.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class WorkflowNotificationsComponent {
@@ -49,7 +57,10 @@ export class WorkflowNotificationsComponent {
   readonly whatsappTestForm = this.fb.group({
     to: [''],
     subject: ['Revis Bali CRM WhatsApp Test', [Validators.required, Validators.maxLength(120)]],
-    body: ['WhatsApp test message from Revis Bali CRM.', [Validators.required, Validators.maxLength(1000)]],
+    body: [
+      'WhatsApp test message from Revis Bali CRM.',
+      [Validators.required, Validators.maxLength(1000)],
+    ],
   });
 
   constructor() {

@@ -1,20 +1,32 @@
 <div class="space-y-6">
-  <div class="flex items-center justify-between">
+  <div class="flex flex-wrap items-start justify-between gap-3">
     <h1 class="text-2xl font-bold tracking-tight">Server Management</h1>
   </div>
 
   <!-- Server Actions -->
   <z-card class="p-6">
     <h3 class="text-lg font-medium mb-4">Server Actions</h3>
-    <div class="flex gap-4">
-      <button z-button (click)="clearCache()" [zDisabled]="isLoading()" zType="outline">
+    <div class="server-actions flex flex-wrap gap-3">
+      <button
+        z-button
+        class="w-full sm:w-auto"
+        (click)="clearCache()"
+        [zDisabled]="isLoading()"
+        zType="outline"
+      >
         @if (isLoading()) {
           <span>Clearing...</span>
         } @else {
           <span>Clear Cache</span>
         }
       </button>
-      <button z-button (click)="runMediaDiagnostic()" [zDisabled]="isLoading()" zType="outline">
+      <button
+        z-button
+        class="w-full sm:w-auto"
+        (click)="runMediaDiagnostic()"
+        [zDisabled]="isLoading()"
+        zType="outline"
+      >
         @if (isLoading()) {
           <span>Running...</span>
         } @else {
@@ -23,6 +35,7 @@
       </button>
       <button
         z-button
+        class="w-full sm:w-auto"
         (click)="repairMediaPaths()"
         [zDisabled]="isLoading() || !diagnosticResults().length"
         zType="outline"
@@ -38,9 +51,15 @@
 
   <!-- OpenRouter + AI Models -->
   <z-card class="p-6">
-    <div class="flex items-center justify-between mb-4">
+    <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
       <h3 class="text-lg font-medium">OpenRouter & AI Models</h3>
-      <button z-button zType="outline" (click)="loadOpenRouterStatus()" [zDisabled]="openRouterLoading()">
+      <button
+        z-button
+        zType="outline"
+        class="w-full sm:w-auto"
+        (click)="loadOpenRouterStatus()"
+        [zDisabled]="openRouterLoading()"
+      >
         @if (openRouterLoading()) {
           <span>Refreshing...</span>
         } @else {
@@ -50,7 +69,7 @@
     </div>
 
     @if (openRouterStatus(); as status) {
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+      <div class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <div>
           <label class="text-sm font-medium text-muted-foreground">OpenRouter Config</label>
           <div class="mt-1">
@@ -60,7 +79,9 @@
           </div>
         </div>
         <div>
-          <label class="text-sm font-medium text-muted-foreground">Effective Credit Remaining</label>
+          <label class="text-sm font-medium text-muted-foreground"
+            >Effective Credit Remaining</label
+          >
           <p class="text-sm font-mono bg-muted p-2 rounded mt-1">
             @if (status.openrouter.effectiveCreditRemaining !== null) {
               ${{ status.openrouter.effectiveCreditRemaining }}
@@ -70,14 +91,16 @@
           </p>
         </div>
         <div>
-          <label class="text-sm font-medium text-muted-foreground">Current Provider / Default Model</label>
+          <label class="text-sm font-medium text-muted-foreground"
+            >Current Provider / Default Model</label
+          >
           <p class="text-sm font-mono bg-muted p-2 rounded mt-1 wrap-break-word">
             {{ status.aiModels.providerName }} / {{ status.aiModels.defaultModel }}
           </p>
         </div>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+      <div class="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div class="text-sm bg-muted p-3 rounded">
           <div class="font-medium mb-1">Key Endpoint (`/key`)</div>
           <div>Status: {{ status.openrouter.keyStatus.ok ? 'OK' : 'Error' }}</div>
@@ -85,7 +108,9 @@
             <div class="text-destructive mt-1">{{ status.openrouter.keyStatus.message }}</div>
           }
           @if (status.openrouter.keyStatus.limitRemaining !== null) {
-            <div class="mt-1">Limit Remaining: ${{ status.openrouter.keyStatus.limitRemaining }}</div>
+            <div class="mt-1">
+              Limit Remaining: ${{ status.openrouter.keyStatus.limitRemaining }}
+            </div>
           }
           @if (status.openrouter.keyStatus.usageMonthly !== null) {
             <div class="mt-1">Usage Monthly: {{ status.openrouter.keyStatus.usageMonthly }}</div>
@@ -95,13 +120,17 @@
           <div class="font-medium mb-1">Credits Endpoint (`/credits`)</div>
           <div>Status: {{ status.openrouter.creditsStatus.ok ? 'OK' : 'Unavailable' }}</div>
           @if (status.openrouter.creditsStatus.message) {
-            <div class="text-muted-foreground mt-1">{{ status.openrouter.creditsStatus.message }}</div>
+            <div class="text-muted-foreground mt-1">
+              {{ status.openrouter.creditsStatus.message }}
+            </div>
           }
           @if (status.openrouter.creditsStatus.remaining !== null) {
             <div class="mt-1">Remaining: ${{ status.openrouter.creditsStatus.remaining }}</div>
           }
           @if (status.openrouter.creditsStatus.totalCredits !== null) {
-            <div class="mt-1">Total Credits: ${{ status.openrouter.creditsStatus.totalCredits }}</div>
+            <div class="mt-1">
+              Total Credits: ${{ status.openrouter.creditsStatus.totalCredits }}
+            </div>
           }
           @if (status.openrouter.creditsStatus.totalUsage !== null) {
             <div class="mt-1">Total Usage: ${{ status.openrouter.creditsStatus.totalUsage }}</div>
@@ -122,7 +151,6 @@
           }
         </div>
       </div>
-
     } @else {
       <p class="text-sm text-muted-foreground">OpenRouter status not loaded yet.</p>
     }
@@ -161,17 +189,17 @@
   @if (diagnosticResults().length > 0) {
     <z-card class="p-0">
       <div class="p-4 border-b">
-        <div class="flex items-center justify-between">
+        <div class="flex flex-wrap items-start justify-between gap-3">
           <h3 class="text-lg font-medium">Media Files Diagnostic</h3>
-          <div class="flex gap-2">
+          <div class="flex flex-wrap gap-2">
             <z-badge zType="secondary"> Total: {{ diagnosticResults().length }} </z-badge>
             <z-badge zType="destructive"> Missing: {{ missingFilesCount() }} </z-badge>
             <z-badge zType="default"> With Discrepancy: {{ discrepancyCount() }} </z-badge>
           </div>
         </div>
       </div>
-      <div class="max-h-96 overflow-auto">
-        <table class="w-full">
+      <div class="diagnostic-table-wrap max-h-96 overflow-auto">
+        <table class="diagnostic-table w-full">
           <thead class="bg-muted text-left">
             <tr>
               <th class="px-4 py-2 text-sm font-medium">Model</th>
@@ -184,20 +212,24 @@
           </thead>
           <tbody>
             @for (result of diagnosticResults(); track result.model + result.id + result.field) {
-              <tr class="border-b">
-                <td class="px-4 py-2 text-sm">{{ result.model }}</td>
-                <td class="px-4 py-2 text-sm">{{ result.id }}</td>
-                <td class="px-4 py-2 text-sm font-mono">{{ result.field }}</td>
-                <td class="px-4 py-2 text-sm font-mono truncate max-w-xs" [title]="result.path">
+              <tr class="border-b diagnostic-row">
+                <td class="px-4 py-2 text-sm" data-label="Model">{{ result.model }}</td>
+                <td class="px-4 py-2 text-sm" data-label="ID">{{ result.id }}</td>
+                <td class="px-4 py-2 text-sm font-mono" data-label="Field">{{ result.field }}</td>
+                <td
+                  class="diagnostic-path-cell px-4 py-2 text-sm font-mono truncate max-w-xs"
+                  data-label="Path"
+                  [title]="result.path"
+                >
                   {{ result.path }}
                 </td>
-                <td class="px-4 py-2">
+                <td class="px-4 py-2" data-label="Exists">
                   <z-badge [zType]="result.exists ? 'default' : 'destructive'">
                     {{ result.exists ? 'Yes' : 'No' }}
                   </z-badge>
                 </td>
-                <td class="px-4 py-2">
-                  <div class="flex gap-1">
+                <td class="diagnostic-issues-cell px-4 py-2" data-label="Issues">
+                  <div class="flex flex-wrap gap-1">
                     @if (!result.exists) {
                       <z-badge zType="destructive" class="text-xs">Missing</z-badge>
                     }

@@ -15,16 +15,16 @@
   </div>
 } @else if (invoice()) {
   <div class="flex flex-col gap-6">
-    <div class="flex items-center justify-between">
+    <div class="flex flex-wrap items-start justify-between gap-3">
       <div>
-        <h1 class="text-3xl font-bold tracking-tight">
+        <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">
           Invoice {{ invoice()!.invoiceNoDisplay || invoice()!.invoiceNo }}
         </h1>
         <p class="text-sm text-muted-foreground">
           {{ invoice()!.customer.fullNameWithCompany || invoice()!.customer.fullName }}
         </p>
       </div>
-      <div class="flex items-center gap-2">
+      <div class="invoice-detail-header-actions flex w-full flex-wrap items-center gap-2 sm:w-auto">
         <app-invoice-download-dropdown
           [invoiceId]="invoice()!.id"
           [invoiceNumber]="(invoice()!.invoiceNoDisplay || invoice()!.invoiceNo).toString()"
@@ -39,7 +39,7 @@
       </div>
     </div>
 
-    <z-card class="p-6">
+    <z-card class="p-4 sm:p-6">
       <div class="grid gap-4 md:grid-cols-3">
         <div>
           <div class="text-sm text-muted-foreground">Status</div>
@@ -85,11 +85,18 @@
       </div>
     </z-card>
 
-    <z-card class="p-6">
-      <h2 class="text-lg font-semibold">Applications</h2>
+    <z-card class="p-4 sm:p-6">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <h2 class="text-lg font-semibold">Applications</h2>
+        @if (hasMultipleDueApplications()) {
+          <z-button zType="warning" zSize="sm" (click)="openFullPaymentModal()">
+            Add Full Payment
+          </z-button>
+        }
+      </div>
       <div class="mt-4 space-y-4">
         @for (app of invoice()!.invoiceApplications; track app.id) {
-          <div class="rounded-lg border p-4">
+          <div class="invoice-application-card rounded-lg border p-4">
             <div class="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <div class="font-medium">
@@ -99,7 +106,7 @@
                   {{ getApplicationCustomerName(app) }}
                 </div>
               </div>
-              <div class="flex items-center gap-4">
+              <div class="invoice-application-metrics flex flex-wrap items-center gap-4">
                 <div>
                   <div class="text-xs text-muted-foreground">Amount</div>
                   <div class="font-medium">{{ formatCurrency(app.amount) }}</div>
@@ -123,8 +130,8 @@
 
             <div class="mt-4">
               <div class="text-sm font-medium mb-2">Payments</div>
-              <div class="overflow-x-auto">
-                <table class="w-full text-sm">
+              <div class="overflow-x-auto invoice-payments-table-wrap">
+                <table class="invoice-payments-table w-full text-sm">
                   <thead>
                     <tr class="text-left text-muted-foreground">
                       <th class="py-2">Date</th>
@@ -137,11 +144,16 @@
                   <tbody>
                     @for (payment of app.payments; track payment.id) {
                       <tr class="border-t">
-                        <td class="py-2">{{ payment.paymentDate | appDate }}</td>
-                        <td class="py-2">{{ formatCurrency(payment.amount) }}</td>
-                        <td class="py-2">{{ payment.paymentType }}</td>
-                        <td class="py-2">{{ payment.notes || '—' }}</td>
-                        <td class="py-2 text-right">
+                        <td class="py-2" data-label="Date">{{ payment.paymentDate | appDate }}</td>
+                        <td class="py-2" data-label="Amount">
+                          {{ formatCurrency(payment.amount) }}
+                        </td>
+                        <td class="py-2" data-label="Type">{{ payment.paymentType }}</td>
+                        <td class="py-2" data-label="Notes">{{ payment.notes || '—' }}</td>
+                        <td
+                          class="py-2 text-right invoice-payment-actions-cell"
+                          data-label="Actions"
+                        >
                           <div class="flex justify-end gap-2">
                             <z-button
                               zType="warning"
@@ -179,6 +191,7 @@
   <app-payment-modal
     [isOpen]="paymentModalOpen()"
     [invoiceApplication]="selectedApplication()"
+    [invoiceApplications]="selectedApplications()"
     [payment]="selectedPayment()"
     (saved)="onPaymentSaved()"
     (closed)="closePaymentModal()"

@@ -2,13 +2,51 @@
   display: block;
 }
 
-/* Ensure search icon is properly positioned and visible */
-form .relative z-icon[zType='search'] {
+.search-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.search-input-wrap {
+  position: relative;
+  display: flex;
+  flex: 1 1 18rem;
+  min-width: min(100%, 16rem);
+  align-items: center;
+}
+
+.search-input {
+  width: 100%;
+}
+
+.search-toolbar-actions {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.search-icon z-icon[zType='search'] {
   z-index: 10;
   pointer-events: none;
 }
 
-/* Adjust input padding to accommodate icon */
-form input[z-input] {
-  padding-left: 2.5rem;
+@media (max-width: 767px) {
+  .search-input-wrap,
+  .search-toolbar-actions {
+    flex-basis: 100%;
+  }
+
+  .search-toolbar-actions {
+    gap: 0.5rem;
+  }
+}
+
+@media (max-width: 767px) and (orientation: portrait) {
+  .search-toolbar-actions > * {
+    max-width: 100%;
+  }
 }

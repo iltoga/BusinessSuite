@@ -2,13 +2,11 @@ import logging
 import os
 import traceback
 
+from core.services.logger_service import Logger
 from django.core.files.storage import default_storage
 from django.db import transaction
-from django.urls import reverse
 from django.utils import timezone
 from huey.contrib.djhuey import db_task
-
-from core.services.logger_service import Logger
 from invoices.models import InvoiceImportItem, InvoiceImportJob
 from invoices.services.invoice_importer import InvoiceImporter
 from payments.models import Payment
@@ -101,7 +99,6 @@ def run_invoice_import_item(item_id: str) -> None:
                 "total_amount": str(result.invoice.total_amount),
                 "invoice_date": result.invoice.invoice_date.strftime("%Y-%m-%d"),
                 "status": result.invoice.get_status_display(),
-                "url": reverse("invoice-detail", kwargs={"pk": result.invoice.pk}),
             }
 
         if result.customer:

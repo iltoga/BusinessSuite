@@ -2,65 +2,55 @@
   display: block;
 }
 
-.wrap-break-word {
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-.diagnostic-table-wrap {
+.notification-table-wrap {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
 
-.diagnostic-table {
+.notification-table {
   width: 100%;
-  min-width: 56rem;
+  min-width: 50rem;
   border-collapse: separate;
   border-spacing: 0;
 }
 
+.notification-actions {
+  justify-content: flex-start;
+}
+
 @media (max-width: 1024px) {
-  .diagnostic-table {
-    min-width: 48rem;
+  .notification-table {
+    min-width: 44rem;
   }
 }
 
 @media (max-width: 767px) and (orientation: landscape) {
-  .diagnostic-table {
-    min-width: 52rem;
+  .notification-table {
+    min-width: 46rem;
     font-size: 0.8125rem;
   }
 }
 
 @media (max-width: 767px) and (orientation: portrait) {
-  .server-actions {
-    width: 100%;
-  }
-
-  .server-actions > button {
-    width: 100%;
-  }
-
-  .diagnostic-table-wrap {
-    max-height: none;
+  .notification-table-wrap {
     overflow: visible;
+    border: 0;
   }
 
-  .diagnostic-table {
+  .notification-table {
     min-width: 0;
   }
 
-  .diagnostic-table thead {
+  .notification-table thead {
     display: none;
   }
 
-  .diagnostic-table tbody {
+  .notification-table tbody {
     display: grid;
     gap: 0.75rem;
-    padding: 0.75rem;
   }
 
-  .diagnostic-row {
+  .notification-row {
     display: grid;
     gap: 0.625rem;
     border: 1px solid hsl(var(--border));
@@ -69,9 +59,9 @@
     background-color: hsl(var(--card));
   }
 
-  .diagnostic-row td {
+  .notification-row td {
     display: grid;
-    grid-template-columns: minmax(5.25rem, 42%) minmax(0, 1fr);
+    grid-template-columns: minmax(5.5rem, 42%) minmax(0, 1fr);
     gap: 0.625rem;
     align-items: start;
     min-width: 0;
@@ -81,7 +71,7 @@
     overflow-wrap: anywhere;
   }
 
-  .diagnostic-row td::before {
+  .notification-row td::before {
     content: attr(data-label);
     font-size: 0.7rem;
     font-weight: 600;
@@ -91,27 +81,38 @@
     color: hsl(var(--muted-foreground));
   }
 
-  .diagnostic-path-cell {
-    max-width: none;
-    white-space: normal;
-    overflow: visible;
-    text-overflow: clip;
-  }
-
-  .diagnostic-issues-cell {
+  .notification-actions-cell {
     grid-template-columns: 1fr;
     padding: 0.625rem;
-    border: 1px solid hsl(var(--primary) / 0.22);
+    border: 1px solid hsl(var(--primary) / 0.25);
     border-radius: 0.625rem;
     background: linear-gradient(
       180deg,
-      hsl(var(--primary) / 0.09) 0%,
+      hsl(var(--primary) / 0.1) 0%,
       hsl(var(--primary) / 0.04) 100%
     );
   }
 
-  .diagnostic-issues-cell::before {
+  .notification-actions-cell::before {
     color: hsl(var(--primary));
     font-weight: 700;
+  }
+
+  .notification-actions {
+    width: 100%;
+  }
+
+  .notification-actions button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .notification-center-actions {
+    width: 100%;
+  }
+
+  .notification-center-actions button,
+  .test-dialog-actions button {
+    width: 100%;
   }
 }

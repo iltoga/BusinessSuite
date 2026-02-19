@@ -1,6 +1,6 @@
 <div class="h-full flex flex-col gap-6" [contextHelp]="'/products'">
   <div class="flex flex-wrap items-center justify-between gap-3">
-    <h1 class="text-3xl font-bold tracking-tight">Products</h1>
+    <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">Products</h1>
     <a
       routerLink="/products/new"
       [state]="{ from: 'products', searchQuery: query() }"
@@ -11,7 +11,7 @@
   </div>
 
   <div class="bg-card rounded-lg border shadow-sm">
-    <div class="p-4 border-b">
+    <div class="border-b p-3 sm:p-4">
       <app-search-toolbar
         [query]="query()"
         [placeholder]="'Search Products...'"
@@ -26,7 +26,10 @@
           [zDisabled]="exportInProgress() || importInProgress()"
           (click)="startExport()"
         >
-          Export @if (exportInProgress() && exportProgress() !== null) { ({{ exportProgress() }}%) }
+          Export
+          @if (exportInProgress() && exportProgress() !== null) {
+            ({{ exportProgress() }}%)
+          }
         </z-button>
         <z-button
           zType="default"
@@ -35,7 +38,10 @@
           [zDisabled]="importInProgress() || exportInProgress()"
           (click)="openImportPicker()"
         >
-          Import @if (importInProgress() && importProgress() !== null) { ({{ importProgress() }}%) }
+          Import
+          @if (importInProgress() && importProgress() !== null) {
+            ({{ importProgress() }}%)
+          }
         </z-button>
         @if (isSuperuser() && totalItems() > 0) {
           <z-button
@@ -71,7 +77,7 @@
       />
     </div>
 
-    <div class="p-4 border-t bg-muted/20">
+    <div class="border-t bg-muted/20 p-3 sm:p-4">
       <app-pagination-controls
         [page]="page()"
         [totalPages]="totalPages()"

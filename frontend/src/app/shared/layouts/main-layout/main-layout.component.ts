@@ -77,7 +77,8 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
     return groups.some((group) => String(group).toLowerCase() === 'controller');
   });
   canAccessReports = computed(
-    () => this.isInControllerGroup() || this.isInAdminGroup() || this.isStaff() || this.isSuperuser(),
+    () =>
+      this.isInControllerGroup() || this.isInAdminGroup() || this.isStaff() || this.isSuperuser(),
   );
   canAccessStaffAdminItems = computed(() => this.isStaff() || this.isInAdminGroup());
   canAccessBackups = computed(() => this.isSuperuser() || this.isInAdminGroup());
@@ -280,6 +281,28 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
 
   toggleSidebar() {
     this.sidebarOpen.update((v) => !v);
+  }
+
+  onSidebarNavigationClick(event: Event): void {
+    if (!this.isBrowser || !this.sidebarOpen() || !this.isMobileViewport()) {
+      return;
+    }
+
+    const target = event.target as HTMLElement | null;
+    const link = target?.closest('a[routerLink]');
+    if (!link) {
+      return;
+    }
+
+    this.sidebarOpen.set(false);
+  }
+
+  private isMobileViewport(): boolean {
+    if (!this.isBrowser) {
+      return false;
+    }
+
+    return window.matchMedia('(max-width: 767px)').matches;
   }
 
   toggleLetters() {

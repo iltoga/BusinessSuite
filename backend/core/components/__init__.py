@@ -1,2 +1,0 @@
-from .unicorn_search_list_view import UnicornSearchListView
-from .unicorn_model_view import UnicornModelView

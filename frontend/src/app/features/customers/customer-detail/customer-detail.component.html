@@ -1,7 +1,7 @@
 @if (isLoading()) {
   <div class="space-y-6">
     <!-- Header Skeleton -->
-    <div class="flex flex-wrap items-center justify-between gap-4">
+    <div class="flex flex-wrap items-start justify-between gap-4">
       <div class="space-y-2">
         <z-skeleton class="h-8 w-64" />
         <z-skeleton class="h-4 w-48" />
@@ -19,7 +19,7 @@
     <app-card-skeleton [lines]="4" />
 
     <!-- Applications List Skeleton -->
-    <z-card class="p-6">
+    <z-card class="p-4 sm:p-6">
       <div class="mb-4">
         <z-skeleton class="h-6 w-1/4" />
       </div>
@@ -31,12 +31,12 @@
 } @else {
   <div class="space-y-6">
     <!-- Header -->
-    <div class="flex flex-wrap items-center justify-between gap-4">
+    <div class="flex flex-wrap items-start justify-between gap-4">
       <div>
         <h1 class="text-2xl font-semibold">Customer ID #{{ customer()!.id }}</h1>
         <p class="text-sm text-muted-foreground">Customer detail</p>
       </div>
-      <div class="flex flex-wrap gap-2">
+      <div class="customer-detail-header-actions flex w-full flex-wrap gap-2 sm:w-auto">
         <a z-button zType="outline" routerLink="/customers/{{ customer()!.id }}/edit">Edit</a>
         @if (isSuperuser()) {
           <button z-button zType="destructive" (click)="onDelete()">Delete</button>
@@ -52,7 +52,7 @@
     </div>
 
     <!-- Identity Section -->
-    <z-card class="p-6">
+    <z-card class="p-4 sm:p-6">
       <div class="mb-4">
         <h3 class="text-lg font-semibold mb-3 border-b pb-2">Identity</h3>
         <div class="text-xl mb-2">
@@ -98,7 +98,7 @@
     </z-card>
 
     <!-- Contact & Payment Section -->
-    <z-card class="p-6">
+    <z-card class="p-4 sm:p-6">
       <div class="mb-4">
         <h3 class="text-lg font-semibold mb-3 border-b pb-2">Contact & Payment</h3>
         <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -159,7 +159,7 @@
     </z-card>
 
     <!-- Passport Details Section -->
-    <z-card class="p-6">
+    <z-card class="p-4 sm:p-6">
       <div class="mb-4 border-b pb-2">
         <h3 class="text-lg font-semibold">Passport Details</h3>
       </div>
@@ -167,8 +167,13 @@
         <!-- Passport Image -->
         <div>
           @if (customer()!.passportFile) {
-            <a [href]="customer()!.passportFile" target="_blank" rel="noopener noreferrer">
-              <div class="passport-magnifier-wrapper">
+            <div class="passport-magnifier-wrapper">
+              <a
+                [href]="customer()!.passportFile"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="passport-image-link"
+              >
                 <img
                   [src]="customer()!.passportFile"
                   alt="Passport Image"
@@ -188,25 +193,13 @@
                   [style.background-size.%]="magnifierZoom * 100"
                   [style.background-position]="magnifierBgX() + '% ' + magnifierBgY() + '%'"
                 ></div>
-              </div>
-            </a>
-            <div class="mt-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
-              <div>
-                File:
-                <a
-                  [href]="customer()!.passportFile"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="text-primary hover:underline"
-                  >{{ customer()!.passportFile | slice: -40 }}</a
-                >
-              </div>
+              </a>
               <button
                 type="button"
                 z-button
                 zType="ghost"
                 zSize="sm"
-                class="h-8 w-8 shrink-0 p-0"
+                class="passport-magnifier-toggle h-8 w-8 shrink-0 p-0"
                 [attr.aria-label]="
                   magnifierEnabled()
                     ? 'Disable passport magnifier lens on hover'
@@ -222,6 +215,18 @@
                 <z-icon [zType]="magnifierEnabled() ? 'zoom-out' : 'zoom-in'" class="h-4 w-4" />
               </button>
             </div>
+            <div class="mt-2 text-xs text-muted-foreground">
+              <div>
+                File:
+                <a
+                  [href]="customer()!.passportFile"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-primary hover:underline"
+                  >{{ customer()!.passportFile | slice: -40 }}</a
+                >
+              </div>
+            </div>
           } @else {
             <div class="text-muted-foreground text-sm">No passport file uploaded.</div>
           }
@@ -229,12 +234,14 @@
 
         <!-- Passport Information -->
         <div>
-          <table class="w-full">
+          <table class="customer-passport-table w-full">
             <tbody>
               @if (customer()!.passportNumber) {
                 <tr>
                   <th scope="row" class="text-left py-2 text-sm font-medium">Passport Number</th>
-                  <td class="text-left py-2 text-sm">{{ customer()!.passportNumber }}</td>
+                  <td class="text-left py-2 text-sm" data-label="Passport Number">
+                    {{ customer()!.passportNumber }}
+                  </td>
                 </tr>
               }
               @if (customer()!.passportIssueDate) {
@@ -242,7 +249,7 @@
                   <th scope="row" class="text-left py-2 text-sm font-medium">
                     Passport Issue Date
                   </th>
-                  <td class="text-left py-2 text-sm">
+                  <td class="text-left py-2 text-sm" data-label="Passport Issue Date">
                     {{ customer()!.passportIssueDate | appDate }}
                   </td>
                 </tr>
@@ -252,7 +259,7 @@
                   <th scope="row" class="text-left py-2 text-sm font-medium">
                     Passport Expiration Date
                   </th>
-                  <td class="text-left py-2 text-sm">
+                  <td class="text-left py-2 text-sm" data-label="Passport Expiration Date">
                     {{ customer()!.passportExpirationDate | appDate }}
                   </td>
                 </tr>
@@ -264,7 +271,7 @@
     </z-card>
 
     <!-- Applications Section -->
-    <z-card class="p-6">
+    <z-card class="p-4 sm:p-6">
       <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
         <h3 class="text-lg font-semibold border-b pb-2">Applications</h3>
         <button type="button" z-button zType="outline" zSize="sm" (click)="onCreateApplication()">
@@ -287,8 +294,8 @@
       </div>
 
       @if (pagedApplications().length > 0) {
-        <div class="overflow-x-auto">
-          <table class="w-full border-collapse">
+        <div class="overflow-x-auto customer-applications-table-wrap">
+          <table class="customer-applications-table w-full border-collapse">
             <thead>
               <tr class="border-b">
                 <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">#ID</th>
@@ -305,7 +312,9 @@
                 <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
                   Invoice Status
                 </th>
-                <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Payment</th>
+                <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
+                  Payment
+                </th>
                 <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
                   Actions
                 </th>
@@ -314,29 +323,31 @@
             <tbody>
               @for (app of pagedApplications(); track app.id) {
                 <tr
-                  class="border-b hover:bg-muted/50 cursor-pointer"
+                  class="border-b hover:bg-muted/50 cursor-pointer customer-application-row"
                   role="button"
                   tabindex="0"
                   (click)="openApplicationDetails(app.id)"
                   (keydown.enter)="openApplicationDetails(app.id)"
                   (keydown.space)="$event.preventDefault(); openApplicationDetails(app.id)"
                 >
-                  <td class="py-3 px-4 text-sm">
+                  <td class="py-3 px-4 text-sm" data-label="ID">
                     <span class="text-primary font-medium">{{ app.id }}</span>
                   </td>
-                  <td class="py-3 px-4 text-sm">
+                  <td class="py-3 px-4 text-sm" data-label="Product">
                     <span class="text-primary">{{ app.product.name }}</span>
                   </td>
-                  <td class="py-3 px-4 text-sm">
+                  <td class="py-3 px-4 text-sm" data-label="Type">
                     {{ app.product.productTypeDisplay || (app.product.productType | titlecase) }}
                   </td>
-                  <td class="py-3 px-4 text-sm">{{ app.docDate | appDate }}</td>
-                  <td class="py-3 px-4 text-sm">
+                  <td class="py-3 px-4 text-sm" data-label="Doc Date">
+                    {{ app.docDate | appDate }}
+                  </td>
+                  <td class="py-3 px-4 text-sm" data-label="Status">
                     <z-badge [zType]="getStatusBadgeType(app.status)">{{
                       app.statusDisplay || (app.status | titlecase)
                     }}</z-badge>
                   </td>
-                  <td class="py-3 px-4 text-sm">
+                  <td class="py-3 px-4 text-sm" data-label="Invoice Status">
                     @if (app.hasInvoice && app.invoiceId) {
                       <div class="flex items-center gap-2">
                         <z-badge zType="secondary">
@@ -348,12 +359,12 @@
                       <span class="text-muted-foreground">Uninvoiced</span>
                     }
                   </td>
-                  <td class="py-3 px-4 text-sm">
+                  <td class="py-3 px-4 text-sm" data-label="Payment">
                     <z-badge [zType]="getPaymentStatusBadgeType(app.paymentStatus)">
                       {{ app.paymentStatusDisplay }}
                     </z-badge>
                   </td>
-                  <td class="py-3 px-4 text-sm">
+                  <td class="py-3 px-4 text-sm app-history-actions-cell" data-label="Actions">
                     <div class="flex flex-wrap items-center gap-2">
                       <button
                         type="button"
@@ -396,12 +407,12 @@
           </table>
         </div>
 
-        <div class="flex flex-wrap items-center justify-between gap-3 mt-4">
+        <div class="applications-pagination mt-4 flex flex-wrap items-center justify-between gap-3">
           <div class="text-sm text-muted-foreground">
             Showing {{ applicationsStartIndex() }}-{{ applicationsEndIndex() }} of
             {{ totalApplications() }}
           </div>
-          <div class="flex items-center gap-2">
+          <div class="flex flex-wrap items-center gap-2">
             <button
               type="button"
               z-button

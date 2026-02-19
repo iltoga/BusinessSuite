@@ -73,12 +73,17 @@ export class InvoiceDetailComponent implements OnInit {
   readonly originSearchQuery = signal<string | null>(null);
   readonly paymentModalOpen = signal(false);
   readonly selectedApplication = signal<InvoiceApplicationDetail | null>(null);
+  readonly selectedApplications = signal<InvoiceApplicationDetail[]>([]);
   readonly selectedPayment = signal<Payment | null>(null);
   readonly paymentDeleteOpen = signal(false);
   readonly paymentToDelete = signal<Payment | null>(null);
   readonly isDeletingPayment = signal(false);
 
   readonly totalDue = computed(() => this.invoice()?.totalDueAmount ?? 0);
+  readonly dueApplications = computed(() =>
+    (this.invoice()?.invoiceApplications ?? []).filter((app) => this.hasDue(app)),
+  );
+  readonly hasMultipleDueApplications = computed(() => this.dueApplications().length > 1);
   readonly deletePaymentMessage = computed(() => {
     const payment = this.paymentToDelete();
     if (!payment) {
@@ -205,12 +210,21 @@ export class InvoiceDetailComponent implements OnInit {
 
   openPaymentModal(app: InvoiceApplicationDetail): void {
     this.selectedApplication.set(app);
+    this.selectedApplications.set([]);
+    this.selectedPayment.set(null);
+    this.paymentModalOpen.set(true);
+  }
+
+  openFullPaymentModal(): void {
+    this.selectedApplication.set(null);
+    this.selectedApplications.set(this.dueApplications());
     this.selectedPayment.set(null);
     this.paymentModalOpen.set(true);
   }
 
   openEditPaymentModal(app: InvoiceApplicationDetail, payment: Payment): void {
     this.selectedApplication.set(app);
+    this.selectedApplications.set([]);
     this.selectedPayment.set(payment);
     this.paymentModalOpen.set(true);
   }
@@ -260,6 +274,7 @@ export class InvoiceDetailComponent implements OnInit {
   closePaymentModal(): void {
     this.paymentModalOpen.set(false);
     this.selectedApplication.set(null);
+    this.selectedApplications.set([]);
     this.selectedPayment.set(null);
   }
 

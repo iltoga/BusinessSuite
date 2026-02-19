@@ -1,7 +1,14 @@
 <div class="space-y-6">
-  <div class="flex items-center justify-between">
+  <div class="flex flex-wrap items-start justify-between gap-3">
     <h1 class="text-2xl font-bold tracking-tight">National Holidays</h1>
-    <button z-button (click)="createHoliday()" [zDisabled]="isDialogOpen()">Add Holiday</button>
+    <button
+      z-button
+      class="w-full sm:w-auto"
+      (click)="createHoliday()"
+      [zDisabled]="isDialogOpen()"
+    >
+      Add Holiday
+    </button>
   </div>
 
   <z-card class="p-4">
@@ -130,7 +137,7 @@
 </ng-template>
 
 <ng-template #actionsTemplate let-item>
-  <div class="flex items-center gap-2 whitespace-nowrap">
+  <div class="flex flex-wrap items-center gap-2 whitespace-nowrap sm:flex-nowrap">
     <z-button zType="warning" zSize="sm" (click)="editHoliday(item)">Edit</z-button>
     <z-button zType="destructive" zSize="sm" (click)="deleteHoliday(item)">Delete</z-button>
   </div>

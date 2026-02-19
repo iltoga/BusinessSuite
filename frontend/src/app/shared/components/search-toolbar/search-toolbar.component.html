@@ -1,12 +1,12 @@
-<div class="flex flex-wrap items-center gap-3">
-  <div class="relative flex items-center">
-    <span class="absolute left-3 inset-y-0 flex items-center pointer-events-none">
+<div class="search-toolbar">
+  <div class="search-input-wrap">
+    <span class="search-icon absolute left-3 inset-y-0 flex items-center pointer-events-none">
       <z-icon zType="search" class="text-muted-foreground" />
     </span>
     <input
       #searchInput
       z-input
-      class="w-72 pl-10"
+      class="search-input pl-10"
       [disabled]="disabled()"
       [value]="searchValue()"
       (input)="onInput($event)"
@@ -22,5 +22,7 @@
     }
   </div>
 
-  <ng-content />
+  <div class="search-toolbar-actions">
+    <ng-content />
+  </div>
 </div>
