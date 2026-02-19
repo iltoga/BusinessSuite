@@ -1,6 +1,6 @@
 <div class="h-full flex flex-col gap-6" [contextHelp]="'/customers'">
-  <div class="flex justify-between items-center">
-    <h1 class="text-3xl font-bold tracking-tight">Customer List</h1>
+  <div class="flex flex-wrap items-start justify-between gap-3">
+    <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">Customer List</h1>
     <a
       routerLink="/customers/new"
       [state]="{ from: 'customers', searchQuery: query() }"
@@ -11,15 +11,19 @@
   </div>
 
   <div class="bg-card rounded-lg border shadow-sm">
-    <div class="p-4 border-b">
+    <div class="border-b p-3 sm:p-4">
       <app-search-toolbar
         [query]="query()"
         [placeholder]="'Search Customers...'"
         (queryChange)="onQueryChange($event)"
         (tabOut)="onEnterSearch()"
       >
-        <div class="flex items-center gap-3">
-          <z-select class="w-40" [zValue]="statusFilter()" (zValueChange)="onStatusChange($event)">
+        <div class="flex w-full flex-wrap items-center gap-3 sm:w-auto">
+          <z-select
+            class="w-full sm:w-40"
+            [zValue]="statusFilter()"
+            (zValueChange)="onStatusChange($event)"
+          >
             <z-select-item zValue="all">Show All</z-select-item>
             <z-select-item zValue="active">Enabled Only</z-select-item>
             <z-select-item zValue="disabled">Disabled Only</z-select-item>
@@ -53,7 +57,7 @@
       />
     </div>
 
-    <div class="p-4 border-t bg-muted/20">
+    <div class="border-t bg-muted/20 p-3 sm:p-4">
       <app-pagination-controls
         [page]="page()"
         [totalPages]="totalPages()"
@@ -119,9 +123,7 @@
 
 <ng-template #createdAtTemplate let-row>
   <div class="flex flex-col">
-    <span class="text-sm">{{
-      row.createdAt ? (row.createdAt | appDate: 'datetime') : ''
-    }}</span>
+    <span class="text-sm">{{ row.createdAt ? (row.createdAt | appDate: 'datetime') : '' }}</span>
     @if (row.updatedAt && row.updatedAt !== row.createdAt) {
       <span class="text-xs text-muted-foreground">{{
         row.updatedAt ? (row.updatedAt | appDate: 'datetime') : ''

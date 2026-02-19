@@ -28,6 +28,121 @@
       <z-card class="p-4" *ngIf="d.total_cashflow_formatted"><div class="text-sm">Total Cashflow</div><div class="text-2xl font-semibold">{{ d.total_cashflow_formatted }}</div></z-card>
     </div>
 
+    <section *ngIf="slug() === 'ai-costing'" class="space-y-6">
+      <div
+        class="rounded-xl border border-teal-200/60 bg-gradient-to-r from-teal-50 via-cyan-50 to-sky-50 p-5 dark:border-teal-900/40 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800"
+      >
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div class="text-xs uppercase tracking-widest text-teal-700/90 dark:text-teal-300/90">
+              AI Spend Observatory
+            </div>
+            <h2 class="mt-1 text-xl font-semibold">
+              Costing Intelligence for {{ d.selected_year }} · {{ d.selected_month_label }}
+            </h2>
+            <p class="mt-1 text-sm text-muted-foreground">
+              Yearly trend, monthly cadence, and day-level usage for LLM requests.
+            </p>
+          </div>
+          <button z-button zType="outline" (click)="refreshAiCosting()">Refresh</button>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-end gap-3">
+        <label class="text-sm">
+          <span class="text-muted-foreground">Year</span>
+          <select
+            class="mt-1 block rounded-md border bg-background px-3 py-2 text-sm"
+            [value]="d.selected_year"
+            (change)="onAiYearChange($event)"
+          >
+            <option *ngFor="let year of aiAvailableYears()" [value]="year">{{ year }}</option>
+          </select>
+        </label>
+        <label class="text-sm">
+          <span class="text-muted-foreground">Month</span>
+          <select
+            class="mt-1 block rounded-md border bg-background px-3 py-2 text-sm"
+            [value]="d.selected_month"
+            (change)="onAiMonthChange($event)"
+          >
+            <option *ngFor="let option of monthOptions()" [value]="option.value">{{ option.label }}</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <z-card class="p-4">
+          <div class="text-xs uppercase tracking-wider text-muted-foreground">Year Cost</div>
+          <div class="mt-1 text-2xl font-semibold">${{ d.year_summary?.total_cost | number: '1.4-4' }}</div>
+        </z-card>
+        <z-card class="p-4">
+          <div class="text-xs uppercase tracking-wider text-muted-foreground">Year Requests</div>
+          <div class="mt-1 text-2xl font-semibold">{{ d.year_summary?.request_count }}</div>
+        </z-card>
+        <z-card class="p-4">
+          <div class="text-xs uppercase tracking-wider text-muted-foreground">Month Cost</div>
+          <div class="mt-1 text-2xl font-semibold">${{ d.month_summary?.total_cost | number: '1.4-4' }}</div>
+        </z-card>
+        <z-card class="p-4">
+          <div class="text-xs uppercase tracking-wider text-muted-foreground">Month Requests</div>
+          <div class="mt-1 text-2xl font-semibold">{{ d.month_summary?.request_count }}</div>
+        </z-card>
+      </div>
+
+      <div class="grid gap-6 md:grid-cols-2">
+        <z-card class="p-4">
+          <canvas baseChart [type]="'line'" [data]="chart('aiYearlyCost')" [options]="{ responsive: true }"></canvas>
+        </z-card>
+        <z-card class="p-4">
+          <canvas baseChart [type]="'line'" [data]="chart('aiMonthlyCost')" [options]="{ responsive: true }"></canvas>
+        </z-card>
+      </div>
+
+      <div class="grid gap-6 md:grid-cols-2">
+        <z-card class="p-4">
+          <canvas baseChart [type]="'bar'" [data]="chart('aiMonthlyRequests')" [options]="{ responsive: true }"></canvas>
+        </z-card>
+        <z-card class="p-4">
+          <canvas baseChart [type]="'doughnut'" [data]="chart('aiFeatureBreakdown')" [options]="{ responsive: true }"></canvas>
+        </z-card>
+      </div>
+
+      <div class="grid gap-6 md:grid-cols-2">
+        <z-card class="p-4">
+          <canvas baseChart [type]="'line'" [data]="chart('aiDailyCost')" [options]="{ responsive: true }"></canvas>
+        </z-card>
+        <z-card class="p-4">
+          <canvas baseChart [type]="'line'" [data]="chart('aiDailyRequests')" [options]="{ responsive: true }"></canvas>
+        </z-card>
+      </div>
+
+      <div class="rounded-lg border bg-card overflow-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-muted/50">
+            <tr>
+              <th class="p-2 text-left">Feature</th>
+              <th class="p-2 text-right">Requests</th>
+              <th class="p-2 text-right">Success</th>
+              <th class="p-2 text-right">Failed</th>
+              <th class="p-2 text-right">Tokens</th>
+              <th class="p-2 text-right">Cost (USD)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let row of d.feature_breakdown_month" class="border-t">
+              <td class="p-2">{{ row.feature }}</td>
+              <td class="p-2 text-right">{{ row.request_count }}</td>
+              <td class="p-2 text-right">{{ row.success_count }}</td>
+              <td class="p-2 text-right">{{ row.failed_count }}</td>
+              <td class="p-2 text-right">{{ row.total_tokens }}</td>
+              <td class="p-2 text-right">${{ row.total_cost | number: '1.4-4' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
     <div class="grid gap-6 md:grid-cols-2" *ngIf="slug() === 'revenue'">
       <z-card class="p-4"><canvas baseChart [type]="'bar'" [data]="chart('revenueMonthly')" [options]="{responsive:true}"></canvas></z-card>
       <z-card class="p-4"><canvas baseChart [type]="'line'" [data]="chart('revenueMonthly')" [options]="{responsive:true}"></canvas></z-card>

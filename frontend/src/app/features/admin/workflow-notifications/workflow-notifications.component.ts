@@ -1,12 +1,28 @@
-import { CommonModule } from '@angular/common';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, inject, signal, TemplateRef, ViewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  PLATFORM_ID,
+  DestroyRef,
+  computed,
+  inject,
+  signal,
+  TemplateRef,
+  ViewChild,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardComboboxComponent, type ZardComboboxOption } from '@/shared/components/combobox';
 import { ZardDialogService } from '@/shared/components/dialog';
 import { ZardInputDirective } from '@/shared/components/input';
 import { GlobalToastService } from '@/core/services/toast.service';
+import {
+  WorkflowNotificationsStreamEvent,
+  WorkflowNotificationsStreamService,
+} from './workflow-notifications-stream.service';
+import { Subscription, catchError, finalize, map, of, Subject, switchMap } from 'rxjs';
 
 @Component({
   selector: 'app-workflow-notifications',
@@ -19,6 +35,7 @@ import { GlobalToastService } from '@/core/services/toast.service';
     ZardInputDirective,
   ],
   templateUrl: './workflow-notifications.component.html',
+  styleUrls: ['./workflow-notifications.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class WorkflowNotificationsComponent {
@@ -28,12 +45,35 @@ export class WorkflowNotificationsComponent {
 
   private http = inject(HttpClient);
   private fb = inject(FormBuilder);
+  private destroyRef = inject(DestroyRef);
+  private platformId = inject(PLATFORM_ID);
   private dialogService = inject(ZardDialogService);
   private toast = inject(GlobalToastService);
+  private streamService = inject(WorkflowNotificationsStreamService);
+  private readonly manualRefresh$ = new Subject<boolean>();
+  private streamSubscription: Subscription | null = null;
+  private reconnectTimeoutId: number | null = null;
+  private reconnectAttempt = 0;
+  private readonly reconnectBaseDelayMs = 2000;
+  private readonly reconnectMaxDelayMs = 30000;
   readonly notifications = signal<any[]>([]);
+  readonly lastUpdatedAt = signal<Date | null>(null);
   readonly loading = signal(false);
+  readonly liveConnected = signal(false);
+  readonly liveConnecting = signal(false);
+  readonly liveStatusText = computed(() => {
+    if (this.liveConnected()) {
+      return 'Live updates connected';
+    }
+    if (this.liveConnecting()) {
+      return 'Live updates connecting...';
+    }
+    return 'Live updates reconnecting...';
+  });
+  readonly liveDotOffline = computed(() => !this.liveConnected() && !this.liveConnecting());
   readonly sendingPush = signal(false);
   readonly sendingWhatsapp = signal(false);
+  readonly resendingIds = signal<number[]>([]);
   readonly users = signal<any[]>([]);
   readonly userOptions = signal<ZardComboboxOption[]>([]);
   dialogRef: any = null;
@@ -49,41 +89,148 @@ export class WorkflowNotificationsComponent {
   readonly whatsappTestForm = this.fb.group({
     to: [''],
     subject: ['Revis Bali CRM WhatsApp Test', [Validators.required, Validators.maxLength(120)]],
-    body: ['WhatsApp test message from Revis Bali CRM.', [Validators.required, Validators.maxLength(1000)]],
+    body: [
+      'WhatsApp test message from Revis Bali CRM.',
+      [Validators.required, Validators.maxLength(1000)],
+    ],
   });
 
   constructor() {
-    this.load();
+    this.bindNotificationStream();
+    this.load(false);
+    if (isPlatformBrowser(this.platformId)) {
+      this.connectLiveStream();
+      this.destroyRef.onDestroy(() => this.teardownLiveStream());
+    }
   }
 
-  load(): void {
-    this.loading.set(true);
-    this.http.get<any>('/api/workflow-notifications/').subscribe({
-      next: (res) => {
-        this.notifications.set(res?.results ?? res ?? []);
-        this.loading.set(false);
-      },
-      error: () => this.loading.set(false),
-    });
+  load(showError = true): void {
+    this.manualRefresh$.next(showError);
+  }
+
+  private bindNotificationStream(): void {
+    this.manualRefresh$
+      .pipe(
+        switchMap((showError) => {
+          this.loading.set(true);
+          return this.http.get<any>('/api/workflow-notifications/').pipe(
+            map((res) => res?.results ?? res ?? []),
+            catchError((error) => {
+              if (showError) {
+                const message = error?.error?.error || 'Failed to load notifications';
+                this.toast.error(String(message));
+              }
+              return of(null);
+            }),
+            finalize(() => this.loading.set(false)),
+          );
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((items) => {
+        if (items) {
+          this.notifications.set(items);
+          this.lastUpdatedAt.set(new Date());
+        }
+      });
+  }
+
+  private connectLiveStream(): void {
+    this.clearReconnectTimeout();
+    this.liveConnecting.set(true);
+    this.liveConnected.set(false);
+    this.streamSubscription?.unsubscribe();
+    this.streamSubscription = this.streamService
+      .connect()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (event) => this.handleLiveEvent(event),
+        error: () => {
+          this.liveConnecting.set(false);
+          this.liveConnected.set(false);
+          this.scheduleReconnect();
+        },
+      });
+  }
+
+  private handleLiveEvent(event: WorkflowNotificationsStreamEvent): void {
+    this.liveConnecting.set(false);
+    this.liveConnected.set(event.event !== 'workflow_notifications_error');
+    this.reconnectAttempt = 0;
+    if (event.event === 'workflow_notifications_error') {
+      this.liveConnected.set(false);
+      this.scheduleReconnect();
+      return;
+    }
+    if (event.event === 'workflow_notifications_changed') {
+      this.load(false);
+      return;
+    }
+    if (event.event === 'workflow_notifications_snapshot' && this.notifications().length === 0) {
+      this.load(false);
+    }
+  }
+
+  private scheduleReconnect(): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+    this.clearReconnectTimeout();
+    const delay = Math.min(
+      this.reconnectMaxDelayMs,
+      this.reconnectBaseDelayMs * 2 ** this.reconnectAttempt,
+    );
+    this.reconnectAttempt += 1;
+    this.reconnectTimeoutId = window.setTimeout(() => this.connectLiveStream(), delay);
+  }
+
+  private clearReconnectTimeout(): void {
+    if (this.reconnectTimeoutId !== null) {
+      window.clearTimeout(this.reconnectTimeoutId);
+      this.reconnectTimeoutId = null;
+    }
+  }
+
+  private teardownLiveStream(): void {
+    this.clearReconnectTimeout();
+    this.streamSubscription?.unsubscribe();
+    this.streamSubscription = null;
   }
 
   resend(id: number): void {
-    this.http.post(`/api/workflow-notifications/${id}/resend/`, {}).subscribe({
-      next: () => this.load(),
-      error: () => this.toast.error('Failed to resend notification'),
+    if (this.isResending(id)) {
+      return;
+    }
+
+    this.setResending(id, true);
+    this.http.post<any>(`/api/workflow-notifications/${id}/resend/`, {}).subscribe({
+      next: (response) => {
+        this.setResending(id, false);
+        const status = String(response?.status || 'updated');
+        const reference = String(response?.external_reference || '').trim();
+        this.toast.success(
+          reference ? `Notification resent (${status}) [${reference}]` : `Notification resent (${status})`,
+        );
+        this.load(false);
+      },
+      error: (error) => {
+        this.setResending(id, false);
+        const message = error?.error?.error || 'Failed to resend notification';
+        this.toast.error(String(message));
+      },
     });
   }
 
   cancel(id: number): void {
     this.http.post(`/api/workflow-notifications/${id}/cancel/`, {}).subscribe({
-      next: () => this.load(),
+      next: () => this.load(false),
       error: () => this.toast.error('Failed to cancel notification'),
     });
   }
 
   remove(id: number): void {
     this.http.delete(`/api/workflow-notifications/${id}/`).subscribe({
-      next: () => this.load(),
+      next: () => this.load(false),
       error: () => this.toast.error('Failed to delete notification'),
     });
   }
@@ -251,6 +398,7 @@ export class WorkflowNotificationsComponent {
         this.toast.success(`Test WhatsApp sent to ${recipient}`);
         this.dialogRef?.close();
         this.dialogRef = null;
+        this.load(false);
       },
       error: (error) => {
         this.sendingWhatsapp.set(false);
@@ -258,5 +406,21 @@ export class WorkflowNotificationsComponent {
         this.toast.error(String(message));
       },
     });
+  }
+
+  isResending(id: number): boolean {
+    return this.resendingIds().includes(id);
+  }
+
+  private setResending(id: number, value: boolean): void {
+    const current = this.resendingIds();
+    if (value) {
+      if (current.includes(id)) {
+        return;
+      }
+      this.resendingIds.set([...current, id]);
+      return;
+    }
+    this.resendingIds.set(current.filter((itemId) => itemId !== id));
   }
 }

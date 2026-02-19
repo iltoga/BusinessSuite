@@ -9,10 +9,4 @@ def site_info(request):
         "LOGO_INVERTED_FILENAME": settings.GLOBAL_SETTINGS.get(
             "LOGO_INVERTED_FILENAME", "logo_inverted_transparent.png"
         ),
-        # Make the flag available to templates so they can switch layouts
-        "DISABLE_DJANGO_VIEWS": getattr(settings, "DISABLE_DJANGO_VIEWS", False),
-        # Provide a base template variable to allow templates to switch layouts easily
-        "BASE_PARENT_TEMPLATE": (
-            "bootstrap_base.html" if getattr(settings, "DISABLE_DJANGO_VIEWS", False) else "base_template.html"
-        ),
     }

@@ -1,12 +1,12 @@
 @if (isLoading()) {
   <div class="space-y-6">
     <!-- Header Skeleton -->
-    <div class="flex flex-wrap items-center justify-between gap-4">
+    <div class="flex flex-wrap items-start justify-between gap-4">
       <div class="space-y-2">
         <z-skeleton class="h-8 w-64" />
         <z-skeleton class="h-4 w-48" />
       </div>
-      <div class="flex gap-2">
+      <div class="application-header-actions flex w-full flex-wrap gap-2 sm:w-auto">
         <z-skeleton class="h-10 w-24" />
         <z-skeleton class="h-10 w-24" />
       </div>
@@ -19,7 +19,7 @@
     <app-card-skeleton [lines]="6" />
 
     <!-- Documents Card Skeleton -->
-    <z-card class="p-6">
+    <z-card class="p-4 sm:p-6">
       <div class="mb-4">
         <z-skeleton class="h-6 w-1/4" />
       </div>
@@ -30,7 +30,7 @@
   <div class="text-muted-foreground">Application not found.</div>
 } @else {
   <div class="space-y-6">
-    <div class="flex flex-wrap items-center justify-between gap-4">
+    <div class="flex flex-wrap items-start justify-between gap-4">
       <div>
         <h1 class="text-2xl font-semibold">
           Application #{{ application()!.id }} — {{ application()!.product.name }}
@@ -39,7 +39,7 @@
           Customer: {{ application()!.customer.fullName }}
         </p>
       </div>
-      <div class="flex gap-2">
+      <div class="application-header-actions flex w-full flex-wrap gap-2 sm:w-auto">
         @if (canCreateInvoice()) {
           <button
             z-button
@@ -74,7 +74,7 @@
       </div>
     </div>
 
-    <z-card class="p-6">
+    <z-card class="p-4 sm:p-6">
       <div class="grid gap-6">
         <div class="flex flex-wrap items-end gap-6">
           <div class="w-full sm:w-48">
@@ -101,7 +101,7 @@
               />
             </div>
           }
-          <div class="ml-auto flex flex-col items-end">
+          <div class="application-meta-status ml-auto flex flex-col items-end">
             <div class="text-sm text-muted-foreground mb-1 text-right">Application Status</div>
             <z-badge [zType]="getApplicationStatusVariant(application()!.status)">
               {{ application()!.status | titlecase }}
@@ -169,7 +169,7 @@
       </div>
     </z-card>
 
-    <z-card class="p-6">
+    <z-card class="p-4 sm:p-6">
       <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
         <h3 class="text-lg font-semibold">Tasks Timeline</h3>
         <div class="flex flex-wrap gap-2">
@@ -304,7 +304,7 @@
       }
     </z-card>
 
-    <z-card class="p-6">
+    <z-card class="p-4 sm:p-6">
       <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
         <h3 class="text-lg font-semibold">Uploaded Documents</h3>
         <div class="flex flex-wrap gap-2">
@@ -336,8 +336,8 @@
       @if (localUploadedDocuments().length === 0) {
         <div class="text-sm text-muted-foreground">No uploaded documents yet.</div>
       } @else {
-        <div class="overflow-x-auto">
-          <table class="w-full border-collapse">
+        <div class="overflow-x-auto app-detail-table-wrap">
+          <table class="app-detail-table app-uploaded-docs-table w-full border-collapse">
             <thead>
               <tr class="border-b text-sm text-muted-foreground">
                 <th class="w-10"></th>
@@ -360,8 +360,8 @@
             </thead>
             <tbody cdkDropList (cdkDropListDropped)="onDocumentDrop($event)">
               @for (doc of localUploadedDocuments(); track doc.id) {
-                <tr class="border-b bg-card" cdkDrag>
-                  <td class="py-3 px-2">
+                <tr class="border-b bg-card uploaded-doc-row" cdkDrag>
+                  <td class="py-3 px-2 uploaded-doc-sort-cell" data-label="Sort">
                     <div
                       class="cursor-move text-muted-foreground"
                       cdkDragHandle
@@ -370,7 +370,7 @@
                       <z-icon zType="ellipsis" zSize="sm" class="rotate-90" />
                     </div>
                   </td>
-                  <td class="py-3 px-2">
+                  <td class="py-3 px-2 uploaded-doc-select-cell" data-label="Select">
                     <input
                       type="checkbox"
                       [checked]="selectedDocumentIds().has(doc.id)"
@@ -378,23 +378,23 @@
                       class="h-4 w-4 rounded border text-primary"
                     />
                   </td>
-                  <td class="py-3">{{ doc.docType.name }}</td>
-                  <td class="py-3">{{ doc.docNumber || '—' }}</td>
-                  <td class="py-3">{{ doc.expirationDate | appDate }}</td>
-                  <td class="py-3">
+                  <td class="py-3" data-label="Document">{{ doc.docType.name }}</td>
+                  <td class="py-3" data-label="Doc Number">{{ doc.docNumber || '—' }}</td>
+                  <td class="py-3" data-label="Expiration">{{ doc.expirationDate | appDate }}</td>
+                  <td class="py-3" data-label="Last Updated">
                     <div class="text-sm">{{ doc.updatedAt | appDate: 'datetime' }}</div>
                     @if (doc.updatedByUsername) {
                       <div class="text-xs text-muted-foreground">{{ doc.updatedByUsername }}</div>
                     }
                   </td>
-                  <td class="py-3">
+                  <td class="py-3" data-label="Completed">
                     @if (doc.completed) {
                       <z-badge zType="success">Yes</z-badge>
                     } @else {
                       <z-badge zType="secondary">No</z-badge>
                     }
                   </td>
-                  <td class="py-3">
+                  <td class="py-3 uploaded-doc-actions-cell" data-label="Actions">
                     <div class="flex flex-wrap gap-2">
                       <button z-button zType="warning" zSize="default" (click)="openUpload(doc)">
                         Update
@@ -418,15 +418,15 @@
       }
     </z-card>
 
-    <z-card class="p-6">
-      <div class="flex items-center justify-between mb-4">
+    <z-card class="p-4 sm:p-6">
+      <div class="mb-4 flex items-center justify-between">
         <h3 class="text-lg font-semibold">Required Documents</h3>
       </div>
       @if (requiredDocuments().length === 0) {
         <div class="text-sm text-muted-foreground">No required documents pending.</div>
       } @else {
-        <div class="overflow-x-auto">
-          <table class="w-full border-collapse">
+        <div class="overflow-x-auto app-detail-table-wrap">
+          <table class="app-detail-table app-required-docs-table w-full border-collapse">
             <thead>
               <tr class="border-b text-sm text-muted-foreground">
                 <th class="text-left py-2">Document</th>
@@ -435,21 +435,22 @@
             </thead>
             <tbody>
               @for (doc of requiredDocuments(); track doc.id) {
-                <tr class="border-b">
-                  <td class="py-3">{{ doc.docType.name }}</td>
-                  <td class="py-3">
-                    <button z-button zType="default" zSize="sm" (click)="openUpload(doc)">
-                      Upload
-                    </button>
-                    <button
-                      z-button
-                      zType="destructive"
-                      zSize="sm"
-                      class="ml-2"
-                      (click)="removeApplicationDocument(doc)"
-                    >
-                      Remove
-                    </button>
+                <tr class="border-b app-doc-row">
+                  <td class="py-3" data-label="Document">{{ doc.docType.name }}</td>
+                  <td class="py-3 app-doc-actions-cell" data-label="Actions">
+                    <div class="flex flex-wrap gap-2">
+                      <button z-button zType="default" zSize="sm" (click)="openUpload(doc)">
+                        Upload
+                      </button>
+                      <button
+                        z-button
+                        zType="destructive"
+                        zSize="sm"
+                        (click)="removeApplicationDocument(doc)"
+                      >
+                        Remove
+                      </button>
+                    </div>
                   </td>
                 </tr>
               }
@@ -460,12 +461,12 @@
     </z-card>
 
     @if (optionalDocuments().length > 0) {
-      <z-card class="p-6">
-        <div class="flex items-center justify-between mb-4">
+      <z-card class="p-4 sm:p-6">
+        <div class="mb-4 flex items-center justify-between">
           <h3 class="text-lg font-semibold">Optional Documents</h3>
         </div>
-        <div class="overflow-x-auto">
-          <table class="w-full border-collapse">
+        <div class="overflow-x-auto app-detail-table-wrap">
+          <table class="app-detail-table app-optional-docs-table w-full border-collapse">
             <thead>
               <tr class="border-b text-sm text-muted-foreground">
                 <th class="text-left py-2">Document</th>
@@ -474,12 +475,14 @@
             </thead>
             <tbody>
               @for (doc of optionalDocuments(); track doc.id) {
-                <tr class="border-b">
-                  <td class="py-3">{{ doc.docType.name }}</td>
-                  <td class="py-3">
-                    <button z-button zType="default" zSize="sm" (click)="openUpload(doc)">
-                      Upload
-                    </button>
+                <tr class="border-b app-doc-row">
+                  <td class="py-3" data-label="Document">{{ doc.docType.name }}</td>
+                  <td class="py-3 app-doc-actions-cell" data-label="Actions">
+                    <div class="flex flex-wrap gap-2">
+                      <button z-button zType="default" zSize="sm" (click)="openUpload(doc)">
+                        Upload
+                      </button>
+                    </div>
                   </td>
                 </tr>
               }

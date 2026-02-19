@@ -14,8 +14,8 @@ import json
 import logging
 import os
 import sys
-from importlib import import_module
 from datetime import timedelta
+from importlib import import_module
 from pathlib import Path
 
 from core.utils.dropbox_refresh_token import refresh_dropbox_token
@@ -136,15 +136,8 @@ GLOBAL_SETTINGS = {
 # Uses Angular DatePipe tokens (e.g. dd-MM-yyyy, yyyy-MM-dd, dd/MM/yyyy).
 DATE_FORMAT_JS = os.getenv("DATE_FORMAT_JS", "dd-MM-yyyy")
 
-# When True, legacy Django views (non-admin, non-api) are disabled and return 403.
-# Can be toggled via env var DISABLE_DJANGO_VIEWS or managed via a waffle flag named "disable_django_views"
-DISABLE_DJANGO_VIEWS = _parse_bool(os.getenv("DISABLE_DJANGO_VIEWS", "False"))
-
-# If Django views are disabled, it's safer to redirect logins to the admin
-# interface (which is exempt). This prevents users from being redirected to
-# the site root ("/") which may be blocked by the DisableDjangoViewsMiddleware.
-if DISABLE_DJANGO_VIEWS:
-    LOGIN_REDIRECT_URL = "/admin/"
+# Legacy Django template views have been removed; always redirect to admin after login.
+LOGIN_REDIRECT_URL = "/admin/"
 
 # Invoice Import Settings
 INVOICE_IMPORT_MAX_WORKERS = int(os.getenv("INVOICE_IMPORT_MAX_WORKERS", "3"))  # Max parallel imports
@@ -195,19 +188,14 @@ INSTALLED_APPS = [
     "rest_framework",
     "drf_spectacular",
     "rest_framework.authtoken",
-    "widget_tweaks",
     "nested_admin",
-    "crispy_forms",
-    "crispy_bootstrap5",
     "django.contrib.humanize",
-    "django_unicorn",
     "debug_toolbar",
     "waffle",
     "dbbackup",
     "storages",
     "admin_tools",
     "django_cleanup.apps.CleanupConfig",
-    "django_user_agents",
     "huey.contrib.djhuey",
 ]
 
@@ -225,12 +213,9 @@ MIDDLEWARE = [
     # Waffle must be after AuthenticationMiddleware to access request.user
     "waffle.middleware.WaffleMiddleware",
     # Custom middlewares that might rely on Waffle flags or Auth
-    "business_suite.middlewares.disable_django_views.DisableDjangoViewsMiddleware",
     "business_suite.middlewares.AuthLoginRequiredMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    # it merge all changes of object per request
-    "django_user_agents.middleware.UserAgentMiddleware",
     "core.middleware.performance_logger.PerformanceLoggingMiddleware",
 ]
 
@@ -239,7 +224,10 @@ ROOT_URLCONF = "business_suite.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [os.path.join(BASE_DIR, "templates")],
+        "DIRS": [
+            os.path.join(BASE_DIR, "templates"),
+            os.path.join(BASE_DIR, "business_suite", "templates"),
+        ],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -401,7 +389,6 @@ LOGIN_EXEMPT_URLS = (
     r"^staticfiles/.*$",
 )
 
-LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/login"
 
 STATICFILES_DIRS = [
@@ -558,9 +545,6 @@ else:
         {*(getattr(globals().get("CORS_EXPOSE_HEADERS", []), "copy", lambda: [])()), *["Content-Disposition"]}
     )
 
-CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
-CRISPY_TEMPLATE_PACK = "bootstrap5"
-
 # https://github.com/legion-an/django-models-logging
 LOGGING_MODELS = (
     # 'app.ClassName',      # logging only for this model
@@ -659,8 +643,6 @@ HUEY = _build_huey_settings(TESTING)
 
 # select2
 SELECT2_CACHE_BACKEND = "select2"
-
-USER_AGENTS_CACHE = "default"
 
 # SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 # # SESSION_COOKIE_AGE = 60 * 60 * 24  # One day
@@ -950,6 +932,13 @@ META_WHATSAPP_BUSINESS_NUMBER = os.getenv("META_WHATSAPP_BUSINESS_NUMBER", "")
 META_WHATSAPP_ACCESS_TOKEN = os.getenv("META_WHATSAPP_ACCESS_TOKEN", "")
 META_TOKEN_CLIENT = os.getenv("META_TOKEN_CLIENT", "")
 META_GRAPH_API_VERSION = os.getenv("META_GRAPH_API_VERSION", "v23.0")
+META_WHATSAPP_AUTO_REFRESH_ACCESS_TOKEN = _parse_bool(os.getenv("META_WHATSAPP_AUTO_REFRESH_ACCESS_TOKEN", "True"))
+META_WHATSAPP_TOKEN_REFRESH_WINDOW_SECONDS = int(
+    os.getenv("META_WHATSAPP_TOKEN_REFRESH_WINDOW_SECONDS", str(7 * 24 * 60 * 60))
+)
+META_WHATSAPP_TOKEN_CACHE_TIMEOUT_SECONDS = int(
+    os.getenv("META_WHATSAPP_TOKEN_CACHE_TIMEOUT_SECONDS", str(70 * 24 * 60 * 60))
+)
 META_WEBHOOK_ENFORCE_SIGNATURE = (
     os.getenv("META_WEBHOOK_ENFORCE_SIGNATURE", "false" if DEBUG else "true").lower() == "true"
 )

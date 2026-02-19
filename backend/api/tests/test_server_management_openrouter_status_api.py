@@ -2,8 +2,13 @@ from unittest.mock import MagicMock, patch
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from django.db.utils import ProgrammingError
 from django.test import TestCase, override_settings
+from django.utils import timezone
 from rest_framework.test import APIClient
+
+from core.models.ai_request_usage import AIRequestUsage
+from core.services.ai_usage_service import AIUsageFeature
 
 
 class ServerManagementOpenRouterStatusApiTests(TestCase):
@@ -26,6 +31,28 @@ class ServerManagementOpenRouterStatusApiTests(TestCase):
         LLM_DEFAULT_MODEL="google/gemini-2.5-flash-lite",
     )
     def test_openrouter_status_returns_credit_and_ai_model_data(self):
+        now = timezone.now()
+
+        invoice_usage = AIRequestUsage.objects.create(
+            feature=AIUsageFeature.INVOICE_IMPORT_AI_PARSER,
+            provider="openrouter",
+            model="google/gemini-2.5-flash-lite",
+            success=True,
+            total_tokens=240,
+            cost_usd="0.120000",
+        )
+        AIRequestUsage.objects.filter(pk=invoice_usage.pk).update(created_at=now)
+
+        passport_usage = AIRequestUsage.objects.create(
+            feature=AIUsageFeature.PASSPORT_OCR_AI_EXTRACTOR,
+            provider="openrouter",
+            model="google/gemini-2.5-flash-lite",
+            success=False,
+            total_tokens=120,
+            cost_usd="0.040000",
+        )
+        AIRequestUsage.objects.filter(pk=passport_usage.pk).update(created_at=now)
+
         key_response = MagicMock()
         key_response.status_code = 200
         key_response.json.return_value = {
@@ -52,3 +79,33 @@ class ServerManagementOpenRouterStatusApiTests(TestCase):
         self.assertEqual(payload["openrouter"]["effectiveCreditRemaining"], 12.5)
         self.assertEqual(payload["aiModels"]["provider"], "openrouter")
         self.assertGreaterEqual(len(payload["aiModels"]["features"]), 2)
+        invoice_feature = next(
+            feature for feature in payload["aiModels"]["features"] if feature["feature"] == AIUsageFeature.INVOICE_IMPORT_AI_PARSER
+        )
+        self.assertEqual(invoice_feature["usageCurrentMonth"]["requestCount"], 1)
+        self.assertEqual(invoice_feature["usageCurrentMonth"]["totalTokens"], 240)
+        self.assertEqual(invoice_feature["usageCurrentYear"]["requestCount"], 1)
+
+        passport_feature = next(
+            feature for feature in payload["aiModels"]["features"] if feature["feature"] == AIUsageFeature.PASSPORT_OCR_AI_EXTRACTOR
+        )
+        self.assertEqual(passport_feature["usageCurrentMonth"]["failedCount"], 1)
+
+    @override_settings(OPENROUTER_API_KEY="")
+    def test_openrouter_status_handles_missing_usage_table(self):
+        with patch("api.views_admin.AIRequestUsage.objects.filter", side_effect=ProgrammingError("missing table")):
+            response = self.client.get("/api/server-management/openrouter-status/")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["ok"])
+        self.assertFalse(payload["openrouter"]["configured"])
+
+        invoice_feature = next(
+            feature
+            for feature in payload["aiModels"]["features"]
+            if feature["feature"] == AIUsageFeature.INVOICE_IMPORT_AI_PARSER
+        )
+        self.assertEqual(invoice_feature["usageCurrentMonth"]["requestCount"], 0)
+        self.assertEqual(invoice_feature["usageCurrentMonth"]["totalCost"], 0.0)
+        self.assertEqual(invoice_feature["usageCurrentYear"]["requestCount"], 0)

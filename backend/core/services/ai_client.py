@@ -6,8 +6,8 @@ All AI-powered services should use this base client for consistency.
 
 import base64
 import json
-import logging
 import re
+import time
 from pathlib import Path
 from typing import Any, Optional, Union
 
@@ -16,6 +16,7 @@ from django.conf import settings
 from django.core.files.uploadedfile import UploadedFile
 from openai import OpenAI
 
+from core.services.ai_usage_service import AIUsageFeature, AIUsageService
 from core.services.logger_service import Logger
 
 logger = Logger.get_logger(__name__)
@@ -39,6 +40,7 @@ class AIClient:
         model: Optional[str] = None,
         use_openrouter: Optional[bool] = None,
         timeout: Optional[float] = None,
+        feature_name: Optional[str] = None,
     ):
         """
         Initialize the AI client.
@@ -48,7 +50,10 @@ class AIClient:
             model: Model to use (defaults to settings.LLM_DEFAULT_MODEL)
             use_openrouter: Whether to use OpenRouter (defaults to settings.LLM_PROVIDER)
             timeout: Request timeout in seconds (defaults to settings)
+            feature_name: Logical AI feature tag used for usage accounting
         """
+        self.feature_name = feature_name or AIUsageFeature.UNKNOWN
+
         # Determine provider
         if use_openrouter is None:
             llm_provider = getattr(settings, "LLM_PROVIDER", "openrouter")
@@ -138,49 +143,142 @@ class AIClient:
         if response_format:
             request_kwargs["response_format"] = response_format
 
+        feature_name = kwargs.pop("feature_name", None) or self.feature_name or AIUsageFeature.UNKNOWN
+        started_at = time.perf_counter()
+
         try:
             response = self.client.chat.completions.create(**request_kwargs)
+            self._record_usage(
+                feature_name=feature_name,
+                response=response,
+                success=True,
+                error_type="",
+                started_at=started_at,
+            )
             return response.choices[0].message.content
         except openai.APITimeoutError as e:
+            self._record_usage(
+                feature_name=feature_name,
+                response=None,
+                success=False,
+                error_type="APITimeoutError",
+                started_at=started_at,
+            )
             msg = f"{self.provider_name} API Timeout Error: The request timed out after {self.timeout}s. This often happens with large images or during peak usage. Details: {str(e)}"
             logger.error(msg)
             raise AIConnectionError(msg)
         except openai.APIConnectionError as e:
+            self._record_usage(
+                feature_name=feature_name,
+                response=None,
+                success=False,
+                error_type="APIConnectionError",
+                started_at=started_at,
+            )
             msg = f"{self.provider_name} API Connection Error: Could not connect to the server. Check your internet connection or proxy settings. Original error: {str(e)}"
             if e.__cause__:
                 msg += f" (Cause: {str(e.__cause__)})"
             logger.error(msg)
             raise AIConnectionError(msg)
         except openai.RateLimitError as e:
+            self._record_usage(
+                feature_name=feature_name,
+                response=None,
+                success=False,
+                error_type="RateLimitError",
+                started_at=started_at,
+            )
             msg = f"{self.provider_name} API Rate Limit Error: You have exceeded your rate limit or quota. Details: {str(e)}"
             logger.error(msg)
             raise Exception(msg)
         except openai.AuthenticationError as e:
+            self._record_usage(
+                feature_name=feature_name,
+                response=None,
+                success=False,
+                error_type="AuthenticationError",
+                started_at=started_at,
+            )
             msg = (
                 f"{self.provider_name} API Authentication Error: Your API key is invalid or expired. Details: {str(e)}"
             )
             logger.error(msg)
             raise Exception(msg)
         except openai.BadRequestError as e:
+            self._record_usage(
+                feature_name=feature_name,
+                response=None,
+                success=False,
+                error_type="BadRequestError",
+                started_at=started_at,
+            )
             msg = f"{self.provider_name} API Bad Request: The request was invalid (e.g., malformed parameters, image too large, or invalid model). Details: {str(e)}"
             logger.error(msg)
             raise Exception(msg)
         except openai.NotFoundError as e:
+            self._record_usage(
+                feature_name=feature_name,
+                response=None,
+                success=False,
+                error_type="NotFoundError",
+                started_at=started_at,
+            )
             msg = f"{self.provider_name} API Not Found: The requested resource (model or endpoint) was not found. Details: {str(e)}"
             logger.error(msg)
             raise Exception(msg)
         except openai.InternalServerError as e:
+            self._record_usage(
+                feature_name=feature_name,
+                response=None,
+                success=False,
+                error_type="InternalServerError",
+                started_at=started_at,
+            )
             msg = f"{self.provider_name} API Internal Server Error: The {self.provider_name} service is currently experiencing issues. Details: {str(e)}"
             logger.error(msg)
             raise Exception(msg)
         except openai.APIStatusError as e:
+            self._record_usage(
+                feature_name=feature_name,
+                response=None,
+                success=False,
+                error_type="APIStatusError",
+                started_at=started_at,
+            )
             msg = f"{self.provider_name} API Status Error (HTTP {e.status_code}): An error occurred with status code {e.status_code}. Details: {str(e)}"
             logger.error(msg)
             raise Exception(msg)
         except Exception as e:
+            self._record_usage(
+                feature_name=feature_name,
+                response=None,
+                success=False,
+                error_type=type(e).__name__,
+                started_at=started_at,
+            )
             msg = f"Unexpected error in {self.provider_name} AI Client: {str(e)}"
             logger.error(msg)
             raise Exception(msg)
+
+    def _record_usage(
+        self,
+        *,
+        feature_name: str,
+        response: Any,
+        success: bool,
+        error_type: str,
+        started_at: float,
+    ) -> None:
+        elapsed_ms = int((time.perf_counter() - started_at) * 1000)
+        AIUsageService.enqueue_request_capture(
+            feature=feature_name or self.feature_name or AIUsageFeature.UNKNOWN,
+            provider=self.provider_name.lower(),
+            model=self.model,
+            response=response,
+            success=success,
+            error_type=error_type,
+            latency_ms=elapsed_ms,
+        )
 
     def chat_completion_json(
         self,

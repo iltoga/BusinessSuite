@@ -1,1 +1,117 @@
-/* Component styles for server management (minimal placeholder) */
+:host {
+  display: block;
+}
+
+.wrap-break-word {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.diagnostic-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.diagnostic-table {
+  width: 100%;
+  min-width: 56rem;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+@media (max-width: 1024px) {
+  .diagnostic-table {
+    min-width: 48rem;
+  }
+}
+
+@media (max-width: 767px) and (orientation: landscape) {
+  .diagnostic-table {
+    min-width: 52rem;
+    font-size: 0.8125rem;
+  }
+}
+
+@media (max-width: 767px) and (orientation: portrait) {
+  .server-actions {
+    width: 100%;
+  }
+
+  .server-actions > button {
+    width: 100%;
+  }
+
+  .diagnostic-table-wrap {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .diagnostic-table {
+    min-width: 0;
+  }
+
+  .diagnostic-table thead {
+    display: none;
+  }
+
+  .diagnostic-table tbody {
+    display: grid;
+    gap: 0.75rem;
+    padding: 0.75rem;
+  }
+
+  .diagnostic-row {
+    display: grid;
+    gap: 0.625rem;
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.75rem;
+    padding: 0.75rem;
+    background-color: hsl(var(--card));
+  }
+
+  .diagnostic-row td {
+    display: grid;
+    grid-template-columns: minmax(5.25rem, 42%) minmax(0, 1fr);
+    gap: 0.625rem;
+    align-items: start;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .diagnostic-row td::before {
+    content: attr(data-label);
+    font-size: 0.7rem;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
+  }
+
+  .diagnostic-path-cell {
+    max-width: none;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  .diagnostic-issues-cell {
+    grid-template-columns: 1fr;
+    padding: 0.625rem;
+    border: 1px solid hsl(var(--primary) / 0.22);
+    border-radius: 0.625rem;
+    background: linear-gradient(
+      180deg,
+      hsl(var(--primary) / 0.09) 0%,
+      hsl(var(--primary) / 0.04) 100%
+    );
+  }
+
+  .diagnostic-issues-cell::before {
+    color: hsl(var(--primary));
+    font-weight: 700;
+  }
+}

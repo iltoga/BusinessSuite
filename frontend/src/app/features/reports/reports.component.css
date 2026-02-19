@@ -1,2 +1,11 @@
-:host { display: block; }
-canvas { max-height: 360px; }
+:host {
+  display: block;
+}
+
+canvas {
+  max-height: 360px;
+}
+
+select {
+  min-width: 10rem;
+}

@@ -10,9 +10,13 @@ import requests
 from admin_tools import services
 from api.utils.sse_auth import sse_token_auth_required
 from api.views import ApiErrorHandlingMixin
+from core.models.ai_request_usage import AIRequestUsage
+from core.services.ai_usage_service import AIUsageFeature
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.staticfiles import finders
+from django.db.models import Count, Q, Sum
+from django.db.utils import OperationalError, ProgrammingError
 from django.http import FileResponse, JsonResponse, StreamingHttpResponse
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
@@ -497,6 +501,7 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
     @action(detail=False, methods=["get"], url_path="openrouter-status")
     def openrouter_status(self, request):
         """Return OpenRouter credit status and AI model usage by feature."""
+        usage_tracking_unavailable = False
 
         def _to_float(value):
             try:
@@ -515,9 +520,56 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             except Exception:
                 return {"providers": {}}
 
+        def _empty_period_usage(now_dt: datetime.datetime, *, month: bool) -> dict:
+            return {
+                "requestCount": 0,
+                "successCount": 0,
+                "failedCount": 0,
+                "totalTokens": 0,
+                "totalCost": 0.0,
+                "year": now_dt.year,
+                "month": now_dt.month if month else None,
+            }
+
+        def _period_usage(feature_name: str, provider_name: str, now_dt: datetime.datetime, *, month: bool) -> dict:
+            nonlocal usage_tracking_unavailable
+            if usage_tracking_unavailable:
+                return _empty_period_usage(now_dt, month=month)
+
+            filters = {
+                "feature": feature_name,
+                "provider": provider_name,
+                "created_at__year": now_dt.year,
+            }
+            if month:
+                filters["created_at__month"] = now_dt.month
+
+            try:
+                aggregate = AIRequestUsage.objects.filter(**filters).aggregate(
+                    request_count=Count("id"),
+                    success_count=Count("id", filter=Q(success=True)),
+                    failed_count=Count("id", filter=Q(success=False)),
+                    total_tokens=Sum("total_tokens"),
+                    total_cost=Sum("cost_usd"),
+                )
+            except (ProgrammingError, OperationalError):
+                usage_tracking_unavailable = True
+                return _empty_period_usage(now_dt, month=month)
+
+            return {
+                "requestCount": int(aggregate.get("request_count") or 0),
+                "successCount": int(aggregate.get("success_count") or 0),
+                "failedCount": int(aggregate.get("failed_count") or 0),
+                "totalTokens": int(aggregate.get("total_tokens") or 0),
+                "totalCost": float(aggregate.get("total_cost") or 0.0),
+                "year": now_dt.year,
+                "month": now_dt.month if month else None,
+            }
+
         api_key = getattr(settings, "OPENROUTER_API_KEY", None)
         base_url = getattr(settings, "OPENROUTER_API_BASE_URL", "https://openrouter.ai/api/v1").rstrip("/")
         timeout = float(getattr(settings, "OPENROUTER_HEALTHCHECK_TIMEOUT", 10.0))
+        now = timezone.now()
 
         key_status = {
             "ok": False,
@@ -622,18 +674,30 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             "availableModels": available_models,
             "features": [
                 {
-                    "feature": "Invoice Import AI Parser",
+                    "feature": AIUsageFeature.INVOICE_IMPORT_AI_PARSER,
                     "purpose": "Extracts invoice/customer data from uploaded invoice files.",
                     "modelStrategy": "Uses request llm_model override, otherwise LLM_DEFAULT_MODEL.",
                     "effectiveModel": default_model,
                     "provider": current_provider,
+                    "usageCurrentMonth": _period_usage(
+                        AIUsageFeature.INVOICE_IMPORT_AI_PARSER, current_provider, now, month=True
+                    ),
+                    "usageCurrentYear": _period_usage(
+                        AIUsageFeature.INVOICE_IMPORT_AI_PARSER, current_provider, now, month=False
+                    ),
                 },
                 {
-                    "feature": "Passport OCR AI Extractor",
+                    "feature": AIUsageFeature.PASSPORT_OCR_AI_EXTRACTOR,
                     "purpose": "Extracts structured passport fields in hybrid MRZ + AI flow.",
                     "modelStrategy": "Uses LLM_DEFAULT_MODEL unless parser is explicitly instantiated with a model.",
                     "effectiveModel": default_model,
                     "provider": current_provider,
+                    "usageCurrentMonth": _period_usage(
+                        AIUsageFeature.PASSPORT_OCR_AI_EXTRACTOR, current_provider, now, month=True
+                    ),
+                    "usageCurrentYear": _period_usage(
+                        AIUsageFeature.PASSPORT_OCR_AI_EXTRACTOR, current_provider, now, month=False
+                    ),
                 },
             ],
         }

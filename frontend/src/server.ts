@@ -97,10 +97,12 @@ const OTLP_TRACES_ENABLED =
   Boolean(OTLP_TRACES_ENDPOINT) &&
   String(process.env['OTEL_TRACES_EXPORTER'] || 'otlp').toLowerCase() !== 'none';
 const OTLP_SERVICE_NAME = process.env['OTEL_SERVICE_NAME'] || 'frontend';
-const OTLP_SCOPE_NAME = process.env['OTEL_INSTRUMENTATION_SCOPE_NAME'] || 'revisbali.manual.frontend';
+const OTLP_SCOPE_NAME =
+  process.env['OTEL_INSTRUMENTATION_SCOPE_NAME'] || 'revisbali.manual.frontend';
 const OTLP_EXPORT_TIMEOUT_MS = Number(process.env['OTEL_EXPORTER_OTLP_TIMEOUT_MS'] || '1000');
 const OTLP_RESOURCE_ATTRIBUTES = parseKvCsv(process.env['OTEL_RESOURCE_ATTRIBUTES'] || '');
-OTLP_RESOURCE_ATTRIBUTES['service.name'] = OTLP_RESOURCE_ATTRIBUTES['service.name'] || OTLP_SERVICE_NAME;
+OTLP_RESOURCE_ATTRIBUTES['service.name'] =
+  OTLP_RESOURCE_ATTRIBUTES['service.name'] || OTLP_SERVICE_NAME;
 let lastOtlpErrorLogAtMs = 0;
 
 function parseKvCsv(rawValue: string): Record<string, string> {
@@ -319,7 +321,11 @@ console.debug = (...args: unknown[]) => {
 
 const getClientRateKey = (req: express.Request) => {
   const xff = req.headers['x-forwarded-for'];
-  const forwardedIp = Array.isArray(xff) ? xff[0] : typeof xff === 'string' ? xff.split(',')[0] : '';
+  const forwardedIp = Array.isArray(xff)
+    ? xff[0]
+    : typeof xff === 'string'
+      ? xff.split(',')[0]
+      : '';
   const ip = forwardedIp?.trim() || req.ip || 'unknown';
   const userAgent = String(req.headers['user-agent'] || '').slice(0, 120);
   return `${ip}|${userAgent}`;
@@ -366,13 +372,16 @@ app.post(clientLogPath, express.json({ limit: '16kb' }), (req, res) => {
     return;
   }
 
-  const { level, message, details, url } = req.body || {};
+  const { level, message, details, url, username } = req.body || {};
   const timestamp = new Date().toISOString();
   const normalizedLevel =
     level === 'error' || level === 'warn' || level === 'debug' || level === 'info' ? level : 'info';
   const truncatedMessage = String(message || '').slice(0, 4000);
+  const normalizedUsername =
+    typeof username === 'string' && username.trim() ? username.trim().slice(0, 120) : '';
+  const userPrefix = normalizedUsername ? `[user:${normalizedUsername}] ` : '';
   // Prefix helps Grafana/Alloy filters
-  const logMessage = `[BROWSER] [${normalizedLevel.toUpperCase()}] [${timestamp}] ${url ? '(' + url + ') ' : ''}${truncatedMessage}${details ? ' ' + JSON.stringify(details) : ''}`;
+  const logMessage = `[BROWSER] [${normalizedLevel.toUpperCase()}] [${timestamp}] ${userPrefix}${url ? '(' + url + ') ' : ''}${truncatedMessage}${details ? ' ' + JSON.stringify(details) : ''}`;
 
   switch (normalizedLevel) {
     case 'error':

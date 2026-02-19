@@ -4,7 +4,7 @@ from datetime import datetime, time, timedelta
 from customer_applications.models import DocApplication
 from django.contrib.auth import get_user_model
 from django.conf import settings
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 from huey import crontab
 from huey.contrib.djhuey import db_periodic_task, db_task
@@ -14,6 +14,47 @@ logger = logging.getLogger(__name__)
 
 SYNC_ACTION_UPSERT = "upsert"
 SYNC_ACTION_DELETE = "delete"
+WHATSAPP_POLL_UNSUPPORTED_MARKER = "Meta poll unsupported: waiting for webhook status updates."
+
+
+def _append_provider_message(existing: str, new_line: str) -> str:
+    if existing:
+        return f"{existing}\n{new_line}"
+    return new_line
+
+
+def _is_meta_status_lookup_unsupported(exc: Exception) -> bool:
+    text = str(exc or "")
+    lowered = text.lower()
+    return (
+        "unsupported get request" in lowered
+        and "graphmethodexception" in lowered
+        and (
+            '"error_subcode":33' in lowered
+            or "'error_subcode': 33" in lowered
+            or "subcode\":33" in lowered
+            or "subcode=33" in lowered
+        )
+    )
+
+
+def schedule_whatsapp_status_poll(*, notification_id: int, delay_seconds: int = 5) -> None:
+    if not notification_id:
+        return
+
+    def _enqueue():
+        poll_whatsapp_delivery_statuses_task.schedule(kwargs={"notification_ids": [notification_id]}, delay=delay_seconds)
+
+    try:
+        transaction.on_commit(_enqueue)
+    except Exception as exc:
+        logger.error(
+            "Failed to enqueue WhatsApp status poll: notification_id=%s delay_seconds=%s error_type=%s error=%s",
+            notification_id,
+            delay_seconds,
+            type(exc).__name__,
+            str(exc),
+        )
 
 
 def _build_manual_calendar_copy(application):
@@ -219,10 +260,17 @@ def _send_due_tomorrow_notification_for_application(
             notification.sent_at = None
             result = "pending"
         else:
-            notification.status = WorkflowNotification.STATUS_SENT
-            notification.external_reference = str(message) if channel == application.NOTIFY_CHANNEL_WHATSAPP else ""
-            notification.sent_at = timezone.now()
-            result = "sent"
+            if channel == application.NOTIFY_CHANNEL_WHATSAPP:
+                # Cloud API acceptance does not guarantee recipient delivery.
+                notification.status = WorkflowNotification.STATUS_PENDING
+                notification.external_reference = str(message)
+                notification.sent_at = None
+                result = "pending"
+            else:
+                notification.status = WorkflowNotification.STATUS_SENT
+                notification.external_reference = ""
+                notification.sent_at = timezone.now()
+                result = "sent"
     except Exception as exc:
         logger.error(
             "Failed to deliver due-tomorrow customer notification: application_id=%s channel=%s recipient=%s "
@@ -249,6 +297,8 @@ def _send_due_tomorrow_notification_for_application(
             "updated_at",
         ]
     )
+    if channel == application.NOTIFY_CHANNEL_WHATSAPP and notification.external_reference:
+        schedule_whatsapp_status_poll(notification_id=notification.id, delay_seconds=5)
     return result
 
 
@@ -322,6 +372,123 @@ def send_due_tomorrow_customer_notifications(now=None, application_ids=None, imm
         tomorrow.isoformat(),
     )
     return {"sent": sent_count, "pending": pending_count, "failed": failed_count, "skipped": skipped_count}
+
+
+def poll_whatsapp_delivery_statuses(*, notification_ids=None, limit=None):
+    from customer_applications.models import WorkflowNotification
+    from notifications.services.providers import (
+        MetaWhatsAppStatusLookupUnsupported,
+        WhatsappNotificationProvider,
+        process_whatsapp_webhook_payload,
+    )
+
+    provider = WhatsappNotificationProvider()
+    poll_limit = int(getattr(settings, "WHATSAPP_STATUS_POLL_LIMIT", 500)) if limit is None else int(limit)
+    cutoff = timezone.now() - timedelta(days=1)
+    notifications = WorkflowNotification.objects.filter(
+        channel=WorkflowNotification.CHANNEL_WHATSAPP,
+        status__in=[WorkflowNotification.STATUS_PENDING, WorkflowNotification.STATUS_SENT],
+        created_at__gte=cutoff,
+    ).exclude(provider_message__contains=WHATSAPP_POLL_UNSUPPORTED_MARKER).order_by("id")
+
+    if notification_ids is not None:
+        notifications = notifications.filter(id__in=list(notification_ids))
+
+    checked = 0
+    updated = 0
+    skipped = 0
+    failed = 0
+
+    for notification in notifications[:poll_limit]:
+        message_id = str(notification.external_reference or "").strip()
+        if not message_id:
+            skipped += 1
+            continue
+
+        try:
+            result = provider.get_message_status(message_id=message_id)
+            status_value = str(result.get("status") or "").strip().lower()
+            if not status_value:
+                skipped += 1
+                continue
+
+            handled = process_whatsapp_webhook_payload(
+                {
+                    "object": "whatsapp_business_account",
+                    "entry": [
+                        {
+                            "changes": [
+                                {
+                                    "field": "messages",
+                                    "value": {
+                                        "statuses": [
+                                            {
+                                                "id": message_id,
+                                                "status": status_value,
+                                                "recipient_id": notification.recipient,
+                                            }
+                                        ]
+                                    },
+                                }
+                            ]
+                        }
+                    ],
+                }
+            )
+            checked += 1
+            updated += int(handled.get("status_updates", 0) or 0)
+        except Exception as exc:
+            if isinstance(exc, MetaWhatsAppStatusLookupUnsupported) or _is_meta_status_lookup_unsupported(exc):
+                skipped += 1
+                logger.info(
+                    "WhatsApp status poll unsupported: notification_id=%s message_id=%s detail=%s",
+                    notification.id,
+                    message_id,
+                    str(exc),
+                )
+                if WHATSAPP_POLL_UNSUPPORTED_MARKER not in (notification.provider_message or ""):
+                    notification.provider_message = _append_provider_message(
+                        notification.provider_message,
+                        WHATSAPP_POLL_UNSUPPORTED_MARKER,
+                    )
+                    notification.save(update_fields=["provider_message", "updated_at"])
+                continue
+
+            failed += 1
+            logger.error(
+                "WhatsApp status poll failed: notification_id=%s message_id=%s error_type=%s error=%s",
+                notification.id,
+                message_id,
+                type(exc).__name__,
+                str(exc),
+            )
+            notification.provider_message = _append_provider_message(
+                notification.provider_message,
+                f"Meta poll error: {type(exc).__name__}: {exc}",
+            )
+            notification.save(update_fields=["provider_message", "updated_at"])
+
+    logger.info(
+        "WhatsApp status poll completed: checked=%s updated=%s skipped=%s failed=%s",
+        checked,
+        updated,
+        skipped,
+        failed,
+    )
+    return {"checked": checked, "updated": updated, "skipped": skipped, "failed": failed}
+
+
+@db_task()
+def poll_whatsapp_delivery_statuses_task(*, notification_ids=None, limit=None):
+    return poll_whatsapp_delivery_statuses(notification_ids=notification_ids, limit=limit)
+
+
+@db_periodic_task(
+    crontab(minute="*/5"),
+    name="customer_applications.poll_whatsapp_delivery_statuses",
+)
+def poll_whatsapp_delivery_statuses_periodic_task():
+    return poll_whatsapp_delivery_statuses()
 
 
 @db_periodic_task(

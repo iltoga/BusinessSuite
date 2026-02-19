@@ -1204,6 +1204,52 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/customers/{id}/applications-history/:
+    get:
+      operationId: customersApplicationsHistoryList
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this customer.
+        required: true
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - customers
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCustomerApplicationHistoryList'
+          description: ''
   /api/customers/{id}/toggle-active/:
     post:
       operationId: customersToggleActiveCreate
@@ -1239,6 +1285,52 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Customer'
+          description: ''
+  /api/customers/{id}/uninvoiced-applications/:
+    get:
+      operationId: customersUninvoicedApplicationsList
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this customer.
+        required: true
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - customers
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCustomerUninvoicedApplicationList'
           description: ''
   /api/customers/bulk-delete/:
     post:
@@ -3490,6 +3582,24 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/server-management/openrouter-status/:
+    get:
+      operationId: serverManagementOpenrouterStatusRetrieve
+      description: Return OpenRouter credit status and AI model usage by feature.
+      summary: Get OpenRouter status and AI model usage
+      tags:
+      - server-management
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/tasks/:
     get:
       operationId: tasksList
@@ -5013,6 +5123,52 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/customers/{id}/applications-history/:
+    get:
+      operationId: v1CustomersApplicationsHistoryList
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this customer.
+        required: true
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCustomerApplicationHistoryList'
+          description: ''
   /api/v1/customers/{id}/toggle-active/:
     post:
       operationId: v1CustomersToggleActiveCreate
@@ -5048,6 +5204,52 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Customer'
+          description: ''
+  /api/v1/customers/{id}/uninvoiced-applications/:
+    get:
+      operationId: v1CustomersUninvoicedApplicationsList
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this customer.
+        required: true
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCustomerUninvoicedApplicationList'
           description: ''
   /api/v1/customers/bulk-delete/:
     post:
@@ -7299,6 +7501,24 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/v1/server-management/openrouter-status/:
+    get:
+      operationId: v1ServerManagementOpenrouterStatusRetrieve
+      description: Return OpenRouter credit status and AI model usage by feature.
+      summary: Get OpenRouter status and AI model usage
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/tasks/:
     get:
       operationId: v1TasksList
@@ -8522,6 +8742,187 @@ components:
       - passport_expired
       - passport_expiring_soon
       - updated_at
+    CustomerApplicationHistory:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        customer:
+          allOf:
+          - $ref: '#/components/schemas/Customer'
+          readOnly: true
+        product:
+          allOf:
+          - $ref: '#/components/schemas/Product'
+          readOnly: true
+        doc_date:
+          type: string
+          format: date
+          readOnly: true
+        due_date:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
+        add_deadlines_to_calendar:
+          type: boolean
+          readOnly: true
+        status:
+          enum:
+          - pending
+          - processing
+          - completed
+          - rejected
+          type: string
+          description: |-
+            * `pending` - Pending
+            * `processing` - Processing
+            * `completed` - Completed
+            * `rejected` - Rejected
+          x-spec-enum-id: 5197c6d22c3675f4
+          readOnly: true
+        notes:
+          type: string
+          readOnly: true
+          nullable: true
+        str_field:
+          type: string
+          readOnly: true
+        status_display:
+          type: string
+          readOnly: true
+        product_type_display:
+          type: string
+          readOnly: true
+        has_invoice:
+          type: boolean
+          readOnly: true
+        invoice_id:
+          type: integer
+          nullable: true
+          readOnly: true
+        is_document_collection_completed:
+          type: boolean
+          readOnly: true
+        ready_for_invoice:
+          type: boolean
+          readOnly: true
+        payment_status:
+          type: string
+          readOnly: true
+        payment_status_display:
+          type: string
+          readOnly: true
+        invoice_status:
+          type: string
+          nullable: true
+          readOnly: true
+        invoice_status_display:
+          type: string
+          readOnly: true
+      required:
+      - add_deadlines_to_calendar
+      - customer
+      - doc_date
+      - due_date
+      - has_invoice
+      - id
+      - invoice_id
+      - invoice_status
+      - invoice_status_display
+      - is_document_collection_completed
+      - notes
+      - payment_status
+      - payment_status_display
+      - product
+      - product_type_display
+      - ready_for_invoice
+      - status
+      - status_display
+      - str_field
+    CustomerUninvoicedApplication:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        customer:
+          allOf:
+          - $ref: '#/components/schemas/Customer'
+          readOnly: true
+        product:
+          allOf:
+          - $ref: '#/components/schemas/Product'
+          readOnly: true
+        doc_date:
+          type: string
+          format: date
+          readOnly: true
+        due_date:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
+        add_deadlines_to_calendar:
+          type: boolean
+          readOnly: true
+        status:
+          enum:
+          - pending
+          - processing
+          - completed
+          - rejected
+          type: string
+          description: |-
+            * `pending` - Pending
+            * `processing` - Processing
+            * `completed` - Completed
+            * `rejected` - Rejected
+          x-spec-enum-id: 5197c6d22c3675f4
+          readOnly: true
+        notes:
+          type: string
+          readOnly: true
+          nullable: true
+        str_field:
+          type: string
+          readOnly: true
+        status_display:
+          type: string
+          readOnly: true
+        product_type_display:
+          type: string
+          readOnly: true
+        has_invoice:
+          type: boolean
+          readOnly: true
+        invoice_id:
+          type: integer
+          nullable: true
+          readOnly: true
+        is_document_collection_completed:
+          type: boolean
+          readOnly: true
+        ready_for_invoice:
+          type: boolean
+          readOnly: true
+      required:
+      - add_deadlines_to_calendar
+      - customer
+      - doc_date
+      - due_date
+      - has_invoice
+      - id
+      - invoice_id
+      - is_document_collection_completed
+      - notes
+      - product
+      - product_type_display
+      - ready_for_invoice
+      - status
+      - status_display
+      - str_field
     DashboardStats:
       type: object
       properties:
@@ -9587,6 +9988,29 @@ components:
       - total_paid_amount
       - updated_at
       - updated_by
+    PaginatedCustomerApplicationHistoryList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/CustomerApplicationHistory'
     PaginatedCustomerList:
       type: object
       required:
@@ -9610,6 +10034,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Customer'
+    PaginatedCustomerUninvoicedApplicationList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/CustomerUninvoicedApplication'
     PaginatedDocApplicationInvoiceList:
       type: object
       required:
@@ -10268,15 +10715,19 @@ components:
           enum:
           - pending
           - sent
+          - delivered
+          - read
           - failed
           - cancelled
           type: string
           description: |-
             * `pending` - Pending
             * `sent` - Sent
+            * `delivered` - Delivered
+            * `read` - Read
             * `failed` - Failed
             * `cancelled` - Cancelled
-          x-spec-enum-id: a046de4b9ad561bf
+          x-spec-enum-id: 5bcfd580b9dc65fe
         channel:
           type: string
           default: email

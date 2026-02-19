@@ -313,6 +313,10 @@ This document lists the main API endpoints exposed by the application in this re
   - **Description:** List workflow notifications.
   - **Actions:** `resend` (POST), `cancel` (POST).
 
+- **GET `/api/workflow-notifications/stream/`** (SSE)
+  - **Query params:** optional `token` (JWT/DRF token for `EventSource` authentication fallback).
+  - **Description:** Live Notification Center stream. Emits an initial snapshot event, then change events when workflow notifications created in the last 24 hours are created/updated/deleted.
+
 - **GET `/api/letters/`**
   - **Description:** Manage letter templates and generation.
 
@@ -328,6 +332,7 @@ This document lists the main API endpoints exposed by the application in this re
 
 - **POST `/api/notifications/whatsapp/webhook/`**
   - **Description:** Webhook for WhatsApp Business API.
+  - **Local testing:** See `docs/whatsapp-webhook-tunnel-command.md` for the temporary ngrok callback switch command.
 
 ---
 
@@ -336,8 +341,8 @@ This document lists the main API endpoints exposed by the application in this re
 - **GET `/api/app-config/`**
   - **Description:** Public application configuration (feature flags, formats).
 
-- **POST `/api/client-logs/`**
-  - **Description:** Endpoint for client-side logging (forwarded to backend logs).
+- **POST `/_observability/client-logs`**
+  - **Description:** Browser client-logs endpoint handled by the **Angular SSR** server — requests are rate-limited and deduped, and written to the frontend log (`backend/logs/frontend.log` or `/logs/frontend.log`). Not a Django `/api/` endpoint.
 
 - **GET `/api/async-jobs/`**
   - **Description:** Monitor async job status (polling).

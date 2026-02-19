@@ -51,6 +51,7 @@ router.register(r"dashboard-stats", views.DashboardStatsView, basename="dashboar
 # Google Calendar & Tasks integration
 from .google_views import GoogleCalendarViewSet, GoogleTasksViewSet
 from .reports_views import (
+    AICostingReportApiView,
     ApplicationPipelineApiView,
     CashFlowAnalysisApiView,
     CustomerLifetimeValueApiView,
@@ -98,6 +99,11 @@ urlpatterns = [
         "document-ocr/status/<uuid:job_id>/",
         views.DocumentOCRViewSet.as_view({"get": "status"}),
         name="api-document-ocr-status",
+    ),
+    path(
+        "workflow-notifications/stream/",
+        views.workflow_notifications_stream_sse,
+        name="api-workflow-notifications-stream-sse",
     ),
     path("async-jobs/status/<uuid:job_id>/", views.async_job_status_sse, name="api-async-job-status-sse"),
     # Compatibility aliases for template tags
@@ -177,6 +183,7 @@ urlpatterns = [
     path("reports/application-pipeline/", ApplicationPipelineApiView.as_view(), name="api-report-application-pipeline"),
     path("reports/product-revenue/", ProductRevenueAnalysisApiView.as_view(), name="api-report-product-revenue"),
     path("reports/product-demand/", ProductDemandForecastApiView.as_view(), name="api-report-product-demand"),
+    path("reports/ai-costing/", AICostingReportApiView.as_view(), name="api-report-ai-costing"),
     # Include all router URLs - main REST API endpoints for Angular
     path("", include(router.urls)),
 ]

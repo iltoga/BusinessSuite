@@ -86,7 +86,7 @@ A precise OKLCH conversion of the classic Bootstrap palette used by the legacy D
 --accent: oklch(0.75 0.2 80);
 ```
 
-**Customer List / Action Button Mapping**
+#### Customer List / Action Button Mapping
 
 The following mapping is used across the app (Customer List, Application Detail, Invoices):
 
@@ -242,7 +242,7 @@ export const orangeLight: ThemeColors = {
 };
 ```
 
-2. **Register** the theme in the `THEMES` registry:
+1. **Register** the theme in the `THEMES` registry:
 
 ```typescript
 export const THEMES = {
@@ -253,9 +253,9 @@ export const THEMES = {
 } as const;
 ```
 
-3. **Update types** (`ThemeName` union) to include your theme name.
+1. **Update types** (`ThemeName` union) to include your theme name.
 
-4. **Use** the theme by setting `APP_CONFIG.theme` or via `ThemeService.setTheme()`.
+2. **Use** the theme by setting `APP_CONFIG.theme` or via `ThemeService.setTheme()`.
 
 ---
 
@@ -1032,6 +1032,7 @@ export class ThemeService {
    ```
 
 3. **Check ZardDarkMode service initialization** in `app.config.ts`:
+
    ```typescript
    providers: [
      provideZard(), // Includes dark mode
@@ -1061,6 +1062,7 @@ export class ThemeService {
 2. **Use contrast checker:** Test at [WebAIM](https://webaim.org/resources/contrastchecker/)
 
 3. **Desaturate backgrounds:** Lower chroma for better text readability:
+
    ```css
    --primary: oklch(0.4 0.05 264); /* Low chroma = less vibrant */
    ```
@@ -1223,7 +1225,7 @@ export class ThemeService {
 
 ---
 
-**Happy theming! 🎨**
+#### Happy theming! 🎨
 
 For questions or issues, refer to:
 

@@ -6,6 +6,8 @@ from django.db.models import Q
 class WorkflowNotification(models.Model):
     STATUS_PENDING = "pending"
     STATUS_SENT = "sent"
+    STATUS_DELIVERED = "delivered"
+    STATUS_READ = "read"
     STATUS_FAILED = "failed"
     STATUS_CANCELLED = "cancelled"
 
@@ -19,6 +21,8 @@ class WorkflowNotification(models.Model):
         choices=[
             (STATUS_PENDING, "Pending"),
             (STATUS_SENT, "Sent"),
+            (STATUS_DELIVERED, "Delivered"),
+            (STATUS_READ, "Read"),
             (STATUS_FAILED, "Failed"),
             (STATUS_CANCELLED, "Cancelled"),
         ],

@@ -1,14 +1,19 @@
 import datetime
 import json
+import tempfile
+from unittest.mock import patch
 
 from customer_applications.models import DocApplication, Document
 from core.models import Holiday
 from customers.models import Customer
+from django.core.files.storage import FileSystemStorage
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 from invoices.models import Invoice, InvoiceApplication
+from PIL import Image
 from products.models import Product
 from products.models.document_type import DocumentType
 
@@ -85,6 +90,40 @@ class CustomerQuickCreateAPITestCase(TestCase):
         self.assertIn("errors", payload)
         self.assertIn("passportNumber", payload["errors"])
         self.assertIn("customer with this passport number already exists.", payload["errors"]["passportNumber"])
+
+    @patch("customers.services.passport_file_processing.convert_and_resize_image")
+    def test_customer_create_converts_pdf_passport_file_to_png(self, convert_mock):
+        convert_mock.return_value = (Image.new("RGB", (1200, 800), color="white"), b"")
+
+        upload = SimpleUploadedFile(
+            "passport.pdf",
+            b"%PDF-1.4 fake content",
+            content_type="application/pdf",
+        )
+        with tempfile.TemporaryDirectory() as media_root:
+            local_storage = FileSystemStorage(location=media_root, base_url="/media/")
+            passport_field = Customer._meta.get_field("passport_file")
+            with patch.object(passport_field, "storage", local_storage):
+                response = self.client.post(
+                    reverse("customers-list"),
+                    {
+                        "customer_type": "person",
+                        "first_name": "Pdf",
+                        "last_name": "Upload",
+                        "passport_file": upload,
+                    },
+                )
+                self.assertEqual(response.status_code, 201, response.content)
+
+                created_id = response.json()["id"]
+                customer = Customer.objects.get(pk=created_id)
+                self.assertTrue(customer.passport_file.name.endswith(".png"))
+                self.assertTrue(local_storage.exists(customer.passport_file.name))
+
+                with customer.passport_file.open("rb") as stored_file:
+                    self.assertEqual(stored_file.read(8), b"\x89PNG\r\n\x1a\n")
+
+        convert_mock.assert_called_once()
 
     def test_customer_detail_returns_gender_display(self):
         from django.urls import reverse

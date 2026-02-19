@@ -2,6 +2,25 @@
   display: block;
 }
 
+.data-table-focus-trap {
+  width: 100%;
+}
+
+.data-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.data-table-scroll table[z-table] {
+  width: 100%;
+  min-width: 52rem;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
 button {
   background: transparent;
   border: none;
@@ -57,4 +76,154 @@ tr.row-danger-soft:not(.selected) {
 .col-created_at span,
 .col-createdAt span {
   display: block;
+}
+
+@media (max-width: 1024px) {
+  .data-table-scroll table[z-table] {
+    min-width: 44rem;
+  }
+
+  .data-table-scroll th[z-table-head],
+  .data-table-scroll td[z-table-cell] {
+    padding-inline: 0.75rem;
+  }
+}
+
+@media (max-width: 767px) and (orientation: landscape) {
+  .data-table-scroll table[z-table] {
+    min-width: 48rem;
+  }
+
+  .data-table-scroll th[z-table-head],
+  .data-table-scroll td[z-table-cell] {
+    font-size: 0.8125rem;
+    white-space: nowrap;
+  }
+
+  .data-table-scroll th[z-table-head] span.text-xs {
+    display: none;
+  }
+}
+
+@media (max-width: 767px) and (orientation: portrait) {
+  .data-table-scroll {
+    overflow: visible;
+  }
+
+  .data-table-scroll table[z-table] {
+    min-width: 0;
+  }
+
+  .data-table-scroll thead[z-table-header] {
+    display: block;
+    margin: 0 0.75rem;
+    padding: 0.5rem 0 0.75rem;
+    border-bottom: 1px solid hsl(var(--border));
+  }
+
+  .data-table-scroll thead[z-table-header] tr[z-table-row] {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    border-bottom: 0;
+  }
+
+  .data-table-scroll thead[z-table-header] th[z-table-head] {
+    display: flex;
+    width: auto;
+    height: auto;
+    min-height: 2rem;
+    padding: 0;
+  }
+
+  .data-table-scroll thead[z-table-header] th[z-table-head] > div {
+    border: 1px solid hsl(var(--border));
+    border-radius: 9999px;
+    padding: 0.25rem 0.5rem;
+    background-color: hsl(var(--card));
+    gap: 0.375rem;
+  }
+
+  .data-table-scroll thead[z-table-header] th[z-table-head] span.text-xs {
+    display: none;
+  }
+
+  .data-table-scroll tbody[z-table-body] {
+    display: grid;
+    gap: 0.75rem;
+    padding: 0.75rem;
+  }
+
+  .data-table-scroll tbody[z-table-body] > tr[z-table-row] {
+    display: grid;
+    gap: 0.625rem;
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.75rem;
+    padding: 0.75rem;
+    background-color: hsl(var(--card));
+  }
+
+  .data-table-scroll tbody[z-table-body] > tr[z-table-row] > td[z-table-cell] {
+    display: grid;
+    grid-template-columns: minmax(5.5rem, 42%) minmax(0, 1fr);
+    gap: 0.625rem;
+    align-items: start;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    white-space: normal;
+  }
+
+  .data-table-scroll tbody[z-table-body] > tr[z-table-row] > td[z-table-cell]::before {
+    content: attr(data-column-label);
+    font-size: 0.7rem;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
+  }
+
+  .data-table-scroll tbody[z-table-body] > tr[z-table-row] > td.col-actions {
+    grid-template-columns: 1fr;
+    margin-top: 0.125rem;
+    padding: 0.5rem;
+    border: 1px solid hsl(var(--primary) / 0.22);
+    border-radius: 0.625rem;
+    background: linear-gradient(
+      180deg,
+      hsl(var(--primary) / 0.09) 0%,
+      hsl(var(--primary) / 0.04) 100%
+    );
+  }
+
+  .data-table-scroll tbody[z-table-body] > tr[z-table-row] > td.col-actions > div {
+    justify-content: flex-start;
+  }
+
+  .data-table-scroll tbody[z-table-body] > tr[z-table-row] > td.col-actions::before {
+    color: hsl(var(--primary));
+    font-weight: 700;
+  }
+
+  .data-table-scroll tbody[z-table-body] > tr[z-table-row] > td[z-table-cell][colspan] {
+    grid-template-columns: 1fr;
+    padding: 0.25rem 0;
+    text-align: left;
+  }
+
+  .data-table-scroll tbody[z-table-body] > tr[z-table-row] > td[z-table-cell][colspan]::before {
+    content: none;
+  }
+
+  tr[tabindex='0']:focus,
+  tr.selected {
+    outline-offset: 0;
+  }
+
+  .col-created_at,
+  .col-createdAt {
+    min-width: 0;
+    width: auto;
+  }
 }

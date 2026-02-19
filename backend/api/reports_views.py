@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import calendar
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
+from core.models.ai_request_usage import AIRequestUsage
 from django.utils import timezone
+from django.db.models import Count, Q, Sum, Value
+from django.db.models.functions import Coalesce, ExtractMonth, ExtractYear, TruncDate
 from reports.views.application_pipeline_view import ApplicationPipelineView
 from reports.views.cash_flow_analysis_view import CashFlowAnalysisView
 from reports.views.customer_ltv_view import CustomerLifetimeValueView
@@ -282,3 +286,204 @@ class ProductDemandForecastApiView(_BaseReportAPIView):
         ctx = self.build_context(request)
         keys = ["top_products", "product_demand", "growth_rates", "forecast_data", "quarterly_data", "total_by_month"]
         return Response({k: _to_json_value(ctx.get(k)) for k in keys})
+
+
+class AICostingReportApiView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @staticmethod
+    def _parse_int(value: str | None, default: int) -> int:
+        if value is None:
+            return default
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
+
+    @staticmethod
+    def _as_float(value: Decimal | int | float | None) -> float:
+        if value is None:
+            return 0.0
+        return float(value)
+
+    def get(self, request):
+        now = timezone.localtime()
+        selected_year = self._parse_int(request.GET.get("year"), now.year)
+        selected_month = self._parse_int(request.GET.get("month"), now.month)
+        selected_month = min(max(selected_month, 1), 12)
+
+        base_qs = AIRequestUsage.objects.all()
+        available_years = (
+            base_qs.annotate(year=ExtractYear("created_at"))
+            .values_list("year", flat=True)
+            .order_by("year")
+            .distinct()
+        )
+        available_years = [int(year) for year in available_years if year is not None]
+        if not available_years:
+            available_years = [selected_year]
+
+        if selected_year not in available_years:
+            selected_year = max(available_years)
+
+        yearly_rows = (
+            base_qs.annotate(year=ExtractYear("created_at"))
+            .values("year")
+            .annotate(
+                request_count=Count("id"),
+                success_count=Count("id", filter=Q(success=True)),
+                failed_count=Count("id", filter=Q(success=False)),
+                total_tokens=Coalesce(Sum("total_tokens"), 0),
+                total_cost=Coalesce(Sum("cost_usd"), Value(Decimal("0"))),
+            )
+            .order_by("year")
+        )
+
+        yearly_data = [
+            {
+                "year": int(row["year"]),
+                "requestCount": int(row["request_count"]),
+                "successCount": int(row["success_count"]),
+                "failedCount": int(row["failed_count"]),
+                "totalTokens": int(row["total_tokens"] or 0),
+                "totalCost": self._as_float(row["total_cost"]),
+            }
+            for row in yearly_rows
+            if row.get("year") is not None
+        ]
+
+        monthly_qs = (
+            base_qs.filter(created_at__year=selected_year)
+            .annotate(month=ExtractMonth("created_at"))
+            .values("month")
+            .annotate(
+                request_count=Count("id"),
+                success_count=Count("id", filter=Q(success=True)),
+                failed_count=Count("id", filter=Q(success=False)),
+                total_tokens=Coalesce(Sum("total_tokens"), 0),
+                total_cost=Coalesce(Sum("cost_usd"), Value(Decimal("0"))),
+            )
+            .order_by("month")
+        )
+        monthly_map = {int(row["month"]): row for row in monthly_qs if row.get("month") is not None}
+        monthly_data: list[dict[str, Any]] = []
+        for month_num in range(1, 13):
+            row = monthly_map.get(month_num, {})
+            monthly_data.append(
+                {
+                    "month": month_num,
+                    "label": calendar.month_abbr[month_num],
+                    "requestCount": int(row.get("request_count") or 0),
+                    "successCount": int(row.get("success_count") or 0),
+                    "failedCount": int(row.get("failed_count") or 0),
+                    "totalTokens": int(row.get("total_tokens") or 0),
+                    "totalCost": self._as_float(row.get("total_cost")),
+                }
+            )
+
+        month_qs = base_qs.filter(created_at__year=selected_year, created_at__month=selected_month)
+        daily_qs = (
+            month_qs.annotate(day=TruncDate("created_at"))
+            .values("day")
+            .annotate(
+                request_count=Count("id"),
+                success_count=Count("id", filter=Q(success=True)),
+                failed_count=Count("id", filter=Q(success=False)),
+                total_tokens=Coalesce(Sum("total_tokens"), 0),
+                total_cost=Coalesce(Sum("cost_usd"), Value(Decimal("0"))),
+            )
+            .order_by("day")
+        )
+        daily_map = {row["day"]: row for row in daily_qs if row.get("day")}
+        days_in_month = calendar.monthrange(selected_year, selected_month)[1]
+        daily_data: list[dict[str, Any]] = []
+        for day_num in range(1, days_in_month + 1):
+            day_date = date(selected_year, selected_month, day_num)
+            row = daily_map.get(day_date, {})
+            daily_data.append(
+                {
+                    "date": day_date.isoformat(),
+                    "label": day_date.strftime("%d %b"),
+                    "requestCount": int(row.get("request_count") or 0),
+                    "successCount": int(row.get("success_count") or 0),
+                    "failedCount": int(row.get("failed_count") or 0),
+                    "totalTokens": int(row.get("total_tokens") or 0),
+                    "totalCost": self._as_float(row.get("total_cost")),
+                }
+            )
+
+        def _group_breakdown(qs, group_field: str, key_name: str) -> list[dict[str, Any]]:
+            rows = (
+                qs.values(group_field)
+                .annotate(
+                    request_count=Count("id"),
+                    success_count=Count("id", filter=Q(success=True)),
+                    failed_count=Count("id", filter=Q(success=False)),
+                    total_tokens=Coalesce(Sum("total_tokens"), 0),
+                    total_cost=Coalesce(Sum("cost_usd"), Value(Decimal("0"))),
+                )
+                .order_by("-total_cost", "-request_count")
+            )
+            payload: list[dict[str, Any]] = []
+            for row in rows:
+                payload.append(
+                    {
+                        key_name: row.get(group_field) or "Unknown",
+                        "requestCount": int(row["request_count"]),
+                        "successCount": int(row["success_count"]),
+                        "failedCount": int(row["failed_count"]),
+                        "totalTokens": int(row["total_tokens"] or 0),
+                        "totalCost": self._as_float(row["total_cost"]),
+                    }
+                )
+            return payload
+
+        feature_breakdown_month = _group_breakdown(month_qs, "feature", "feature")
+        provider_breakdown_month = _group_breakdown(month_qs, "provider", "provider")
+        model_breakdown_month = _group_breakdown(month_qs, "model", "model")
+
+        year_summary_row = (
+            base_qs.filter(created_at__year=selected_year).aggregate(
+                request_count=Count("id"),
+                success_count=Count("id", filter=Q(success=True)),
+                failed_count=Count("id", filter=Q(success=False)),
+                total_tokens=Coalesce(Sum("total_tokens"), 0),
+                total_cost=Coalesce(Sum("cost_usd"), Value(Decimal("0"))),
+            )
+        )
+        month_summary_row = month_qs.aggregate(
+            request_count=Count("id"),
+            success_count=Count("id", filter=Q(success=True)),
+            failed_count=Count("id", filter=Q(success=False)),
+            total_tokens=Coalesce(Sum("total_tokens"), 0),
+            total_cost=Coalesce(Sum("cost_usd"), Value(Decimal("0"))),
+        )
+
+        return Response(
+            {
+                "selectedYear": selected_year,
+                "selectedMonth": selected_month,
+                "selectedMonthLabel": calendar.month_name[selected_month],
+                "availableYears": available_years,
+                "yearSummary": {
+                    "requestCount": int(year_summary_row["request_count"] or 0),
+                    "successCount": int(year_summary_row["success_count"] or 0),
+                    "failedCount": int(year_summary_row["failed_count"] or 0),
+                    "totalTokens": int(year_summary_row["total_tokens"] or 0),
+                    "totalCost": self._as_float(year_summary_row["total_cost"]),
+                },
+                "monthSummary": {
+                    "requestCount": int(month_summary_row["request_count"] or 0),
+                    "successCount": int(month_summary_row["success_count"] or 0),
+                    "failedCount": int(month_summary_row["failed_count"] or 0),
+                    "totalTokens": int(month_summary_row["total_tokens"] or 0),
+                    "totalCost": self._as_float(month_summary_row["total_cost"]),
+                },
+                "yearlyData": yearly_data,
+                "monthlyData": monthly_data,
+                "dailyData": daily_data,
+                "featureBreakdownMonth": feature_breakdown_month,
+                "providerBreakdownMonth": provider_breakdown_month,
+                "modelBreakdownMonth": model_breakdown_month,
+            }
+        )

@@ -20,13 +20,7 @@ BusinessSuite is a Django-based ERP/CRM for service agencies specializing in vis
 - **File Storage:** Django default_storage abstraction
 - **OCR:** Custom OCR/AI engine integration
 
-### Frontend (Legacy - Being Migrated)
-
-- **Templates:** Django Templates + Bootstrap 5
-- **Reactive UI:** Django Unicorn components
-- **Forms:** Django ModelForm + Crispy Forms + Widget Tweaks
-
-### Frontend (New - Angular Migration In Progress)
+### Frontend (Angular 19+ SPA)
 
 - **Framework:** Angular 19+ (standalone components, signals)
 - **UI Library:** ZardUI (Tailwind CSS v4, shadcn-like architecture)
@@ -43,7 +37,7 @@ businesssuite/
 ├── customers/              # Customer CRUD, search, profiles
 ├── products/               # Product catalog, pricing
 ├── customer_applications/  # Application workflows, documents
-│   └── components/        # Django Unicorn reactive components
+│   └── components/        # Application components
 ├── invoices/              # Invoice generation, calculations
 ├── payments/              # Payment recording, tracking
 ├── core/                  # Shared utilities, base models
@@ -52,14 +46,14 @@ businesssuite/
 ├── api/
 │   ├── serializers/      # DRF serializers (camelCase output)
 │   └── views/            # DRF APIView and ViewSet classes
-├── frontend/             # Angular 19 SPA (migration in progress)
+├── frontend/             # Angular 19 SPA
 │   ├── src/app/
 │   │   ├── core/         # Singleton services, guards, interceptors
 │   │   ├── shared/       # Reusable components, layouts, utilities
 │   │   └── features/     # Lazy-loaded feature modules
 │   └── docs/             # Frontend-specific documentation
 └── copilot/
-    └── specs/django-angular/  # Migration specification documents
+    └── specs/django-angular/  # Theme guide and ZardUI docs
 ```
 
 ---
@@ -83,7 +77,7 @@ businesssuite/
    - Document the change in the relevant `docs/` file
 4. **If creating new code:**
    - Design it to be reusable from the start
-   - Add it to `docs/shared_components.md` (frontend) or document in docstrings (backend)
+   - Add it to `../docs/shared_components.md` (frontend) or document in docstrings (backend)
 
 **Examples:**
 
@@ -164,7 +158,7 @@ businesssuite/
 - Validate permissions before file downloads
 - Follow PEP 8, add type hints where obvious
 
-### Frontend (Angular Migration)
+### Frontend (Angular)
 
 #### Component Architecture
 
@@ -178,16 +172,16 @@ businesssuite/
 
 #### Before Creating New Components
 
-1. Check `docs/shared_components.md` for existing components
+1. Check `../docs/shared_components.md` for existing components
 2. If similar exists:
    - Extend it with new inputs/outputs
    - Make it more generic if needed
    - Update documentation
 3. If creating new:
    - Make it reusable (accept inputs, emit outputs)
-   - Add to `docs/shared_components.md` immediately
+   - Add to `../docs/shared_components.md` immediately
    - File separation guidance: extract templates/styles into separate files (`.ts`, `.html`, `.css`) **only for app-specific components and views (pages)** that contain non-trivial markup or represent distinct views. **Do not** extract templates/styles for third-party library components (e.g., ZardUI), small UI-only components, or trivial templates—keep those inline to avoid unnecessary churn.
-   - When extraction is needed, do it in small, reviewable batches (2–3 components per PR) and document the change in `docs/shared_components.md` to keep the codebase consistent and reviewable.
+   - When extraction is needed, do it in small, reviewable batches (2–3 components per PR) and document the change in `../docs/shared_components.md` to keep the codebase consistent and reviewable.
 
 #### API Integration
 
@@ -205,13 +199,6 @@ businesssuite/
 - Services: `auth.service.ts` (kebab-case)
 - Interfaces: `customer.interface.ts` (kebab-case)
 - Guards: `auth.guard.ts` (kebab-case)
-
-### Frontend (Legacy Django Templates)
-
-- Use Bootstrap 5 utility classes, avoid custom CSS
-- Include `{% load crispy_forms_tags %}` when rendering forms
-- Prefer Django Unicorn components for interactivity over custom JavaScript
-- Keep templates consistent with existing layout blocks
 
 ### Testing
 
@@ -238,9 +225,8 @@ grep -r "similar_pattern" .
 
 **Step 2: Check documentation**
 
-- Frontend: Review `copilot/specs/django-angular/` specifications
-- Check `docs/shared_components.md` for reusable UI components
-- Review `docs/implementation_feedback.md` for lessons learned
+- Frontend: Check `../docs/shared_components.md` for reusable UI components
+- Review `../docs/implementation_feedback.md` for lessons learned
 
 **Step 3: Plan implementation**
 
@@ -256,8 +242,8 @@ grep -r "similar_pattern" .
 
 **Step 5: Document**
 
-- Add new shared components to `docs/shared_components.md`
-- Update `docs/implementation_feedback.md` with learnings
+- Add new shared components to `../docs/shared_components.md`
+- Update `../docs/implementation_feedback.md` with learnings
 
 **Step 6: Clean up (AUTOMATIC)**
 
@@ -282,116 +268,170 @@ grep -r "similar_pattern" .
 
 ---
 
-## Angular Migration (In Progress)
+## Implementing Angular Features
 
-BusinessSuite is migrating from Django Templates to a decoupled Angular 19 SPA frontend. **All new frontend work should follow the migration specifications.**
+The frontend is a fully standalone Angular 19 SPA. All code lives in `frontend/src/app/`.
 
-### Migration Specification Documents
+### Application Structure
 
-Located in `copilot/specs/django-angular/`:
+```
+frontend/src/app/
+├── core/
+│   ├── api/               # Auto-generated OpenAPI clients (DO NOT EDIT MANUALLY)
+│   ├── guards/            # Route guards (e.g. auth.guard.ts)
+│   ├── interceptors/      # HTTP interceptors (auth token, error handling)
+│   ├── handlers/          # Global error handler
+│   └── services/          # Singleton services (auth, toast, SSE, theme, …)
+├── shared/
+│   ├── components/        # Reusable ZardUI-based UI components
+│   ├── layouts/           # MainLayoutComponent + AuthLayoutComponent
+│   ├── directives/        # ContextHelpDirective and others
+│   ├── pipes/             # AppDatePipe and others
+│   ├── services/          # Shared services (HelpService, …)
+│   └── utils/             # form-errors.ts, file-download.ts, …
+└── features/
+    ├── auth/              # Login page
+    ├── dashboard/
+    ├── customers/         # customer-list, customer-detail, customer-form
+    ├── products/
+    ├── applications/
+    ├── invoices/
+    ├── letters/
+    ├── profile/
+    ├── reports/
+    └── admin/             # lazy-loaded via admin.routes.ts
+```
 
-#### 📐 [Design Specification](copilot/specs/django-angular/design.md)
+### Adding a New Feature
 
-**Use when:** Planning architecture, understanding data flow, choosing implementation patterns.
+Follow the established domain-feature pattern used by every existing feature.
 
-**Key sections:**
+**1. Create the feature folder under `features/`**
 
-- Section 5.1: Backend API Layer patterns
-- Section 6: Data Flow & State Management (complete code examples)
-- Section 7: Anti-Patterns (what NOT to do) — **READ THIS FIRST**
-- Section 8: Migration Strategy (Strangler Fig pattern)
+```
+features/my-feature/
+├── my-feature-list/
+│   ├── my-feature-list.component.ts
+│   ├── my-feature-list.component.html
+│   └── my-feature-list.component.css
+├── my-feature-detail/  …
+└── my-feature-form/    …
+```
 
-#### 📋 [Requirements Specification](copilot/specs/django-angular/requirements.md)
+**2. Register routes in `app.routes.ts`** — under the `MainLayoutComponent` parent with `authGuard`:
 
-**Use when:** Implementing features, validating acceptance criteria, handling errors.
+```typescript
+{ path: 'my-feature',          component: MyFeatureListComponent   },
+{ path: 'my-feature/new',      component: MyFeatureFormComponent   },
+{ path: 'my-feature/:id/edit', component: MyFeatureFormComponent   },
+{ path: 'my-feature/:id',      component: MyFeatureDetailComponent },
+```
 
-**Key sections:**
+**3. Add a service in `core/services/`** — use the generated API client; expose signals:
 
-- Section 2.1: API Contract examples (backend ↔ frontend communication)
-- Section 2.2: Authentication patterns (JWT, interceptors)
-- Section 3.1: Service Layer requirements (keep logic in backend)
-- Section 5: Error Handling Standards (global error handler utility)
+```typescript
+@Injectable({ providedIn: "root" })
+export class MyFeatureService {
+  private readonly api = inject(MyFeatureApi); // from core/api/
 
-#### ✅ [Implementation Tasks](copilot/specs/django-angular/tasks.md)
+  readonly items = signal<MyFeatureItem[]>([]);
+  readonly loading = signal(false);
 
-**Use when:** Starting a new feature, setting up tooling, tracking progress.
+  async load() {
+    this.loading.set(true);
+    try {
+      const result = await firstValueFrom(this.api.myFeatureList());
+      this.items.set(result.results ?? []);
+    } finally {
+      this.loading.set(false);
+    }
+  }
+}
+```
 
-**Key sections:**
+**4. Component skeleton** — always standalone + `OnPush`:
 
-- **Pre-Task Checklist Template** — copy this before EVERY feature
-- Phase 0: Foundation setup
-- Phase 1: Core architecture (Auth, API generation, shared components)
-- Vertical slices: Complete feature implementation examples
+```typescript
+@Component({
+  selector: "app-my-feature-list",
+  standalone: true,
+  imports: [
+    CommonModule,
+    RouterLink,
+    DataTableComponent,
+    SearchToolbarComponent,
+    PaginationControlsComponent,
+    ZardButtonComponent,
+    ContextHelpDirective,
+  ],
+  templateUrl: "./my-feature-list.component.html",
+  styleUrls: ["./my-feature-list.component.css"],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class MyFeatureListComponent implements OnInit {
+  private readonly service = inject(MyFeatureService);
 
-#### 📦 [API Contract Examples](copilot/specs/django-angular/api-contract-examples.md)
+  readonly items = this.service.items;
+  readonly loading = this.service.loading;
 
-**Use when:** Implementing API endpoints, generating TypeScript types, understanding request/response formats.
+  ngOnInit() {
+    this.service.load();
+  }
+}
+```
 
-**Contains:**
+### Shared Components Catalogue
 
-- Complete OpenAPI schema snippets (YAML)
-- Request/response examples for all endpoints
-- Generated TypeScript interface examples
-- Standardized error response formats
+Always check `../docs/shared_components.md` before building new UI. Key components:
 
-### Migration Workflow
+| Component                     | Purpose                                |
+| ----------------------------- | -------------------------------------- |
+| `DataTableComponent`          | Sortable, paginated table              |
+| `SearchToolbarComponent`      | Search + filter bar                    |
+| `PaginationControlsComponent` | Page navigation                        |
+| `ZardButtonComponent`         | Primary / secondary / ghost buttons    |
+| `ZardBadgeComponent`          | Status badges                          |
+| `ConfirmDialogComponent`      | Generic confirmation modal             |
+| `BulkDeleteDialogComponent`   | Bulk delete modal                      |
+| `FormErrorSummaryComponent`   | Per-form server-error list             |
+| `ContextHelpDirective`        | F1 help drawer integration             |
+| `GlobalToastService`          | Inject for success/error notifications |
 
-**Before starting ANY Angular feature:**
+### Error Handling
 
-1. Copy Pre-Task Checklist from [tasks.md](copilot/specs/django-angular/tasks.md)
-2. Review anti-patterns in [design.md](copilot/specs/django-angular/design.md) Section 7
-3. Check [api-contract-examples.md](copilot/specs/django-angular/api-contract-examples.md) for endpoint schema
-4. Search [docs/shared_components.md](../docs/shared_components.md) for reusable components
+Import helpers from `shared/utils/form-errors.ts`:
 
-**During implementation:**
+- `applyServerErrorsToForm(form, errorResponse)` — maps API validation errors to `FormGroup` controls
+- `extractServerErrorMessage(errorResponse)` — extracts a single user-facing error string
+- Display notifications via `GlobalToastService.show(…)` (injected from `core/services/toast.service.ts`)
 
-1. Follow state management patterns from [design.md](copilot/specs/django-angular/design.md) Section 6.2
-2. Use error handling utility from [requirements.md](copilot/specs/django-angular/requirements.md) Section 5
-3. Use generated API clients — NEVER manual TypeScript interfaces
-4. All components must use `ChangeDetectionStrategy.OnPush`
+### API Types
 
-**After completing a feature:**
+Never write TypeScript interfaces by hand. After any backend serializer change:
 
-1. Update [docs/shared_components.md](../docs/shared_components.md) if reusable components created
-2. Update [docs/implementation_feedback.md](../docs/implementation_feedback.md) with lessons learned
-3. Run Post-Task Checklist from [tasks.md](copilot/specs/django-angular/tasks.md)
-4. **Automatic cleanup:** Remove unused code, imports, debug statements
-5. Verify tests pass (minimum 80% coverage)
+```bash
+cd frontend && bun run generate:api
+```
 
-### Critical Angular Migration Rules
+Import all generated types and services from `src/app/core/api/`.
+
+### Critical Rules
 
 ❌ **NEVER:**
 
-- Use `NgModules` for features
-- Use `BehaviorSubject` for state
-- Manually write TypeScript interfaces for Django models
-- Put business logic in components
-- Use `localStorage` or `sessionStorage` in Angular (use signals)
+- Use `NgModules`
+- Use `BehaviorSubject` or RxJS subjects for state
+- Manually write TypeScript interfaces for API models
+- Put business logic in components (keep it in `core/services/`)
+- Use `localStorage` / `sessionStorage` (use signals)
 
 ✅ **ALWAYS:**
 
-- Use standalone components
-- Use `signal()` and `computed()` for state
+- Use standalone components with `ChangeDetectionStrategy.OnPush`
+- Use `signal()` and `computed()` for all state
 - Run `bun run generate:api` after backend changes
-- Keep business logic in Django backend
-- Use `ChangeDetectionStrategy.OnPush`
-
-### Migration Phase Status
-
-- [x] Phase 0: Foundation & Documentation Setup
-- [x] Phase 1: Core Architecture & Shared Services
-- [x] Phase 2: Authentication & Dashboard
-- [x] Phase 3: Customer Management
-- [x] Phase 4: Application Detail & OCR
-- [x] Phase 5: Products Management
-- [x] Phase 6: Customer Applications List & CRUD
-- [x] Phase 7: Letters (Surat Permohonan)
-- [x] Phase 8: Invoices & Payments
-- [x] Phase 9: Admin & Maintenance Tools (COMPLETED)
-- [x] Phase 10: User Profile View (NEW FEATURE - ANGULAR EXCLUSIVE) (COMPLETED)
-- [x] Phase 11: Integration & Finalization
-
-**Current focus:** Completed: Integration & Finalization (Phase 11)
+- Update `../docs/shared_components.md` when creating reusable components
+- Update contextual help in `HelpService` when modifying a view
 
 ---
 
@@ -399,11 +439,13 @@ Located in `copilot/specs/django-angular/`:
 
 ### Theme Customization
 
-**Canonical theme guide:** See [THEME_GUIDE.md](copilot/specs/django-angular/THEME_GUIDE.md) — this file is the single source of truth for colors, button variants, and theme behavior. All frontend work, specs, and automated checks should reference it to keep the style consistent.
+**Canonical theme guide:** See [THEME_GUIDE.md](copilot/specs/django-angular/THEME_GUIDE.md) — single source of truth for color tokens, button variants, and dark-mode behavior. All frontend work should reference it to keep styles consistent.
 
 ### ZardUI Component Library
 
-See [zardui.md](copilot/specs/django-angular/zardui.md) for documentation on the ZardUI component library and links to component-specific docs.
+ZardUI is the UI component library (Tailwind CSS v4, shadcn-like). See https://zardui.com/ for component API docs.
+
+**Do not** edit source files in `frontend/src/app/shared/components/ui/` directly — create wrapper components for any customizations.
 
 ---
 
@@ -440,7 +482,7 @@ See [zardui.md](copilot/specs/django-angular/zardui.md) for documentation on the
 - **Context7 Documentation:** Reference for library behavior clarification
 - **Django REST Framework Docs:** https://www.django-rest-framework.org/
 - **Angular 19 Docs:** https://angular.dev/
-- **ZardUI Components:** See `copilot/specs/django-angular/zardui.md`
+- **ZardUI Components:** https://zardui.com/
 
 ---
 
@@ -451,9 +493,9 @@ This is a Django + Angular ERP/CRM for visa processing agencies. Key priorities:
 1. **DRY Principle:** Always search for and reuse existing code before creating new code
 2. **Service Layer:** Business logic in `core/services/`, not in views or components
 3. **Data Integrity:** Preserve workflow rules, deletion constraints, and auto-calculations
-4. **Angular Migration:** Use specifications in `copilot/specs/django-angular/`, follow anti-patterns guide
+4. **Frontend (Angular):** Follow the Angular implementation guidelines in this file; use `docs/shared_components.md` to find existing reusable components
 5. **Generated Clients:** Use OpenAPI → TypeScript generation, never manual interfaces
 6. **Automatic Cleanup:** Remove unused/stale code after every task without asking
-7. **Documentation:** Update [docs/shared_components.md](../docs/shared_components.md) and [docs/implementation_feedback.md](../docs/implementation_feedback.md)
+7. **Documentation:** Update [../docs/shared_components.md](../docs/shared_components.md) and [../docs/implementation_feedback.md](../docs/implementation_feedback.md)
 
-When in doubt, check the migration specs in `copilot/specs/django-angular/` — they contain complete working examples for every pattern.
+When in doubt, check `../docs/shared_components.md` and `../docs/implementation_feedback.md` — they contain the canonical shared component registry and lessons learned.

@@ -63,11 +63,9 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",  # CSRF middleware - REQUIRED
     "django.contrib.auth.middleware.AuthenticationMiddleware",
-    "business_suite.middlewares.disable_django_views.DisableDjangoViewsMiddleware",
     "business_suite.middlewares.AuthLoginRequiredMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "django_user_agents.middleware.UserAgentMiddleware",
     "core.middleware.performance_logger.PerformanceLoggingMiddleware",
 ]
 

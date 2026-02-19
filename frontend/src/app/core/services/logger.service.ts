@@ -1,11 +1,13 @@
 import { isPlatformBrowser } from '@angular/common';
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
+import { AuthService } from '@/core/services/auth.service';
 
 @Injectable({
   providedIn: 'root',
 })
 export class LoggerService {
   private platformId = inject(PLATFORM_ID);
+  private authService = inject(AuthService);
   private isBrowser = isPlatformBrowser(this.platformId);
   private readonly clientLogEndpoint = '/_observability/client-logs';
   private readonly ignoredPatterns = [
@@ -17,11 +19,16 @@ export class LoggerService {
     '[LoggerService] Console overrides initialized.',
     'Angular is running in development mode.',
     'Angular hydrated ',
+    'NG0912: Component ID generation collision detected.',
+    '[vite] server connection lost. Polling for restart...',
+    '[ChromeTransport] chromePort disconnected',
+    'Failed to connect to MetaMask',
+    'chrome-extension://',
   ];
   private readonly dedupWindowMs = 3000;
   private readonly dedupCache = new Map<string, number>();
 
-  private originalConsole = {
+  private originalConsole: Pick<Console, 'log' | 'info' | 'warn' | 'error' | 'debug'> = {
     log: console.log,
     info: console.info,
     warn: console.warn,
@@ -36,6 +43,26 @@ export class LoggerService {
   init() {
     if (!this.isBrowser) {
       return;
+    }
+
+    const globalLoggerState = (window as any).__revisLoggerState as
+      | {
+          initialized: boolean;
+          originalConsole?: Pick<Console, 'log' | 'info' | 'warn' | 'error' | 'debug'>;
+        }
+      | undefined;
+
+    if (globalLoggerState?.initialized) {
+      return;
+    }
+
+    if (globalLoggerState?.originalConsole) {
+      this.originalConsole = globalLoggerState.originalConsole;
+    } else {
+      (window as any).__revisLoggerState = {
+        initialized: false,
+        originalConsole: this.originalConsole,
+      };
     }
 
     const self = this;
@@ -64,6 +91,10 @@ export class LoggerService {
     (console as any).warn = override('warn', this.originalConsole.warn);
     (console as any).error = override('error', this.originalConsole.error);
     (console as any).debug = override('debug', this.originalConsole.debug);
+    (window as any).__revisLoggerState = {
+      initialized: true,
+      originalConsole: this.originalConsole,
+    };
 
     console.info(
       '[LoggerService] Console overrides initialized. Client logs will be forwarded to server.',
@@ -92,7 +123,8 @@ export class LoggerService {
         .join(' ');
 
       const url = window.location.pathname;
-      const payload = JSON.stringify({ level, message, url });
+      const username = this.getCurrentUsername();
+      const payload = JSON.stringify({ level, message, url, username });
 
       // Prefer sendBeacon to avoid Promise/microtask feedback loops in dev-mode tracing.
       if (navigator.sendBeacon) {
@@ -113,6 +145,17 @@ export class LoggerService {
     } catch (e) {
       /* ignore */
     }
+  }
+
+  private getCurrentUsername(): string | null {
+    const claims = this.authService.claims();
+    const usernameCandidate = claims?.fullName || claims?.sub || claims?.email || null;
+    if (!usernameCandidate) {
+      return null;
+    }
+
+    const trimmed = String(usernameCandidate).trim();
+    return trimmed ? trimmed.slice(0, 120) : null;
   }
 
   private shouldSkipForwarding(level: string, args: any[]): boolean {

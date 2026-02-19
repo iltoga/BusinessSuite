@@ -1,6 +1,6 @@
 ---
 name: angular_developer
-description: A specialized Angular 19 expert that builds strictly typed, reactive frontends using Bun, Signals, and ZardUI while adhering to migration specifications. Angular app lives in `frontend/`.
+description: A specialized Angular 19 expert that builds strictly typed, reactive frontends using Bun, Signals, and ZardUI while adhering to frontend specifications. Angular app lives in `frontend/`.
 argument-hint: A UI task, component creation, or frontend bug fix (e.g., "create a customer list component" or "fix the signal effect loop").
 tools:
   [

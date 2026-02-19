@@ -1,0 +1,156 @@
+:host {
+  display: block;
+}
+
+.notification-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.notification-table {
+  width: 100%;
+  min-width: 50rem;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.notification-actions {
+  justify-content: flex-start;
+}
+
+.notification-live-indicator {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.notification-live-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background-color: hsl(var(--primary));
+  box-shadow: 0 0 0 0 hsl(var(--primary) / 0.35);
+  animation: live-pulse 1.8s ease-in-out infinite;
+}
+
+.notification-live-dot--loading {
+  background-color: hsl(var(--accent-foreground));
+}
+
+.notification-live-dot--offline {
+  background-color: hsl(var(--muted-foreground));
+  box-shadow: none;
+  animation: none;
+}
+
+@keyframes live-pulse {
+  0% {
+    box-shadow: 0 0 0 0 hsl(var(--primary) / 0.35);
+  }
+  70% {
+    box-shadow: 0 0 0 6px hsl(var(--primary) / 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 hsl(var(--primary) / 0);
+  }
+}
+
+@media (max-width: 1024px) {
+  .notification-table {
+    min-width: 44rem;
+  }
+}
+
+@media (max-width: 767px) and (orientation: landscape) {
+  .notification-table {
+    min-width: 46rem;
+    font-size: 0.8125rem;
+  }
+}
+
+@media (max-width: 767px) and (orientation: portrait) {
+  .notification-table-wrap {
+    overflow: visible;
+    border: 0;
+  }
+
+  .notification-table {
+    min-width: 0;
+  }
+
+  .notification-table thead {
+    display: none;
+  }
+
+  .notification-table tbody {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .notification-row {
+    display: grid;
+    gap: 0.625rem;
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.75rem;
+    padding: 0.75rem;
+    background-color: hsl(var(--card));
+  }
+
+  .notification-row td {
+    display: grid;
+    grid-template-columns: minmax(5.5rem, 42%) minmax(0, 1fr);
+    gap: 0.625rem;
+    align-items: start;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .notification-row td::before {
+    content: attr(data-label);
+    font-size: 0.7rem;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
+  }
+
+  .notification-actions-cell {
+    grid-template-columns: 1fr;
+    padding: 0.625rem;
+    border: 1px solid hsl(var(--primary) / 0.25);
+    border-radius: 0.625rem;
+    background: linear-gradient(
+      180deg,
+      hsl(var(--primary) / 0.1) 0%,
+      hsl(var(--primary) / 0.04) 100%
+    );
+  }
+
+  .notification-actions-cell::before {
+    color: hsl(var(--primary));
+    font-weight: 700;
+  }
+
+  .notification-actions {
+    width: 100%;
+  }
+
+  .notification-actions button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .notification-center-actions {
+    width: 100%;
+  }
+
+  .notification-center-actions button,
+  .test-dialog-actions button {
+    width: 100%;
+  }
+}

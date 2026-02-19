@@ -1,15 +1,16 @@
-<div class="flex flex-wrap items-center justify-center gap-2">
+<div class="pagination-controls">
   <button
     type="button"
     z-button
     zType="outline"
     zSize="sm"
+    class="pagination-button pagination-edge"
     tabindex="-1"
     [zDisabled]="disabled() || !hasPrevious()"
     (click)="goToFirst()"
   >
     <z-icon zType="arrow-left" class="mr-1" />
-    First
+    <span>First</span>
   </button>
 
   <button
@@ -17,14 +18,15 @@
     z-button
     zType="outline"
     zSize="sm"
+    class="pagination-button"
     tabindex="-1"
     [zDisabled]="disabled() || !hasPrevious()"
     (click)="goToPrevious()"
   >
-    Previous
+    <span>Previous</span>
   </button>
 
-  <div class="px-3 text-sm text-muted-foreground">
+  <div class="pagination-status px-3 text-sm text-muted-foreground">
     Page {{ page() }} of {{ totalPages() }}
     @if (totalItems() !== null) {
       <span>({{ totalItems() }})</span>
@@ -36,11 +38,12 @@
     z-button
     zType="outline"
     zSize="sm"
+    class="pagination-button"
     tabindex="-1"
     [zDisabled]="disabled() || !hasNext()"
     (click)="goToNext()"
   >
-    Next
+    <span>Next</span>
   </button>
 
   <button
@@ -48,11 +51,12 @@
     z-button
     zType="outline"
     zSize="sm"
+    class="pagination-button pagination-edge"
     tabindex="-1"
     [zDisabled]="disabled() || !hasNext()"
     (click)="goToLast()"
   >
-    Last
+    <span>Last</span>
     <z-icon zType="arrow-right" class="ml-1" />
   </button>
 </div>

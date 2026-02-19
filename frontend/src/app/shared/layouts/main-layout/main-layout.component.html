@@ -30,7 +30,7 @@
 
     <!-- Bottom Row: Navigation menu -->
     <div class="flex-1 overflow-y-auto p-4">
-      <nav class="space-y-1 text-sm">
+      <nav class="space-y-1 text-sm" (click)="onSidebarNavigationClick($event)">
         <a
           #sidebarItem
           routerLink="/dashboard"
@@ -82,7 +82,6 @@
           Invoices
         </a>
 
-
         <div *ngIf="canAccessReports()" class="pt-4 pb-1">
           <button
             #sidebarItem
@@ -93,20 +92,91 @@
               <z-icon zType="file-text" class="h-4 w-4" />
               <span>Reports</span>
             </div>
-            <z-icon [zType]="reportsExpanded() ? 'chevron-down' : 'chevron-right'" class="h-3 w-3" />
+            <z-icon
+              [zType]="reportsExpanded() ? 'chevron-down' : 'chevron-right'"
+              class="h-3 w-3"
+            />
           </button>
 
           <div *ngIf="reportsExpanded()" class="mt-1 space-y-1 pl-7">
-            <a #sidebarItem routerLink="/reports" routerLinkActive="bg-accent text-foreground" [routerLinkActiveOptions]="{ exact: true }" class="block rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50">All Reports</a>
-            <a #sidebarItem routerLink="/reports/kpi-dashboard" routerLinkActive="bg-accent text-foreground" class="block rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50">KPI Dashboard</a>
-            <a #sidebarItem routerLink="/reports/revenue" routerLinkActive="bg-accent text-foreground" class="block rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50">Revenue Report</a>
-            <a #sidebarItem routerLink="/reports/invoice-status" routerLinkActive="bg-accent text-foreground" class="block rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50">Invoice Status</a>
-            <a #sidebarItem routerLink="/reports/monthly-invoices" routerLinkActive="bg-accent text-foreground" class="block rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50">Monthly Invoices</a>
-            <a #sidebarItem routerLink="/reports/cash-flow" routerLinkActive="bg-accent text-foreground" class="block rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50">Cash Flow</a>
-            <a #sidebarItem routerLink="/reports/customer-ltv" routerLinkActive="bg-accent text-foreground" class="block rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50">Customer LTV</a>
-            <a #sidebarItem routerLink="/reports/application-pipeline" routerLinkActive="bg-accent text-foreground" class="block rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50">Application Pipeline</a>
-            <a #sidebarItem routerLink="/reports/product-revenue" routerLinkActive="bg-accent text-foreground" class="block rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50">Product Revenue</a>
-            <a #sidebarItem routerLink="/reports/product-demand" routerLinkActive="bg-accent text-foreground" class="block rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50">Product Demand</a>
+            <a
+              #sidebarItem
+              routerLink="/reports"
+              routerLinkActive="bg-accent text-foreground"
+              [routerLinkActiveOptions]="{ exact: true }"
+              class="block rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
+              >All Reports</a
+            >
+            <a
+              #sidebarItem
+              routerLink="/reports/kpi-dashboard"
+              routerLinkActive="bg-accent text-foreground"
+              class="block rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
+              >KPI Dashboard</a
+            >
+            <a
+              #sidebarItem
+              routerLink="/reports/revenue"
+              routerLinkActive="bg-accent text-foreground"
+              class="block rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
+              >Revenue Report</a
+            >
+            <a
+              #sidebarItem
+              routerLink="/reports/invoice-status"
+              routerLinkActive="bg-accent text-foreground"
+              class="block rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
+              >Invoice Status</a
+            >
+            <a
+              #sidebarItem
+              routerLink="/reports/monthly-invoices"
+              routerLinkActive="bg-accent text-foreground"
+              class="block rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
+              >Monthly Invoices</a
+            >
+            <a
+              #sidebarItem
+              routerLink="/reports/cash-flow"
+              routerLinkActive="bg-accent text-foreground"
+              class="block rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
+              >Cash Flow</a
+            >
+            <a
+              #sidebarItem
+              routerLink="/reports/customer-ltv"
+              routerLinkActive="bg-accent text-foreground"
+              class="block rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
+              >Customer LTV</a
+            >
+            <a
+              #sidebarItem
+              routerLink="/reports/application-pipeline"
+              routerLinkActive="bg-accent text-foreground"
+              class="block rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
+              >Application Pipeline</a
+            >
+            <a
+              #sidebarItem
+              routerLink="/reports/product-revenue"
+              routerLinkActive="bg-accent text-foreground"
+              class="block rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
+              >Product Revenue</a
+            >
+            <a
+              #sidebarItem
+              routerLink="/reports/product-demand"
+              routerLinkActive="bg-accent text-foreground"
+              class="block rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
+              >Product Demand</a
+            >
+            <a
+              #sidebarItem
+              routerLink="/reports/ai-costing"
+              routerLinkActive="bg-accent text-foreground"
+              class="block rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
+              >AI Costing</a
+            >
           </div>
         </div>
         <div class="pt-4 pb-1">
@@ -213,18 +283,18 @@
   ></div>
 
   <div class="flex flex-1 flex-col md:pl-0">
-    <header class="flex h-16 items-center justify-between border-b bg-card px-6">
+    <header class="flex h-16 items-center justify-between border-b bg-card px-3 sm:px-6">
       <div class="flex items-center gap-3">
         <button
           type="button"
-          class="p-2 mr-2 rounded hover:bg-accent"
+          class="mr-1 rounded p-2 hover:bg-accent sm:mr-2"
           (click)="toggleSidebar()"
           aria-label="Toggle sidebar"
           [attr.aria-expanded]="sidebarOpen()"
         >
           <z-icon [zType]="sidebarOpen() ? 'chevron-left' : 'panel-left'" />
         </button>
-        <div class="text-sm font-medium">Welcome back</div>
+        <div class="hidden text-sm font-medium sm:block">Welcome back</div>
       </div>
 
       <div class="flex items-center gap-3">
@@ -264,7 +334,7 @@
       </div>
     </header>
 
-    <main class="flex-1 p-6 overflow-y-auto">
+    <main class="flex-1 overflow-y-auto p-3 sm:p-6">
       <router-outlet></router-outlet>
     </main>
   </div>
