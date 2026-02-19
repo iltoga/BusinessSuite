@@ -77,7 +77,7 @@ businesssuite/
    - Document the change in the relevant `docs/` file
 4. **If creating new code:**
    - Design it to be reusable from the start
-   - Add it to `docs/shared_components.md` (frontend) or document in docstrings (backend)
+   - Add it to `../docs/shared_components.md` (frontend) or document in docstrings (backend)
 
 **Examples:**
 
@@ -172,16 +172,16 @@ businesssuite/
 
 #### Before Creating New Components
 
-1. Check `docs/shared_components.md` for existing components
+1. Check `../docs/shared_components.md` for existing components
 2. If similar exists:
    - Extend it with new inputs/outputs
    - Make it more generic if needed
    - Update documentation
 3. If creating new:
    - Make it reusable (accept inputs, emit outputs)
-   - Add to `docs/shared_components.md` immediately
+   - Add to `../docs/shared_components.md` immediately
    - File separation guidance: extract templates/styles into separate files (`.ts`, `.html`, `.css`) **only for app-specific components and views (pages)** that contain non-trivial markup or represent distinct views. **Do not** extract templates/styles for third-party library components (e.g., ZardUI), small UI-only components, or trivial templates—keep those inline to avoid unnecessary churn.
-   - When extraction is needed, do it in small, reviewable batches (2–3 components per PR) and document the change in `docs/shared_components.md` to keep the codebase consistent and reviewable.
+   - When extraction is needed, do it in small, reviewable batches (2–3 components per PR) and document the change in `../docs/shared_components.md` to keep the codebase consistent and reviewable.
 
 #### API Integration
 
@@ -225,8 +225,8 @@ grep -r "similar_pattern" .
 
 **Step 2: Check documentation**
 
-- Frontend: Check `docs/shared_components.md` for reusable UI components
-- Review `docs/implementation_feedback.md` for lessons learned
+- Frontend: Check `../docs/shared_components.md` for reusable UI components
+- Review `../docs/implementation_feedback.md` for lessons learned
 
 **Step 3: Plan implementation**
 
@@ -242,8 +242,8 @@ grep -r "similar_pattern" .
 
 **Step 5: Document**
 
-- Add new shared components to `docs/shared_components.md`
-- Update `docs/implementation_feedback.md` with learnings
+- Add new shared components to `../docs/shared_components.md`
+- Update `../docs/implementation_feedback.md` with learnings
 
 **Step 6: Clean up (AUTOMATIC)**
 
@@ -382,7 +382,7 @@ export class MyFeatureListComponent implements OnInit {
 
 ### Shared Components Catalogue
 
-Always check `docs/shared_components.md` before building new UI. Key components:
+Always check `../docs/shared_components.md` before building new UI. Key components:
 
 | Component                     | Purpose                                |
 | ----------------------------- | -------------------------------------- |
@@ -430,7 +430,7 @@ Import all generated types and services from `src/app/core/api/`.
 - Use standalone components with `ChangeDetectionStrategy.OnPush`
 - Use `signal()` and `computed()` for all state
 - Run `bun run generate:api` after backend changes
-- Update `docs/shared_components.md` when creating reusable components
+- Update `../docs/shared_components.md` when creating reusable components
 - Update contextual help in `HelpService` when modifying a view
 
 ---
@@ -439,7 +439,7 @@ Import all generated types and services from `src/app/core/api/`.
 
 ### Theme Customization
 
-**Canonical theme guide:** See [THEME_GUIDE.md](.github/copilot/specs/django-angular/THEME_GUIDE.md) — single source of truth for color tokens, button variants, and dark-mode behavior. All frontend work should reference it to keep styles consistent.
+**Canonical theme guide:** See [THEME_GUIDE.md](copilot/specs/django-angular/THEME_GUIDE.md) — single source of truth for color tokens, button variants, and dark-mode behavior. All frontend work should reference it to keep styles consistent.
 
 ### ZardUI Component Library
 
@@ -496,6 +496,6 @@ This is a Django + Angular ERP/CRM for visa processing agencies. Key priorities:
 4. **Frontend (Angular):** Follow the Angular implementation guidelines in this file; use `docs/shared_components.md` to find existing reusable components
 5. **Generated Clients:** Use OpenAPI → TypeScript generation, never manual interfaces
 6. **Automatic Cleanup:** Remove unused/stale code after every task without asking
-7. **Documentation:** Update [docs/shared_components.md](../docs/shared_components.md) and [docs/implementation_feedback.md](../docs/implementation_feedback.md)
+7. **Documentation:** Update [../docs/shared_components.md](../docs/shared_components.md) and [../docs/implementation_feedback.md](../docs/implementation_feedback.md)
 
-When in doubt, check `docs/shared_components.md` and `docs/implementation_feedback.md` — they contain the canonical shared component registry and lessons learned.
+When in doubt, check `../docs/shared_components.md` and `../docs/implementation_feedback.md` — they contain the canonical shared component registry and lessons learned.

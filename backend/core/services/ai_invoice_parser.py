@@ -13,6 +13,7 @@ from typing import List, Optional, Union
 from django.core.files.uploadedfile import UploadedFile
 
 from core.services.ai_client import AIClient
+from core.services.ai_usage_service import AIUsageFeature
 
 logger = logging.getLogger(__name__)
 
@@ -200,6 +201,7 @@ class AIInvoiceParser:
             api_key=api_key,
             model=model,
             use_openrouter=use_openrouter,
+            feature_name=AIUsageFeature.INVOICE_IMPORT_AI_PARSER,
         )
         logger.info(
             f"Initialized AI Invoice parser with {self.ai_client.provider_name} " f"(model: {self.ai_client.model})"

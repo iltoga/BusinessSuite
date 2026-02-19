@@ -34,11 +34,14 @@ from core.services.ai_invoice_parser import (
     InvoiceLineItemData,
     ParsedInvoiceResult,
 )
+from core.services.ai_usage_service import AIUsageFeature, AIUsageService
 from core.services.ai_passport_parser import AIPassportParser, AIPassportResult, PassportData
 
 __all__ = [
     # Base client
     "AIClient",
+    "AIUsageService",
+    "AIUsageFeature",
     # Passport parser
     "AIPassportParser",
     "AIPassportResult",

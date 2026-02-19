@@ -1,10 +1,13 @@
 from unittest.mock import patch
 
+from customer_applications.models import DocApplication, WorkflowNotification
+from customers.models import Customer
 from core.models import WebPushSubscription
 from core.services.push_notifications import PushNotificationResult
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.test.utils import override_settings
+from products.models import Product
 from rest_framework.test import APIClient
 
 User = get_user_model()
@@ -13,6 +16,15 @@ User = get_user_model()
 class PushNotificationApiTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_superuser("push-api-user", "pushapi@example.com", "pass")
+        customer = Customer.objects.create(first_name="Push", last_name="Tester", whatsapp="+628111111111")
+        product = Product.objects.create(name="Push Product", code="PUSH-01", required_documents="")
+        self.application = DocApplication.objects.create(
+            customer=customer,
+            product=product,
+            doc_date="2026-02-12",
+            due_date="2026-02-13",
+            created_by=self.user,
+        )
         self.client = APIClient()
         self.client.force_authenticate(self.user)
 
@@ -110,9 +122,10 @@ class PushNotificationApiTests(TestCase):
         self.assertEqual(response.status_code, 409)
         self.assertIn("Target user has no active browser push subscriptions", str(response.data.get("error")))
 
-    @patch("notifications.services.providers.NotificationDispatcher.send")
+    @patch("customer_applications.tasks.schedule_whatsapp_status_poll")
+    @patch("notifications.services.providers.WhatsappNotificationProvider.send")
     @override_settings(WHATSAPP_TEST_NUMBER="+628111111111")
-    def test_admin_send_test_whatsapp_uses_default_number_when_to_omitted(self, send_mock):
+    def test_admin_send_test_whatsapp_uses_default_number_when_to_omitted(self, send_mock, schedule_poll_mock):
         send_mock.return_value = "wamid.test.123"
 
         response = self.client.post(
@@ -128,15 +141,28 @@ class PushNotificationApiTests(TestCase):
         self.assertEqual(response.data["recipient"], "+628111111111")
         self.assertTrue(response.data["used_default_recipient"])
         self.assertEqual(response.data["message_id"], "wamid.test.123")
+        self.assertEqual(response.data["workflow_notification_status"], WorkflowNotification.STATUS_PENDING)
         send_mock.assert_called_once()
         kwargs = send_mock.call_args.kwargs
-        self.assertEqual(kwargs["channel"], "whatsapp")
         self.assertEqual(kwargs["recipient"], "+628111111111")
         self.assertEqual(kwargs["subject"], "WhatsApp subject")
-        self.assertEqual(kwargs["body"], "WhatsApp body")
+        self.assertEqual(kwargs["body"], "WhatsApp subject\n\nWhatsApp body")
+        self.assertFalse(kwargs["prefer_template"])
+        self.assertFalse(kwargs["allow_template_fallback"])
+        created = WorkflowNotification.objects.get(pk=response.data["workflow_notification_id"])
+        self.assertEqual(created.channel, WorkflowNotification.CHANNEL_WHATSAPP)
+        self.assertEqual(created.recipient, "+628111111111")
+        self.assertEqual(created.subject, "WhatsApp subject")
+        self.assertEqual(created.body, "WhatsApp body")
+        self.assertEqual(created.doc_application_id, self.application.id)
+        self.assertEqual(created.status, WorkflowNotification.STATUS_PENDING)
+        self.assertEqual(created.external_reference, "wamid.test.123")
+        self.assertEqual(created.notification_type, "manual_whatsapp_test")
+        schedule_poll_mock.assert_called_once_with(notification_id=created.id, delay_seconds=5)
 
-    @patch("notifications.services.providers.NotificationDispatcher.send")
-    def test_admin_send_test_whatsapp_uses_explicit_to(self, send_mock):
+    @patch("customer_applications.tasks.schedule_whatsapp_status_poll")
+    @patch("notifications.services.providers.WhatsappNotificationProvider.send")
+    def test_admin_send_test_whatsapp_uses_explicit_to(self, send_mock, schedule_poll_mock):
         send_mock.return_value = "wamid.test.456"
 
         response = self.client.post(
@@ -153,6 +179,32 @@ class PushNotificationApiTests(TestCase):
         self.assertEqual(response.data["recipient"], "+628222222222")
         self.assertFalse(response.data["used_default_recipient"])
         self.assertEqual(response.data["message_id"], "wamid.test.456")
+        created = WorkflowNotification.objects.get(pk=response.data["workflow_notification_id"])
+        self.assertEqual(created.status, WorkflowNotification.STATUS_PENDING)
+        self.assertEqual(created.external_reference, "wamid.test.456")
+        schedule_poll_mock.assert_called_once_with(notification_id=created.id, delay_seconds=5)
+
+    @patch("customer_applications.tasks.schedule_whatsapp_status_poll")
+    @patch("notifications.services.providers.WhatsappNotificationProvider.send")
+    def test_admin_send_test_whatsapp_keeps_dummy_pending_for_queued_result(self, send_mock, schedule_poll_mock):
+        send_mock.return_value = "queued_whatsapp:+628222222222"
+
+        response = self.client.post(
+            "/api/push-notifications/send-test-whatsapp/",
+            {
+                "to": "+628222222222",
+                "subject": "Queued recipient",
+                "body": "Body",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        created = WorkflowNotification.objects.get(pk=response.data["workflow_notification_id"])
+        self.assertEqual(created.status, WorkflowNotification.STATUS_PENDING)
+        self.assertEqual(created.external_reference, "")
+        self.assertIsNone(created.sent_at)
+        schedule_poll_mock.assert_not_called()
 
     @override_settings(WHATSAPP_TEST_NUMBER="")
     def test_admin_send_test_whatsapp_returns_400_when_no_destination(self):
@@ -167,3 +219,37 @@ class PushNotificationApiTests(TestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertIn("No WhatsApp destination configured", str(response.data.get("error")))
+
+    @patch("notifications.services.providers.WhatsappNotificationProvider.send")
+    def test_admin_send_test_whatsapp_returns_409_when_no_application_available(self, send_mock):
+        DocApplication.objects.all().delete()
+
+        response = self.client.post(
+            "/api/push-notifications/send-test-whatsapp/",
+            {
+                "to": "+628333333333",
+                "subject": "No app",
+                "body": "Body",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 409)
+        self.assertIn("No applications available", str(response.data.get("error")))
+        send_mock.assert_not_called()
+
+    @patch("notifications.services.providers.WhatsappNotificationProvider.send", side_effect=RuntimeError("blocked"))
+    def test_admin_send_test_whatsapp_returns_400_when_text_send_fails(self, send_mock):
+        response = self.client.post(
+            "/api/push-notifications/send-test-whatsapp/",
+            {
+                "to": "+628222222222",
+                "subject": "Explicit recipient",
+                "body": "Body",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("WhatsApp text send failed", str(response.data.get("error")))
+        send_mock.assert_called_once()

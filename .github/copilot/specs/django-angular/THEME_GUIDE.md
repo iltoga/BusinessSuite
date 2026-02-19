@@ -1225,7 +1225,7 @@ export class ThemeService {
 
 ---
 
-**Happy theming! 🎨**
+#### Happy theming! 🎨
 
 For questions or issues, refer to:
 

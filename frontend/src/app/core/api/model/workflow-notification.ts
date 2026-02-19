@@ -13,7 +13,7 @@ export interface WorkflowNotification {
     readonly id: number;
     readonly applicationId: number;
     /**
-     * * `pending` - Pending * `sent` - Sent * `failed` - Failed * `cancelled` - Cancelled
+     * * `pending` - Pending * `sent` - Sent * `delivered` - Delivered * `read` - Read * `failed` - Failed * `cancelled` - Cancelled
      */
     status?: WorkflowNotification.StatusEnum;
     channel?: string;
@@ -36,6 +36,8 @@ export namespace WorkflowNotification {
     export const StatusEnum = {
         Pending: 'pending',
         Sent: 'sent',
+        Delivered: 'delivered',
+        Read: 'read',
         Failed: 'failed',
         Cancelled: 'cancelled'
     } as const;

@@ -147,6 +147,20 @@
               <div class="text-muted-foreground">{{ feature.purpose }}</div>
               <div class="mt-1 font-mono">Model: {{ feature.effectiveModel }}</div>
               <div class="text-muted-foreground">{{ feature.modelStrategy }}</div>
+              <div class="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
+                <div class="rounded border border-border/70 bg-background p-2">
+                  <div class="text-xs uppercase tracking-wide text-muted-foreground">Current Month</div>
+                  <div class="mt-1">Requests: {{ feature.usageCurrentMonth.requestCount }}</div>
+                  <div>Tokens: {{ feature.usageCurrentMonth.totalTokens }}</div>
+                  <div>Cost: ${{ feature.usageCurrentMonth.totalCost | number: '1.4-4' }}</div>
+                </div>
+                <div class="rounded border border-border/70 bg-background p-2">
+                  <div class="text-xs uppercase tracking-wide text-muted-foreground">Current Year</div>
+                  <div class="mt-1">Requests: {{ feature.usageCurrentYear.requestCount }}</div>
+                  <div>Tokens: {{ feature.usageCurrentYear.totalTokens }}</div>
+                  <div>Cost: ${{ feature.usageCurrentYear.totalCost | number: '1.4-4' }}</div>
+                </div>
+              </div>
             </div>
           }
         </div>

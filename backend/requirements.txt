@@ -14,16 +14,12 @@ attrs==25.4.0
     # via
     #   jsonschema
     #   referencing
-beautifulsoup4==4.14.3
-    # via django-unicorn
 boto3==1.42.50
     # via django-storages
 botocore==1.42.50
     # via
     #   boto3
     #   s3transfer
-cachetools==6.2.4
-    # via django-unicorn
 certifi==2026.1.4
     # via
     #   httpcore
@@ -37,44 +33,31 @@ concurrent-log-handler==0.9.28
     # via business-suite (pyproject.toml)
 contourpy==1.3.3
     # via matplotlib
-crispy-bootstrap5==2025.6
-    # via business-suite (pyproject.toml)
 cryptography==46.0.4
     # via google-auth
 cycler==0.12.1
     # via matplotlib
-decorator==5.2.1
-    # via django-unicorn
 distro==1.9.0
     # via openai
 django==6.0.2
     # via
     #   business-suite (pyproject.toml)
-    #   crispy-bootstrap5
     #   django-auditlog
     #   django-cors-headers
-    #   django-crispy-forms
     #   django-dbbackup
     #   django-debug-toolbar
     #   django-redis
     #   django-storages
-    #   django-unicorn
-    #   django-user-agents
     #   django-waffle
-    #   django-widget-tweaks
     #   djangorestframework
     #   djangorestframework-simplejwt
     #   drf-spectacular
 django-auditlog==3.4.1
     # via business-suite (pyproject.toml)
-django-bootstrap-sidebar==1.2.7
-    # via business-suite (pyproject.toml)
 django-cleanup==9.0.0
     # via business-suite (pyproject.toml)
 django-cors-headers==4.9.0
     # via business-suite (pyproject.toml)
-django-crispy-forms==2.5
-    # via crispy-bootstrap5
 django-dbbackup==5.1.0
     # via business-suite (pyproject.toml)
 django-debug-toolbar==6.1.0
@@ -85,13 +68,7 @@ django-redis==6.0.0
     # via business-suite (pyproject.toml)
 django-storages==1.14.6
     # via business-suite (pyproject.toml)
-django-unicorn==0.62.0
-    # via business-suite (pyproject.toml)
-django-user-agents==0.4.0
-    # via business-suite (pyproject.toml)
 django-waffle==5.0.0
-    # via business-suite (pyproject.toml)
-django-widget-tweaks==1.5.1
     # via business-suite (pyproject.toml)
 djangorestframework==3.16.1
     # via
@@ -176,9 +153,7 @@ lxml==6.0.2
     #   docx-mailmerge
     #   python-docx
 matplotlib==3.10.8
-    # via
-    #   passporteye
-    #   seaborn
+    # via passporteye
 networkx==3.6.1
     # via scikit-image
 numpy==2.4.0
@@ -186,19 +161,15 @@ numpy==2.4.0
     #   contourpy
     #   imageio
     #   matplotlib
-    #   pandas
     #   passporteye
     #   scikit-image
     #   scikit-learn
     #   scipy
-    #   seaborn
     #   tifffile
 openai==2.14.0
     # via business-suite (pyproject.toml)
 openpyxl==3.1.5
     # via business-suite (pyproject.toml)
-orjson==3.11.5
-    # via django-unicorn
 packaging==25.0
     # via
     #   gunicorn
@@ -207,8 +178,6 @@ packaging==25.0
     #   pytesseract
     #   pytest
     #   scikit-image
-pandas==2.3.3
-    # via seaborn
 passporteye==2.2.2
     # via business-suite (pyproject.toml)
 pdf2image==1.17.0
@@ -273,19 +242,14 @@ python-dateutil==2.9.0.post0
     #   botocore
     #   django-auditlog
     #   matplotlib
-    #   pandas
 python-docx==1.2.0
     # via business-suite (pyproject.toml)
 python-dotenv==1.2.1
     # via business-suite (pyproject.toml)
 python-monkey-business==1.1.0
     # via django-nested-admin
-pytz==2025.2
-    # via pandas
 pyyaml==6.0.3
-    # via
-    #   business-suite (pyproject.toml)
-    #   drf-spectacular
+    # via drf-spectacular
 rapidfuzz==3.14.3
     # via business-suite (pyproject.toml)
 redis==6.4.0
@@ -318,12 +282,8 @@ scipy==1.16.3
     #   passporteye
     #   scikit-image
     #   scikit-learn
-seaborn==0.13.2
-    # via business-suite (pyproject.toml)
 setuptools==80.9.0
     # via business-suite (pyproject.toml)
-shortuuid==1.0.13
-    # via django-unicorn
 six==1.17.0
     # via
     #   dropbox
@@ -333,8 +293,6 @@ sniffio==1.3.1
     # via openai
 sortedcontainers==2.4.0
     # via hypothesis
-soupsieve==2.8.1
-    # via beautifulsoup4
 sqlparse==0.5.5
     # via
     #   django
@@ -349,7 +307,6 @@ tqdm==4.67.1
     # via openai
 typing-extensions==4.15.0
     # via
-    #   beautifulsoup4
     #   openai
     #   pydantic
     #   pydantic-core
@@ -357,26 +314,13 @@ typing-extensions==4.15.0
     #   typing-inspection
 typing-inspection==0.4.2
     # via pydantic
-tzdata==2025.3
-    # via pandas
-ua-parser==1.0.1
-    # via
-    #   business-suite (pyproject.toml)
-    #   user-agents
-ua-parser-builtins==202601
-    # via ua-parser
 uritemplate==4.2.0
     # via
     #   drf-spectacular
     #   google-api-python-client
 urllib3==2.6.3
     # via
-    #   business-suite (pyproject.toml)
     #   botocore
     #   requests
-user-agents==2.2.0
-    # via
-    #   business-suite (pyproject.toml)
-    #   django-user-agents
 whitenoise==6.11.0
     # via business-suite (pyproject.toml)

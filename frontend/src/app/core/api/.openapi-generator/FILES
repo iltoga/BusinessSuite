@@ -39,6 +39,8 @@ model/async-job.ts
 model/change-password.ts
 model/country-code.ts
 model/custom-token-obtain.ts
+model/customer-application-history.ts
+model/customer-uninvoiced-application.ts
 model/customer.ts
 model/dashboard-stats.ts
 model/delete-multiple-backups.ts
@@ -63,7 +65,9 @@ model/invoice-create-update.ts
 model/invoice-detail.ts
 model/invoice-list.ts
 model/models.ts
+model/paginated-customer-application-history-list.ts
 model/paginated-customer-list.ts
+model/paginated-customer-uninvoiced-application-list.ts
 model/paginated-doc-application-invoice-list.ts
 model/paginated-doc-application-serializer-with-relations-list.ts
 model/paginated-invoice-list-list.ts

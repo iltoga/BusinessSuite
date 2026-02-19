@@ -14,6 +14,7 @@ from typing import Optional, Union
 from django.core.files.uploadedfile import UploadedFile
 
 from core.services.ai_client import AIClient
+from core.services.ai_usage_service import AIUsageFeature
 from core.services.logger_service import Logger
 from core.utils.icao_validation import validate_passport_number_icao
 from core.utils.imgutils import convert_and_resize_image
@@ -159,6 +160,7 @@ class AIPassportParser:
             api_key=api_key,
             model=model,
             use_openrouter=use_openrouter,
+            feature_name=AIUsageFeature.PASSPORT_OCR_AI_EXTRACTOR,
         )
         logger.info(
             f"Initialized AI Passport parser with {self.ai_client.provider_name} " f"(model: {self.ai_client.model})"

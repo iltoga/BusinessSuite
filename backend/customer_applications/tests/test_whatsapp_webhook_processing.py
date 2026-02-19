@@ -63,6 +63,7 @@ class WhatsappWebhookProcessingTests(TestCase):
 
         self.assertEqual(result["status_updates"], 1)
         self.notification.refresh_from_db()
+        self.assertEqual(self.notification.status, WorkflowNotification.STATUS_READ)
         self.assertIn("Meta status: read", self.notification.provider_message)
 
     def test_incoming_reply_is_attached_to_original_notification(self):

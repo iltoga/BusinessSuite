@@ -66,7 +66,6 @@ MIDDLEWARE = [
     "business_suite.middlewares.AuthLoginRequiredMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "django_user_agents.middleware.UserAgentMiddleware",
     "core.middleware.performance_logger.PerformanceLoggingMiddleware",
 ]
 

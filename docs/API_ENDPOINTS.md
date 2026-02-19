@@ -313,6 +313,10 @@ This document lists the main API endpoints exposed by the application in this re
   - **Description:** List workflow notifications.
   - **Actions:** `resend` (POST), `cancel` (POST).
 
+- **GET `/api/workflow-notifications/stream/`** (SSE)
+  - **Query params:** optional `token` (JWT/DRF token for `EventSource` authentication fallback).
+  - **Description:** Live Notification Center stream. Emits an initial snapshot event, then change events when workflow notifications created in the last 24 hours are created/updated/deleted.
+
 - **GET `/api/letters/`**
   - **Description:** Manage letter templates and generation.
 
@@ -328,6 +332,7 @@ This document lists the main API endpoints exposed by the application in this re
 
 - **POST `/api/notifications/whatsapp/webhook/`**
   - **Description:** Webhook for WhatsApp Business API.
+  - **Local testing:** See `docs/whatsapp-webhook-tunnel-command.md` for the temporary ngrok callback switch command.
 
 ---
 

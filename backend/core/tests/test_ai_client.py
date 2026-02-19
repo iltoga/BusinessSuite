@@ -6,12 +6,15 @@ from django.test import TestCase, override_settings
 from core.services.ai_client import AIClient
 
 OPENAI_PATCH_TARGET = "core.services.ai_client.OpenAI"
+ENQUEUE_PATCH_TARGET = "core.services.ai_client.AIUsageService.enqueue_request_capture"
 
 
-def _build_mock_response(content: str):
+def _build_mock_response(content: str, usage: dict | None = None):
     response = MagicMock()
     response.choices = [MagicMock()]
     response.choices[0].message.content = content
+    response.id = "gen-test-1"
+    response.usage = usage
     return response
 
 
@@ -21,7 +24,8 @@ class AIClientJsonParsingTests(TestCase):
         LLM_PROVIDER="openrouter",
     )
     @patch(OPENAI_PATCH_TARGET)
-    def test_chat_completion_json_repairs_unescaped_quote(self, mock_openai):
+    @patch(ENQUEUE_PATCH_TARGET)
+    def test_chat_completion_json_repairs_unescaped_quote(self, mock_enqueue, mock_openai):
         malformed_json = """
         {
           "first_name": "Anna "Maria",
@@ -51,13 +55,17 @@ class AIClientJsonParsingTests(TestCase):
         self.assertEqual(result["first_name"], 'Anna "Maria')
         self.assertEqual(result["passport_number"], "YA1234567")
         self.assertEqual(mock_client.chat.completions.create.call_count, 1)
+        self.assertEqual(mock_enqueue.call_count, 1)
+        self.assertEqual(mock_enqueue.call_args.kwargs["provider"], "openrouter")
+        self.assertTrue(mock_enqueue.call_args.kwargs["success"])
 
     @override_settings(
         OPENROUTER_API_KEY="test-key",
         LLM_PROVIDER="openrouter",
     )
     @patch(OPENAI_PATCH_TARGET)
-    def test_chat_completion_json_retries_after_invalid_json(self, mock_openai):
+    @patch(ENQUEUE_PATCH_TARGET)
+    def test_chat_completion_json_retries_after_invalid_json(self, mock_enqueue, mock_openai):
         invalid_response = _build_mock_response("this is not valid json")
         valid_response = _build_mock_response(json.dumps({"ok": True}))
 
@@ -79,3 +87,4 @@ class AIClientJsonParsingTests(TestCase):
 
         self.assertEqual(result, {"ok": True})
         self.assertEqual(mock_client.chat.completions.create.call_count, 2)
+        self.assertEqual(mock_enqueue.call_count, 2)

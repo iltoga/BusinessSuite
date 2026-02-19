@@ -196,7 +196,6 @@ INSTALLED_APPS = [
     "storages",
     "admin_tools",
     "django_cleanup.apps.CleanupConfig",
-    "django_user_agents",
     "huey.contrib.djhuey",
 ]
 
@@ -217,8 +216,6 @@ MIDDLEWARE = [
     "business_suite.middlewares.AuthLoginRequiredMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    # it merge all changes of object per request
-    "django_user_agents.middleware.UserAgentMiddleware",
     "core.middleware.performance_logger.PerformanceLoggingMiddleware",
 ]
 
@@ -647,8 +644,6 @@ HUEY = _build_huey_settings(TESTING)
 # select2
 SELECT2_CACHE_BACKEND = "select2"
 
-USER_AGENTS_CACHE = "default"
-
 # SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 # # SESSION_COOKIE_AGE = 60 * 60 * 24  # One day
 # SESSION_COOKIE_AGE = 60 * 5 # 5 minutes
@@ -937,6 +932,13 @@ META_WHATSAPP_BUSINESS_NUMBER = os.getenv("META_WHATSAPP_BUSINESS_NUMBER", "")
 META_WHATSAPP_ACCESS_TOKEN = os.getenv("META_WHATSAPP_ACCESS_TOKEN", "")
 META_TOKEN_CLIENT = os.getenv("META_TOKEN_CLIENT", "")
 META_GRAPH_API_VERSION = os.getenv("META_GRAPH_API_VERSION", "v23.0")
+META_WHATSAPP_AUTO_REFRESH_ACCESS_TOKEN = _parse_bool(os.getenv("META_WHATSAPP_AUTO_REFRESH_ACCESS_TOKEN", "True"))
+META_WHATSAPP_TOKEN_REFRESH_WINDOW_SECONDS = int(
+    os.getenv("META_WHATSAPP_TOKEN_REFRESH_WINDOW_SECONDS", str(7 * 24 * 60 * 60))
+)
+META_WHATSAPP_TOKEN_CACHE_TIMEOUT_SECONDS = int(
+    os.getenv("META_WHATSAPP_TOKEN_CACHE_TIMEOUT_SECONDS", str(70 * 24 * 60 * 60))
+)
 META_WEBHOOK_ENFORCE_SIGNATURE = (
     os.getenv("META_WEBHOOK_ENFORCE_SIGNATURE", "false" if DEBUG else "true").lower() == "true"
 )

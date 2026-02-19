@@ -7,6 +7,7 @@ from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from customers.models import Customer
+from customers.services.passport_file_processing import PassportFileProcessingError, normalize_passport_file
 
 
 class CustomerSerializer(serializers.ModelSerializer):
@@ -115,3 +116,14 @@ class CustomerSerializer(serializers.ModelSerializer):
         if qs.exists():
             raise serializers.ValidationError("This passport number is already used by another customer.")
         return value
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        passport_file = attrs.get("passport_file")
+        if not passport_file:
+            return attrs
+        try:
+            attrs["passport_file"] = normalize_passport_file(passport_file)
+        except PassportFileProcessingError as exc:
+            raise serializers.ValidationError({"passport_file": [str(exc)]}) from exc
+        return attrs

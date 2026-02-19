@@ -77,6 +77,24 @@ interface OpenRouterStatusResponse {
       modelStrategy: string;
       effectiveModel: string;
       provider: string;
+      usageCurrentMonth: {
+        requestCount: number;
+        successCount: number;
+        failedCount: number;
+        totalTokens: number;
+        totalCost: number;
+        year: number;
+        month: number | null;
+      };
+      usageCurrentYear: {
+        requestCount: number;
+        successCount: number;
+        failedCount: number;
+        totalTokens: number;
+        totalCost: number;
+        year: number;
+        month: number | null;
+      };
     }>;
   };
 }

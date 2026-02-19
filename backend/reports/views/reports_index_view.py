@@ -73,5 +73,12 @@ class ReportsIndexView(LoginRequiredMixin, TemplateView):
                 "icon": "bi-graph-up-arrow",
                 "category": "Product",
             },
+            {
+                "name": "AI Costing Intelligence",
+                "description": "Track AI usage costs by year, month, and day",
+                "url": "report-ai-costing",
+                "icon": "bi-cpu",
+                "category": "Operations",
+            },
         ]
         return context

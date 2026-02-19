@@ -1,6 +1,19 @@
 <div class="space-y-4">
   <div class="flex flex-wrap items-start justify-between gap-3">
-    <h1 class="text-xl font-semibold">Notifications Center</h1>
+    <div class="space-y-1">
+      <h1 class="text-xl font-semibold">Notifications Center</h1>
+      <div class="notification-live-indicator">
+        <span
+          class="notification-live-dot"
+          [class.notification-live-dot--loading]="loading() || liveConnecting()"
+          [class.notification-live-dot--offline]="liveDotOffline()"
+        ></span>
+        <span class="text-xs font-medium text-foreground">{{ liveStatusText() }}</span>
+        <span class="text-xs text-muted-foreground">
+          Last update: {{ lastUpdatedAt() ? (lastUpdatedAt() | date: 'mediumTime') : '--' }}
+        </span>
+      </div>
+    </div>
     <div class="notification-center-actions flex w-full flex-wrap items-center gap-2 sm:w-auto">
       <button z-button zType="secondary" class="w-full sm:w-auto" (click)="load()">Refresh</button>
       <button z-button zType="default" class="w-full sm:w-auto" (click)="openPushTestDialog()">
@@ -34,7 +47,9 @@
             <td class="p-2" data-label="Scheduled">{{ item.scheduled_for || '-' }}</td>
             <td class="p-2 notification-actions-cell" data-label="Actions">
               <div class="notification-actions flex flex-wrap gap-2">
-                <button z-button zSize="sm" (click)="resend(item.id)">Resend</button>
+                <button z-button zSize="sm" [disabled]="isResending(item.id)" (click)="resend(item.id)">
+                  {{ isResending(item.id) ? 'Resending...' : 'Resend' }}
+                </button>
                 <button z-button zType="secondary" zSize="sm" (click)="cancel(item.id)">
                   Cancel
                 </button>

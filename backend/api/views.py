@@ -4,7 +4,7 @@ import mimetypes
 import os
 import time
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from io import BytesIO
 from typing import Any, cast
 
@@ -62,6 +62,11 @@ from core.tasks.ocr import run_ocr_job
 from core.utils.dateutils import calculate_due_date
 from core.utils.pdf_converter import PDFConverter, PDFConverterError
 from customer_applications.models import DocApplication, DocWorkflow, Document, WorkflowNotification
+from customer_applications.services.workflow_notification_stream import (
+    RECENT_WORKFLOW_NOTIFICATION_WINDOW_HOURS,
+    get_workflow_notification_stream_cursor,
+    get_workflow_notification_stream_last_event,
+)
 from customers.models import Customer
 from django.conf import settings
 from django.contrib.auth import logout as django_logout
@@ -2808,12 +2813,14 @@ class WorkflowNotificationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], url_path="resend")
     def resend(self, request, pk=None):
+        from customer_applications.tasks import schedule_whatsapp_status_poll
         from notifications.services.providers import NotificationDispatcher, is_queued_provider_result
 
         notification = self.get_object()
         if notification.status == WorkflowNotification.STATUS_CANCELLED:
             return self.error_response("Cancelled notifications cannot be resent.", status.HTTP_400_BAD_REQUEST)
 
+        attempted_at = timezone.now()
         try:
             result = NotificationDispatcher().send(
                 notification.channel,
@@ -2825,27 +2832,57 @@ class WorkflowNotificationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             if is_queued_provider_result(notification.channel, result):
                 notification.status = WorkflowNotification.STATUS_PENDING
                 notification.sent_at = None
+                notification.scheduled_for = attempted_at
                 if notification.channel == WorkflowNotification.CHANNEL_WHATSAPP:
                     notification.external_reference = ""
                 notification.save(
-                    update_fields=["status", "sent_at", "provider_message", "external_reference", "updated_at"]
+                    update_fields=[
+                        "status",
+                        "sent_at",
+                        "scheduled_for",
+                        "provider_message",
+                        "external_reference",
+                        "updated_at",
+                    ]
                 )
             else:
-                notification.status = WorkflowNotification.STATUS_SENT
-                notification.sent_at = timezone.now()
+                notification.scheduled_for = attempted_at
                 if notification.channel == WorkflowNotification.CHANNEL_WHATSAPP:
+                    # Meta accepted response is not delivery confirmation.
+                    notification.status = WorkflowNotification.STATUS_PENDING
+                    notification.sent_at = None
                     notification.external_reference = str(result)
+                else:
+                    notification.status = WorkflowNotification.STATUS_SENT
+                    notification.sent_at = attempted_at
                 notification.save(
-                    update_fields=["status", "sent_at", "provider_message", "external_reference", "updated_at"]
+                    update_fields=[
+                        "status",
+                        "sent_at",
+                        "scheduled_for",
+                        "provider_message",
+                        "external_reference",
+                        "updated_at",
+                    ]
                 )
+                if notification.channel == WorkflowNotification.CHANNEL_WHATSAPP and notification.external_reference:
+                    schedule_whatsapp_status_poll(notification_id=notification.id, delay_seconds=5)
         except Exception as exc:
             notification.status = WorkflowNotification.STATUS_FAILED
             notification.sent_at = None
+            notification.scheduled_for = attempted_at
             notification.provider_message = str(exc)
             if notification.channel == WorkflowNotification.CHANNEL_WHATSAPP:
                 notification.external_reference = ""
             notification.save(
-                update_fields=["status", "sent_at", "provider_message", "external_reference", "updated_at"]
+                update_fields=[
+                    "status",
+                    "sent_at",
+                    "scheduled_for",
+                    "provider_message",
+                    "external_reference",
+                    "updated_at",
+                ]
             )
             return self.error_response(str(exc), status.HTTP_400_BAD_REQUEST)
 
@@ -2896,6 +2933,10 @@ class PushNotificationViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
     @staticmethod
     def _subscription_count(user):
         return WebPushSubscription.objects.filter(user=user).count()
+
+    @staticmethod
+    def _latest_application_for_test_notification():
+        return DocApplication.objects.order_by("-updated_at", "-id").first()
 
     @action(detail=False, methods=["get"], url_path="subscriptions")
     def subscriptions(self, request):
@@ -3073,28 +3114,186 @@ class PushNotificationViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                 status.HTTP_400_BAD_REQUEST,
             )
 
-        from notifications.services.providers import NotificationDispatcher
+        target_application = self._latest_application_for_test_notification()
+        if target_application is None:
+            return self.error_response(
+                "No applications available to attach a dummy workflow notification.",
+                status.HTTP_409_CONFLICT,
+            )
+
+        from customer_applications.tasks import schedule_whatsapp_status_poll
+        from notifications.services.providers import WhatsappNotificationProvider, is_queued_provider_result
 
         subject = str(data.get("subject") or "").strip() or "Revis Bali CRM WhatsApp Test"
         body = str(data.get("body") or "").strip() or "WhatsApp test message from Revis Bali CRM."
+        whatsapp_body = f"{subject}\n\n{body}" if subject else body
 
         try:
-            message_id = NotificationDispatcher().send(
-                channel="whatsapp",
+            message_id = WhatsappNotificationProvider().send(
                 recipient=recipient,
                 subject=subject,
-                body=body,
+                body=whatsapp_body,
+                prefer_template=False,
+                allow_template_fallback=False,
             )
         except Exception as exc:
-            return self.error_response(f"WhatsApp send failed: {exc}", status.HTTP_400_BAD_REQUEST)
+            return self.error_response(
+                f"WhatsApp text send failed: {exc}. "
+                "Template fallback is disabled for this test endpoint to preserve exact subject/body.",
+                status.HTTP_400_BAD_REQUEST,
+            )
+
+        raw_message_id = str(message_id or "").strip()
+        queued = is_queued_provider_result("whatsapp", raw_message_id)
+        notification = WorkflowNotification.objects.create(
+            channel=WorkflowNotification.CHANNEL_WHATSAPP,
+            recipient=recipient,
+            subject=subject,
+            body=body,
+            doc_application=target_application,
+            doc_workflow=None,
+            status=WorkflowNotification.STATUS_PENDING,
+            provider_message=raw_message_id,
+            external_reference="" if queued else raw_message_id,
+            sent_at=None,
+            scheduled_for=timezone.now(),
+            notification_type="manual_whatsapp_test",
+        )
+        if notification.external_reference:
+            schedule_whatsapp_status_poll(notification_id=notification.id, delay_seconds=5)
 
         return Response(
             {
                 "recipient": recipient,
                 "used_default_recipient": explicit_recipient == "",
-                "message_id": str(message_id),
+                "message_id": raw_message_id,
+                "workflow_notification_id": notification.id,
+                "workflow_notification_status": notification.status,
+                "workflow_notification_application_id": notification.doc_application_id,
             }
         )
+
+
+@sse_token_auth_required
+def workflow_notifications_stream_sse(request):
+    """SSE endpoint for workflow notification center live updates."""
+    user = request.user
+    if not (user and user.is_authenticated and (user.is_staff or user.groups.filter(name="admin").exists())):
+        return JsonResponse({"error": "Staff or 'admin' group permission required"}, status=403)
+
+    def _latest_recent_notification_state():
+        cutoff = timezone.now() - timedelta(hours=RECENT_WORKFLOW_NOTIFICATION_WINDOW_HOURS)
+        latest = (
+            WorkflowNotification.objects.filter(created_at__gte=cutoff)
+            .order_by("-updated_at", "-id")
+            .values("id", "updated_at")
+            .first()
+        )
+        if not latest:
+            return None, None
+        updated_at = latest.get("updated_at")
+        return latest.get("id"), updated_at.isoformat() if updated_at else None
+
+    def _build_payload(
+        *,
+        event: str,
+        cursor: int,
+        last_notification_id,
+        last_updated_at,
+        reason: str,
+        operation=None,
+        changed_notification_id=None,
+    ):
+        payload = {
+            "event": event,
+            "cursor": cursor,
+            "windowHours": RECENT_WORKFLOW_NOTIFICATION_WINDOW_HOURS,
+            "lastNotificationId": last_notification_id,
+            "lastUpdatedAt": last_updated_at,
+            "reason": reason,
+        }
+        if operation:
+            payload["operation"] = operation
+        if changed_notification_id is not None:
+            payload["changedNotificationId"] = changed_notification_id
+        return payload
+
+    def event_stream():
+        last_cursor = get_workflow_notification_stream_cursor()
+        last_notification_id, last_updated_at = _latest_recent_notification_state()
+        keepalive_tick = 0
+
+        snapshot_payload = _build_payload(
+            event="workflow_notifications_snapshot",
+            cursor=last_cursor,
+            last_notification_id=last_notification_id,
+            last_updated_at=last_updated_at,
+            reason="initial",
+        )
+        yield f"data: {json.dumps(snapshot_payload)}\n\n"
+
+        while True:
+            try:
+                time.sleep(1)
+                keepalive_tick += 1
+
+                current_cursor = get_workflow_notification_stream_cursor()
+                current_notification_id = last_notification_id
+                current_last_updated_at = last_updated_at
+                reason = None
+                operation = None
+                changed_notification_id = None
+
+                if current_cursor != last_cursor:
+                    reason = "signal"
+                    event_meta = get_workflow_notification_stream_last_event() or {}
+                    if event_meta.get("cursor") == current_cursor:
+                        operation = str(event_meta.get("operation") or "").strip() or None
+                        raw_changed_id = event_meta.get("notificationId")
+                        if raw_changed_id is not None:
+                            try:
+                                changed_notification_id = int(raw_changed_id)
+                            except (TypeError, ValueError):
+                                changed_notification_id = None
+                    current_notification_id, current_last_updated_at = _latest_recent_notification_state()
+                elif keepalive_tick >= 15:
+                    current_notification_id, current_last_updated_at = _latest_recent_notification_state()
+                    if (
+                        current_notification_id != last_notification_id
+                        or current_last_updated_at != last_updated_at
+                    ):
+                        reason = "db_state_change"
+
+                if reason is not None:
+                    payload = _build_payload(
+                        event="workflow_notifications_changed",
+                        cursor=current_cursor,
+                        last_notification_id=current_notification_id,
+                        last_updated_at=current_last_updated_at,
+                        reason=reason,
+                        operation=operation,
+                        changed_notification_id=changed_notification_id,
+                    )
+                    yield f"data: {json.dumps(payload)}\n\n"
+                    last_cursor = current_cursor
+                    last_notification_id = current_notification_id
+                    last_updated_at = current_last_updated_at
+                    keepalive_tick = 0
+                    continue
+
+                if keepalive_tick >= 15:
+                    yield ": keepalive\n\n"
+                    keepalive_tick = 0
+            except GeneratorExit:
+                return
+            except Exception as exc:
+                yield f"data: {json.dumps({'event': 'workflow_notifications_error', 'error': str(exc)})}\n\n"
+                return
+
+    response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
+    response["Cache-Control"] = "no-cache"
+    response["X-Accel-Buffering"] = "no"
+    return response
 
 
 @sse_token_auth_required

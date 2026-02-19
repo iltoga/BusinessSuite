@@ -23,15 +23,21 @@ export class ReportsComponent {
   slug = signal<string>('');
   data = signal<any>(null);
   loading = signal<boolean>(true);
+  selectedYear = signal<number | null>(null);
+  selectedMonth = signal<number | null>(null);
 
-  chartColors = ['#d97706', '#2563eb', '#10b981', '#ef4444', '#8b5cf6', '#14b8a6', '#f59e0b'];
+  chartColors = ['#0f766e', '#1d4ed8', '#b45309', '#dc2626', '#15803d', '#0ea5e9', '#475569'];
 
   reportTitle = computed(() => this.reportList().find((r) => r.url.includes(this.slug()))?.name || 'Reports');
+  isAiCosting = computed(() => this.slug() === 'ai-costing');
+  aiAvailableYears = computed<number[]>(() => this.data()?.available_years ?? []);
 
   constructor() {
     this.reportsService.getIndex().subscribe((res) => this.reportList.set(res.reports || []));
     this.route.paramMap.subscribe((params) => {
       this.slug.set(params.get('slug') || '');
+      this.selectedYear.set(null);
+      this.selectedMonth.set(null);
       this.loadReport();
     });
   }
@@ -43,13 +49,42 @@ export class ReportsComponent {
       this.loading.set(false);
       return;
     }
-    this.reportsService.getReport(this.slug()).subscribe({
+    const filters =
+      this.slug() === 'ai-costing'
+        ? {
+            ...(this.selectedYear() ? { year: this.selectedYear()! } : {}),
+            ...(this.selectedMonth() ? { month: this.selectedMonth()! } : {}),
+          }
+        : undefined;
+
+    this.reportsService.getReport(this.slug(), filters).subscribe({
       next: (res) => {
         this.data.set(res);
+        if (this.slug() === 'ai-costing') {
+          this.selectedYear.set(res.selected_year ?? null);
+          this.selectedMonth.set(res.selected_month ?? null);
+        }
         this.loading.set(false);
       },
       error: () => this.loading.set(false),
     });
+  }
+
+  refreshAiCosting(): void {
+    if (!this.isAiCosting()) return;
+    this.loadReport();
+  }
+
+  onAiYearChange(event: Event): void {
+    const value = Number((event.target as HTMLSelectElement).value);
+    this.selectedYear.set(Number.isFinite(value) ? value : null);
+    this.loadReport();
+  }
+
+  onAiMonthChange(event: Event): void {
+    const value = Number((event.target as HTMLSelectElement).value);
+    this.selectedMonth.set(Number.isFinite(value) ? value : null);
+    this.loadReport();
   }
 
   chart(type: string): ChartData<any> {
@@ -91,8 +126,99 @@ export class ReportsComponent {
         return { labels: Object.keys(d.growth_rates ?? {}), datasets: [{ label: 'Growth %', data: Object.values(d.growth_rates ?? {}), backgroundColor: this.chartColors[4] }] };
       case 'kpiCustomers':
         return { labels: d.top_customers?.map((c: any) => c.name) ?? [], datasets: [{ label: 'Revenue', data: d.top_customers?.map((c: any) => c.total_revenue) ?? [], backgroundColor: this.chartColors[1] }] };
+      case 'aiYearlyCost':
+        return {
+          labels: d.yearly_data?.map((row: any) => `${row.year}`) ?? [],
+          datasets: [
+            {
+              label: 'Total Cost (USD)',
+              data: d.yearly_data?.map((row: any) => row.total_cost) ?? [],
+              borderColor: this.chartColors[0],
+              backgroundColor: 'rgba(15, 118, 110, 0.14)',
+              fill: true,
+            },
+          ],
+        };
+      case 'aiMonthlyCost':
+        return {
+          labels: d.monthly_data?.map((row: any) => row.label) ?? [],
+          datasets: [
+            {
+              label: `Monthly Cost (${d.selected_year ?? ''})`,
+              data: d.monthly_data?.map((row: any) => row.total_cost) ?? [],
+              borderColor: this.chartColors[1],
+              backgroundColor: 'rgba(29, 78, 216, 0.12)',
+              fill: true,
+            },
+          ],
+        };
+      case 'aiMonthlyRequests':
+        return {
+          labels: d.monthly_data?.map((row: any) => row.label) ?? [],
+          datasets: [
+            {
+              label: `Monthly Requests (${d.selected_year ?? ''})`,
+              data: d.monthly_data?.map((row: any) => row.request_count) ?? [],
+              backgroundColor: this.chartColors[2],
+            },
+          ],
+        };
+      case 'aiDailyCost':
+        return {
+          labels: d.daily_data?.map((row: any) => row.label) ?? [],
+          datasets: [
+            {
+              label: `Daily Cost (${d.selected_month_label ?? ''})`,
+              data: d.daily_data?.map((row: any) => row.total_cost) ?? [],
+              borderColor: this.chartColors[3],
+              backgroundColor: 'rgba(220, 38, 38, 0.1)',
+              fill: true,
+            },
+          ],
+        };
+      case 'aiDailyRequests':
+        return {
+          labels: d.daily_data?.map((row: any) => row.label) ?? [],
+          datasets: [
+            {
+              label: `Daily Requests (${d.selected_month_label ?? ''})`,
+              data: d.daily_data?.map((row: any) => row.request_count) ?? [],
+              borderColor: this.chartColors[4],
+              backgroundColor: 'rgba(21, 128, 61, 0.11)',
+              fill: true,
+            },
+          ],
+        };
+      case 'aiFeatureBreakdown':
+        return {
+          labels: d.feature_breakdown_month?.map((row: any) => row.feature) ?? [],
+          datasets: [
+            {
+              label: 'Feature Cost (Selected Month)',
+              data: d.feature_breakdown_month?.map((row: any) => row.total_cost) ?? [],
+              backgroundColor: this.chartColors,
+            },
+          ],
+        };
       default:
         return { labels: [], datasets: [] };
     }
+  }
+
+  monthOptions(): Array<{ value: number; label: string }> {
+    return [
+      { value: 1, label: 'January' },
+      { value: 2, label: 'February' },
+      { value: 3, label: 'March' },
+      { value: 4, label: 'April' },
+      { value: 5, label: 'May' },
+      { value: 6, label: 'June' },
+      { value: 7, label: 'July' },
+      { value: 8, label: 'August' },
+      { value: 9, label: 'September' },
+      { value: 10, label: 'October' },
+      { value: 11, label: 'November' },
+      { value: 12, label: 'December' },
+    ];
   }
 }
