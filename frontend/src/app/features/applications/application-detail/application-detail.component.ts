@@ -304,6 +304,34 @@ export class ApplicationDetailComponent implements OnInit {
       gapDaysFromPrevious: index > 0 ? this.calculateGapDays(workflows[index - 1], workflow) : null,
     }));
   });
+  readonly workflowDueDateById = computed(() => {
+    const dueDateById = new Map<number, Date | null>();
+    for (const workflow of this.sortedWorkflows()) {
+      dueDateById.set(workflow.id, workflow.dueDate ? this.parseApiDate(workflow.dueDate) : null);
+    }
+    return dueDateById;
+  });
+  readonly workflowStatusOptionsById = computed(() => {
+    const optionsById = new Map<number, ZardComboboxOption[]>();
+    for (const workflow of this.sortedWorkflows()) {
+      const options: ZardComboboxOption[] = [
+        { value: 'pending', label: 'Pending' },
+        { value: 'processing', label: 'Processing' },
+        { value: 'completed', label: 'Completed' },
+        { value: 'rejected', label: 'Rejected' },
+      ];
+      optionsById.set(
+        workflow.id,
+        options.map((option) => ({
+          ...option,
+          disabled:
+            option.value !== workflow.status &&
+            this.isWorkflowStatusChangeBlocked(workflow, option.value),
+        })),
+      );
+    }
+    return optionsById;
+  });
 
   readonly canReopen = computed(() => !!this.application()?.isApplicationCompleted);
 
@@ -869,22 +897,11 @@ export class ApplicationDetailComponent implements OnInit {
   }
 
   getWorkflowDueDateAsDate(workflow: ApplicationWorkflow): Date | null {
-    return workflow.dueDate ? new Date(workflow.dueDate) : null;
+    return this.workflowDueDateById().get(workflow.id) ?? null;
   }
 
   getWorkflowStatusOptions(workflow: ApplicationWorkflow): ZardComboboxOption[] {
-    const options: ZardComboboxOption[] = [
-      { value: 'pending', label: 'Pending' },
-      { value: 'processing', label: 'Processing' },
-      { value: 'completed', label: 'Completed' },
-      { value: 'rejected', label: 'Rejected' },
-    ];
-    return options.map((option) => ({
-      ...option,
-      disabled:
-        option.value !== workflow.status &&
-        this.isWorkflowStatusChangeBlocked(workflow, option.value),
-    }));
+    return this.workflowStatusOptionsById().get(workflow.id) ?? [];
   }
 
   getWorkflowStatusGuardMessage(workflow: ApplicationWorkflow): string | null {

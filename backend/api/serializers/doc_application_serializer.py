@@ -413,7 +413,6 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
         if has_auto_passport:
             self._auto_import_passport(application, user)
 
-        self._trigger_immediate_due_tomorrow_notification(application)
         return application
 
     def update(self, instance, validated_data):
@@ -462,18 +461,7 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
                     updated_by=user,
                 )
 
-        self._trigger_immediate_due_tomorrow_notification(application)
         return application
-
-    def _trigger_immediate_due_tomorrow_notification(self, application):
-        from customer_applications.tasks import send_due_tomorrow_customer_notifications
-        from django.utils import timezone
-
-        send_due_tomorrow_customer_notifications(
-            now=timezone.now(),
-            application_ids=[application.id],
-            immediate=True,
-        )
 
     def _can_auto_import_passport(self, application) -> bool:
         """Check if passport can be auto-imported for this application."""

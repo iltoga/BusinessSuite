@@ -42,8 +42,9 @@ class CustomerApplicationSyncApiTests(TestCase):
             add_task_to_calendar=True,
         )
 
+    @patch("customer_applications.tasks.send_due_tomorrow_customer_notifications")
     @patch("customer_applications.tasks.sync_application_calendar_task")
-    def test_create_is_synchronous_and_queues_calendar_sync(self, sync_task_mock):
+    def test_create_is_synchronous_and_queues_calendar_sync(self, sync_task_mock, send_due_mock):
         payload = {
             "customer": self.customer.id,
             "product": self.product.id,
@@ -71,9 +72,11 @@ class CustomerApplicationSyncApiTests(TestCase):
         self.assertEqual(kwargs["application_id"], application_id)
         self.assertEqual(kwargs["user_id"], self.user.id)
         self.assertEqual(kwargs["action"], "upsert")
+        send_due_mock.assert_not_called()
 
+    @patch("customer_applications.tasks.send_due_tomorrow_customer_notifications")
     @patch("customer_applications.tasks.sync_application_calendar_task")
-    def test_update_is_synchronous_and_queues_calendar_sync_with_previous_due_date(self, sync_task_mock):
+    def test_update_is_synchronous_and_queues_calendar_sync_with_previous_due_date(self, sync_task_mock, send_due_mock):
         application = DocApplication.objects.create(
             customer=self.customer,
             product=self.product,
@@ -99,6 +102,7 @@ class CustomerApplicationSyncApiTests(TestCase):
         self.assertEqual(kwargs["user_id"], self.user.id)
         self.assertEqual(kwargs["action"], "upsert")
         self.assertEqual(kwargs["previous_due_date"], "2026-01-20")
+        send_due_mock.assert_not_called()
 
     @patch("customer_applications.tasks.sync_application_calendar_task")
     def test_advance_workflow_is_synchronous_and_queues_calendar_sync(self, sync_task_mock):
