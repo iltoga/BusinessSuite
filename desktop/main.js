@@ -60,6 +60,7 @@ let updateCheckInProgress = false;
 let updateDownloadInProgress = false;
 let updatePromptInProgress = false;
 let updateCheckIntervalHandle = null;
+let updateInstallInProgress = false;
 
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
@@ -643,9 +644,43 @@ function installDownloadedUpdateNow() {
     return;
   }
 
+  updateInstallInProgress = true;
   isQuitting = true;
+  stopAutoUpdateScheduler();
   reminderPoller?.stop();
-  autoUpdater.quitAndInstall(false, true);
+
+  // In update-install mode we don't want close-to-tray behavior to keep the
+  // process alive. Force-close the main window if it still exists.
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.removeAllListeners("close");
+    try {
+      mainWindow.close();
+    } catch {
+      // Best effort.
+    }
+  }
+
+  try {
+    // Use defaults for cross-platform compatibility.
+    autoUpdater.quitAndInstall();
+  } catch (error) {
+    log("warn", `quitAndInstall failed, forcing relaunch fallback: ${String(error)}`);
+    app.relaunch();
+    app.exit(0);
+    return;
+  }
+
+  // Safety net: if updater does not terminate process in a few seconds,
+  // force a relaunch to avoid leaving users stuck after pressing Restart.
+  setTimeout(() => {
+    if (!updateInstallInProgress) {
+      return;
+    }
+
+    log("warn", "Updater restart timeout reached, forcing app relaunch");
+    app.relaunch();
+    app.exit(0);
+  }, 5000).unref();
 }
 
 function registerAutoUpdaterEventHandlers() {
@@ -658,6 +693,7 @@ function registerAutoUpdaterEventHandlers() {
   autoUpdater.removeAllListeners("update-not-available");
   autoUpdater.removeAllListeners("download-progress");
   autoUpdater.removeAllListeners("update-downloaded");
+  autoUpdater.removeAllListeners("before-quit-for-update");
   autoUpdater.removeAllListeners("error");
 
   autoUpdater.autoDownload = false;
@@ -708,6 +744,13 @@ function registerAutoUpdaterEventHandlers() {
     }
 
     installDownloadedUpdateNow();
+  });
+
+  autoUpdater.on("before-quit-for-update", () => {
+    updateInstallInProgress = true;
+    isQuitting = true;
+    stopAutoUpdateScheduler();
+    reminderPoller?.stop();
   });
 
   autoUpdater.on("error", (error) => {
@@ -948,10 +991,16 @@ if (gotSingleInstanceLock) {
   });
 
   app.on("window-all-closed", () => {
+    if (updateInstallInProgress) {
+      app.quit();
+      return;
+    }
+
     // Keep the app running in tray (close-to-tray behavior).
   });
 
   app.on("quit", () => {
+    updateInstallInProgress = false;
     stopAutoUpdateScheduler();
     trayService?.destroy();
     reminderPoller?.destroy();

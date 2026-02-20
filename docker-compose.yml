@@ -221,9 +221,6 @@ services:
       - type: bind
         source: ${DATA_PATH}/logs
         target: /logs
-      - type: bind
-        source: ${DATA_PATH}/desktop-updates
-        target: /desktop-updates
     restart: unless-stopped
 
   bs-alloy:
