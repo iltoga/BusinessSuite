@@ -3106,6 +3106,7 @@ class CalendarReminderViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data or {})
         serializer.is_valid(raise_exception=True)
         ids = serializer.validated_data.get("ids") or []
+        device_label = (serializer.validated_data.get("device_label") or "").strip()
 
         today = timezone.localdate()
         now = timezone.now()
@@ -3116,7 +3117,10 @@ class CalendarReminderViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             read_at__isnull=True,
         )
         target_queryset = unread_queryset.filter(id__in=ids) if ids else unread_queryset
-        updated = target_queryset.update(read_at=now, updated_at=now)
+        if device_label:
+            updated = target_queryset.update(read_at=now, read_device_label=device_label, updated_at=now)
+        else:
+            updated = target_queryset.update(read_at=now, updated_at=now)
         unread_count = CalendarReminder.objects.filter(
             user=request.user,
             status=CalendarReminder.STATUS_SENT,
@@ -3187,16 +3191,30 @@ class CalendarReminderViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         """Record delivery channel for a reminder (in_app or system)."""
         reminder = self.get_object()
         channel = (request.data.get("channel") or "").strip()
+        device_label = (request.data.get("device_label") or "").strip()
         allowed = {CalendarReminder.DELIVERY_IN_APP, CalendarReminder.DELIVERY_SYSTEM}
         if channel not in allowed:
             return self.error_response(
                 f"Invalid channel. Must be one of: {', '.join(sorted(allowed))}",
                 status.HTTP_400_BAD_REQUEST,
             )
+        update_fields: list[str] = []
         if not reminder.delivery_channel:
             reminder.delivery_channel = channel
-            reminder.save(update_fields=["delivery_channel", "updated_at"])
-        return Response({"id": reminder.id, "delivery_channel": reminder.delivery_channel})
+            update_fields.append("delivery_channel")
+        if device_label and (not reminder.delivery_device_label):
+            reminder.delivery_device_label = device_label[:255]
+            update_fields.append("delivery_device_label")
+
+        if update_fields:
+            reminder.save(update_fields=[*update_fields, "updated_at"])
+        return Response(
+            {
+                "id": reminder.id,
+                "delivery_channel": reminder.delivery_channel,
+                "delivery_device_label": reminder.delivery_device_label,
+            }
+        )
 
 
 class PushNotificationViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):

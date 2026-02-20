@@ -78,6 +78,13 @@ function debugLog(message, details) {
   console.log(`[Push SW] ${message}`);
 }
 
+function swDeviceLabel() {
+  const nav = self.navigator || {};
+  const platform = nav.platform || 'unknown-platform';
+  const lang = nav.language || 'unknown-lang';
+  return `${platform} (${lang}) [SW]`.slice(0, 255);
+}
+
 function configFromWorkerUrl() {
   try {
     const url = new URL(self.location.href);
@@ -110,7 +117,7 @@ async function ackDeliveryChannel(reminderId, channel) {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ channel }),
+      body: JSON.stringify({ channel, deviceLabel: swDeviceLabel() }),
     });
     debugLog('Acked delivery channel', { reminderId, channel });
   } catch {

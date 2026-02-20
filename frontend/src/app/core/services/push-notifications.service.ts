@@ -493,8 +493,12 @@ export class PushNotificationsService {
 
   private ackDeliveryChannel(reminderId: string | undefined, channel: string): void {
     if (!reminderId) return;
+    const deviceLabel = this.deviceLabel();
     firstValueFrom(
-      this.http.post(`/api/calendar-reminders/${encodeURIComponent(reminderId)}/ack/`, { channel }),
+      this.http.post(`/api/calendar-reminders/${encodeURIComponent(reminderId)}/ack/`, {
+        channel,
+        deviceLabel,
+      }),
     ).catch(() => {
       // Best effort — ignore failures
     });

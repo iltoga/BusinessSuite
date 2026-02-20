@@ -105,6 +105,10 @@ export class RemindersComponent implements OnInit, OnDestroy {
     viewChild.required<TemplateRef<{ $implicit: ReminderItem; value: any; row: ReminderItem }>>(
       'deliveryChannelTemplate',
     );
+  private readonly readTemplate =
+    viewChild.required<TemplateRef<{ $implicit: ReminderItem; value: any; row: ReminderItem }>>(
+      'readTemplate',
+    );
   private readonly reminderDialogTemplate =
     viewChild.required<TemplateRef<unknown>>('reminderDialogTemplate');
 
@@ -192,6 +196,11 @@ export class RemindersComponent implements OnInit, OnDestroy {
       key: 'deliveryChannel',
       header: 'Delivery',
       template: this.deliveryChannelTemplate(),
+    },
+    {
+      key: 'readAt',
+      header: 'Read',
+      template: this.readTemplate(),
     },
     {
       key: 'actions',
@@ -549,6 +558,14 @@ export class RemindersComponent implements OnInit, OnDestroy {
       default:
         return 'secondary';
     }
+  }
+
+  readStatusLabel(row: ReminderItem): string {
+    return row.readAt ? 'Read' : 'Unread';
+  }
+
+  readStatusVariant(row: ReminderItem): 'default' | 'secondary' | 'success' | 'warning' | 'destructive' {
+    return row.readAt ? 'success' : 'secondary';
   }
 
   displayReminderTime(value: string): string {

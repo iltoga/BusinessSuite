@@ -241,6 +241,7 @@ class CalendarReminderApiTests(TestCase):
     def test_inbox_mark_read_marks_only_current_user_records(self):
         today = timezone.localdate()
         now = timezone.now()
+        device_label = "MacBook Pro (en-US)"
         own = CalendarReminder.objects.create(
             user=self.user,
             created_by=self.other_user,
@@ -264,7 +265,7 @@ class CalendarReminderApiTests(TestCase):
 
         response = self.client.post(
             "/api/calendar-reminders/inbox/mark-read/",
-            {"ids": [own.id, foreign.id]},
+            {"ids": [own.id, foreign.id], "deviceLabel": device_label},
             format="json",
         )
         self.assertEqual(response.status_code, 200)
@@ -274,7 +275,41 @@ class CalendarReminderApiTests(TestCase):
         own.refresh_from_db()
         foreign.refresh_from_db()
         self.assertIsNotNone(own.read_at)
+        self.assertEqual(own.read_device_label, device_label)
         self.assertIsNone(foreign.read_at)
+        self.assertEqual(foreign.read_device_label, "")
+
+    def test_ack_records_delivery_channel_and_device_label(self):
+        reminder = CalendarReminder.objects.create(
+            user=self.user,
+            created_by=self.user,
+            reminder_date=timezone.localdate(),
+            reminder_time=timezone.localtime().time().replace(second=0, microsecond=0),
+            timezone="Asia/Makassar",
+            content="Ack reminder",
+            status=CalendarReminder.STATUS_SENT,
+            sent_at=timezone.now(),
+        )
+
+        response = self.client.post(
+            f"/api/calendar-reminders/{reminder.id}/ack/",
+            {"channel": "in_app", "deviceLabel": "Desktop Chrome"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        reminder.refresh_from_db()
+        self.assertEqual(reminder.delivery_channel, CalendarReminder.DELIVERY_IN_APP)
+        self.assertEqual(reminder.delivery_device_label, "Desktop Chrome")
+
+        second = self.client.post(
+            f"/api/calendar-reminders/{reminder.id}/ack/",
+            {"channel": "system", "deviceLabel": "Android Chrome"},
+            format="json",
+        )
+        self.assertEqual(second.status_code, 200)
+        reminder.refresh_from_db()
+        self.assertEqual(reminder.delivery_channel, CalendarReminder.DELIVERY_IN_APP)
+        self.assertEqual(reminder.delivery_device_label, "Desktop Chrome")
 
     def test_stream_returns_snapshot_and_changed_event(self):
         reminder = CalendarReminder.objects.create(
