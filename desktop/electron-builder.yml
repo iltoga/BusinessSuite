@@ -16,14 +16,14 @@ mac:
     - dmg
     - zip
 win:
-  icon: ../frontend/public/favicon.ico
+  icon: assets/icons/app.ico
   target:
     - target: nsis
       arch:
         - x64
 nsis:
-  installerIcon: ../frontend/public/favicon.ico
-  uninstallerIcon: ../frontend/public/favicon.ico
+  installerIcon: assets/icons/app.ico
+  uninstallerIcon: assets/icons/app.ico
   oneClick: false
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
