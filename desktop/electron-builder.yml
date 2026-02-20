@@ -1,0 +1,34 @@
+appId: com.revisbali.crm.desktop
+productName: RevisBaliCRM
+directories:
+  output: dist
+files:
+  - main.js
+  - preload.js
+  - services/**/*
+  - assets/**/*
+  - package.json
+asar: true
+mac:
+  icon: ../frontend/public/icons/icon-512x512.png
+  category: public.app-category.business
+  target:
+    - dmg
+    - zip
+win:
+  icon: ../frontend/public/icons/icon-512x512.png
+  target:
+    - target: nsis
+      arch:
+        - x64
+nsis:
+  installerIcon: ../frontend/public/icons/icon-512x512.png
+  uninstallerIcon: ../frontend/public/icons/icon-512x512.png
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+publish:
+  - provider: generic
+    url: https://crm.revisbali.com/desktop-updates
+    channel: latest

@@ -4,6 +4,7 @@ import { Inject, Injectable, NgZone, PLATFORM_ID, computed, inject, signal } fro
 import { Subscription, catchError, finalize, interval, of } from 'rxjs';
 
 import { AuthService } from '@/core/services/auth.service';
+import { DesktopBridgeService } from '@/core/services/desktop-bridge.service';
 import { PushNotificationsService } from '@/core/services/push-notifications.service';
 
 export interface ReminderInboxItem {
@@ -22,6 +23,7 @@ export interface ReminderInboxItem {
 export class ReminderInboxService {
   private readonly http = inject(HttpClient);
   private readonly authService = inject(AuthService);
+  private readonly desktopBridge = inject(DesktopBridgeService);
   private readonly pushNotifications = inject(PushNotificationsService);
   private readonly ngZone = inject(NgZone);
 
@@ -74,7 +76,7 @@ export class ReminderInboxService {
 
   refresh(showError = false): void {
     if (!this.authService.isAuthenticated()) {
-      this.unreadCount.set(0);
+      this.setUnreadCount(0);
       this.todayReminders.set([]);
       return;
     }
@@ -97,7 +99,7 @@ export class ReminderInboxService {
         finalize(() => this.isLoading.set(false)),
       )
       .subscribe((response) => {
-        this.unreadCount.set(Number(response?.unreadCount ?? 0));
+        this.setUnreadCount(Number(response?.unreadCount ?? response?.unread_count ?? 0));
         this.todayReminders.set(
           Array.isArray(response?.today)
             ? response.today.map((item: any) => this.mapReminder(item))
@@ -124,8 +126,8 @@ export class ReminderInboxService {
       .subscribe((response) => {
         if (!response) return;
 
-        const unreadCount = Number(response?.unreadCount ?? 0);
-        this.unreadCount.set(unreadCount);
+        const unreadCount = Number(response?.unreadCount ?? response?.unread_count ?? 0);
+        this.setUnreadCount(unreadCount);
 
         if (!ids.length) {
           this.todayReminders.update((items) =>
@@ -180,5 +182,12 @@ export class ReminderInboxService {
     const platform = navigator.platform || 'unknown-platform';
     const lang = navigator.language || 'unknown-lang';
     return `${platform} (${lang})`;
+  }
+
+  private setUnreadCount(value: number): void {
+    const parsed = Number(value);
+    const normalized = Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 0;
+    this.unreadCount.set(normalized);
+    this.desktopBridge.publishUnreadCount(normalized);
   }
 }

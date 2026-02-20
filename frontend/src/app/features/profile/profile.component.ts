@@ -16,12 +16,14 @@ import { UserProfileService } from '@/core/api/api/user-profile.service';
 import { UserProfile } from '@/core/api/model/user-profile';
 import { UserSettingsApiService } from '@/core/api/user-settings.service';
 import { AuthService } from '@/core/services/auth.service';
+import { DesktopBridgeService } from '@/core/services/desktop-bridge.service';
 import { ThemeService } from '@/core/services/theme.service';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardAvatarComponent } from '@/shared/components/avatar';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
+import { ZardCheckboxComponent } from '@/shared/components/checkbox';
 import { ZardDialogService } from '@/shared/components/dialog';
 import { ZardIconComponent } from '@/shared/components/icon';
 import { ZardInputDirective } from '@/shared/components/input';
@@ -38,6 +40,7 @@ import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
     ZardInputDirective,
     ZardAvatarComponent,
     ZardBadgeComponent,
+    ZardCheckboxComponent,
     ZardIconComponent,
     AppDatePipe,
   ],
@@ -48,6 +51,7 @@ export class ProfileComponent implements OnInit {
   private fb = inject(FormBuilder);
   private userProfileService = inject(UserProfileService);
   private authService = inject(AuthService);
+  private desktopBridge = inject(DesktopBridgeService);
   private toast = inject(GlobalToastService);
   private dialogService = inject(ZardDialogService);
 
@@ -62,6 +66,10 @@ export class ProfileComponent implements OnInit {
   private userSettingsApi = inject(UserSettingsApiService);
   availableThemes = this.themeService.getAvailableThemes();
   currentTheme = this.themeService.currentTheme;
+  isDesktopApp = signal(false);
+  isLaunchAtLoginLoading = signal(false);
+  isLaunchAtLoginUpdating = signal(false);
+  launchAtLoginEnabled = signal(false);
 
   private dialogRef: any = null;
 
@@ -96,6 +104,7 @@ export class ProfileComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadProfile();
+    void this.loadDesktopPreferences();
     // Also attempt to load and apply user settings for display
     if (this.authService.isAuthenticated()) {
       this.userSettingsApi.getMe().subscribe({
@@ -113,6 +122,20 @@ export class ProfileComponent implements OnInit {
           // non-blocking: ignore
         },
       });
+    }
+  }
+
+  private async loadDesktopPreferences(): Promise<void> {
+    const isDesktop = this.desktopBridge.isDesktop();
+    this.isDesktopApp.set(isDesktop);
+    if (!isDesktop) return;
+
+    this.isLaunchAtLoginLoading.set(true);
+    try {
+      const enabled = await this.desktopBridge.getLaunchAtLogin();
+      this.launchAtLoginEnabled.set(enabled);
+    } finally {
+      this.isLaunchAtLoginLoading.set(false);
     }
   }
 
@@ -257,6 +280,24 @@ export class ProfileComponent implements OnInit {
 
   formatThemeName(theme: string): string {
     return theme.charAt(0).toUpperCase() + theme.slice(1);
+  }
+
+  async onLaunchAtLoginToggle(): Promise<void> {
+    if (!this.isDesktopApp() || this.isLaunchAtLoginUpdating() || this.isLaunchAtLoginLoading()) {
+      return;
+    }
+
+    const nextValue = !this.launchAtLoginEnabled();
+    this.isLaunchAtLoginUpdating.set(true);
+    try {
+      const enabled = await this.desktopBridge.setLaunchAtLogin(nextValue);
+      this.launchAtLoginEnabled.set(enabled);
+      this.toast.success(enabled ? 'Launch at login enabled' : 'Launch at login disabled');
+    } catch {
+      this.toast.error('Failed to update launch-at-login setting');
+    } finally {
+      this.isLaunchAtLoginUpdating.set(false);
+    }
   }
 
   openChangePasswordModal(): void {

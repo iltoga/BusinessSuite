@@ -7,13 +7,15 @@ import {
   HostListener,
   inject,
   NgZone,
+  OnDestroy,
   PLATFORM_ID,
   signal,
 } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { Router, RouterOutlet } from '@angular/router';
 import { filter, take } from 'rxjs';
 
 import { AuthService } from '@/core/services/auth.service';
+import { DesktopBridgeService } from '@/core/services/desktop-bridge.service';
 import { PushNotificationsService } from '@/core/services/push-notifications.service';
 import { ReminderDialogStackComponent } from '@/shared/components/reminder-dialog-stack/reminder-dialog-stack.component';
 import { HelpDrawerComponent, HotkeysDrawerComponent } from '@/shared/components/help-drawer';
@@ -31,15 +33,18 @@ import { HelpService } from '@/shared/services/help.service';
   templateUrl: './app.html',
   styleUrl: './app.css',
 })
-export class App {
+export class App implements OnDestroy {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly appRef = inject(ApplicationRef);
   private readonly zone = inject(NgZone);
+  private readonly router = inject(Router);
   private readonly authService = inject(AuthService);
+  private readonly desktopBridge = inject(DesktopBridgeService);
   private readonly pushNotifications = inject(PushNotificationsService);
   protected readonly title = signal('business-suite-frontend');
   protected readonly isBrowser = signal(isPlatformBrowser(this.platformId));
   private readonly hydrationSettled = signal(false);
+  private desktopReminderOpenUnsubscribe: (() => void) | null = null;
 
   protected readonly help = inject(HelpService);
 
@@ -65,6 +70,22 @@ export class App {
         });
       }
     });
+
+    this.desktopReminderOpenUnsubscribe = this.desktopBridge.onReminderOpen((payload) => {
+      const reminderId = Number(payload?.reminderId);
+      const queryParams = Number.isFinite(reminderId) && reminderId > 0 ? { reminderId } : undefined;
+
+      this.zone.run(() => {
+        this.router.navigate(['/reminders'], { queryParams }).catch(() => {
+          // Ignore navigation failures from desktop reminder events.
+        });
+      });
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.desktopReminderOpenUnsubscribe?.();
+    this.desktopReminderOpenUnsubscribe = null;
   }
 
   // Zoneless-friendly global F1 handler: toggle help drawer and prevent default browser help

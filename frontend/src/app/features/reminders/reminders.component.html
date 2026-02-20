@@ -106,11 +106,11 @@
 </ng-template>
 
 <ng-template #contentTemplate let-row>
-  <div class="max-w-[36rem] truncate" [title]="row.content">{{ row.content }}</div>
+  <div class="max-w-xl truncate" [title]="row.content">{{ row.content }}</div>
 </ng-template>
 
 <ng-template #deliveryChannelTemplate let-row>
-  <div class="flex min-w-[7rem] flex-col gap-1">
+  <div class="flex min-w-28 flex-col gap-1">
     @if (row.deliveryChannel && row.deliveryChannel !== '') {
       <z-badge [zType]="deliveryChannelVariant(row.deliveryChannel)">
         {{ deliveryChannelLabel(row.deliveryChannel) }}
@@ -128,7 +128,7 @@
 </ng-template>
 
 <ng-template #readTemplate let-row>
-  <div class="flex min-w-[8rem] flex-col gap-1">
+  <div class="flex min-w-32 flex-col gap-1">
     <z-badge [zType]="readStatusVariant(row)">
       {{ readStatusLabel(row) }}
     </z-badge>

@@ -4,6 +4,7 @@ import { Inject, Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { Subject, firstValueFrom } from 'rxjs';
 
 import { ConfigService } from '@/core/services/config.service';
+import { DesktopBridgeService } from '@/core/services/desktop-bridge.service';
 import { ReminderDialogService } from '@/core/services/reminder-dialog.service';
 import { GlobalToastService } from '@/core/services/toast.service';
 
@@ -30,6 +31,7 @@ export class PushNotificationsService {
   private readonly TOKEN_STORAGE_KEY = 'fcm_push_token';
   private readonly http = inject(HttpClient);
   private readonly configService = inject(ConfigService);
+  private readonly desktopBridge = inject(DesktopBridgeService);
   private readonly reminderDialogs = inject(ReminderDialogService);
   private readonly toast = inject(GlobalToastService);
 
@@ -459,7 +461,21 @@ export class PushNotificationsService {
     this.incomingMessages.next(payload);
 
     const data = payload.data || {};
+    const title = payload.notification?.title || data['title'] || 'Daily Reminder';
+    const body = payload.notification?.body || data['body'] || 'You have a new reminder.';
+    const reminderId = this.parseReminderId(data['reminderId']);
+    if (reminderId) {
+      this.desktopBridge.publishPushReceipt(reminderId);
+    }
+
     if (data['type'] === 'calendar_reminder') {
+      if (reminderId) {
+        this.desktopBridge.publishPushReminder({
+          reminderId,
+          title,
+          body,
+        });
+      }
       this.reminderDialogs.enqueueFromPayload(payload);
       this.ackDeliveryChannel(data['reminderId'], 'in_app');
       return;
@@ -476,9 +492,9 @@ export class PushNotificationsService {
       return;
     }
 
-    const title = payload.notification?.title || data['title'] || 'Notification';
-    const body = payload.notification?.body || data['body'] || '';
-    const message = body ? `${title}: ${body}` : title;
+    const genericTitle = payload.notification?.title || data['title'] || 'Notification';
+    const genericBody = payload.notification?.body || data['body'] || '';
+    const message = genericBody ? `${genericTitle}: ${genericBody}` : genericTitle;
     this.toast.info(message);
   }
 
@@ -508,5 +524,11 @@ export class PushNotificationsService {
     const platform = navigator.platform || 'unknown-platform';
     const lang = navigator.language || 'unknown-lang';
     return `${platform} (${lang})`;
+  }
+
+  private parseReminderId(rawValue: string | undefined): number | null {
+    const parsed = Number(rawValue);
+    if (!Number.isFinite(parsed) || parsed <= 0) return null;
+    return Math.floor(parsed);
   }
 }
