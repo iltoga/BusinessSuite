@@ -5,9 +5,10 @@ on:
   push:
     branches:
       - main
-    paths:
-      - 'desktop/**'
-      - '.github/workflows/desktop-installers.yml'
+
+concurrency:
+  group: desktop-installers-main
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -25,6 +26,7 @@ jobs:
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: 'false'
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      DESKTOP_APP_VERSION: 0.1.${{ github.run_number }}
 
     steps:
       - name: Checkout
@@ -39,13 +41,134 @@ jobs:
         working-directory: desktop
         run: bun install
 
+      - name: Stamp Desktop Version
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const packageJsonPath = path.join(process.cwd(), 'desktop', 'package.json');
+          const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+          const releaseVersion = String(process.env.DESKTOP_APP_VERSION || '').trim();
+          if (!releaseVersion) {
+            throw new Error('DESKTOP_APP_VERSION is required');
+          }
+          packageJson.version = releaseVersion;
+          fs.writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`, 'utf8');
+          console.log(`Desktop release version: ${releaseVersion}`);
+          NODE
+
       - name: Build Installer
         working-directory: desktop
         run: bun run dist:${{ matrix.target }}
+
+      - name: Collect Release Payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p desktop/update-payload
+          cp -f desktop/dist/latest*.yml desktop/update-payload/ 2>/dev/null || true
+          cp -f desktop/dist/*.exe desktop/update-payload/ 2>/dev/null || true
+          cp -f desktop/dist/*.dmg desktop/update-payload/ 2>/dev/null || true
+          cp -f desktop/dist/*.zip desktop/update-payload/ 2>/dev/null || true
+          cp -f desktop/dist/*.blockmap desktop/update-payload/ 2>/dev/null || true
+          ls -lah desktop/update-payload
 
       - name: Upload Desktop Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: revisbali-desktop-${{ matrix.target }}
-          path: desktop/dist/**
+          path: desktop/update-payload/**
           if-no-files-found: error
+
+  publish:
+    name: publish-update-feed
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST }}
+      VPS_USERNAME: ${{ secrets.VPS_USERNAME }}
+      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      REPO_DIR: ${{ secrets.REPO_DIR }}
+    steps:
+      - name: Download macOS payload
+        uses: actions/download-artifact@v4
+        with:
+          name: revisbali-desktop-mac
+          path: desktop-update-feed/mac
+
+      - name: Download Windows payload
+        uses: actions/download-artifact@v4
+        with:
+          name: revisbali-desktop-win
+          path: desktop-update-feed/win
+
+      - name: Merge payload files
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p desktop-update-feed/all
+          cp -f desktop-update-feed/mac/* desktop-update-feed/all/ 2>/dev/null || true
+          cp -f desktop-update-feed/win/* desktop-update-feed/all/ 2>/dev/null || true
+          ls -lah desktop-update-feed/all
+          test -f desktop-update-feed/all/latest-mac.yml
+          test -f desktop-update-feed/all/latest.yml
+
+      - name: Publish update feed to VPS
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "${VPS_HOST}" ] || [ -z "${VPS_USERNAME}" ] || [ -z "${SSH_PRIVATE_KEY}" ]; then
+            echo "Missing required VPS SSH secrets (VPS_HOST, VPS_USERNAME, SSH_PRIVATE_KEY)"
+            exit 1
+          fi
+          if [ -z "${REPO_DIR}" ]; then
+            echo "Missing required secret: REPO_DIR"
+            exit 1
+          fi
+
+          mkdir -p "${HOME}/.ssh"
+          chmod 700 "${HOME}/.ssh"
+          printf '%s\n' "${SSH_PRIVATE_KEY}" > "${HOME}/.ssh/id_rsa"
+          chmod 600 "${HOME}/.ssh/id_rsa"
+          ssh-keyscan -H "${VPS_HOST}" >> "${HOME}/.ssh/known_hosts"
+          chmod 644 "${HOME}/.ssh/known_hosts"
+
+          ssh -i "${HOME}/.ssh/id_rsa" "${VPS_USERNAME}@${VPS_HOST}" \
+            "mkdir -p '\$HOME/desktop-updates-upload' && rm -f '\$HOME/desktop-updates-upload'/*"
+
+          scp -i "${HOME}/.ssh/id_rsa" desktop-update-feed/all/* \
+            "${VPS_USERNAME}@${VPS_HOST}:~/desktop-updates-upload/"
+
+          ssh -i "${HOME}/.ssh/id_rsa" "${VPS_USERNAME}@${VPS_HOST}" "REPO_DIR='${REPO_DIR}' bash -s" <<'EOF'
+          set -euo pipefail
+
+          if [ -z "${REPO_DIR:-}" ]; then
+            echo "REPO_DIR is empty"
+            exit 1
+          fi
+          if [ ! -f "${REPO_DIR}/.env" ]; then
+            echo "Missing ${REPO_DIR}/.env on VPS"
+            exit 1
+          fi
+
+          set -a
+          source "${REPO_DIR}/.env"
+          set +a
+
+          if [ -z "${DATA_PATH:-}" ]; then
+            echo "DATA_PATH is not defined in ${REPO_DIR}/.env"
+            exit 1
+          fi
+
+          UPDATE_DIR="${DATA_PATH}/desktop-updates"
+          mkdir -p "${UPDATE_DIR}"
+          rm -f "${UPDATE_DIR}"/*
+          cp -f "${HOME}/desktop-updates-upload/"* "${UPDATE_DIR}/"
+          rm -f "${HOME}/desktop-updates-upload/"*
+
+          echo "Desktop update feed published to ${UPDATE_DIR}"
+          ls -lah "${UPDATE_DIR}"
+          EOF

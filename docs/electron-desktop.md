@@ -93,14 +93,20 @@ Current update feed is configured in `desktop/electron-builder.yml`:
 
 - `publish.provider = generic`
 - `publish.url = https://crm.revisbali.com/desktop-updates`
+- Angular SSR server explicitly serves this route from `/desktop-updates` directory.
 
 Required published files per release include:
 
 - Windows: `latest.yml` + `.exe` package artifacts
 - macOS: `latest-mac.yml` + `.zip` (and `.dmg` for manual install)
 
-For `generic` provider, upload the generated `desktop/dist/` release files to
-`https://crm.revisbali.com/desktop-updates` after each release.
+Desktop updates are published automatically by
+`.github/workflows/desktop-installers.yml` on every push to `main`.
+
+- CI stamps desktop version as `0.1.<workflow_run_number>` so installed apps can detect a newer version.
+- CI uploads update feed files directly to `${DATA_PATH}/desktop-updates` on VPS.
+- `bs-frontend` mounts `${DATA_PATH}/desktop-updates` to container path `/desktop-updates`.
+- SSR route `/desktop-updates/*` serves files from that mounted directory.
 
 ## Commands (Bun)
 
@@ -161,3 +167,13 @@ bun run dev
   - Windows signing is strongly recommended to reduce SmartScreen friction and update trust issues
 
 CI workflow: `.github/workflows/desktop-installers.yml`
+
+Required secrets for desktop feed publishing:
+
+- `VPS_HOST`
+- `VPS_USERNAME`
+- `SSH_PRIVATE_KEY`
+- `REPO_DIR`
+
+If your existing `deploy.yml` workflow is already working, these secrets are already present.
+No additional desktop-specific secret or env variable is required.

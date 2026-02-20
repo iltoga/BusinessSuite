@@ -2,6 +2,7 @@
   "name": "revisbali-crm-desktop",
   "version": "0.1.0",
   "description": "Electron desktop wrapper for RevisBaliCRM",
+  "author": "Revis Bali CRM Team",
   "main": "main.js",
   "private": true,
   "packageManager": "bun@1.3.6",
