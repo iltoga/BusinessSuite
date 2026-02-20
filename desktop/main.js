@@ -649,20 +649,9 @@ function installDownloadedUpdateNow() {
   stopAutoUpdateScheduler();
   reminderPoller?.stop();
 
-  // In update-install mode we don't want close-to-tray behavior to keep the
-  // process alive. Force-close the main window if it still exists.
-  if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.removeAllListeners("close");
-    try {
-      mainWindow.close();
-    } catch {
-      // Best effort.
-    }
-  }
-
   try {
-    // Use defaults for cross-platform compatibility.
-    autoUpdater.quitAndInstall();
+    // Keep the default installer UI and force app relaunch after install.
+    autoUpdater.quitAndInstall(false, true);
   } catch (error) {
     log("warn", `quitAndInstall failed, forcing relaunch fallback: ${String(error)}`);
     app.relaunch();
@@ -680,7 +669,7 @@ function installDownloadedUpdateNow() {
     log("warn", "Updater restart timeout reached, forcing app relaunch");
     app.relaunch();
     app.exit(0);
-  }, 5000).unref();
+  }, 12000).unref();
 }
 
 function registerAutoUpdaterEventHandlers() {

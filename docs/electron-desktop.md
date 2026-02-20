@@ -93,7 +93,7 @@ Current update feed is configured in `desktop/electron-builder.yml`:
 
 - `publish.provider = generic`
 - `publish.url = https://crm.revisbali.com/desktop-updates`
-- Angular SSR server explicitly serves this route from `/desktop-updates` directory.
+- Nginx serves this route directly from `/var/www/desktop-updates`.
 
 Required published files per release include:
 
@@ -105,8 +105,7 @@ Desktop updates are published automatically by
 
 - CI stamps desktop version as `0.1.<workflow_run_number>` so installed apps can detect a newer version.
 - CI uploads update feed files directly to `${DATA_PATH}/desktop-updates` on VPS.
-- `bs-frontend` mounts `${DATA_PATH}/desktop-updates` to container path `/desktop-updates`.
-- SSR route `/desktop-updates/*` serves files from that mounted directory.
+- Nginx location `/desktop-updates/*` serves files from `/var/www/desktop-updates`.
 
 ## Commands (Bun)
 
