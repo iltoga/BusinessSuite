@@ -5,6 +5,7 @@ import { computed, Inject, Injectable, PLATFORM_ID, signal } from '@angular/core
 import { Router } from '@angular/router';
 import { catchError, finalize, map, Observable, of, shareReplay, tap, throwError } from 'rxjs';
 
+import { DesktopBridgeService } from '@/core/services/desktop-bridge.service';
 import { ConfigService } from './config.service';
 
 export interface AuthToken {
@@ -94,12 +95,14 @@ export class AuthService {
     private http: HttpClient,
     private router: Router,
     private configService: ConfigService,
+    private desktopBridge: DesktopBridgeService,
     @Inject(PLATFORM_ID) private platformId: Object,
   ) {
     if (isPlatformBrowser(this.platformId)) {
       const stored = this.getStoredToken();
       this._token.set(stored);
       this._claims.set(this.buildClaimsFromToken(stored));
+      this.desktopBridge.publishAuthToken(stored);
     }
   }
 
@@ -211,6 +214,7 @@ export class AuthService {
     if (isPlatformBrowser(this.platformId)) {
       localStorage.setItem(this.TOKEN_KEY, token);
     }
+    this.desktopBridge.publishAuthToken(token);
   }
 
   private clearToken(): void {
@@ -219,6 +223,7 @@ export class AuthService {
     if (isPlatformBrowser(this.platformId)) {
       localStorage.removeItem(this.TOKEN_KEY);
     }
+    this.desktopBridge.publishAuthToken(null);
   }
 
   private getStoredToken(): string | null {

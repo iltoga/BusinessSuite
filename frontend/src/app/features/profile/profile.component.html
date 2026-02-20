@@ -73,6 +73,22 @@
           </select>
         </div>
 
+        @if (isDesktopApp()) {
+          <div class="space-y-2">
+            <label class="text-sm font-medium">Desktop</label>
+            <z-checkbox
+              [checked]="launchAtLoginEnabled()"
+              [disabled]="isLaunchAtLoginLoading() || isLaunchAtLoginUpdating()"
+              (click)="onLaunchAtLoginToggle()"
+            >
+              <span class="text-sm">Launch at login</span>
+            </z-checkbox>
+            <p class="text-xs text-muted-foreground">
+              Starts the desktop app automatically when you sign in to your computer.
+            </p>
+          </div>
+        }
+
         <button
           z-button
           variant="outline"

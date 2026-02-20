@@ -1,0 +1,22 @@
+{
+  "name": "revisbali-crm-desktop",
+  "version": "0.1.0",
+  "description": "Electron desktop wrapper for RevisBaliCRM",
+  "main": "main.js",
+  "private": true,
+  "packageManager": "bun@1.3.6",
+  "scripts": {
+    "dev": "electron .",
+    "start": "electron .",
+    "dist": "electron-builder --config electron-builder.yml --publish never",
+    "dist:mac": "electron-builder --config electron-builder.yml --mac dmg zip --publish never",
+    "dist:win": "electron-builder --config electron-builder.yml --win nsis --publish never"
+  },
+  "dependencies": {
+    "electron-updater": "^6.6.2"
+  },
+  "devDependencies": {
+    "electron": "^36.4.0",
+    "electron-builder": "^26.0.12"
+  }
+}

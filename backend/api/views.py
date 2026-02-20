@@ -134,6 +134,8 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework_simplejwt.views import TokenObtainPairView
 
+logger = logging.getLogger(__name__)
+
 
 class OCRPlaceholderSerializer(serializers.Serializer):
     """Schema placeholder for OCR viewset endpoints."""
