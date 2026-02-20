@@ -13,13 +13,17 @@ from api.serializers import (
     AdminWhatsappTestSendSerializer,
     AsyncJobSerializer,
     AvatarUploadSerializer,
+    CalendarReminderBulkCreateSerializer,
+    CalendarReminderCreateSerializer,
+    CalendarReminderInboxMarkReadSerializer,
+    CalendarReminderSerializer,
     ChangePasswordSerializer,
-    CustomerApplicationHistorySerializer,
     CountryCodeSerializer,
-    CustomerUninvoicedApplicationSerializer,
+    CustomerApplicationHistorySerializer,
     CustomerApplicationQuickCreateSerializer,
     CustomerQuickCreateSerializer,
     CustomerSerializer,
+    CustomerUninvoicedApplicationSerializer,
     DashboardStatsSerializer,
     DocApplicationDetailSerializer,
     DocApplicationInvoiceSerializer,
@@ -51,7 +55,22 @@ from api.serializers import (
 from api.serializers.auth_serializer import CustomTokenObtainSerializer
 from api.utils.sse_auth import sse_token_auth_required
 from business_suite.authentication import JwtOrMockAuthentication
-from core.models import AsyncJob, CountryCode, DocumentOCRJob, Holiday, OCRJob, UserProfile, UserSettings, WebPushSubscription
+from core.models import (
+    AsyncJob,
+    CalendarReminder,
+    CountryCode,
+    DocumentOCRJob,
+    Holiday,
+    OCRJob,
+    UserProfile,
+    UserSettings,
+    WebPushSubscription,
+)
+from core.services.calendar_reminder_service import CalendarReminderService
+from core.services.calendar_reminder_stream import (
+    get_calendar_reminder_stream_cursor,
+    get_calendar_reminder_stream_last_event,
+)
 from core.services.document_merger import DocumentMerger, DocumentMergerError
 from core.services.ocr_preview_storage import get_ocr_preview_url
 from core.services.push_notifications import FcmConfigurationError, PushNotificationService
@@ -61,7 +80,7 @@ from core.tasks.document_ocr import run_document_ocr_job
 from core.tasks.ocr import run_ocr_job
 from core.utils.dateutils import calculate_due_date
 from core.utils.pdf_converter import PDFConverter, PDFConverterError
-from customer_applications.models import DocApplication, DocWorkflow, Document, WorkflowNotification
+from customer_applications.models import DocApplication, Document, DocWorkflow, WorkflowNotification
 from customer_applications.services.workflow_notification_stream import (
     RECENT_WORKFLOW_NOTIFICATION_WINDOW_HOURS,
     get_workflow_notification_stream_cursor,
@@ -69,10 +88,24 @@ from customer_applications.services.workflow_notification_stream import (
 )
 from customers.models import Customer
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.contrib.auth import logout as django_logout
 from django.core.files.storage import default_storage
 from django.db import transaction
-from django.db.models import Count, DecimalField, F, OuterRef, Prefetch, Q, Subquery, Sum, Value
+from django.db.models import (
+    Case,
+    Count,
+    DecimalField,
+    F,
+    IntegerField,
+    OuterRef,
+    Prefetch,
+    Q,
+    Subquery,
+    Sum,
+    Value,
+    When,
+)
 from django.db.models.functions import Coalesce
 from django.http import FileResponse, HttpResponse, JsonResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404
@@ -335,9 +368,7 @@ class CountryCodeViewSet(viewsets.ReadOnlyModelViewSet):
 class IsStaffOrAdminGroup(BasePermission):
     def has_permission(self, request, view):
         user = request.user
-        return bool(
-            user and user.is_authenticated and (user.is_staff or user.groups.filter(name="admin").exists())
-        )
+        return bool(user and user.is_authenticated and (user.is_staff or user.groups.filter(name="admin").exists()))
 
 
 class HolidayViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
@@ -2896,6 +2927,278 @@ class WorkflowNotificationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         return Response(self.get_serializer(notification).data)
 
 
+class CalendarReminderViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class = CalendarReminderSerializer
+    queryset = CalendarReminder.objects.select_related("user", "created_by", "calendar_event").all()
+    pagination_class = StandardResultsSetPagination
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["content", "status", "user__username", "user__first_name", "user__last_name", "user__email"]
+    ordering_fields = ["scheduled_for", "created_at", "updated_at", "status_rank"]
+
+    def get_serializer_class(self):
+        if self.action in {"create", "update", "partial_update"}:
+            return CalendarReminderCreateSerializer
+        if self.action == "bulk_create":
+            return CalendarReminderBulkCreateSerializer
+        if self.action == "inbox_mark_read":
+            return CalendarReminderInboxMarkReadSerializer
+        return CalendarReminderSerializer
+
+    @staticmethod
+    def _safe_positive_int(raw_value, *, default: int, minimum: int = 1, maximum: int | None = None) -> int:
+        try:
+            value = int(raw_value)
+        except (TypeError, ValueError):
+            value = default
+
+        value = max(value, minimum)
+        if maximum is not None:
+            value = min(value, maximum)
+        return value
+
+    @staticmethod
+    def _parse_iso_date(raw_value: str | None):
+        if not raw_value:
+            return None
+        try:
+            return datetime.strptime(raw_value.strip(), "%Y-%m-%d").date()
+        except (TypeError, ValueError):
+            return None
+
+    def get_queryset(self):
+        queryset = (
+            super()
+            .get_queryset()
+            .filter(created_by=self.request.user)
+            .annotate(
+                status_rank=Case(
+                    When(status=CalendarReminder.STATUS_PENDING, then=0),
+                    When(status=CalendarReminder.STATUS_SENT, then=1),
+                    When(status=CalendarReminder.STATUS_FAILED, then=2),
+                    default=99,
+                    output_field=IntegerField(),
+                )
+            )
+        )
+
+        raw_status = self.request.query_params.get("status")
+        if raw_status:
+            requested_statuses = [value.strip() for value in raw_status.split(",") if value.strip()]
+            allowed_statuses = {choice[0] for choice in CalendarReminder.STATUS_CHOICES}
+            statuses = [value for value in requested_statuses if value in allowed_statuses]
+            if statuses:
+                queryset = queryset.filter(status__in=statuses)
+
+        created_from = self._parse_iso_date(
+            self.request.query_params.get("created_from")
+            or self.request.query_params.get("createdFrom")
+            or self.request.query_params.get("date_from")
+            or self.request.query_params.get("dateFrom")
+        )
+        if created_from:
+            queryset = queryset.filter(created_at__date__gte=created_from)
+
+        created_to = self._parse_iso_date(
+            self.request.query_params.get("created_to")
+            or self.request.query_params.get("createdTo")
+            or self.request.query_params.get("date_to")
+            or self.request.query_params.get("dateTo")
+        )
+        if created_to:
+            queryset = queryset.filter(created_at__date__lte=created_to)
+
+        if not self.request.query_params.get("ordering"):
+            queryset = queryset.order_by("status_rank", "-scheduled_for", "-id")
+
+        return queryset
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        target_user_id = int(data.get("user_id") or request.user.id)
+        reminders = CalendarReminderService().create_for_users(
+            created_by=request.user,
+            user_ids=[target_user_id],
+            reminder_date=data["reminder_date"],
+            reminder_time=data["reminder_time"],
+            timezone_name=data["timezone"],
+            content=data["content"],
+            calendar_event_id=data.get("calendar_event_id"),
+        )
+        result = CalendarReminderSerializer(reminders[0], context=self.get_serializer_context())
+        headers = self.get_success_headers(result.data)
+        return Response(result.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop("partial", False)
+        instance = self.get_object()
+
+        serializer = self.get_serializer(instance=instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        calendar_event_id = data["calendar_event_id"] if "calendar_event_id" in data else instance.calendar_event_id
+
+        updated = CalendarReminderService().apply_update(
+            reminder=instance,
+            reminder_date=data.get("reminder_date", instance.reminder_date),
+            reminder_time=data.get("reminder_time", instance.reminder_time),
+            timezone_name=data.get("timezone", instance.timezone),
+            content=data.get("content", instance.content),
+            user_id=data.get("user_id"),
+            calendar_event_id=calendar_event_id,
+        )
+        result = CalendarReminderSerializer(updated, context=self.get_serializer_context())
+        return Response(result.data)
+
+    @extend_schema(request=CalendarReminderBulkCreateSerializer, responses={201: CalendarReminderSerializer(many=True)})
+    @action(detail=False, methods=["post"], url_path="bulk-create")
+    def bulk_create(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        reminders = CalendarReminderService().create_for_users(
+            created_by=request.user,
+            user_ids=data["user_ids"],
+            reminder_date=data["reminder_date"],
+            reminder_time=data["reminder_time"],
+            timezone_name=data["timezone"],
+            content=data["content"],
+            calendar_event_id=data.get("calendar_event_id"),
+        )
+        return Response(
+            CalendarReminderSerializer(reminders, many=True, context=self.get_serializer_context()).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(detail=False, methods=["get"], url_path="inbox")
+    def inbox(self, request):
+        today = timezone.localdate()
+        limit = self._safe_positive_int(request.query_params.get("limit"), default=20, minimum=1, maximum=100)
+
+        today_queryset = (
+            CalendarReminder.objects.select_related("user", "created_by", "calendar_event")
+            .filter(
+                user=request.user,
+                status=CalendarReminder.STATUS_SENT,
+                sent_at__date=today,
+            )
+            .order_by("-sent_at", "-id")
+        )
+        unread_count = today_queryset.filter(read_at__isnull=True).count()
+        payload = CalendarReminderSerializer(
+            today_queryset[:limit], many=True, context=self.get_serializer_context()
+        ).data
+        return Response(
+            {
+                "date": str(today),
+                "unreadCount": unread_count,
+                "today": payload,
+            }
+        )
+
+    @action(detail=False, methods=["post"], url_path="inbox/mark-read")
+    def inbox_mark_read(self, request):
+        serializer = self.get_serializer(data=request.data or {})
+        serializer.is_valid(raise_exception=True)
+        ids = serializer.validated_data.get("ids") or []
+
+        today = timezone.localdate()
+        now = timezone.now()
+        unread_queryset = CalendarReminder.objects.filter(
+            user=request.user,
+            status=CalendarReminder.STATUS_SENT,
+            sent_at__date=today,
+            read_at__isnull=True,
+        )
+        target_queryset = unread_queryset.filter(id__in=ids) if ids else unread_queryset
+        updated = target_queryset.update(read_at=now, updated_at=now)
+        unread_count = CalendarReminder.objects.filter(
+            user=request.user,
+            status=CalendarReminder.STATUS_SENT,
+            sent_at__date=today,
+            read_at__isnull=True,
+        ).count()
+        return Response({"updated": updated, "unreadCount": unread_count})
+
+    @action(detail=False, methods=["get"], url_path="users")
+    def users(self, request):
+        user_query = (request.query_params.get("q") or request.query_params.get("search") or "").strip()
+        page = self._safe_positive_int(request.query_params.get("page"), default=1, minimum=1)
+        page_size = self._safe_positive_int(request.query_params.get("page_size"), default=20, minimum=1, maximum=100)
+        offset = (page - 1) * page_size
+
+        User = get_user_model()
+        queryset = (
+            User.objects.filter(is_active=True)
+            .annotate(
+                active_push_subscriptions=Count(
+                    "web_push_subscriptions",
+                    filter=Q(web_push_subscriptions__is_active=True),
+                    distinct=True,
+                )
+            )
+            .order_by("first_name", "last_name", "username")
+        )
+        if user_query:
+            queryset = queryset.filter(
+                Q(username__icontains=user_query)
+                | Q(email__icontains=user_query)
+                | Q(first_name__icontains=user_query)
+                | Q(last_name__icontains=user_query)
+            )
+
+        users = queryset[offset : offset + page_size]
+        payload = [
+            {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email or "",
+                "full_name": user.get_full_name().strip() or user.username,
+                "active_push_subscriptions": int(getattr(user, "active_push_subscriptions", 0) or 0),
+            }
+            for user in users
+        ]
+        return Response(payload)
+
+    @action(detail=False, methods=["get"], url_path="timezones")
+    def timezones(self, request):
+        from zoneinfo import available_timezones
+
+        timezone_query = (request.query_params.get("q") or "").strip().lower()
+        page = self._safe_positive_int(request.query_params.get("page"), default=1, minimum=1)
+        page_size = self._safe_positive_int(request.query_params.get("page_size"), default=50, minimum=1, maximum=200)
+        offset = (page - 1) * page_size
+
+        zones = sorted(available_timezones())
+        if timezone_query:
+            zones = [zone for zone in zones if timezone_query in zone.lower()]
+
+        window = zones[offset : offset + page_size]
+        payload = [{"value": zone, "label": zone} for zone in window]
+        return Response(payload)
+
+    @action(detail=True, methods=["post"], url_path="ack")
+    def ack(self, request, pk=None):
+        """Record delivery channel for a reminder (in_app or system)."""
+        reminder = self.get_object()
+        channel = (request.data.get("channel") or "").strip()
+        allowed = {CalendarReminder.DELIVERY_IN_APP, CalendarReminder.DELIVERY_SYSTEM}
+        if channel not in allowed:
+            return self.error_response(
+                f"Invalid channel. Must be one of: {', '.join(sorted(allowed))}",
+                status.HTTP_400_BAD_REQUEST,
+            )
+        if not reminder.delivery_channel:
+            reminder.delivery_channel = channel
+            reminder.save(update_fields=["delivery_channel", "updated_at"])
+        return Response({"id": reminder.id, "delivery_channel": reminder.delivery_channel})
+
+
 class PushNotificationViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = WebPushSubscriptionSerializer
@@ -3173,6 +3476,232 @@ class PushNotificationViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             }
         )
 
+    @action(detail=False, methods=["post"], url_path="fcm-register-proxy")
+    def fcm_register_proxy(self, request):
+        """
+        Server-side proxy for Firebase Cloud Messaging registration.
+
+        The browser-side Firebase SDK calls fcmregistrations.googleapis.com to exchange
+        a Web Push subscription for an FCM token.  On some networks / Chrome configurations
+        that endpoint is unreachable from the browser (e.g. QUIC / HTTP3 issues) even
+        though the Django server can reach it fine via TCP.  This action forwards the
+        registration request from the browser to the real FCM endpoint server-side so the
+        browser never needs to reach googleapis.com directly.
+        """
+        import requests as http_requests
+
+        project_id = getattr(settings, "FCM_PROJECT_ID", "").strip()
+        if not project_id:
+            return self.error_response("FCM_PROJECT_ID not configured on server", status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        # The Angular fetch interceptor forwards the FIS auth token via X-FCM-Auth.
+        # Firebase SDK uses x-goog-firebase-installations-auth (not Authorization).
+        fcm_auth = request.META.get("HTTP_X_FCM_AUTH", "").strip()
+        api_key = (
+            request.META.get("HTTP_X_GOOG_API_KEY", "").strip() or getattr(settings, "FCM_WEB_API_KEY", "").strip()
+        )
+
+        if not api_key:
+            return self.error_response(
+                "Missing required proxy header: X-Goog-Api-Key (and FCM_WEB_API_KEY not configured)",
+                status.HTTP_400_BAD_REQUEST,
+            )
+
+        url = f"https://fcmregistrations.googleapis.com/v1/projects/{project_id}/registrations"
+        fwd_headers: dict = {"x-goog-api-key": api_key, "Content-Type": "application/json"}
+        if fcm_auth:
+            fwd_headers["x-goog-firebase-installations-auth"] = fcm_auth
+        try:
+            # Use request.body (raw bytes) instead of request.data to avoid
+            # DRF's camelCase→snake_case parser corrupting field names.
+            resp = http_requests.post(
+                url,
+                data=request.body,
+                headers=fwd_headers,
+                timeout=20,
+            )
+        except http_requests.RequestException as exc:
+            logger.error("[fcm_register_proxy] Network error calling FCM registrations: %s", exc)
+            return self.error_response(str(exc), status.HTTP_502_BAD_GATEWAY)
+
+        try:
+            body = resp.json()
+        except ValueError:
+            body = {"raw": resp.text}
+
+        return Response(body, status=resp.status_code)
+
+    @action(detail=False, methods=["post"], url_path="firebase-install-proxy")
+    def firebase_install_proxy(self, request):
+        """
+        Server-side proxy for Firebase Installations API.
+
+        Handles both FID creation (POST .../installations) and auth-token refresh
+        (POST .../installations/{fid}/authTokens:generate) so the browser is never
+        required to reach firebaseinstallations.googleapis.com directly.
+        """
+        import requests as http_requests
+
+        project_id = getattr(settings, "FCM_PROJECT_ID", "").strip()
+        if not project_id:
+            return self.error_response("FCM_PROJECT_ID not configured on server", status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        # The Angular fetch interceptor passes the original path suffix via a custom header.
+        path_suffix = request.META.get("HTTP_X_FIREBASE_PATH", "").strip().lstrip("/")
+        api_key = (
+            request.META.get("HTTP_X_GOOG_API_KEY", "").strip() or getattr(settings, "FCM_WEB_API_KEY", "").strip()
+        )
+        firebase_auth = request.META.get("HTTP_X_FIREBASE_AUTH", "").strip()
+
+        if not api_key:
+            return self.error_response("Missing required proxy header: X-Goog-Api-Key", status.HTTP_400_BAD_REQUEST)
+
+        base = f"https://firebaseinstallations.googleapis.com/v1/projects/{project_id}"
+        url = f"{base}/{path_suffix}" if path_suffix else base
+
+        headers: dict = {"x-goog-api-key": api_key, "Content-Type": "application/json"}
+        if firebase_auth:
+            headers["x-goog-firebase-installations-auth"] = firebase_auth
+
+        try:
+            # Use request.body (raw bytes) instead of request.data to avoid
+            # DRF's camelCase→snake_case parser corrupting field names.
+            resp = http_requests.post(url, data=request.body, headers=headers, timeout=20)
+        except http_requests.RequestException as exc:
+            logger.error("[firebase_install_proxy] Network error calling Firebase Installations: %s", exc)
+            return self.error_response(str(exc), status.HTTP_502_BAD_GATEWAY)
+
+        try:
+            body = resp.json()
+        except ValueError:
+            body = {"raw": resp.text}
+
+        return Response(body, status=resp.status_code)
+
+
+@sse_token_auth_required
+def calendar_reminders_stream_sse(request):
+    """SSE endpoint for calendar reminder list live updates."""
+    user = request.user
+    if not (user and user.is_authenticated):
+        return JsonResponse({"error": "Authentication required"}, status=403)
+
+    def _latest_reminder_state():
+        latest = (
+            CalendarReminder.objects.filter(created_by=user)
+            .order_by("-updated_at", "-id")
+            .values("id", "updated_at")
+            .first()
+        )
+        if not latest:
+            return None, None
+        updated_at = latest.get("updated_at")
+        return latest.get("id"), updated_at.isoformat() if updated_at else None
+
+    def _build_payload(
+        *,
+        event: str,
+        cursor: int,
+        last_reminder_id,
+        last_updated_at,
+        reason: str,
+        operation=None,
+        changed_reminder_id=None,
+    ):
+        payload = {
+            "event": event,
+            "cursor": cursor,
+            "lastReminderId": last_reminder_id,
+            "lastUpdatedAt": last_updated_at,
+            "reason": reason,
+        }
+        if operation:
+            payload["operation"] = operation
+        if changed_reminder_id is not None:
+            payload["changedReminderId"] = changed_reminder_id
+        return payload
+
+    def _safe_owner_id(value):
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
+
+    def event_stream():
+        last_cursor = get_calendar_reminder_stream_cursor()
+        last_reminder_id, last_updated_at = _latest_reminder_state()
+        keepalive_tick = 0
+
+        snapshot_payload = _build_payload(
+            event="calendar_reminders_snapshot",
+            cursor=last_cursor,
+            last_reminder_id=last_reminder_id,
+            last_updated_at=last_updated_at,
+            reason="initial",
+        )
+        yield f"data: {json.dumps(snapshot_payload)}\n\n"
+
+        while True:
+            try:
+                time.sleep(1)
+                keepalive_tick += 1
+
+                current_cursor = get_calendar_reminder_stream_cursor()
+                current_reminder_id = last_reminder_id
+                current_last_updated_at = last_updated_at
+                reason = None
+                operation = None
+                changed_reminder_id = None
+
+                if current_cursor != last_cursor:
+                    event_meta = get_calendar_reminder_stream_last_event() or {}
+                    owner_id = _safe_owner_id(event_meta.get("ownerId"))
+                    if owner_id is None or owner_id == int(user.id):
+                        reason = "signal"
+                        if event_meta.get("cursor") == current_cursor:
+                            operation = str(event_meta.get("operation") or "").strip() or None
+                            raw_changed_id = event_meta.get("reminderId")
+                            try:
+                                changed_reminder_id = int(raw_changed_id) if raw_changed_id is not None else None
+                            except (TypeError, ValueError):
+                                changed_reminder_id = None
+                        current_reminder_id, current_last_updated_at = _latest_reminder_state()
+                    last_cursor = current_cursor
+                elif keepalive_tick >= 15:
+                    current_reminder_id, current_last_updated_at = _latest_reminder_state()
+                    if current_reminder_id != last_reminder_id or current_last_updated_at != last_updated_at:
+                        reason = "db_state_change"
+
+                if reason is not None:
+                    payload = _build_payload(
+                        event="calendar_reminders_changed",
+                        cursor=last_cursor,
+                        last_reminder_id=current_reminder_id,
+                        last_updated_at=current_last_updated_at,
+                        reason=reason,
+                        operation=operation,
+                        changed_reminder_id=changed_reminder_id,
+                    )
+                    yield f"data: {json.dumps(payload)}\n\n"
+                    last_reminder_id = current_reminder_id
+                    last_updated_at = current_last_updated_at
+                    keepalive_tick = 0
+                    continue
+
+                if keepalive_tick >= 15:
+                    yield ": keepalive\n\n"
+                    keepalive_tick = 0
+            except GeneratorExit:
+                return
+            except Exception as exc:
+                yield f"data: {json.dumps({'event': 'calendar_reminders_error', 'error': str(exc)})}\n\n"
+                return
+
+    response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
+    response["Cache-Control"] = "no-cache"
+    response["X-Accel-Buffering"] = "no"
+    return response
+
 
 @sse_token_auth_required
 def workflow_notifications_stream_sse(request):
@@ -3258,10 +3787,7 @@ def workflow_notifications_stream_sse(request):
                     current_notification_id, current_last_updated_at = _latest_recent_notification_state()
                 elif keepalive_tick >= 15:
                     current_notification_id, current_last_updated_at = _latest_recent_notification_state()
-                    if (
-                        current_notification_id != last_notification_id
-                        or current_last_updated_at != last_updated_at
-                    ):
+                    if current_notification_id != last_notification_id or current_last_updated_at != last_updated_at:
                         reason = "db_state_change"
 
                 if reason is not None:

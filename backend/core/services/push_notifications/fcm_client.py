@@ -69,7 +69,9 @@ class FcmClient:
 
         if not self.project_id:
             # `google.oauth2.service_account.Credentials` exposes project_id for service account json files.
-            self.project_id = getattr(self.credentials, "project_id", "") or self._project_id_from_service_account_file()
+            self.project_id = (
+                getattr(self.credentials, "project_id", "") or self._project_id_from_service_account_file()
+            )
 
         if not self.project_id:
             raise FcmConfigurationError(
@@ -88,20 +90,24 @@ class FcmClient:
         if not token:
             raise FcmSendError("FCM token is required")
 
-        message: dict[str, Any] = {
-            "token": token,
-            "notification": {
-                "title": title,
-                "body": body,
-            },
-        }
+        message: dict[str, Any] = {"token": token}
 
-        if data:
-            # FCM data payload must be string-key/string-value pairs.
-            message["data"] = {str(key): self._stringify_value(value) for key, value in data.items()}
+        # Use a data-only payload so the Firebase service worker's
+        # onBackgroundMessage handler always fires and we have full
+        # control over the OS notification display.  Including a
+        # top-level "notification" field causes the compat SDK to
+        # auto-display a browser notification AND may suppress or
+        # conflict with the developer's onBackgroundMessage handler.
+        payload_data: dict[str, Any] = dict(data or {})
+        payload_data.setdefault("title", title)
+        payload_data.setdefault("body", body)
+        message["data"] = {str(key): self._stringify_value(value) for key, value in payload_data.items()}
 
+        webpush: dict[str, Any] = {}
         if link:
-            message["webpush"] = {"fcm_options": {"link": link}}
+            webpush["fcm_options"] = {"link": link}
+        if webpush:
+            message["webpush"] = webpush
 
         payload = {"message": message}
         endpoint = FCM_SEND_ENDPOINT.format(project_id=self.project_id)

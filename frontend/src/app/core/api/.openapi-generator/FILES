@@ -6,6 +6,7 @@ api/api-token-auth.service.ts
 api/api.ts
 api/async-jobs.service.ts
 api/backups.service.ts
+api/calendar-reminders.service.ts
 api/calendar.service.ts
 api/compute.service.ts
 api/country-codes.service.ts
@@ -36,6 +37,10 @@ index.ts
 model/admin-push-notification-send.ts
 model/admin-whatsapp-test-send.ts
 model/async-job.ts
+model/calendar-reminder-bulk-create.ts
+model/calendar-reminder-create.ts
+model/calendar-reminder-inbox-mark-read.ts
+model/calendar-reminder.ts
 model/change-password.ts
 model/country-code.ts
 model/custom-token-obtain.ts
@@ -65,6 +70,7 @@ model/invoice-create-update.ts
 model/invoice-detail.ts
 model/invoice-list.ts
 model/models.ts
+model/paginated-calendar-reminder-list.ts
 model/paginated-customer-application-history-list.ts
 model/paginated-customer-list.ts
 model/paginated-customer-uninvoiced-application-list.ts

@@ -109,9 +109,10 @@ export class ProductSelectComponent implements ControlValueAccessor {
     this.isCvaDisabled.set(isDisabled);
   }
 
-  onValueChange(value: string | null): void {
-    this.internalValue.set(value);
-    const numericValue = value ? Number(value) : null;
+  onValueChange(value: string | string[] | null): void {
+    const normalized = Array.isArray(value) ? (value[0] ?? null) : value;
+    this.internalValue.set(normalized);
+    const numericValue = normalized ? Number(normalized) : null;
     const finalValue = Number.isNaN(numericValue as number) ? null : numericValue;
     this.onChange(finalValue);
     this.selectedIdChange.emit(finalValue);
