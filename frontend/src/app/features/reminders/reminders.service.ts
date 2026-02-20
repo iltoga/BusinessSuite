@@ -23,8 +23,10 @@ export interface ReminderItem {
   status: ReminderStatus;
   sentAt: string | null;
   readAt: string | null;
+  readDeviceLabel: string;
   errorMessage: string;
   deliveryChannel: string;
+  deliveryDeviceLabel: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -276,8 +278,12 @@ export class RemindersService {
       status,
       sentAt: item?.sentAt ?? item?.sent_at ?? null,
       readAt: item?.readAt ?? item?.read_at ?? null,
+      readDeviceLabel: String(item?.readDeviceLabel ?? item?.read_device_label ?? ''),
       errorMessage: String(item?.errorMessage ?? item?.error_message ?? ''),
       deliveryChannel: String(item?.deliveryChannel ?? item?.delivery_channel ?? ''),
+      deliveryDeviceLabel: String(
+        item?.deliveryDeviceLabel ?? item?.delivery_device_label ?? '',
+      ),
       createdAt: String(item?.createdAt ?? item?.created_at ?? ''),
       updatedAt: String(item?.updatedAt ?? item?.updated_at ?? ''),
     };

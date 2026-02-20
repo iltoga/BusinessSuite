@@ -110,7 +110,7 @@ export class ReminderInboxService {
     this.http
       .post<any>(
         '/api/calendar-reminders/inbox/mark-read/',
-        { ids },
+        { ids, deviceLabel: this.deviceLabel() },
         {
           headers: this.buildHeaders(),
         },
@@ -171,5 +171,14 @@ export class ReminderInboxService {
       sentAt: item?.sentAt ?? item?.sent_at ?? null,
       readAt: item?.readAt ?? item?.read_at ?? null,
     };
+  }
+
+  private deviceLabel(): string {
+    if (!isPlatformBrowser(this.platformId)) {
+      return '';
+    }
+    const platform = navigator.platform || 'unknown-platform';
+    const lang = navigator.language || 'unknown-lang';
+    return `${platform} (${lang})`;
   }
 }

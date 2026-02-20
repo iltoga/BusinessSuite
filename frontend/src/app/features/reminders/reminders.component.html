@@ -110,13 +110,37 @@
 </ng-template>
 
 <ng-template #deliveryChannelTemplate let-row>
-  @if (row.deliveryChannel && row.deliveryChannel !== '') {
-    <z-badge [zType]="deliveryChannelVariant(row.deliveryChannel)">
-      {{ deliveryChannelLabel(row.deliveryChannel) }}
+  <div class="flex min-w-[7rem] flex-col gap-1">
+    @if (row.deliveryChannel && row.deliveryChannel !== '') {
+      <z-badge [zType]="deliveryChannelVariant(row.deliveryChannel)">
+        {{ deliveryChannelLabel(row.deliveryChannel) }}
+      </z-badge>
+    } @else {
+      <span class="text-xs text-muted-foreground">&mdash;</span>
+    }
+
+    @if (row.deliveryDeviceLabel) {
+      <span class="truncate text-[11px] text-muted-foreground" [zTooltip]="row.deliveryDeviceLabel">
+        {{ row.deliveryDeviceLabel }}
+      </span>
+    }
+  </div>
+</ng-template>
+
+<ng-template #readTemplate let-row>
+  <div class="flex min-w-[8rem] flex-col gap-1">
+    <z-badge [zType]="readStatusVariant(row)">
+      {{ readStatusLabel(row) }}
     </z-badge>
-  } @else {
-    <span class="text-xs text-muted-foreground">&mdash;</span>
-  }
+    @if (row.readAt) {
+      <span class="text-[11px] text-muted-foreground">{{ row.readAt | appDate: 'datetime' }}</span>
+    }
+    @if (row.readDeviceLabel) {
+      <span class="truncate text-[11px] text-muted-foreground" [zTooltip]="row.readDeviceLabel">
+        {{ row.readDeviceLabel }}
+      </span>
+    }
+  </div>
 </ng-template>
 
 <ng-template #reminderDialogTemplate>

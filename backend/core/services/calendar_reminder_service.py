@@ -23,7 +23,12 @@ class CalendarReminderDispatchStats:
 
 class CalendarReminderService:
     def __init__(self, push_service: PushNotificationService | None = None):
-        self.push_service = push_service or PushNotificationService()
+        self.push_service = push_service
+
+    def _push_service(self) -> PushNotificationService:
+        if self.push_service is None:
+            self.push_service = PushNotificationService()
+        return self.push_service
 
     def create_for_users(
         self,
@@ -67,9 +72,12 @@ class CalendarReminderService:
                         timezone=timezone_name,
                         content=content.strip(),
                         status=CalendarReminder.STATUS_PENDING,
+                        delivery_channel="",
+                        delivery_device_label="",
                         error_message="",
                         sent_at=None,
                         read_at=None,
+                        read_device_label="",
                     )
                 )
         return reminders
@@ -97,9 +105,12 @@ class CalendarReminderService:
         reminder.timezone = timezone_name
         reminder.content = content.strip()
         reminder.status = CalendarReminder.STATUS_PENDING
+        reminder.delivery_channel = ""
+        reminder.delivery_device_label = ""
         reminder.error_message = ""
         reminder.sent_at = None
         reminder.read_at = None
+        reminder.read_device_label = ""
         reminder.save()
         return reminder
 
@@ -121,7 +132,7 @@ class CalendarReminderService:
 
     def _dispatch_single(self, *, reminder: CalendarReminder, now) -> bool:
         try:
-            result = self.push_service.send_to_user(
+            result = self._push_service().send_to_user(
                 user=reminder.user,
                 title="Reminder",
                 body=reminder.content,
@@ -138,22 +149,64 @@ class CalendarReminderService:
             reminder.error_message = str(exc)
             reminder.sent_at = None
             reminder.read_at = None
-            reminder.save(update_fields=["status", "error_message", "sent_at", "read_at", "updated_at"])
+            reminder.delivery_channel = ""
+            reminder.delivery_device_label = ""
+            reminder.read_device_label = ""
+            reminder.save(
+                update_fields=[
+                    "status",
+                    "error_message",
+                    "sent_at",
+                    "read_at",
+                    "delivery_channel",
+                    "delivery_device_label",
+                    "read_device_label",
+                    "updated_at",
+                ]
+            )
             return False
         except Exception as exc:
             reminder.status = CalendarReminder.STATUS_FAILED
             reminder.error_message = f"{type(exc).__name__}: {exc}"
             reminder.sent_at = None
             reminder.read_at = None
-            reminder.save(update_fields=["status", "error_message", "sent_at", "read_at", "updated_at"])
+            reminder.delivery_channel = ""
+            reminder.delivery_device_label = ""
+            reminder.read_device_label = ""
+            reminder.save(
+                update_fields=[
+                    "status",
+                    "error_message",
+                    "sent_at",
+                    "read_at",
+                    "delivery_channel",
+                    "delivery_device_label",
+                    "read_device_label",
+                    "updated_at",
+                ]
+            )
             return False
 
         if result.sent > 0:
             reminder.status = CalendarReminder.STATUS_SENT
             reminder.sent_at = now
             reminder.read_at = None
+            reminder.read_device_label = ""
+            reminder.delivery_channel = ""
+            reminder.delivery_device_label = ""
             reminder.error_message = ""
-            reminder.save(update_fields=["status", "sent_at", "read_at", "error_message", "updated_at"])
+            reminder.save(
+                update_fields=[
+                    "status",
+                    "sent_at",
+                    "read_at",
+                    "read_device_label",
+                    "delivery_channel",
+                    "delivery_device_label",
+                    "error_message",
+                    "updated_at",
+                ]
+            )
             return True
 
         if result.failed > 0:
@@ -166,6 +219,20 @@ class CalendarReminderService:
         reminder.status = CalendarReminder.STATUS_FAILED
         reminder.sent_at = None
         reminder.read_at = None
+        reminder.read_device_label = ""
+        reminder.delivery_channel = ""
+        reminder.delivery_device_label = ""
         reminder.error_message = error_message
-        reminder.save(update_fields=["status", "sent_at", "read_at", "error_message", "updated_at"])
+        reminder.save(
+            update_fields=[
+                "status",
+                "sent_at",
+                "read_at",
+                "read_device_label",
+                "delivery_channel",
+                "delivery_device_label",
+                "error_message",
+                "updated_at",
+            ]
+        )
         return False

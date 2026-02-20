@@ -67,6 +67,8 @@ class CalendarReminder(models.Model):
         default="",
         db_index=True,
     )
+    delivery_device_label = models.CharField(max_length=255, blank=True, default="")
+    read_device_label = models.CharField(max_length=255, blank=True, default="")
     error_message = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

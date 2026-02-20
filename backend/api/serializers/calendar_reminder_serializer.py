@@ -89,6 +89,7 @@ class CalendarReminderInboxMarkReadSerializer(serializers.Serializer):
         required=False,
         allow_empty=True,
     )
+    device_label = serializers.CharField(max_length=255, required=False, allow_blank=True, default="")
 
 
 class CalendarReminderSerializer(serializers.ModelSerializer):
@@ -117,6 +118,8 @@ class CalendarReminderSerializer(serializers.ModelSerializer):
             "sent_at",
             "read_at",
             "delivery_channel",
+            "delivery_device_label",
+            "read_device_label",
             "error_message",
             "created_at",
             "updated_at",
@@ -129,6 +132,8 @@ class CalendarReminderSerializer(serializers.ModelSerializer):
             "sent_at",
             "read_at",
             "delivery_channel",
+            "delivery_device_label",
+            "read_device_label",
             "error_message",
             "created_at",
             "updated_at",
