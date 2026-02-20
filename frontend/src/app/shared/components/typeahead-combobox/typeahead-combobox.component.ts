@@ -115,7 +115,7 @@ export interface TypeaheadOption extends BaseOption {
                 [zLabel]="option.search ?? option.label"
                 [zDisabled]="option.disabled ?? false"
                 [zIcon]="option.icon"
-                [attr.aria-selected]="option.value === internalValue()"
+                [attr.aria-selected]="isSelected(option.value)"
               >
                 <div class="flex-1 min-w-0">
                   <div class="truncate font-medium">
@@ -133,7 +133,7 @@ export interface TypeaheadOption extends BaseOption {
                     </div>
                   }
                 </div>
-                @if (option.value === internalValue()) {
+                @if (isSelected(option.value)) {
                   <z-icon zType="check" class="ml-auto shrink-0" />
                 }
               </z-command-option>
@@ -168,6 +168,7 @@ export class TypeaheadComboboxComponent implements ControlValueAccessor {
   // Signals for state
   readonly open = signal(false);
   readonly internalValue = signal<string | null>(null);
+  readonly internalValues = signal<string[]>([]);
   readonly options = signal<TypeaheadOption[]>([]);
   readonly isLoading = signal(false);
   readonly currentPage = signal(1);
@@ -183,6 +184,7 @@ export class TypeaheadComboboxComponent implements ControlValueAccessor {
   readonly disabled = input<boolean>(false);
   readonly buttonVariant = input<'default' | 'outline' | 'secondary' | 'ghost'>('outline');
   readonly searchable = input<boolean>(true);
+  readonly multiselect = input<boolean>(false);
   readonly pageSize = input<number>(20);
 
   // A function provided by parent (passed as signal or direct value)
@@ -193,8 +195,8 @@ export class TypeaheadComboboxComponent implements ControlValueAccessor {
   readonly mapFn = input<((item: any) => TypeaheadOption) | undefined>(undefined);
 
   // External value control from CVA/Inputs
-  readonly value = input<string | null | undefined>(null);
-  readonly valueChange = output<string | null>();
+  readonly value = input<string | string[] | null | undefined>(undefined);
+  readonly valueChange = output<string | string[] | null>();
 
   // Element refs
   readonly popoverDirective = viewChild.required(ZardPopoverDirective);
@@ -204,15 +206,40 @@ export class TypeaheadComboboxComponent implements ControlValueAccessor {
   readonly sentinel = viewChild<ElementRef>('sentinel');
 
   private searchTimer: number | null = null;
-  private onChange: (v: string | null) => void = () => {};
+  private onChange: (v: string | string[] | null) => void = () => {};
   private onTouched: () => void = () => {};
   private observer: IntersectionObserver | null = null;
 
   constructor() {
     effect(() => {
       const val = this.value();
-      if (val !== this.internalValue()) {
-        this.internalValue.set(val ?? null);
+      if (val === undefined) {
+        return;
+      }
+      if (this.multiselect()) {
+        const normalized = this.normalizeIncomingValues(val);
+        if (!this.arraysEqual(this.internalValues(), normalized)) {
+          this.internalValues.set(normalized);
+        }
+      } else {
+        const normalized = Array.isArray(val) ? (val[0] ?? null) : (val ?? null);
+        if (normalized !== this.internalValue()) {
+          this.internalValue.set(normalized);
+        }
+      }
+    });
+
+    effect(() => {
+      if (this.multiselect()) {
+        const single = this.internalValue();
+        if (single && this.internalValues().length === 0) {
+          this.internalValues.set([single]);
+        }
+      } else {
+        const values = this.internalValues();
+        if (!this.internalValue() && values.length > 0) {
+          this.internalValue.set(values[0]);
+        }
       }
     });
 
@@ -251,10 +278,30 @@ export class TypeaheadComboboxComponent implements ControlValueAccessor {
   });
 
   protected readonly displayValue = computed(() => {
+    if (this.multiselect()) {
+      const values = this.internalValues();
+      if (values.length === 0) return null;
+
+      const labels = values
+        .map((value) => {
+          const option = this.options().find((o) => o.value === value);
+          return option?.display ?? option?.label ?? null;
+        })
+        .filter((label): label is string => !!label && label.trim().length > 0);
+
+      if (labels.length === 0) {
+        return `${values.length} selected`;
+      }
+      if (labels.length <= 2) {
+        return labels.join(', ');
+      }
+      return `${labels.slice(0, 2).join(', ')} +${labels.length - 2}`;
+    }
+
     const val = this.internalValue();
     if (!val) return null;
     const opt = this.options().find((o) => o.value === val);
-    return opt?.display ?? opt?.label ?? null;
+    return opt?.display ?? opt?.label ?? val;
   });
 
   // Methods
@@ -278,10 +325,27 @@ export class TypeaheadComboboxComponent implements ControlValueAccessor {
 
   handleSelect(cmd: ZardCommandOption) {
     const val = cmd.value as string;
+    if (this.multiselect()) {
+      const selected = new Set(this.internalValues());
+      if (selected.has(val)) {
+        selected.delete(val);
+      } else {
+        selected.add(val);
+      }
+
+      const nextValues = [...selected];
+      this.internalValues.set(nextValues);
+      this.onChange(nextValues);
+      this.valueChange.emit(nextValues);
+      this.onTouched();
+      return;
+    }
+
     const newVal = val === this.internalValue() ? null : val;
     this.internalValue.set(newVal);
     this.onChange(newVal);
     this.valueChange.emit(newVal);
+    this.onTouched();
 
     // Clear search on selection so it's ready for next time
     this.searchQuery.set('');
@@ -312,16 +376,24 @@ export class TypeaheadComboboxComponent implements ControlValueAccessor {
     this.performSearch(this.searchQuery(), this.currentPage() + 1);
   }
 
+  protected isSelected(value: string): boolean {
+    if (this.multiselect()) {
+      return this.internalValues().includes(value);
+    }
+    return this.internalValue() === value;
+  }
+
   private performSearch(q: string, page: number) {
     const loaderFn = this.loadOptions?.();
     if (!loaderFn) return;
 
     if (page === 1) {
-      // When resetting to page 1, keep the currently selected option
-      // in the list if it exists to prevent the button label from flickering
-      const currentVal = this.internalValue();
-      const selectedOpt = this.options().find((o) => o.value === currentVal);
-      this.options.set(selectedOpt ? [selectedOpt] : []);
+      // Keep selected options while refreshing page 1 to avoid button text flicker.
+      const selectedValues = this.multiselect()
+        ? new Set(this.internalValues())
+        : new Set(this.internalValue() ? [this.internalValue() as string] : []);
+      const selectedOptions = this.options().filter((option) => selectedValues.has(option.value));
+      this.options.set(selectedOptions);
     }
 
     this.isLoading.set(true);
@@ -331,9 +403,9 @@ export class TypeaheadComboboxComponent implements ControlValueAccessor {
         const mapped = (items || []).map((i) => (mapper ? mapper(i) : (i as TypeaheadOption)));
 
         if (page === 1) {
-          this.options.set(mapped);
+          this.options.update((current) => this.mergeUniqueOptions([...current, ...mapped]));
         } else {
-          this.options.update((prev) => [...prev, ...mapped]);
+          this.options.update((prev) => this.mergeUniqueOptions([...prev, ...mapped]));
         }
 
         this.currentPage.set(page);
@@ -352,8 +424,19 @@ export class TypeaheadComboboxComponent implements ControlValueAccessor {
   }
 
   // CVA
-  writeValue(v: string | null) {
-    this.internalValue.set(v);
+  writeValue(v: string | string[] | null) {
+    if (Array.isArray(v)) {
+      const normalizedValues = this.normalizeIncomingValues(v);
+      this.internalValues.set(normalizedValues);
+      this.internalValue.set(normalizedValues[0] ?? null);
+      return;
+    }
+    if (this.multiselect()) {
+      this.internalValues.set(this.normalizeIncomingValues(v));
+      return;
+    }
+    const normalized = v ?? null;
+    this.internalValue.set(normalized);
   }
   registerOnChange(fn: any) {
     this.onChange = fn;
@@ -363,5 +446,40 @@ export class TypeaheadComboboxComponent implements ControlValueAccessor {
   }
   setDisabledState(d: boolean) {
     /* handled via input */
+  }
+
+  private normalizeIncomingValues(value: string | string[] | null | undefined): string[] {
+    const raw = Array.isArray(value) ? value : [];
+    return this.dedupeStrings(raw);
+  }
+
+  private dedupeStrings(values: string[]): string[] {
+    const seen = new Set<string>();
+    const result: string[] = [];
+    for (const raw of values) {
+      const value = String(raw ?? '').trim();
+      if (!value || seen.has(value)) continue;
+      seen.add(value);
+      result.push(value);
+    }
+    return result;
+  }
+
+  private arraysEqual(left: string[], right: string[]): boolean {
+    if (left.length !== right.length) return false;
+    for (let index = 0; index < left.length; index += 1) {
+      if (left[index] !== right[index]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private mergeUniqueOptions(options: TypeaheadOption[]): TypeaheadOption[] {
+    const map = new Map<string, TypeaheadOption>();
+    for (const option of options) {
+      map.set(option.value, option);
+    }
+    return [...map.values()];
   }
 }

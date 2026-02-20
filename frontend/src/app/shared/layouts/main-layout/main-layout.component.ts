@@ -16,7 +16,11 @@ import {
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
 import { AuthService } from '@/core/services/auth.service';
-import { ConfigService } from '@/core/services/config.service';
+import { ReminderDialogService } from '@/core/services/reminder-dialog.service';
+import {
+  ReminderInboxService,
+  type ReminderInboxItem,
+} from '@/core/services/reminder-inbox.service';
 import { ThemeService } from '@/core/services/theme.service';
 import { ZardAvatarComponent } from '@/shared/components/avatar';
 import { ZardButtonComponent } from '@/shared/components/button';
@@ -48,6 +52,7 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
   private readonly isBrowser = isPlatformBrowser(this.platformId);
 
   sidebarOpen = signal(true);
+  utilitiesExpanded = signal(false);
   lettersExpanded = signal(false);
   reportsExpanded = signal(false);
   adminExpanded = signal(false);
@@ -59,7 +64,8 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
 
   private themeService = inject(ThemeService);
   private authService = inject(AuthService);
-  private configService = inject(ConfigService);
+  private reminderDialogService = inject(ReminderDialogService);
+  private reminderInboxService = inject(ReminderInboxService);
   private router = inject(Router);
 
   logoSrc = computed(() => {
@@ -97,6 +103,20 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
       .join('')
       .toUpperCase()
       .substring(0, 2);
+  });
+  reminderUnreadCount = this.reminderInboxService.unreadCount;
+  reminderInboxItems = this.reminderInboxService.todayReminders;
+  unreadReminderItems = computed(() =>
+    this.reminderInboxItems().filter((item) => !item.readAt && Number(item.id) > 0),
+  );
+  hasUnreadReminderItems = computed(() => this.unreadReminderItems().length > 0);
+  reminderInboxLoading = this.reminderInboxService.isLoading;
+  reminderUnreadCountLabel = computed(() => {
+    const count = this.reminderUnreadCount();
+    if (count > 99) {
+      return '99+';
+    }
+    return String(Math.max(0, count));
   });
 
   private _capturingKeydown = (event: KeyboardEvent) => {
@@ -209,6 +229,7 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
         A: '/applications',
         P: '/products',
         I: '/invoices',
+        U: '/reminders',
         R: '/reports',
       };
       const target = routeMap[key];
@@ -270,12 +291,14 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
   ngAfterViewInit(): void {
     if (this.isBrowser) {
       window.addEventListener('keydown', this._capturingKeydown, true);
+      this.reminderInboxService.start();
     }
   }
 
   ngOnDestroy(): void {
     if (this.isBrowser) {
       window.removeEventListener('keydown', this._capturingKeydown, true);
+      this.reminderInboxService.stop();
     }
   }
 
@@ -309,6 +332,10 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
     this.lettersExpanded.update((v) => !v);
   }
 
+  toggleUtilities() {
+    this.utilitiesExpanded.update((v) => !v);
+  }
+
   toggleReports() {
     this.reportsExpanded.update((v) => !v);
   }
@@ -317,7 +344,49 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
     this.adminExpanded.update((v) => !v);
   }
 
+  openReminderInbox() {
+    const today = this.toIsoDate(new Date());
+    this.router.navigate(['/reminders'], {
+      queryParams: {
+        statuses: 'pending,sent,failed',
+        createdFrom: today,
+        createdTo: today,
+      },
+    });
+  }
+
+  openReminder(reminder: ReminderInboxItem) {
+    this.reminderDialogService.enqueueFromInboxReminder(reminder);
+    if (reminder.id > 0 && !reminder.readAt) {
+      this.reminderInboxService.markSingleRead(reminder.id);
+    }
+  }
+
+  markAllMenuRemindersRead() {
+    const ids = this.unreadReminderItems()
+      .map((item) => Number(item.id))
+      .filter((id) => Number.isFinite(id) && id > 0);
+
+    if (!ids.length) {
+      return;
+    }
+
+    this.reminderInboxService.markRead(ids);
+  }
+
   logout() {
+    this.reminderInboxService.stop();
     this.authService.logout();
+  }
+
+  private toIsoDate(date: Date): string {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+      return '';
+    }
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 }

@@ -72,6 +72,7 @@ router.register(r"tasks", GoogleTasksViewSet, basename="tasks")
 router.register(r"backups", BackupsViewSet, basename="backups")
 router.register(r"server-management", ServerManagementViewSet, basename="server-management")
 router.register(r"workflow-notifications", views.WorkflowNotificationViewSet, basename="workflow-notifications")
+router.register(r"calendar-reminders", views.CalendarReminderViewSet, basename="calendar-reminders")
 router.register(r"async-jobs", views.AsyncJobViewSet, basename="async-jobs")
 router.register(r"push-notifications", views.PushNotificationViewSet, basename="push-notifications")
 router.register(r"holidays", views.HolidayViewSet, basename="holidays")
@@ -99,6 +100,11 @@ urlpatterns = [
         "document-ocr/status/<uuid:job_id>/",
         views.DocumentOCRViewSet.as_view({"get": "status"}),
         name="api-document-ocr-status",
+    ),
+    path(
+        "calendar-reminders/stream/",
+        views.calendar_reminders_stream_sse,
+        name="api-calendar-reminders-stream-sse",
     ),
     path(
         "workflow-notifications/stream/",

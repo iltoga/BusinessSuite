@@ -1,0 +1,36 @@
+@if (hasItems()) {
+  <section class="reminder-stack" aria-live="assertive" aria-label="Reminder notifications">
+    @for (item of items(); track item.id) {
+      <article
+        class="reminder-dialog"
+        [class.reminder-dialog--closing]="item.closing"
+        [style.animationDelay.ms]="$index * 85"
+      >
+        <span class="reminder-dialog__accent" aria-hidden="true"></span>
+
+        <button
+          type="button"
+          class="reminder-dialog__close"
+          aria-label="Close reminder dialog"
+          (click)="close(item.id)"
+        >
+          <span class="reminder-dialog__close-circle">
+            <z-icon zType="x" class="h-3.5 w-3.5" />
+          </span>
+        </button>
+
+        <header class="reminder-dialog__header">
+          <span class="reminder-dialog__badge">
+            <z-icon zType="bell" class="h-4 w-4" />
+          </span>
+          <div class="min-w-0">
+            <h3 class="reminder-dialog__title">{{ item.title || 'Daily Reminder' }}</h3>
+            <p class="reminder-dialog__meta">Received at {{ receivedAtLabel(item.receivedAt) }}</p>
+          </div>
+        </header>
+
+        <p class="reminder-dialog__body">{{ item.body }}</p>
+      </article>
+    }
+  </section>
+}

@@ -47,6 +47,11 @@ except Exception:  # pragma: no cover
     CalendarEvent = None
 
 try:
+    from .calendar_reminder import CalendarReminder
+except Exception:  # pragma: no cover
+    CalendarReminder = None
+
+try:
     from .ai_request_usage import AIRequestUsage
 except Exception:  # pragma: no cover
     AIRequestUsage = None
@@ -61,5 +66,6 @@ __all__ = [
     "UserSettings",
     "WebPushSubscription",
     "CalendarEvent",
+    "CalendarReminder",
     "AIRequestUsage",
 ]

@@ -349,6 +349,315 @@ paths:
               schema:
                 $ref: '#/components/schemas/GoogleCalendarEvent'
           description: ''
+  /api/calendar-reminders/:
+    get:
+      operationId: calendarRemindersList
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - calendar-reminders
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCalendarReminderList'
+          description: ''
+    post:
+      operationId: calendarRemindersCreate
+      tags:
+      - calendar-reminders
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalendarReminderCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CalendarReminderCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CalendarReminderCreate'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/CalendarReminderCreate'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarReminderCreate'
+          description: ''
+  /api/calendar-reminders/{id}/:
+    get:
+      operationId: calendarRemindersRetrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this calendar reminder.
+        required: true
+      tags:
+      - calendar-reminders
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarReminder'
+          description: ''
+    put:
+      operationId: calendarRemindersUpdate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this calendar reminder.
+        required: true
+      tags:
+      - calendar-reminders
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalendarReminderCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CalendarReminderCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CalendarReminderCreate'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/CalendarReminderCreate'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarReminderCreate'
+          description: ''
+    patch:
+      operationId: calendarRemindersPartialUpdate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this calendar reminder.
+        required: true
+      tags:
+      - calendar-reminders
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalendarReminderCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CalendarReminderCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CalendarReminderCreate'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/CalendarReminderCreate'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarReminderCreate'
+          description: ''
+    delete:
+      operationId: calendarRemindersDestroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this calendar reminder.
+        required: true
+      tags:
+      - calendar-reminders
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/calendar-reminders/bulk-create/:
+    post:
+      operationId: calendarRemindersBulkCreateCreate
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - calendar-reminders
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalendarReminderBulkCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CalendarReminderBulkCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CalendarReminderBulkCreate'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/CalendarReminderBulkCreate'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCalendarReminderList'
+          description: ''
+  /api/calendar-reminders/inbox/:
+    get:
+      operationId: calendarRemindersInboxRetrieve
+      tags:
+      - calendar-reminders
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarReminder'
+          description: ''
+  /api/calendar-reminders/inbox/mark-read/:
+    post:
+      operationId: calendarRemindersInboxMarkReadCreate
+      tags:
+      - calendar-reminders
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalendarReminderInboxMarkRead'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CalendarReminderInboxMarkRead'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CalendarReminderInboxMarkRead'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/CalendarReminderInboxMarkRead'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarReminderInboxMarkRead'
+          description: ''
+  /api/calendar-reminders/timezones/:
+    get:
+      operationId: calendarRemindersTimezonesRetrieve
+      tags:
+      - calendar-reminders
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarReminder'
+          description: ''
+  /api/calendar-reminders/users/:
+    get:
+      operationId: calendarRemindersUsersRetrieve
+      tags:
+      - calendar-reminders
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarReminder'
+          description: ''
   /api/calendar/{id}/:
     get:
       operationId: calendarRetrieve
@@ -4267,6 +4576,315 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/GoogleCalendarEvent'
+          description: ''
+  /api/v1/calendar-reminders/:
+    get:
+      operationId: v1CalendarRemindersList
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCalendarReminderList'
+          description: ''
+    post:
+      operationId: v1CalendarRemindersCreate
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalendarReminderCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CalendarReminderCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CalendarReminderCreate'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/CalendarReminderCreate'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarReminderCreate'
+          description: ''
+  /api/v1/calendar-reminders/{id}/:
+    get:
+      operationId: v1CalendarRemindersRetrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this calendar reminder.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarReminder'
+          description: ''
+    put:
+      operationId: v1CalendarRemindersUpdate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this calendar reminder.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalendarReminderCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CalendarReminderCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CalendarReminderCreate'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/CalendarReminderCreate'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarReminderCreate'
+          description: ''
+    patch:
+      operationId: v1CalendarRemindersPartialUpdate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this calendar reminder.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalendarReminderCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CalendarReminderCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CalendarReminderCreate'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/CalendarReminderCreate'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarReminderCreate'
+          description: ''
+    delete:
+      operationId: v1CalendarRemindersDestroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this calendar reminder.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/calendar-reminders/bulk-create/:
+    post:
+      operationId: v1CalendarRemindersBulkCreateCreate
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalendarReminderBulkCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CalendarReminderBulkCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CalendarReminderBulkCreate'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/CalendarReminderBulkCreate'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCalendarReminderList'
+          description: ''
+  /api/v1/calendar-reminders/inbox/:
+    get:
+      operationId: v1CalendarRemindersInboxRetrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarReminder'
+          description: ''
+  /api/v1/calendar-reminders/inbox/mark-read/:
+    post:
+      operationId: v1CalendarRemindersInboxMarkReadCreate
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalendarReminderInboxMarkRead'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CalendarReminderInboxMarkRead'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CalendarReminderInboxMarkRead'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/CalendarReminderInboxMarkRead'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarReminderInboxMarkRead'
+          description: ''
+  /api/v1/calendar-reminders/timezones/:
+    get:
+      operationId: v1CalendarRemindersTimezonesRetrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarReminder'
+          description: ''
+  /api/v1/calendar-reminders/users/:
+    get:
+      operationId: v1CalendarRemindersUsersRetrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarReminder'
           description: ''
   /api/v1/calendar/{id}/:
     get:
@@ -8498,6 +9116,162 @@ components:
       - status
       - task_name
       - updated_at
+    CalendarReminder:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        user:
+          type: integer
+        user_full_name:
+          type: string
+          readOnly: true
+        user_email:
+          type: string
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        created_by_full_name:
+          type: string
+          readOnly: true
+        created_by_email:
+          type: string
+          readOnly: true
+        calendar_event:
+          type: string
+          nullable: true
+        reminder_date:
+          type: string
+          format: date
+        reminder_time:
+          type: string
+          format: time
+        timezone:
+          type: string
+          maxLength: 64
+        scheduled_for:
+          type: string
+          format: date-time
+          readOnly: true
+        content:
+          type: string
+        status:
+          enum:
+          - pending
+          - sent
+          - failed
+          type: string
+          description: |-
+            * `pending` - Pending
+            * `sent` - Sent
+            * `failed` - Failed
+          x-spec-enum-id: 5bbd878ebde59ad9
+          readOnly: true
+        sent_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        read_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        error_message:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - content
+      - created_at
+      - created_by
+      - created_by_email
+      - created_by_full_name
+      - error_message
+      - id
+      - read_at
+      - reminder_date
+      - reminder_time
+      - scheduled_for
+      - sent_at
+      - status
+      - updated_at
+      - user
+      - user_email
+      - user_full_name
+    CalendarReminderBulkCreate:
+      type: object
+      properties:
+        reminder_date:
+          type: string
+          format: date
+        reminder_time:
+          type: string
+          format: time
+        timezone:
+          type: string
+          default: Asia/Makassar
+          maxLength: 64
+        content:
+          type: string
+          maxLength: 2000
+        calendar_event_id:
+          type: string
+          nullable: true
+        user_ids:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+      required:
+      - content
+      - reminder_date
+      - reminder_time
+      - user_ids
+    CalendarReminderCreate:
+      type: object
+      properties:
+        reminder_date:
+          type: string
+          format: date
+        reminder_time:
+          type: string
+          format: time
+        timezone:
+          type: string
+          default: Asia/Makassar
+          maxLength: 64
+        content:
+          type: string
+          maxLength: 2000
+        calendar_event_id:
+          type: string
+          nullable: true
+        user_id:
+          type: integer
+          minimum: 1
+      required:
+      - content
+      - reminder_date
+      - reminder_time
+    CalendarReminderInboxMarkRead:
+      type: object
+      properties:
+        ids:
+          type: array
+          items:
+            type: integer
+            minimum: 1
     ChangePassword:
       type: object
       properties:
@@ -9988,6 +10762,29 @@ components:
       - total_paid_amount
       - updated_at
       - updated_by
+    PaginatedCalendarReminderList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/CalendarReminder'
     PaginatedCustomerApplicationHistoryList:
       type: object
       required:

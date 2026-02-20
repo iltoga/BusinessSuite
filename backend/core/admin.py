@@ -1,10 +1,11 @@
 from django.contrib import admin
 
-from .models import AIRequestUsage, CountryCode, Holiday, UserSettings
+from .models import AIRequestUsage, CalendarReminder, CountryCode, Holiday, UserSettings
 
 admin.site.register(Holiday)
 admin.site.register(CountryCode)
 admin.site.register(UserSettings)
+admin.site.register(CalendarReminder)
 
 
 @admin.register(AIRequestUsage)

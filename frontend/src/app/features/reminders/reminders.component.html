@@ -1,0 +1,191 @@
+<div class="h-full flex flex-col gap-6">
+  <div class="flex flex-wrap items-start justify-between gap-3">
+    <div class="space-y-1">
+      <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">Reminders</h1>
+      <div class="reminder-live-indicator">
+        <span
+          class="reminder-live-dot"
+          [class.reminder-live-dot--loading]="isLoading() || liveConnecting()"
+          [class.reminder-live-dot--offline]="!liveConnected() && !liveConnecting()"
+        ></span>
+        <span class="text-xs font-medium text-foreground">{{ liveStatusText() }}</span>
+      </div>
+    </div>
+
+    <button z-button zType="default" class="w-full sm:w-auto" (click)="openCreateDialog()">
+      Add Reminder
+    </button>
+  </div>
+
+  <div class="bg-card rounded-lg border shadow-sm">
+    <div class="border-b p-3 sm:p-4">
+      <app-search-toolbar
+        [query]="query()"
+        [placeholder]="'Search reminders...'"
+        [isLoading]="isLoading()"
+        (queryChange)="onQueryChange($event)"
+        (tabOut)="onEnterSearch()"
+      >
+        <button z-button zType="secondary" zSize="sm" class="w-full sm:w-auto" (click)="refresh()">
+          Refresh
+        </button>
+      </app-search-toolbar>
+
+      <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:max-w-xl">
+        <div class="space-y-1">
+          <label class="text-xs font-medium text-muted-foreground">Created from</label>
+          <z-date-input [value]="createdFrom()" (valueChange)="onCreatedFromChange($event)" />
+        </div>
+        <div class="space-y-1">
+          <label class="text-xs font-medium text-muted-foreground">Created to</label>
+          <z-date-input [value]="createdTo()" (valueChange)="onCreatedToChange($event)" />
+        </div>
+      </div>
+
+      <div class="mt-2 text-xs text-muted-foreground">
+        Default filters: pending status and created today. Use Status filter and date range to
+        broaden results.
+      </div>
+    </div>
+
+    <div class="p-0">
+      <app-data-table
+        #grid
+        [columns]="columns()"
+        [data]="reminders()"
+        [isLoading]="isLoading()"
+        [actions]="actions()"
+        [currentPage]="page()"
+        [totalPages]="totalPages()"
+        (pageChange)="onPageChange($event)"
+        (sortChange)="onSortChange($event)"
+        (columnFilterChange)="onColumnFilterChange($event)"
+      />
+    </div>
+
+    <div class="border-t bg-muted/20 p-3 sm:p-4">
+      <app-pagination-controls
+        [page]="page()"
+        [totalPages]="totalPages()"
+        [totalItems]="totalItems()"
+        (pageChange)="onPageChange($event)"
+      />
+    </div>
+  </div>
+</div>
+
+<ng-template #statusTemplate let-row>
+  <div>
+    <z-badge
+      [zType]="statusVariant(row.status)"
+      [zTooltip]="row.status === 'failed' && row.errorMessage ? row.errorMessage : null"
+      zPosition="top"
+      [class.cursor-copy]="row.status === 'failed' && !!row.errorMessage"
+      [class.select-none]="row.status === 'failed' && !!row.errorMessage"
+      (click)="onStatusBadgeClick($event, row)"
+    >
+      {{ row.status | titlecase }}
+    </z-badge>
+  </div>
+</ng-template>
+
+<ng-template #scheduleTemplate let-row>
+  <div class="flex flex-col">
+    <span class="text-sm font-medium">{{ row.reminderDate | appDate }}</span>
+    <span class="text-xs text-muted-foreground">
+      {{ displayReminderTime(row.reminderTime) }} ({{ row.timezone }})
+    </span>
+  </div>
+</ng-template>
+
+<ng-template #recipientTemplate let-row>
+  <div class="flex flex-col min-w-0">
+    <span class="truncate font-medium">{{ row.userFullName || 'User #' + row.user }}</span>
+    <span class="text-xs text-muted-foreground truncate">{{ row.userEmail || '—' }}</span>
+  </div>
+</ng-template>
+
+<ng-template #contentTemplate let-row>
+  <div class="max-w-[36rem] truncate" [title]="row.content">{{ row.content }}</div>
+</ng-template>
+
+<ng-template #deliveryChannelTemplate let-row>
+  @if (row.deliveryChannel && row.deliveryChannel !== '') {
+    <z-badge [zType]="deliveryChannelVariant(row.deliveryChannel)">
+      {{ deliveryChannelLabel(row.deliveryChannel) }}
+    </z-badge>
+  } @else {
+    <span class="text-xs text-muted-foreground">&mdash;</span>
+  }
+</ng-template>
+
+<ng-template #reminderDialogTemplate>
+  <form [formGroup]="reminderForm" (ngSubmit)="saveReminder()" class="space-y-4 py-2">
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div class="space-y-2">
+        <label class="text-sm font-medium" for="reminder-date">Date</label>
+        <z-date-input id="reminder-date" formControlName="reminderDate"></z-date-input>
+      </div>
+
+      <div class="space-y-2">
+        <label class="text-sm font-medium" for="reminder-time">Time</label>
+        <input z-input id="reminder-time" type="time" step="60" formControlName="reminderTime" />
+      </div>
+
+      <div class="space-y-2 md:col-span-2">
+        <label class="text-sm font-medium">Timezone</label>
+        <app-typeahead-combobox
+          formControlName="timezone"
+          [placeholder]="'Select timezone...'"
+          [searchPlaceholder]="'Search timezone...'"
+          [loadOptions]="timezoneLoader"
+          [mapFn]="timezoneMap"
+          [zWidth]="'full'"
+        />
+      </div>
+
+      <div class="space-y-2 md:col-span-2">
+        <label class="text-sm font-medium">Recipients</label>
+        <app-typeahead-combobox
+          formControlName="userIds"
+          [multiselect]="true"
+          [placeholder]="'Select one or more users...'"
+          [searchPlaceholder]="'Search users...'"
+          [loadOptions]="usersLoader"
+          [mapFn]="userMap"
+          [zWidth]="'full'"
+        />
+        <p class="text-xs text-muted-foreground">
+          Default: logged-in user. Multiple selection creates one reminder per user.
+        </p>
+      </div>
+
+      <div class="space-y-2 md:col-span-2">
+        <label class="text-sm font-medium" for="reminder-content">Content</label>
+        <textarea
+          z-input
+          id="reminder-content"
+          rows="4"
+          formControlName="content"
+          placeholder="Reminder message..."
+        ></textarea>
+        @if (reminderForm.controls.content.touched && reminderForm.controls.content.invalid) {
+          <p class="text-xs text-destructive">Reminder content is required.</p>
+        }
+      </div>
+    </div>
+
+    <div class="flex flex-wrap justify-end gap-2">
+      <button z-button zType="secondary" type="button" (click)="closeDialog()">Cancel</button>
+      <button
+        z-button
+        zType="default"
+        type="submit"
+        [zLoading]="isSaving()"
+        [zDisabled]="isSaving()"
+      >
+        {{ editingReminder() ? 'Save Reminder' : 'Add Reminder' }}
+      </button>
+    </div>
+  </form>
+</ng-template>

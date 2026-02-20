@@ -20,8 +20,9 @@ class CoreConfig(AppConfig):
         # Register our signal forwarder (if present)
         import core.signals  # noqa: F401
         import core.signals_calendar  # noqa: F401
+        import core.signals_calendar_reminder  # noqa: F401
         import core.telemetry.huey_tracing  # noqa: F401
-        from core.tasks import ai_usage, calendar_sync, cron_jobs, document_ocr, ocr  # noqa: F401
+        from core.tasks import ai_usage, calendar_reminders, calendar_sync, cron_jobs, document_ocr, ocr  # noqa: F401
 
         # Register models with django-auditlog automatically for apps listed in LOGGING_MODE
         try:

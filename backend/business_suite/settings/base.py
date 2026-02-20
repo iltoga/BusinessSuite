@@ -765,6 +765,10 @@ AUDITLOG_RETENTION_SCHEDULE = os.getenv("AUDITLOG_RETENTION_SCHEDULE", "04:00")
 CUSTOMER_NOTIFICATIONS_DAILY_HOUR = int(os.getenv("CUSTOMER_NOTIFICATIONS_DAILY_HOUR", "8"))
 CUSTOMER_NOTIFICATIONS_DAILY_MINUTE = int(os.getenv("CUSTOMER_NOTIFICATIONS_DAILY_MINUTE", "0"))
 
+# Calendar reminder push dispatch settings.
+# Huey periodic task checks reminders every minute and processes at most this many rows per run.
+CALENDAR_REMINDER_DISPATCH_LIMIT = int(os.getenv("CALENDAR_REMINDER_DISPATCH_LIMIT", "200"))
+
 # Conditionally enable the `auditlog` app and its middleware (so the feature can be fully toggled at startup)
 if AUDIT_ENABLED:
     # Add auditlog to installed apps if missing

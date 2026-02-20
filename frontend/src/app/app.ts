@@ -15,12 +15,19 @@ import { filter, take } from 'rxjs';
 
 import { AuthService } from '@/core/services/auth.service';
 import { PushNotificationsService } from '@/core/services/push-notifications.service';
+import { ReminderDialogStackComponent } from '@/shared/components/reminder-dialog-stack/reminder-dialog-stack.component';
 import { HelpDrawerComponent, HotkeysDrawerComponent } from '@/shared/components/help-drawer';
 import { HelpService } from '@/shared/services/help.service';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, ZardToastComponent, HelpDrawerComponent, HotkeysDrawerComponent],
+  imports: [
+    RouterOutlet,
+    ZardToastComponent,
+    ReminderDialogStackComponent,
+    HelpDrawerComponent,
+    HotkeysDrawerComponent,
+  ],
   templateUrl: './app.html',
   styleUrl: './app.css',
 })
