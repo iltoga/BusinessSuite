@@ -32,7 +32,6 @@ import { dirname, join } from 'node:path';
 import { generateNonce } from './csp';
 
 const browserDistFolder = join(import.meta.dirname, '../browser');
-const desktopUpdatesFolder = process.env['DESKTOP_UPDATES_DIR'] || '/desktop-updates';
 
 const app = express();
 const angularApp = new AngularNodeAppEngine();
@@ -528,39 +527,6 @@ app.use((req, res, next) => {
 
   req.pipe(backendRequest);
 });
-
-/**
- * Serve Electron desktop update feed files.
- * This path is consumed by electron-updater generic provider.
- */
-app.use(
-  '/desktop-updates',
-  express.static(desktopUpdatesFolder, {
-    index: false,
-    redirect: false,
-    fallthrough: false,
-    setHeaders: (res, filePath) => {
-      const normalizedPath = String(filePath || '').toLowerCase();
-      if (normalizedPath.endsWith('.yml') || normalizedPath.endsWith('.yaml')) {
-        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-        res.setHeader('Pragma', 'no-cache');
-        res.setHeader('Expires', '0');
-        return;
-      }
-
-      if (
-        normalizedPath.endsWith('.exe') ||
-        normalizedPath.endsWith('.dmg') ||
-        normalizedPath.endsWith('.zip') ||
-        normalizedPath.endsWith('.blockmap')
-      ) {
-        res.setHeader('Cache-Control', 'public, max-age=3600');
-      }
-    },
-  }),
-);
-
-console.log(`[SSR Server] Desktop updates served from: ${desktopUpdatesFolder}`);
 
 /**
  * Serve static files from /browser
