@@ -61,6 +61,7 @@ let updateDownloadInProgress = false;
 let updatePromptInProgress = false;
 let updateCheckIntervalHandle = null;
 let updateInstallInProgress = false;
+let userInitiatedUpdateCheckPendingResult = false;
 
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
@@ -639,6 +640,32 @@ async function promptInstallUpdate(info) {
   }
 }
 
+function showUpdateCheckInfo(title, message, detail) {
+  return showDesktopMessageBox({
+    type: "info",
+    title,
+    message,
+    detail: detail || "",
+    buttons: ["OK"],
+    defaultId: 0,
+    cancelId: 0,
+    noLink: true,
+  });
+}
+
+function showUpdateCheckError(title, message, detail) {
+  return showDesktopMessageBox({
+    type: "error",
+    title,
+    message,
+    detail: detail || "",
+    buttons: ["OK"],
+    defaultId: 0,
+    cancelId: 0,
+    noLink: true,
+  });
+}
+
 function installDownloadedUpdateNow() {
   if (!autoUpdater) {
     return;
@@ -693,6 +720,8 @@ function registerAutoUpdaterEventHandlers() {
   });
 
   autoUpdater.on("update-available", async (info) => {
+    userInitiatedUpdateCheckPendingResult = false;
+
     if (updateDownloadInProgress) {
       return;
     }
@@ -715,6 +744,17 @@ function registerAutoUpdaterEventHandlers() {
 
   autoUpdater.on("update-not-available", () => {
     log("debug", "No desktop update available");
+
+    if (!userInitiatedUpdateCheckPendingResult) {
+      return;
+    }
+
+    userInitiatedUpdateCheckPendingResult = false;
+    void showUpdateCheckInfo(
+      "No Updates Available",
+      "You already have the latest desktop version.",
+      "No new desktop installer was found in the update feed.",
+    );
   });
 
   autoUpdater.on("download-progress", (progress) => {
@@ -744,27 +784,69 @@ function registerAutoUpdaterEventHandlers() {
 
   autoUpdater.on("error", (error) => {
     updateDownloadInProgress = false;
+    const errorMessage = String(error);
     log("error", `Desktop updater error: ${String(error)}`);
+
+    if (!userInitiatedUpdateCheckPendingResult) {
+      return;
+    }
+
+    userInitiatedUpdateCheckPendingResult = false;
+    void showUpdateCheckError(
+      "Update Check Failed",
+      "Unable to check for desktop updates right now.",
+      errorMessage,
+    );
   });
 }
 
-async function checkForDesktopUpdates(trigger) {
+async function checkForDesktopUpdates(trigger, options) {
+  const userInitiated = Boolean(options?.userInitiated);
+
   if (!autoUpdater) {
+    if (userInitiated) {
+      await showUpdateCheckInfo(
+        "Updates Unavailable",
+        "Desktop updater is not available in this build.",
+      );
+    }
     return;
   }
 
   if (!isDesktopAutoUpdateEnabled()) {
+    if (userInitiated) {
+      await showUpdateCheckInfo(
+        "Updates Unavailable",
+        "Update checks are disabled for this app run.",
+      );
+    }
     return;
   }
 
   if (isWindowsSquirrelFirstRun()) {
     log("info", "Skipping desktop update check during Windows first-run setup");
+    if (userInitiated) {
+      await showUpdateCheckInfo(
+        "Updates Temporarily Unavailable",
+        "Please retry in a moment while first-run setup completes.",
+      );
+    }
     return;
   }
 
   if (updateCheckInProgress) {
     log("debug", "Desktop update check skipped: check already in progress");
+    if (userInitiated) {
+      await showUpdateCheckInfo(
+        "Update Check In Progress",
+        "A desktop update check is already running.",
+      );
+    }
     return;
+  }
+
+  if (userInitiated) {
+    userInitiatedUpdateCheckPendingResult = true;
   }
 
   updateCheckInProgress = true;
@@ -772,7 +854,16 @@ async function checkForDesktopUpdates(trigger) {
     log("info", "Starting desktop update check", { trigger });
     await autoUpdater.checkForUpdates();
   } catch (error) {
+    const errorMessage = String(error);
     log("warn", `Desktop update check failed: ${String(error)}`);
+    if (userInitiatedUpdateCheckPendingResult) {
+      userInitiatedUpdateCheckPendingResult = false;
+      await showUpdateCheckError(
+        "Update Check Failed",
+        "Unable to check for desktop updates right now.",
+        errorMessage,
+      );
+    }
   } finally {
     updateCheckInProgress = false;
   }
@@ -829,6 +920,9 @@ function buildServices() {
         ? path.join(iconsDir, "trayUnreadTemplate.png")
         : path.join(iconsDir, "tray-unread.png"),
     onOpen: () => showMainWindow(),
+    onCheckForUpdates: () => {
+      void checkForDesktopUpdates("manual-tray", { userInitiated: true });
+    },
     onQuit: () => {
       isQuitting = true;
       app.quit();
@@ -857,6 +951,28 @@ function buildServices() {
 
       void reminderPoller?.markReminderRead(reminderId, {
         deviceLabel: "Electron Desktop notification (close)",
+      });
+    },
+    onMarkRead: ({ reminderId }) => {
+      if (!reminderId) {
+        return;
+      }
+
+      void reminderPoller?.markReminderRead(reminderId, {
+        deviceLabel: "Electron Desktop notification (action: mark-read)",
+      });
+    },
+    onSnooze: ({ reminderId, minutes }) => {
+      if (!reminderId) {
+        return;
+      }
+
+      const normalizedMinutes = Number.isFinite(Number(minutes))
+        ? Math.max(1, Math.floor(Number(minutes)))
+        : 15;
+      void reminderPoller?.snoozeReminder(reminderId, {
+        minutes: normalizedMinutes,
+        deviceLabel: `Electron Desktop notification (action: snooze-${normalizedMinutes}m)`,
       });
     },
   });

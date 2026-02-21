@@ -279,6 +279,46 @@ class CalendarReminderApiTests(TestCase):
         self.assertIsNone(foreign.read_at)
         self.assertEqual(foreign.read_device_label, "")
 
+    def test_inbox_snooze_reschedules_sent_unread_reminder(self):
+        today = timezone.localdate()
+        now = timezone.now()
+        reminder = CalendarReminder.objects.create(
+            user=self.user,
+            created_by=self.other_user,
+            reminder_date=today,
+            reminder_time=timezone.localtime().time().replace(second=0, microsecond=0),
+            timezone="Asia/Makassar",
+            content="Snooze me",
+            status=CalendarReminder.STATUS_SENT,
+            sent_at=now,
+        )
+
+        response = self.client.post(
+            "/api/calendar-reminders/inbox/snooze/",
+            {
+                "id": reminder.id,
+                "minutes": 15,
+                "deviceLabel": "Electron Desktop notification (action: snooze-15m)",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["id"], reminder.id)
+        self.assertEqual(response.data["minutes"], 15)
+        self.assertEqual(response.data["unreadCount"], 0)
+        self.assertIn("scheduledFor", response.data)
+
+        reminder.refresh_from_db()
+        self.assertEqual(reminder.status, CalendarReminder.STATUS_PENDING)
+        self.assertIsNone(reminder.sent_at)
+        self.assertIsNone(reminder.read_at)
+        self.assertEqual(reminder.delivery_channel, "")
+        self.assertEqual(reminder.delivery_device_label, "")
+        self.assertEqual(reminder.error_message, "")
+        self.assertEqual(reminder.read_device_label, "")
+        self.assertGreater(reminder.scheduled_for, now + timedelta(minutes=13))
+        self.assertLess(reminder.scheduled_for, now + timedelta(minutes=16))
+
     def test_ack_records_delivery_channel_and_device_label(self):
         reminder = CalendarReminder.objects.create(
             user=self.user,

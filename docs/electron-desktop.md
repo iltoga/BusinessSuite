@@ -35,7 +35,7 @@ Frontend integration points:
 - Production default:
   - `DESKTOP_START_URL=https://crm.revisbali.com`
 - Local development example:
-  - `DESKTOP_START_URL=http://127.0.0.1:4200`
+  - `DESKTOP_START_URL=http://localhost:4200`
 
 `DESKTOP_ALLOWED_ORIGIN` can be set explicitly. If omitted, it uses `DESKTOP_START_URL` origin.
 
@@ -62,12 +62,16 @@ Additionally:
    - Renderer publishes reminder receipts to main process.
    - Poller keeps a seen-reminder cache.
 4. When fallback notification is shown, main process calls `/api/calendar-reminders/{id}/ack/` with `channel=system`.
+5. Desktop system notifications expose quick actions:
+   - `Mark as Read`: calls `/api/calendar-reminders/inbox/mark-read/` for that reminder.
+   - `Snooze 15m`: calls `/api/calendar-reminders/inbox/snooze/` and reschedules the reminder.
 
 ## Tray and Badge Behavior
 
 - Close window hides app to tray (does not quit).
 - Tray menu:
   - Open CRM
+  - Check for Updates
   - Launch at Login toggle (macOS/Windows)
   - Quit
 - Badge/indicator:
@@ -209,15 +213,15 @@ Then run desktop with local URL:
 
 ```bash
 cd desktop
-DESKTOP_START_URL=http://127.0.0.1:4200 bun run dev
+bun run dev
 ```
 
 Windows PowerShell equivalent:
 
 ```powershell
 cd desktop
-$env:DESKTOP_START_URL = "http://127.0.0.1:4200"
-bun run dev
+$env:DESKTOP_START_URL = "http://localhost:4200"
+bun run start
 ```
 
 ## Installer Notes
