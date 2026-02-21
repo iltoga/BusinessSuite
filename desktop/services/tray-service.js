@@ -8,12 +8,15 @@ class TrayService {
     iconPath,
     unreadIconPath,
     onOpen,
+    onCheckForUpdates,
     onQuit,
     onToggleLaunchAtLogin,
     getLaunchAtLogin,
   }) {
     this.appName = appName || 'Revis Bali CRM';
     this.onOpen = typeof onOpen === 'function' ? onOpen : () => {};
+    this.onCheckForUpdates =
+      typeof onCheckForUpdates === 'function' ? onCheckForUpdates : () => {};
     this.onQuit = typeof onQuit === 'function' ? onQuit : () => {};
     this.onToggleLaunchAtLogin =
       typeof onToggleLaunchAtLogin === 'function' ? onToggleLaunchAtLogin : () => false;
@@ -80,6 +83,11 @@ class TrayService {
         label: 'Open CRM',
         click: () => this.onOpen(),
       },
+      {
+        label: 'Check for Updates',
+        click: () => this.onCheckForUpdates(),
+      },
+      { type: 'separator' },
       {
         type: 'checkbox',
         label: 'Launch at Login',

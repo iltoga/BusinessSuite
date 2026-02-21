@@ -7,6 +7,7 @@ import uuid
 from datetime import datetime, timedelta
 from io import BytesIO
 from typing import Any, cast
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from api.serializers import (
     AdminPushNotificationSendSerializer,
@@ -16,6 +17,7 @@ from api.serializers import (
     CalendarReminderBulkCreateSerializer,
     CalendarReminderCreateSerializer,
     CalendarReminderInboxMarkReadSerializer,
+    CalendarReminderInboxSnoozeSerializer,
     CalendarReminderSerializer,
     ChangePasswordSerializer,
     CountryCodeSerializer,
@@ -2945,6 +2947,8 @@ class CalendarReminderViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             return CalendarReminderBulkCreateSerializer
         if self.action == "inbox_mark_read":
             return CalendarReminderInboxMarkReadSerializer
+        if self.action == "inbox_snooze":
+            return CalendarReminderInboxSnoozeSerializer
         return CalendarReminderSerializer
 
     @staticmethod
@@ -3130,6 +3134,75 @@ class CalendarReminderViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             read_at__isnull=True,
         ).count()
         return Response({"updated": updated, "unreadCount": unread_count})
+
+    @action(detail=False, methods=["post"], url_path="inbox/snooze")
+    def inbox_snooze(self, request):
+        serializer = self.get_serializer(data=request.data or {})
+        serializer.is_valid(raise_exception=True)
+
+        reminder_id = serializer.validated_data["id"]
+        minutes = serializer.validated_data.get("minutes", 15)
+
+        reminder = CalendarReminder.objects.filter(
+            id=reminder_id,
+            user=request.user,
+            status=CalendarReminder.STATUS_SENT,
+            read_at__isnull=True,
+        ).first()
+        if reminder is None:
+            return self.error_response("Reminder not found or already handled.", status.HTTP_404_NOT_FOUND)
+
+        reminder_timezone_name = reminder.timezone or CalendarReminder.DEFAULT_TIMEZONE
+        try:
+            reminder_tz = ZoneInfo(reminder_timezone_name)
+        except ZoneInfoNotFoundError:
+            reminder_tz = ZoneInfo(CalendarReminder.DEFAULT_TIMEZONE)
+            reminder_timezone_name = CalendarReminder.DEFAULT_TIMEZONE
+
+        scheduled_local = timezone.localtime(timezone.now() + timedelta(minutes=minutes), reminder_tz)
+        reminder.reminder_date = scheduled_local.date()
+        reminder.reminder_time = scheduled_local.time().replace(second=0, microsecond=0)
+        reminder.timezone = reminder_timezone_name
+        reminder.status = CalendarReminder.STATUS_PENDING
+        reminder.sent_at = None
+        reminder.read_at = None
+        reminder.read_device_label = ""
+        reminder.delivery_channel = ""
+        reminder.delivery_device_label = ""
+        reminder.error_message = ""
+        reminder.save(
+            update_fields=[
+                "reminder_date",
+                "reminder_time",
+                "timezone",
+                "scheduled_for",
+                "status",
+                "sent_at",
+                "read_at",
+                "delivery_channel",
+                "delivery_device_label",
+                "error_message",
+                "read_device_label",
+                "updated_at",
+            ]
+        )
+
+        today = timezone.localdate()
+        unread_count = CalendarReminder.objects.filter(
+            user=request.user,
+            status=CalendarReminder.STATUS_SENT,
+            sent_at__date=today,
+            read_at__isnull=True,
+        ).count()
+
+        return Response(
+            {
+                "id": reminder.id,
+                "minutes": minutes,
+                "scheduledFor": reminder.scheduled_for.isoformat(),
+                "unreadCount": unread_count,
+            }
+        )
 
     @action(detail=False, methods=["get"], url_path="users")
     def users(self, request):

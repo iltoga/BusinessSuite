@@ -67,6 +67,15 @@ class ReminderFallbackPoller {
     this.pruneSeenReminderIds();
   }
 
+  clearReminderSeen(rawReminderId) {
+    const reminderId = this.toPositiveInt(rawReminderId);
+    if (!reminderId) {
+      return;
+    }
+
+    this.seenReminderIds.delete(reminderId);
+  }
+
   start() {
     if (this.running) {
       return;
@@ -289,6 +298,66 @@ class ReminderFallbackPoller {
       this.log(
         'debug',
         `Reminder mark-read failed for reminder_id=${reminderId}. error=${String(error)}`,
+      );
+      return false;
+    }
+  }
+
+  async snoozeReminder(rawReminderId, { minutes = 15, deviceLabel = '' } = {}) {
+    const reminderId = this.toPositiveInt(rawReminderId);
+    if (!this.baseUrl || !reminderId) {
+      return false;
+    }
+
+    const parsedMinutes = Number(minutes);
+    const normalizedMinutes = Number.isFinite(parsedMinutes) && parsedMinutes > 0
+      ? Math.min(24 * 60, Math.floor(parsedMinutes))
+      : 15;
+
+    const payload = {
+      id: reminderId,
+      minutes: normalizedMinutes,
+    };
+    const normalizedDeviceLabel = typeof deviceLabel === 'string' ? deviceLabel.trim() : '';
+    if (normalizedDeviceLabel) {
+      payload.deviceLabel = normalizedDeviceLabel;
+    }
+
+    try {
+      const headers = {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      };
+      if (this.authToken) {
+        headers.Authorization = `Bearer ${this.authToken}`;
+      }
+
+      const response = await this.request(`${this.baseUrl}/api/calendar-reminders/inbox/snooze/`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        const body = await response.text();
+        throw new Error(`HTTP ${response.status}: ${body.slice(0, 300)}`);
+      }
+
+      const body = await response.json().catch(() => ({}));
+      const unreadCount = this.toNonNegativeInt(body?.unreadCount ?? body?.unread_count);
+      if (this.onUnreadCount) {
+        this.onUnreadCount(unreadCount);
+      }
+
+      this.clearReminderSeen(reminderId);
+      this.log(
+        'debug',
+        `Reminder snoozed from desktop notification. reminder_id=${reminderId} minutes=${normalizedMinutes}`,
+      );
+      return true;
+    } catch (error) {
+      this.log(
+        'debug',
+        `Reminder snooze failed for reminder_id=${reminderId}. error=${String(error)}`,
       );
       return false;
     }

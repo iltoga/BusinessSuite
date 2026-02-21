@@ -4,6 +4,7 @@ from .calendar_reminder_serializer import (
     CalendarReminderBulkCreateSerializer,
     CalendarReminderCreateSerializer,
     CalendarReminderInboxMarkReadSerializer,
+    CalendarReminderInboxSnoozeSerializer,
     CalendarReminderSerializer,
 )
 from .customer_serializer import CustomerSerializer

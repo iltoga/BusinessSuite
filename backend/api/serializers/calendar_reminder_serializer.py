@@ -92,6 +92,12 @@ class CalendarReminderInboxMarkReadSerializer(serializers.Serializer):
     device_label = serializers.CharField(max_length=255, required=False, allow_blank=True, default="")
 
 
+class CalendarReminderInboxSnoozeSerializer(serializers.Serializer):
+    id = serializers.IntegerField(min_value=1)
+    minutes = serializers.IntegerField(min_value=1, max_value=24 * 60, required=False, default=15)
+    device_label = serializers.CharField(max_length=255, required=False, allow_blank=True, default="")
+
+
 class CalendarReminderSerializer(serializers.ModelSerializer):
     user_full_name = serializers.SerializerMethodField()
     user_email = serializers.SerializerMethodField()
