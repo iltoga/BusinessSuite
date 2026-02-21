@@ -81,7 +81,7 @@ Desktop auto-update is implemented in Electron main process with `electron-updat
 
 - Update checks run automatically on packaged builds:
   - once shortly after startup
-  - then every 4 hours
+  - then every 1 hour
 - On update detection:
   - app asks user to download now or later
   - if accepted, download starts immediately
@@ -99,13 +99,76 @@ Required published files per release include:
 
 - Windows: `latest.yml` + `.exe` package artifacts
 - macOS: `latest-mac.yml` + `.zip` (and `.dmg` for manual install)
+- `latest*.yml` metadata includes SHA-512 checksums for installer files; Electron verifies these during update download/install.
 
 Desktop updates are published automatically by
-`.github/workflows/desktop-installers.yml` on every push to `main`.
+`.github/workflows/desktop-installers.yml` on pushes to `main` that touch `desktop/**`
+(or via manual workflow dispatch).
 
 - CI stamps desktop version as `0.1.<workflow_run_number>` so installed apps can detect a newer version.
 - CI uploads update feed files directly to `${DATA_PATH}/desktop-updates` on VPS.
 - Nginx location `/desktop-updates/*` serves files from `/var/www/desktop-updates`.
+
+This means frontend-only merges do not publish desktop update metadata/artifacts, so
+installed desktop apps are prompted only when a new desktop build is published.
+
+## Generate New Desktop Installers
+
+Use one of the following release paths.
+
+### Method A (Recommended): GitHub CI auto-build + publish
+
+This is the standard path for production desktop releases.
+
+1. Make your desktop changes under `desktop/**` (for example `desktop/main.js`, `desktop/electron-builder.yml`).
+2. Merge to `main`.
+3. GitHub Actions runs `.github/workflows/desktop-installers.yml` automatically.
+4. The workflow builds:
+   - macOS installer artifacts (`.dmg`, `.zip`, `latest-mac.yml`, `.blockmap`)
+   - Windows installer artifacts (`.exe`, `latest.yml`, `.blockmap`)
+5. The workflow publishes the merged update feed to `${DATA_PATH}/desktop-updates` on VPS.
+6. Installed apps check the feed hourly and prompt users when a newer desktop release is available.
+
+Notes:
+
+- Frontend-only merges do not trigger this workflow.
+- CI stamps desktop version as `0.1.<github.run_number>`.
+- Use this flow only when you intentionally want to publish a desktop release.
+
+### Method B: GitHub CI manual dispatch (no new commit needed)
+
+Use this when you need to rebuild/publish installers from current `main` without pushing a new commit.
+
+1. Open GitHub -> Actions -> `desktop-installers`.
+2. Click `Run workflow` (workflow_dispatch).
+3. Wait for `build-mac`, `build-win`, and `publish-update-feed` jobs to succeed.
+4. Verify that `${DATA_PATH}/desktop-updates` contains fresh `latest.yml` and `latest-mac.yml`.
+
+### Method C: Local build (manual artifacts)
+
+Use this for local QA or ad-hoc installer generation.
+
+```bash
+cd desktop
+bun install
+bun run dist:mac
+bun run dist:win
+```
+
+Artifacts are written to `desktop/dist/`.
+
+Important:
+
+- Local builds do not publish to the remote auto-update feed by default.
+- If you manually upload local artifacts to the feed path, ensure `latest.yml` and `latest-mac.yml` match the uploaded binaries (checksums must be consistent).
+
+### Release verification checklist
+
+After any release method, verify:
+
+1. `latest.yml` and `latest-mac.yml` exist in `${DATA_PATH}/desktop-updates`.
+2. Referenced installer files (`.exe`, `.zip`) exist at the same feed location.
+3. A packaged desktop app detects the update, asks download/install, and can restart via `quitAndInstall()`.
 
 ## Commands (Bun)
 

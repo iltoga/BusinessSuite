@@ -5,6 +5,8 @@ on:
   push:
     branches:
       - main
+    paths:
+      - desktop/**
 
 concurrency:
   group: desktop-installers-main
