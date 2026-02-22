@@ -55,6 +55,12 @@ from api.serializers import (
     ordered_document_types,
 )
 from api.serializers.auth_serializer import CustomTokenObtainSerializer
+from api.async_controls import acquire_enqueue_guard, build_user_enqueue_guard_key, release_enqueue_guard
+from api.permissions import (
+    IsStaffOrAdminGroup,
+    STAFF_OR_ADMIN_PERMISSION_REQUIRED_ERROR,
+    is_staff_or_admin_group,
+)
 from api.utils.sse_auth import sse_token_auth_required
 from business_suite.authentication import JwtOrMockAuthentication
 from core.models import (
@@ -77,7 +83,7 @@ from core.services.document_merger import DocumentMerger, DocumentMergerError
 from core.services.ocr_preview_storage import get_ocr_preview_url
 from core.services.push_notifications import FcmConfigurationError, PushNotificationService
 from core.services.quick_create import create_quick_customer, create_quick_customer_application, create_quick_product
-from core.tasks.cron_jobs import run_clear_cache_now, run_full_backup_now
+from core.tasks.cron_jobs import enqueue_clear_cache_now, enqueue_full_backup_now
 from core.tasks.document_ocr import run_document_ocr_job
 from core.tasks.ocr import run_ocr_job
 from core.utils.dateutils import calculate_due_date
@@ -131,7 +137,7 @@ from rest_framework.authentication import SessionAuthentication
 from rest_framework.decorators import action, api_view, authentication_classes, permission_classes, throttle_classes
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
-from rest_framework.permissions import AllowAny, BasePermission, IsAdminUser, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -207,6 +213,29 @@ def parse_bool(value, default=False):
     if isinstance(value, bool):
         return value
     return str(value).strip().lower() in {"true", "1", "yes", "y", "on"}
+
+
+def restrict_to_owner_unless_privileged(queryset, user, owner_field: str = "created_by"):
+    if is_staff_or_admin_group(user):
+        return queryset
+    return queryset.filter(**{owner_field: user})
+
+
+ASYNC_JOB_INFLIGHT_STATUSES = (AsyncJob.STATUS_PENDING, AsyncJob.STATUS_PROCESSING)
+QUEUE_JOB_INFLIGHT_STATUSES = ("queued", "processing")
+
+
+def _latest_inflight_job(queryset, statuses):
+    return queryset.filter(status__in=statuses).order_by("-created_at", "-updated_at").first()
+
+
+def _get_enqueue_guard_token(*, namespace: str, user, scope: str | None = None) -> tuple[str, str | None]:
+    lock_key = build_user_enqueue_guard_key(
+        namespace=namespace,
+        user_id=getattr(user, "id", None),
+        scope=scope,
+    )
+    return lock_key, acquire_enqueue_guard(lock_key)
 
 
 class ApiErrorHandlingMixin:
@@ -367,12 +396,6 @@ class CountryCodeViewSet(viewsets.ReadOnlyModelViewSet):
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["country", "country_idn", "alpha3_code"]
     ordering = ["country"]
-
-
-class IsStaffOrAdminGroup(BasePermission):
-    def has_permission(self, request, view):
-        user = request.user
-        return bool(user and user.is_authenticated and (user.is_staff or user.groups.filter(name="admin").exists()))
 
 
 class HolidayViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
@@ -725,21 +748,80 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             request.data.get("search_query") or request.data.get("searchQuery") or request.data.get("query") or ""
         ).strip()
 
-        job = AsyncJob.objects.create(
-            task_name="products_export_excel",
-            status=AsyncJob.STATUS_PENDING,
-            progress=0,
-            message="Queued product export...",
-            created_by=request.user,
+        existing_job = _latest_inflight_job(
+            AsyncJob.objects.filter(task_name="products_export_excel", created_by=request.user),
+            ASYNC_JOB_INFLIGHT_STATUSES,
         )
+        if existing_job:
+            return Response(
+                {
+                    "job_id": str(existing_job.id),
+                    "status": existing_job.status,
+                    "progress": existing_job.progress,
+                    "queued": False,
+                    "deduplicated": True,
+                },
+                status=status.HTTP_202_ACCEPTED,
+            )
 
-        run_product_export_job(str(job.id), request.user.id if request.user else None, query)
+        lock_key, lock_token = _get_enqueue_guard_token(namespace="products_export_excel", user=request.user)
+        if not lock_token:
+            existing_job = _latest_inflight_job(
+                AsyncJob.objects.filter(task_name="products_export_excel", created_by=request.user),
+                ASYNC_JOB_INFLIGHT_STATUSES,
+            )
+            if existing_job:
+                return Response(
+                    {
+                        "job_id": str(existing_job.id),
+                        "status": existing_job.status,
+                        "progress": existing_job.progress,
+                        "queued": False,
+                        "deduplicated": True,
+                    },
+                    status=status.HTTP_202_ACCEPTED,
+                )
+            return self.error_response(
+                "Product export trigger is already being processed. Please retry in a moment.",
+                status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+
+        try:
+            existing_job = _latest_inflight_job(
+                AsyncJob.objects.filter(task_name="products_export_excel", created_by=request.user),
+                ASYNC_JOB_INFLIGHT_STATUSES,
+            )
+            if existing_job:
+                return Response(
+                    {
+                        "job_id": str(existing_job.id),
+                        "status": existing_job.status,
+                        "progress": existing_job.progress,
+                        "queued": False,
+                        "deduplicated": True,
+                    },
+                    status=status.HTTP_202_ACCEPTED,
+                )
+
+            job = AsyncJob.objects.create(
+                task_name="products_export_excel",
+                status=AsyncJob.STATUS_PENDING,
+                progress=0,
+                message="Queued product export...",
+                created_by=request.user,
+            )
+
+            run_product_export_job(str(job.id), request.user.id if request.user else None, query)
+        finally:
+            release_enqueue_guard(lock_key, lock_token)
 
         return Response(
             {
                 "job_id": str(job.id),
                 "status": job.status,
                 "progress": job.progress,
+                "queued": True,
+                "deduplicated": False,
             },
             status=status.HTTP_202_ACCEPTED,
         )
@@ -782,25 +864,84 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         if ext != ".xlsx":
             return self.error_response("Only .xlsx files are supported", status.HTTP_400_BAD_REQUEST)
 
-        job = AsyncJob.objects.create(
-            task_name="products_import_excel",
-            status=AsyncJob.STATUS_PENDING,
-            progress=0,
-            message="Queued product import...",
-            created_by=request.user,
+        existing_job = _latest_inflight_job(
+            AsyncJob.objects.filter(task_name="products_import_excel", created_by=request.user),
+            ASYNC_JOB_INFLIGHT_STATUSES,
         )
+        if existing_job:
+            return Response(
+                {
+                    "job_id": str(existing_job.id),
+                    "status": existing_job.status,
+                    "progress": existing_job.progress,
+                    "queued": False,
+                    "deduplicated": True,
+                },
+                status=status.HTTP_202_ACCEPTED,
+            )
 
-        safe_name = get_valid_filename(os.path.basename(filename))
-        input_path = os.path.join("tmpfiles", "product_imports", str(job.id), safe_name)
-        saved_path = default_storage.save(input_path, uploaded)
+        lock_key, lock_token = _get_enqueue_guard_token(namespace="products_import_excel", user=request.user)
+        if not lock_token:
+            existing_job = _latest_inflight_job(
+                AsyncJob.objects.filter(task_name="products_import_excel", created_by=request.user),
+                ASYNC_JOB_INFLIGHT_STATUSES,
+            )
+            if existing_job:
+                return Response(
+                    {
+                        "job_id": str(existing_job.id),
+                        "status": existing_job.status,
+                        "progress": existing_job.progress,
+                        "queued": False,
+                        "deduplicated": True,
+                    },
+                    status=status.HTTP_202_ACCEPTED,
+                )
+            return self.error_response(
+                "Product import trigger is already being processed. Please retry in a moment.",
+                status.HTTP_429_TOO_MANY_REQUESTS,
+            )
 
-        run_product_import_job(str(job.id), request.user.id if request.user else None, saved_path)
+        try:
+            existing_job = _latest_inflight_job(
+                AsyncJob.objects.filter(task_name="products_import_excel", created_by=request.user),
+                ASYNC_JOB_INFLIGHT_STATUSES,
+            )
+            if existing_job:
+                return Response(
+                    {
+                        "job_id": str(existing_job.id),
+                        "status": existing_job.status,
+                        "progress": existing_job.progress,
+                        "queued": False,
+                        "deduplicated": True,
+                    },
+                    status=status.HTTP_202_ACCEPTED,
+                )
+
+            job = AsyncJob.objects.create(
+                task_name="products_import_excel",
+                status=AsyncJob.STATUS_PENDING,
+                progress=0,
+                message="Queued product import...",
+                created_by=request.user,
+            )
+
+            safe_name = get_valid_filename(os.path.basename(filename))
+            input_path = os.path.join("tmpfiles", "product_imports", str(job.id), safe_name)
+            saved_path = default_storage.save(input_path, uploaded)
+
+            run_product_import_job(str(job.id), request.user.id if request.user else None, saved_path)
+        finally:
+            release_enqueue_guard(lock_key, lock_token)
 
         return Response(
             {
                 "job_id": str(job.id),
                 "status": job.status,
                 "progress": job.progress,
+                "queued": True,
+                "deduplicated": False,
             },
             status=status.HTTP_202_ACCEPTED,
         )
@@ -1054,16 +1195,117 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
         invoice = self.get_object()
 
-        job = InvoiceDownloadJob.objects.create(
-            invoice=invoice,
-            status=InvoiceDownloadJob.STATUS_QUEUED,
-            progress=0,
-            format_type=format_type,
-            created_by=request.user,
-            request_params={"format": format_type},
+        existing_job = _latest_inflight_job(
+            InvoiceDownloadJob.objects.filter(
+                invoice=invoice,
+                format_type=format_type,
+                created_by=request.user,
+            ),
+            QUEUE_JOB_INFLIGHT_STATUSES,
         )
+        if existing_job:
+            return Response(
+                {
+                    "job_id": str(existing_job.id),
+                    "status": existing_job.status,
+                    "progress": existing_job.progress,
+                    "status_url": request.build_absolute_uri(
+                        reverse("invoices-download-async-status", kwargs={"job_id": str(existing_job.id)})
+                    ),
+                    "stream_url": request.build_absolute_uri(
+                        reverse("invoices-download-async-stream", kwargs={"job_id": str(existing_job.id)})
+                    ),
+                    "download_url": request.build_absolute_uri(
+                        reverse("invoices-download-async-file", kwargs={"job_id": str(existing_job.id)})
+                    ),
+                    "queued": False,
+                    "deduplicated": True,
+                },
+                status=status.HTTP_202_ACCEPTED,
+            )
 
-        run_invoice_download_job(str(job.id))
+        scope = f"invoice:{invoice.id}:format:{format_type}"
+        lock_key, lock_token = _get_enqueue_guard_token(
+            namespace="invoice_download_async",
+            user=request.user,
+            scope=scope,
+        )
+        if not lock_token:
+            existing_job = _latest_inflight_job(
+                InvoiceDownloadJob.objects.filter(
+                    invoice=invoice,
+                    format_type=format_type,
+                    created_by=request.user,
+                ),
+                QUEUE_JOB_INFLIGHT_STATUSES,
+            )
+            if existing_job:
+                return Response(
+                    {
+                        "job_id": str(existing_job.id),
+                        "status": existing_job.status,
+                        "progress": existing_job.progress,
+                        "status_url": request.build_absolute_uri(
+                            reverse("invoices-download-async-status", kwargs={"job_id": str(existing_job.id)})
+                        ),
+                        "stream_url": request.build_absolute_uri(
+                            reverse("invoices-download-async-stream", kwargs={"job_id": str(existing_job.id)})
+                        ),
+                        "download_url": request.build_absolute_uri(
+                            reverse("invoices-download-async-file", kwargs={"job_id": str(existing_job.id)})
+                        ),
+                        "queued": False,
+                        "deduplicated": True,
+                    },
+                    status=status.HTTP_202_ACCEPTED,
+                )
+            return self.error_response(
+                "Invoice download trigger is already being processed. Please retry in a moment.",
+                status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+
+        try:
+            existing_job = _latest_inflight_job(
+                InvoiceDownloadJob.objects.filter(
+                    invoice=invoice,
+                    format_type=format_type,
+                    created_by=request.user,
+                ),
+                QUEUE_JOB_INFLIGHT_STATUSES,
+            )
+            if existing_job:
+                return Response(
+                    {
+                        "job_id": str(existing_job.id),
+                        "status": existing_job.status,
+                        "progress": existing_job.progress,
+                        "status_url": request.build_absolute_uri(
+                            reverse("invoices-download-async-status", kwargs={"job_id": str(existing_job.id)})
+                        ),
+                        "stream_url": request.build_absolute_uri(
+                            reverse("invoices-download-async-stream", kwargs={"job_id": str(existing_job.id)})
+                        ),
+                        "download_url": request.build_absolute_uri(
+                            reverse("invoices-download-async-file", kwargs={"job_id": str(existing_job.id)})
+                        ),
+                        "queued": False,
+                        "deduplicated": True,
+                    },
+                    status=status.HTTP_202_ACCEPTED,
+                )
+
+            job = InvoiceDownloadJob.objects.create(
+                invoice=invoice,
+                status=InvoiceDownloadJob.STATUS_QUEUED,
+                progress=0,
+                format_type=format_type,
+                created_by=request.user,
+                request_params={"format": format_type},
+            )
+
+            run_invoice_download_job(str(job.id))
+        finally:
+            release_enqueue_guard(lock_key, lock_token)
 
         return Response(
             {
@@ -1079,6 +1321,8 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                 "download_url": request.build_absolute_uri(
                     reverse("invoices-download-async-file", kwargs={"job_id": str(job.id)})
                 ),
+                "queued": True,
+                "deduplicated": False,
             },
             status=status.HTTP_202_ACCEPTED,
         )
@@ -1097,9 +1341,14 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         ]
     )
     def download_async_status(self, request, job_id: uuid.UUID | None = None):
-        try:
-            job = InvoiceDownloadJob.objects.select_related("invoice").get(id=job_id)
-        except InvoiceDownloadJob.DoesNotExist:
+        job = (
+            restrict_to_owner_unless_privileged(
+                InvoiceDownloadJob.objects.select_related("invoice").filter(id=job_id), request.user
+            )
+            .order_by("id")
+            .first()
+        )
+        if not job:
             return self.error_response("Job not found", status.HTTP_404_NOT_FOUND)
 
         payload = {
@@ -1129,18 +1378,17 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         ]
     )
     def download_async_stream(self, request, job_id: uuid.UUID | None = None):
-        response = StreamingHttpResponse(self._stream_download_job(request, job_id), content_type="text/event-stream")
+        job = restrict_to_owner_unless_privileged(InvoiceDownloadJob.objects.filter(id=job_id), request.user).first()
+        if not job:
+            return self.error_response("Job not found", status.HTTP_404_NOT_FOUND)
+
+        response = StreamingHttpResponse(self._stream_download_job(request, job), content_type="text/event-stream")
         response["Cache-Control"] = "no-cache"
         response["X-Accel-Buffering"] = "no"
         return response
 
-    def _stream_download_job(self, request, job_id):
+    def _stream_download_job(self, request, job):
         last_progress = None
-        try:
-            job = InvoiceDownloadJob.objects.get(id=job_id)
-        except InvoiceDownloadJob.DoesNotExist:
-            yield self._send_download_event("error", {"message": "Job not found"})
-            return
 
         yield self._send_download_event(
             "start", {"message": "Starting invoice generation...", "progress": job.progress}
@@ -1196,9 +1444,14 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         ]
     )
     def download_async_file(self, request, job_id: uuid.UUID | None = None):
-        try:
-            job = InvoiceDownloadJob.objects.select_related("invoice", "invoice__customer").get(id=job_id)
-        except InvoiceDownloadJob.DoesNotExist:
+        job = (
+            restrict_to_owner_unless_privileged(
+                InvoiceDownloadJob.objects.select_related("invoice", "invoice__customer").filter(id=job_id), request.user
+            )
+            .order_by("id")
+            .first()
+        )
+        if not job:
             return self.error_response("Job not found", status.HTTP_404_NOT_FOUND)
 
         if job.status != InvoiceDownloadJob.STATUS_COMPLETED or not job.output_path:
@@ -1525,31 +1778,79 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         if not files:
             return self.error_response("No files uploaded", status.HTTP_400_BAD_REQUEST)
 
-        job = InvoiceImportJob.objects.create(
-            status=InvoiceImportJob.STATUS_QUEUED,
-            progress=0,
-            total_files=len(files),
-            created_by=request.user,
-            request_params={"llm_provider": llm_provider, "llm_model": llm_model},
+        existing_job = _latest_inflight_job(
+            InvoiceImportJob.objects.filter(created_by=request.user),
+            QUEUE_JOB_INFLIGHT_STATUSES,
         )
-
-        for index, uploaded_file in enumerate(files, 1):
-            filename = uploaded_file.name
-            is_paid = paid_status_list[index - 1].lower() == "true" if index - 1 < len(paid_status_list) else False
-            safe_name = get_valid_filename(os.path.basename(filename))
-            tmp_dir = os.path.join(getattr(settings, "TMPFILES_FOLDER", "tmpfiles"), "invoice_imports", str(job.id))
-            tmp_path = os.path.join(tmp_dir, safe_name)
-            file_path = default_storage.save(tmp_path, uploaded_file)
-
-            item = InvoiceImportItem.objects.create(
-                job=job,
-                sort_index=index,
-                filename=filename,
-                file_path=file_path,
-                is_paid=is_paid,
-                status=InvoiceImportItem.STATUS_QUEUED,
+        if existing_job:
+            response = StreamingHttpResponse(
+                self._stream_import_job(existing_job.id, request),
+                content_type="text/event-stream",
             )
-            run_invoice_import_item(str(item.id))
+            response["Cache-Control"] = "no-cache"
+            response["X-Accel-Buffering"] = "no"
+            return response
+
+        lock_key, lock_token = _get_enqueue_guard_token(namespace="invoice_import_batch", user=request.user)
+        if not lock_token:
+            existing_job = _latest_inflight_job(
+                InvoiceImportJob.objects.filter(created_by=request.user),
+                QUEUE_JOB_INFLIGHT_STATUSES,
+            )
+            if existing_job:
+                response = StreamingHttpResponse(
+                    self._stream_import_job(existing_job.id, request),
+                    content_type="text/event-stream",
+                )
+                response["Cache-Control"] = "no-cache"
+                response["X-Accel-Buffering"] = "no"
+                return response
+            return self.error_response(
+                "Invoice import trigger is already being processed. Please retry in a moment.",
+                status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+
+        try:
+            existing_job = _latest_inflight_job(
+                InvoiceImportJob.objects.filter(created_by=request.user),
+                QUEUE_JOB_INFLIGHT_STATUSES,
+            )
+            if existing_job:
+                response = StreamingHttpResponse(
+                    self._stream_import_job(existing_job.id, request),
+                    content_type="text/event-stream",
+                )
+                response["Cache-Control"] = "no-cache"
+                response["X-Accel-Buffering"] = "no"
+                return response
+
+            job = InvoiceImportJob.objects.create(
+                status=InvoiceImportJob.STATUS_QUEUED,
+                progress=0,
+                total_files=len(files),
+                created_by=request.user,
+                request_params={"llm_provider": llm_provider, "llm_model": llm_model},
+            )
+
+            for index, uploaded_file in enumerate(files, 1):
+                filename = uploaded_file.name
+                is_paid = paid_status_list[index - 1].lower() == "true" if index - 1 < len(paid_status_list) else False
+                safe_name = get_valid_filename(os.path.basename(filename))
+                tmp_dir = os.path.join(getattr(settings, "TMPFILES_FOLDER", "tmpfiles"), "invoice_imports", str(job.id))
+                tmp_path = os.path.join(tmp_dir, safe_name)
+                file_path = default_storage.save(tmp_path, uploaded_file)
+
+                item = InvoiceImportItem.objects.create(
+                    job=job,
+                    sort_index=index,
+                    filename=filename,
+                    file_path=file_path,
+                    is_paid=is_paid,
+                    status=InvoiceImportItem.STATUS_QUEUED,
+                )
+                run_invoice_import_item(str(item.id))
+        finally:
+            release_enqueue_guard(lock_key, lock_token)
 
         # Return SSE stream
         response = StreamingHttpResponse(
@@ -1580,9 +1881,8 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         """Get status of an import job."""
         from invoices.models import InvoiceImportJob
 
-        try:
-            job = InvoiceImportJob.objects.get(id=job_id)
-        except InvoiceImportJob.DoesNotExist:
+        job = restrict_to_owner_unless_privileged(InvoiceImportJob.objects.filter(id=job_id), request.user).first()
+        if not job:
             return self.error_response("Job not found", status.HTTP_404_NOT_FOUND)
 
         return Response(
@@ -1608,9 +1908,8 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         """Stream SSE updates for a running import job."""
         from invoices.models import InvoiceImportJob
 
-        try:
-            job = InvoiceImportJob.objects.get(id=job_id)
-        except InvoiceImportJob.DoesNotExist:
+        job = restrict_to_owner_unless_privileged(InvoiceImportJob.objects.filter(id=job_id), request.user).first()
+        if not job:
             return self.error_response("Job not found", status.HTTP_404_NOT_FOUND)
 
         response = StreamingHttpResponse(
@@ -2404,7 +2703,69 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
         resize = str(request.data.get("resize", "false")).lower() == "true"
         width = request.data.get("width", None)
 
+        existing_job = _latest_inflight_job(
+            OCRJob.objects.filter(created_by=request.user),
+            QUEUE_JOB_INFLIGHT_STATUSES,
+        )
+        if existing_job:
+            status_url = request.build_absolute_uri(reverse("api-ocr-status", kwargs={"job_id": str(existing_job.id)}))
+            return Response(
+                data={
+                    "job_id": str(existing_job.id),
+                    "status": existing_job.status,
+                    "progress": existing_job.progress,
+                    "status_url": status_url,
+                    "queued": False,
+                    "deduplicated": True,
+                },
+                status=status.HTTP_202_ACCEPTED,
+            )
+
+        lock_key, lock_token = _get_enqueue_guard_token(namespace="passport_ocr_check", user=request.user)
+        if not lock_token:
+            existing_job = _latest_inflight_job(
+                OCRJob.objects.filter(created_by=request.user),
+                QUEUE_JOB_INFLIGHT_STATUSES,
+            )
+            if existing_job:
+                status_url = request.build_absolute_uri(
+                    reverse("api-ocr-status", kwargs={"job_id": str(existing_job.id)})
+                )
+                return Response(
+                    data={
+                        "job_id": str(existing_job.id),
+                        "status": existing_job.status,
+                        "progress": existing_job.progress,
+                        "status_url": status_url,
+                        "queued": False,
+                        "deduplicated": True,
+                    },
+                    status=status.HTTP_202_ACCEPTED,
+                )
+            return self.error_response(
+                "OCR trigger is already being processed. Please retry in a moment.",
+                status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+
         try:
+            existing_job = _latest_inflight_job(
+                OCRJob.objects.filter(created_by=request.user),
+                QUEUE_JOB_INFLIGHT_STATUSES,
+            )
+            if existing_job:
+                status_url = request.build_absolute_uri(reverse("api-ocr-status", kwargs={"job_id": str(existing_job.id)}))
+                return Response(
+                    data={
+                        "job_id": str(existing_job.id),
+                        "status": existing_job.status,
+                        "progress": existing_job.progress,
+                        "status_url": status_url,
+                        "queued": False,
+                        "deduplicated": True,
+                    },
+                    status=status.HTTP_202_ACCEPTED,
+                )
+
             safe_filename = get_valid_filename(os.path.basename(file.name))
             tmp_file_path = os.path.join(getattr(settings, "TMPFILES_FOLDER", "tmpfiles"), safe_filename)
             file_path = default_storage.save(tmp_file_path, file)
@@ -2414,6 +2775,7 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                 progress=0,
                 file_path=file_path,
                 file_url=default_storage.url(file_path),
+                created_by=request.user,
                 save_session=save_session,
                 request_params={
                     "doc_type": doc_type,
@@ -2432,18 +2794,21 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                     "status": job.status,
                     "progress": job.progress,
                     "status_url": status_url,
+                    "queued": True,
+                    "deduplicated": False,
                 },
                 status=status.HTTP_202_ACCEPTED,
             )
         except Exception as e:
             errMsg = e.args[0] if e.args else str(e)
             return self.error_response(errMsg, status.HTTP_400_BAD_REQUEST)
+        finally:
+            release_enqueue_guard(lock_key, lock_token)
 
     @action(detail=False, methods=["get"], url_path=r"status/(?P<job_id>[^/.]+)")
     def status(self, request, job_id=None):
-        try:
-            job = OCRJob.objects.get(id=job_id)
-        except OCRJob.DoesNotExist:
+        job = restrict_to_owner_unless_privileged(OCRJob.objects.filter(id=job_id), request.user).first()
+        if not job:
             return self.error_response("OCR job not found", status.HTTP_404_NOT_FOUND)
 
         response_data = {
@@ -2528,7 +2893,73 @@ class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                 status.HTTP_400_BAD_REQUEST,
             )
 
+        existing_job = _latest_inflight_job(
+            DocumentOCRJob.objects.filter(created_by=request.user),
+            QUEUE_JOB_INFLIGHT_STATUSES,
+        )
+        if existing_job:
+            status_url = request.build_absolute_uri(
+                reverse("api-document-ocr-status", kwargs={"job_id": str(existing_job.id)})
+            )
+            return Response(
+                data={
+                    "job_id": str(existing_job.id),
+                    "status": existing_job.status,
+                    "progress": existing_job.progress,
+                    "status_url": status_url,
+                    "queued": False,
+                    "deduplicated": True,
+                },
+                status=status.HTTP_202_ACCEPTED,
+            )
+
+        lock_key, lock_token = _get_enqueue_guard_token(namespace="document_ocr_check", user=request.user)
+        if not lock_token:
+            existing_job = _latest_inflight_job(
+                DocumentOCRJob.objects.filter(created_by=request.user),
+                QUEUE_JOB_INFLIGHT_STATUSES,
+            )
+            if existing_job:
+                status_url = request.build_absolute_uri(
+                    reverse("api-document-ocr-status", kwargs={"job_id": str(existing_job.id)})
+                )
+                return Response(
+                    data={
+                        "job_id": str(existing_job.id),
+                        "status": existing_job.status,
+                        "progress": existing_job.progress,
+                        "status_url": status_url,
+                        "queued": False,
+                        "deduplicated": True,
+                    },
+                    status=status.HTTP_202_ACCEPTED,
+                )
+            return self.error_response(
+                "Document OCR trigger is already being processed. Please retry in a moment.",
+                status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+
         try:
+            existing_job = _latest_inflight_job(
+                DocumentOCRJob.objects.filter(created_by=request.user),
+                QUEUE_JOB_INFLIGHT_STATUSES,
+            )
+            if existing_job:
+                status_url = request.build_absolute_uri(
+                    reverse("api-document-ocr-status", kwargs={"job_id": str(existing_job.id)})
+                )
+                return Response(
+                    data={
+                        "job_id": str(existing_job.id),
+                        "status": existing_job.status,
+                        "progress": existing_job.progress,
+                        "status_url": status_url,
+                        "queued": False,
+                        "deduplicated": True,
+                    },
+                    status=status.HTTP_202_ACCEPTED,
+                )
+
             safe_filename = get_valid_filename(os.path.basename(file.name))
             job_uuid = uuid.uuid4()
             tmp_file_path = os.path.join(
@@ -2542,6 +2973,7 @@ class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                 progress=0,
                 file_path=file_path,
                 file_url=default_storage.url(file_path),
+                created_by=request.user,
                 request_params={"file_type": file_type},
             )
             run_document_ocr_job(str(job.id))
@@ -2553,18 +2985,21 @@ class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                     "status": job.status,
                     "progress": job.progress,
                     "status_url": status_url,
+                    "queued": True,
+                    "deduplicated": False,
                 },
                 status=status.HTTP_202_ACCEPTED,
             )
         except Exception as e:
             errMsg = e.args[0] if e.args else str(e)
             return self.error_response(errMsg, status.HTTP_400_BAD_REQUEST)
+        finally:
+            release_enqueue_guard(lock_key, lock_token)
 
     @action(detail=False, methods=["get"], url_path=r"status/(?P<job_id>[^/.]+)")
     def status(self, request, job_id=None):
-        try:
-            job = DocumentOCRJob.objects.get(id=job_id)
-        except DocumentOCRJob.DoesNotExist:
+        job = restrict_to_owner_unless_privileged(DocumentOCRJob.objects.filter(id=job_id), request.user).first()
+        if not job:
             return self.error_response("Document OCR job not found", status.HTTP_404_NOT_FOUND)
 
         response_data = {
@@ -2639,19 +3074,31 @@ class DashboardStatsView(ApiErrorHandlingMixin, viewsets.ViewSet):
         return Response(stats)
 
 
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
-@api_view(["GET"])
-@permission_classes([AllowAny])
+@api_view(["GET", "POST"])
+@authentication_classes([JwtOrMockAuthentication, SessionAuthentication])
+@permission_classes([IsAuthenticated, IsStaffOrAdminGroup])
 @throttle_classes([ScopedRateThrottle])
 def exec_cron_jobs(request):
     """
     Execute cron jobs via Huey
     """
     request.throttle_scope = "cron"
-    run_full_backup_now.delay()
-    run_clear_cache_now.delay()
-    return Response({"status": "queued"}, status=status.HTTP_202_ACCEPTED)
+    full_backup_queued = enqueue_full_backup_now()
+    clear_cache_queued = enqueue_clear_cache_now()
+    if full_backup_queued and clear_cache_queued:
+        status_label = "queued"
+    elif full_backup_queued or clear_cache_queued:
+        status_label = "partially_queued"
+    else:
+        status_label = "already_queued"
+    return Response(
+        {
+            "status": status_label,
+            "fullBackupQueued": full_backup_queued,
+            "clearCacheQueued": clear_cache_queued,
+        },
+        status=status.HTTP_202_ACCEPTED,
+    )
 
 
 @api_view(["GET"])
@@ -3800,8 +4247,8 @@ def calendar_reminders_stream_sse(request):
 def workflow_notifications_stream_sse(request):
     """SSE endpoint for workflow notification center live updates."""
     user = request.user
-    if not (user and user.is_authenticated and (user.is_staff or user.groups.filter(name="admin").exists())):
-        return JsonResponse({"error": "Staff or 'admin' group permission required"}, status=403)
+    if not is_staff_or_admin_group(user):
+        return JsonResponse({"error": STAFF_OR_ADMIN_PERMISSION_REQUIRED_ERROR}, status=403)
 
     def _latest_recent_notification_state():
         cutoff = timezone.now() - timedelta(hours=RECENT_WORKFLOW_NOTIFICATION_WINDOW_HOURS)
@@ -3918,6 +4365,9 @@ def workflow_notifications_stream_sse(request):
 @sse_token_auth_required
 def async_job_status_sse(request, job_id):
     """Generic SSE endpoint for tracking AsyncJob status."""
+    job_queryset = restrict_to_owner_unless_privileged(AsyncJob.objects.filter(id=job_id), request.user)
+    if not job_queryset.exists():
+        return JsonResponse({"error": "Job not found"}, status=404)
 
     def event_stream():
         last_progress = -1
@@ -3926,7 +4376,7 @@ def async_job_status_sse(request, job_id):
         while True:
             try:
                 # Refresh from DB
-                job = AsyncJob.objects.get(id=job_id)
+                job = job_queryset.get()
 
                 # Only send if changed
                 if job.progress != last_progress or job.status != last_status:
@@ -3968,3 +4418,6 @@ class AsyncJobViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = AsyncJob.objects.all()
     serializer_class = AsyncJobSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return restrict_to_owner_unless_privileged(super().get_queryset(), self.request.user)

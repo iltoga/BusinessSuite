@@ -1,9 +1,10 @@
 import datetime
-import logging
+import uuid
 from typing import Iterable, Tuple
 
 import requests
 from django.conf import settings
+from django.core.cache import cache
 from django.core.management import call_command
 from huey import crontab
 from huey.contrib.djhuey import db_periodic_task, db_task
@@ -11,6 +12,11 @@ from huey.contrib.djhuey import db_periodic_task, db_task
 from core.services.logger_service import Logger
 
 logger = Logger.get_logger(__name__)
+
+FULL_BACKUP_ENQUEUE_LOCK_KEY = "cron:full_backup:enqueue_lock"
+FULL_BACKUP_RUN_LOCK_KEY = "cron:full_backup:run_lock"
+CLEAR_CACHE_ENQUEUE_LOCK_KEY = "cron:clear_cache:enqueue_lock"
+CLEAR_CACHE_RUN_LOCK_KEY = "cron:clear_cache:run_lock"
 
 
 def _parse_time(value: str) -> Tuple[int, int]:
@@ -26,6 +32,88 @@ def _parse_time(value: str) -> Tuple[int, int]:
     return hour, minute
 
 
+def _coerce_positive_int(value, default: int) -> int:
+    try:
+        parsed = int(value)
+        if parsed > 0:
+            return parsed
+    except (TypeError, ValueError):
+        pass
+    return default
+
+
+def _full_backup_lock_ttl_seconds() -> int:
+    return _coerce_positive_int(getattr(settings, "FULL_BACKUP_LOCK_TTL_SECONDS", 6 * 60 * 60), 6 * 60 * 60)
+
+
+def _clear_cache_lock_ttl_seconds() -> int:
+    return _coerce_positive_int(getattr(settings, "CLEAR_CACHE_LOCK_TTL_SECONDS", 15 * 60), 15 * 60)
+
+
+def _acquire_cache_lock(lock_key: str, ttl_seconds: int) -> str | None:
+    token = uuid.uuid4().hex
+    acquired = cache.add(lock_key, token, timeout=max(1, ttl_seconds))
+    return token if acquired else None
+
+
+def _release_cache_lock(lock_key: str, token: str) -> None:
+    current = cache.get(lock_key)
+    if current == token:
+        cache.delete(lock_key)
+
+
+def reset_privileged_cron_job_locks() -> None:
+    cache.delete_many(
+        [
+            FULL_BACKUP_ENQUEUE_LOCK_KEY,
+            FULL_BACKUP_RUN_LOCK_KEY,
+            CLEAR_CACHE_ENQUEUE_LOCK_KEY,
+            CLEAR_CACHE_RUN_LOCK_KEY,
+        ]
+    )
+
+
+def _enqueue_task_once(*, task, task_name: str, enqueue_lock_key: str, lock_ttl_seconds: int) -> bool:
+    token = _acquire_cache_lock(enqueue_lock_key, lock_ttl_seconds)
+    if not token:
+        logger.info("%s trigger ignored: task already queued/running", task_name)
+        return False
+
+    try:
+        task.delay()
+        logger.info("%s enqueued", task_name)
+        return True
+    except Exception:
+        _release_cache_lock(enqueue_lock_key, token)
+        raise
+
+
+def _run_locked_task(
+    *,
+    task_name: str,
+    enqueue_lock_key: str,
+    run_lock_key: str,
+    lock_ttl_seconds: int,
+    perform_fn,
+) -> bool:
+    run_token = _acquire_cache_lock(run_lock_key, lock_ttl_seconds)
+    if not run_token:
+        logger.info("%s execution skipped: already running", task_name)
+        return False
+
+    enqueue_running_marker = f"running:{run_token}"
+    cache.set(enqueue_lock_key, enqueue_running_marker, timeout=max(1, lock_ttl_seconds))
+
+    try:
+        perform_fn()
+        logger.info("%s execution completed", task_name)
+        return True
+    finally:
+        _release_cache_lock(run_lock_key, run_token)
+        if cache.get(enqueue_lock_key) == enqueue_running_marker:
+            cache.delete(enqueue_lock_key)
+
+
 def _perform_full_backup() -> None:
     call_command("dbbackup")
     logger.info("DB Backup created successfully")
@@ -39,14 +127,52 @@ def _perform_clear_cache() -> None:
     logger.info("Cache cleared successfully")
 
 
+def _perform_full_backup_locked() -> bool:
+    return _run_locked_task(
+        task_name="FullBackupJob",
+        enqueue_lock_key=FULL_BACKUP_ENQUEUE_LOCK_KEY,
+        run_lock_key=FULL_BACKUP_RUN_LOCK_KEY,
+        lock_ttl_seconds=_full_backup_lock_ttl_seconds(),
+        perform_fn=_perform_full_backup,
+    )
+
+
+def _perform_clear_cache_locked() -> bool:
+    return _run_locked_task(
+        task_name="ClearCacheJob",
+        enqueue_lock_key=CLEAR_CACHE_ENQUEUE_LOCK_KEY,
+        run_lock_key=CLEAR_CACHE_RUN_LOCK_KEY,
+        lock_ttl_seconds=_clear_cache_lock_ttl_seconds(),
+        perform_fn=_perform_clear_cache,
+    )
+
+
 @db_task()
 def run_full_backup_now() -> None:
-    _perform_full_backup()
+    _perform_full_backup_locked()
 
 
 @db_task()
 def run_clear_cache_now() -> None:
-    _perform_clear_cache()
+    _perform_clear_cache_locked()
+
+
+def enqueue_full_backup_now() -> bool:
+    return _enqueue_task_once(
+        task=run_full_backup_now,
+        task_name="FullBackupJob",
+        enqueue_lock_key=FULL_BACKUP_ENQUEUE_LOCK_KEY,
+        lock_ttl_seconds=_full_backup_lock_ttl_seconds(),
+    )
+
+
+def enqueue_clear_cache_now() -> bool:
+    return _enqueue_task_once(
+        task=run_clear_cache_now,
+        task_name="ClearCacheJob",
+        enqueue_lock_key=CLEAR_CACHE_ENQUEUE_LOCK_KEY,
+        lock_ttl_seconds=_clear_cache_lock_ttl_seconds(),
+    )
 
 
 @db_task()
@@ -71,7 +197,7 @@ def _register_full_backup() -> None:
 
     @db_periodic_task(crontab(hour=hour, minute=minute), name="core.full_backup_daily")
     def _full_backup_daily() -> None:
-        _perform_full_backup()
+        _perform_full_backup_locked()
 
     globals()["_full_backup_daily"] = _full_backup_daily
 
@@ -89,7 +215,7 @@ def _register_clear_cache() -> None:
 
         @db_periodic_task(crontab(hour=hour, minute=minute), name=task_name)
         def _clear_cache_scheduled() -> None:
-            _perform_clear_cache()
+            _perform_clear_cache_locked()
 
         globals()[f"_clear_cache_{hour:02d}{minute:02d}"] = _clear_cache_scheduled
 

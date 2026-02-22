@@ -362,7 +362,8 @@ class CalendarReminderApiTests(TestCase):
             status=CalendarReminder.STATUS_PENDING,
         )
 
-        response = self.client.get(f"/api/calendar-reminders/stream/?token={self.token.key}")
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.token.key}")
+        response = self.client.get("/api/calendar-reminders/stream/")
         self.assertEqual(response.status_code, 200)
         payload = self._decode_sse_payload(next(response.streaming_content))
         self.assertEqual(payload["event"], "calendar_reminders_snapshot")

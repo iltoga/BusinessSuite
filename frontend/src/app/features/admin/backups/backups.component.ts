@@ -65,8 +65,8 @@ export class BackupsComponent implements OnInit, OnDestroy {
   @ViewChild('createdAtTemplate', { static: true }) createdAtTemplate!: TemplateRef<any>;
 
   private backupsApi = inject(BackupsService);
-  private authService = inject(AuthService);
   private sseService = inject(SseService);
+  private authService = inject(AuthService);
   private toast = inject(GlobalToastService);
 
   readonly backups = signal<Backup[]>([]);
@@ -156,13 +156,11 @@ export class BackupsComponent implements OnInit, OnDestroy {
     this.operationLabel.set('Backup progress');
 
     this.clearSseSubscription();
-    const token = this.authService.getToken();
-    const tokenParam = token ? `&token=${token}` : '';
     this.sseSubscription = this.sseService
       .connect<{
         message?: string;
         progress?: number;
-      }>(`/api/backups/start/?include_users=${this.includeUsers()}${tokenParam}`)
+      }>(`/api/backups/start/?include_users=${this.includeUsers()}`)
       .subscribe({
         next: (data) => {
           const message = data.message;
@@ -205,13 +203,11 @@ export class BackupsComponent implements OnInit, OnDestroy {
     this.operationLabel.set('Restore progress');
 
     this.clearSseSubscription();
-    const token = this.authService.getToken();
-    const tokenParam = token ? `&token=${token}` : '';
     this.sseSubscription = this.sseService
       .connect<{
         message?: string;
         progress?: string | number;
-      }>(`/api/backups/restore/?file=${filename}&include_users=${this.includeUsers()}${tokenParam}`)
+      }>(`/api/backups/restore/?file=${filename}&include_users=${this.includeUsers()}`)
       .subscribe({
         next: (data) => {
           const message = data.message;

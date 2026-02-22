@@ -3,7 +3,6 @@ import { inject, Injectable } from '@angular/core';
 import { catchError, Observable, switchMap, takeWhile, timer } from 'rxjs';
 
 import { AsyncJob } from '@/core/api';
-import { AuthService } from '@/core/services/auth.service';
 import { SseService } from '@/core/services/sse.service';
 import { ZardDialogService } from '@/shared/components/dialog';
 
@@ -15,7 +14,6 @@ export class JobService {
 
   constructor(
     private sseService: SseService,
-    private authService: AuthService,
     private http: HttpClient,
   ) {}
 
@@ -26,19 +24,9 @@ export class JobService {
    * @returns Observable of AsyncJob updates
    */
   watchJob(jobId: string): Observable<AsyncJob> {
-    const token = this.authService.getToken();
-    const params = new URLSearchParams();
-
-    if (token) {
-      params.set('token', token);
-    } else if (this.authService.isMockEnabled()) {
-      params.set('token', 'mock-token');
-    }
-
-    const query = params.toString();
-    const url = `/api/async-jobs/status/${jobId}/${query ? `?${query}` : ''}`;
-
-    return this.sseService.connect<AsyncJob>(url).pipe(catchError(() => this.pollJob(jobId)));
+    return this.sseService
+      .connect<AsyncJob>(`/api/async-jobs/status/${jobId}/`)
+      .pipe(catchError(() => this.pollJob(jobId)));
   }
 
   private pollJob(jobId: string): Observable<AsyncJob> {

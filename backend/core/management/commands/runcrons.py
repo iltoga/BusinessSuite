@@ -27,32 +27,38 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         """Execute all cron jobs."""
         from core.tasks.cron_jobs import (
+            enqueue_clear_cache_now,
+            enqueue_full_backup_now,
             run_auditlog_prune_now,
-            run_clear_cache_now,
-            run_full_backup_now,
             run_openrouter_health_check_now,
         )
 
         force = options.get("force", False)
 
         cron_jobs = [
-            ("FullBackupJob", run_full_backup_now),
-            ("ClearCacheJob", run_clear_cache_now),
-            ("AuditlogPruneJob", run_auditlog_prune_now),
-            ("OpenRouterHealthCheckJob", run_openrouter_health_check_now),
+            ("FullBackupJob", enqueue_full_backup_now),
+            ("ClearCacheJob", enqueue_clear_cache_now),
+            ("AuditlogPruneJob", run_auditlog_prune_now.delay),
+            ("OpenRouterHealthCheckJob", run_openrouter_health_check_now.delay),
         ]
 
         self.stdout.write(self.style.SUCCESS(f"Starting cron jobs execution at {timezone.now()}"))
 
-        success_count = 0
+        queued_count = 0
+        skipped_count = 0
         error_count = 0
 
-        for job_name, job_task in cron_jobs:
+        for job_name, enqueue_callable in cron_jobs:
             try:
                 self.stdout.write(f"Running {job_name}...")
-                job_task.delay()
+                result = enqueue_callable()
+                if result is False:
+                    self.stdout.write(self.style.WARNING(f"⚠️  {job_name} already queued/running, skipped"))
+                    skipped_count += 1
+                    continue
+
                 self.stdout.write(self.style.SUCCESS(f"✅ {job_name} queued successfully"))
-                success_count += 1
+                queued_count += 1
             except Exception as e:
                 error_message = f"❌ {job_name} failed: {str(e)}"
                 self.stdout.write(self.style.ERROR(error_message))
@@ -65,7 +71,8 @@ class Command(BaseCommand):
             self.style.SUCCESS(
                 f"\nCron jobs execution completed:\n"
                 f"  - Total jobs: {total_jobs}\n"
-                f"  - Successful: {success_count}\n"
+                f"  - Queued: {queued_count}\n"
+                f"  - Skipped: {skipped_count}\n"
                 f"  - Failed: {error_count}\n"
                 f"  - Completed at: {timezone.now()}"
             )
