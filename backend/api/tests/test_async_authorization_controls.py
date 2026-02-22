@@ -1,6 +1,7 @@
 from datetime import date
 from unittest.mock import patch
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.core.cache import cache
@@ -406,3 +407,21 @@ class ExpensiveAsyncEnqueueIdempotencyTests(TestCase):
         self.assertEqual(InvoiceImportJob.objects.filter(created_by=self.user).count(), 1)
         enqueue_mock.assert_called_once()
         storage_save_mock.assert_called_once()
+
+
+class AsyncTriggerThrottleCoverageTests(TestCase):
+    def test_expensive_async_actions_define_explicit_scoped_throttles(self):
+        from api.views import InvoiceViewSet, ProductViewSet
+
+        self.assertEqual(ProductViewSet.export_start.kwargs.get("throttle_scope"), "products_export_start")
+        self.assertEqual(ProductViewSet.import_start.kwargs.get("throttle_scope"), "products_import_start")
+        self.assertEqual(InvoiceViewSet.download_async.kwargs.get("throttle_scope"), "invoice_download_async")
+        self.assertEqual(InvoiceViewSet.import_batch.kwargs.get("throttle_scope"), "invoice_import_batch")
+
+    def test_expensive_async_scopes_have_configured_rates(self):
+        rates = settings.REST_FRAMEWORK.get("DEFAULT_THROTTLE_RATES", {})
+
+        self.assertEqual(rates.get("products_export_start"), "6/minute")
+        self.assertEqual(rates.get("products_import_start"), "6/minute")
+        self.assertEqual(rates.get("invoice_download_async"), "10/minute")
+        self.assertEqual(rates.get("invoice_import_batch"), "4/minute")

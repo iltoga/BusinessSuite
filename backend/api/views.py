@@ -145,7 +145,7 @@ from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.throttling import ScopedRateThrottle
+from rest_framework.throttling import AnonRateThrottle, ScopedRateThrottle, UserRateThrottle
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 logger = logging.getLogger(__name__)
@@ -690,6 +690,7 @@ class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
 class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
+    throttle_scope = None
     queryset = Product.objects.prefetch_related("tasks").all()
     pagination_class = StandardResultsSetPagination
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
@@ -771,7 +772,13 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         serializer = self.get_serializer(products, many=True)
         return Response(serializer.data)
 
-    @action(detail=False, methods=["post"], url_path="export/start")
+    @action(
+        detail=False,
+        methods=["post"],
+        url_path="export/start",
+        throttle_scope="products_export_start",
+        throttle_classes=[AnonRateThrottle, UserRateThrottle, ScopedRateThrottle],
+    )
     def export_start(self, request):
         from products.tasks import run_product_export_job
 
@@ -917,7 +924,14 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response
 
-    @action(detail=False, methods=["post"], url_path="import/start", parser_classes=[MultiPartParser, FormParser])
+    @action(
+        detail=False,
+        methods=["post"],
+        url_path="import/start",
+        parser_classes=[MultiPartParser, FormParser],
+        throttle_scope="products_import_start",
+        throttle_classes=[AnonRateThrottle, UserRateThrottle, ScopedRateThrottle],
+    )
     def import_start(self, request):
         from products.tasks import run_product_import_job
 
@@ -1050,6 +1064,7 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
 class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
+    throttle_scope = None
     pagination_class = StandardResultsSetPagination
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = [
@@ -1282,7 +1297,13 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             return self.error_response(f"PDF conversion failed: {str(e)}", status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)
-    @action(detail=True, methods=["post"], url_path="download-async")
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="download-async",
+        throttle_scope="invoice_download_async",
+        throttle_classes=[AnonRateThrottle, UserRateThrottle, ScopedRateThrottle],
+    )
     def download_async(self, request, pk=None):
         namespace = "invoice_download_async"
         format_type = (
@@ -1901,7 +1922,14 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         responses=OpenApiTypes.OBJECT,
         description="Import multiple invoice files with SSE progress streaming.",
     )
-    @action(detail=False, methods=["post"], url_path="import/batch", parser_classes=[MultiPartParser, FormParser])
+    @action(
+        detail=False,
+        methods=["post"],
+        url_path="import/batch",
+        parser_classes=[MultiPartParser, FormParser],
+        throttle_scope="invoice_import_batch",
+        throttle_classes=[AnonRateThrottle, UserRateThrottle, ScopedRateThrottle],
+    )
     def import_batch(self, request):
         """Process multiple uploaded invoice files with real-time progress streaming."""
         from django.utils.text import get_valid_filename

@@ -32,7 +32,7 @@
   <ng-template cdkPortalOutlet></ng-template>
 
   @if (isStringContent) {
-    <div data-testid="z-content" [innerHTML]="config.zContent"></div>
+    <div data-testid="z-content" [innerHTML]="sanitizedStringContent()"></div>
   }
 </main>
 

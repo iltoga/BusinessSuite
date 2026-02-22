@@ -12,6 +12,7 @@ import {
 } from '@angular/core';
 import { DomSanitizer } from '@angular/platform-browser';
 import { marked } from 'marked';
+import { sanitizeUntrustedHtml } from '@/shared/utils/html-content-sanitizer';
 
 @Component({
   selector: 'z-help-drawer-content',
@@ -136,6 +137,6 @@ export class HelpDrawerContentComponent {
     const rawContent = this.help.helpContent();
     if (!rawContent) return null;
     const html = marked.parse(rawContent, { async: false }) as string;
-    return this.sanitizer.bypassSecurityTrustHtml(html);
+    return sanitizeUntrustedHtml(html, this.sanitizer);
   });
 }

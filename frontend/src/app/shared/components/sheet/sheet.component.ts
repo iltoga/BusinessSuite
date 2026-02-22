@@ -22,8 +22,10 @@ import {
   viewChild,
   type ViewContainerRef,
 } from '@angular/core';
+import { DomSanitizer } from '@angular/platform-browser';
 
 import { mergeClasses, noopFn } from '@/shared/utils/merge-classes';
+import { sanitizeUntrustedHtml } from '@/shared/utils/html-content-sanitizer';
 
 import type { ZardSheetRef } from './sheet-ref';
 import { sheetVariants, type ZardSheetVariants } from './sheet.variants';
@@ -94,7 +96,12 @@ export class ZardSheetOptions<T, U> {
       <ng-template cdkPortalOutlet />
 
       @if (isStringContent) {
-        <div data-testid="z-content" data-slot="sheet-content" class="overflow-y-auto p-4" [innerHTML]="config.zContent"></div>
+        <div
+          data-testid="z-content"
+          data-slot="sheet-content"
+          class="overflow-y-auto p-4"
+          [innerHTML]="sanitizedStringContent()"
+        ></div>
       }
     </main>
 
@@ -149,6 +156,7 @@ export class ZardSheetOptions<T, U> {
 })
 export class ZardSheetComponent<T, U> extends BasePortalOutlet {
   private readonly host = inject(ElementRef<HTMLElement>);
+  private readonly sanitizer = inject(DomSanitizer);
   protected readonly config = inject(ZardSheetOptions<T, U>);
 
   protected readonly classes = computed(() => {
@@ -166,6 +174,9 @@ export class ZardSheetComponent<T, U> extends BasePortalOutlet {
   sheetRef?: ZardSheetRef<T>;
 
   protected readonly isStringContent = typeof this.config.zContent === 'string';
+  protected readonly sanitizedStringContent = computed(() =>
+    sanitizeUntrustedHtml(this.config.zContent, this.sanitizer),
+  );
 
   readonly portalOutlet = viewChild.required(CdkPortalOutlet);
 

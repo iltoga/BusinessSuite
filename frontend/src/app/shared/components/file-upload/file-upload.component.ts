@@ -15,6 +15,7 @@ import { DomSanitizer, type SafeResourceUrl } from '@angular/platform-browser';
 
 import { ZardButtonComponent } from '@/shared/components/button';
 import { mergeClasses } from '@/shared/utils/merge-classes';
+import { sanitizeResourceUrl } from '@/shared/utils/resource-url-sanitizer';
 
 @Component({
   selector: 'app-file-upload',
@@ -42,9 +43,8 @@ export class FileUploadComponent {
   private sanitizer = inject(DomSanitizer);
 
   readonly showPreview = computed(() => {
-    const url = this.previewUrl();
     const type = this.previewType();
-    return Boolean(url) && (type === 'image' || type === 'pdf');
+    return Boolean(this.sanitizedPreview()) && (type === 'image' || type === 'pdf');
   });
 
   readonly sanitizedPreview = computed<SafeResourceUrl | null>(() => {
@@ -52,7 +52,7 @@ export class FileUploadComponent {
     if (!url) {
       return null;
     }
-    return this.sanitizer.bypassSecurityTrustResourceUrl(url);
+    return sanitizeResourceUrl(url, this.sanitizer);
   });
 
   onBrowseClick(): void {

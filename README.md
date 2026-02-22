@@ -104,6 +104,22 @@ The application exposes a RESTful API for interacting with its various modules. 
 
 ---
 
+## Async Trigger Rate Limits
+
+Expensive async trigger endpoints are protected by both enqueue guards (deduplication + short lock) and scoped DRF throttling to reduce duplicate storms / DoS blast radius.
+
+Configured scoped limits (`REST_FRAMEWORK.DEFAULT_THROTTLE_RATES` in `backend/business_suite/settings/base.py`):
+
+- `products_export_start`: `POST /api/products/export/start/` → `6/minute`
+- `products_import_start`: `POST /api/products/import/start/` → `6/minute`
+- `invoice_download_async`: `POST /api/invoices/{id}/download-async/` → `10/minute`
+- `invoice_import_batch`: `POST /api/invoices/import/batch/` → `4/minute`
+- `ocr`: `POST /api/ocr/check/` → `10/minute`
+- `document_ocr`: `POST /api/document-ocr/check/` → `10/minute`
+- `cron`: `GET|POST /api/cron/exec_cron_jobs/` → `5/minute`
+
+---
+
 ## 📣 Observability — django-auditlog (Recommended)
 
 We use `django-auditlog` to record model changes (create/update/delete) and optionally record access events. Audit entries are persisted to the database (viewable in Django Admin).

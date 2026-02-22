@@ -22,6 +22,7 @@ import type {
 } from '@/shared/components/button/button.variants';
 import { ZardIconComponent } from '@/shared/components/icon';
 import { ZardPopoverComponent, ZardPopoverDirective } from '@/shared/components/popover';
+import { sanitizeResourceUrl } from '@/shared/utils/resource-url-sanitizer';
 
 @Component({
   selector: 'app-document-preview',
@@ -181,17 +182,22 @@ export class DocumentPreviewComponent {
         if (this.isPdf()) {
           const thumb = await this.generatePdfThumbnail(blob);
           if (thumb) {
-            this.previewUrl.set(thumb);
-            this.sanitizedPreview.set(this.sanitizer.bypassSecurityTrustResourceUrl(thumb));
+            if (!this.setPreviewResourceUrl(thumb)) {
+              this.previewUrl.set(null);
+            }
           } else {
             const url = URL.createObjectURL(blob);
-            this.previewUrl.set(url);
-            this.sanitizedPreview.set(this.sanitizer.bypassSecurityTrustResourceUrl(url));
+            if (!this.setPreviewResourceUrl(url)) {
+              URL.revokeObjectURL(url);
+              this.previewUrl.set(null);
+            }
           }
         } else {
           const url = URL.createObjectURL(blob);
-          this.previewUrl.set(url);
-          this.sanitizedPreview.set(this.sanitizer.bypassSecurityTrustResourceUrl(url));
+          if (!this.setPreviewResourceUrl(url)) {
+            URL.revokeObjectURL(url);
+            this.previewUrl.set(null);
+          }
         }
 
         this.isLoading.set(false);
@@ -218,20 +224,16 @@ export class DocumentPreviewComponent {
         if (this.isPdf()) {
           const thumb = await this.generatePdfThumbnail(blob);
           if (thumb) {
-            this.previewUrl.set(thumb);
-            this.sanitizedPreview.set(this.sanitizer.bypassSecurityTrustResourceUrl(thumb));
-            console.debug('PDF thumbnail generated for document', this.documentId(), {
-              thumbPreview: thumb.slice?.(0, 100),
-            });
+            this.setPreviewResourceUrl(thumb);
             this.isLoading.set(false);
             return;
           }
         }
 
         const url = URL.createObjectURL(blob);
-        this.previewUrl.set(url);
-        this.sanitizedPreview.set(this.sanitizer.bypassSecurityTrustResourceUrl(url));
-        console.debug('Using blob url for preview', this.documentId(), url);
+        if (!this.setPreviewResourceUrl(url)) {
+          URL.revokeObjectURL(url);
+        }
         this.isLoading.set(false);
       },
       error: () => {
@@ -307,6 +309,18 @@ export class DocumentPreviewComponent {
     this.sanitizedPreview.set(null);
     this.previewMime.set(null);
     // keep previewBlob available for full-view until destroyed explicitly
+  }
+
+  private setPreviewResourceUrl(url: string): boolean {
+    const safeUrl = sanitizeResourceUrl(url, this.sanitizer);
+    if (!safeUrl) {
+      this.sanitizedPreview.set(null);
+      this.previewUrl.set(null);
+      return false;
+    }
+    this.previewUrl.set(url);
+    this.sanitizedPreview.set(safeUrl);
+    return true;
   }
 
   private async generatePdfThumbnail(blob: Blob): Promise<string | null> {
