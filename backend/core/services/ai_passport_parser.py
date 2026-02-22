@@ -9,15 +9,14 @@ import logging
 from dataclasses import dataclass, field
 from io import BytesIO
 from pathlib import Path
-from typing import Optional, Union
-
-from django.core.files.uploadedfile import UploadedFile
+from typing import Any, Optional, Union
 
 from core.services.ai_client import AIClient
 from core.services.ai_usage_service import AIUsageFeature
 from core.services.logger_service import Logger
 from core.utils.icao_validation import validate_passport_number_icao
 from core.utils.imgutils import convert_and_resize_image
+from django.core.files.uploadedfile import UploadedFile
 
 logger = Logger.get_logger(__name__)
 
@@ -61,6 +60,13 @@ class PassportData:
     # Confidence
     confidence_score: float = 0.0
 
+    # Quality/completeness checks
+    full_page_visible: Optional[bool] = None
+    all_corners_visible: Optional[bool] = None
+    mrz_fully_visible: Optional[bool] = None
+    has_cropped_or_cutoff: Optional[bool] = None
+    is_blurry: Optional[bool] = None
+
 
 @dataclass
 class AIPassportResult:
@@ -101,6 +107,11 @@ class AIPassportParser:
             "address_abroad": {"type": ["string", "null"]},
             "document_type": {"type": ["string", "null"]},
             "confidence_score": {"type": "number", "minimum": 0, "maximum": 1},
+            "full_page_visible": {"type": "boolean"},
+            "all_corners_visible": {"type": "boolean"},
+            "mrz_fully_visible": {"type": "boolean"},
+            "has_cropped_or_cutoff": {"type": "boolean"},
+            "is_blurry": {"type": "boolean"},
         },
         "required": [
             "first_name",
@@ -122,6 +133,11 @@ class AIPassportParser:
             "address_abroad",
             "document_type",
             "confidence_score",
+            "full_page_visible",
+            "all_corners_visible",
+            "mrz_fully_visible",
+            "has_cropped_or_cutoff",
+            "is_blurry",
         ],
         "additionalProperties": False,
     }
@@ -180,6 +196,7 @@ class AIPassportParser:
         self,
         file_content: Union[bytes, UploadedFile],
         filename: str = "",
+        analysis_context: Optional[dict[str, Any]] = None,
     ) -> AIPassportResult:
         """
         Parse passport image using multimodal vision to extract structured data.
@@ -247,7 +264,7 @@ class AIPassportParser:
 
             logger.info(f"AI parsing passport image: {filename} " f"(type: {file_type}, model: {self.ai_client.model})")
 
-            return self._parse_with_vision(file_bytes, filename)
+            return self._parse_with_vision(file_bytes, filename, analysis_context=analysis_context)
 
         except Exception as e:
             return AIPassportResult(
@@ -256,11 +273,16 @@ class AIPassportParser:
                 error_message=str(e),
             )
 
-    def _parse_with_vision(self, image_bytes: bytes, filename: str) -> AIPassportResult:
+    def _parse_with_vision(
+        self,
+        image_bytes: bytes,
+        filename: str,
+        analysis_context: Optional[dict[str, Any]] = None,
+    ) -> AIPassportResult:
         """Parse passport image using vision capabilities with validation and retry."""
         try:
             # Initial attempt
-            prompt = self._build_vision_prompt()
+            prompt = self._build_vision_prompt(analysis_context=analysis_context)
             result = self._call_vision_api(image_bytes, filename, prompt)
 
             if not result.success:
@@ -282,7 +304,7 @@ class AIPassportParser:
                 logger.info(f"Retry attempt {attempt}/{self.MAX_PASSPORT_VALIDATION_RETRIES}")
 
                 # Build focused retry prompt
-                retry_prompt = self._build_retry_prompt(passport_number, validation_msg)
+                retry_prompt = self._build_retry_prompt(passport_number, validation_msg, analysis_context)
                 retry_result = self._call_vision_api(image_bytes, filename, retry_prompt)
 
                 if not retry_result.success:
@@ -347,9 +369,14 @@ class AIPassportParser:
                 error_message=str(e),
             )
 
-    def _build_retry_prompt(self, invalid_passport_number: str, validation_error: str) -> str:
+    def _build_retry_prompt(
+        self,
+        invalid_passport_number: str,
+        validation_error: str,
+        analysis_context: Optional[dict[str, Any]] = None,
+    ) -> str:
         """Build a focused retry prompt when passport number validation fails."""
-        base_prompt = self._build_vision_prompt()
+        base_prompt = self._build_vision_prompt(analysis_context=analysis_context)
 
         retry_addition = f"""
 IMPORTANT: Previous extraction returned an INVALID passport number: "{invalid_passport_number}"
@@ -365,14 +392,34 @@ Please carefully re-read the passport number from the document.
 """
         return retry_addition + base_prompt
 
-    def _build_vision_prompt(self) -> str:
+    def _build_vision_prompt(self, analysis_context: Optional[dict[str, Any]] = None) -> str:
         """
         Build prompt for vision API passport analysis.
         Simplified for cheap AI models like gemini-flash-lite.
         """
+        context_block = ""
+        if analysis_context:
+            try:
+                context_json = json.dumps(analysis_context, ensure_ascii=False, default=str)
+            except Exception:
+                context_json = str(analysis_context)
+            context_block = f"""
+
+DETERMINISTIC CONTEXT (authoritative hints from non-AI checks):
+{context_json}
+
+When deterministic context indicates low image quality, blur, glare, or failed MRZ checks,
+be conservative: lower confidence and mark quality flags strictly (is_blurry=true, mrz_fully_visible=false when appropriate).
+CRITICAL OVERRIDE: If deterministic_quality.mrz_cutoff_suspected is true, you MUST set:
+- mrz_fully_visible = false
+- has_cropped_or_cutoff = true
+- confidence_score <= 0.30
+"""
+
         return """Extract passport data from this image. Return JSON.
 
 RULES:
+0. FULL PAGE VISIBILITY (CRITICAL): The full passport biodata page must be clearly visible, including all 4 page edges/corners and full MRZ area. If any edge/corner/MRZ part is cut, cropped, or outside the frame, treat image as NOT uploadable.
 1. NAMES: Format as title case - first letter of each word capital, rest lowercase. Names can be multiple words (e.g., "John Paul", "Stefano Giulio Mario"). Capitalize each word in the name.
 2. DATES: Always use YYYY-MM-DD format (example: 1986-12-19)
 3. NATIONALITY: Use 3-letter code like ITA, USA, DEU, FRA, GBR
@@ -380,6 +427,13 @@ RULES:
 5. EYE COLOR: Translate to English (Brown, Blue, Green, Hazel, Gray, Black)
 6. ISSUING COUNTRY: Use English name (Italy, Germany, France)
 7. If field not visible: use null
+8. If the passport page is cropped/cut/not fully visible, set confidence_score to 0.0-0.30 and set critical fields (passport_number, passport_expiration_date, first_name, last_name) to null when uncertain.
+9. Set quality flags strictly:
+    - full_page_visible = true only if full page is visible
+    - all_corners_visible = true only if all 4 corners are visible
+    - mrz_fully_visible = true only if full MRZ lines (two lines at bottom of passport) are fully visible and clrearly readable
+    - has_cropped_or_cutoff = true if any part is cut/cropped
+    - is_blurry = true if text/details are blurry ("Blurry" if cv2.Laplacian(image, cv2.CV_64F).var() < threshold else "Sharp")
 
 FIELDS TO EXTRACT:
 - first_name: given name(s) (title case, can be multiple words)
@@ -401,6 +455,11 @@ FIELDS TO EXTRACT:
 - address_abroad: address if visible, else null
 - document_type: usually P for passport
 - confidence_score: 0.0 to 1.0 (how clear is the image)
+- full_page_visible: true/false
+- all_corners_visible: true/false
+- mrz_fully_visible: true/false
+- has_cropped_or_cutoff: true/false
+- is_blurry: true/false
 
 EXAMPLE OUTPUT:
 {
@@ -422,12 +481,29 @@ EXAMPLE OUTPUT:
   "eye_color": "Brown",
   "address_abroad": null,
   "document_type": "P",
-  "confidence_score": 0.95
+    "confidence_score": 0.95,
+    "full_page_visible": true,
+    "all_corners_visible": true,
+    "mrz_fully_visible": true,
+    "has_cropped_or_cutoff": false,
+    "is_blurry": false
 }
-"""
+""" + context_block
 
     def _convert_to_result(self, parsed_data: dict) -> AIPassportResult:
         """Convert parsed JSON data to structured result objects."""
+
+        def _to_bool(value) -> Optional[bool]:
+            if isinstance(value, bool):
+                return value
+            if isinstance(value, str):
+                lowered = value.strip().lower()
+                if lowered in {"true", "1", "yes", "y"}:
+                    return True
+                if lowered in {"false", "0", "no", "n"}:
+                    return False
+            return None
+
         # Log the raw parsed JSON returned by the vision API for debugging
         try:
             logger.info("AI parsed passport data: %s", json.dumps(parsed_data, ensure_ascii=False, default=str))
@@ -453,6 +529,11 @@ EXAMPLE OUTPUT:
             address_abroad=parsed_data.get("address_abroad"),
             document_type=parsed_data.get("document_type"),
             confidence_score=float(parsed_data.get("confidence_score", 0.0)),
+            full_page_visible=_to_bool(parsed_data.get("full_page_visible")),
+            all_corners_visible=_to_bool(parsed_data.get("all_corners_visible")),
+            mrz_fully_visible=_to_bool(parsed_data.get("mrz_fully_visible")),
+            has_cropped_or_cutoff=_to_bool(parsed_data.get("has_cropped_or_cutoff")),
+            is_blurry=_to_bool(parsed_data.get("is_blurry")),
         )
 
         return AIPassportResult(

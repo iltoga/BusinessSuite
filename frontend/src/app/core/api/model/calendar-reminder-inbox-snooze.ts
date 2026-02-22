@@ -9,8 +9,9 @@
  */
 
 
-export interface CalendarReminderInboxMarkRead { 
-    ids?: Array<number>;
+export interface CalendarReminderInboxSnooze { 
+    id: number;
+    minutes?: number;
     deviceLabel?: string;
 }
 

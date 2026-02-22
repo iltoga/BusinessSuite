@@ -7,6 +7,7 @@ import { LoginComponent } from './features/auth/login/login.component';
 import { CustomerDetailComponent } from './features/customers/customer-detail/customer-detail.component';
 import { CustomerFormComponent } from './features/customers/customer-form/customer-form.component';
 import { CustomerListComponent } from './features/customers/customer-list/customer-list.component';
+import { PassportCheckComponent } from './features/daily-boosters/passport-check/passport-check.component';
 import { DashboardComponent } from './features/dashboard/dashboard.component';
 import { InvoiceDetailComponent } from './features/invoices/invoice-detail/invoice-detail.component';
 import { InvoiceFormComponent } from './features/invoices/invoice-form/invoice-form.component';
@@ -57,6 +58,7 @@ export const routes: Routes = [
       { path: 'profile', component: ProfileComponent },
       { path: 'reports', component: ReportsComponent },
       { path: 'reports/:slug', component: ReportsComponent },
+      { path: 'daily-boosters/passport-check', component: PassportCheckComponent },
       {
         path: 'admin',
         loadChildren: () => import('./features/admin/admin.routes').then((m) => m.adminRoutes),

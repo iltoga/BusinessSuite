@@ -40,6 +40,7 @@ model/async-job.ts
 model/calendar-reminder-bulk-create.ts
 model/calendar-reminder-create.ts
 model/calendar-reminder-inbox-mark-read.ts
+model/calendar-reminder-inbox-snooze.ts
 model/calendar-reminder.ts
 model/change-password.ts
 model/country-code.ts

@@ -529,6 +529,44 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/calendar-reminders/{id}/ack/:
+    post:
+      operationId: calendarRemindersAckCreate
+      description: Record delivery channel for a reminder (in_app or system).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this calendar reminder.
+        required: true
+      tags:
+      - calendar-reminders
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalendarReminder'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CalendarReminder'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CalendarReminder'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/CalendarReminder'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarReminder'
+          description: ''
   /api/calendar-reminders/bulk-create/:
     post:
       operationId: calendarRemindersBulkCreateCreate
@@ -627,6 +665,36 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CalendarReminderInboxMarkRead'
+          description: ''
+  /api/calendar-reminders/inbox/snooze/:
+    post:
+      operationId: calendarRemindersInboxSnoozeCreate
+      tags:
+      - calendar-reminders
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalendarReminderInboxSnooze'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CalendarReminderInboxSnooze'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CalendarReminderInboxSnooze'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/CalendarReminderInboxSnooze'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarReminderInboxSnooze'
           description: ''
   /api/calendar-reminders/timezones/:
     get:
@@ -1670,6 +1738,29 @@ paths:
               schema:
                 $ref: '#/components/schemas/Customer'
           description: ''
+  /api/customers/check-passport/:
+    post:
+      operationId: customersCheckPassportCreate
+      description: |-
+        Check passport uploadability asynchronously.
+        Returns an AsyncJob ID to track progress via SSE.
+      tags:
+      - customers
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PassportCheck'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PassportCheck'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '202':
+          description: Job ID for SSE tracking
   /api/customers/search/:
     get:
       operationId: customersSearchRetrieve
@@ -3659,6 +3750,79 @@ paths:
               schema:
                 $ref: '#/components/schemas/Product'
           description: ''
+  /api/push-notifications/fcm-register-proxy/:
+    post:
+      operationId: pushNotificationsFcmRegisterProxyCreate
+      description: |-
+        Server-side proxy for Firebase Cloud Messaging registration.
+
+        The browser-side Firebase SDK calls fcmregistrations.googleapis.com to exchange
+        a Web Push subscription for an FCM token.  On some networks / Chrome configurations
+        that endpoint is unreachable from the browser (e.g. QUIC / HTTP3 issues) even
+        though the Django server can reach it fine via TCP.  This action forwards the
+        registration request from the browser to the real FCM endpoint server-side so the
+        browser never needs to reach googleapis.com directly.
+      tags:
+      - push-notifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebPushSubscription'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WebPushSubscription'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WebPushSubscription'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/WebPushSubscription'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebPushSubscription'
+          description: ''
+  /api/push-notifications/firebase-install-proxy/:
+    post:
+      operationId: pushNotificationsFirebaseInstallProxyCreate
+      description: |-
+        Server-side proxy for Firebase Installations API.
+
+        Handles both FID creation (POST .../installations) and auth-token refresh
+        (POST .../installations/{fid}/authTokens:generate) so the browser is never
+        required to reach firebaseinstallations.googleapis.com directly.
+      tags:
+      - push-notifications
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebPushSubscription'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WebPushSubscription'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WebPushSubscription'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/WebPushSubscription'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebPushSubscription'
+          description: ''
   /api/push-notifications/register/:
     post:
       operationId: pushNotificationsRegisterCreate
@@ -4757,6 +4921,44 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/calendar-reminders/{id}/ack/:
+    post:
+      operationId: v1CalendarRemindersAckCreate
+      description: Record delivery channel for a reminder (in_app or system).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this calendar reminder.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalendarReminder'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CalendarReminder'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CalendarReminder'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/CalendarReminder'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarReminder'
+          description: ''
   /api/v1/calendar-reminders/bulk-create/:
     post:
       operationId: v1CalendarRemindersBulkCreateCreate
@@ -4855,6 +5057,36 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CalendarReminderInboxMarkRead'
+          description: ''
+  /api/v1/calendar-reminders/inbox/snooze/:
+    post:
+      operationId: v1CalendarRemindersInboxSnoozeCreate
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalendarReminderInboxSnooze'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CalendarReminderInboxSnooze'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CalendarReminderInboxSnooze'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/CalendarReminderInboxSnooze'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarReminderInboxSnooze'
           description: ''
   /api/v1/calendar-reminders/timezones/:
     get:
@@ -5898,6 +6130,29 @@ paths:
               schema:
                 $ref: '#/components/schemas/Customer'
           description: ''
+  /api/v1/customers/check-passport/:
+    post:
+      operationId: customersCheckPassportCreate2
+      description: |-
+        Check passport uploadability asynchronously.
+        Returns an AsyncJob ID to track progress via SSE.
+      tags:
+      - v1
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PassportCheck'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PassportCheck'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '202':
+          description: Job ID for SSE tracking
   /api/v1/customers/search/:
     get:
       operationId: v1CustomersSearchRetrieve
@@ -7887,6 +8142,79 @@ paths:
               schema:
                 $ref: '#/components/schemas/Product'
           description: ''
+  /api/v1/push-notifications/fcm-register-proxy/:
+    post:
+      operationId: v1PushNotificationsFcmRegisterProxyCreate
+      description: |-
+        Server-side proxy for Firebase Cloud Messaging registration.
+
+        The browser-side Firebase SDK calls fcmregistrations.googleapis.com to exchange
+        a Web Push subscription for an FCM token.  On some networks / Chrome configurations
+        that endpoint is unreachable from the browser (e.g. QUIC / HTTP3 issues) even
+        though the Django server can reach it fine via TCP.  This action forwards the
+        registration request from the browser to the real FCM endpoint server-side so the
+        browser never needs to reach googleapis.com directly.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebPushSubscription'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WebPushSubscription'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WebPushSubscription'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/WebPushSubscription'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebPushSubscription'
+          description: ''
+  /api/v1/push-notifications/firebase-install-proxy/:
+    post:
+      operationId: v1PushNotificationsFirebaseInstallProxyCreate
+      description: |-
+        Server-side proxy for Firebase Installations API.
+
+        Handles both FID creation (POST .../installations) and auth-token refresh
+        (POST .../installations/{fid}/authTokens:generate) so the browser is never
+        required to reach firebaseinstallations.googleapis.com directly.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebPushSubscription'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WebPushSubscription'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WebPushSubscription'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/WebPushSubscription'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebPushSubscription'
+          description: ''
   /api/v1/push-notifications/register/:
     post:
       operationId: v1PushNotificationsRegisterCreate
@@ -9180,6 +9508,22 @@ components:
           format: date-time
           readOnly: true
           nullable: true
+        delivery_channel:
+          enum:
+          - in_app
+          - system
+          type: string
+          description: |-
+            * `in_app` - In-App
+            * `system` - System Notification
+          x-spec-enum-id: eae8097a337b80c2
+          readOnly: true
+        delivery_device_label:
+          type: string
+          readOnly: true
+        read_device_label:
+          type: string
+          readOnly: true
         error_message:
           type: string
           readOnly: true
@@ -9197,9 +9541,12 @@ components:
       - created_by
       - created_by_email
       - created_by_full_name
+      - delivery_channel
+      - delivery_device_label
       - error_message
       - id
       - read_at
+      - read_device_label
       - reminder_date
       - reminder_time
       - scheduled_for
@@ -9272,6 +9619,27 @@ components:
           items:
             type: integer
             minimum: 1
+        device_label:
+          type: string
+          default: ''
+          maxLength: 255
+    CalendarReminderInboxSnooze:
+      type: object
+      properties:
+        id:
+          type: integer
+          minimum: 1
+        minutes:
+          type: integer
+          maximum: 1440
+          minimum: 1
+          default: 15
+        device_label:
+          type: string
+          default: ''
+          maxLength: 255
+      required:
+      - id
     ChangePassword:
       type: object
       properties:
@@ -10081,6 +10449,8 @@ components:
           readOnly: true
         is_current_step:
           type: boolean
+          description: Resolve current step from already-loaded siblings to avoid
+            N+1 queries.
           readOnly: true
         is_overdue:
           type: boolean
@@ -10969,6 +11339,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Product'
+    PassportCheck:
+      type: object
+      properties:
+        file:
+          type: string
+          format: uri
+          description: Passport image file
+        method:
+          enum:
+          - internal
+          - ai
+          - hybrid
+          type: string
+          x-spec-enum-id: 8c6d158365a8e4be
+          default: hybrid
+          description: |-
+            Verification method
+
+            * `internal` - internal
+            * `ai` - ai
+            * `hybrid` - hybrid
+      required:
+      - file
     Payment:
       type: object
       properties:

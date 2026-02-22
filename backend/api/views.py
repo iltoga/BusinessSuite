@@ -9,6 +9,18 @@ from io import BytesIO
 from typing import Any, cast
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from api.async_controls import (
+    acquire_enqueue_guard,
+    build_user_enqueue_guard_key,
+    increment_guard_counter,
+    release_enqueue_guard,
+)
+from api.permissions import (
+    STAFF_OR_ADMIN_PERMISSION_REQUIRED_ERROR,
+    IsStaffOrAdminGroup,
+    is_staff_or_admin_group,
+    is_superuser,
+)
 from api.serializers import (
     AdminPushNotificationSendSerializer,
     AdminWhatsappTestSendSerializer,
@@ -55,18 +67,7 @@ from api.serializers import (
     ordered_document_types,
 )
 from api.serializers.auth_serializer import CustomTokenObtainSerializer
-from api.async_controls import (
-    acquire_enqueue_guard,
-    build_user_enqueue_guard_key,
-    increment_guard_counter,
-    release_enqueue_guard,
-)
-from api.permissions import (
-    IsStaffOrAdminGroup,
-    STAFF_OR_ADMIN_PERMISSION_REQUIRED_ERROR,
-    is_staff_or_admin_group,
-    is_superuser,
-)
+from api.serializers.passport_check_serializer import PassportCheckSerializer
 from api.utils.sse_auth import sse_token_auth_required
 from business_suite.authentication import JwtOrMockAuthentication
 from core.models import (
@@ -80,6 +81,7 @@ from core.models import (
     UserSettings,
     WebPushSubscription,
 )
+from core.models.async_job import AsyncJob
 from core.services.calendar_reminder_service import CalendarReminderService
 from core.services.calendar_reminder_stream import (
     get_calendar_reminder_stream_cursor,
@@ -101,6 +103,7 @@ from customer_applications.services.workflow_notification_stream import (
     get_workflow_notification_stream_last_event,
 )
 from customers.models import Customer
+from customers.tasks import check_passport_uploadability_task
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth import logout as django_logout
@@ -686,6 +689,40 @@ class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
         count = bulk_delete_customers(query=query or None, hide_disabled=hide_disabled)
         return Response({"deleted_count": count})
+
+    @extend_schema(
+        request=PassportCheckSerializer,
+        responses={202: OpenApiResponse(description="Job ID for SSE tracking")},
+        operation_id="customers_check_passport_create",
+    )
+    @action(detail=False, methods=["post"], url_path="check-passport", parser_classes=[MultiPartParser, FormParser])
+    def check_passport(self, request):
+        """
+        Check passport uploadability asynchronously.
+        Returns an AsyncJob ID to track progress via SSE.
+        """
+        serializer = PassportCheckSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # validated_data is a dict with guaranteed keys after is_valid()
+        # use .get() to keep mypy/analysis happy
+        file_obj = serializer.validated_data.get("file")  # type: ignore[assignment]
+        method = serializer.validated_data.get("method")  # type: ignore[assignment]
+
+        # Save file temporarily
+        ext = file_obj.name.split(".")[-1] if "." in file_obj.name else "jpg"
+        temp_path = f"tmp/passport_checks/{uuid.uuid4().hex}.{ext}"
+        saved_path = default_storage.save(temp_path, file_obj)
+
+        # Create AsyncJob
+        job = AsyncJob.objects.create(
+            task_name="check_passport_uploadability", status=AsyncJob.STATUS_PENDING, created_by=request.user
+        )
+
+        # Enqueue task
+        check_passport_uploadability_task(str(job.id), saved_path, method)
+
+        return Response({"job_id": str(job.id)}, status=status.HTTP_202_ACCEPTED)
 
 
 class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
@@ -1605,7 +1642,8 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     def download_async_file(self, request, job_id: uuid.UUID | None = None):
         job = (
             restrict_to_owner_unless_privileged(
-                InvoiceDownloadJob.objects.select_related("invoice", "invoice__customer").filter(id=job_id), request.user
+                InvoiceDownloadJob.objects.select_related("invoice", "invoice__customer").filter(id=job_id),
+                request.user,
             )
             .order_by("id")
             .first()
@@ -1813,7 +1851,7 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             {
                 "providers": llm_config.get("providers", {}),
                 "currentProvider": getattr(django_settings, "LLM_PROVIDER", "openrouter"),
-                "currentModel": getattr(django_settings, "LLM_DEFAULT_MODEL", "google/gemini-2.0-flash-001"),
+                "currentModel": getattr(django_settings, "LLM_DEFAULT_MODEL", "google/gemini-2.5-flash-lite"),
                 "maxWorkers": getattr(django_settings, "INVOICE_IMPORT_MAX_WORKERS", 3),
                 "supportedFormats": [".pdf", ".xlsx", ".xls", ".docx", ".doc"],
             }
@@ -3005,7 +3043,9 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                     job_id=str(existing_job.id),
                     status_code=status.HTTP_202_ACCEPTED,
                 )
-                status_url = request.build_absolute_uri(reverse("api-ocr-status", kwargs={"job_id": str(existing_job.id)}))
+                status_url = request.build_absolute_uri(
+                    reverse("api-ocr-status", kwargs={"job_id": str(existing_job.id)})
+                )
                 return Response(
                     data={
                         "job_id": str(existing_job.id),

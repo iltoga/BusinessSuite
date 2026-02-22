@@ -25,6 +25,8 @@ import { CalendarReminderCreate } from '../model/calendar-reminder-create';
 // @ts-ignore
 import { CalendarReminderInboxMarkRead } from '../model/calendar-reminder-inbox-mark-read';
 // @ts-ignore
+import { CalendarReminderInboxSnooze } from '../model/calendar-reminder-inbox-snooze';
+// @ts-ignore
 import { PaginatedCalendarReminderList } from '../model/paginated-calendar-reminder-list';
 
 // @ts-ignore
@@ -41,6 +43,83 @@ export class CalendarRemindersService extends BaseService {
 
     constructor(protected httpClient: HttpClient, @Optional() @Inject(BASE_PATH) basePath: string|string[], @Optional() configuration?: Configuration) {
         super(basePath, configuration);
+    }
+
+    /**
+     * Record delivery channel for a reminder (in_app or system).
+     * @endpoint post /api/calendar-reminders/{id}/ack/
+     * @param id A unique integer value identifying this calendar reminder.
+     * @param calendarReminder 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     * @param options additional options
+     */
+    public calendarRemindersAckCreate(id: number, calendarReminder: CalendarReminder, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<CalendarReminder>;
+    public calendarRemindersAckCreate(id: number, calendarReminder: CalendarReminder, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<CalendarReminder>>;
+    public calendarRemindersAckCreate(id: number, calendarReminder: CalendarReminder, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<CalendarReminder>>;
+    public calendarRemindersAckCreate(id: number, calendarReminder: CalendarReminder, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+        if (id === null || id === undefined) {
+            throw new Error('Required parameter id was null or undefined when calling calendarRemindersAckCreate.');
+        }
+        if (calendarReminder === null || calendarReminder === undefined) {
+            throw new Error('Required parameter calendarReminder was null or undefined when calling calendarRemindersAckCreate.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        // authentication (cookieAuth) required
+
+        // authentication (jwtAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
+
+        const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            'application/json'
+        ]);
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+        const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json',
+            'application/x-www-form-urlencoded',
+            'multipart/form-data'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/calendar-reminders/${this.configuration.encodeParam({name: "id", value: id, in: "path", style: "simple", explode: false, dataType: "number", dataFormat: undefined})}/ack/`;
+        const { basePath, withCredentials } = this.configuration;
+        return this.httpClient.request<CalendarReminder>('post', `${basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: calendarReminder,
+                responseType: <any>responseType_,
+                ...(withCredentials ? { withCredentials } : {}),
+                headers: localVarHeaders,
+                observe: observe,
+                ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+                reportProgress: reportProgress
+            }
+        );
     }
 
     /**
@@ -404,6 +483,78 @@ export class CalendarRemindersService extends BaseService {
         return this.httpClient.request<CalendarReminder>('get', `${basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
+                responseType: <any>responseType_,
+                ...(withCredentials ? { withCredentials } : {}),
+                headers: localVarHeaders,
+                observe: observe,
+                ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * @endpoint post /api/calendar-reminders/inbox/snooze/
+     * @param calendarReminderInboxSnooze 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     * @param options additional options
+     */
+    public calendarRemindersInboxSnoozeCreate(calendarReminderInboxSnooze: CalendarReminderInboxSnooze, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<CalendarReminderInboxSnooze>;
+    public calendarRemindersInboxSnoozeCreate(calendarReminderInboxSnooze: CalendarReminderInboxSnooze, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<CalendarReminderInboxSnooze>>;
+    public calendarRemindersInboxSnoozeCreate(calendarReminderInboxSnooze: CalendarReminderInboxSnooze, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<CalendarReminderInboxSnooze>>;
+    public calendarRemindersInboxSnoozeCreate(calendarReminderInboxSnooze: CalendarReminderInboxSnooze, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+        if (calendarReminderInboxSnooze === null || calendarReminderInboxSnooze === undefined) {
+            throw new Error('Required parameter calendarReminderInboxSnooze was null or undefined when calling calendarRemindersInboxSnoozeCreate.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        // authentication (cookieAuth) required
+
+        // authentication (jwtAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
+
+        const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            'application/json'
+        ]);
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+        const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json',
+            'application/x-www-form-urlencoded',
+            'multipart/form-data'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/calendar-reminders/inbox/snooze/`;
+        const { basePath, withCredentials } = this.configuration;
+        return this.httpClient.request<CalendarReminderInboxSnooze>('post', `${basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: calendarReminderInboxSnooze,
                 responseType: <any>responseType_,
                 ...(withCredentials ? { withCredentials } : {}),
                 headers: localVarHeaders,
