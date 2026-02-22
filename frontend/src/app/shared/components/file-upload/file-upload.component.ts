@@ -10,17 +10,17 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-
 import { DomSanitizer, type SafeResourceUrl } from '@angular/platform-browser';
 
 import { ZardButtonComponent } from '@/shared/components/button';
+import { ImageMagnifierComponent } from '@/shared/components/image-magnifier';
 import { mergeClasses } from '@/shared/utils/merge-classes';
 import { sanitizeResourceUrl } from '@/shared/utils/resource-url-sanitizer';
 
 @Component({
   selector: 'app-file-upload',
   standalone: true,
-  imports: [CommonModule, ZardButtonComponent],
+  imports: [CommonModule, ZardButtonComponent, ImageMagnifierComponent],
   templateUrl: './file-upload.component.html',
   styleUrls: ['./file-upload.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -34,18 +34,32 @@ export class FileUploadComponent {
   helperText = input<string | null | undefined>(null);
   previewUrl = input<string | null | undefined>(null);
   previewType = input<'image' | 'pdf' | 'unknown'>('unknown');
+  previewLoading = input<boolean>(false);
+  magnifierEnabledByDefault = input<boolean>(false);
+  showMagnifierToggle = input<boolean>(true);
 
   fileSelected = output<File>();
   cleared = output<void>();
 
+  private readonly sanitizer = inject(DomSanitizer);
   private readonly fileInput = viewChild.required<ElementRef<HTMLInputElement>>('fileInput');
   readonly isDragging = signal(false);
-  private sanitizer = inject(DomSanitizer);
 
-  readonly showPreview = computed(() => {
-    const type = this.previewType();
-    return Boolean(this.sanitizedPreview()) && (type === 'image' || type === 'pdf');
-  });
+  readonly hasImagePreview = computed(
+    () =>
+      this.previewType() === 'image' &&
+      Boolean(this.previewUrl()) &&
+      Boolean(this.sanitizedPreview()),
+  );
+  readonly hasPdfPreview = computed(
+    () => this.previewType() === 'pdf' && Boolean(this.sanitizedPreview()),
+  );
+  readonly showPreview = computed(() => this.hasImagePreview() || this.hasPdfPreview());
+  readonly hasPreviewCandidate = computed(() => Boolean(this.fileName()) || Boolean(this.previewUrl()));
+  readonly showPreviewContainer = computed(
+    () => this.previewLoading() || this.showPreview() || this.hasPreviewCandidate(),
+  );
+  readonly showPreviewSkeleton = computed(() => this.previewLoading());
 
   readonly sanitizedPreview = computed<SafeResourceUrl | null>(() => {
     const url = this.previewUrl();

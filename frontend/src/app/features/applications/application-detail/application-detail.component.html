@@ -551,6 +551,7 @@
           [disabled]="isSaving()"
           [previewUrl]="inlinePreviewUrl()"
           [previewType]="inlinePreviewType()"
+          [previewLoading]="inlinePreviewLoading()"
           (fileSelected)="onFileSelected($event)"
           (cleared)="onFileCleared()"
         />
@@ -635,6 +636,7 @@
               zType="default"
               type="button"
               (click)="onSaveDocument()"
+              [zLoading]="isSaving()"
               [disabled]="isSaving()"
             >
               Save
@@ -645,7 +647,11 @@
         @if (ocrPreviewImage()) {
           <div class="rounded-md border p-3">
             <div class="text-sm font-medium mb-2">OCR Preview</div>
-            <img [src]="ocrPreviewImage()" alt="OCR Preview" class="max-h-60 rounded" />
+            <app-image-magnifier
+              [src]="ocrPreviewImage()"
+              alt="OCR Preview"
+              [imageClass]="'max-h-60 w-auto max-w-full rounded object-contain'"
+            />
           </div>
         }
       </form>

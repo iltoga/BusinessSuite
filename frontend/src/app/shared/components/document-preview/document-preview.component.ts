@@ -11,7 +11,6 @@ import {
   ViewChild,
   ViewContainerRef,
 } from '@angular/core';
-
 import { DomSanitizer, type SafeResourceUrl } from '@angular/platform-browser';
 
 import { DocumentsService } from '@/core/services/documents.service';
@@ -21,6 +20,7 @@ import type {
   ZardButtonTypeVariants,
 } from '@/shared/components/button/button.variants';
 import { ZardIconComponent } from '@/shared/components/icon';
+import { ImageMagnifierComponent } from '@/shared/components/image-magnifier';
 import { ZardPopoverComponent, ZardPopoverDirective } from '@/shared/components/popover';
 import { sanitizeResourceUrl } from '@/shared/utils/resource-url-sanitizer';
 
@@ -31,6 +31,7 @@ import { sanitizeResourceUrl } from '@/shared/utils/resource-url-sanitizer';
     CommonModule,
     ZardButtonComponent,
     ZardIconComponent,
+    ImageMagnifierComponent,
     ZardPopoverComponent,
     ZardPopoverDirective,
   ],
@@ -41,6 +42,7 @@ import { sanitizeResourceUrl } from '@/shared/utils/resource-url-sanitizer';
 export class DocumentPreviewComponent {
   private documentsService = inject(DocumentsService);
   private destroyRef = inject(DestroyRef);
+  private sanitizer = inject(DomSanitizer);
 
   documentId = input.required<number>();
   fileLink = input<string | null | undefined>(null);
@@ -134,8 +136,6 @@ export class DocumentPreviewComponent {
         return 'max-h-[40rem] w-full object-contain';
     }
   });
-
-  private sanitizer = inject(DomSanitizer);
 
   constructor() {
     this.destroyRef.onDestroy(() => {

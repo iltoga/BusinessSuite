@@ -60,9 +60,9 @@ export class DocumentPrintComponent implements OnInit {
   private router = inject(Router);
   private location = inject(Location);
   private http = inject(HttpClient);
-  private sanitizer = inject(DomSanitizer);
   private destroyRef = inject(DestroyRef);
   private configService = inject(ConfigService);
+  private sanitizer = inject(DomSanitizer);
 
   readonly document = signal<DocumentPrintData | null>(null);
   readonly isLoading = signal(true);

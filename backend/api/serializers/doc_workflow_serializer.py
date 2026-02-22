@@ -21,7 +21,7 @@ class TaskSerializer(serializers.ModelSerializer):
 
 class DocWorkflowSerializer(serializers.ModelSerializer):
     task = TaskSerializer(read_only=True)
-    is_current_step = serializers.BooleanField(read_only=True)
+    is_current_step = serializers.SerializerMethodField()
     is_overdue = serializers.BooleanField(read_only=True)
     is_notification_date_reached = serializers.BooleanField(read_only=True)
     has_notes = serializers.BooleanField(read_only=True)
@@ -46,3 +46,28 @@ class DocWorkflowSerializer(serializers.ModelSerializer):
             "updated_by",
         ]
         read_only_fields = fields
+
+    def get_is_current_step(self, obj) -> bool:
+        """Resolve current step from already-loaded siblings to avoid N+1 queries."""
+        parent = getattr(self, "parent", None)
+        siblings = getattr(parent, "instance", None)
+
+        if siblings is not None:
+            sibling_items = getattr(parent, "_sibling_workflows_cache", None)
+            if sibling_items is None:
+                sibling_items = list(siblings)
+                setattr(parent, "_sibling_workflows_cache", sibling_items)
+
+            current_workflow_id = getattr(parent, "_current_workflow_id_cache", None)
+            if current_workflow_id is None:
+                current = max(
+                    sibling_items,
+                    key=lambda wf: ((wf.task.step if wf.task else -1), wf.created_at, wf.id),
+                    default=None,
+                )
+                current_workflow_id = current.id if current else None
+                setattr(parent, "_current_workflow_id_cache", current_workflow_id)
+
+            return obj.id == current_workflow_id
+
+        return obj.is_current_step

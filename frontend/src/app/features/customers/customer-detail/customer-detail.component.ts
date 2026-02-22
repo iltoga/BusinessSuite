@@ -23,7 +23,7 @@ import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
-import { ZardIconComponent } from '@/shared/components/icon';
+import { ImageMagnifierComponent } from '@/shared/components/image-magnifier';
 import {
   CardSkeletonComponent,
   TableSkeletonComponent,
@@ -40,7 +40,7 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
     RouterLink,
     ZardButtonComponent,
     ZardCardComponent,
-    ZardIconComponent,
+    ImageMagnifierComponent,
     ZardBadgeComponent,
     CardSkeletonComponent,
     TableSkeletonComponent,
@@ -65,14 +65,6 @@ export class CustomerDetailComponent implements OnInit {
   readonly applicationsHistory = signal<CustomerApplicationHistory[]>([]);
   readonly isLoading = signal(true);
   readonly isSuperuser = this.authService.isSuperuser;
-  readonly magnifierActive = signal(false);
-  readonly magnifierLensX = signal(0);
-  readonly magnifierLensY = signal(0);
-  readonly magnifierBgX = signal(0);
-  readonly magnifierBgY = signal(0);
-  readonly magnifierLensSize = 300;
-  readonly magnifierZoom = 4;
-  readonly magnifierEnabled = signal(false);
   readonly applicationsFilter = signal<'all' | CustomerApplicationPaymentStatus>('all');
   readonly applicationsPage = signal(1);
   readonly applicationFilterOptions: ReadonlyArray<{
@@ -317,39 +309,4 @@ export class CustomerDetailComponent implements OnInit {
     };
   }
 
-  toggleMagnifier(): void {
-    const enabled = !this.magnifierEnabled();
-    this.magnifierEnabled.set(enabled);
-    if (!enabled) {
-      this.magnifierActive.set(false);
-    }
-  }
-
-  onPassportMouseEnter(): void {
-    if (!this.magnifierEnabled()) return;
-    this.magnifierActive.set(true);
-  }
-
-  onPassportMouseLeave(): void {
-    this.magnifierActive.set(false);
-  }
-
-  onPassportMouseMove(event: MouseEvent): void {
-    if (!this.magnifierEnabled()) return;
-
-    const image = event.currentTarget as HTMLImageElement | null;
-    if (!image) return;
-
-    const rect = image.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
-    const clampedX = Math.max(0, Math.min(x, rect.width));
-    const clampedY = Math.max(0, Math.min(y, rect.height));
-    const halfLens = this.magnifierLensSize / 2;
-
-    this.magnifierLensX.set(clampedX - halfLens);
-    this.magnifierLensY.set(clampedY - halfLens);
-    this.magnifierBgX.set((clampedX / rect.width) * 100);
-    this.magnifierBgY.set((clampedY / rect.height) * 100);
-  }
 }

@@ -1,0 +1,77 @@
+@if (hasSource()) {
+  <div [class]="resolvedWrapperClass()">
+    @if (resolvedHref()) {
+      <a
+        [href]="resolvedHref()"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="image-magnifier-link"
+      >
+        <img
+          [src]="resolvedSrc()"
+          [alt]="alt()"
+          [class]="resolvedImageClass()"
+          (mouseenter)="onImageMouseEnter()"
+          (mouseleave)="onImageMouseLeave()"
+          (mousemove)="onImageMouseMove($event)"
+        />
+        <div
+          class="image-magnifier-lens"
+          [class.active]="magnifierEnabled() && magnifierActive()"
+          [style.width.px]="lensSize()"
+          [style.height.px]="lensSize()"
+          [style.left.px]="magnifierLensX()"
+          [style.top.px]="magnifierLensY()"
+          [style.background-image]="'url(' + resolvedSrc() + ')'"
+          [style.background-size.%]="zoom() * 100"
+          [style.background-position]="magnifierBgX() + '% ' + magnifierBgY() + '%'"
+        ></div>
+      </a>
+    } @else {
+      <div class="image-magnifier-link">
+        <img
+          [src]="resolvedSrc()"
+          [alt]="alt()"
+          [class]="resolvedImageClass()"
+          (mouseenter)="onImageMouseEnter()"
+          (mouseleave)="onImageMouseLeave()"
+          (mousemove)="onImageMouseMove($event)"
+        />
+        <div
+          class="image-magnifier-lens"
+          [class.active]="magnifierEnabled() && magnifierActive()"
+          [style.width.px]="lensSize()"
+          [style.height.px]="lensSize()"
+          [style.left.px]="magnifierLensX()"
+          [style.top.px]="magnifierLensY()"
+          [style.background-image]="'url(' + resolvedSrc() + ')'"
+          [style.background-size.%]="zoom() * 100"
+          [style.background-position]="magnifierBgX() + '% ' + magnifierBgY() + '%'"
+        ></div>
+      </div>
+    }
+
+    @if (showToggle()) {
+      <button
+        type="button"
+        z-button
+        zType="ghost"
+        zSize="sm"
+        [class]="resolvedToggleClass()"
+        [attr.aria-label]="
+          magnifierEnabled()
+            ? 'Disable image magnifier lens on hover'
+            : 'Enable image magnifier lens on hover'
+        "
+        [attr.title]="
+          magnifierEnabled()
+            ? 'Disable image magnifier lens on hover'
+            : 'Enable image magnifier lens on hover'
+        "
+        (click)="toggleMagnifier()"
+      >
+        <z-icon [zType]="magnifierEnabled() ? 'zoom-out' : 'zoom-in'" class="h-4 w-4" />
+      </button>
+    }
+  </div>
+}

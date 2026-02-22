@@ -171,6 +171,17 @@ class DocApplication(models.Model):
         """
         Checks whether all required documents are completed.
         """
+        total_required = getattr(self, "total_required_documents", None)
+        completed_required = getattr(self, "completed_required_documents", None)
+        if total_required is not None and completed_required is not None:
+            return total_required == completed_required
+
+        prefetched_documents = self._get_prefetched_list("documents")
+        if prefetched_documents is not None:
+            required_documents = [document for document in prefetched_documents if document.required]
+            completed_documents = [document for document in required_documents if document.completed]
+            return len(required_documents) == len(completed_documents)
+
         return (
             self.documents.filter(required=True).count() == self.documents.filter(completed=True, required=True).count()
         )

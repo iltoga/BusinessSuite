@@ -2311,10 +2311,13 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     ordering = ["-id"]
 
     def get_queryset(self):
-        from django.db.models import Count, Q
-
-        return (
+        queryset = (
             DocApplication.objects.select_related("customer", "product")
+            .select_related(
+                "customer__nationality",
+                "product__created_by",
+                "product__updated_by",
+            )
             .prefetch_related(
                 "product__tasks",
                 Prefetch(
@@ -2330,13 +2333,19 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                     queryset=InvoiceApplication.objects.select_related("invoice"),
                 ),
             )
-            .annotate(
+        )
+
+        # Detail responses can derive completion state from prefetched documents,
+        # so skip aggregate annotations to keep the base query lighter.
+        if self.action != "retrieve":
+            queryset = queryset.annotate(
                 total_required_documents=Count("documents", filter=Q(documents__required=True)),
                 completed_required_documents=Count(
                     "documents", filter=Q(documents__required=True, documents__completed=True)
                 ),
             )
-        )
+
+        return queryset
 
     def get_serializer_class(self):
         # Use specialized serializer for create/update actions

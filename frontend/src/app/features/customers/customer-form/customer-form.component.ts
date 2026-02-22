@@ -27,6 +27,7 @@ import { ZardDateInputComponent } from '@/shared/components/date-input';
 import { FileUploadComponent } from '@/shared/components/file-upload';
 import { FormErrorSummaryComponent } from '@/shared/components/form-error-summary/form-error-summary.component';
 import { ZardIconComponent } from '@/shared/components/icon';
+import { ImageMagnifierComponent } from '@/shared/components/image-magnifier';
 import { ZardInputDirective } from '@/shared/components/input';
 import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/utils/form-errors';
 
@@ -44,6 +45,7 @@ import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/uti
     ZardDateInputComponent,
     FileUploadComponent,
     ZardIconComponent,
+    ImageMagnifierComponent,
     FormErrorSummaryComponent,
     ZardCheckboxComponent,
   ],
@@ -68,6 +70,8 @@ export class CustomerFormComponent implements OnInit {
 
   readonly submitted = signal(false);
   readonly passportFile = signal<File | null>(null);
+  readonly passportFilePreviewUrl = signal<string | null>(null);
+  readonly passportFilePreviewType = signal<'image' | 'pdf' | 'unknown'>('unknown');
   readonly passportPreviewUrl = signal<string | null>(null);
   readonly passportPastePreviewUrl = signal<string | null>(null);
   readonly passportPasteStatus = signal<string | null>(null);
@@ -303,6 +307,7 @@ export class CustomerFormComponent implements OnInit {
     }
 
     this.destroyRef.onDestroy(() => {
+      this.clearPassportFilePreview();
       if (this.ocrPollTimer) {
         try {
           if (typeof window !== 'undefined') {
@@ -318,6 +323,7 @@ export class CustomerFormComponent implements OnInit {
   }
 
   onPassportFileSelected(file: File): void {
+    this.setPassportFilePreview(file);
     this.passportFile.set(file);
     this.passportPreviewUrl.set(null);
     this.ocrMessage.set(null);
@@ -325,10 +331,46 @@ export class CustomerFormComponent implements OnInit {
   }
 
   onPassportFileCleared(): void {
+    this.clearPassportFilePreview();
     this.passportFile.set(null);
     this.passportPreviewUrl.set(null);
     this.ocrMessage.set(null);
     this.ocrMessageTone.set(null);
+  }
+
+  private setPassportFilePreview(file: File): void {
+    this.clearPassportFilePreview();
+
+    const mime = file.type.toLowerCase();
+    const lowerName = file.name.toLowerCase();
+
+    if (mime.startsWith('image/') || /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(lowerName)) {
+      this.passportFilePreviewType.set('image');
+      this.passportFilePreviewUrl.set(URL.createObjectURL(file));
+      return;
+    }
+
+    if (mime === 'application/pdf' || lowerName.endsWith('.pdf')) {
+      this.passportFilePreviewType.set('pdf');
+      this.passportFilePreviewUrl.set(URL.createObjectURL(file));
+      return;
+    }
+
+    this.passportFilePreviewType.set('unknown');
+    this.passportFilePreviewUrl.set(null);
+  }
+
+  private clearPassportFilePreview(): void {
+    const url = this.passportFilePreviewUrl();
+    if (url && url.startsWith('blob:')) {
+      try {
+        URL.revokeObjectURL(url);
+      } catch {
+        // ignore
+      }
+    }
+    this.passportFilePreviewUrl.set(null);
+    this.passportFilePreviewType.set('unknown');
   }
 
   onPastePassport(event: ClipboardEvent): void {

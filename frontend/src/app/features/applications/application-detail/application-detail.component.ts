@@ -39,6 +39,7 @@ import { ZardDateInputComponent } from '@/shared/components/date-input';
 import { DocumentPreviewComponent } from '@/shared/components/document-preview';
 import { FileUploadComponent } from '@/shared/components/file-upload';
 import { ZardIconComponent } from '@/shared/components/icon';
+import { ImageMagnifierComponent } from '@/shared/components/image-magnifier';
 import { ZardInputDirective } from '@/shared/components/input';
 import { ZardPopoverComponent, ZardPopoverDirective } from '@/shared/components/popover';
 import {
@@ -73,6 +74,7 @@ interface TimelineWorkflowItem {
     DocumentPreviewComponent,
     FileUploadComponent,
     ZardIconComponent,
+    ImageMagnifierComponent,
     ZardInputDirective,
     ZardPopoverComponent,
     ZardPopoverDirective,
@@ -111,6 +113,7 @@ export class ApplicationDetailComponent implements OnInit {
   readonly uploadPreviewType = signal<'image' | 'pdf' | 'unknown'>('unknown');
   readonly existingPreviewUrl = signal<string | null>(null);
   readonly existingPreviewType = signal<'image' | 'pdf' | 'unknown'>('unknown');
+  readonly existingPreviewLoading = signal(false);
   readonly uploadProgress = signal<number | null>(null);
   readonly isSaving = signal(false);
   readonly inlinePreviewUrl = computed(() => {
@@ -125,6 +128,12 @@ export class ApplicationDetailComponent implements OnInit {
       return this.uploadPreviewType();
     }
     return this.existingPreviewType();
+  });
+  readonly inlinePreviewLoading = computed(() => {
+    if (this.uploadPreviewUrl()) {
+      return false;
+    }
+    return this.existingPreviewLoading();
   });
 
   readonly ocrPolling = signal(false);
@@ -415,6 +424,7 @@ export class ApplicationDetailComponent implements OnInit {
   }
 
   onFileSelected(file: File): void {
+    this.existingPreviewLoading.set(false);
     this.selectedFile.set(file);
     this.setUploadPreviewFromFile(file);
   }
@@ -1318,11 +1328,13 @@ export class ApplicationDetailComponent implements OnInit {
     if (!document.fileLink) {
       return;
     }
+    this.existingPreviewLoading.set(true);
 
     this.documentsService.downloadDocumentFile(document.id).subscribe({
       next: (blob) => {
         // Ignore stale async result if user switched document while request was in flight.
         if (this.selectedDocument()?.id !== document.id) {
+          this.existingPreviewLoading.set(false);
           return;
         }
 
@@ -1341,14 +1353,17 @@ export class ApplicationDetailComponent implements OnInit {
 
         if (type === 'unknown') {
           URL.revokeObjectURL(url);
+          this.existingPreviewLoading.set(false);
           return;
         }
 
         this.existingPreviewType.set(type);
         this.existingPreviewUrl.set(url);
+        this.existingPreviewLoading.set(false);
       },
       error: () => {
         this.clearExistingPreview();
+        this.existingPreviewLoading.set(false);
       },
     });
   }
@@ -1391,6 +1406,7 @@ export class ApplicationDetailComponent implements OnInit {
     }
     this.existingPreviewUrl.set(null);
     this.existingPreviewType.set('unknown');
+    this.existingPreviewLoading.set(false);
   }
 
   private formatDateForApi(value: Date): string {
