@@ -5,10 +5,9 @@ Tests for the AI Passport Parser service.
 import json
 from unittest.mock import MagicMock, patch
 
+from core.services.ai_passport_parser import AIPassportParser, AIPassportResult, PassportData
 from django.test import TestCase, override_settings
 from PIL import Image
-
-from core.services.ai_passport_parser import AIPassportParser, AIPassportResult, PassportData
 
 # Patch target for OpenAI client (in ai_client module)
 OPENAI_PATCH_TARGET = "core.services.ai_client.OpenAI"
@@ -27,7 +26,7 @@ class AIPassportParserTestCase(TestCase):
         with patch(OPENAI_PATCH_TARGET) as mock_openai:
             parser = AIPassportParser()
             self.assertEqual(parser.ai_client.api_key, "test-key")
-            self.assertEqual(parser.model, "google/gemini-2.0-flash-001")
+            self.assertEqual(parser.model, "google/gemini-2.5-flash-lite")
             self.assertTrue(parser.use_openrouter)
             mock_openai.assert_called_once()
 

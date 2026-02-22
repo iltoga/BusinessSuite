@@ -161,11 +161,14 @@ numpy==2.4.0
     #   contourpy
     #   imageio
     #   matplotlib
+    #   opencv-python-headless
     #   passporteye
     #   scikit-image
     #   scikit-learn
     #   scipy
     #   tifffile
+opencv-python-headless==4.12.0.88
+    # via business-suite (pyproject.toml)
 openai==2.14.0
     # via business-suite (pyproject.toml)
 openpyxl==3.1.5

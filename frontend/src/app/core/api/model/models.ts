@@ -5,6 +5,7 @@ export * from './calendar-reminder';
 export * from './calendar-reminder-bulk-create';
 export * from './calendar-reminder-create';
 export * from './calendar-reminder-inbox-mark-read';
+export * from './calendar-reminder-inbox-snooze';
 export * from './change-password';
 export * from './country-code';
 export * from './custom-token-obtain';

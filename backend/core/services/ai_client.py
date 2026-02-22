@@ -12,12 +12,11 @@ from pathlib import Path
 from typing import Any, Optional, Union
 
 import openai
+from core.services.ai_usage_service import AIUsageFeature, AIUsageService
+from core.services.logger_service import Logger
 from django.conf import settings
 from django.core.files.uploadedfile import UploadedFile
 from openai import OpenAI
-
-from core.services.ai_usage_service import AIUsageFeature, AIUsageService
-from core.services.logger_service import Logger
 
 logger = Logger.get_logger(__name__)
 
@@ -77,7 +76,7 @@ class AIClient:
         if not self.api_key:
             raise ValueError("OpenRouter API key not configured. Set OPENROUTER_API_KEY in settings or .env file.")
 
-        default_model = getattr(settings, "LLM_DEFAULT_MODEL", "google/gemini-2.0-flash-001")
+        default_model = getattr(settings, "LLM_DEFAULT_MODEL", "google/gemini-2.5-flash-lite")
         self.model = model or default_model
 
         base_url = getattr(settings, "OPENROUTER_API_BASE_URL", "https://openrouter.ai/api/v1")
@@ -396,7 +395,9 @@ class AIClient:
             try:
                 return self._parse_json_dict(retry_text)
             except ValueError as retry_exc:
-                raise ValueError(f"Invalid JSON response from {self.provider_name} after retry: {retry_exc}") from retry_exc
+                raise ValueError(
+                    f"Invalid JSON response from {self.provider_name} after retry: {retry_exc}"
+                ) from retry_exc
 
     @classmethod
     def _parse_json_dict(cls, response_text: Any) -> dict:

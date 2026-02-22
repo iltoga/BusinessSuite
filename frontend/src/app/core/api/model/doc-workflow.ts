@@ -21,6 +21,9 @@ export interface DocWorkflow {
      */
     readonly status: DocWorkflow.StatusEnum;
     readonly notes: string;
+    /**
+     * Resolve current step from already-loaded siblings to avoid N+1 queries.
+     */
     readonly isCurrentStep: boolean;
     readonly isOverdue: boolean;
     readonly isNotificationDateReached: boolean;

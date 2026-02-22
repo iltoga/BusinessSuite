@@ -46,6 +46,146 @@ export class PushNotificationsService extends BaseService {
     }
 
     /**
+     * Server-side proxy for Firebase Cloud Messaging registration.  The browser-side Firebase SDK calls fcmregistrations.googleapis.com to exchange a Web Push subscription for an FCM token.  On some networks / Chrome configurations that endpoint is unreachable from the browser (e.g. QUIC / HTTP3 issues) even though the Django server can reach it fine via TCP.  This action forwards the registration request from the browser to the real FCM endpoint server-side so the browser never needs to reach googleapis.com directly.
+     * @endpoint post /api/push-notifications/fcm-register-proxy/
+     * @param webPushSubscription 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     * @param options additional options
+     */
+    public pushNotificationsFcmRegisterProxyCreate(webPushSubscription?: WebPushSubscription, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<WebPushSubscription>;
+    public pushNotificationsFcmRegisterProxyCreate(webPushSubscription?: WebPushSubscription, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<WebPushSubscription>>;
+    public pushNotificationsFcmRegisterProxyCreate(webPushSubscription?: WebPushSubscription, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<WebPushSubscription>>;
+    public pushNotificationsFcmRegisterProxyCreate(webPushSubscription?: WebPushSubscription, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+
+        let localVarHeaders = this.defaultHeaders;
+
+        // authentication (cookieAuth) required
+
+        // authentication (jwtAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
+
+        const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            'application/json'
+        ]);
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+        const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json',
+            'application/x-www-form-urlencoded',
+            'multipart/form-data'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/push-notifications/fcm-register-proxy/`;
+        const { basePath, withCredentials } = this.configuration;
+        return this.httpClient.request<WebPushSubscription>('post', `${basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: webPushSubscription,
+                responseType: <any>responseType_,
+                ...(withCredentials ? { withCredentials } : {}),
+                headers: localVarHeaders,
+                observe: observe,
+                ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Server-side proxy for Firebase Installations API.  Handles both FID creation (POST .../installations) and auth-token refresh (POST .../installations/{fid}/authTokens:generate) so the browser is never required to reach firebaseinstallations.googleapis.com directly.
+     * @endpoint post /api/push-notifications/firebase-install-proxy/
+     * @param webPushSubscription 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     * @param options additional options
+     */
+    public pushNotificationsFirebaseInstallProxyCreate(webPushSubscription?: WebPushSubscription, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<WebPushSubscription>;
+    public pushNotificationsFirebaseInstallProxyCreate(webPushSubscription?: WebPushSubscription, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<WebPushSubscription>>;
+    public pushNotificationsFirebaseInstallProxyCreate(webPushSubscription?: WebPushSubscription, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<WebPushSubscription>>;
+    public pushNotificationsFirebaseInstallProxyCreate(webPushSubscription?: WebPushSubscription, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+
+        let localVarHeaders = this.defaultHeaders;
+
+        // authentication (cookieAuth) required
+
+        // authentication (jwtAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
+
+        const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            'application/json'
+        ]);
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+        const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'application/json',
+            'application/x-www-form-urlencoded',
+            'multipart/form-data'
+        ];
+        const httpContentTypeSelected: string | undefined = this.configuration.selectHeaderContentType(consumes);
+        if (httpContentTypeSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Content-Type', httpContentTypeSelected);
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/push-notifications/firebase-install-proxy/`;
+        const { basePath, withCredentials } = this.configuration;
+        return this.httpClient.request<WebPushSubscription>('post', `${basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: webPushSubscription,
+                responseType: <any>responseType_,
+                ...(withCredentials ? { withCredentials } : {}),
+                headers: localVarHeaders,
+                observe: observe,
+                ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
      * @endpoint post /api/push-notifications/register/
      * @param webPushSubscriptionUpsert 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
