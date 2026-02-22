@@ -5,6 +5,8 @@ import uuid
 from django.conf import settings
 from django.core.cache import cache
 
+ASYNC_GUARD_COUNTER_PREFIX = "observability:async_guard"
+
 
 def _coerce_positive_int(value, default: int) -> int:
     try:
@@ -19,6 +21,11 @@ def _coerce_positive_int(value, default: int) -> int:
 def enqueue_guard_ttl_seconds() -> int:
     configured = getattr(settings, "ASYNC_ENQUEUE_GUARD_TTL_SECONDS", 15)
     return _coerce_positive_int(configured, 15)
+
+
+def observability_counter_ttl_seconds() -> int:
+    configured = getattr(settings, "ASYNC_GUARD_OBSERVABILITY_TTL_SECONDS", 7 * 24 * 60 * 60)
+    return _coerce_positive_int(configured, 7 * 24 * 60 * 60)
 
 
 def build_user_enqueue_guard_key(*, namespace: str, user_id: int | None, scope: str | None = None) -> str:
@@ -38,3 +45,17 @@ def acquire_enqueue_guard(lock_key: str, ttl_seconds: int | None = None) -> str 
 def release_enqueue_guard(lock_key: str, token: str) -> None:
     if cache.get(lock_key) == token:
         cache.delete(lock_key)
+
+
+def build_guard_counter_key(*, namespace: str, event: str) -> str:
+    return f"{ASYNC_GUARD_COUNTER_PREFIX}:{namespace}:{event}"
+
+
+def increment_guard_counter(*, namespace: str, event: str) -> int:
+    key = build_guard_counter_key(namespace=namespace, event=event)
+    ttl = observability_counter_ttl_seconds()
+    try:
+        return int(cache.incr(key))
+    except ValueError:
+        cache.set(key, 1, timeout=max(1, ttl))
+        return 1

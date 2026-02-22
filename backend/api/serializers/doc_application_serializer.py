@@ -374,7 +374,9 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
             normalized_doc_type_ids.append(normalized_id)
         document_types_by_id = DocumentType.objects.in_bulk([doc_type_id for doc_type_id in normalized_doc_type_ids if doc_type_id])
 
-        # Create provided documents
+        # Create provided placeholder documents in one query.
+        placeholder_documents = []
+        now = timezone.now()
         for dt, doc_type_id in zip(document_types, normalized_doc_type_ids):
             required = dt.get("required", True)
             doc_type = document_types_by_id.get(doc_type_id)
@@ -385,15 +387,19 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
             if doc_type.name == "Passport" and has_auto_passport:
                 continue
 
-            doc = Document(
-                doc_application=application,
-                doc_type=doc_type,
-                required=required,
-                created_by=user,
-                created_at=timezone.now(),
-                updated_at=timezone.now(),
+            placeholder_documents.append(
+                Document(
+                    doc_application=application,
+                    doc_type=doc_type,
+                    required=required,
+                    created_by=user,
+                    created_at=now,
+                    updated_at=now,
+                )
             )
-            doc.save()
+
+        if placeholder_documents:
+            Document.objects.bulk_create(placeholder_documents)
 
         # Create the first workflow step (step 1) if it exists
         task = Task.objects.filter(product=application.product, step=1).first()

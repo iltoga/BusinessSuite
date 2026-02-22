@@ -10,6 +10,7 @@ from django.urls import reverse
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient
 
+from api.async_controls import build_guard_counter_key
 from core.tasks import cron_jobs
 from core.models import AsyncJob, DocumentOCRJob, OCRJob
 from customers.models import Customer
@@ -267,6 +268,19 @@ class ExpensiveAsyncEnqueueIdempotencyTests(TestCase):
         self.assertTrue(second.data["deduplicated"])
         self.assertEqual(AsyncJob.objects.filter(task_name="products_export_excel", created_by=self.user).count(), 1)
         enqueue_mock.assert_called_once()
+        dedupe_counter_key = build_guard_counter_key(namespace="products_export_excel", event="deduplicated")
+        self.assertEqual(cache.get(dedupe_counter_key), 1)
+
+    @patch("api.views._latest_inflight_job", return_value=None)
+    @patch("api.views._get_enqueue_guard_token", return_value=("guard:lock:key", None))
+    def test_product_export_start_records_lock_contention_and_429_observability(self, _guard_token_mock, _inflight_mock):
+        response = self.client.post("/api/products/export/start/", {"search_query": "visa"}, format="json")
+
+        self.assertEqual(response.status_code, 429)
+        lock_counter_key = build_guard_counter_key(namespace="products_export_excel", event="lock_contention")
+        rate_limit_counter_key = build_guard_counter_key(namespace="products_export_excel", event="guard_429")
+        self.assertEqual(cache.get(lock_counter_key), 1)
+        self.assertEqual(cache.get(rate_limit_counter_key), 1)
 
     @patch("api.views.default_storage.save", return_value="tmpfiles/product_imports/mock.xlsx")
     @patch("products.tasks.run_product_import_job")

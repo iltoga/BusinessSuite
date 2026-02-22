@@ -2,13 +2,16 @@ from datetime import date
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.db import connection
 from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 from rest_framework.test import APIClient
 
 from customer_applications.models import DocApplication, DocWorkflow
 from customers.models import Customer
 from products.models import Product, Task
+from products.models.document_type import DocumentType
 
 User = get_user_model()
 
@@ -40,6 +43,34 @@ class CustomerApplicationSyncApiTests(TestCase):
             duration=3,
             duration_is_business_days=False,
             add_task_to_calendar=True,
+        )
+
+    def test_create_query_budget_with_many_document_types(self):
+        document_types = [
+            DocumentType.objects.create(name=f"Perf Doc Type {index}")
+            for index in range(1, 13)
+        ]
+        payload = {
+            "customer": self.customer.id,
+            "product": self.product.id,
+            "docDate": "2026-01-10",
+            "dueDate": "2026-01-12",
+            "addDeadlinesToCalendar": True,
+            "notifyCustomerToo": False,
+            "notifyCustomerChannel": None,
+            "notes": "Query budget test",
+            "documentTypes": [{"id": item.id, "required": True} for item in document_types],
+        }
+
+        with CaptureQueriesContext(connection) as captured:
+            response = self.client.post("/api/customer-applications/", payload, format="json")
+
+        self.assertEqual(response.status_code, 201)
+        query_count = len(captured)
+        self.assertLessEqual(
+            query_count,
+            45,
+            f"POST /api/customer-applications/ query budget exceeded: {query_count} queries",
         )
 
     @patch("customer_applications.tasks.send_due_tomorrow_customer_notifications")

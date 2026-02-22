@@ -11,6 +11,10 @@ def is_authenticated_user(user) -> bool:
     return bool(user and user.is_authenticated)
 
 
+def is_superuser(user) -> bool:
+    return bool(is_authenticated_user(user) and user.is_superuser)
+
+
 def is_admin_group_member(user) -> bool:
     return bool(is_authenticated_user(user) and user.groups.filter(name=ADMIN_GROUP_NAME).exists())
 
@@ -20,7 +24,7 @@ def is_staff_or_admin_group(user) -> bool:
 
 
 def is_superuser_or_admin_group(user) -> bool:
-    return bool(is_authenticated_user(user) and (user.is_superuser or is_admin_group_member(user)))
+    return bool(is_superuser(user) or is_admin_group_member(user))
 
 
 class IsStaffOrAdminGroup(BasePermission):
