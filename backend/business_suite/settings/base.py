@@ -457,6 +457,10 @@ REST_FRAMEWORK = {
         "ocr_status": "120/minute",
         "document_ocr": "10/minute",
         "document_ocr_status": "120/minute",
+        "products_export_start": "6/minute",
+        "products_import_start": "6/minute",
+        "invoice_download_async": "10/minute",
+        "invoice_import_batch": "4/minute",
     },
 }
 

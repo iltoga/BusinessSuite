@@ -16,6 +16,7 @@ import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
+import { sanitizeResourceUrl } from '@/shared/utils/resource-url-sanitizer';
 
 interface DocumentPrintData {
   id: number;
@@ -59,9 +60,9 @@ export class DocumentPrintComponent implements OnInit {
   private router = inject(Router);
   private location = inject(Location);
   private http = inject(HttpClient);
-  private sanitizer = inject(DomSanitizer);
   private destroyRef = inject(DestroyRef);
   private configService = inject(ConfigService);
+  private sanitizer = inject(DomSanitizer);
 
   readonly document = signal<DocumentPrintData | null>(null);
   readonly isLoading = signal(true);
@@ -133,8 +134,16 @@ export class DocumentPrintComponent implements OnInit {
       next: (blob) => {
         try {
           const objectUrl = URL.createObjectURL(blob);
+          const safeUrl = sanitizeResourceUrl(objectUrl, this.sanitizer);
+          if (!safeUrl) {
+            try {
+              URL.revokeObjectURL(objectUrl);
+            } catch {}
+            this.previewError.set('Preview URL blocked by client-side safety policy.');
+            return;
+          }
           this.previewUrl.set(objectUrl);
-          this.sanitizedPreview.set(this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl));
+          this.sanitizedPreview.set(safeUrl);
         } catch (e) {
           this.previewError.set('Failed to create preview.');
         } finally {

@@ -1,0 +1,81 @@
+from unittest.mock import patch
+
+from django.test import SimpleTestCase
+
+from invoices.models import InvoiceDocumentJob, InvoiceDownloadJob, InvoiceImportItem
+from invoices.tasks.document_jobs import run_invoice_document_job
+from invoices.tasks.download_jobs import run_invoice_download_job
+from invoices.tasks.import_jobs import run_invoice_import_item
+
+
+def _run_huey_task(task, **kwargs):
+    if hasattr(task, "call_local"):
+        return task.call_local(**kwargs)
+    if hasattr(task, "func"):
+        return task.func(**kwargs)
+    return task(**kwargs)
+
+
+class InvoiceTaskRuntimeIdempotencyTests(SimpleTestCase):
+    def test_run_invoice_download_job_skips_when_lock_is_contended(self):
+        with (
+            patch("invoices.tasks.download_jobs.acquire_task_lock", return_value=None),
+            patch("invoices.tasks.download_jobs.InvoiceDownloadJob.objects.select_related") as select_related_mock,
+        ):
+            _run_huey_task(run_invoice_download_job, job_id="job-300")
+
+        select_related_mock.assert_not_called()
+
+    def test_run_invoice_download_job_releases_lock_when_job_missing(self):
+        with (
+            patch("invoices.tasks.download_jobs.acquire_task_lock", return_value="token-1"),
+            patch("invoices.tasks.download_jobs.release_task_lock") as release_lock_mock,
+            patch(
+                "invoices.tasks.download_jobs.InvoiceDownloadJob.objects.select_related",
+                side_effect=InvoiceDownloadJob.DoesNotExist,
+            ),
+        ):
+            _run_huey_task(run_invoice_download_job, job_id="job-300")
+
+        release_lock_mock.assert_called_once_with("tasks:idempotency:invoice_download_job:job-300", "token-1")
+
+    def test_run_invoice_import_item_skips_when_lock_is_contended(self):
+        with (
+            patch("invoices.tasks.import_jobs.acquire_task_lock", return_value=None),
+            patch("invoices.tasks.import_jobs.InvoiceImportItem.objects.select_related") as select_related_mock,
+        ):
+            _run_huey_task(run_invoice_import_item, item_id="item-400")
+
+        select_related_mock.assert_not_called()
+
+    def test_run_invoice_import_item_releases_lock_when_item_missing(self):
+        with (
+            patch("invoices.tasks.import_jobs.acquire_task_lock", return_value="token-2"),
+            patch("invoices.tasks.import_jobs.release_task_lock") as release_lock_mock,
+            patch(
+                "invoices.tasks.import_jobs.InvoiceImportItem.objects.select_related",
+                side_effect=InvoiceImportItem.DoesNotExist,
+            ),
+        ):
+            _run_huey_task(run_invoice_import_item, item_id="item-400")
+
+        release_lock_mock.assert_called_once_with("tasks:idempotency:invoice_import_item:item-400", "token-2")
+
+    def test_run_invoice_document_job_skips_when_lock_is_contended(self):
+        with (
+            patch("invoices.tasks.document_jobs.acquire_task_lock", return_value=None),
+            patch("invoices.tasks.document_jobs.InvoiceDocumentJob.objects.get") as get_job_mock,
+        ):
+            _run_huey_task(run_invoice_document_job, job_id="job-500")
+
+        get_job_mock.assert_not_called()
+
+    def test_run_invoice_document_job_releases_lock_when_job_missing(self):
+        with (
+            patch("invoices.tasks.document_jobs.acquire_task_lock", return_value="token-3"),
+            patch("invoices.tasks.document_jobs.release_task_lock") as release_lock_mock,
+            patch("invoices.tasks.document_jobs.InvoiceDocumentJob.objects.get", side_effect=InvoiceDocumentJob.DoesNotExist),
+        ):
+            _run_huey_task(run_invoice_document_job, job_id="job-500")
+
+        release_lock_mock.assert_called_once_with("tasks:idempotency:invoice_document_job:job-500", "token-3")

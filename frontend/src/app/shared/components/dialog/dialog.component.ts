@@ -22,8 +22,10 @@ import {
   viewChild,
   type ViewContainerRef,
 } from '@angular/core';
+import { DomSanitizer } from '@angular/platform-browser';
 
 import { mergeClasses, noopFn } from '@/shared/utils/merge-classes';
+import { sanitizeUntrustedHtml } from '@/shared/utils/html-content-sanitizer';
 
 import { ZardButtonComponent } from '@/shared/components/button';
 import type { ZardIcon } from '@/shared/components/icon';
@@ -72,6 +74,7 @@ export class ZardDialogOptions<T, U> {
 })
 export class ZardDialogComponent<T, U> extends BasePortalOutlet {
   private readonly host = inject(ElementRef<HTMLElement>);
+  private readonly sanitizer = inject(DomSanitizer);
   protected readonly config = inject(ZardDialogOptions<T, U>);
 
   protected readonly classes = computed(() =>
@@ -80,6 +83,9 @@ export class ZardDialogComponent<T, U> extends BasePortalOutlet {
   dialogRef?: ZardDialogRef<T>;
 
   protected readonly isStringContent = typeof this.config.zContent === 'string';
+  protected readonly sanitizedStringContent = computed(() =>
+    sanitizeUntrustedHtml(this.config.zContent, this.sanitizer),
+  );
 
   readonly portalOutlet = viewChild.required(CdkPortalOutlet);
 

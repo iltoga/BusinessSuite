@@ -30,19 +30,34 @@
     </div>
   }
 
-  @if (showPreview()) {
+  @if (showPreviewContainer()) {
     <div class="rounded-md border bg-muted/10 p-3">
       <div class="text-xs font-medium text-muted-foreground mb-2">Preview</div>
-      <div class="flex items-center justify-center overflow-hidden rounded-md bg-muted/20">
-        @if (previewType() === 'image') {
-          <img
-            [src]="previewUrl()"
-            alt="Selected file preview"
-            class="max-h-64 w-full object-contain"
-          />
-        } @else if (previewType() === 'pdf') {
-          <iframe [src]="sanitizedPreview()" class="h-64 w-full border-0"></iframe>
+      <div class="relative h-160 overflow-hidden rounded-md bg-muted/20 mt-2 mb-2">
+        @if (showPreviewSkeleton()) {
+          <div class="absolute inset-0 animate-pulse p-4">
+            <div class="h-full w-full rounded-md bg-muted/60"></div>
+          </div>
         }
+        <div class="flex h-full items-center justify-center">
+          @if (showPreview()) {
+            @if (previewType() === 'image') {
+              <app-image-magnifier
+                [src]="previewUrl()"
+                alt="Selected file preview"
+                [imageClass]="'max-h-140 w-auto max-w-full object-contain p-2'"
+                [wrapperClass]="'max-w-full'"
+                [enabledByDefault]="magnifierEnabledByDefault()"
+                [showToggle]="showMagnifierToggle()"
+                [toggleClass]="'h-9 w-9 bg-background/90 border border-border shadow-sm'"
+              />
+            } @else if (previewType() === 'pdf') {
+              <iframe [src]="sanitizedPreview()" class="h-140 w-full border-0"></iframe>
+            }
+          } @else if (!previewLoading()) {
+            <div class="px-3 text-xs text-muted-foreground">Preview not available.</div>
+          }
+        </div>
       </div>
     </div>
   }

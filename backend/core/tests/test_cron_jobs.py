@@ -2,6 +2,7 @@ import datetime
 from unittest.mock import MagicMock, patch
 
 import requests
+from django.core.cache import cache
 from django.test import TestCase, override_settings
 
 from core.tasks import cron_jobs
@@ -136,3 +137,41 @@ class OpenRouterHealthCheckTests(TestCase):
             result = cron_jobs._perform_openrouter_health_check()
 
         self.assertFalse(result)
+
+
+class PrivilegedCronTaskLockingTests(TestCase):
+    def setUp(self):
+        cron_jobs.reset_privileged_cron_job_locks()
+        cache.clear()
+
+    def tearDown(self):
+        cron_jobs.reset_privileged_cron_job_locks()
+        cache.clear()
+
+    @patch("core.tasks.cron_jobs.run_full_backup_now")
+    def test_enqueue_full_backup_is_idempotent_while_locked(self, backup_task_mock):
+        first = cron_jobs.enqueue_full_backup_now()
+        second = cron_jobs.enqueue_full_backup_now()
+
+        self.assertTrue(first)
+        self.assertFalse(second)
+        backup_task_mock.delay.assert_called_once()
+
+    @patch("core.tasks.cron_jobs._perform_clear_cache")
+    def test_clear_cache_execution_skips_when_run_lock_exists(self, perform_clear_cache_mock):
+        cache.set(cron_jobs.CLEAR_CACHE_RUN_LOCK_KEY, "other-run", timeout=300)
+
+        executed = cron_jobs._perform_clear_cache_locked()
+
+        self.assertFalse(executed)
+        perform_clear_cache_mock.assert_not_called()
+
+    @patch("core.tasks.cron_jobs._perform_full_backup")
+    def test_full_backup_execution_releases_enqueue_lock_after_run(self, perform_full_backup_mock):
+        cache.set(cron_jobs.FULL_BACKUP_ENQUEUE_LOCK_KEY, "queued-token", timeout=300)
+
+        executed = cron_jobs._perform_full_backup_locked()
+
+        self.assertTrue(executed)
+        perform_full_backup_mock.assert_called_once()
+        self.assertIsNone(cache.get(cron_jobs.FULL_BACKUP_ENQUEUE_LOCK_KEY))

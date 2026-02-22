@@ -511,17 +511,7 @@ export class ProductListComponent implements OnInit {
   }
 
   private watchJob(jobId: string): Observable<any> {
-    const token = this.authService.getToken();
-    const params = new URLSearchParams();
-    if (token) {
-      params.set('token', token);
-    } else if (this.authService.isMockEnabled()) {
-      params.set('token', 'mock-token');
-    }
-    const query = params.toString();
-    const url = `/api/async-jobs/status/${jobId}/${query ? `?${query}` : ''}`;
-
-    return this.sseService.connect<any>(url).pipe(
+    return this.sseService.connect<any>(`/api/async-jobs/status/${jobId}/`).pipe(
       catchError(() => this.productImportExportApi.pollJob(jobId)),
       takeWhile((job) => job?.status !== 'completed' && job?.status !== 'failed', true),
     );

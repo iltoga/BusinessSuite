@@ -89,7 +89,8 @@ class WorkflowNotificationApiTests(TestCase):
         schedule_poll_mock.assert_called_once_with(notification_id=self.notification.id, delay_seconds=5)
 
     def test_stream_returns_initial_snapshot_event(self):
-        response = self.client.get(f"/api/workflow-notifications/stream/?token={self.token.key}")
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.token.key}")
+        response = self.client.get("/api/workflow-notifications/stream/")
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response["Content-Type"].startswith("text/event-stream"))
@@ -101,7 +102,8 @@ class WorkflowNotificationApiTests(TestCase):
         self.assertIsNotNone(payload["lastUpdatedAt"])
 
     def test_stream_emits_changed_event_after_notification_update(self):
-        response = self.client.get(f"/api/workflow-notifications/stream/?token={self.token.key}")
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.token.key}")
+        response = self.client.get("/api/workflow-notifications/stream/")
         _ = self._decode_sse_payload(next(response.streaming_content))
 
         self.notification.status = WorkflowNotification.STATUS_DELIVERED
@@ -116,7 +118,8 @@ class WorkflowNotificationApiTests(TestCase):
         plain_user = User.objects.create_user("workflow-viewer", "workflowviewer@example.com", "pass")
         plain_token = Token.objects.create(user=plain_user)
         unauthenticated_client = APIClient()
-        response = unauthenticated_client.get(f"/api/workflow-notifications/stream/?token={plain_token.key}")
+        unauthenticated_client.credentials(HTTP_AUTHORIZATION=f"Bearer {plain_token.key}")
+        response = unauthenticated_client.get("/api/workflow-notifications/stream/")
 
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.json()["error"], "Staff or 'admin' group permission required")

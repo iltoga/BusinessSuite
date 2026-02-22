@@ -253,11 +253,13 @@ class RestoreCompatibilityTests(TestCase):
         class _FakeDestinationStorage:
             def __init__(self):
                 self.saved_paths = []
+                self.deleted_paths = []
 
             def exists(self, path):
                 return False
 
             def delete(self, path):
+                self.deleted_paths.append(path)
                 return None
 
             def save(self, path, file_obj):
@@ -276,4 +278,292 @@ class RestoreCompatibilityTests(TestCase):
 
         self.assertTrue(any("source object storage" in message for message in messages))
         self.assertEqual(destination_storage.saved_paths, ["tmpfiles/sample.txt"])
+        self.assertEqual(destination_storage.deleted_paths, [])
         self.assertEqual(Customer.objects.get(pk=1).passport_file.name, "migrated/tmpfiles/sample.txt")
+        self.assertTrue(
+            any("RESTORE_SUMMARY: copied=1 skipped_existing=0 missing_source=0" in message for message in messages)
+        )
+
+    def test_restore_external_storage_skips_self_copy_for_same_bucket(self):
+        fixture_objects = [
+            {
+                "model": "customers.customer",
+                "pk": 1,
+                "fields": {
+                    "created_at": "2026-02-18T00:00:00Z",
+                    "updated_at": "2026-02-18T00:00:00Z",
+                    "title": None,
+                    "customer_type": "person",
+                    "first_name": "John",
+                    "last_name": "Doe",
+                    "company_name": None,
+                    "email": "john@example.com",
+                    "telephone": None,
+                    "whatsapp": None,
+                    "telegram": None,
+                    "facebook": None,
+                    "instagram": None,
+                    "twitter": None,
+                    "npwp": None,
+                    "nationality": None,
+                    "birthdate": None,
+                    "birth_place": None,
+                    "passport_number": None,
+                    "passport_issue_date": None,
+                    "passport_expiration_date": None,
+                    "passport_file": "documents/passport.pdf",
+                    "passport_metadata": None,
+                    "gender": None,
+                    "address_bali": None,
+                    "address_abroad": None,
+                    "notify_documents_expiration": False,
+                    "notify_by": None,
+                    "notification_sent": False,
+                    "active": True,
+                },
+            }
+        ]
+        manifest = {
+            "media": {
+                "included_in_archive": False,
+                "mode": "external_storage_reference",
+                "storage": {
+                    "backend": "storages.backends.s3boto3.S3Boto3Storage",
+                    "provider": "s3",
+                    "bucket": "same-bucket",
+                    "endpoint_url": "https://example-r2.invalid",
+                    "location": "",
+                },
+            },
+            "files": [{"path": "documents/passport.pdf"}],
+        }
+
+        class _LazyObjectHandle:
+            def __init__(self, storage, path):
+                self._storage = storage
+                self._path = path
+                self._offset = 0
+
+            def read(self, size=-1):
+                data = self._storage.objects.get(self._path)
+                if data is None:
+                    raise FileNotFoundError(self._path)
+                if size is None or size < 0:
+                    chunk = data[self._offset :]
+                    self._offset = len(data)
+                    return chunk
+                chunk = data[self._offset : self._offset + size]
+                self._offset += len(chunk)
+                return chunk
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return None
+
+        class _SharedS3Storage:
+            __module__ = "storages.backends.s3boto3"
+
+            def __init__(self):
+                self.bucket_name = "same-bucket"
+                self.endpoint_url = "https://example-r2.invalid"
+                self.location = ""
+                self.objects = {"documents/passport.pdf": b"passport-bytes"}
+                self.deleted_paths = []
+                self.saved_paths = []
+
+            def open(self, path, mode="rb"):
+                return _LazyObjectHandle(self, path)
+
+            def exists(self, path):
+                return path in self.objects
+
+            def delete(self, path):
+                self.deleted_paths.append(path)
+                self.objects.pop(path, None)
+
+            def save(self, path, file_obj):
+                self.saved_paths.append(path)
+                self.objects[path] = file_obj.read()
+                return path
+
+        shared_storage = _SharedS3Storage()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            archive_path = _build_archive(tmpdir, fixture_objects, manifest=manifest)
+            with patch("admin_tools.services.default_storage", shared_storage):
+                messages = list(services.restore_from_file(archive_path, include_users=False))
+
+        self.assertTrue(any("skipping media copy" in message for message in messages))
+        self.assertEqual(shared_storage.deleted_paths, [])
+        self.assertEqual(shared_storage.saved_paths, [])
+        self.assertIn("documents/passport.pdf", shared_storage.objects)
+        self.assertEqual(Customer.objects.get(pk=1).passport_file.name, "documents/passport.pdf")
+        self.assertTrue(
+            any("RESTORE_SUMMARY: copied=0 skipped_existing=1 missing_source=0" in message for message in messages)
+        )
+
+    def test_restore_external_storage_skips_existing_target_files_without_delete(self):
+        fixture_objects = [
+            {
+                "model": "customers.customer",
+                "pk": 1,
+                "fields": {
+                    "created_at": "2026-02-18T00:00:00Z",
+                    "updated_at": "2026-02-18T00:00:00Z",
+                    "title": None,
+                    "customer_type": "person",
+                    "first_name": "Jane",
+                    "last_name": "Doe",
+                    "company_name": None,
+                    "email": "jane@example.com",
+                    "telephone": None,
+                    "whatsapp": None,
+                    "telegram": None,
+                    "facebook": None,
+                    "instagram": None,
+                    "twitter": None,
+                    "npwp": None,
+                    "nationality": None,
+                    "birthdate": None,
+                    "birth_place": None,
+                    "passport_number": None,
+                    "passport_issue_date": None,
+                    "passport_expiration_date": None,
+                    "passport_file": "tmpfiles/sample.txt",
+                    "passport_metadata": None,
+                    "gender": None,
+                    "address_bali": None,
+                    "address_abroad": None,
+                    "notify_documents_expiration": False,
+                    "notify_by": None,
+                    "notification_sent": False,
+                    "active": True,
+                },
+            }
+        ]
+        manifest = {
+            "media": {
+                "included_in_archive": False,
+                "mode": "external_storage_reference",
+                "storage": {
+                    "backend": "storages.backends.s3boto3.S3Boto3Storage",
+                    "provider": "s3",
+                    "bucket": "origin-bucket",
+                },
+            },
+            "files": [{"path": "tmpfiles/sample.txt"}],
+        }
+
+        class _FakeSourceStorage:
+            def open(self, path, mode="rb"):
+                return io.BytesIO(b"source-content")
+
+        class _FakeDestinationStorage:
+            def __init__(self):
+                self.deleted_paths = []
+                self.saved_paths = []
+                self.existing_paths = {"tmpfiles/sample.txt"}
+
+            def exists(self, path):
+                return path in self.existing_paths
+
+            def delete(self, path):
+                self.deleted_paths.append(path)
+                self.existing_paths.discard(path)
+
+            def save(self, path, file_obj):
+                self.saved_paths.append(path)
+                self.existing_paths.add(path)
+                return path
+
+        destination_storage = _FakeDestinationStorage()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            archive_path = _build_archive(tmpdir, fixture_objects, manifest=manifest)
+            with patch("admin_tools.services.default_storage", destination_storage), patch(
+                "admin_tools.services._build_source_storage_from_manifest",
+                return_value=(_FakeSourceStorage(), None),
+            ):
+                messages = list(services.restore_from_file(archive_path, include_users=False))
+
+        self.assertEqual(destination_storage.deleted_paths, [])
+        self.assertEqual(destination_storage.saved_paths, [])
+        self.assertEqual(Customer.objects.get(pk=1).passport_file.name, "tmpfiles/sample.txt")
+        self.assertTrue(
+            any("RESTORE_SUMMARY: copied=0 skipped_existing=1 missing_source=0" in message for message in messages)
+        )
+
+    def test_restore_external_storage_summary_counts_missing_source(self):
+        fixture_objects = [
+            {
+                "model": "customers.customer",
+                "pk": 1,
+                "fields": {
+                    "created_at": "2026-02-18T00:00:00Z",
+                    "updated_at": "2026-02-18T00:00:00Z",
+                    "title": None,
+                    "customer_type": "person",
+                    "first_name": "Missing",
+                    "last_name": "Source",
+                    "company_name": None,
+                    "email": "missing@example.com",
+                    "telephone": None,
+                    "whatsapp": None,
+                    "telegram": None,
+                    "facebook": None,
+                    "instagram": None,
+                    "twitter": None,
+                    "npwp": None,
+                    "nationality": None,
+                    "birthdate": None,
+                    "birth_place": None,
+                    "passport_number": None,
+                    "passport_issue_date": None,
+                    "passport_expiration_date": None,
+                    "passport_file": "tmpfiles/missing.txt",
+                    "passport_metadata": None,
+                    "gender": None,
+                    "address_bali": None,
+                    "address_abroad": None,
+                    "notify_documents_expiration": False,
+                    "notify_by": None,
+                    "notification_sent": False,
+                    "active": True,
+                },
+            }
+        ]
+        manifest = {
+            "media": {
+                "included_in_archive": False,
+                "mode": "external_storage_reference",
+                "storage": {
+                    "backend": "storages.backends.s3boto3.S3Boto3Storage",
+                    "provider": "s3",
+                    "bucket": "origin-bucket",
+                },
+            },
+            "files": [{"path": "tmpfiles/missing.txt"}],
+        }
+
+        class _MissingSourceStorage:
+            def open(self, path, mode="rb"):
+                raise FileNotFoundError(path)
+
+        class _DestinationStorage:
+            def exists(self, path):
+                return False
+
+            def save(self, path, file_obj):
+                return path
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            archive_path = _build_archive(tmpdir, fixture_objects, manifest=manifest)
+            with patch("admin_tools.services.default_storage", _DestinationStorage()), patch(
+                "admin_tools.services._build_source_storage_from_manifest",
+                return_value=(_MissingSourceStorage(), None),
+            ):
+                messages = list(services.restore_from_file(archive_path, include_users=False))
+
+        self.assertTrue(any("RESTORE_SUMMARY: copied=0 skipped_existing=0 missing_source=1" in m for m in messages))

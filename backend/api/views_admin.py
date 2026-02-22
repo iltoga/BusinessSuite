@@ -8,6 +8,11 @@ import tarfile
 
 import requests
 from admin_tools import services
+from api.permissions import (
+    IsSuperuserOrAdminGroup,
+    SUPERUSER_OR_ADMIN_PERMISSION_REQUIRED_ERROR,
+    is_superuser_or_admin_group,
+)
 from api.utils.sse_auth import sse_token_auth_required
 from api.views import ApiErrorHandlingMixin
 from core.models.ai_request_usage import AIRequestUsage
@@ -21,7 +26,7 @@ from django.http import FileResponse, JsonResponse, StreamingHttpResponse
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
-from rest_framework import permissions, serializers, viewsets
+from rest_framework import serializers, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -37,35 +42,6 @@ class ServerManagementPlaceholderSerializer(serializers.Serializer):
     """Schema placeholder for server management utility endpoints."""
 
 
-def is_superuser(user):
-    return user.is_superuser
-
-
-class IsSuperuser(permissions.BasePermission):
-    """Permission class that allows only superusers."""
-
-    def has_permission(self, request, view):
-        return request.user and request.user.is_superuser
-
-
-class IsAdminGroupMember(permissions.BasePermission):
-    """Permission class that allows only users in the 'admin' group."""
-
-    def has_permission(self, request, view):
-        user = request.user
-        return bool(user and user.is_authenticated and user.groups.filter(name="admin").exists())
-
-
-class IsSuperuserOrAdminGroup(permissions.BasePermission):
-    """Permission class that allows superusers or users in the 'admin' group."""
-
-    def has_permission(self, request, view):
-        user = request.user
-        return bool(
-            user and user.is_authenticated and (user.is_superuser or user.groups.filter(name="admin").exists())
-        )
-
-
 # ============================================================================
 # Plain Django views for SSE endpoints (bypass DRF content negotiation)
 # ============================================================================
@@ -74,8 +50,8 @@ class IsSuperuserOrAdminGroup(permissions.BasePermission):
 @sse_token_auth_required()
 def backup_start_sse(request):
     """SSE endpoint for backup - bypasses DRF content negotiation."""
-    if not (request.user.is_superuser or request.user.groups.filter(name="admin").exists()):
-        return JsonResponse({"error": "Superuser or 'admin' group permission required"}, status=403)
+    if not is_superuser_or_admin_group(request.user):
+        return JsonResponse({"error": SUPERUSER_OR_ADMIN_PERMISSION_REQUIRED_ERROR}, status=403)
 
     include_users = request.GET.get("include_users", "0") in ("1", "true", "True")
 
@@ -104,8 +80,8 @@ def backup_start_sse(request):
 @sse_token_auth_required()
 def backup_restore_sse(request):
     """SSE endpoint for restore - bypasses DRF content negotiation."""
-    if not (request.user.is_superuser or request.user.groups.filter(name="admin").exists()):
-        return JsonResponse({"error": "Superuser or 'admin' group permission required"}, status=403)
+    if not is_superuser_or_admin_group(request.user):
+        return JsonResponse({"error": SUPERUSER_OR_ADMIN_PERMISSION_REQUIRED_ERROR}, status=403)
 
     filename = request.GET.get("file")
     if not filename:

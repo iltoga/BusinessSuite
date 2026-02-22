@@ -16,6 +16,7 @@ class OCRStatusPreviewUrlTests(TestCase):
             progress=100,
             file_path="tmpfiles/in.png",
             file_url="https://example.com/in.png",
+            created_by=user,
             result={
                 "mrz_data": {"number": "ABC123"},
                 "preview_storage_path": "ocr_previews/job-1.png",

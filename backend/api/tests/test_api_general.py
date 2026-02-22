@@ -9,7 +9,9 @@ from customers.models import Customer
 from django.core.files.storage import FileSystemStorage
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.contrib.auth import get_user_model
+from django.db import connection
 from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 from invoices.models import Invoice, InvoiceApplication
@@ -418,6 +420,60 @@ class CustomerApplicationDetailAPITestCase(TestCase):
         self.assertEqual(docs[1]["docType"]["name"], "ID Card")
         self.assertEqual(docs[2]["docType"]["name"], "Photo")
         self.assertEqual(docs[3]["docType"]["name"], "Other")
+
+    def test_application_detail_query_budget(self):
+        from customer_applications.models.doc_workflow import DocWorkflow
+
+        product = Product.objects.create(
+            name="Workflow Product",
+            code="WF-1",
+            product_type="visa",
+            required_documents="Passport",
+        )
+
+        tasks = [
+            product.tasks.create(step=1, name="Step 1", duration=1, duration_is_business_days=True),
+            product.tasks.create(step=2, name="Step 2", duration=1, duration_is_business_days=True),
+            product.tasks.create(step=3, name="Step 3", duration=1, duration_is_business_days=True),
+            product.tasks.create(step=4, name="Step 4", duration=1, duration_is_business_days=True, last_step=True),
+        ]
+
+        app = DocApplication.objects.create(
+            customer=self.customer,
+            product=product,
+            doc_date=timezone.now().date(),
+            created_by=self.user,
+        )
+
+        Document.objects.create(
+            doc_application=app,
+            doc_type=self.doc_type,
+            required=True,
+            completed=True,
+            created_by=self.user,
+        )
+
+        for task in tasks:
+            workflow = DocWorkflow(
+                doc_application=app,
+                task=task,
+                start_date=timezone.now().date(),
+                status=DocWorkflow.STATUS_COMPLETED if task.step < 4 else DocWorkflow.STATUS_PROCESSING,
+                created_by=self.user,
+            )
+            workflow.due_date = workflow.calculate_workflow_due_date()
+            workflow.save()
+
+        url = reverse("customer-applications-detail", kwargs={"pk": app.pk})
+        with CaptureQueriesContext(connection) as queries:
+            response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertLessEqual(
+            len(queries),
+            14,
+            f"GET {url} exceeded query budget: {len(queries)} queries",
+        )
 
 
 class ProductApiTestCase(TestCase):

@@ -56,6 +56,9 @@
               [accept]="'image/*,application/pdf'"
               [disabled]="ocrProcessing()"
               [fileName]="passportFile()?.name ?? null"
+              [previewUrl]="passportFilePreviewUrl()"
+              [previewType]="passportFilePreviewType()"
+              [magnifierEnabledByDefault]="true"
               [helperText]="'Supported: JPG, PNG, PDF'"
               (fileSelected)="onPassportFileSelected($event)"
               (cleared)="onPassportFileCleared()"
@@ -92,8 +95,20 @@
               </div>
             }
 
-            @if (passportPreviewUrl()) {
-              <img class="passport-preview" [src]="passportPreviewUrl()" alt="Passport preview" />
+            @if (ocrProcessing() || passportPreviewUrl()) {
+              @if (ocrProcessing() && !passportPreviewUrl()) {
+                <div class="passport-preview-shell">
+                  <div class="passport-preview-skeleton"></div>
+                </div>
+              }
+              @if (passportPreviewUrl()) {
+                <app-image-magnifier
+                  [src]="passportPreviewUrl()"
+                  alt="Passport preview"
+                  [imageClass]="'passport-preview'"
+                  [wrapperClass]="'passport-preview-shell'"
+                />
+              }
             }
 
             <div class="space-y-2">
@@ -105,12 +120,20 @@
               >
                 Click here and press Cmd+V / Ctrl+V to paste an image
               </div>
-              @if (passportPastePreviewUrl()) {
-                <img
-                  class="passport-preview"
-                  [src]="passportPastePreviewUrl()"
-                  alt="Clipboard preview"
-                />
+              @if (passportPasteStatus() || passportPastePreviewUrl()) {
+                @if (passportPasteStatus() && !passportPastePreviewUrl()) {
+                  <div class="passport-preview-shell">
+                    <div class="passport-preview-skeleton"></div>
+                  </div>
+                }
+                @if (passportPastePreviewUrl()) {
+                  <app-image-magnifier
+                    [src]="passportPastePreviewUrl()"
+                    alt="Clipboard preview"
+                    [imageClass]="'passport-preview'"
+                    [wrapperClass]="'passport-preview-shell'"
+                  />
+                }
               }
               @if (passportPasteStatus()) {
                 <p class="text-sm text-muted-foreground">{{ passportPasteStatus() }}</p>
@@ -277,7 +300,6 @@
         </div>
       </div>
     </z-card>
-
 
     <!-- 3) Contact Information -->
     <z-card class="overflow-hidden">

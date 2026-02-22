@@ -104,6 +104,22 @@ The application exposes a RESTful API for interacting with its various modules. 
 
 ---
 
+## Async Trigger Rate Limits
+
+Expensive async trigger endpoints are protected by both enqueue guards (deduplication + short lock) and scoped DRF throttling to reduce duplicate storms / DoS blast radius.
+
+Configured scoped limits (`REST_FRAMEWORK.DEFAULT_THROTTLE_RATES` in `backend/business_suite/settings/base.py`):
+
+- `products_export_start`: `POST /api/products/export/start/` → `6/minute`
+- `products_import_start`: `POST /api/products/import/start/` → `6/minute`
+- `invoice_download_async`: `POST /api/invoices/{id}/download-async/` → `10/minute`
+- `invoice_import_batch`: `POST /api/invoices/import/batch/` → `4/minute`
+- `ocr`: `POST /api/ocr/check/` → `10/minute`
+- `document_ocr`: `POST /api/document-ocr/check/` → `10/minute`
+- `cron`: `GET|POST /api/cron/exec_cron_jobs/` → `5/minute`
+
+---
+
 ## 📣 Observability — django-auditlog (Recommended)
 
 We use `django-auditlog` to record model changes (create/update/delete) and optionally record access events. Audit entries are persisted to the database (viewable in Django Admin).
@@ -139,7 +155,7 @@ Quick steps:
 
 Note: Audit log DB retention is configured via the `AUDITLOG_RETENTION_DAYS` environment variable / Django setting (default: 14 days). A daily Huey cron job runs to prune `auditlog.LogEntry` rows older than this threshold; set `AUDITLOG_RETENTION_SCHEDULE` to change the daily run time or set it to an empty string to disable scheduling.
 
-5. Optional settings you can tweak:
+1. Optional settings you can tweak:
    - `AUDIT_ENABLED` (default: `True`) — Use this env var / Django setting to enable/disable audit forwarding at application startup.
    - `AUDIT_URL_SKIP_LIST` — a list of URL prefixes to ignore when forwarding request-related structured logs.
    - `AUDIT_PURGE_AFTER_DAYS` — retention/fwd purge window for forwarded logs.

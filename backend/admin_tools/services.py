@@ -176,6 +176,71 @@ def _build_source_storage_from_manifest(manifest: dict):
     return storage, None
 
 
+def _normalized_descriptor_value(value):
+    if value is None:
+        return ""
+    return str(value).strip()
+
+
+def _storage_descriptors_match(source_meta: dict, target_meta: dict) -> bool:
+    """
+    Determine whether source/target storage descriptors represent the same object storage.
+
+    We intentionally match on provider/bucket plus optional endpoint/location metadata,
+    instead of strict backend class equality, so compatible custom storage subclasses
+    are still recognized as the same storage.
+    """
+    if not isinstance(source_meta, dict) or not isinstance(target_meta, dict):
+        return False
+
+    source_provider = _normalized_descriptor_value(source_meta.get("provider")).lower()
+    target_provider = _normalized_descriptor_value(target_meta.get("provider")).lower()
+    if source_provider and target_provider and source_provider != target_provider:
+        return False
+
+    compared_any = False
+    for key in ("bucket", "endpoint_url", "location", "region_name", "custom_domain"):
+        source_value = _normalized_descriptor_value(source_meta.get(key))
+        target_value = _normalized_descriptor_value(target_meta.get(key))
+        if source_value and target_value:
+            compared_any = True
+            if source_value != target_value:
+                return False
+
+    if compared_any:
+        return True
+
+    source_backend = _normalized_descriptor_value(source_meta.get("backend"))
+    target_backend = _normalized_descriptor_value(target_meta.get("backend"))
+    if source_backend and target_backend:
+        return source_backend == target_backend
+
+    return False
+
+
+def _is_missing_source_error(exc: Exception) -> bool:
+    if isinstance(exc, FileNotFoundError):
+        return True
+
+    if getattr(exc, "errno", None) == 2:
+        return True
+
+    text = str(exc).strip().lower()
+    if not text:
+        return False
+
+    return any(
+        marker in text
+        for marker in (
+            "nosuchkey",
+            "no such key",
+            "not found",
+            "no such file",
+            "does not exist",
+        )
+    )
+
+
 def _strip_user_related_objects_from_fixture(fixture_path: str, model_labels: set[str]) -> tuple[str | None, int]:
     """Remove user-bound objects from a fixture used for partial (no-users) restores."""
     try:
@@ -830,8 +895,14 @@ def restore_from_file(path, include_users=False):
                     post_save.connect(save_user_settings, sender=User)
 
         saved_path_map = {}
+        media_summary = {
+            "copied": 0,
+            "skipped_existing": 0,
+            "missing_source": 0,
+        }
 
         # If archive included media files, restore them from archive payload.
+        # Never delete destination files during restore: copy only missing objects.
         embedded_media_present = False
         if extracted_media_tmpdir and os.path.exists(extracted_media_tmpdir):
             embedded_files = []
@@ -847,22 +918,28 @@ def restore_from_file(path, include_users=False):
                 for i, src in enumerate(embedded_files):
                     rel = os.path.relpath(src, extracted_media_tmpdir)
                     try:
+                        if default_storage.exists(rel):
+                            media_summary["skipped_existing"] += 1
+                            if (i + 1) % 10 == 0 or (i + 1) == total_files:
+                                progress = int(((i + 1) / total_files) * 100)
+                                yield f"PROGRESS:{progress}"
+                                yield f"Processed {i + 1}/{total_files} files..."
+                            continue
+
                         with open(src, "rb") as fsrc:
                             django_file = File(fsrc)
-                            if default_storage.exists(rel):
-                                try:
-                                    default_storage.delete(rel)
-                                except Exception:
-                                    pass
                             saved_path = default_storage.save(rel, django_file)
                             if saved_path != rel:
                                 saved_path_map[rel] = saved_path
+                            media_summary["copied"] += 1
 
                         if (i + 1) % 10 == 0 or (i + 1) == total_files:
                             progress = int(((i + 1) / total_files) * 100)
                             yield f"PROGRESS:{progress}"
-                            yield f"Restored {i + 1}/{total_files} files..."
+                            yield f"Processed {i + 1}/{total_files} files..."
                     except Exception as e:
+                        if _is_missing_source_error(e):
+                            media_summary["missing_source"] += 1
                         yield f"Warning: could not restore media file {rel}: {e}"
 
         # If media was intentionally not embedded (cloud/object storage), copy it from source storage.
@@ -877,37 +954,70 @@ def restore_from_file(path, include_users=False):
             )
         )
         if uses_external_reference and not embedded_media_present:
-            source_storage, storage_error = _build_source_storage_from_manifest(manifest)
-            if source_storage is None:
-                yield f"Warning: cannot restore external media files: {storage_error}"
-            else:
-                source_storage_info = media_meta.get("storage", {}) if isinstance(media_meta, dict) else {}
-                source_provider = source_storage_info.get("provider", "unknown")
-                source_bucket = source_storage_info.get("bucket", "unknown")
-                total_files = len(manifest_filepaths)
-                yield (
-                    f"Restoring {total_files} media files from source object storage "
-                    f"(provider={source_provider}, bucket={source_bucket})..."
-                )
-                for i, rel in enumerate(manifest_filepaths):
+            source_storage_info = media_meta.get("storage", {}) if isinstance(media_meta, dict) else {}
+            target_storage_info = _build_storage_descriptor(default_storage)
+            if _storage_descriptors_match(source_storage_info, target_storage_info):
+                existing_count = 0
+                missing_count = 0
+                for rel in manifest_filepaths:
                     try:
-                        with source_storage.open(rel, "rb") as source_handle:
-                            django_file = File(source_handle)
+                        if default_storage.exists(rel):
+                            existing_count += 1
+                        else:
+                            missing_count += 1
+                    except Exception:
+                        missing_count += 1
+                yield (
+                    "Source and target object storage are identical; "
+                    "skipping media copy to avoid destructive self-overwrite "
+                    f"(existing={existing_count}, missing={missing_count})."
+                )
+                media_summary["skipped_existing"] += existing_count
+                media_summary["missing_source"] += missing_count
+            else:
+                source_storage, storage_error = _build_source_storage_from_manifest(manifest)
+                if source_storage is None:
+                    yield f"Warning: cannot restore external media files: {storage_error}"
+                else:
+                    source_provider = source_storage_info.get("provider", "unknown")
+                    source_bucket = source_storage_info.get("bucket", "unknown")
+                    total_files = len(manifest_filepaths)
+                    yield (
+                        f"Restoring {total_files} media files from source object storage "
+                        f"(provider={source_provider}, bucket={source_bucket})..."
+                    )
+                    for i, rel in enumerate(manifest_filepaths):
+                        try:
                             if default_storage.exists(rel):
-                                try:
-                                    default_storage.delete(rel)
-                                except Exception:
-                                    pass
-                            saved_path = default_storage.save(rel, django_file)
-                            if saved_path != rel:
-                                saved_path_map[rel] = saved_path
+                                media_summary["skipped_existing"] += 1
+                                if (i + 1) % 10 == 0 or (i + 1) == total_files:
+                                    progress = int(((i + 1) / total_files) * 100)
+                                    yield f"PROGRESS:{progress}"
+                                    yield f"Processed {i + 1}/{total_files} files..."
+                                continue
 
-                        if (i + 1) % 10 == 0 or (i + 1) == total_files:
-                            progress = int(((i + 1) / total_files) * 100)
-                            yield f"PROGRESS:{progress}"
-                            yield f"Restored {i + 1}/{total_files} files..."
-                    except Exception as e:
-                        yield f"Warning: could not copy media file {rel} from source storage: {e}"
+                            with source_storage.open(rel, "rb") as source_handle:
+                                django_file = File(source_handle)
+                                saved_path = default_storage.save(rel, django_file)
+                                if saved_path != rel:
+                                    saved_path_map[rel] = saved_path
+                                media_summary["copied"] += 1
+
+                            if (i + 1) % 10 == 0 or (i + 1) == total_files:
+                                progress = int(((i + 1) / total_files) * 100)
+                                yield f"PROGRESS:{progress}"
+                                yield f"Processed {i + 1}/{total_files} files..."
+                        except Exception as e:
+                            if _is_missing_source_error(e):
+                                media_summary["missing_source"] += 1
+                            yield f"Warning: could not copy media file {rel} from source storage: {e}"
+
+        yield (
+            "RESTORE_SUMMARY: "
+            f"copied={media_summary['copied']} "
+            f"skipped_existing={media_summary['skipped_existing']} "
+            f"missing_source={media_summary['missing_source']}"
+        )
 
         # Sync renamed media paths in DB
         if saved_path_map:
