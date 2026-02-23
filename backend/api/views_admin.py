@@ -436,12 +436,61 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
     serializer_class = ServerManagementPlaceholderSerializer
     permission_classes = [IsAuthenticated, IsSuperuserOrAdminGroup]
 
-    @extend_schema(summary="Clear application cache", responses={200: OpenApiTypes.OBJECT})
+    @extend_schema(
+        summary="Clear application cache",
+        parameters=[
+            OpenApiParameter(
+                name="user_id",
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                description="Optional user ID for per-user cache clearing. If omitted, clears global cache.",
+                required=False,
+            ),
+        ],
+        responses={200: OpenApiTypes.OBJECT},
+    )
     @action(detail=False, methods=["post"], url_path="clear-cache")
     def clear_cache(self, request):
-        """Global cache purge."""
+        """
+        Clear application cache.
+        
+        Supports two modes:
+        1. Global cache clear (default): Clears all cache entries
+        2. Per-user cache clear: Increments user's cache version for O(1) invalidation
+        
+        Query Parameters:
+            user_id (optional): User ID for per-user cache clearing
+        """
         from django.core.cache import caches
 
+        # Check for per-user cache clearing
+        user_id = request.query_params.get("user_id")
+        
+        if user_id:
+            # Per-user cache clearing via namespace version increment
+            try:
+                user_id = int(user_id)
+                from cache.namespace import namespace_manager
+                
+                new_version = namespace_manager.increment_user_version(user_id)
+                return Response({
+                    "ok": True,
+                    "message": f"Cache cleared for user {user_id}",
+                    "user_id": user_id,
+                    "new_version": new_version,
+                })
+            except ValueError:
+                return Response(
+                    {"ok": False, "message": "Invalid user_id parameter"},
+                    status=400
+                )
+            except Exception as e:
+                return Response(
+                    {"ok": False, "message": f"Failed to clear user cache: {str(e)}"},
+                    status=500
+                )
+        
+        # Global cache clear (backward compatible)
         try:
             caches["default"].clear()
             return Response({"ok": True, "message": "Cache cleared"})

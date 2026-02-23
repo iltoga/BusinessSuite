@@ -17,6 +17,11 @@ def get_avatar_upload_to(instance, filename):
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
     avatar = models.ImageField(upload_to=get_avatar_upload_to, null=True, blank=True)
+    cache_enabled = models.BooleanField(
+        default=True,
+        db_index=True,
+        help_text="Whether caching is enabled for this user. When disabled, all cache operations are bypassed."
+    )
 
     def __str__(self):
         return f"Profile for {self.user.username}"

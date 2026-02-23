@@ -21,6 +21,8 @@ from pathlib import Path
 from core.utils.dropbox_refresh_token import refresh_dropbox_token
 from dotenv import load_dotenv
 
+from business_suite.settings.cache_backends import build_prod_redis_caches
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -178,7 +180,9 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.postgres",
+    "cacheops",  # Django-cacheops for automatic ORM query caching
     "core.apps.CoreConfig",
+    "cache.apps.CacheConfig",  # Hybrid cache system with namespace versioning
     "landing",
     "customers",
     "products",
@@ -213,6 +217,8 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    # Cache middleware must be after AuthenticationMiddleware to access request.user
+    "cache.middleware.CacheMiddleware",
     # Waffle must be after AuthenticationMiddleware to access request.user
     "waffle.middleware.WaffleMiddleware",
     # Custom middlewares that might rely on Waffle flags or Auth
@@ -571,15 +577,72 @@ SESSION_SAVE_EVERY_REQUEST = True
 #     INTERNAL_IPS = [ip[: ip.rfind(".")] + ".1" for ip in ips] + ["127.0.0.1", "10.0.2.2"]
 
 
-CACHES = {
-    "default": {
-        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-        # "LOCATION": "unique-snowflake",
-    },
-    "select2": {
-        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-    },
+CACHES = build_prod_redis_caches()
+
+# Cacheops Configuration - uses Redis database 2 (Huey uses default DB 0, Django cache uses DB 1)
+# Parse REDIS_URL and replace the database number with 2 for cacheops
+_redis_url = os.getenv("REDIS_URL", "redis://redis:6379/1")
+# Replace the database number in the URL (e.g., /1 -> /2)
+if _redis_url.rfind("/") > _redis_url.rfind(":"):
+    # URL has a database number, replace it
+    CACHEOPS_REDIS = _redis_url.rsplit("/", 1)[0] + "/2"
+else:
+    # URL doesn't have a database number, append /2
+    CACHEOPS_REDIS = _redis_url.rstrip("/") + "/2"
+
+# Per-model cache configuration
+# Optimized based on benchmark results (Task 21.3)
+# Strategy: Static/reference data (1-24 hours), User data (10-15 minutes),
+# Content data (2-5 minutes), Real-time data (30 seconds - 1 minute)
+# See backend/cache/OPTIMIZATION_NOTES.md for detailed rationale
+CACHEOPS = {
+    # Static/reference data - rarely changes (1-24 hours)
+    # Rationale: Maximizes cache hit rate for frequently accessed reference data
+    'auth.permission': {'ops': 'all', 'timeout': 60 * 60},  # 1 hour
+    'contenttypes.*': {'ops': 'all', 'timeout': 60 * 60 * 24},  # 24 hours
+    'core.countrycode': {'ops': 'all', 'timeout': 60 * 60 * 24},  # 24 hours
+    'core.holiday': {'ops': 'all', 'timeout': 60 * 60 * 24},  # 24 hours
+    'products.documenttype': {'ops': 'all', 'timeout': 60 * 60},  # 1 hour
+    'products.product': {'ops': 'all', 'timeout': 60 * 60},  # 1 hour
+    'products.task': {'ops': 'all', 'timeout': 60 * 60},  # 1 hour
+    
+    # User data - moderate change frequency (10-15 minutes)
+    # Rationale: Reduces database load for user authentication and profile lookups
+    'auth.user': {'ops': 'get', 'timeout': 60 * 15},  # 15 minutes
+    'core.userprofile': {'ops': 'get', 'timeout': 60 * 15},  # 15 minutes
+    'core.usersettings': {'ops': 'get', 'timeout': 60 * 15},  # 15 minutes
+    'customers.customer': {'ops': 'all', 'timeout': 60 * 10},  # 10 minutes
+    
+    # Content data - frequent changes (2-5 minutes)
+    # Rationale: Balances freshness with cache efficiency for business data
+    'invoices.invoice': {'ops': 'all', 'timeout': 60 * 5},  # 5 minutes
+    'invoices.invoiceapplication': {'ops': 'all', 'timeout': 60 * 5},  # 5 minutes
+    'payments.payment': {'ops': 'all', 'timeout': 60 * 5},  # 5 minutes
+    'customer_applications.docapplication': {'ops': 'all', 'timeout': 60 * 5},  # 5 minutes
+    'customer_applications.document': {'ops': 'all', 'timeout': 60 * 5},  # 5 minutes
+    'customer_applications.docworkflow': {'ops': 'all', 'timeout': 60 * 2},  # 2 minutes
+    'core.calendarevent': {'ops': 'all', 'timeout': 60 * 2},  # 2 minutes
+    
+    # Real-time/notification data - very frequent changes (30 seconds)
+    # Rationale: Provides caching benefit while maintaining near-real-time freshness
+    'core.calendarreminder': {'ops': 'get', 'timeout': 30},  # 30 seconds
+    'customer_applications.workflownotification': {'ops': 'get', 'timeout': 30},  # 30 seconds
+    'core.webpushsubscription': {'ops': 'get', 'timeout': 30},  # 30 seconds
+    
+    # Job/task tracking - short-lived (1 minute)
+    # Rationale: Job status needs frequent updates but benefits from brief caching
+    'core.ocrjob': {'ops': 'get', 'timeout': 60},  # 1 minute
+    'core.documentocrjob': {'ops': 'get', 'timeout': 60},  # 1 minute
+    'core.asyncjob': {'ops': 'get', 'timeout': 60},  # 1 minute
+    'invoices.invoiceimportjob': {'ops': 'get', 'timeout': 60},  # 1 minute
+    'invoices.invoiceimportitem': {'ops': 'get', 'timeout': 60},  # 1 minute
+    'invoices.invoicedownloadjob': {'ops': 'get', 'timeout': 60},  # 1 minute
+    'invoices.invoicedocumentjob': {'ops': 'get', 'timeout': 60},  # 1 minute
+    'invoices.invoicedocumentitem': {'ops': 'get', 'timeout': 60},  # 1 minute
 }
+
+# Graceful fallback to database on cache errors
+CACHEOPS_DEGRADE_ON_FAILURE = True
 
 # Content Security Policy support: generate per-request nonces and expose mode
 CSP_ENABLED = _parse_bool(os.getenv("CSP_ENABLED", "False"))

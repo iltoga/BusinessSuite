@@ -1,0 +1,63 @@
+{
+  "benchmark_config": {
+    "num_users": 100,
+    "num_queries_per_user": 1000,
+    "total_queries": 100000,
+    "models_benchmarked": [
+      "auth.Permission",
+      "contenttypes.ContentType",
+      "core.CountryCode",
+      "core.Holiday",
+      "products.DocumentType",
+      "products.Product",
+      "products.Task",
+      "auth.User",
+      "core.UserProfile",
+      "core.UserSettings",
+      "customers.Customer",
+      "invoices.Invoice",
+      "invoices.InvoiceApplication",
+      "payments.Payment",
+      "customer_applications.DocApplication",
+      "customer_applications.Document",
+      "customer_applications.DocWorkflow",
+      "core.CalendarEvent",
+      "core.CalendarReminder",
+      "customer_applications.WorkflowNotification",
+      "core.WebPushSubscription",
+      "core.OCRJob",
+      "core.DocumentOCRJob",
+      "core.AsyncJob",
+      "invoices.InvoiceImportJob",
+      "invoices.InvoiceImportItem",
+      "invoices.InvoiceDownloadJob",
+      "invoices.InvoiceDocumentJob",
+      "invoices.InvoiceDocumentItem"
+    ],
+    "max_records_per_query": 10
+  },
+  "safety_guarantees": {
+    "read_only_queries": true,
+    "transaction_rollback": true,
+    "separate_redis_db": 3,
+    "query_limits_enforced": true,
+    "max_users_limit": 1000,
+    "max_queries_limit": 10000
+  },
+  "metrics": {
+    "cache_hit_rate_percent": 50.0,
+    "cache_hits": 2000,
+    "cache_misses": 2000,
+    "avg_cached_query_time_ms": 1.262,
+    "avg_uncached_query_time_ms": 1.424,
+    "speedup_factor": 1.13,
+    "avg_invalidation_time_ms": 0.353,
+    "avg_redis_operation_time_ms": 0.46,
+    "total_memory_usage_kb": 0.0,
+    "avg_memory_per_user_kb": 0.0,
+    "users_benchmarked": 2,
+    "total_queries": 4000,
+    "errors": []
+  },
+  "timestamp": "2026-02-23 08:21:11"
+}
