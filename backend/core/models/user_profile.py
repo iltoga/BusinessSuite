@@ -1,9 +1,13 @@
 import os
+from logging import getLogger
 
 from django.contrib.auth.models import User
 from django.db import models
+from django.db.utils import DatabaseError
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+
+logger = getLogger(__name__)
 
 
 def get_avatar_upload_to(instance, filename):
@@ -17,6 +21,11 @@ def get_avatar_upload_to(instance, filename):
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
     avatar = models.ImageField(upload_to=get_avatar_upload_to, null=True, blank=True)
+    cache_enabled = models.BooleanField(
+        default=True,
+        db_index=True,
+        help_text="Whether caching is enabled for this user. When disabled, all cache operations are bypassed."
+    )
 
     def __str__(self):
         return f"Profile for {self.user.username}"
@@ -31,6 +40,12 @@ def create_user_profile(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender=User)
 def save_user_profile(sender, instance, **kwargs):
-    if not hasattr(instance, "profile"):
+    # Avoid resolving the reverse one-to-one relation on every user save (e.g. login
+    # last_login updates). This keeps auth flow resilient when profile schema lags behind.
+    if UserProfile.objects.filter(user_id=instance.pk).exists():
+        return
+
+    try:
         UserProfile.objects.create(user=instance)
-    instance.profile.save()
+    except DatabaseError:
+        logger.exception("Unable to auto-create UserProfile for user_id=%s", instance.pk)

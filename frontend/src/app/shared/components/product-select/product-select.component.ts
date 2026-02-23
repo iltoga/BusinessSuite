@@ -134,13 +134,14 @@ export class ProductSelectComponent implements ControlValueAccessor {
   }
 
   private mapProductOption(product: any): TypeaheadOption {
-    const name = product.name ?? `Product #${product.id}`;
-    const code = product.code ?? '';
-    const desc = (product.description ?? '').trim();
+    const normalizedProduct = product?.product ?? product;
+    const name = normalizedProduct.name ?? `Product #${normalizedProduct.id}`;
+    const code = normalizedProduct.code ?? '';
+    const desc = (normalizedProduct.description ?? '').trim();
 
     // The wrapper will use these for two-line display
     return {
-      value: String(product.id),
+      value: String(normalizedProduct.id),
       label: name,
       code: code || undefined,
       description: desc || undefined,

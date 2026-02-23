@@ -2,14 +2,27 @@ from datetime import datetime
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.contrib.auth.models import Group
+from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
 from core.models.ai_request_usage import AIRequestUsage
 from core.services.ai_usage_service import AIUsageFeature
 
+TEST_CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "test-default-cache",
+    },
+    "select2": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "test-select2-cache",
+    },
+}
 
+
+@override_settings(CACHES=TEST_CACHES)
 class AICostingReportApiTests(TestCase):
     def setUp(self):
         self.client = APIClient()
@@ -19,6 +32,8 @@ class AICostingReportApiTests(TestCase):
             email="ai-report-user@example.com",
             password="password",
         )
+        manager_group, _ = Group.objects.get_or_create(name="manager")
+        self.user.groups.add(manager_group)
         self.client.force_authenticate(user=self.user)
 
     def _create_usage(
@@ -96,3 +111,16 @@ class AICostingReportApiTests(TestCase):
         )
         self.assertEqual(feature_row["requestCount"], 2)
         self.assertAlmostEqual(feature_row["totalCost"], 0.12, places=6)
+
+    def test_ai_costing_report_rejects_authenticated_non_manager_non_admin_user(self):
+        regular_client = APIClient()
+        user_model = get_user_model()
+        regular_user = user_model.objects.create_user(
+            username="ai-report-regular-user",
+            email="ai-report-regular-user@example.com",
+            password="password",
+        )
+        regular_client.force_authenticate(user=regular_user)
+
+        response = regular_client.get("/api/reports/ai-costing/?year=2026&month=2")
+        self.assertEqual(response.status_code, 403)

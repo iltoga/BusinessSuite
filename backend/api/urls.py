@@ -85,6 +85,8 @@ urlpatterns = [
     # Authentication endpoints
     path("api-token-auth/", views.TokenAuthView.as_view(), name="api-token-auth"),
     path("session-auth/", include("rest_framework.urls", namespace="rest_framework")),
+    # Cache control API endpoints
+    path("cache/", include("cache.urls")),
     # SSE endpoints (plain Django views, bypass DRF content negotiation)
     # Used for real-time updates in Angular components
     path("backups/start/", backup_start_sse, name="api-backup-start-sse"),

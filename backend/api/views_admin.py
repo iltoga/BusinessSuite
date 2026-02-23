@@ -2,6 +2,7 @@
 import datetime
 import functools
 import json
+import logging
 import os
 import shutil
 import tarfile
@@ -17,6 +18,7 @@ from api.utils.sse_auth import sse_token_auth_required
 from api.views import ApiErrorHandlingMixin
 from core.models.ai_request_usage import AIRequestUsage
 from core.services.ai_usage_service import AIUsageFeature
+from django.core.cache import caches
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.staticfiles import finders
@@ -32,6 +34,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 class BackupsPlaceholderSerializer(serializers.Serializer):
@@ -40,6 +43,18 @@ class BackupsPlaceholderSerializer(serializers.Serializer):
 
 class ServerManagementPlaceholderSerializer(serializers.Serializer):
     """Schema placeholder for server management utility endpoints."""
+
+
+def _clear_cacheops_query_store() -> None:
+    """
+    Purge cacheops query cache.
+
+    Cacheops uses a dedicated Redis DB configured by `CACHEOPS_REDIS`, so
+    global cache clears must invalidate both Django default cache and cacheops.
+    """
+    from cacheops import invalidate_all
+
+    invalidate_all()
 
 
 # ============================================================================
@@ -436,16 +451,71 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
     serializer_class = ServerManagementPlaceholderSerializer
     permission_classes = [IsAuthenticated, IsSuperuserOrAdminGroup]
 
-    @extend_schema(summary="Clear application cache", responses={200: OpenApiTypes.OBJECT})
+    @extend_schema(
+        summary="Clear application cache",
+        parameters=[
+            OpenApiParameter(
+                name="user_id",
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                description="Optional user ID for per-user cache clearing. If omitted, clears global cache.",
+                required=False,
+            ),
+        ],
+        responses={200: OpenApiTypes.OBJECT},
+    )
     @action(detail=False, methods=["post"], url_path="clear-cache")
     def clear_cache(self, request):
-        """Global cache purge."""
-        from django.core.cache import caches
-
+        """
+        Clear application cache.
+        
+        Supports two modes:
+        1. Global cache clear (default): Clears all cache entries
+        2. Per-user cache clear: Increments user's cache version for O(1) invalidation
+        
+        Query Parameters:
+            user_id (optional): User ID for per-user cache clearing
+        """
+        # Check for per-user cache clearing
+        user_id = request.query_params.get("user_id")
+        
+        if user_id:
+            # Per-user cache clearing via namespace version increment
+            try:
+                user_id = int(user_id)
+                from cache.namespace import namespace_manager
+                
+                new_version = namespace_manager.increment_user_version(user_id)
+                return Response({
+                    "ok": True,
+                    "message": f"Cache cleared for user {user_id}",
+                    "user_id": user_id,
+                    "new_version": new_version,
+                })
+            except ValueError:
+                return Response(
+                    {"ok": False, "message": "Invalid user_id parameter"},
+                    status=400
+                )
+            except Exception as e:
+                return Response(
+                    {"ok": False, "message": f"Failed to clear user cache: {str(e)}"},
+                    status=500
+                )
+        
+        # Global cache clear (backward compatible)
         try:
             caches["default"].clear()
-            return Response({"ok": True, "message": "Cache cleared"})
+            _clear_cacheops_query_store()
+            return Response(
+                {
+                    "ok": True,
+                    "message": "Cache cleared",
+                    "cleared_stores": ["default", "cacheops"],
+                }
+            )
         except Exception as e:
+            logger.error("Failed to clear global caches: %s", e, exc_info=True)
             return Response({"ok": False, "message": str(e)}, status=500)
 
     @extend_schema(summary="Run media files diagnostic", responses={200: OpenApiTypes.OBJECT})

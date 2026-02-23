@@ -533,7 +533,7 @@
 
 @if (isUploadOpen() && selectedDocument()) {
   <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-    <div class="w-full max-w-2xl rounded-lg bg-card p-6 shadow-lg">
+    <div class="app-upload-dialog rounded-lg bg-card p-6 shadow-lg">
       <div class="flex items-start justify-between">
         <div>
           <h3 class="text-lg font-semibold">Upload {{ selectedDocument()!.docType.name }}</h3>
@@ -542,7 +542,7 @@
         <button z-button zType="ghost" zSize="sm" (click)="closeUpload()">Close</button>
       </div>
 
-      <form class="mt-6 space-y-4" [formGroup]="uploadForm">
+      <form class="app-upload-dialog-form mt-6 space-y-4" [formGroup]="uploadForm">
         <app-file-upload
           [label]="'Drop file here'"
           [accept]="selectedDocument()!.docType.hasFile ? '*/*' : ''"
@@ -552,6 +552,9 @@
           [previewUrl]="inlinePreviewUrl()"
           [previewType]="inlinePreviewType()"
           [previewLoading]="inlinePreviewLoading()"
+          [previewHeight]="'6rem'"
+          [previewWidth]="'10rem'"
+          [showMagnifierToggle]="false"
           (fileSelected)="onFileSelected($event)"
           (cleared)="onFileCleared()"
         />
@@ -615,7 +618,7 @@
               [centerInViewport]="true"
               zType="outline"
               zSize="sm"
-              label="Preview"
+              label="Full Preview"
               previewSize="md"
               (viewFull)="viewDocument(selectedDocument()!)"
             />
@@ -644,14 +647,33 @@
           </div>
         </div>
 
-        @if (ocrPreviewImage()) {
-          <div class="rounded-md border p-3">
+        @if (ocrPreviewImage() || ocrHasExtractedData()) {
+          <div class="rounded-md border bg-muted/5 p-3">
             <div class="text-sm font-medium mb-2">OCR Preview</div>
-            <app-image-magnifier
-              [src]="ocrPreviewImage()"
-              alt="OCR Preview"
-              [imageClass]="'max-h-60 w-auto max-w-full rounded object-contain'"
-            />
+            <div class="grid gap-4 md:grid-cols-2 md:items-start">
+              <div class="rounded-md border bg-background p-2 min-h-48 flex items-center justify-center">
+                @if (ocrPreviewImage()) {
+                  <app-image-magnifier
+                    [src]="ocrPreviewImage()"
+                    alt="OCR Preview"
+                    [imageClass]="'max-h-72 w-auto max-w-full rounded object-contain'"
+                    [wrapperClass]="'w-full max-w-64'"
+                  />
+                } @else {
+                  <div class="text-xs text-muted-foreground">Preview image not available.</div>
+                }
+              </div>
+              <div class="space-y-2">
+                <label class="text-xs font-medium text-muted-foreground">Extracted Data</label>
+                <textarea
+                  z-input
+                  rows="14"
+                  readonly
+                  class="w-full min-h-56 font-mono text-xs leading-5"
+                  [value]="ocrExtractedDataText()"
+                ></textarea>
+              </div>
+            </div>
           </div>
         }
       </form>

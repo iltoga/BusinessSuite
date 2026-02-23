@@ -99,6 +99,18 @@ interface OpenRouterStatusResponse {
   };
 }
 
+interface CacheStatusResponse {
+  enabled: boolean;
+  version: number;
+  message: string;
+}
+
+interface CacheClearResponse {
+  version: number;
+  cleared: boolean;
+  message: string;
+}
+
 @Component({
   selector: 'app-server-management',
   standalone: true,
@@ -118,6 +130,10 @@ export class ServerManagementComponent implements OnInit {
   readonly serverSettings = signal<ServerSettings | null>(null);
   readonly openRouterStatus = signal<OpenRouterStatusResponse | null>(null);
   readonly openRouterLoading = signal(false);
+  
+  // Cache management state
+  readonly cacheStatus = signal<CacheStatusResponse | null>(null);
+  readonly cacheLoading = signal(false);
 
   readonly missingFilesCount = computed(
     () => this.diagnosticResults().filter((r) => !r.exists).length,
@@ -129,6 +145,7 @@ export class ServerManagementComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadOpenRouterStatus();
+    this.loadCacheStatus();
   }
 
   clearCache(): void {
@@ -148,6 +165,65 @@ export class ServerManagementComponent implements OnInit {
         } else {
           this.toast.error(response.message || 'Failed to clear cache');
         }
+      });
+  }
+
+  loadCacheStatus(): void {
+    this.cacheLoading.set(true);
+    this.http
+      .get<CacheStatusResponse>('/api/cache/status')
+      .pipe(
+        catchError(() => {
+          this.toast.error('Failed to load cache status');
+          return EMPTY;
+        }),
+        finalize(() => this.cacheLoading.set(false)),
+      )
+      .subscribe((response) => {
+        this.cacheStatus.set(response);
+      });
+  }
+
+  toggleCache(): void {
+    const currentStatus = this.cacheStatus();
+    if (!currentStatus) {
+      this.toast.error('Cache status not loaded');
+      return;
+    }
+
+    const endpoint = currentStatus.enabled ? '/api/cache/disable' : '/api/cache/enable';
+    this.cacheLoading.set(true);
+
+    this.http
+      .post<CacheStatusResponse>(endpoint, {})
+      .pipe(
+        catchError(() => {
+          this.toast.error(`Failed to ${currentStatus.enabled ? 'disable' : 'enable'} cache`);
+          return EMPTY;
+        }),
+        finalize(() => this.cacheLoading.set(false)),
+      )
+      .subscribe((response) => {
+        this.cacheStatus.set(response);
+        this.toast.success(response.message);
+      });
+  }
+
+  clearUserCache(): void {
+    this.cacheLoading.set(true);
+    this.http
+      .post<CacheClearResponse>('/api/cache/clear', {})
+      .pipe(
+        catchError(() => {
+          this.toast.error('Failed to clear user cache');
+          return EMPTY;
+        }),
+        finalize(() => this.cacheLoading.set(false)),
+      )
+      .subscribe((response) => {
+        this.toast.success(response.message);
+        // Update cache status with new version
+        this.loadCacheStatus();
       });
   }
 

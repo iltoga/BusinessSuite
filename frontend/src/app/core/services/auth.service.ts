@@ -88,6 +88,13 @@ export class AuthService {
     const groups = this._claims()?.groups ?? [];
     return groups.some((group) => String(group).toLowerCase() === 'admin');
   });
+  isInManagerGroup = computed(() => {
+    const groups = this._claims()?.groups ?? [];
+    return groups.some((group) => String(group).toLowerCase() === 'manager');
+  });
+  isAdminOrManager = computed(
+    () => this.isSuperuser() || this.isInAdminGroup() || this.isInManagerGroup(),
+  );
   isLoading = this._isLoading.asReadonly();
   error = this._error.asReadonly();
 

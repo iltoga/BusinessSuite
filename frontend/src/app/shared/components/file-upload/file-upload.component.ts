@@ -35,6 +35,8 @@ export class FileUploadComponent {
   previewUrl = input<string | null | undefined>(null);
   previewType = input<'image' | 'pdf' | 'unknown'>('unknown');
   previewLoading = input<boolean>(false);
+  previewHeight = input<string>('40rem');
+  previewWidth = input<string | null>(null);
   magnifierEnabledByDefault = input<boolean>(false);
   showMagnifierToggle = input<boolean>(true);
 

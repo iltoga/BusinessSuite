@@ -5,6 +5,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
+from api.permissions import IsAdminOrManagerGroup
 from core.models.ai_request_usage import AIRequestUsage
 from django.utils import timezone
 from django.db.models import Count, Q, Sum, Value
@@ -37,7 +38,7 @@ def _to_json_value(value: Any) -> Any:
 
 
 class _BaseReportAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminOrManagerGroup]
 
     report_view_cls: type | None = None
 
@@ -289,7 +290,7 @@ class ProductDemandForecastApiView(_BaseReportAPIView):
 
 
 class AICostingReportApiView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminOrManagerGroup]
 
     @staticmethod
     def _parse_int(value: str | None, default: int) -> int:

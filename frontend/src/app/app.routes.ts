@@ -1,3 +1,4 @@
+import { adminOrManagerGuard } from '@/core/guards/admin-or-manager.guard';
 import { authGuard } from '@/core/guards/auth.guard';
 import { Routes } from '@angular/router';
 import { ApplicationDetailComponent } from './features/applications/application-detail/application-detail.component';
@@ -39,10 +40,10 @@ export const routes: Routes = [
       { path: 'customers/new', component: CustomerFormComponent },
       { path: 'customers/:id/edit', component: CustomerFormComponent },
       { path: 'customers/:id', component: CustomerDetailComponent },
-      { path: 'products', component: ProductListComponent },
-      { path: 'products/new', component: ProductFormComponent },
-      { path: 'products/:id/edit', component: ProductFormComponent },
-      { path: 'products/:id', component: ProductDetailComponent },
+      { path: 'products', component: ProductListComponent, canActivate: [adminOrManagerGuard] },
+      { path: 'products/new', component: ProductFormComponent, canActivate: [adminOrManagerGuard] },
+      { path: 'products/:id/edit', component: ProductFormComponent, canActivate: [adminOrManagerGuard] },
+      { path: 'products/:id', component: ProductDetailComponent, canActivate: [adminOrManagerGuard] },
       { path: 'applications', component: ApplicationListComponent },
       { path: 'applications/new', component: ApplicationFormComponent },
       { path: 'customers/:id/applications/new', component: ApplicationFormComponent },
@@ -56,8 +57,8 @@ export const routes: Routes = [
       { path: 'reminders', component: RemindersComponent },
       { path: 'letters/surat-permohonan', component: SuratPermohonanComponent },
       { path: 'profile', component: ProfileComponent },
-      { path: 'reports', component: ReportsComponent },
-      { path: 'reports/:slug', component: ReportsComponent },
+      { path: 'reports', component: ReportsComponent, canActivate: [adminOrManagerGuard] },
+      { path: 'reports/:slug', component: ReportsComponent, canActivate: [adminOrManagerGuard] },
       { path: 'daily-boosters/passport-check', component: PassportCheckComponent },
       {
         path: 'admin',
