@@ -36,6 +36,8 @@
           <div class="flex flex-wrap items-center gap-3">
             <z-badge zType="secondary">{{ productTypeLabel(product()?.productType) }}</z-badge>
             <span class="base-price-chip">Base price: {{ product()?.basePrice ?? '—' }}</span>
+            <span class="base-price-chip">Retail price: {{ retailPriceValue() ?? '—' }}</span>
+            <span class="base-price-chip">Unit profit: {{ unitProfitValue() }}</span>
           </div>
           <div class="text-sm text-muted-foreground">
             {{ product()?.description || 'No description provided.' }}

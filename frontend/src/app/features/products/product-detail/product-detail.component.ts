@@ -166,6 +166,21 @@ export class ProductDetailComponent implements OnInit {
     return type === 'visa' ? 'Passport min validity (days)' : 'Docs min validity (days)';
   }
 
+  retailPriceValue(): string | null {
+    const product = this.product() as any;
+    return product?.retailPrice ?? product?.basePrice ?? null;
+  }
+
+  unitProfitValue(): number {
+    const product = this.product() as any;
+    const retail = Number(product?.retailPrice ?? product?.basePrice ?? 0);
+    const base = Number(product?.basePrice ?? 0);
+    if (Number.isNaN(retail) || Number.isNaN(base)) {
+      return 0;
+    }
+    return retail - base;
+  }
+
   private loadProduct(id: number): void {
     this.isLoading.set(true);
     this.productsApi.productsRetrieve(id).subscribe({

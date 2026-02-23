@@ -56,7 +56,7 @@
                 "
               />
             </div>
-            <div class="md:col-span-4 space-y-2">
+            <div class="md:col-span-3 space-y-2">
               <label class="text-sm font-medium">Product type</label>
               <select
                 class="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus:ring-2 focus:ring-ring focus:outline-none"
@@ -69,7 +69,7 @@
                 <option value="other">Other</option>
               </select>
             </div>
-            <div class="md:col-span-4 space-y-2">
+            <div class="md:col-span-3 space-y-2">
               <label class="text-sm font-medium">Base price</label>
               <input
                 z-input
@@ -77,13 +77,32 @@
                 type="number"
                 min="0"
                 [zStatus]="
-                  form.get('basePrice')?.invalid && form.get('basePrice')?.touched
+                  (form.get('basePrice')?.invalid && form.get('basePrice')?.touched) ||
+                  form.errors?.['retailPriceBelowBase']
                     ? 'error'
                     : undefined
                 "
               />
             </div>
-            <div class="md:col-span-4 space-y-2">
+            <div class="md:col-span-3 space-y-2">
+              <label class="text-sm font-medium">Retail price</label>
+              <input
+                z-input
+                formControlName="retailPrice"
+                type="number"
+                min="0"
+                [zStatus]="
+                  (form.get('retailPrice')?.invalid && form.get('retailPrice')?.touched) ||
+                  form.errors?.['retailPriceBelowBase']
+                    ? 'error'
+                    : undefined
+                "
+              />
+              @if (form.errors?.['retailPriceBelowBase']) {
+                <div class="text-xs text-destructive">Retail price must be greater than or equal to base price.</div>
+              }
+            </div>
+            <div class="md:col-span-3 space-y-2">
               <label class="text-sm font-medium">Validity (days)</label>
               <input
                 z-input

@@ -163,6 +163,7 @@
                 fields: {
                     product: {
                         base_price: application.base_price,
+                        retail_price: application.retail_price,
                         name: application.product_name || application.product_name || '',
                         code: application.product_code || ''
                     },
@@ -184,7 +185,11 @@
             var newOption = new Option(application.display_name, application.id, true, true);
             $appSelect.append(newOption).trigger('change');
             var $amountInput = $newFormDiv.find('input[name$="-amount"]');
-            $amountInput.val(application.base_price.toFixed(decimals));
+            var initialAmount = application.retail_price;
+            if (initialAmount === undefined || initialAmount === null) {
+                initialAmount = application.base_price;
+            }
+            $amountInput.val(Number(initialAmount || 0).toFixed(decimals));
             totalForms.val(formIdx + 1);
             $newFormDiv.find('.remove-invoiceapplication-btn').on('click', function(){ $newFormDiv.remove(); });
             $("select[name$='-customer_application']").each(function(){

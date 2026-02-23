@@ -104,6 +104,7 @@ class ProductQuickCreateSerializer(serializers.Serializer):
     product_type = serializers.ChoiceField(choices=Product.PRODUCT_TYPE_CHOICES, default="other")
     description = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     base_price = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
+    retail_price = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
     validity = serializers.IntegerField(required=False, allow_null=True)
     documents_min_validity = serializers.IntegerField(required=False, allow_null=True)
     required_documents = serializers.CharField(required=False, allow_blank=True, allow_null=True)
@@ -111,7 +112,7 @@ class ProductQuickCreateSerializer(serializers.Serializer):
 
     def to_internal_value(self, data):
         data = data.copy()
-        for field in ["validity", "documents_min_validity", "base_price"]:
+        for field in ["validity", "documents_min_validity", "base_price", "retail_price"]:
             if data.get(field) in ["", None]:
                 data[field] = None
         return super().to_internal_value(data)
@@ -122,6 +123,17 @@ class ProductQuickCreateSerializer(serializers.Serializer):
         return value
 
     def validate(self, attrs):
-        if attrs.get("base_price") is None:
-            attrs["base_price"] = Decimal("0.00")
+        base_price = attrs.get("base_price")
+        if base_price is None:
+            base_price = Decimal("0.00")
+            attrs["base_price"] = base_price
+
+        retail_price = attrs.get("retail_price")
+        if retail_price is None:
+            retail_price = base_price
+            attrs["retail_price"] = retail_price
+
+        if retail_price < base_price:
+            raise serializers.ValidationError({"retail_price": "Retail price must be greater than or equal to base price."})
+
         return attrs

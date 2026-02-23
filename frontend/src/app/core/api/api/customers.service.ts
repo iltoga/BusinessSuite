@@ -217,7 +217,7 @@ export class CustomersService extends BaseService {
      * Check passport uploadability asynchronously. Returns an AsyncJob ID to track progress via SSE.
      * @endpoint post /api/customers/check-passport/
      * @param file Passport image file
-     * @param method Verification method  * &#x60;internal&#x60; - internal * &#x60;ai&#x60; - ai * &#x60;hybrid&#x60; - hybrid
+     * @param method Verification method  * &#x60;ai&#x60; - ai * &#x60;hybrid&#x60; - hybrid
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options

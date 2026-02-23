@@ -55,6 +55,7 @@ export interface UninvoicedApplication {
     productType: string;
     productTypeDisplay: string;
     basePrice: string;
+    retailPrice: string;
   };
   docDate: string;
   dueDate: string | null;
@@ -302,6 +303,13 @@ export class CustomersService {
         productType,
         productTypeDisplay: productTypeDisplay || productType,
         basePrice: String(product.basePrice ?? product.base_price ?? '0'),
+        retailPrice: String(
+          product.retailPrice ??
+            product.retail_price ??
+            product.basePrice ??
+            product.base_price ??
+            '0',
+        ),
       },
       docDate: item?.docDate ?? item?.doc_date ?? '',
       dueDate: item?.dueDate ?? item?.due_date ?? null,

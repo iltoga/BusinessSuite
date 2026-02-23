@@ -40,6 +40,12 @@
                   }
                 </button>
 
+                @if (column.headerActionTemplate) {
+                  <ng-container
+                    *ngTemplateOutlet="column.headerActionTemplate; context: { column: column }"
+                  />
+                }
+
                 @if (column.filter) {
                   <button
                     z-dropdown

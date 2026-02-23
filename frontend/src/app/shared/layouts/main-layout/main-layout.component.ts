@@ -223,7 +223,7 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
         A: '/applications',
         P: '/products',
         I: '/invoices',
-        U: '/reminders',
+        U: '/utils/reminders',
         R: '/reports',
       };
       const target = routeMap[key];
@@ -346,7 +346,7 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
 
   openReminderInbox() {
     const today = this.toIsoDate(new Date());
-    this.router.navigate(['/reminders'], {
+    this.router.navigate(['/utils/reminders'], {
       queryParams: {
         statuses: 'pending,sent,failed',
         createdFrom: today,

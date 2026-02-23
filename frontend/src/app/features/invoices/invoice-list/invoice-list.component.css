@@ -1,0 +1,9 @@
+.invoice-created-updated__created {
+  font-size: 0.7rem;
+  line-height: 1.1rem;
+}
+
+.invoice-created-updated__updated {
+  font-size: 0.6rem;
+  line-height: 1rem;
+}

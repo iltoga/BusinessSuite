@@ -57,9 +57,28 @@ describe('ProductListComponent', () => {
     const el: HTMLElement = fixture.nativeElement;
     const text = String((el.innerText ?? el.textContent) || '');
     expect(text).toContain('Visa');
-    // formatted as currency using the component helper or template; check numeric part
-    expect(text).toContain('200');
+    expect(text).toContain('****');
     // description should be present in the list
     expect(text).toContain('Short test description');
+  });
+
+  it('should reveal base prices when clicking the header eye toggle', async () => {
+    component.ngOnInit();
+
+    await new Promise((r) => setTimeout(r, 0));
+    fixture.detectChanges();
+
+    const host: HTMLElement = fixture.nativeElement;
+    const toggle = host.querySelector(
+      'button[aria-label="Show base prices"]',
+    ) as HTMLButtonElement | null;
+    expect(toggle).toBeTruthy();
+
+    toggle?.click();
+    fixture.detectChanges();
+
+    const text = String((host.innerText ?? host.textContent) || '');
+    expect(text).toContain('Rp');
+    expect(text).not.toContain('****');
   });
 });

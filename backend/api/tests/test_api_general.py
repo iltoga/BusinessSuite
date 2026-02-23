@@ -544,6 +544,7 @@ class ProductApiTestCase(TestCase):
             "description": "Extension service",
             "productType": "visa",
             "basePrice": "1500000.00",
+            "retailPrice": "1750000.00",
             "validity": 30,
             "documentsMinValidity": 180,
             "requiredDocumentIds": [self.required_doc.id],
@@ -579,6 +580,7 @@ class ProductApiTestCase(TestCase):
         response = self.client.post(url, data=json.dumps(payload), content_type="application/json")
         self.assertEqual(response.status_code, 201)
         product = Product.objects.get(code="VISA-EXT")
+        self.assertEqual(str(product.retail_price), "1750000.00")
         self.assertEqual(product.required_documents, "Passport")
         self.assertEqual(product.optional_documents, "Bank Statement")
         self.assertEqual(product.tasks.count(), 2)
@@ -618,6 +620,8 @@ class ProductApiTestCase(TestCase):
             "name": "Tourist Visa Updated",
             "code": "TOUR-1",
             "productType": "visa",
+            "basePrice": "1200000.00",
+            "retailPrice": "1500000.00",
             "requiredDocumentIds": [self.required_doc.id],
             "optionalDocumentIds": [],
             "tasks": [
@@ -639,9 +643,26 @@ class ProductApiTestCase(TestCase):
         response = self.client.put(url, data=json.dumps(payload), content_type="application/json")
         self.assertEqual(response.status_code, 200)
         product.refresh_from_db()
+        self.assertEqual(str(product.retail_price), "1500000.00")
         self.assertEqual(product.tasks.count(), 1)
         self.assertEqual(product.tasks.first().name, "Collect Docs")
         self.assertTrue(product.tasks.first().notify_customer)
+
+    def test_product_create_rejects_retail_price_below_base_price(self):
+        url = reverse("products-list")
+        payload = {
+            "name": "Invalid Retail",
+            "code": "INVALID-RETAIL",
+            "productType": "visa",
+            "basePrice": "1000000.00",
+            "retailPrice": "900000.00",
+        }
+
+        response = self.client.post(url, data=json.dumps(payload), content_type="application/json")
+        self.assertEqual(response.status_code, 400)
+        body = response.json()
+        self.assertIn("errors", body)
+        self.assertTrue("retailPrice" in body["errors"] or "retail_price" in body["errors"])
 
     def test_product_can_delete_endpoint(self):
         self.client.force_login(self.user)

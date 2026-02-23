@@ -112,6 +112,14 @@ export class ReportsComponent {
         return { labels: ['High Value', 'Medium Value', 'Low Value'], datasets: [{ data: [d.high_value_count ?? 0, d.medium_value_count ?? 0, d.low_value_count ?? 0], backgroundColor: [this.chartColors[2], this.chartColors[0], this.chartColors[1]] }] };
       case 'productRevenue':
         return { labels: d.product_data?.slice(0, 8).map((p: any) => p.name) ?? [], datasets: [{ label: 'Revenue', data: d.product_data?.slice(0, 8).map((p: any) => p.total_revenue) ?? [], backgroundColor: this.chartColors[0] }] };
+      case 'productProfit':
+        return { labels: d.product_data?.slice(0, 8).map((p: any) => p.name) ?? [], datasets: [{ label: 'Profit', data: d.product_data?.slice(0, 8).map((p: any) => p.total_profit) ?? [], backgroundColor: this.chartColors[4] }] };
+      case 'productMargin':
+        return { labels: d.product_data?.slice(0, 8).map((p: any) => p.name) ?? [], datasets: [{ label: 'Profit Margin %', data: d.product_data?.slice(0, 8).map((p: any) => p.profit_margin_percent) ?? [], backgroundColor: this.chartColors[2] }] };
+      case 'profitMonthly':
+        return { labels: d.monthly_profit_trends?.map((m: any) => m.label) ?? [], datasets: [{ label: 'Total Profit', data: d.monthly_profit_trends?.map((m: any) => m.total_profit) ?? [], borderColor: this.chartColors[1], backgroundColor: 'rgba(29, 78, 216, 0.12)', fill: true }] };
+      case 'invoiceProfit':
+        return { labels: d.invoice_profit_data?.slice(0, 10).map((i: any) => i.invoice_number) ?? [], datasets: [{ label: 'Profit per Invoice', data: d.invoice_profit_data?.slice(0, 10).map((i: any) => i.profit) ?? [], backgroundColor: this.chartColors[3] }] };
       case 'typeRevenue':
         return { labels: d.type_data?.map((t: any) => t.type) ?? [], datasets: [{ data: d.type_data?.map((t: any) => t.revenue) ?? [], backgroundColor: this.chartColors }] };
       case 'cashflowMonthly':

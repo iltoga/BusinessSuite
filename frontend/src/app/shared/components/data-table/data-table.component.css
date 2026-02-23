@@ -62,20 +62,20 @@ tr.row-danger-soft:not(.selected) {
   background-color: hsl(var(--primary) / 0.08);
 }
 
-/* Make Added/Updated column wide enough for two datetime lines (createdAt / updatedAt)
-   Support both snake_case sortKey (created_at) and camelCase key (createdAt) */
+/* Keep Added/Updated compact so neighboring date columns (e.g. Due Date) have room.
+   Support both snake_case sortKey (created_at) and camelCase key (createdAt). */
 .col-created_at,
 .col-createdAt {
-  min-width: 11.5rem; /* ~184px */
-  width: 11.5rem;
+  min-width: 10rem; /* ~160px */
+  width: 10rem;
   white-space: normal;
-  word-break: break-word;
 }
 
 /* Ensure the two timestamps stack nicely */
 .col-created_at span,
 .col-createdAt span {
   display: block;
+  white-space: nowrap;
 }
 
 @media (max-width: 1024px) {

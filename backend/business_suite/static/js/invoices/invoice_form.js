@@ -22,7 +22,12 @@
                 // update the price field
                 var dueAmount = customerApplications.find(function (application) {
                     return application.pk == selectedCustomerApplicationPk;
-                }).fields.product.base_price;
+                }).fields.product.retail_price;
+                if (dueAmount === undefined || dueAmount === null) {
+                    dueAmount = customerApplications.find(function (application) {
+                        return application.pk == selectedCustomerApplicationPk;
+                    }).fields.product.base_price;
+                }
                 // sanitize the value given currencyDecimalPlaces
                 dueAmount = roundToCurrencyDecimalPlaces(dueAmount, currencyDecimalPlaces)
                 $('[name=invoice_applications-0-amount]').val(dueAmount);
@@ -59,7 +64,10 @@
                 return application.pk == selected;
             });
             if (application) {
-                var dueAmount = application.fields.product.base_price;
+                var dueAmount = application.fields.product.retail_price;
+                if (dueAmount === undefined || dueAmount === null) {
+                    dueAmount = application.fields.product.base_price;
+                }
                 // sanitize the value given currencyDecimalPlaces
                 dueAmount = roundToCurrencyDecimalPlaces(dueAmount, currencyDecimalPlaces);
                 dueAmountInput.val(dueAmount);

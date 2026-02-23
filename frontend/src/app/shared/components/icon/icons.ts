@@ -37,6 +37,7 @@ import {
   Ellipsis,
   EllipsisVertical,
   Eye,
+  EyeOff,
   Filter,
   File,
   FileCode,
@@ -162,6 +163,7 @@ export const ZARD_ICONS = {
   save: Save,
   copy: Copy,
   eye: Eye,
+  'eye-off': EyeOff,
   ellipsis: Ellipsis,
   'ellipsis-horizontal': Ellipsis, // alias
   'ellipsis-vertical': EllipsisVertical,

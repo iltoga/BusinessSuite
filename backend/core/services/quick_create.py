@@ -15,6 +15,8 @@ def create_quick_customer(*, validated_data) -> Customer:
 
 
 def create_quick_product(*, validated_data, user=None) -> Product:
+    if validated_data.get("retail_price") is None:
+        validated_data["retail_price"] = validated_data.get("base_price")
     if user:
         validated_data["created_by"] = user
         validated_data["updated_by"] = user

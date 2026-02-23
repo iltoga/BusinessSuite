@@ -119,8 +119,30 @@
   <z-badge zType="secondary">{{ productTypeLabel(row.productType) }}</z-badge>
 </ng-template>
 
+<ng-template #basePriceHeaderTemplate>
+  <button
+    type="button"
+    tabindex="-1"
+    class="inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground transition-colors hover:text-foreground"
+    [attr.aria-label]="basePricesVisible() ? 'Hide base prices' : 'Show base prices'"
+    [zTooltip]="basePricesVisible() ? 'Hide base prices' : 'Show base prices'"
+    zPosition="top"
+    (click)="toggleBasePriceVisibility($event)"
+  >
+    <z-icon [zType]="basePricesVisible() ? 'eye-off' : 'eye'" class="h-3.5 w-3.5" />
+  </button>
+</ng-template>
+
 <ng-template #priceTemplate let-row>
-  <span>{{ formatCurrency(row.basePrice) }}</span>
+  <span>{{ formatBasePrice(row.basePrice) }}</span>
+</ng-template>
+
+<ng-template #retailPriceTemplate let-row>
+  <span>{{ formatCurrency(retailPriceValue(row)) }}</span>
+</ng-template>
+
+<ng-template #profitTemplate let-row>
+  <span>{{ formatCurrency(unitProfitValue(row)) }}</span>
 </ng-template>
 
 <ng-template #createdAtTemplate let-row>

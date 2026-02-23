@@ -18,6 +18,7 @@ export interface ProductDetail {
     description?: string;
     immigrationId?: string | null;
     basePrice?: string | null;
+    retailPrice?: string;
     /**
      * * `visa` - Visa * `other` - Other
      */

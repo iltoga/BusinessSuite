@@ -82,20 +82,22 @@ export class ProductFormComponent implements OnInit {
     name: ['', Validators.required],
     code: ['', Validators.required],
     description: [''],
-    basePrice: [0],
+    basePrice: [0, [Validators.min(0)]],
+    retailPrice: [0, [Validators.min(0)]],
     productType: ['visa', Validators.required],
     validity: [null as number | null],
     documentsMinValidity: [null as number | null],
     requiredDocumentIds: [[] as number[]],
     optionalDocumentIds: [[] as number[]],
     tasks: this.fb.array<FormGroup>([]),
-  });
+  }, { validators: [this.retailPriceValidator] });
 
   readonly formErrorLabels: Record<string, string> = {
     name: 'Name',
     code: 'Code',
     description: 'Description',
     basePrice: 'Base Price',
+    retailPrice: 'Retail Price',
     productType: 'Product Type',
     validity: 'Validity',
     documentsMinValidity: 'Documents Min Validity',
@@ -263,6 +265,8 @@ export class ProductFormComponent implements OnInit {
 
       if (this.hasMultipleLastSteps()) {
         this.toast.error('Only one task can be marked as the last step.');
+      } else if (this.form.errors?.['retailPriceBelowBase']) {
+        this.toast.error('Retail price must be greater than or equal to base price.');
       } else {
         this.toast.error('Please fix validation errors in the form (check Tasks section).');
       }
@@ -279,6 +283,7 @@ export class ProductFormComponent implements OnInit {
       description: rawValue.description ?? '',
       product_type: rawValue.productType as any,
       base_price: rawValue.basePrice !== null ? String(rawValue.basePrice) : null,
+      retail_price: rawValue.retailPrice !== null ? String(rawValue.retailPrice) : null,
       validity: rawValue.validity,
       documents_min_validity: rawValue.documentsMinValidity,
       required_document_ids: rawValue.requiredDocumentIds,
@@ -356,6 +361,7 @@ export class ProductFormComponent implements OnInit {
           code: product.code ?? '',
           description: product.description ?? '',
           basePrice: product.basePrice ? Number(product.basePrice) : 0,
+          retailPrice: product.retailPrice ? Number(product.retailPrice) : Number(product.basePrice ?? 0),
           productType: product.productType ?? 'visa',
           validity: product.validity ?? null,
           documentsMinValidity: product.documentsMinValidity ?? null,
@@ -411,6 +417,24 @@ export class ProductFormComponent implements OnInit {
     const notify = Number(group.get('notifyDaysBefore')?.value ?? 0);
     if (notify > duration) {
       return { notifyBeforeDuration: true };
+    }
+    return null;
+  }
+
+  private retailPriceValidator(group: FormGroup) {
+    const baseRaw = group.get('basePrice')?.value;
+    const retailRaw = group.get('retailPrice')?.value;
+
+    const base = baseRaw === null || baseRaw === undefined || baseRaw === '' ? null : Number(baseRaw);
+    const retail =
+      retailRaw === null || retailRaw === undefined || retailRaw === '' ? null : Number(retailRaw);
+
+    if (base === null || retail === null || Number.isNaN(base) || Number.isNaN(retail)) {
+      return null;
+    }
+
+    if (retail < base) {
+      return { retailPriceBelowBase: true };
     }
     return null;
   }

@@ -269,10 +269,15 @@ class ProductRevenueAnalysisApiView(_BaseReportAPIView):
         keys = [
             "type_data",
             "monthly_trends",
+            "monthly_profit_trends",
+            "invoice_profit_data",
             "top_products",
             "total_products",
             "total_revenue",
             "total_revenue_formatted",
+            "total_profit",
+            "total_profit_formatted",
+            "overall_profit_margin_percent",
             "total_applications",
         ]
         payload = {k: _to_json_value(ctx.get(k)) for k in keys}

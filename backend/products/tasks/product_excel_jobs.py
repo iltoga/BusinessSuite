@@ -1,5 +1,7 @@
 import os
+import re
 import traceback
+from decimal import Decimal, InvalidOperation
 from io import BytesIO
 
 from core.models import AsyncJob
@@ -23,6 +25,8 @@ EXPORT_COLUMNS: list[tuple[str, str]] = [
     ("code", "Code"),
     ("name", "Name"),
     ("description", "Description"),
+    ("base_price", "Base Price"),
+    ("retail_price", "Retail Price"),
 ]
 
 
@@ -43,6 +47,47 @@ def _normalize_header(value) -> str:
     if normalized.endswith("_days"):
         normalized = normalized[: -len("_days")]
     return normalized
+
+
+def _to_decimal_or_none(value, *, field_label: str) -> Decimal | None:
+    if value is None:
+        return None
+    if isinstance(value, Decimal):
+        return value
+    if isinstance(value, (int, float)):
+        return Decimal(str(value))
+
+    raw = _safe_str(value)
+    if raw == "":
+        return None
+
+    cleaned = re.sub(r"[^0-9,.\-]", "", raw)
+    if cleaned == "":
+        raise ValueError(f"Invalid {field_label}: {raw}")
+
+    # Handle locale-like separators:
+    # - "1.500.000,25" => "1500000.25"
+    # - "1,500,000.25" => "1500000.25"
+    if "," in cleaned and "." in cleaned:
+        if cleaned.rfind(",") > cleaned.rfind("."):
+            cleaned = cleaned.replace(".", "").replace(",", ".")
+        else:
+            cleaned = cleaned.replace(",", "")
+    elif cleaned.count(",") == 1 and "." not in cleaned:
+        left, right = cleaned.split(",", 1)
+        if len(right) <= 2:
+            cleaned = f"{left}.{right}"
+        else:
+            cleaned = f"{left}{right}"
+    elif cleaned.count(".") > 1 and "," not in cleaned:
+        cleaned = cleaned.replace(".", "")
+    else:
+        cleaned = cleaned.replace(",", "")
+
+    try:
+        return Decimal(cleaned)
+    except (InvalidOperation, ValueError):
+        raise ValueError(f"Invalid {field_label}: {raw}")
 
 
 def _send_import_done_push(user, result: dict) -> None:
@@ -102,11 +147,14 @@ def run_product_export_job(job_id: str, user_id: int | None = None, search_query
                 job.update_progress(80, "No products matched the export filter.")
             else:
                 for index, product in enumerate(queryset.iterator(), 1):
+                    retail_price = product.retail_price if product.retail_price is not None else product.base_price
                     ws.append(
                         [
                             product.code,
                             product.name,
                             product.description or "",
+                            product.base_price if product.base_price is not None else Decimal("0.00"),
+                            retail_price if retail_price is not None else Decimal("0.00"),
                         ]
                     )
                     if index == total or index % 10 == 0:
@@ -211,6 +259,14 @@ def run_product_import_job(job_id: str, user_id: int | None = None, file_path: s
                         product_payload["name"] = name
                     if "description" in mapped:
                         product_payload["description"] = _safe_str(mapped.get("description"))
+                    if "base_price" in mapped:
+                        base_price = _to_decimal_or_none(mapped.get("base_price"), field_label="base_price")
+                        if base_price is not None:
+                            product_payload["base_price"] = str(base_price)
+                    if "retail_price" in mapped:
+                        retail_price = _to_decimal_or_none(mapped.get("retail_price"), field_label="retail_price")
+                        if retail_price is not None:
+                            product_payload["retail_price"] = str(retail_price)
 
                     # Explicitly ignore tasks/system/unrecognized columns from custom files.
                     for key in list(mapped.keys()):
@@ -238,6 +294,10 @@ def run_product_import_job(job_id: str, user_id: int | None = None, file_path: s
                                 "name": name,
                                 "description": _safe_str(mapped.get("description")),
                             }
+                            if "base_price" in product_payload:
+                                create_payload["base_price"] = product_payload["base_price"]
+                            if "retail_price" in product_payload:
+                                create_payload["retail_price"] = product_payload["retail_price"]
                             serializer = ProductCreateUpdateSerializer(
                                 data=create_payload,
                                 context={"request": None},

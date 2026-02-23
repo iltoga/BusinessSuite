@@ -91,7 +91,7 @@
           >
             <div class="flex items-center gap-3">
               <z-icon zType="sparkles" class="h-4 w-4" />
-              <span>Daily Boosters</span>
+              <span>UTILS</span>
             </div>
             <z-icon
               [zType]="utilitiesExpanded() ? 'chevron-down' : 'chevron-right'"
@@ -102,7 +102,7 @@
           <div *ngIf="utilitiesExpanded()" class="mt-1 space-y-1 pl-7">
             <a
               #sidebarItem
-              routerLink="/reminders"
+              routerLink="/utils/reminders"
               routerLinkActive="bg-accent text-foreground"
               [routerLinkActiveOptions]="{ exact: true }"
               class="block rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"
@@ -111,7 +111,7 @@
             </a>
             <a
               #sidebarItem
-              routerLink="/daily-boosters/passport-check"
+              routerLink="/utils/passport-check"
               routerLinkActive="bg-accent text-foreground"
               [routerLinkActiveOptions]="{ exact: true }"
               class="block rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-accent/50"

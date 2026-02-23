@@ -45,6 +45,7 @@
      * @param {string} application.product_code - The product code
      * @param {string} application.customer_name - The customer name
      * @param {number} application.base_price - The base price
+     * @param {number} application.retail_price - The retail price
      * @param {string} application.doc_date - The document date
      */
     function addInvoiceApplicationRow(application) {
@@ -54,6 +55,7 @@
             fields: {
                 product: {
                     base_price: application.base_price,
+                    retail_price: application.retail_price,
                     name: application.product_name,
                     code: application.product_code
                 },
@@ -100,7 +102,11 @@
 
         // Set the amount
         var $amountInput = $newFormDiv.find('input[name$="-amount"]');
-        $amountInput.val(application.base_price.toFixed(window.decimals));
+        var initialAmount = application.retail_price;
+        if (initialAmount === undefined || initialAmount === null) {
+            initialAmount = application.base_price;
+        }
+        $amountInput.val(Number(initialAmount || 0).toFixed(window.decimals));
 
         // Hide DELETE checkbox for new forms
         $newFormDiv.find('input[name$="-DELETE"]').parent().hide();

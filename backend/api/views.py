@@ -733,7 +733,7 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     pagination_class = StandardResultsSetPagination
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["name", "code", "description", "product_type"]
-    ordering_fields = ["name", "code", "product_type", "base_price", "created_at", "updated_at"]
+    ordering_fields = ["name", "code", "product_type", "base_price", "retail_price", "created_at", "updated_at"]
     ordering = ["name"]
     authenticated_lookup_actions = frozenset({"list", "get_product_by_id", "get_products_by_product_type"})
 
@@ -3570,6 +3570,7 @@ def customer_application_quick_create(request):
                     "customer_name": str(doc_app.customer.full_name),
                     "doc_date": str(doc_app.doc_date),
                     "base_price": float(doc_app.product.base_price or 0),
+                    "retail_price": float(doc_app.product.retail_price or doc_app.product.base_price or 0),
                     "display_name": f"{doc_app.product.code} - {doc_app.product.name} ({doc_app.customer.full_name})",
                 },
             },
@@ -3615,6 +3616,8 @@ def product_quick_create(request):
                     "name": product.name,
                     "code": product.code,
                     "product_type": product.product_type,
+                    "base_price": product.base_price,
+                    "retail_price": product.retail_price,
                     "created_at": product.created_at,
                     "updated_at": product.updated_at,
                     "created_by": product.created_by_id,
