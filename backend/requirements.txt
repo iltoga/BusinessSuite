@@ -43,6 +43,7 @@ django==6.0.2
     # via
     #   business-suite (pyproject.toml)
     #   django-auditlog
+    #   django-cacheops
     #   django-cors-headers
     #   django-dbbackup
     #   django-debug-toolbar
@@ -53,6 +54,8 @@ django==6.0.2
     #   djangorestframework-simplejwt
     #   drf-spectacular
 django-auditlog==3.4.1
+    # via business-suite (pyproject.toml)
+django-cacheops==7.2
     # via business-suite (pyproject.toml)
 django-cleanup==9.0.0
     # via business-suite (pyproject.toml)
@@ -89,6 +92,8 @@ et-xmlfile==2.0.0
     # via openpyxl
 fonttools==4.61.1
     # via matplotlib
+funcy==2.0
+    # via django-cacheops
 google-api-core==2.29.0
     # via google-api-python-client
 google-api-python-client==2.189.0
@@ -156,7 +161,7 @@ matplotlib==3.10.8
     # via passporteye
 networkx==3.6.1
     # via scikit-image
-numpy==2.4.0
+numpy==2.2.6
     # via
     #   contourpy
     #   imageio
@@ -167,9 +172,9 @@ numpy==2.4.0
     #   scikit-learn
     #   scipy
     #   tifffile
-opencv-python-headless==4.12.0.88
-    # via business-suite (pyproject.toml)
 openai==2.14.0
+    # via business-suite (pyproject.toml)
+opencv-python-headless==4.12.0.88
     # via business-suite (pyproject.toml)
 openpyxl==3.1.5
     # via business-suite (pyproject.toml)
@@ -258,6 +263,7 @@ rapidfuzz==3.14.3
 redis==6.4.0
     # via
     #   business-suite (pyproject.toml)
+    #   django-cacheops
     #   django-redis
 referencing==0.37.0
     # via
