@@ -288,11 +288,32 @@ function createWindow() {
     void syncAuthTokenFromRenderer();
   });
 
-  void mainWindow.loadURL(startUrl.href).catch((error) => {
-    log("error", `Unable to load start URL: ${String(error)}`);
-  });
+  void clearCacheAndLoadStartUrl(mainWindow);
 
   return mainWindow;
+}
+
+async function clearCacheAndLoadStartUrl(windowRef) {
+  if (!windowRef || windowRef.isDestroyed()) {
+    return;
+  }
+
+  try {
+    await windowRef.webContents.session.clearCache();
+  } catch (error) {
+    log("error", `Unable to clear session cache: ${String(error)}`);
+    return;
+  }
+
+  if (windowRef.isDestroyed()) {
+    return;
+  }
+
+  try {
+    await windowRef.loadURL(startUrl.href);
+  } catch (error) {
+    log("error", `Unable to load start URL: ${String(error)}`);
+  }
 }
 
 function configureNavigationGuards(windowRef) {

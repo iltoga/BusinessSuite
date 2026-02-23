@@ -3,12 +3,11 @@ from io import BytesIO
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
+from core.models import AsyncJob
 from django.core.files.base import ContentFile
 from django.core.files.storage import FileSystemStorage
 from django.test import TestCase
 from openpyxl import Workbook, load_workbook
-
-from core.models import AsyncJob
 from products.models import Product
 from products.tasks.product_excel_jobs import run_product_export_job, run_product_import_job
 
@@ -51,7 +50,10 @@ class ProductExcelJobsTests(TestCase):
         job.refresh_from_db()
         self.assertEqual(job.status, AsyncJob.STATUS_COMPLETED)
         self.assertIsNotNone(job.result)
-        file_path = job.result["file_path"]
+        file_path = None
+        if job.result is not None:
+            file_path = job.result.get("file_path")
+        self.assertIsNotNone(file_path)
 
         with self.storage.open(file_path, "rb") as fh:
             workbook = load_workbook(fh, data_only=True)
@@ -91,8 +93,10 @@ class ProductExcelJobsTests(TestCase):
         job.refresh_from_db()
         self.assertEqual(job.status, AsyncJob.STATUS_COMPLETED)
         self.assertIsNotNone(job.result)
-        self.assertEqual(job.result["created"], 2)
-        self.assertEqual(job.result["errors"], 0)
+        # mypy can't see the assertIsNotNone above, so copy to a local variable
+        result = job.result or {}
+        self.assertEqual(result["created"], 2)
+        self.assertEqual(result["errors"], 0)
 
         first = Product.objects.get(code="IMP-1")
         second = Product.objects.get(code="IMP-2")
