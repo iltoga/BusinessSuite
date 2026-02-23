@@ -17,6 +17,7 @@ from api.async_controls import (
 )
 from api.permissions import (
     STAFF_OR_ADMIN_PERMISSION_REQUIRED_ERROR,
+    IsAdminOrManagerGroup,
     IsStaffOrAdminGroup,
     is_staff_or_admin_group,
     is_superuser,
@@ -734,6 +735,7 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     search_fields = ["name", "code", "description", "product_type"]
     ordering_fields = ["name", "code", "product_type", "base_price", "created_at", "updated_at"]
     ordering = ["name"]
+    authenticated_lookup_actions = frozenset({"list", "get_product_by_id", "get_products_by_product_type"})
 
     def get_serializer_class(self):
         if self.action in ["create", "update", "partial_update"]:
@@ -741,6 +743,13 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         if self.action == "retrieve":
             return ProductDetailSerializer
         return ProductSerializer
+
+    def get_permissions(self):
+        if self.action in self.authenticated_lookup_actions:
+            self.permission_classes = [IsAuthenticated]
+        else:
+            self.permission_classes = [IsAuthenticated, IsAdminOrManagerGroup]
+        return super().get_permissions()
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -790,12 +799,25 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         serialized_product = ProductSerializer(product, many=False)
         serialzed_document_types = DocumentTypeSerializer(required_document_types, many=True)
         serialzed_optional_document_types = DocumentTypeSerializer(optional_document_types, many=True)
+        ordered_tasks = product.tasks.all().order_by("step")
+        calendar_task = ordered_tasks.filter(add_task_to_calendar=True).first() or ordered_tasks.first()
+        serialized_calendar_task = None
+        if calendar_task:
+            serialized_calendar_task = {
+                "id": calendar_task.id,
+                "name": calendar_task.name,
+                "step": calendar_task.step,
+                "duration": calendar_task.duration,
+                "duration_is_business_days": calendar_task.duration_is_business_days,
+                "add_task_to_calendar": calendar_task.add_task_to_calendar,
+            }
 
         return Response(
             {
                 "product": serialized_product.data,
                 "required_documents": serialzed_document_types.data,
                 "optional_documents": serialzed_optional_document_types.data,
+                "calendar_task": serialized_calendar_task,
             }
         )
 
@@ -3571,7 +3593,7 @@ def customer_application_quick_create(request):
 @api_view(["POST"])
 @csrf_exempt
 @authentication_classes([JwtOrMockAuthentication, SessionAuthentication])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, IsAdminOrManagerGroup])
 @throttle_classes([ScopedRateThrottle])
 def product_quick_create(request):
     """

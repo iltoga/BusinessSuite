@@ -62,6 +62,7 @@
           Applications
         </a>
         <a
+          *ngIf="canAccessProducts()"
           #sidebarItem
           routerLink="/products"
           routerLinkActive="bg-accent/90 text-accent-foreground"

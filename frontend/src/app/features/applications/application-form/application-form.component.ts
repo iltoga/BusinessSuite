@@ -484,9 +484,9 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
   }
 
   private tryAutoDueDateCalculation(productId: number): void {
-    this.productsService.productsRetrieve(productId).subscribe({
-      next: (product: any) => {
-        const task = this.getCalendarTaskFromProduct(product);
+    this.productsService.productsGetProductByIdRetrieve(productId).subscribe({
+      next: (productLookupResponse: any) => {
+        const task = this.getCalendarTaskFromProduct(productLookupResponse);
         this.nextDeadlineTaskName.set(this.getTaskName(task));
         const doc = this.toDateOnly(this.form.get('docDate')?.value);
         if (!doc) return;
@@ -510,7 +510,13 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
   }
 
   private getCalendarTaskFromProduct(product: any): any | null {
-    const tasks = Array.isArray(product?.tasks) ? product.tasks : [];
+    const explicitCalendarTask = product?.calendarTask ?? product?.calendar_task;
+    if (explicitCalendarTask) {
+      return explicitCalendarTask;
+    }
+
+    const normalizedProduct = product?.product ?? product;
+    const tasks = Array.isArray(normalizedProduct?.tasks) ? normalizedProduct.tasks : [];
     if (!tasks.length) return null;
 
     const calendarTask = tasks.find(

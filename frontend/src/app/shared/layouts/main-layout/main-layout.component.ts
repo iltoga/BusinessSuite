@@ -78,14 +78,8 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
   isStaff = computed(() => this.authService.isStaff());
   isSuperuser = computed(() => this.authService.isSuperuser());
   isInAdminGroup = computed(() => this.authService.isInAdminGroup());
-  isInControllerGroup = computed(() => {
-    const groups = this.authService.claims()?.groups ?? [];
-    return groups.some((group) => String(group).toLowerCase() === 'controller');
-  });
-  canAccessReports = computed(
-    () =>
-      this.isInControllerGroup() || this.isInAdminGroup() || this.isStaff() || this.isSuperuser(),
-  );
+  canAccessProducts = computed(() => this.authService.isAdminOrManager());
+  canAccessReports = computed(() => this.authService.isAdminOrManager());
   canAccessStaffAdminItems = computed(() => this.isStaff() || this.isInAdminGroup());
   canAccessBackups = computed(() => this.isSuperuser() || this.isInAdminGroup());
   canAccessAdminSection = computed(
@@ -237,6 +231,9 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
         if (target === '/reports' && !this.canAccessReports()) {
           return;
         }
+        if (target === '/products' && !this.canAccessProducts()) {
+          return;
+        }
         event.preventDefault();
         event.stopPropagation();
         this.router.navigate([target]);
@@ -247,7 +244,10 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
       if (key === 'N') {
         try {
           const path = window.location.pathname || '';
-          const mapping = ['/customers', '/applications', '/invoices', '/products'];
+          const mapping = ['/customers', '/applications', '/invoices'];
+          if (this.canAccessProducts()) {
+            mapping.push('/products');
+          }
           for (const base of mapping) {
             if (path.startsWith(base)) {
               event.preventDefault();

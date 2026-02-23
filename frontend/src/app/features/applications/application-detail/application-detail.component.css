@@ -2,6 +2,20 @@
   display: block;
 }
 
+.app-upload-dialog {
+  width: min(52rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  display: flex;
+  flex-direction: column;
+}
+
+.app-upload-dialog-form {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
 .timeline-list {
   display: flex;
   flex-direction: column;

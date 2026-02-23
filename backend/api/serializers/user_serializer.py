@@ -1,7 +1,14 @@
+import logging
 from typing import Optional
 
 from django.contrib.auth.models import User
+from django.core.files.storage import default_storage
+from django.db.utils import DatabaseError
 from rest_framework import serializers
+
+from core.models.user_profile import UserProfile
+
+logger = logging.getLogger(__name__)
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
@@ -37,12 +44,25 @@ class UserProfileSerializer(serializers.ModelSerializer):
         return "Staff"
 
     def get_avatar(self, obj) -> Optional[str]:
-        if hasattr(obj, "profile") and obj.profile.avatar:
-            request = self.context.get("request")
-            if request:
-                return request.build_absolute_uri(obj.profile.avatar.url)
-            return obj.profile.avatar.url
-        return None
+        try:
+            avatar_path = UserProfile.objects.filter(user_id=obj.id).values_list("avatar", flat=True).first()
+        except DatabaseError as exc:
+            logger.warning("Unable to resolve avatar for user_id=%s: %s", obj.id, exc)
+            return None
+
+        if not avatar_path:
+            return None
+
+        try:
+            avatar_url = default_storage.url(avatar_path)
+        except Exception as exc:
+            logger.warning("Unable to build avatar URL for user_id=%s: %s", obj.id, exc)
+            return None
+
+        request = self.context.get("request")
+        if request:
+            return request.build_absolute_uri(avatar_url)
+        return avatar_url
 
 
 class AvatarUploadSerializer(serializers.Serializer):

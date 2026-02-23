@@ -142,6 +142,8 @@ export class ApplicationDetailComponent implements OnInit {
   readonly ocrReviewOpen = signal(false);
   readonly ocrReviewData = signal<OcrStatusResponse | null>(null);
   readonly ocrMetadata = signal<Record<string, unknown> | null>(null);
+  readonly ocrExtractedDataText = computed(() => this.buildOcrExtractedDataText());
+  readonly ocrHasExtractedData = computed(() => this.ocrExtractedDataText() !== this.ocrNoDataText);
   readonly isAddDocumentDialogOpen = signal(false);
   readonly actionLoading = signal<string | null>(null);
   readonly workflowAction = signal<string | null>(null);
@@ -243,6 +245,7 @@ export class ApplicationDetailComponent implements OnInit {
   private readonly workflowTimezone = 'Asia/Singapore';
 
   private pollTimer: number | null = null;
+  private readonly ocrNoDataText = 'No OCR extracted data yet.';
 
   @HostListener('window:keydown', ['$event'])
   handleGlobalKeydown(event: KeyboardEvent): void {
@@ -485,11 +488,48 @@ export class ApplicationDetailComponent implements OnInit {
     if (!document || !document.docType?.hasOcrCheck) {
       return;
     }
-    if (!file) {
-      this.toast.error('Select a file before running OCR');
+
+    if (this.ocrPolling()) {
       return;
     }
 
+    if (file) {
+      this.startOcrForFile(document, file);
+      return;
+    }
+
+    if (!document.fileLink) {
+      this.toast.error('Select or upload a file before running OCR');
+      return;
+    }
+
+    this.ocrPolling.set(true);
+    this.ocrStatus.set('Preparing file');
+
+    this.documentsService.downloadDocumentFile(document.id).subscribe({
+      next: (blob) => {
+        // Ignore stale response if user switched documents while request was in flight.
+        if (this.selectedDocument()?.id !== document.id) {
+          this.ocrPolling.set(false);
+          this.ocrStatus.set(null);
+          return;
+        }
+
+        const ocrFile = new File([blob], this.getOcrFileName(document, blob), {
+          type: blob.type || 'application/octet-stream',
+          lastModified: Date.now(),
+        });
+        this.startOcrForFile(document, ocrFile);
+      },
+      error: (error) => {
+        this.toast.error(extractServerErrorMessage(error) || 'Failed to load file for OCR');
+        this.ocrPolling.set(false);
+        this.ocrStatus.set(null);
+      },
+    });
+  }
+
+  private startOcrForFile(document: ApplicationDocument, file: File): void {
     this.ocrPolling.set(true);
     this.ocrStatus.set('Queued');
 
@@ -509,6 +549,64 @@ export class ApplicationDetailComponent implements OnInit {
         this.ocrPolling.set(false);
       },
     });
+  }
+
+  private getOcrFileName(document: ApplicationDocument, blob: Blob): string {
+    const link = document.fileLink ?? '';
+    const basePath = link.split('?')[0]?.split('#')[0] ?? '';
+    const lastSegment = basePath.split('/').filter(Boolean).pop();
+    if (lastSegment) {
+      try {
+        return decodeURIComponent(lastSegment);
+      } catch {
+        return lastSegment;
+      }
+    }
+
+    const extension =
+      blob.type === 'application/pdf'
+        ? 'pdf'
+        : blob.type.startsWith('image/')
+          ? (blob.type.split('/')[1] ?? 'jpg')
+          : 'bin';
+    return `document-${document.id}.${extension}`;
+  }
+
+  private buildOcrExtractedDataText(): string {
+    const review = this.ocrReviewData();
+    const metadata = this.ocrMetadata();
+
+    const extracted: Record<string, unknown> = {};
+    if (review) {
+      const reviewRecord = review as unknown as Record<string, unknown>;
+      for (const [key, value] of Object.entries(reviewRecord)) {
+        if (value === undefined || value === null || value === '') {
+          continue;
+        }
+        // Skip transport/presentation fields and keep only extracted payload.
+        if (
+          key === 'jobId' ||
+          key === 'status' ||
+          key === 'progress' ||
+          key === 'previewUrl' ||
+          key === 'preview_url' ||
+          key === 'b64ResizedImage'
+        ) {
+          continue;
+        }
+        extracted[key] = value;
+      }
+    }
+
+    if (Object.keys(extracted).length > 0) {
+      return JSON.stringify(extracted, null, 2);
+    }
+
+    if (metadata && Object.keys(metadata).length > 0) {
+      return JSON.stringify(metadata, null, 2);
+    }
+
+    return this.ocrNoDataText;
   }
 
   applyOcrData(): void {

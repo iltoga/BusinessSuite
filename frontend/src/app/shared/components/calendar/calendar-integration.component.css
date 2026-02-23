@@ -104,9 +104,11 @@
 }
 
 .week-calendar-event__title {
-  font-size: 0.75rem;
-  line-height: 1.3;
-  font-weight: 600;
+  font-family: 'Avenir Next', 'Segoe UI', 'Noto Sans', sans-serif;
+  font-size: 0.7rem;
+  line-height: 1.25;
+  font-weight: 500;
+  letter-spacing: 0.01em;
   color: var(--foreground);
 }
 
@@ -121,7 +123,6 @@
   gap: 0.25rem;
   text-align: left;
   cursor: pointer;
-  font: inherit;
 }
 
 .week-calendar-event__title--button:hover {
@@ -130,6 +131,7 @@
 
 .week-calendar-event__title-text {
   min-width: 0;
+  text-wrap: pretty;
 }
 
 .week-calendar-event__meta {

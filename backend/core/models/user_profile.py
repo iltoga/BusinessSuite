@@ -1,9 +1,13 @@
 import os
+from logging import getLogger
 
 from django.contrib.auth.models import User
 from django.db import models
+from django.db.utils import DatabaseError
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+
+logger = getLogger(__name__)
 
 
 def get_avatar_upload_to(instance, filename):
@@ -36,6 +40,12 @@ def create_user_profile(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender=User)
 def save_user_profile(sender, instance, **kwargs):
-    if not hasattr(instance, "profile"):
+    # Avoid resolving the reverse one-to-one relation on every user save (e.g. login
+    # last_login updates). This keeps auth flow resilient when profile schema lags behind.
+    if UserProfile.objects.filter(user_id=instance.pk).exists():
+        return
+
+    try:
         UserProfile.objects.create(user=instance)
-    instance.profile.save()
+    except DatabaseError:
+        logger.exception("Unable to auto-create UserProfile for user_id=%s", instance.pk)
