@@ -1,13 +1,13 @@
-<div class="flex h-screen bg-background text-foreground overflow-hidden">
+<div class="flex h-dvh min-h-0 bg-background text-foreground overflow-hidden">
   <aside
     [class.-translate-x-full]="!sidebarOpen()"
     [ngClass]="
       sidebarOpen() ? 'md:w-64 md:visible md:opacity-100' : 'md:w-0 md:invisible md:opacity-0'
     "
-    class="fixed md:relative inset-y-0 left-0 z-40 w-64 transform flex-col border-r bg-card transition-all duration-200 ease-in-out overflow-hidden"
+    class="fixed md:relative inset-y-0 left-0 z-40 h-dvh md:h-full min-h-0 w-64 transform flex flex-col border-r bg-card transition-all duration-200 ease-in-out overflow-hidden"
   >
     <!-- Top Row: Logo Header -->
-    <div class="h-32 border-b bg-accent/5 dark:bg-accent/10">
+    <div class="h-32 shrink-0 border-b bg-accent/5 dark:bg-accent/10">
       <a
         routerLink="/dashboard"
         tabindex="-1"
@@ -29,7 +29,9 @@
     </div>
 
     <!-- Bottom Row: Navigation menu -->
-    <div class="flex-1 overflow-y-auto p-4">
+    <div
+      class="sidebar-menu-scroll flex-1 min-h-0 overflow-y-auto overscroll-contain overflow-x-hidden p-4"
+    >
       <nav class="space-y-1 text-sm" (click)="onSidebarNavigationClick($event)">
         <a
           #sidebarItem
@@ -137,7 +139,7 @@
             />
           </button>
 
-          <div *ngIf="reportsExpanded()" class="mt-1 space-y-1 pl-7">
+          <div *ngIf="reportsExpanded()" class="sidebar-submenu-scroll mt-1 space-y-1 pl-7 pr-1">
             <a
               #sidebarItem
               routerLink="/reports"

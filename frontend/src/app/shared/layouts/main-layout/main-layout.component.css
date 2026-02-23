@@ -2,3 +2,30 @@
 :host {
   display: block;
 }
+
+.sidebar-menu-scroll {
+  max-height: calc(100dvh - 8rem);
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@media (min-width: 768px) {
+  .sidebar-menu-scroll {
+    max-height: calc(100% - 8rem);
+  }
+}
+
+.sidebar-submenu-scroll {
+  max-height: min(40dvh, 22rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.sidebar-menu-scroll::-webkit-scrollbar,
+.sidebar-submenu-scroll::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
