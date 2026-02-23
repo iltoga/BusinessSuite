@@ -63,6 +63,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "description",
             "immigration_id",
             "base_price",
+            "retail_price",
             "product_type",
             "validity",
             "required_documents",
@@ -91,6 +92,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "description",
             "immigration_id",
             "base_price",
+            "retail_price",
             "product_type",
             "validity",
             "required_documents",
@@ -130,6 +132,7 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
             "description",
             "immigration_id",
             "base_price",
+            "retail_price",
             "product_type",
             "validity",
             "documents_min_validity",
@@ -137,6 +140,28 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
             "required_document_ids",
             "optional_document_ids",
         ]
+
+    def validate(self, attrs):
+        base_price = attrs.get("base_price")
+        if base_price is None and self.instance is not None:
+            base_price = self.instance.base_price
+
+        retail_price = attrs.get("retail_price")
+        if retail_price is None:
+            if "base_price" in attrs:
+                retail_price = base_price
+            elif self.instance is not None:
+                retail_price = self.instance.retail_price
+            else:
+                retail_price = base_price
+
+        if base_price is not None and retail_price is not None and retail_price < base_price:
+            raise serializers.ValidationError({"retail_price": "Retail price must be greater than or equal to base price."})
+
+        if retail_price is not None:
+            attrs["retail_price"] = retail_price
+
+        return attrs
 
     def validate_tasks(self, value):
         if len(value) > 10:

@@ -245,7 +245,7 @@ export class InvoiceFormComponent implements OnInit {
         return;
       }
       const app = this.customerApplications().find((item) => item.id === value);
-      const price = app?.product?.basePrice ? Number(app.product.basePrice) : 0;
+      const price = this.resolveApplicationPrice(app);
       group.get('amount')?.setValue(Number.isNaN(price) ? 0 : price, { emitEvent: false });
     });
 
@@ -258,7 +258,7 @@ export class InvoiceFormComponent implements OnInit {
       if (available.length === 1) {
         const app = available[0];
         group.get('customerApplication')?.setValue(app.id);
-        const price = app.product?.basePrice ? Number(app.product.basePrice) : 0;
+        const price = this.resolveApplicationPrice(app);
         group.get('amount')?.setValue(Number.isNaN(price) ? 0 : price, { emitEvent: false });
         this.cdr.markForCheck();
       }
@@ -292,12 +292,12 @@ export class InvoiceFormComponent implements OnInit {
 
     if (targetGroup) {
       targetGroup.get('customerApplication')?.setValue(newApp.id);
-      const price = newApp.product?.basePrice ? Number(newApp.product.basePrice) : 0;
+      const price = this.resolveApplicationPrice(newApp);
       targetGroup.get('amount')?.setValue(Number.isNaN(price) ? 0 : price, { emitEvent: false });
     } else {
       this.addLineItem({
         customerApplication: newApp.id,
-        amount: newApp.product?.basePrice ? Number(newApp.product.basePrice) : 0,
+        amount: this.resolveApplicationPrice(newApp),
       });
     }
 
@@ -430,7 +430,7 @@ export class InvoiceFormComponent implements OnInit {
                 this.customerApplications.set(results);
 
                 this.invoiceApplications.clear();
-                const amount = app.product?.basePrice ? Number(app.product.basePrice) : 0;
+                const amount = this.resolveApplicationPrice(app);
                 this.addLineItem({
                   customerApplication: app.id,
                   amount: Number.isNaN(amount) ? 0 : amount,
@@ -525,7 +525,7 @@ export class InvoiceFormComponent implements OnInit {
             if (available.length === 1) {
               const app = available[0];
               group.get('customerApplication')?.setValue(app.id);
-              const price = app.product?.basePrice ? Number(app.product.basePrice) : 0;
+              const price = this.resolveApplicationPrice(app);
               group.get('amount')?.setValue(Number.isNaN(price) ? 0 : price, { emitEvent: false });
               this.cdr.markForCheck();
               // continue trying to fill other empty rows if more single options appear
@@ -555,6 +555,14 @@ export class InvoiceFormComponent implements OnInit {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  }
+
+  private resolveApplicationPrice(app: any): number {
+    const product = app?.product ?? {};
+    const retail = product.retailPrice ?? product.retail_price;
+    const base = product.basePrice ?? product.base_price;
+    const price = Number(retail ?? base ?? 0);
+    return Number.isNaN(price) ? 0 : price;
   }
 
   private proposeInvoiceNo(invoiceDate?: Date | string | null): void {

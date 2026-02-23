@@ -2,12 +2,13 @@ import { ZardButtonComponent } from '@/shared/components/button';
 import { FileUploadComponent } from '@/shared/components/file-upload';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, Subscription } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { CustomersService } from '../../../core/api/api/customers.service';
+import { JobService } from '../../../core/services/job.service';
 import { GlobalToastService } from '../../../core/services/toast.service';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { ContextHelpDirective } from '../../../shared/directives/context-help.directive';
@@ -29,12 +30,14 @@ import { extractServerErrorMessage } from '../../../shared/utils/form-errors';
   styleUrls: ['./passport-check.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class PassportCheckComponent implements OnInit {
+export class PassportCheckComponent implements OnInit, OnDestroy {
   private readonly customersApi = inject(CustomersService);
   private readonly http = inject(HttpClient);
+  private readonly jobService = inject(JobService);
   private readonly toast = inject(GlobalToastService);
   private readonly helpService = inject(HelpService);
   private readonly router = inject(Router);
+  private jobProgressSubscription: Subscription | null = null;
 
   readonly selectedFile = signal<File | null>(null);
   readonly previewUrl = signal<string | null>(null);
@@ -52,14 +55,18 @@ export class PassportCheckComponent implements OnInit {
   readonly showCreateDialog = signal(false);
 
   ngOnInit() {
-    this.helpService.register('/daily-boosters/passport-check', {
-      id: '/daily-boosters/passport-check',
+    this.helpService.register('/utils/passport-check', {
+      id: '/utils/passport-check',
       briefExplanation:
         'This tool allows you to verify if a passport image meets the requirements for uploading to the Indonesian immigration website.',
       details:
         'AI: Uses deterministic OpenCV quality checks plus Google Gemini analysis. Hybrid: Runs deterministic checks, then AI with additional decision context for stricter validation.',
     });
-    this.helpService.setContextForPath('/daily-boosters/passport-check');
+    this.helpService.setContextForPath('/utils/passport-check');
+  }
+
+  ngOnDestroy(): void {
+    this.stopProgressStream();
   }
 
   onFileSelected(file: File) {
@@ -79,6 +86,7 @@ export class PassportCheckComponent implements OnInit {
   }
 
   onFileCleared() {
+    this.stopProgressStream();
     this.selectedFile.set(null);
     this.previewUrl.set(null);
     this.result.set(null);
@@ -90,6 +98,7 @@ export class PassportCheckComponent implements OnInit {
     const file = this.selectedFile();
     if (!file) return;
 
+    this.stopProgressStream();
     this.isChecking.set(true);
     this.progress.set(0);
     this.progressMessage.set('Starting verification...');
@@ -126,50 +135,47 @@ export class PassportCheckComponent implements OnInit {
   }
 
   private listenToJobProgress(jobId: string) {
-    const sseUrl = `${environment.apiUrl}/api/async-jobs/status/${jobId}/`;
-    const eventSource = new EventSource(sseUrl, { withCredentials: true });
-
-    eventSource.onmessage = async (event) => {
-      if (event.data === ': keepalive') return;
-
-      try {
-        const data = JSON.parse(event.data);
-
-        if (data.error) {
-          this.toast.error(data.error);
+    this.stopProgressStream();
+    this.jobProgressSubscription = this.jobService.watchJob(jobId).subscribe({
+      next: async (job: any) => {
+        if (job?.error) {
           this.isChecking.set(false);
-          eventSource.close();
+          this.toast.error(String(job.error));
+          this.stopProgressStream();
           return;
         }
 
-        this.progress.set(data.progress);
-        const message = data.message || 'Processing...';
+        this.progress.set(Number(job?.progress ?? 0));
+        const message = String(job?.message ?? 'Processing...');
         this.progressMessage.set(message);
         this.appendProcessStep(message);
 
-        if (data.status === 'completed') {
+        if (job?.status === 'completed') {
           this.isChecking.set(false);
-          this.result.set(data.result);
-          eventSource.close();
+          const result = job?.result ?? null;
+          this.result.set(result);
+          this.stopProgressStream();
 
-          if (data.result.is_valid) {
-            await this.checkExistingCustomer(data.result.passport_data);
+          if (result?.is_valid) {
+            await this.checkExistingCustomer(result.passport_data);
           }
-        } else if (data.status === 'failed') {
+        } else if (job?.status === 'failed') {
           this.isChecking.set(false);
-          this.toast.error(data.error_message || 'Verification failed');
-          eventSource.close();
+          this.toast.error(job?.errorMessage || job?.error_message || 'Verification failed');
+          this.stopProgressStream();
         }
-      } catch (e) {
-        console.error('Error parsing SSE data', e);
-      }
-    };
+      },
+      error: () => {
+        this.isChecking.set(false);
+        this.toast.error('Connection to server lost');
+        this.stopProgressStream();
+      },
+    });
+  }
 
-    eventSource.onerror = () => {
-      this.isChecking.set(false);
-      this.toast.error('Connection to server lost');
-      eventSource.close();
-    };
+  private stopProgressStream() {
+    this.jobProgressSubscription?.unsubscribe();
+    this.jobProgressSubscription = null;
   }
 
   private appendProcessStep(message: string) {

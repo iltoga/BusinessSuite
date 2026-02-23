@@ -1,4 +1,7 @@
+from decimal import Decimal
+
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 
 
@@ -23,6 +26,7 @@ class Product(models.Model):
     description = models.TextField(blank=True, db_index=True)
     immigration_id = models.UUIDField(blank=True, null=True, db_index=True)
     base_price = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True, default=0.00)
+    retail_price = models.DecimalField(max_digits=12, decimal_places=2, blank=True, default=0.00)
     product_type = models.CharField(max_length=50, choices=PRODUCT_TYPE_CHOICES, default="other", db_index=True)
     # Validity in days
     validity = models.PositiveIntegerField(blank=True, null=True)
@@ -53,6 +57,12 @@ class Product(models.Model):
 
     class Meta:
         ordering = ["name"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(base_price__isnull=True) | models.Q(retail_price__gte=models.F("base_price")),
+                name="product_retail_price_gte_base_price",
+            ),
+        ]
 
     def __str__(self):
         return self.code + " - " + self.name
@@ -65,8 +75,26 @@ class Product(models.Model):
             "code": self.code,
             "name": self.name,
             "base_price": self.base_price,
+            "retail_price": self.retail_price,
             "product_type": self.product_type,
         }
+
+    def clean(self):
+        super().clean()
+        if self.retail_price is None:
+            self.retail_price = self.base_price if self.base_price is not None else Decimal("0.00")
+        if self.base_price is not None and self.retail_price < self.base_price:
+            raise ValidationError({"retail_price": "Retail price must be greater than or equal to base price."})
+
+    def save(self, *args, **kwargs):
+        # Preserve legacy creates where base_price is provided but retail_price is omitted.
+        if self._state.adding and self.base_price not in (None, Decimal("0.00")) and self.retail_price == Decimal(
+            "0.00"
+        ):
+            self.retail_price = self.base_price
+        elif self.retail_price is None:
+            self.retail_price = self.base_price if self.base_price is not None else Decimal("0.00")
+        super().save(*args, **kwargs)
 
     def can_be_deleted(self):
         # Block deletion if related invoices exist

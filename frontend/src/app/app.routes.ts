@@ -8,7 +8,7 @@ import { LoginComponent } from './features/auth/login/login.component';
 import { CustomerDetailComponent } from './features/customers/customer-detail/customer-detail.component';
 import { CustomerFormComponent } from './features/customers/customer-form/customer-form.component';
 import { CustomerListComponent } from './features/customers/customer-list/customer-list.component';
-import { PassportCheckComponent } from './features/daily-boosters/passport-check/passport-check.component';
+import { PassportCheckComponent } from './features/utils/passport-check/passport-check.component';
 import { DashboardComponent } from './features/dashboard/dashboard.component';
 import { InvoiceDetailComponent } from './features/invoices/invoice-detail/invoice-detail.component';
 import { InvoiceFormComponent } from './features/invoices/invoice-form/invoice-form.component';
@@ -19,7 +19,7 @@ import { ProductDetailComponent } from './features/products/product-detail/produ
 import { ProductFormComponent } from './features/products/product-form/product-form.component';
 import { ProductListComponent } from './features/products/product-list/product-list.component';
 import { ProfileComponent } from './features/profile/profile.component';
-import { RemindersComponent } from './features/reminders/reminders.component';
+import { RemindersComponent } from './features/utils/reminders/reminders.component';
 import { ReportsComponent } from './features/reports/reports.component';
 import { AuthLayoutComponent } from './shared/layouts/auth-layout/auth-layout.component';
 import { MainLayoutComponent } from './shared/layouts/main-layout/main-layout.component';
@@ -54,12 +54,12 @@ export const routes: Routes = [
       { path: 'invoices/new', component: InvoiceFormComponent },
       { path: 'invoices/:id/edit', component: InvoiceFormComponent },
       { path: 'invoices/:id', component: InvoiceDetailComponent },
-      { path: 'reminders', component: RemindersComponent },
+      { path: 'utils/reminders', component: RemindersComponent },
       { path: 'letters/surat-permohonan', component: SuratPermohonanComponent },
       { path: 'profile', component: ProfileComponent },
       { path: 'reports', component: ReportsComponent, canActivate: [adminOrManagerGuard] },
       { path: 'reports/:slug', component: ReportsComponent, canActivate: [adminOrManagerGuard] },
-      { path: 'daily-boosters/passport-check', component: PassportCheckComponent },
+      { path: 'utils/passport-check', component: PassportCheckComponent },
       {
         path: 'admin',
         loadChildren: () => import('./features/admin/admin.routes').then((m) => m.adminRoutes),

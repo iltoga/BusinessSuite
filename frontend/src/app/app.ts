@@ -76,7 +76,7 @@ export class App implements OnDestroy {
       const queryParams = Number.isFinite(reminderId) && reminderId > 0 ? { reminderId } : undefined;
 
       this.zone.run(() => {
-        this.router.navigate(['/reminders'], { queryParams }).catch(() => {
+        this.router.navigate(['/utils/reminders'], { queryParams }).catch(() => {
           // Ignore navigation failures from desktop reminder events.
         });
       });

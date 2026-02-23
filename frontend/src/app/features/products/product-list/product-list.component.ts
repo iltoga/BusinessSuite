@@ -33,6 +33,7 @@ import {
   type DataTableAction,
   type SortEvent,
 } from '@/shared/components/data-table/data-table.component';
+import { ZardIconComponent } from '@/shared/components/icon';
 import { PaginationControlsComponent } from '@/shared/components/pagination-controls';
 import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
 import { ZardTooltipImports } from '@/shared/components/tooltip';
@@ -52,6 +53,7 @@ import { downloadBlob } from '@/shared/utils/file-download';
     PaginationControlsComponent,
     ContextHelpDirective,
     ZardButtonComponent,
+    ZardIconComponent,
     ConfirmDialogComponent,
     ZardBadgeComponent,
     BulkDeleteDialogComponent,
@@ -83,9 +85,19 @@ export class ProductListComponent implements OnInit {
     viewChild.required<TemplateRef<{ $implicit: Product; value: any; row: Product }>>(
       'typeTemplate',
     );
+  private readonly basePriceHeaderTemplate =
+    viewChild.required<TemplateRef<{ column: ColumnConfig<Product> }>>('basePriceHeaderTemplate');
   private readonly priceTemplate =
     viewChild.required<TemplateRef<{ $implicit: Product; value: any; row: Product }>>(
       'priceTemplate',
+    );
+  private readonly retailPriceTemplate =
+    viewChild.required<TemplateRef<{ $implicit: Product; value: any; row: Product }>>(
+      'retailPriceTemplate',
+    );
+  private readonly profitTemplate =
+    viewChild.required<TemplateRef<{ $implicit: Product; value: any; row: Product }>>(
+      'profitTemplate',
     );
   private readonly createdAtTemplate =
     viewChild.required<TemplateRef<{ $implicit: Product; value: any; row: Product }>>(
@@ -120,6 +132,7 @@ export class ProductListComponent implements OnInit {
   readonly exportProgress = signal<number | null>(null);
   readonly importInProgress = signal(false);
   readonly importProgress = signal<number | null>(null);
+  readonly basePricesVisible = signal(false);
 
   // When navigating back to the list we may want to focus a specific id or the table
   private readonly focusTableOnInit = signal(false);
@@ -142,7 +155,20 @@ export class ProductListComponent implements OnInit {
       header: 'Base Price',
       sortable: true,
       sortKey: 'base_price', // server uses snake_case for ordering
+      headerActionTemplate: this.basePriceHeaderTemplate(),
       template: this.priceTemplate(),
+    },
+    {
+      key: 'retailPrice',
+      header: 'Retail Price',
+      sortable: true,
+      sortKey: 'retail_price',
+      template: this.retailPriceTemplate(),
+    },
+    {
+      key: 'unitProfit',
+      header: 'Unit Profit',
+      template: this.profitTemplate(),
     },
     {
       key: 'createdAt',
@@ -420,7 +446,12 @@ export class ProductListComponent implements OnInit {
     return type ?? '—';
   }
 
-  formatCurrency(value?: string | null): string {
+  toggleBasePriceVisibility(event?: Event): void {
+    event?.stopPropagation();
+    this.basePricesVisible.update((visible) => !visible);
+  }
+
+  formatCurrency(value?: string | number | null): string {
     if (value === null || value === undefined || value === '') return '—';
     const n = Number(value);
     if (Number.isNaN(n)) return String(value ?? '—');
@@ -430,6 +461,28 @@ export class ProductListComponent implements OnInit {
       currency: 'IDR',
       maximumFractionDigits: 0,
     }).format(n);
+  }
+
+  formatBasePrice(value?: string | number | null): string {
+    if (!this.basePricesVisible()) {
+      return '****';
+    }
+    return this.formatCurrency(value);
+  }
+
+  retailPriceValue(row: Product): string | number | null {
+    const retail = (row as any).retailPrice ?? (row as any).retail_price;
+    const base = (row as any).basePrice ?? (row as any).base_price;
+    return retail ?? base ?? null;
+  }
+
+  unitProfitValue(row: Product): number {
+    const retail = Number(this.retailPriceValue(row) ?? 0);
+    const base = Number((row as any).basePrice ?? (row as any).base_price ?? 0);
+    if (Number.isNaN(retail) || Number.isNaN(base)) {
+      return 0;
+    }
+    return retail - base;
   }
 
   private watchExportJob(jobId: string): void {

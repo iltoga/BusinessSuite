@@ -475,6 +475,7 @@ class InvoiceImporter:
                 code=product_code,
                 description=sanitized_description,
                 base_price=Decimal(str(item_data.unit_price)),
+                retail_price=Decimal(str(item_data.unit_price)),
                 product_type="visa",  # Always visa as per requirements
             )
 

@@ -31,6 +31,7 @@ export interface ColumnConfig<T = any> {
   subtitle?: string;
   sortable?: boolean;
   sortKey?: string;
+  headerActionTemplate?: TemplateRef<{ column: ColumnConfig<T> }>;
   template?: TemplateRef<{ $implicit: T; value: any; row: T }>;
   filter?: ColumnFilterConfig;
 }

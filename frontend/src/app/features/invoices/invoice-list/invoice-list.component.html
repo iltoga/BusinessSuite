@@ -134,12 +134,12 @@
 </ng-template>
 
 <ng-template #createdAtTemplate let-row>
-  <div class="flex flex-col">
-    <span class="text-sm">{{
+  <div class="invoice-created-updated flex flex-col">
+    <span class="invoice-created-updated__created">{{
       $any(row).createdAt ? ($any(row).createdAt | appDate: 'datetime') : ''
     }}</span>
     @if ($any(row).updatedAt && $any(row).updatedAt !== $any(row).createdAt) {
-      <span class="text-xs text-muted-foreground">{{
+      <span class="invoice-created-updated__updated text-muted-foreground">{{
         $any(row).updatedAt ? ($any(row).updatedAt | appDate: 'datetime') : ''
       }}</span>
     }
