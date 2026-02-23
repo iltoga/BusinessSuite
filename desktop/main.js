@@ -66,6 +66,7 @@ let userInitiatedUpdateCheckPendingResult = false;
 let updateProgressWindow = null;
 let lastDownloadProgressPercent = -1;
 let latestDownloadedVersion = "";
+let updateInstallRestartTimeoutHandle = null;
 
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
@@ -909,6 +910,46 @@ function closeUpdateProgressWindow() {
   updateProgressWindow = null;
 }
 
+function clearUpdateInstallRestartTimeout() {
+  if (!updateInstallRestartTimeoutHandle) {
+    return;
+  }
+
+  clearTimeout(updateInstallRestartTimeoutHandle);
+  updateInstallRestartTimeoutHandle = null;
+}
+
+function scheduleUpdateInstallRestartTimeout() {
+  clearUpdateInstallRestartTimeout();
+  updateInstallRestartTimeoutHandle = setTimeout(() => {
+    if (!updateInstallInProgress) {
+      return;
+    }
+
+    log(
+      "warn",
+      "Update restart timeout reached; attempting app.quit() fallback for install",
+    );
+
+    // Hide the blocking progress modal before trying graceful quit fallback.
+    closeUpdateProgressWindow();
+    app.quit();
+
+    setTimeout(() => {
+      if (!updateInstallInProgress) {
+        return;
+      }
+
+      void showUpdateCheckInfo(
+        "Restart Required",
+        "Please close and reopen the app to finish installing the downloaded update.",
+        "Automatic restart did not complete in time. The update is already downloaded and will be applied on the next full app restart.",
+      );
+    }, 6000).unref();
+  }, 15000);
+  updateInstallRestartTimeoutHandle.unref();
+}
+
 async function promptDownloadUpdate(info) {
   if (updatePromptInProgress) {
     return false;
@@ -1017,6 +1058,7 @@ function installDownloadedUpdateNow(info) {
   stopAutoUpdateScheduler();
   reminderPoller?.stop();
   persistPendingInstallVersion(info?.version);
+  scheduleUpdateInstallRestartTimeout();
   setUpdateProgress({
     title: "Installing Update",
     message: "Preparing restart to install the downloaded version...",
@@ -1025,28 +1067,25 @@ function installDownloadedUpdateNow(info) {
   });
 
   try {
-    // Keep the default installer UI and force app relaunch after install.
-    autoUpdater.quitAndInstall(false, true);
+    // Per Electron guidance, call quitAndInstall only after update-downloaded.
+    // Use default args for cross-platform behavior.
+    setImmediate(() => {
+      try {
+        autoUpdater.quitAndInstall();
+      } catch (error) {
+        closeUpdateProgressWindow();
+        log(
+          "warn",
+          `quitAndInstall failed, falling back to app.quit(): ${String(error)}`,
+        );
+        app.quit();
+      }
+    });
   } catch (error) {
     closeUpdateProgressWindow();
-    log("warn", `quitAndInstall failed, forcing relaunch fallback: ${String(error)}`);
-    app.relaunch();
-    app.exit(0);
+    log("warn", `Unable to start quitAndInstall flow: ${String(error)}`);
+    app.quit();
     return;
-  }
-
-  // Safety net only on Windows. On macOS, forced relaunch can interrupt update apply.
-  if (process.platform === "win32") {
-    setTimeout(() => {
-      if (!updateInstallInProgress) {
-        return;
-      }
-
-      closeUpdateProgressWindow();
-      log("warn", "Updater restart timeout reached, forcing app relaunch");
-      app.relaunch();
-      app.exit(0);
-    }, 45000).unref();
   }
 }
 
@@ -1159,6 +1198,7 @@ function registerAutoUpdaterEventHandlers() {
   autoUpdater.on("before-quit-for-update", () => {
     updateInstallInProgress = true;
     isQuitting = true;
+    clearUpdateInstallRestartTimeout();
     if (latestDownloadedVersion) {
       persistPendingInstallVersion(latestDownloadedVersion);
     }
@@ -1492,6 +1532,7 @@ if (gotSingleInstanceLock) {
 
   app.on("quit", () => {
     updateInstallInProgress = false;
+    clearUpdateInstallRestartTimeout();
     closeUpdateProgressWindow();
     stopAutoUpdateScheduler();
     trayService?.destroy();
