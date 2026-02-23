@@ -12,6 +12,11 @@ asar: true
 mac:
   icon: ../frontend/public/icons/icon-512x512.png
   category: public.app-category.business
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  forceCodeSigning: true
+  entitlements: assets/entitlements.mac.plist
+  entitlementsInherit: assets/entitlements.mac.inherit.plist
   target:
     - dmg
     - zip
