@@ -22,6 +22,7 @@ const RENDERER_UNREAD_SYNC_TTL_MS = 20_000;
 const DEFAULT_REMINDER_POLL_INTERVAL_MS = 15_000;
 const INITIAL_UPDATE_CHECK_DELAY_MS = 10_000;
 const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000;
+const UPDATE_INSTALL_STATE_FILE_NAME = "desktop-update-install-state.json";
 
 loadDesktopEnvFile();
 
@@ -62,6 +63,9 @@ let updatePromptInProgress = false;
 let updateCheckIntervalHandle = null;
 let updateInstallInProgress = false;
 let userInitiatedUpdateCheckPendingResult = false;
+let updateProgressWindow = null;
+let lastDownloadProgressPercent = -1;
+let latestDownloadedVersion = "";
 
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
@@ -633,6 +637,278 @@ function showDesktopMessageBox(options) {
   return dialog.showMessageBox(options);
 }
 
+function getUpdateInstallStateFilePath() {
+  try {
+    return path.join(app.getPath("userData"), UPDATE_INSTALL_STATE_FILE_NAME);
+  } catch {
+    return null;
+  }
+}
+
+function persistPendingInstallVersion(rawVersion) {
+  const expectedVersion = String(rawVersion || "").trim();
+  if (!expectedVersion) {
+    return;
+  }
+
+  const statePath = getUpdateInstallStateFilePath();
+  if (!statePath) {
+    return;
+  }
+
+  try {
+    fs.writeFileSync(
+      statePath,
+      JSON.stringify(
+        {
+          expectedVersion,
+          recordedAt: new Date().toISOString(),
+        },
+        null,
+        2,
+      ),
+      "utf8",
+    );
+  } catch (error) {
+    log("warn", `Unable to persist pending update install state: ${String(error)}`);
+  }
+}
+
+function readPendingInstallVersion() {
+  const statePath = getUpdateInstallStateFilePath();
+  if (!statePath) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(fs.readFileSync(statePath, "utf8"));
+    const expectedVersion = String(parsed?.expectedVersion || "").trim();
+    if (!expectedVersion) {
+      return null;
+    }
+    return {
+      expectedVersion,
+      recordedAt: String(parsed?.recordedAt || "").trim(),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function clearPendingInstallVersion() {
+  const statePath = getUpdateInstallStateFilePath();
+  if (!statePath) {
+    return;
+  }
+
+  try {
+    fs.rmSync(statePath, { force: true });
+  } catch {
+    // Ignore cleanup errors.
+  }
+}
+
+async function notifyUpdateInstallResultIfPending() {
+  const pending = readPendingInstallVersion();
+  if (!pending) {
+    return;
+  }
+
+  clearPendingInstallVersion();
+
+  const currentVersion = String(app.getVersion() || "").trim();
+  const expectedVersion = pending.expectedVersion;
+  if (!currentVersion || !expectedVersion) {
+    return;
+  }
+
+  if (currentVersion === expectedVersion) {
+    await showUpdateCheckInfo(
+      "Update Installed",
+      `Desktop app updated successfully to version ${currentVersion}.`,
+      `Current version: ${currentVersion}`,
+    );
+    return;
+  }
+
+  await showUpdateCheckError(
+    "Update Not Applied",
+    "The previous update restart did not switch to the new version.",
+    `Expected version: ${expectedVersion}\nCurrent version: ${currentVersion}\n\nIf this is macOS, ensure the app is installed in /Applications, then retry Help > Check for Updates...`,
+  );
+}
+
+function createUpdateProgressWindowHtml(payload) {
+  const serialized = JSON.stringify(payload || {}).replace(/</g, "\\u003c");
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Update Progress</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: transparent;
+      color: #e8e8ea;
+    }
+    .wrap {
+      box-sizing: border-box;
+      width: 100%;
+      height: 100vh;
+      padding: 18px 18px 14px 18px;
+      background: #2b2f36;
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .title {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.2;
+      font-weight: 600;
+    }
+    .message {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.4;
+      color: #d6d6d9;
+      min-height: 36px;
+    }
+    .meta {
+      margin: 0;
+      font-size: 12px;
+      color: #b9bac0;
+      min-height: 18px;
+    }
+    progress {
+      width: 100%;
+      height: 12px;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1 id="title" class="title"></h1>
+    <p id="message" class="message"></p>
+    <progress id="progress" max="100" value="0"></progress>
+    <p id="meta" class="meta"></p>
+  </div>
+  <script>
+    (function () {
+      var titleEl = document.getElementById("title");
+      var messageEl = document.getElementById("message");
+      var progressEl = document.getElementById("progress");
+      var metaEl = document.getElementById("meta");
+
+      function apply(payload) {
+        payload = payload || {};
+        var title = String(payload.title || "Updating");
+        var message = String(payload.message || "");
+        var percent = Number(payload.percent);
+        var indeterminate = Boolean(payload.indeterminate);
+        var meta = String(payload.meta || "");
+
+        document.title = title;
+        titleEl.textContent = title;
+        messageEl.textContent = message;
+        metaEl.textContent = meta;
+
+        if (indeterminate || !Number.isFinite(percent)) {
+          progressEl.removeAttribute("value");
+        } else {
+          progressEl.value = Math.max(0, Math.min(100, percent));
+        }
+      }
+
+      window.__setUpdateProgressPayload = apply;
+      apply(${serialized});
+    })();
+  </script>
+</body>
+</html>`;
+}
+
+function createOrShowUpdateProgressWindow(payload) {
+  if (!updateProgressWindow || updateProgressWindow.isDestroyed()) {
+    const parentWindow = getDialogParentWindow();
+    updateProgressWindow = new BrowserWindow({
+      width: 430,
+      height: 200,
+      resizable: false,
+      minimizable: false,
+      maximizable: false,
+      fullscreenable: false,
+      show: false,
+      title: String(payload?.title || "Updating"),
+      autoHideMenuBar: true,
+      modal: Boolean(parentWindow),
+      parent: parentWindow || undefined,
+      webPreferences: {
+        contextIsolation: true,
+        sandbox: true,
+        nodeIntegration: false,
+        webSecurity: true,
+      },
+    });
+
+    updateProgressWindow.setMenuBarVisibility(false);
+    updateProgressWindow.setAlwaysOnTop(true, "screen-saver");
+    updateProgressWindow.on("closed", () => {
+      updateProgressWindow = null;
+    });
+
+    updateProgressWindow.once("ready-to-show", () => {
+      if (!updateProgressWindow || updateProgressWindow.isDestroyed()) {
+        return;
+      }
+      updateProgressWindow.show();
+    });
+
+    const html = createUpdateProgressWindowHtml(payload);
+    void updateProgressWindow
+      .loadURL(`data:text/html;charset=UTF-8,${encodeURIComponent(html)}`)
+      .catch((error) => {
+        log("warn", `Unable to load update progress window: ${String(error)}`);
+      });
+    return;
+  }
+
+  updateProgressWindow.setTitle(String(payload?.title || "Updating"));
+  if (!updateProgressWindow.isVisible()) {
+    updateProgressWindow.show();
+  }
+}
+
+function setUpdateProgress(payload) {
+  createOrShowUpdateProgressWindow(payload);
+  if (!updateProgressWindow || updateProgressWindow.isDestroyed()) {
+    return;
+  }
+
+  const serialized = JSON.stringify(payload || {}).replace(/</g, "\\u003c");
+  void updateProgressWindow.webContents
+    .executeJavaScript(`window.__setUpdateProgressPayload(${serialized});`, true)
+    .catch(() => {
+      // Ignore transient timing issues while data URL document is still loading.
+    });
+}
+
+function closeUpdateProgressWindow() {
+  if (!updateProgressWindow || updateProgressWindow.isDestroyed()) {
+    updateProgressWindow = null;
+    return;
+  }
+
+  updateProgressWindow.destroy();
+  updateProgressWindow = null;
+}
+
 async function promptDownloadUpdate(info) {
   if (updatePromptInProgress) {
     return false;
@@ -717,8 +993,22 @@ function showUpdateCheckError(title, message, detail) {
   });
 }
 
-function installDownloadedUpdateNow() {
+function installDownloadedUpdateNow(info) {
   if (!autoUpdater) {
+    return;
+  }
+
+  if (
+    process.platform === "darwin" &&
+    typeof app.isInApplicationsFolder === "function" &&
+    !app.isInApplicationsFolder()
+  ) {
+    closeUpdateProgressWindow();
+    void showUpdateCheckInfo(
+      "Move App to Applications",
+      "Install RevisBaliCRM in /Applications to enable auto-updates.",
+      "macOS cannot apply in-place updates reliably when the app runs outside /Applications.",
+    );
     return;
   }
 
@@ -726,28 +1016,38 @@ function installDownloadedUpdateNow() {
   isQuitting = true;
   stopAutoUpdateScheduler();
   reminderPoller?.stop();
+  persistPendingInstallVersion(info?.version);
+  setUpdateProgress({
+    title: "Installing Update",
+    message: "Preparing restart to install the downloaded version...",
+    indeterminate: true,
+    meta: "Please wait",
+  });
 
   try {
     // Keep the default installer UI and force app relaunch after install.
     autoUpdater.quitAndInstall(false, true);
   } catch (error) {
+    closeUpdateProgressWindow();
     log("warn", `quitAndInstall failed, forcing relaunch fallback: ${String(error)}`);
     app.relaunch();
     app.exit(0);
     return;
   }
 
-  // Safety net: if updater does not terminate process in a few seconds,
-  // force a relaunch to avoid leaving users stuck after pressing Restart.
-  setTimeout(() => {
-    if (!updateInstallInProgress) {
-      return;
-    }
+  // Safety net only on Windows. On macOS, forced relaunch can interrupt update apply.
+  if (process.platform === "win32") {
+    setTimeout(() => {
+      if (!updateInstallInProgress) {
+        return;
+      }
 
-    log("warn", "Updater restart timeout reached, forcing app relaunch");
-    app.relaunch();
-    app.exit(0);
-  }, 12000).unref();
+      closeUpdateProgressWindow();
+      log("warn", "Updater restart timeout reached, forcing app relaunch");
+      app.relaunch();
+      app.exit(0);
+    }, 45000).unref();
+  }
 }
 
 function registerAutoUpdaterEventHandlers() {
@@ -786,9 +1086,18 @@ function registerAutoUpdaterEventHandlers() {
 
     try {
       updateDownloadInProgress = true;
+      lastDownloadProgressPercent = -1;
+      setUpdateProgress({
+        title: "Downloading Update",
+        message: `Downloading version ${String(info?.version || "").trim() || "new"}...`,
+        percent: 0,
+        indeterminate: false,
+        meta: "0%",
+      });
       await autoUpdater.downloadUpdate();
     } catch (error) {
       updateDownloadInProgress = false;
+      closeUpdateProgressWindow();
       log("error", `Desktop update download failed: ${String(error)}`);
     }
   });
@@ -809,12 +1118,27 @@ function registerAutoUpdaterEventHandlers() {
   });
 
   autoUpdater.on("download-progress", (progress) => {
-    const percent = Number(progress?.percent || 0).toFixed(1);
+    const normalized = Number(progress?.percent || 0);
+    const rounded = Number.isFinite(normalized) ? Math.max(0, Math.min(100, Math.round(normalized))) : 0;
+    if (rounded !== lastDownloadProgressPercent) {
+      lastDownloadProgressPercent = rounded;
+      setUpdateProgress({
+        title: "Downloading Update",
+        message: "Downloading update package...",
+        percent: rounded,
+        indeterminate: false,
+        meta: `${rounded}%`,
+      });
+    }
+
+    const percent = Number(normalized || 0).toFixed(1);
     log("info", `Desktop update download progress: ${percent}%`);
   });
 
   autoUpdater.on("update-downloaded", async (info) => {
     updateDownloadInProgress = false;
+    latestDownloadedVersion = String(info?.version || "").trim();
+    closeUpdateProgressWindow();
     log("info", "Desktop update downloaded", { version: info?.version || null });
 
     const shouldInstallNow = await promptInstallUpdate(info);
@@ -823,18 +1147,28 @@ function registerAutoUpdaterEventHandlers() {
       return;
     }
 
-    installDownloadedUpdateNow();
+    setUpdateProgress({
+      title: "Installing Update",
+      message: "Restarting application to install the update...",
+      indeterminate: true,
+      meta: "Please wait",
+    });
+    installDownloadedUpdateNow(info);
   });
 
   autoUpdater.on("before-quit-for-update", () => {
     updateInstallInProgress = true;
     isQuitting = true;
+    if (latestDownloadedVersion) {
+      persistPendingInstallVersion(latestDownloadedVersion);
+    }
     stopAutoUpdateScheduler();
     reminderPoller?.stop();
   });
 
   autoUpdater.on("error", (error) => {
     updateDownloadInProgress = false;
+    closeUpdateProgressWindow();
     const errorMessage = String(error);
     log("error", `Desktop updater error: ${String(error)}`);
 
@@ -1123,12 +1457,14 @@ if (gotSingleInstanceLock) {
 
     installApplicationMenu();
     createWindow();
+    void notifyUpdateInstallResultIfPending();
     buildServices();
     registerIpc();
     startAutoUpdateScheduler();
     void syncAuthTokenFromRenderer();
 
     log("info", "Desktop process started", {
+      appVersion: app.getVersion(),
       startUrl: startUrl.href,
       allowedOrigin,
       reminderPollIntervalMs,
@@ -1156,6 +1492,7 @@ if (gotSingleInstanceLock) {
 
   app.on("quit", () => {
     updateInstallInProgress = false;
+    closeUpdateProgressWindow();
     stopAutoUpdateScheduler();
     trayService?.destroy();
     reminderPoller?.destroy();
