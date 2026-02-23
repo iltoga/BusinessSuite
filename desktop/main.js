@@ -1,6 +1,6 @@
 "use strict";
 
-const { app, BrowserWindow, dialog, ipcMain, shell } = require("electron");
+const { app, BrowserWindow, dialog, ipcMain, Menu, shell } = require("electron");
 const fs = require("node:fs");
 const path = require("node:path");
 let autoUpdater = null;
@@ -378,6 +378,36 @@ function showMainWindow() {
   }
 
   windowRef.focus();
+}
+
+function triggerUserInitiatedUpdateCheck(trigger = "manual-menu") {
+  void checkForDesktopUpdates(trigger, { userInitiated: true });
+}
+
+function installApplicationMenu() {
+  const template = [];
+
+  if (process.platform === "darwin") {
+    template.push({ role: "appMenu" });
+  }
+
+  template.push(
+    { role: "fileMenu" },
+    { role: "editMenu" },
+    { role: "viewMenu" },
+    { role: "windowMenu" },
+    {
+      role: "help",
+      submenu: [
+        {
+          label: "Check for Updates...",
+          click: () => triggerUserInitiatedUpdateCheck("manual-menu"),
+        },
+      ],
+    },
+  );
+
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
 function isMainWindowForeground() {
@@ -941,9 +971,7 @@ function buildServices() {
         ? path.join(iconsDir, "trayUnreadTemplate.png")
         : path.join(iconsDir, "tray-unread.png"),
     onOpen: () => showMainWindow(),
-    onCheckForUpdates: () => {
-      void checkForDesktopUpdates("manual-tray", { userInitiated: true });
-    },
+    onCheckForUpdates: () => triggerUserInitiatedUpdateCheck("manual-tray"),
     onQuit: () => {
       isQuitting = true;
       app.quit();
@@ -1093,6 +1121,7 @@ if (gotSingleInstanceLock) {
       app.setAppUserModelId("com.revisbali.crm.desktop");
     }
 
+    installApplicationMenu();
     createWindow();
     buildServices();
     registerIpc();
