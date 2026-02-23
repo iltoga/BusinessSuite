@@ -52,6 +52,15 @@ describe('Cache Interceptor', () => {
     return requests.length > 0;
   }
 
+  function buildCacheKey(url: string, userScope: string = '123') {
+    const parsed = new URL(url, 'http://localhost');
+    const params = new URLSearchParams(parsed.search);
+    params.sort();
+    const query = params.toString();
+    const identity = query ? `${parsed.pathname}?${query}` : parsed.pathname;
+    return `cache:user:${encodeURIComponent(userScope)}:${identity}`;
+  }
+
   beforeEach(() => {
     // Reset TestBed
     TestBed.resetTestingModule();
@@ -201,7 +210,7 @@ describe('Cache Interceptor', () => {
             await new Promise(resolve => setTimeout(resolve, 150));
 
             // Verify response was cached
-            const cached = await cacheService.get('cache:/api/users/1/');
+            const cached = await cacheService.get(buildCacheKey('/api/users/1/'));
             expect(cached).not.toBeNull();
             expect(cached?.data).toEqual(responseData);
           }
@@ -299,7 +308,7 @@ describe('Cache Interceptor', () => {
      */
     it('should generate correct cache keys', async () => {
       const url = '/api/users/1/';
-      const expectedKey = 'cache:/api/users/1/';
+      const expectedKey = buildCacheKey('/api/users/1/');
 
       httpClient.get(url).subscribe();
 
@@ -319,7 +328,7 @@ describe('Cache Interceptor', () => {
       httpClient.get('/api/users/1/').subscribe();
       await waitForAndHandleRequest('/api/users/1/', { id: 1 }, { 'X-Cache-Version': '1' });
 
-      const cached1 = await cacheService.get('cache:/api/users/1/');
+      const cached1 = await cacheService.get(buildCacheKey('/api/users/1/'));
       expect(cached1).not.toBeNull();
       // TTL is 300 seconds (5 minutes)
       const expectedExpiry1 = Date.now() + (300 * 1000);
@@ -330,7 +339,7 @@ describe('Cache Interceptor', () => {
       httpClient.get('/api/posts/').subscribe();
       await waitForAndHandleRequest('/api/posts/', [{ id: 1 }], { 'X-Cache-Version': '1' });
 
-      const cached2 = await cacheService.get('cache:/api/posts/');
+      const cached2 = await cacheService.get(buildCacheKey('/api/posts/'));
       expect(cached2).not.toBeNull();
       // TTL is 60 seconds (1 minute)
       const expectedExpiry2 = Date.now() + (60 * 1000);
@@ -349,7 +358,7 @@ describe('Cache Interceptor', () => {
       const cachedData = { id: 1, name: 'Cached User' };
 
       // Pre-populate cache
-      await cacheService.set('cache:/api/users/1/', cachedData, 300, 123, 1);
+      await cacheService.set(buildCacheKey('/api/users/1/'), cachedData, 300, 123, 1);
       await cacheService.setVersion(1);
 
       // Make request
@@ -395,7 +404,7 @@ describe('Cache Interceptor', () => {
       expect(hadRequest).toBe(true);
 
       // Verify response was cached
-      const cached = await cacheService.get('cache:/api/users/1/');
+      const cached = await cacheService.get(buildCacheKey('/api/users/1/'));
       expect(cached).not.toBeNull();
       expect(cached?.data).toEqual(responseData);
     });
@@ -421,7 +430,7 @@ describe('Cache Interceptor', () => {
       expect(currentVersion).toBe(6);
 
       // Verify new data was cached with new version
-      const cached = await cacheService.get('cache:/api/users/2/');
+      const cached = await cacheService.get(buildCacheKey('/api/users/2/'));
       expect(cached).not.toBeNull();
       expect(cached?.version).toBe(6);
       expect(cached?.data).toEqual({ id: 2, name: 'New' });
@@ -446,15 +455,15 @@ describe('Cache Interceptor', () => {
       await new Promise(resolve => setTimeout(resolve, 100));
 
       // Verify response was NOT cached
-      const cached = await cacheService.get('cache:/api/non-cacheable/');
+      const cached = await cacheService.get(buildCacheKey('/api/non-cacheable/'));
       expect(cached).toBeNull();
     });
 
     /**
-     * Test: POST requests bypass cache
+     * Test: POST requests bypass cache storage
      * Requirements: 8.1
      */
-    it('should bypass cache for non-GET requests', async () => {
+    it('should bypass cache storage for non-GET requests', async () => {
       const url = '/api/users/1/';
       const postData = { name: 'New User' };
 
@@ -470,8 +479,24 @@ describe('Cache Interceptor', () => {
       await new Promise(resolve => setTimeout(resolve, 100));
 
       // Verify response was NOT cached
-      const cached = await cacheService.get('cache:/api/users/1/');
+      const cached = await cacheService.get(buildCacheKey('/api/users/1/'));
       expect(cached).toBeNull();
+    });
+
+    it('should sync cache version from non-GET responses', async () => {
+      const url = '/api/cache/clear/';
+      await cacheService.setVersion(5);
+
+      httpClient.post(url, {}).subscribe();
+
+      const req = httpTestingController.expectOne(url);
+      expect(req.request.method).toBe('POST');
+      req.flush({ cleared: true }, { headers: { 'X-Cache-Version': '6' } });
+
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      const currentVersion = await cacheService.getVersion();
+      expect(currentVersion).toBe(6);
     });
 
     /**
@@ -496,7 +521,7 @@ describe('Cache Interceptor', () => {
       await new Promise(resolve => setTimeout(resolve, 100));
 
       // Verify response was NOT cached
-      const cached = await cacheService.get('cache:/api/users/1/');
+      const cached = await cacheService.get(buildCacheKey('/api/users/1/'));
       expect(cached).toBeNull();
     });
 
@@ -548,7 +573,7 @@ describe('Cache Interceptor', () => {
       expect(currentVersion).toBe(5);
 
       // Verify response was still cached
-      const cached = await cacheService.get('cache:/api/users/1/');
+      const cached = await cacheService.get(buildCacheKey('/api/users/1/'));
       expect(cached).not.toBeNull();
       expect(cached?.data).toEqual(responseData);
     });
@@ -594,7 +619,7 @@ describe('Cache Interceptor', () => {
       await waitForAndHandleRequest(url, responseData, { 'X-Cache-Version': '1' });
 
       // Verify user ID was stored
-      const cached = await cacheService.get('cache:/api/users/1/');
+      const cached = await cacheService.get(buildCacheKey('/api/users/1/', userId.toString()));
       expect(cached).not.toBeNull();
       expect(cached?.userId).toBe(userId);
     });
@@ -617,9 +642,48 @@ describe('Cache Interceptor', () => {
       await waitForAndHandleRequest(url, responseData, { 'X-Cache-Version': '1' });
 
       // Verify default user ID (0) was used
-      const cached = await cacheService.get('cache:/api/users/1/');
+      const cached = await cacheService.get(buildCacheKey('/api/users/1/', '0'));
       expect(cached).not.toBeNull();
       expect(cached?.userId).toBe(0);
+    });
+
+    it('should use distinct cache keys for different query strings', async () => {
+      const urlPage1 = '/api/users?page=1';
+      const urlPage2 = '/api/users?page=2';
+
+      httpClient.get(urlPage1).subscribe();
+      await waitForAndHandleRequest(urlPage1, { page: 1 }, { 'X-Cache-Version': '1' });
+
+      httpClient.get(urlPage2).subscribe();
+      await waitForAndHandleRequest(urlPage2, { page: 2 }, { 'X-Cache-Version': '1' });
+
+      const cached1 = await cacheService.get(buildCacheKey(urlPage1));
+      const cached2 = await cacheService.get(buildCacheKey(urlPage2));
+
+      expect(cached1?.data).toEqual({ page: 1 });
+      expect(cached2?.data).toEqual({ page: 2 });
+    });
+
+    it('should isolate cache entries by user scope for the same URL', async () => {
+      const url = '/api/users/1/';
+
+      // Pre-populate cache for user 123.
+      await cacheService.setVersion(1);
+      await cacheService.set(buildCacheKey(url, '123'), { owner: 123 }, 300, 123, 1);
+
+      // Switch identity to user 456 and request same URL.
+      vi.mocked(authService.claims).mockReturnValue({ sub: '456' });
+      httpClient.get(url).subscribe();
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+      const req = httpTestingController.expectOne(url);
+      req.flush({ owner: 456 }, { headers: { 'X-Cache-Version': '1' } });
+      await new Promise(resolve => setTimeout(resolve, 120));
+
+      const user123Cache = await cacheService.get(buildCacheKey(url, '123'));
+      const user456Cache = await cacheService.get(buildCacheKey(url, '456'));
+      expect(user123Cache?.data).toEqual({ owner: 123 });
+      expect(user456Cache?.data).toEqual({ owner: 456 });
     });
   });
 });

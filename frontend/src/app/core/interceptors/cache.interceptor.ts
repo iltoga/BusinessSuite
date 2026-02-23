@@ -71,13 +71,38 @@ export const cacheInterceptor: HttpInterceptorFn = (req, next) => {
   const cacheService = inject(CacheService);
   const authService = inject(AuthService);
 
-  // Only cache GET requests
+  const processVersionHeader = async (event: HttpResponse<unknown>) => {
+    const cacheVersion = event.headers.get('X-Cache-Version');
+    if (!cacheVersion) {
+      return;
+    }
+
+    const currentVersion = await cacheService.getVersion();
+    const newVersion = parseInt(cacheVersion, 10);
+
+    // If version changed, invalidate old cache entries.
+    if (!isNaN(newVersion) && newVersion !== currentVersion) {
+      await cacheService.clearByVersion(currentVersion);
+      await cacheService.setVersion(newVersion);
+    }
+  };
+
+  // Non-GET requests are never cached, but still may carry cache-version headers
+  // (e.g. POST /api/cache/clear).
   if (req.method !== 'GET') {
-    return next(req);
+    return next(req).pipe(
+      tap((event) => {
+        if (event instanceof HttpResponse) {
+          void processVersionHeader(event).catch((error) => {
+            console.error('Cache version sync error:', error);
+          });
+        }
+      }),
+    );
   }
 
   // Check if endpoint is cacheable
-  if (!isCacheable(req.url)) {
+  if (!isCacheable(req.urlWithParams)) {
     return next(req);
   }
 
@@ -86,9 +111,12 @@ export const cacheInterceptor: HttpInterceptorFn = (req, next) => {
     return next(req);
   }
 
-  // Generate cache key
-  const cacheKey = getCacheKey(req.url);
-  const ttl = getTTL(req.url);
+  const userScope = getUserScope(authService);
+  const userId = getUserId(authService);
+
+  // Generate cache key scoped by user and full request identity (path + query).
+  const cacheKey = getCacheKey(req.urlWithParams, userScope);
+  const ttl = getTTL(req.urlWithParams);
 
   // Check cache asynchronously
   const checkCache = async () => {
@@ -124,25 +152,10 @@ export const cacheInterceptor: HttpInterceptorFn = (req, next) => {
             if (event instanceof HttpResponse) {
               try {
                 // Check for cache version header
-                const cacheVersion = event.headers.get('X-Cache-Version');
-                
-                if (cacheVersion) {
-                  const currentVersion = await cacheService.getVersion();
-                  const newVersion = parseInt(cacheVersion, 10);
-                  
-                  // If version changed, invalidate old cache entries
-                  if (!isNaN(newVersion) && newVersion !== currentVersion) {
-                    console.log(`Cache version changed: ${currentVersion} -> ${newVersion}`);
-                    await cacheService.clearByVersion(currentVersion);
-                    await cacheService.setVersion(newVersion);
-                  }
-                }
+                await processVersionHeader(event);
                 
                 // Store response in cache
                 if (event.body) {
-                  // Get user ID from claims (sub field contains user identifier)
-                  const claims = authService.claims();
-                  const userId = claims?.sub ? parseInt(claims.sub, 10) : 0;
                   const version = await cacheService.getVersion();
                   await cacheService.set(cacheKey, event.body, ttl, userId, version);
                 }
@@ -164,23 +177,30 @@ export const cacheInterceptor: HttpInterceptorFn = (req, next) => {
  * @returns true if URL matches any cacheable endpoint pattern
  */
 function isCacheable(url: string): boolean {
-  // Extract path from full URL if needed
-  const path = url.startsWith('http') ? new URL(url).pathname : url;
-  
+  const path = getPath(url);
   return CACHEABLE_ENDPOINTS.some((endpoint) => endpoint.pattern.test(path));
 }
 
 /**
- * Generate cache key for a request URL
+ * Generate cache key for a request URL + user scope.
+ *
+ * Includes:
+ * - user scope (prevents cross-account collisions on same browser profile)
+ * - full request identity (path + normalized query string)
+ *
+ * Example:
+ *   cache:user:123:/api/users?page=1
+ *   cache:user:123:/api/users?page=2
+ *
+ * These keys are distinct and won't collide.
+ *
  * @param url Request URL
+ * @param userScope User identity scope
  * @returns Cache key string
  */
-function getCacheKey(url: string): string {
-  // Extract path from full URL if needed
-  const path = url.startsWith('http') ? new URL(url).pathname : url;
-  
-  // Use path as cache key (user ID and version are stored separately in CachedResponse)
-  return `cache:${path}`;
+function getCacheKey(url: string, userScope: string): string {
+  const identity = getRequestIdentity(url);
+  return `cache:user:${userScope}:${identity}`;
 }
 
 /**
@@ -189,11 +209,54 @@ function getCacheKey(url: string): string {
  * @returns TTL in seconds
  */
 function getTTL(url: string): number {
-  // Extract path from full URL if needed
-  const path = url.startsWith('http') ? new URL(url).pathname : url;
-  
+  const path = getPath(url);
   // Find matching endpoint configuration
   const endpoint = CACHEABLE_ENDPOINTS.find((e) => e.pattern.test(path));
   
   return endpoint ? endpoint.ttl : DEFAULT_TTL;
+}
+
+/**
+ * Extract normalized request path (without query string).
+ */
+function getPath(url: string): string {
+  try {
+    return new URL(url, 'http://localhost').pathname;
+  } catch {
+    return url.split('?')[0] ?? url;
+  }
+}
+
+/**
+ * Extract request identity (path + normalized query string).
+ */
+function getRequestIdentity(url: string): string {
+  try {
+    const parsed = new URL(url, 'http://localhost');
+    const params = new URLSearchParams(parsed.search);
+    params.sort();
+    const query = params.toString();
+    return query ? `${parsed.pathname}?${query}` : parsed.pathname;
+  } catch {
+    return url;
+  }
+}
+
+/**
+ * Resolve stable user scope for cache key namespacing.
+ */
+function getUserScope(authService: AuthService): string {
+  const claims = authService.claims() as { sub?: string | number } | null;
+  const rawScope = claims?.sub ?? '0';
+  return encodeURIComponent(String(rawScope));
+}
+
+/**
+ * Resolve numeric user ID for metadata storage.
+ */
+function getUserId(authService: AuthService): number {
+  const claims = authService.claims() as { sub?: string | number } | null;
+  const raw = claims?.sub;
+  const parsed = raw !== undefined ? parseInt(String(raw), 10) : NaN;
+  return Number.isFinite(parsed) ? parsed : 0;
 }
