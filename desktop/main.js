@@ -1,6 +1,7 @@
 "use strict";
 
 const { app, BrowserWindow, dialog, ipcMain, Menu, shell } = require("electron");
+const { spawnSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 let autoUpdater = null;
@@ -67,6 +68,7 @@ let updateProgressWindow = null;
 let lastDownloadProgressPercent = -1;
 let latestDownloadedVersion = "";
 let updateInstallRestartTimeoutHandle = null;
+let macUpdatePreflightIssueCache;
 
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
@@ -629,6 +631,14 @@ function getDialogParentWindow() {
   return mainWindow;
 }
 
+function getManualDesktopUpdateFeedUrl() {
+  try {
+    return new URL("/desktop-updates/", startUrl.origin).href;
+  } catch {
+    return "";
+  }
+}
+
 function showDesktopMessageBox(options) {
   const parentWindow = getDialogParentWindow();
   if (parentWindow) {
@@ -732,10 +742,15 @@ async function notifyUpdateInstallResultIfPending() {
     return;
   }
 
+  const preflightIssue = getMacAutoUpdatePreflightIssue();
+  const extraGuidance = preflightIssue
+    ? `\n\nPreflight check: ${preflightIssue.message}`
+    : "";
+
   await showUpdateCheckError(
     "Update Not Applied",
     "The previous update restart did not switch to the new version.",
-    `Expected version: ${expectedVersion}\nCurrent version: ${currentVersion}\n\nIf this is macOS, ensure the app is installed in /Applications, then retry Help > Check for Updates...`,
+    `Expected version: ${expectedVersion}\nCurrent version: ${currentVersion}${extraGuidance}\n\nIf this is macOS, ensure the app is installed in /Applications, then retry Help > Check for Updates...`,
   );
 }
 
@@ -926,28 +941,80 @@ function scheduleUpdateInstallRestartTimeout() {
       return;
     }
 
-    log(
-      "warn",
-      "Update restart timeout reached; attempting app.quit() fallback for install",
-    );
+    log("warn", "Update restart timeout reached; app may require manual relaunch");
 
     // Hide the blocking progress modal before trying graceful quit fallback.
     closeUpdateProgressWindow();
-    app.quit();
-
-    setTimeout(() => {
-      if (!updateInstallInProgress) {
-        return;
-      }
-
-      void showUpdateCheckInfo(
-        "Restart Required",
-        "Please close and reopen the app to finish installing the downloaded update.",
-        "Automatic restart did not complete in time. The update is already downloaded and will be applied on the next full app restart.",
-      );
-    }, 6000).unref();
+    void showUpdateCheckInfo(
+      "Restart Required",
+      "Please close and reopen the app to finish installing the downloaded update.",
+      "Automatic restart did not complete in time. The update is already downloaded and will be applied on the next full app restart.",
+    );
   }, 15000);
   updateInstallRestartTimeoutHandle.unref();
+}
+
+function resolveAppBundlePath() {
+  const executablePath = String(process.execPath || "");
+  const appMarkerIndex = executablePath.indexOf(".app/");
+  if (appMarkerIndex >= 0) {
+    return executablePath.slice(0, appMarkerIndex + 4);
+  }
+  return executablePath;
+}
+
+function getMacAutoUpdatePreflightIssue() {
+  if (process.platform !== "darwin") {
+    return null;
+  }
+
+  if (macUpdatePreflightIssueCache !== undefined) {
+    return macUpdatePreflightIssueCache;
+  }
+
+  if (String(process.execPath || "").includes("/AppTranslocation/")) {
+    macUpdatePreflightIssueCache = {
+      message:
+        "App is running from a translocated/quarantined path. Move it to /Applications and relaunch.",
+      detail: "macOS App Translocation prevents reliable in-place updates.",
+    };
+    return macUpdatePreflightIssueCache;
+  }
+
+  if (
+    typeof app.isInApplicationsFolder === "function" &&
+    !app.isInApplicationsFolder()
+  ) {
+    macUpdatePreflightIssueCache = {
+      message:
+        "App must run from /Applications for automatic updates on macOS.",
+      detail: "Move RevisBaliCRM.app into /Applications and launch it from there.",
+    };
+    return macUpdatePreflightIssueCache;
+  }
+
+  const appBundlePath = resolveAppBundlePath();
+  const verification = spawnSync(
+    "codesign",
+    ["-dv", "--verbose=4", appBundlePath],
+    { encoding: "utf8" },
+  );
+  const verificationOutput = `${verification.stdout || ""}\n${verification.stderr || ""}`;
+  const hasAuthority = /Authority=/.test(verificationOutput);
+  const isAdHoc = /Signature=adhoc/i.test(verificationOutput);
+
+  if (verification.status !== 0 || !hasAuthority || isAdHoc) {
+    macUpdatePreflightIssueCache = {
+      message:
+        "This macOS build is not properly code-signed for auto-update.",
+      detail:
+        "Electron/Squirrel.Mac requires signed builds for automatic updates.",
+    };
+    return macUpdatePreflightIssueCache;
+  }
+
+  macUpdatePreflightIssueCache = null;
+  return null;
 }
 
 async function promptDownloadUpdate(info) {
@@ -1039,16 +1106,13 @@ function installDownloadedUpdateNow(info) {
     return;
   }
 
-  if (
-    process.platform === "darwin" &&
-    typeof app.isInApplicationsFolder === "function" &&
-    !app.isInApplicationsFolder()
-  ) {
+  const macPreflightIssue = getMacAutoUpdatePreflightIssue();
+  if (macPreflightIssue) {
     closeUpdateProgressWindow();
     void showUpdateCheckInfo(
-      "Move App to Applications",
-      "Install RevisBaliCRM in /Applications to enable auto-updates.",
-      "macOS cannot apply in-place updates reliably when the app runs outside /Applications.",
+      "Updates Unavailable",
+      macPreflightIssue.message,
+      `${macPreflightIssue.detail}\n\nManual installer feed: ${getManualDesktopUpdateFeedUrl()}`,
     );
     return;
   }
@@ -1058,7 +1122,9 @@ function installDownloadedUpdateNow(info) {
   stopAutoUpdateScheduler();
   reminderPoller?.stop();
   persistPendingInstallVersion(info?.version);
-  scheduleUpdateInstallRestartTimeout();
+  if (process.platform !== "darwin") {
+    scheduleUpdateInstallRestartTimeout();
+  }
   setUpdateProgress({
     title: "Installing Update",
     message: "Preparing restart to install the downloaded version...",
@@ -1067,10 +1133,16 @@ function installDownloadedUpdateNow(info) {
   });
 
   try {
-    // Per Electron guidance, call quitAndInstall only after update-downloaded.
-    // Use default args for cross-platform behavior.
     setImmediate(() => {
       try {
+        // Squirrel.Mac applies downloaded updates when the app terminates.
+        // For macOS we prefer graceful quit over forced relaunch flow to avoid deadlocks.
+        if (process.platform === "darwin") {
+          closeUpdateProgressWindow();
+          app.quit();
+          return;
+        }
+
         autoUpdater.quitAndInstall();
       } catch (error) {
         closeUpdateProgressWindow();
@@ -1243,6 +1315,19 @@ async function checkForDesktopUpdates(trigger, options) {
       await showUpdateCheckInfo(
         "Updates Unavailable",
         "Update checks are disabled for this app run.",
+      );
+    }
+    return;
+  }
+
+  const macPreflightIssue = getMacAutoUpdatePreflightIssue();
+  if (macPreflightIssue) {
+    log("warn", "macOS updater preflight blocked update check", macPreflightIssue);
+    if (userInitiated) {
+      await showUpdateCheckInfo(
+        "Updates Unavailable",
+        macPreflightIssue.message,
+        `${macPreflightIssue.detail}\n\nManual installer feed: ${getManualDesktopUpdateFeedUrl()}`,
       );
     }
     return;
