@@ -1,0 +1,4 @@
+.menu-list {
+  display: grid;
+  gap: 0.125rem;
+}

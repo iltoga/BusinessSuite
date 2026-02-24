@@ -1,7 +1,7 @@
 {
   "name": "RevisBali CRM",
   "short_name": "RevisCRM",
-  "display": "fullscreen",
+  "display": "standalone",
   "scope": "./",
   "start_url": "./",
   "background_color": "#ffffff",
@@ -57,5 +57,9 @@
       "sizes": "512x512",
       "type": "image/png"
     }
+  ],
+  "display_override": [
+    "window-controls-overlay",
+    "standalone"
   ]
 }

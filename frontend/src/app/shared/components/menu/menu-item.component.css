@@ -1,0 +1,50 @@
+:host {
+  display: block;
+}
+
+.menu-entry {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 0.375rem;
+  padding: 0.45rem 0.625rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.menu-entry:hover,
+.menu-entry:focus-visible {
+  background: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+  outline: none;
+}
+
+.menu-entry-active {
+  background: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+}
+
+.overlay-entry {
+  border-radius: 0.25rem;
+  color: hsl(var(--foreground));
+  padding-inline: 0.5rem;
+  app-region: no-drag;
+}
+
+.submenu {
+  margin-top: 0.25rem;
+  margin-left: 1rem;
+  display: grid;
+  gap: 0.125rem;
+}
+
+.overlay-submenu {
+  margin: 0.25rem 0 0;
+  padding: 0.25rem;
+  min-width: 12rem;
+  border-radius: 0.5rem;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
+  position: absolute;
+  z-index: 60;
+}
