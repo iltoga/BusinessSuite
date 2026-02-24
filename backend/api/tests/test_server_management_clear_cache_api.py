@@ -75,3 +75,36 @@ class ServerManagementClearCacheApiTests(TestCase):
         self.assertFalse(payload["ok"])
         self.assertIn("cacheops down", payload["message"])
         default_cache.clear.assert_called_once()
+
+    @patch("api.views_admin.services.get_cache_health_status")
+    def test_cache_health_returns_probe_payload(self, cache_health_mock):
+        cache_health_mock.return_value = {
+            "ok": True,
+            "message": "Cache probe succeeded.",
+            "checkedAt": "2026-02-24T10:00:00+00:00",
+            "cacheBackend": "django_redis.cache.RedisCache",
+            "cacheLocation": "redis://bs-redis:6379/1",
+            "redisConfigured": True,
+            "redisConnected": True,
+            "writeReadDeleteOk": True,
+            "probeLatencyMs": 2.4,
+            "errors": [],
+        }
+
+        response = self.client.get("/api/server-management/cache-health/")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["ok"])
+        self.assertTrue(payload["redisConnected"])
+        self.assertTrue(payload["writeReadDeleteOk"])
+        cache_health_mock.assert_called_once()
+
+    @patch("api.views_admin.services.get_cache_health_status", side_effect=RuntimeError("redis unreachable"))
+    def test_cache_health_returns_500_when_probe_raises(self, _cache_health_mock):
+        response = self.client.get("/api/server-management/cache-health/")
+
+        self.assertEqual(response.status_code, 500)
+        payload = response.json()
+        self.assertFalse(payload["ok"])
+        self.assertIn("Failed to run cache health check", payload["message"])

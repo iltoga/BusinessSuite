@@ -1,5 +1,4 @@
 from .async_job_serializer import AsyncJobSerializer
-from .country_code_serializer import CountryCodeSerializer
 from .calendar_reminder_serializer import (
     CalendarReminderBulkCreateSerializer,
     CalendarReminderCreateSerializer,
@@ -7,6 +6,12 @@ from .calendar_reminder_serializer import (
     CalendarReminderInboxSnoozeSerializer,
     CalendarReminderSerializer,
 )
+from .categorization_serializer import (
+    CategorizationApplySerializer,
+    DocumentCategorizationItemSerializer,
+    DocumentCategorizationJobSerializer,
+)
+from .country_code_serializer import CountryCodeSerializer
 from .customer_serializer import CustomerSerializer
 from .dashboard_serializer import DashboardStatsSerializer
 from .doc_application_serializer import (
@@ -35,6 +40,12 @@ from .invoice_serializer import (
     PaymentSerializer,
 )
 from .letters_serializer import SuratPermohonanCustomerDataSerializer, SuratPermohonanRequestSerializer
+from .product_serializer import (
+    ProductCreateUpdateSerializer,
+    ProductDetailSerializer,
+    ProductSerializer,
+    ordered_document_types,
+)
 from .push_notification_serializer import (
     AdminPushNotificationSendSerializer,
     AdminWhatsappTestSendSerializer,
@@ -42,12 +53,6 @@ from .push_notification_serializer import (
     WebPushSubscriptionDeleteSerializer,
     WebPushSubscriptionSerializer,
     WebPushSubscriptionUpsertSerializer,
-)
-from .product_serializer import (
-    ProductCreateUpdateSerializer,
-    ProductDetailSerializer,
-    ProductSerializer,
-    ordered_document_types,
 )
 from .quick_create_serializer import (
     CustomerApplicationQuickCreateSerializer,

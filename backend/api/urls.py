@@ -28,6 +28,13 @@ from rest_framework.routers import DefaultRouter
 
 from . import views
 from .views_admin import BackupsViewSet, ServerManagementViewSet, backup_restore_sse, backup_start_sse
+from .views_categorization import (
+    categorization_apply,
+    categorization_job_status,
+    categorization_stream_sse,
+    categorize_documents,
+    validate_document_category,
+)
 
 # DRF Router for RESTful API endpoints
 # These ViewSets provide CRUD operations for Angular frontend consumption
@@ -192,6 +199,32 @@ urlpatterns = [
     path("reports/product-revenue/", ProductRevenueAnalysisApiView.as_view(), name="api-report-product-revenue"),
     path("reports/product-demand/", ProductDemandForecastApiView.as_view(), name="api-report-product-demand"),
     path("reports/ai-costing/", AICostingReportApiView.as_view(), name="api-report-ai-costing"),
+    # Document categorization endpoints
+    path(
+        "customer-applications/<int:application_id>/categorize-documents/",
+        categorize_documents,
+        name="api-categorize-documents",
+    ),
+    path(
+        "document-categorization/stream/<uuid:job_id>/",
+        categorization_stream_sse,
+        name="api-categorization-stream-sse",
+    ),
+    path(
+        "document-categorization/<uuid:job_id>/apply/",
+        categorization_apply,
+        name="api-categorization-apply",
+    ),
+    path(
+        "document-categorization/<uuid:job_id>/status/",
+        categorization_job_status,
+        name="api-categorization-job-status",
+    ),
+    path(
+        "documents/<int:document_id>/validate-category/",
+        validate_document_category,
+        name="api-validate-document-category",
+    ),
     # Include all router URLs - main REST API endpoints for Angular
     path("", include(router.urls)),
 ]

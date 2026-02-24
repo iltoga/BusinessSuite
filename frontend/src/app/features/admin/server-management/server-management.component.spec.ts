@@ -62,16 +62,31 @@ describe('ServerManagementComponent - Cache Controls', () => {
     it('should load cache status on init', () => {
       component.ngOnInit();
 
-      const req = httpMock.expectOne('/api/cache/status');
-      expect(req.request.method).toBe('GET');
-      
-      req.flush({ enabled: true, version: 1, message: 'Cache is enabled' });
+      const statusReq = httpMock.expectOne('/api/cache/status');
+      expect(statusReq.request.method).toBe('GET');
+      statusReq.flush({ enabled: true, version: 1, message: 'Cache is enabled' });
+
+      const healthReq = httpMock.expectOne('/api/server-management/cache-health/');
+      expect(healthReq.request.method).toBe('GET');
+      healthReq.flush({
+        ok: true,
+        message: 'Cache probe succeeded.',
+        checkedAt: '2026-02-24T10:00:00+00:00',
+        cacheBackend: 'django_redis.cache.RedisCache',
+        cacheLocation: 'redis://bs-redis:6379/1',
+        redisConfigured: true,
+        redisConnected: true,
+        writeReadDeleteOk: true,
+        probeLatencyMs: 1.2,
+        errors: [],
+      });
 
       expect(component.cacheStatus()).toEqual({
         enabled: true,
         version: 1,
         message: 'Cache is enabled',
       });
+      expect(component.cacheHealth()?.ok).toBe(true);
     });
 
     it('should handle cache status load error', () => {
@@ -79,6 +94,20 @@ describe('ServerManagementComponent - Cache Controls', () => {
 
       const req = httpMock.expectOne('/api/cache/status');
       req.error(new ProgressEvent('error'));
+
+      const healthReq = httpMock.expectOne('/api/server-management/cache-health/');
+      healthReq.flush({
+        ok: true,
+        message: 'Cache probe succeeded.',
+        checkedAt: '2026-02-24T10:00:00+00:00',
+        cacheBackend: 'django_redis.cache.RedisCache',
+        cacheLocation: 'redis://bs-redis:6379/1',
+        redisConfigured: true,
+        redisConnected: true,
+        writeReadDeleteOk: true,
+        probeLatencyMs: 1.2,
+        errors: [],
+      });
 
       expect(mockToastService.error).toHaveBeenCalledWith('Failed to load cache status');
       expect(component.cacheStatus()).toBeNull();
@@ -217,6 +246,39 @@ describe('ServerManagementComponent - Cache Controls', () => {
       statusReq.flush({ enabled: true, version: 2, message: 'Cache is enabled' });
 
       expect(component.cacheLoading()).toBe(false);
+    });
+  });
+
+  describe('runCacheHealthCheck', () => {
+    it('should run cache probe and update health state', () => {
+      component.runCacheHealthCheck();
+
+      const req = httpMock.expectOne('/api/server-management/cache-health/');
+      expect(req.request.method).toBe('GET');
+      req.flush({
+        ok: true,
+        message: 'Cache probe succeeded.',
+        checkedAt: '2026-02-24T10:00:00+00:00',
+        cacheBackend: 'django_redis.cache.RedisCache',
+        cacheLocation: 'redis://bs-redis:6379/1',
+        redisConfigured: true,
+        redisConnected: true,
+        writeReadDeleteOk: true,
+        probeLatencyMs: 1.2,
+        errors: [],
+      });
+
+      expect(component.cacheHealth()?.writeReadDeleteOk).toBe(true);
+      expect(mockToastService.success).toHaveBeenCalledWith('Cache probe succeeded.');
+    });
+
+    it('should handle cache probe request errors', () => {
+      component.runCacheHealthCheck();
+
+      const req = httpMock.expectOne('/api/server-management/cache-health/');
+      req.error(new ProgressEvent('error'));
+
+      expect(mockToastService.error).toHaveBeenCalledWith('Failed to run cache health check');
     });
   });
 

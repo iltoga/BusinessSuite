@@ -10,18 +10,18 @@ import tarfile
 import requests
 from admin_tools import services
 from api.permissions import (
-    IsSuperuserOrAdminGroup,
     SUPERUSER_OR_ADMIN_PERMISSION_REQUIRED_ERROR,
+    IsSuperuserOrAdminGroup,
     is_superuser_or_admin_group,
 )
 from api.utils.sse_auth import sse_token_auth_required
 from api.views import ApiErrorHandlingMixin
 from core.models.ai_request_usage import AIRequestUsage
 from core.services.ai_usage_service import AIUsageFeature
-from django.core.cache import caches
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.staticfiles import finders
+from django.core.cache import caches
 from django.db.models import Count, Q, Sum
 from django.db.utils import OperationalError, ProgrammingError
 from django.http import FileResponse, JsonResponse, StreamingHttpResponse
@@ -468,41 +468,37 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
     def clear_cache(self, request):
         """
         Clear application cache.
-        
+
         Supports two modes:
         1. Global cache clear (default): Clears all cache entries
         2. Per-user cache clear: Increments user's cache version for O(1) invalidation
-        
+
         Query Parameters:
             user_id (optional): User ID for per-user cache clearing
         """
         # Check for per-user cache clearing
         user_id = request.query_params.get("user_id")
-        
+
         if user_id:
             # Per-user cache clearing via namespace version increment
             try:
                 user_id = int(user_id)
                 from cache.namespace import namespace_manager
-                
+
                 new_version = namespace_manager.increment_user_version(user_id)
-                return Response({
-                    "ok": True,
-                    "message": f"Cache cleared for user {user_id}",
-                    "user_id": user_id,
-                    "new_version": new_version,
-                })
+                return Response(
+                    {
+                        "ok": True,
+                        "message": f"Cache cleared for user {user_id}",
+                        "user_id": user_id,
+                        "new_version": new_version,
+                    }
+                )
             except ValueError:
-                return Response(
-                    {"ok": False, "message": "Invalid user_id parameter"},
-                    status=400
-                )
+                return Response({"ok": False, "message": "Invalid user_id parameter"}, status=400)
             except Exception as e:
-                return Response(
-                    {"ok": False, "message": f"Failed to clear user cache: {str(e)}"},
-                    status=500
-                )
-        
+                return Response({"ok": False, "message": f"Failed to clear user cache: {str(e)}"}, status=500)
+
         # Global cache clear (backward compatible)
         try:
             caches["default"].clear()
@@ -517,6 +513,23 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
         except Exception as e:
             logger.error("Failed to clear global caches: %s", e, exc_info=True)
             return Response({"ok": False, "message": str(e)}, status=500)
+
+    @extend_schema(summary="Run live cache health check", responses={200: OpenApiTypes.OBJECT})
+    @action(detail=False, methods=["get"], url_path="cache-health")
+    def cache_health(self, request):
+        """Run a live cache round-trip and Redis connectivity probe."""
+        try:
+            return Response(services.get_cache_health_status())
+        except Exception as e:
+            logger.error("Failed to run cache health check: %s", e, exc_info=True)
+            return Response(
+                {
+                    "ok": False,
+                    "message": "Failed to run cache health check",
+                    "errors": [str(e)],
+                },
+                status=500,
+            )
 
     @extend_schema(summary="Run media files diagnostic", responses={200: OpenApiTypes.OBJECT})
     @action(detail=False, methods=["get"], url_path="media-diagnostic")
@@ -743,6 +756,19 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                     ),
                     "usageCurrentYear": _period_usage(
                         AIUsageFeature.PASSPORT_OCR_AI_EXTRACTOR, current_provider, now, month=False
+                    ),
+                },
+                {
+                    "feature": AIUsageFeature.DOCUMENT_AI_CATEGORIZER,
+                    "purpose": "Classifies uploaded documents into document types using vision AI.",
+                    "modelStrategy": "Uses request model override, otherwise LLM_DEFAULT_MODEL.",
+                    "effectiveModel": default_model,
+                    "provider": current_provider,
+                    "usageCurrentMonth": _period_usage(
+                        AIUsageFeature.DOCUMENT_AI_CATEGORIZER, current_provider, now, month=True
+                    ),
+                    "usageCurrentYear": _period_usage(
+                        AIUsageFeature.DOCUMENT_AI_CATEGORIZER, current_provider, now, month=False
                     ),
                 },
             ],

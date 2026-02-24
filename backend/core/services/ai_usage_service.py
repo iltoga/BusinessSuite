@@ -3,8 +3,8 @@ from __future__ import annotations
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
-from django.apps import apps
 from core.services.logger_service import Logger
+from django.apps import apps
 
 logger = Logger.get_logger(__name__)
 
@@ -12,6 +12,7 @@ logger = Logger.get_logger(__name__)
 class AIUsageFeature:
     INVOICE_IMPORT_AI_PARSER = "Invoice Import AI Parser"
     PASSPORT_OCR_AI_EXTRACTOR = "Passport OCR AI Extractor"
+    DOCUMENT_AI_CATEGORIZER = "Document AI Categorizer"
     UNKNOWN = "Unclassified AI Feature"
 
 

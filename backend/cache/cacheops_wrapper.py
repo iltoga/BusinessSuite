@@ -87,13 +87,11 @@ class CacheopsWrapper:
             # Import cacheops - this will fail if not installed
             import cacheops
             from cacheops import invalidate_model, invalidate_obj
-            from cacheops.conf import redis_client
             
             # Store references for later use
             self._cacheops = cacheops
             self._invalidate_model = invalidate_model
             self._invalidate_obj = invalidate_obj
-            self._redis_client = redis_client
             
             # Hook into cacheops key generation
             # We'll monkey-patch the key generation function to add namespace prefix

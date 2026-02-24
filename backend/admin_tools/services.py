@@ -7,16 +7,25 @@ import os
 import shutil
 import tarfile
 import tempfile
+import time
+import uuid
 from pathlib import Path
 
 from django.apps import apps
 from django.conf import settings
+from django.core.cache import caches
 from django.core.files import File
 from django.core.files.storage import FileSystemStorage
 from django.core.files.storage import default_storage
 from django.core.management import call_command
 from django.db.models.fields.files import FileField
+from django.utils import timezone
 from django.utils.module_loading import import_string
+
+try:
+    from django_redis import get_redis_connection
+except Exception:  # pragma: no cover - optional import fallback
+    get_redis_connection = None
 
 BACKUPS_DIR = getattr(settings, "BACKUPS_ROOT", os.path.join(settings.BASE_DIR, "backups"))
 USER_RELATED_MODELS = {"core.userprofile", "core.usersettings", "core.webpushsubscription"}
@@ -1176,3 +1185,75 @@ def repair_media_paths():
                             repairs.append(f"Fixed {model._meta.label} #{obj.pk}: moved from {old_path} to {new_path}")
 
     return repairs
+
+
+def get_cache_health_status() -> dict:
+    """
+    Run a live cache probe against the configured default cache backend.
+
+    The probe performs:
+    - Redis ping (when Redis is configured as the default cache backend)
+    - Write/read/delete round-trip against Django cache backend
+    """
+    default_cache = caches["default"]
+    cache_settings = settings.CACHES.get("default", {})
+    backend_path = cache_settings.get("BACKEND", "")
+    location = str(cache_settings.get("LOCATION", ""))
+    checked_at = timezone.now().isoformat()
+
+    redis_configured = "redis" in backend_path.lower() or location.startswith("redis://")
+    redis_connected = None
+    errors: list[str] = []
+
+    if redis_configured:
+        if get_redis_connection is None:
+            redis_connected = False
+            errors.append("django-redis connection helper is unavailable.")
+        else:
+            try:
+                redis_connected = bool(get_redis_connection("default").ping())
+            except Exception as exc:
+                redis_connected = False
+                errors.append(f"Redis ping failed: {exc}")
+
+    probe_key = f"cache-health:{uuid.uuid4().hex}"
+    probe_value = uuid.uuid4().hex
+    probe_latency_ms = 0.0
+    write_read_delete_ok = False
+
+    start = time.perf_counter()
+    try:
+        default_cache.set(probe_key, probe_value, timeout=30)
+        cached_value = default_cache.get(probe_key)
+        write_read_delete_ok = cached_value == probe_value
+        if not write_read_delete_ok:
+            errors.append("Cache probe value mismatch after read.")
+    except Exception as exc:
+        errors.append(f"Cache write/read probe failed: {exc}")
+    finally:
+        probe_latency_ms = round((time.perf_counter() - start) * 1000, 2)
+        try:
+            default_cache.delete(probe_key)
+        except Exception as exc:
+            errors.append(f"Cache probe cleanup failed: {exc}")
+
+    ok = write_read_delete_ok and (redis_connected is not False)
+    if ok:
+        message = "Cache probe succeeded."
+    elif not write_read_delete_ok:
+        message = "Cache probe failed."
+    else:
+        message = "Redis ping failed."
+
+    return {
+        "ok": ok,
+        "message": message,
+        "checkedAt": checked_at,
+        "cacheBackend": backend_path,
+        "cacheLocation": location,
+        "redisConfigured": redis_configured,
+        "redisConnected": redis_connected,
+        "writeReadDeleteOk": write_read_delete_ok,
+        "probeLatencyMs": probe_latency_ms,
+        "errors": errors,
+    }

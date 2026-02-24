@@ -111,6 +111,19 @@ interface CacheClearResponse {
   message: string;
 }
 
+interface CacheHealthResponse {
+  ok: boolean;
+  message: string;
+  checkedAt: string;
+  cacheBackend: string;
+  cacheLocation: string;
+  redisConfigured: boolean;
+  redisConnected: boolean | null;
+  writeReadDeleteOk: boolean;
+  probeLatencyMs: number;
+  errors: string[];
+}
+
 @Component({
   selector: 'app-server-management',
   standalone: true,
@@ -134,6 +147,8 @@ export class ServerManagementComponent implements OnInit {
   // Cache management state
   readonly cacheStatus = signal<CacheStatusResponse | null>(null);
   readonly cacheLoading = signal(false);
+  readonly cacheHealth = signal<CacheHealthResponse | null>(null);
+  readonly cacheHealthLoading = signal(false);
 
   readonly missingFilesCount = computed(
     () => this.diagnosticResults().filter((r) => !r.exists).length,
@@ -146,6 +161,7 @@ export class ServerManagementComponent implements OnInit {
   ngOnInit(): void {
     this.loadOpenRouterStatus();
     this.loadCacheStatus();
+    this.loadCacheHealth();
   }
 
   clearCache(): void {
@@ -162,6 +178,7 @@ export class ServerManagementComponent implements OnInit {
       .subscribe((response: any) => {
         if (response.ok) {
           this.toast.success('Cache cleared successfully');
+          this.loadCacheHealth();
         } else {
           this.toast.error(response.message || 'Failed to clear cache');
         }
@@ -206,6 +223,7 @@ export class ServerManagementComponent implements OnInit {
       .subscribe((response) => {
         this.cacheStatus.set(response);
         this.toast.success(response.message);
+        this.loadCacheHealth();
       });
   }
 
@@ -224,6 +242,34 @@ export class ServerManagementComponent implements OnInit {
         this.toast.success(response.message);
         // Update cache status with new version
         this.loadCacheStatus();
+        this.loadCacheHealth();
+      });
+  }
+
+  runCacheHealthCheck(): void {
+    this.loadCacheHealth(true);
+  }
+
+  loadCacheHealth(showToast = false): void {
+    this.cacheHealthLoading.set(true);
+    this.http
+      .get<CacheHealthResponse>('/api/server-management/cache-health/')
+      .pipe(
+        catchError(() => {
+          this.toast.error('Failed to run cache health check');
+          return EMPTY;
+        }),
+        finalize(() => this.cacheHealthLoading.set(false)),
+      )
+      .subscribe((response) => {
+        this.cacheHealth.set(response);
+        if (showToast) {
+          if (response.ok) {
+            this.toast.success(response.message);
+          } else {
+            this.toast.error(response.message);
+          }
+        }
       });
   }
 
