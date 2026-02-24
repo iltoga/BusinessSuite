@@ -36,8 +36,6 @@ def _detect_storage_provider(storage) -> str:
         return "azure"
     if "gcloud" in backend_path or "google" in backend_path:
         return "gcs"
-    if "dropbox" in backend_path:
-        return "dropbox"
     return "unknown"
 
 

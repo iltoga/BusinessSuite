@@ -103,7 +103,6 @@ dependencies = [
     { name = "djangorestframework-simplejwt" },
     { name = "docx-mailmerge" },
     { name = "drf-spectacular" },
-    { name = "dropbox" },
     { name = "google-api-python-client" },
     { name = "google-auth" },
     { name = "gunicorn" },
@@ -153,7 +152,6 @@ requires-dist = [
     { name = "djangorestframework-simplejwt", specifier = ">=5.5.1" },
     { name = "docx-mailmerge", specifier = ">=0.5.0" },
     { name = "drf-spectacular", specifier = ">=0.27.0" },
-    { name = "dropbox", specifier = ">=12.0.2" },
     { name = "google-api-python-client", specifier = ">=2.189.0" },
     { name = "google-auth", specifier = ">=2.48.0" },
     { name = "gunicorn", specifier = ">=23.0.0" },
@@ -666,20 +664,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/5e/0e/a4f50d83e76cbe797eda88fc0083c8ca970cfa362b5586359ef06ec6f70a/drf_spectacular-0.29.0.tar.gz", hash = "sha256:0a069339ea390ce7f14a75e8b5af4a0860a46e833fd4af027411a3e94fc1a0cc", size = 241722, upload-time = "2025-11-02T03:40:26.348Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/32/d9/502c56fc3ca960075d00956283f1c44e8cafe433dada03f9ed2821f3073b/drf_spectacular-0.29.0-py3-none-any.whl", hash = "sha256:d1ee7c9535d89848affb4427347f7c4a22c5d22530b8842ef133d7b72e19b41a", size = 105433, upload-time = "2025-11-02T03:40:24.823Z" },
-]
-
-[[package]]
-name = "dropbox"
-version = "12.0.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "requests" },
-    { name = "six" },
-    { name = "stone" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/9e/56/ac085f58e8e0d0bcafdf98c2605e454ac946e3d0c72679669ae112dc30be/dropbox-12.0.2.tar.gz", hash = "sha256:50057fd5ad5fcf047f542dfc6747a896e7ef982f1b5f8500daf51f3abd609962", size = 560236, upload-time = "2024-06-03T16:45:30.448Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/2d/de/95d8204d9a20fbdb353c5f8e4229b0fcb90f22b96f8246ff1f47c8a45fd5/dropbox-12.0.2-py3-none-any.whl", hash = "sha256:c5b7e9c2668adb6b12dcecd84342565dc50f7d35ab6a748d155cb79040979d1c", size = 572076, upload-time = "2024-06-03T16:45:28.153Z" },
 ]
 
 [[package]]
@@ -2346,19 +2330,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/90/76/437d71068094df0726366574cf3432a4ed754217b436eb7429415cf2d480/sqlparse-0.5.5.tar.gz", hash = "sha256:e20d4a9b0b8585fdf63b10d30066c7c94c5d7a7ec47c889a2d83a3caa93ff28e", size = 120815, upload-time = "2025-12-19T07:17:45.073Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/49/4b/359f28a903c13438ef59ebeee215fb25da53066db67b305c125f1c6d2a25/sqlparse-0.5.5-py3-none-any.whl", hash = "sha256:12a08b3bf3eec877c519589833aed092e2444e68240a3577e8e26148acc7b1ba", size = 46138, upload-time = "2025-12-19T07:17:46.573Z" },
-]
-
-[[package]]
-name = "stone"
-version = "3.3.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "ply" },
-    { name = "six" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/99/6f/ef25bbc1aefeb9c905d527f1d3cd3f41f22f40566d33001b8bb14ae0cdaf/stone-3.3.1.tar.gz", hash = "sha256:4ef0397512f609757975f7ec09b35639d72ba7e3e17ce4ddf399578346b4cb50", size = 190888, upload-time = "2022-01-25T21:32:16.729Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/5c/92/d0c83f63d3518e5f0b8a311937c31347349ec9a47b209ddc17f7566f58fc/stone-3.3.1-py3-none-any.whl", hash = "sha256:e15866fad249c11a963cce3bdbed37758f2e88c8ff4898616bc0caeb1e216047", size = 162257, upload-time = "2022-01-25T21:32:15.155Z" },
 ]
 
 [[package]]
