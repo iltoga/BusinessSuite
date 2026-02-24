@@ -12,6 +12,7 @@ import json
 import os
 import time
 import traceback as tb_module
+from typing import Any, cast
 
 from api.serializers.categorization_serializer import CategorizationApplySerializer, DocumentCategorizationJobSerializer
 from api.utils.sse_auth import sse_token_auth_required
@@ -244,7 +245,10 @@ def categorization_apply(request, job_id):
     serializer = CategorizationApplySerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
 
-    mappings = serializer.validated_data["mappings"]
+    # validated_data is guaranteed to be populated after is_valid().
+    # Cast for static type-checkers that otherwise infer "empty | None".
+    validated_data = cast(dict[str, list[dict[str, Any]]], serializer.validated_data)
+    mappings = validated_data.get("mappings", [])
     applied = []
     errors = []
 
