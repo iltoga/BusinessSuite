@@ -1,0 +1,5 @@
+@if (isOverlayMode()) {
+  <app-overlay-menu [items]="menuItems()" />
+} @else {
+  <app-sidebar-menu [items]="menuItems()" />
+}

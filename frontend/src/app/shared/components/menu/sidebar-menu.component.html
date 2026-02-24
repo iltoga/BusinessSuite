@@ -1,0 +1,9 @@
+<nav class="menu-surface" role="menubar" (keydown)="onKeydown($event)">
+  <ul class="menu-list" role="none">
+    @for (item of items(); track item.id) {
+      <li role="none">
+        <app-menu-item [item]="item" mode="sidebar" />
+      </li>
+    }
+  </ul>
+</nav>
