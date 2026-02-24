@@ -2758,7 +2758,12 @@ class DocumentViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         """Override to trigger AI validation when requested."""
         response = super().partial_update(request, *args, **kwargs)
 
-        validate_with_ai = request.data.get("validate_with_ai", "").lower() in ("true", "1", "yes")
+        validate_with_ai_value = request.data.get("validate_with_ai", "")
+        if isinstance(validate_with_ai_value, bool):
+            validate_with_ai = validate_with_ai_value
+        else:
+            validate_with_ai = str(validate_with_ai_value).lower() in ("true", "1", "yes")
+
         if validate_with_ai and response.status_code == 200:
             document = self.get_object()
             if document.file and document.file.name:
