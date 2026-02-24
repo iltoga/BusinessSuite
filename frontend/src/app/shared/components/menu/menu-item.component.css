@@ -28,6 +28,7 @@
   border-radius: 0.25rem;
   color: hsl(var(--foreground));
   padding-inline: 0.5rem;
+  app-region: no-drag;
 }
 
 .submenu {

@@ -25,7 +25,3 @@
 .app-drag-region {
   app-region: drag;
 }
-
-.menu-button {
-  app-region: no-drag;
-}
