@@ -1,0 +1,61 @@
+@let menuItem = item();
+@let hasChildren = !!menuItem.children?.length;
+@let expanded = isExpanded();
+
+@if (menuItem.route) {
+  <a
+    role="menuitem"
+    tabindex="0"
+    class="menu-button menu-entry"
+    [class.overlay-entry]="mode() === 'overlay'"
+    [routerLink]="menuItem.route"
+    routerLinkActive="menu-entry-active"
+    [routerLinkActiveOptions]="{ exact: !hasChildren }"
+    [attr.aria-label]="menuItem.accessibility?.ariaLabel || menuItem.label"
+    [attr.aria-haspopup]="hasChildren ? 'menu' : null"
+    [attr.aria-expanded]="hasChildren ? expanded : null"
+    [attr.aria-controls]="hasChildren ? 'submenu-' + menuItem.id : null"
+  >
+    @if (menuItem.icon) {
+      <z-icon [zType]="menuItem.icon" class="h-4 w-4" />
+    }
+    <span>{{ menuItem.label }}</span>
+  </a>
+} @else {
+  <button
+    type="button"
+    role="menuitem"
+    tabindex="0"
+    class="menu-button menu-entry"
+    [class.overlay-entry]="mode() === 'overlay'"
+    [disabled]="menuService.isDisabled(menuItem)"
+    [attr.aria-label]="menuItem.accessibility?.ariaLabel || menuItem.label"
+    [attr.aria-haspopup]="hasChildren ? 'menu' : menuItem.accessibility?.ariaHasPopup || null"
+    [attr.aria-expanded]="hasChildren ? expanded : null"
+    [attr.aria-controls]="hasChildren ? 'submenu-' + menuItem.id : menuItem.accessibility?.ariaControls || null"
+    (click)="hasChildren && menuItem.collapsible ? toggleExpanded($event) : runAction()"
+  >
+    @if (menuItem.icon) {
+      <z-icon [zType]="menuItem.icon" class="h-4 w-4" />
+    }
+    <span>{{ menuItem.label }}</span>
+    @if (hasChildren) {
+      <z-icon [zType]="expanded ? 'chevron-down' : 'chevron-right'" class="h-3 w-3 ml-auto" />
+    }
+  </button>
+}
+
+@if (hasChildren && expanded) {
+  <ul
+    class="submenu"
+    role="menu"
+    [id]="'submenu-' + menuItem.id"
+    [class.overlay-submenu]="mode() === 'overlay'"
+  >
+    @for (child of menuItem.children; track child.id) {
+      <li role="none">
+        <app-menu-item [item]="child" [depth]="depth() + 1" [mode]="mode()" />
+      </li>
+    }
+  </ul>
+}

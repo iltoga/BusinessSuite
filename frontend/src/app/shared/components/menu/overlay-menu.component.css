@@ -1,0 +1,31 @@
+.overlay-titlebar {
+  position: fixed;
+  left: env(titlebar-area-x, 0);
+  top: env(titlebar-area-y, 0);
+  width: env(titlebar-area-width, 100%);
+  height: env(titlebar-area-height, 36px);
+  display: flex;
+  align-items: center;
+  padding-inline: 0.5rem;
+  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--background));
+  z-index: 70;
+}
+
+.overlay-nav {
+  width: calc(100% - 140px);
+}
+
+.overlay-list {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+}
+
+.app-drag-region {
+  app-region: drag;
+}
+
+.menu-button {
+  app-region: no-drag;
+}
