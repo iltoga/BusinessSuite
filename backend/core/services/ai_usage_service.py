@@ -12,6 +12,7 @@ logger = Logger.get_logger(__name__)
 class AIUsageFeature:
     INVOICE_IMPORT_AI_PARSER = "Invoice Import AI Parser"
     PASSPORT_OCR_AI_EXTRACTOR = "Passport OCR AI Extractor"
+    PASSPORT_CHECK_API = "Passport Check API"
     DOCUMENT_AI_CATEGORIZER = "Document AI Categorizer"
     UNKNOWN = "Unclassified AI Feature"
 
@@ -78,6 +79,7 @@ class AIUsageService:
         latency_ms: int | None = None,
     ) -> None:
         request_id = cls._read(response, "id") if response is not None else None
+        usage_data = cls._extract_usage(response) if response is not None else {}
         try:
             from core.tasks.ai_usage import capture_ai_usage_task
 
@@ -87,6 +89,7 @@ class AIUsageService:
                 model=model or "unknown",
                 request_type=request_type,
                 request_id=request_id or None,
+                usage_data=usage_data or None,
                 success=success,
                 error_type=error_type or "",
                 latency_ms=latency_ms,

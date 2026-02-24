@@ -9,8 +9,8 @@ import {
   effect,
   HostListener,
   inject,
-  PLATFORM_ID,
   LOCALE_ID,
+  PLATFORM_ID,
   signal,
   untracked,
   type OnInit,
@@ -28,9 +28,14 @@ import {
   type OcrStatusResponse,
 } from '@/core/services/applications.service';
 import { AuthService } from '@/core/services/auth.service';
+import { ConfigService } from '@/core/services/config.service';
+import {
+  DocumentCategorizationService,
+  type CategorizationSseEvent,
+  type CategorizationFileResult as ServiceFileResult,
+} from '@/core/services/document-categorization.service';
 import { DocumentsService } from '@/core/services/documents.service';
 import { GlobalToastService } from '@/core/services/toast.service';
-import { ConfigService } from '@/core/services/config.service';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
@@ -51,6 +56,14 @@ import { ZardTooltipImports } from '@/shared/components/tooltip';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 import { downloadBlob } from '@/shared/utils/file-download';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
+import { Subscription } from 'rxjs';
+
+import { MultiFileUploadComponent } from '@/shared/components/multi-file-upload/multi-file-upload.component';
+import {
+  CategorizationProgressComponent,
+  type CategorizationApplyMapping,
+  type CategorizationFileResult,
+} from './categorization-progress/categorization-progress.component';
 
 interface TimelineWorkflowItem {
   workflow: ApplicationWorkflow;
@@ -83,6 +96,8 @@ interface TimelineWorkflowItem {
     ZardSkeletonComponent,
     AppDatePipe,
     ...ZardTooltipImports,
+    MultiFileUploadComponent,
+    CategorizationProgressComponent,
   ],
   templateUrl: './application-detail.component.html',
   styleUrls: ['./application-detail.component.css'],
@@ -103,6 +118,7 @@ export class ApplicationDetailComponent implements OnInit {
   private configService = inject(ConfigService);
   private readonly isBrowser = isPlatformBrowser(this.platformId);
   private http = inject(HttpClient);
+  private categorizationService = inject(DocumentCategorizationService);
 
   readonly application = signal<ApplicationDetail | null>(null);
   readonly isLoading = signal(true);
@@ -242,6 +258,19 @@ export class ApplicationDetailComponent implements OnInit {
     return selectedCount > 0 && selectedCount < documents.length;
   });
   readonly isMerging = signal(false);
+
+  // AI Document Categorization
+  readonly isCategorizationActive = signal(false);
+  readonly categorizationJobId = signal<string | null>(null);
+  readonly categorizationTotalFiles = signal(0);
+  readonly categorizationProcessedFiles = signal(0);
+  readonly categorizationResults = signal<CategorizationFileResult[]>([]);
+  readonly categorizationComplete = signal(false);
+  readonly categorizationStatusMessage = signal('');
+  readonly isCategorizationApplying = signal(false);
+  readonly categorizationFiles = signal<File[]>([]);
+  private categorizationSub: Subscription | null = null;
+
   private readonly workflowTimezone = 'Asia/Singapore';
 
   private pollTimer: number | null = null;
@@ -394,6 +423,7 @@ export class ApplicationDetailComponent implements OnInit {
       }
       this.clearUploadPreview();
       this.clearExistingPreview();
+      this.categorizationSub?.unsubscribe();
     });
   }
 
@@ -1569,5 +1599,217 @@ export class ApplicationDetailComponent implements OnInit {
       return normalized;
     }
     return 'dd-MM-yyyy';
+  }
+
+  // ─── AI Document Categorization ───────────────────────────────
+
+  onCategorizationFilesSelected(files: File[]): void {
+    this.categorizationFiles.set(files);
+  }
+
+  onCategorizationFilesCleared(): void {
+    this.categorizationFiles.set([]);
+  }
+
+  startCategorization(): void {
+    const app = this.application();
+    const files = this.categorizationFiles();
+    if (!app || files.length === 0) return;
+
+    this.isCategorizationActive.set(true);
+    this.categorizationComplete.set(false);
+    this.categorizationResults.set([]);
+    this.categorizationProcessedFiles.set(0);
+    this.categorizationStatusMessage.set('Uploading files...');
+
+    this.categorizationService.uploadAndCategorize(app.id, files).subscribe({
+      next: (response) => {
+        this.categorizationJobId.set(response.jobId);
+        this.categorizationTotalFiles.set(response.totalFiles);
+        this.categorizationStatusMessage.set('Processing...');
+        this.watchCategorizationJob(response.jobId);
+      },
+      error: (error) => {
+        this.toast.error(extractServerErrorMessage(error) || 'Failed to start categorization');
+        this.isCategorizationActive.set(false);
+        this.categorizationStatusMessage.set('');
+      },
+    });
+  }
+
+  private watchCategorizationJob(jobId: string): void {
+    this.categorizationSub?.unsubscribe();
+
+    this.categorizationSub = this.categorizationService.watchCategorizationJob(jobId).subscribe({
+      next: (event: CategorizationSseEvent) => this.handleCategorizationEvent(event),
+      error: (error) => {
+        console.error('Categorization SSE error:', error);
+        this.categorizationStatusMessage.set('Connection lost. Check results manually.');
+        this.categorizationComplete.set(true);
+      },
+      complete: () => {
+        // Stream ended — if not already marked complete, mark it now
+        if (!this.categorizationComplete()) {
+          this.categorizationComplete.set(true);
+        }
+      },
+    });
+  }
+
+  private handleCategorizationEvent(event: CategorizationSseEvent): void {
+    switch (event.type) {
+      case 'start':
+        this.categorizationStatusMessage.set(event.data['message'] ?? 'Starting...');
+        break;
+
+      case 'file_start':
+        this.categorizationStatusMessage.set(
+          event.data['message'] ?? `Processing file ${(event.data['index'] ?? 0) + 1}...`,
+        );
+        // Add file to results in processing state if not already there
+        if (event.data['filename']) {
+          const current = this.categorizationResults();
+          const exists = current.some((r) => r.filename === event.data['filename']);
+          if (!exists) {
+            this.categorizationResults.set([
+              ...current,
+              {
+                itemId: '',
+                filename: event.data['filename']!,
+                status: 'processing',
+                documentType: null,
+                documentTypeId: null,
+                documentId: null,
+                confidence: 0,
+                reasoning: '',
+                error: null,
+              },
+            ]);
+          }
+        }
+        break;
+
+      case 'file_categorized': {
+        this.categorizationProcessedFiles.update((v) => v + 1);
+        const results = [...this.categorizationResults()];
+        const idx = results.findIndex((r) => r.filename === event.data['filename']);
+        const result: CategorizationFileResult = {
+          itemId: '',
+          filename: event.data['filename'] ?? '',
+          status: 'categorized',
+          documentType: event.data['documentType'] ?? null,
+          documentTypeId: event.data['documentTypeId'] ?? null,
+          documentId: event.data['documentId'] ?? null,
+          confidence: event.data['confidence'] ?? 0,
+          reasoning: event.data['reasoning'] ?? '',
+          error: null,
+        };
+        if (idx >= 0) {
+          results[idx] = result;
+        } else {
+          results.push(result);
+        }
+        this.categorizationResults.set(results);
+        this.categorizationStatusMessage.set(event.data['message'] ?? 'Processing...');
+        break;
+      }
+
+      case 'file_error': {
+        this.categorizationProcessedFiles.update((v) => v + 1);
+        const results = [...this.categorizationResults()];
+        const idx = results.findIndex((r) => r.filename === event.data['filename']);
+        const errorResult: CategorizationFileResult = {
+          itemId: '',
+          filename: event.data['filename'] ?? '',
+          status: 'error',
+          documentType: null,
+          documentTypeId: null,
+          documentId: null,
+          confidence: 0,
+          reasoning: '',
+          error: event.data['error'] ?? 'Unknown error',
+        };
+        if (idx >= 0) {
+          results[idx] = errorResult;
+        } else {
+          results.push(errorResult);
+        }
+        this.categorizationResults.set(results);
+        break;
+      }
+
+      case 'complete': {
+        this.categorizationComplete.set(true);
+        this.categorizationStatusMessage.set(event.data['message'] ?? 'Complete');
+        // Update results with final data including itemIds
+        if (event.data['results']) {
+          const finalResults: CategorizationFileResult[] = (
+            event.data['results'] as ServiceFileResult[]
+          ).map((r) => ({
+            itemId: r.itemId,
+            filename: r.filename,
+            status: r.status as CategorizationFileResult['status'],
+            documentType: r.documentType,
+            documentTypeId: r.documentTypeId,
+            documentId: r.documentId,
+            confidence: r.confidence,
+            reasoning: r.reasoning,
+            error: r.error ?? null,
+          }));
+          this.categorizationResults.set(finalResults);
+        }
+        break;
+      }
+    }
+  }
+
+  onApplyCategorization(mappings: CategorizationApplyMapping[]): void {
+    const jobId = this.categorizationJobId();
+    if (!jobId) return;
+
+    this.isCategorizationApplying.set(true);
+
+    this.categorizationService
+      .applyResults(
+        jobId,
+        mappings.map((m) => ({
+          itemId: m.itemId,
+          documentId: m.documentId,
+        })),
+      )
+      .subscribe({
+        next: (response) => {
+          this.isCategorizationApplying.set(false);
+          if (response.totalApplied > 0) {
+            this.toast.success(`${response.totalApplied} document(s) applied successfully`);
+            // Reload application to reflect updated documents
+            const app = this.application();
+            if (app) {
+              this.loadApplication(app.id);
+            }
+          }
+          if (response.totalErrors > 0) {
+            this.toast.error(`${response.totalErrors} document(s) failed to apply`);
+          }
+          this.dismissCategorization();
+        },
+        error: (error) => {
+          this.isCategorizationApplying.set(false);
+          this.toast.error(extractServerErrorMessage(error) || 'Failed to apply categorization');
+        },
+      });
+  }
+
+  dismissCategorization(): void {
+    this.categorizationSub?.unsubscribe();
+    this.categorizationSub = null;
+    this.isCategorizationActive.set(false);
+    this.categorizationJobId.set(null);
+    this.categorizationTotalFiles.set(0);
+    this.categorizationProcessedFiles.set(0);
+    this.categorizationResults.set([]);
+    this.categorizationComplete.set(false);
+    this.categorizationStatusMessage.set('');
+    this.categorizationFiles.set([]);
   }
 }

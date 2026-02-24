@@ -12,6 +12,7 @@ All endpoints require authentication and only allow users to manage their own ca
 
 import logging
 
+from django.conf import settings
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -21,6 +22,14 @@ from .namespace import namespace_manager
 from .serializers import CacheClearSerializer, CacheStatusSerializer
 
 logger = logging.getLogger(__name__)
+
+
+def _get_default_cache_descriptor() -> dict[str, str]:
+    cache_settings = settings.CACHES.get("default", {})
+    return {
+        "cache_backend": str(cache_settings.get("BACKEND", "")),
+        "cache_location": str(cache_settings.get("LOCATION", "")),
+    }
 
 
 class CacheStatusView(APIView):
@@ -46,7 +55,8 @@ class CacheStatusView(APIView):
             data = {
                 'enabled': enabled,
                 'version': version,
-                'message': f"Cache is {'enabled' if enabled else 'disabled'}"
+                'message': f"Cache is {'enabled' if enabled else 'disabled'}",
+                **_get_default_cache_descriptor(),
             }
             
             serializer = CacheStatusSerializer(data)
@@ -86,7 +96,8 @@ class CacheEnableView(APIView):
             data = {
                 'enabled': True,
                 'version': version,
-                'message': 'Cache enabled successfully'
+                'message': 'Cache enabled successfully',
+                **_get_default_cache_descriptor(),
             }
             
             serializer = CacheStatusSerializer(data)
@@ -128,7 +139,8 @@ class CacheDisableView(APIView):
             data = {
                 'enabled': False,
                 'version': namespace_manager.get_user_version(user_id),
-                'message': 'Cache disabled successfully'
+                'message': 'Cache disabled successfully',
+                **_get_default_cache_descriptor(),
             }
             
             serializer = CacheStatusSerializer(data)

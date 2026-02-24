@@ -116,6 +116,7 @@ def capture_ai_usage_task(
     model: str,
     request_type: str = "chat.completions",
     request_id: str | None = None,
+    usage_data: dict[str, Any] | None = None,
     success: bool = True,
     error_type: str = "",
     latency_ms: int | None = None,
@@ -128,35 +129,45 @@ def capture_ai_usage_task(
     provider_key = (provider or "unknown").lower()
 
     try:
-        usage_data: dict[str, Any] | None = None
+        normalized_usage_data: dict[str, Any] = dict(usage_data or {})
         resolved_model = model or "unknown"
+        usage_source = "response.usage" if normalized_usage_data else "none"
 
         if provider_key == "openrouter":
-            if not request_id:
+            if request_id:
+                try:
+                    generation_data = _fetch_openrouter_generation_data(request_id=request_id)
+                    generation_usage_data = generation_data.get("usage_data") or {}
+                    if generation_usage_data:
+                        normalized_usage_data = generation_usage_data
+                        usage_source = "openrouter.generation"
+                    if generation_data.get("model"):
+                        resolved_model = generation_data["model"]
+                except Exception as exc:
+                    logger.warning(
+                        "OpenRouter generation fetch failed for request_id=%s; recording fallback usage data instead: %s",
+                        request_id,
+                        str(exc),
+                    )
+            else:
                 logger.warning(
-                    "Skipping OpenRouter usage capture: missing request_id for feature=%s model=%s",
+                    "OpenRouter usage capture missing request_id for feature=%s model=%s; recording fallback usage data.",
                     feature,
                     model,
                 )
-                return {"status": "skipped", "reason": "missing_request_id"}
-
-            generation_data = _fetch_openrouter_generation_data(request_id=request_id)
-            usage_data = generation_data.get("usage_data") or {}
-            if generation_data.get("model"):
-                resolved_model = generation_data["model"]
 
         AIUsageService.record_request(
             feature=feature,
             provider=provider_key,
             model=resolved_model,
             request_id=request_id,
-            usage_data=usage_data,
+            usage_data=normalized_usage_data or None,
             request_type=request_type,
             success=success,
             error_type=error_type,
             latency_ms=latency_ms,
         )
-        return {"status": "ok"}
+        return {"status": "ok", "usage_source": usage_source}
     except Exception as exc:
         logger.warning(
             "AI usage capture task failed for provider=%s request_id=%s: %s",

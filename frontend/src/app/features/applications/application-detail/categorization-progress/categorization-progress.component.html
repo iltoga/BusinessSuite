@@ -1,0 +1,110 @@
+<!-- Progress header -->
+<div class="rounded-lg border bg-card p-4 space-y-4">
+  <div class="flex items-center justify-between">
+    <h4 class="text-sm font-semibold">AI Document Categorization</h4>
+    @if (isComplete()) {
+      <button z-button zType="ghost" zSize="sm" (click)="onDismiss()">✕</button>
+    }
+  </div>
+
+  <!-- Progress bar -->
+  @if (!isComplete()) {
+    <div class="space-y-1">
+      <div class="flex justify-between text-xs text-muted-foreground">
+        <span>{{ statusMessage() || 'Processing...' }}</span>
+        <span>{{ processedFiles() }} / {{ totalFiles() }} files</span>
+      </div>
+      <div class="h-2 w-full overflow-hidden rounded-full bg-muted">
+        <div
+          class="h-full rounded-full bg-primary transition-all duration-300"
+          [style.width.%]="progressPercent()"
+        ></div>
+      </div>
+    </div>
+  }
+
+  <!-- Summary when complete -->
+  @if (isComplete()) {
+    <div class="flex gap-4 text-sm">
+      <span class="text-success-foreground">✓ {{ categorizedResults().length }} matched</span>
+      @if (unmatchedResults().length > 0) {
+        <span class="text-warning-foreground">⚠ {{ unmatchedResults().length }} unmatched</span>
+      }
+      @if (errorResults().length > 0) {
+        <span class="text-destructive">✗ {{ errorResults().length }} errors</span>
+      }
+    </div>
+  }
+
+  <!-- File results table -->
+  @if (results().length > 0) {
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm border-collapse">
+        <thead>
+          <tr class="border-b text-xs text-muted-foreground">
+            <th class="text-left py-1.5 pr-2">File</th>
+            <th class="text-left py-1.5 pr-2">Detected Type</th>
+            <th class="text-left py-1.5 pr-2">Confidence</th>
+            <th class="text-left py-1.5">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (result of results(); track result.itemId) {
+            <tr class="border-b last:border-0">
+              <td class="py-1.5 pr-2">
+                <div class="flex items-center gap-1.5">
+                  <span>{{ getStatusIcon(result.status) }}</span>
+                  <span class="truncate max-w-48">{{ result.filename }}</span>
+                </div>
+              </td>
+              <td class="py-1.5 pr-2">
+                @if (result.documentType) {
+                  {{ result.documentType }}
+                } @else if (result.error) {
+                  <span class="text-destructive">{{ result.error }}</span>
+                } @else {
+                  <span class="text-muted-foreground">—</span>
+                }
+              </td>
+              <td class="py-1.5 pr-2">
+                @if (result.confidence > 0) {
+                  <z-badge [zType]="$any(getConfidenceBadgeType(result.confidence))">
+                    {{ formatConfidence(result.confidence) }}
+                  </z-badge>
+                }
+              </td>
+              <td class="py-1.5">
+                @if (result.documentId) {
+                  <z-badge zType="success">Matched</z-badge>
+                } @else if (result.status === 'categorized') {
+                  <z-badge zType="warning">No Match</z-badge>
+                } @else if (result.status === 'error') {
+                  <z-badge zType="destructive">Error</z-badge>
+                } @else if (result.status === 'processing') {
+                  <z-badge zType="secondary">Processing</z-badge>
+                } @else {
+                  <z-badge zType="secondary">Queued</z-badge>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  <!-- Action buttons -->
+  @if (isComplete()) {
+    <div class="flex justify-end gap-2 pt-2">
+      <button z-button zType="outline" zSize="sm" (click)="onDismiss()">Dismiss</button>
+      <button z-button zType="default" zSize="sm" [disabled]="!canApply()" (click)="onApplyAll()">
+        @if (isApplying()) {
+          <span class="mr-1 inline-block animate-spin">⏳</span>
+          Applying...
+        } @else {
+          {{ applyLabel() }}
+        }
+      </button>
+    </div>
+  }
+</div>

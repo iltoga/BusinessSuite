@@ -59,7 +59,7 @@ class AIUsageTaskTests(TestCase):
         OPENROUTER_API_BASE_URL="https://openrouter.ai/api/v1",
     )
     @patch("core.tasks.ai_usage.requests.get")
-    def test_capture_ai_usage_task_logs_and_skips_on_provider_error(self, mock_get):
+    def test_capture_ai_usage_task_records_fallback_usage_on_provider_error(self, mock_get):
         mock_get.side_effect = Exception("provider unavailable")
 
         result = _run_huey_task(
@@ -73,5 +73,10 @@ class AIUsageTaskTests(TestCase):
             latency_ms=300,
         )
 
-        self.assertEqual(result["status"], "failed")
-        self.assertEqual(AIRequestUsage.objects.count(), 0)
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["usage_source"], "none")
+        self.assertEqual(AIRequestUsage.objects.count(), 1)
+        usage = AIRequestUsage.objects.get()
+        self.assertEqual(usage.request_id, "gen-123")
+        self.assertIsNone(usage.total_tokens)
+        self.assertIsNone(usage.cost_usd)

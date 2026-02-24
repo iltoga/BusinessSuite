@@ -71,6 +71,24 @@ interface OpenRouterStatusResponse {
     providerName: string;
     defaultModel: string;
     availableModels: Array<{ id: string; name: string; description?: string }>;
+    usageCurrentMonth: {
+      requestCount: number;
+      successCount: number;
+      failedCount: number;
+      totalTokens: number;
+      totalCost: number;
+      year: number;
+      month: number | null;
+    };
+    usageCurrentYear: {
+      requestCount: number;
+      successCount: number;
+      failedCount: number;
+      totalTokens: number;
+      totalCost: number;
+      year: number;
+      month: number | null;
+    };
     features: Array<{
       feature: string;
       purpose: string;
@@ -95,6 +113,22 @@ interface OpenRouterStatusResponse {
         year: number;
         month: number | null;
       };
+      modelBreakdownCurrentMonth: Array<{
+        model: string;
+        requestCount: number;
+        successCount: number;
+        failedCount: number;
+        totalTokens: number;
+        totalCost: number;
+      }>;
+      modelBreakdownCurrentYear: Array<{
+        model: string;
+        requestCount: number;
+        successCount: number;
+        failedCount: number;
+        totalTokens: number;
+        totalCost: number;
+      }>;
     }>;
   };
 }
@@ -103,6 +137,8 @@ interface CacheStatusResponse {
   enabled: boolean;
   version: number;
   message: string;
+  cacheBackend?: string;
+  cacheLocation?: string;
 }
 
 interface CacheClearResponse {
@@ -359,5 +395,20 @@ export class ServerManagementComponent implements OnInit {
       .subscribe((response) => {
         this.openRouterStatus.set(response);
       });
+  }
+
+  getCacheBackendType(cacheBackend?: string | null): string {
+    if (!cacheBackend) {
+      return 'Unknown';
+    }
+    const backendTokens = cacheBackend.split('.');
+    return backendTokens[backendTokens.length - 1] || cacheBackend;
+  }
+
+  getNonZeroCostModels<T extends { totalCost: number }>(models: T[] | null | undefined): T[] {
+    if (!models?.length) {
+      return [];
+    }
+    return models.filter((modelUsage) => Number(modelUsage.totalCost) > 0);
   }
 }

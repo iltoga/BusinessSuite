@@ -590,16 +590,37 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                 "month": now_dt.month if month else None,
             }
 
-        def _period_usage(feature_name: str, provider_name: str, now_dt: datetime.datetime, *, month: bool) -> dict:
+        def _serialize_period_usage(aggregate: dict, now_dt: datetime.datetime, *, month: bool) -> dict:
+            return {
+                "requestCount": int(aggregate.get("request_count") or 0),
+                "successCount": int(aggregate.get("success_count") or 0),
+                "failedCount": int(aggregate.get("failed_count") or 0),
+                "totalTokens": int(aggregate.get("total_tokens") or 0),
+                "totalCost": float(aggregate.get("total_cost") or 0.0),
+                "year": now_dt.year,
+                "month": now_dt.month if month else None,
+            }
+
+        def _period_usage(
+            feature_name: str | None,
+            provider_name: str,
+            now_dt: datetime.datetime,
+            *,
+            month: bool,
+            model_name: str | None = None,
+        ) -> dict:
             nonlocal usage_tracking_unavailable
             if usage_tracking_unavailable:
                 return _empty_period_usage(now_dt, month=month)
 
             filters = {
-                "feature": feature_name,
                 "provider": provider_name,
                 "created_at__year": now_dt.year,
             }
+            if feature_name is not None:
+                filters["feature"] = feature_name
+            if model_name is not None:
+                filters["model"] = model_name
             if month:
                 filters["created_at__month"] = now_dt.month
 
@@ -615,15 +636,55 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                 usage_tracking_unavailable = True
                 return _empty_period_usage(now_dt, month=month)
 
-            return {
-                "requestCount": int(aggregate.get("request_count") or 0),
-                "successCount": int(aggregate.get("success_count") or 0),
-                "failedCount": int(aggregate.get("failed_count") or 0),
-                "totalTokens": int(aggregate.get("total_tokens") or 0),
-                "totalCost": float(aggregate.get("total_cost") or 0.0),
-                "year": now_dt.year,
-                "month": now_dt.month if month else None,
+            return _serialize_period_usage(aggregate, now_dt, month=month)
+
+        def _model_breakdown(
+            feature_name: str,
+            provider_name: str,
+            now_dt: datetime.datetime,
+            *,
+            month: bool,
+        ) -> list[dict]:
+            nonlocal usage_tracking_unavailable
+            if usage_tracking_unavailable:
+                return []
+
+            filters = {
+                "feature": feature_name,
+                "provider": provider_name,
+                "created_at__year": now_dt.year,
             }
+            if month:
+                filters["created_at__month"] = now_dt.month
+
+            try:
+                rows = (
+                    AIRequestUsage.objects.filter(**filters)
+                    .values("model")
+                    .annotate(
+                        request_count=Count("id"),
+                        success_count=Count("id", filter=Q(success=True)),
+                        failed_count=Count("id", filter=Q(success=False)),
+                        total_tokens=Sum("total_tokens"),
+                        total_cost=Sum("cost_usd"),
+                    )
+                    .order_by("-total_cost", "-request_count", "model")
+                )
+            except (ProgrammingError, OperationalError):
+                usage_tracking_unavailable = True
+                return []
+
+            return [
+                {
+                    "model": row.get("model") or "unknown",
+                    "requestCount": int(row.get("request_count") or 0),
+                    "successCount": int(row.get("success_count") or 0),
+                    "failedCount": int(row.get("failed_count") or 0),
+                    "totalTokens": int(row.get("total_tokens") or 0),
+                    "totalCost": float(row.get("total_cost") or 0.0),
+                }
+                for row in rows
+            ]
 
         api_key = getattr(settings, "OPENROUTER_API_KEY", None)
         base_url = getattr(settings, "OPENROUTER_API_BASE_URL", "https://openrouter.ai/api/v1").rstrip("/")
@@ -723,55 +784,68 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
         providers = llm_config.get("providers", {}) if isinstance(llm_config, dict) else {}
         current_provider = getattr(settings, "LLM_PROVIDER", "openrouter")
         default_model = getattr(settings, "LLM_DEFAULT_MODEL", "google/gemini-2.5-flash-lite")
+        check_passport_model = getattr(settings, "CHECK_PASSPORT_MODEL", "") or default_model
         provider_info = providers.get(current_provider, {}) if isinstance(providers, dict) else {}
         available_models = provider_info.get("models", []) if isinstance(provider_info, dict) else []
+
+        def _feature_usage_row(
+            *,
+            feature_name: str,
+            purpose: str,
+            model_strategy: str,
+            effective_model: str,
+        ) -> dict:
+            return {
+                "feature": feature_name,
+                "purpose": purpose,
+                "modelStrategy": model_strategy,
+                "effectiveModel": effective_model,
+                "provider": current_provider,
+                "usageCurrentMonth": _period_usage(feature_name, current_provider, now, month=True),
+                "usageCurrentYear": _period_usage(feature_name, current_provider, now, month=False),
+                "modelBreakdownCurrentMonth": _model_breakdown(feature_name, current_provider, now, month=True),
+                "modelBreakdownCurrentYear": _model_breakdown(feature_name, current_provider, now, month=False),
+            }
+
+        feature_rows = [
+            _feature_usage_row(
+                feature_name=AIUsageFeature.INVOICE_IMPORT_AI_PARSER,
+                purpose="Extracts invoice/customer data from uploaded invoice files.",
+                model_strategy="Uses request llm_model override, otherwise LLM_DEFAULT_MODEL.",
+                effective_model=default_model,
+            ),
+            _feature_usage_row(
+                feature_name=AIUsageFeature.PASSPORT_OCR_AI_EXTRACTOR,
+                purpose="Extracts structured passport fields in hybrid MRZ + AI flow.",
+                model_strategy="Uses LLM_DEFAULT_MODEL unless parser is explicitly instantiated with a model.",
+                effective_model=default_model,
+            ),
+            _feature_usage_row(
+                feature_name=AIUsageFeature.DOCUMENT_AI_CATEGORIZER,
+                purpose="Classifies uploaded documents into document types using vision AI.",
+                model_strategy="Uses request model override, otherwise LLM_DEFAULT_MODEL.",
+                effective_model=default_model,
+            ),
+        ]
+
+        if check_passport_model != default_model:
+            feature_rows.append(
+                _feature_usage_row(
+                    feature_name=AIUsageFeature.PASSPORT_CHECK_API,
+                    purpose="Validates passport uploadability via async /customers/check-passport/ API.",
+                    model_strategy="Uses CHECK_PASSPORT_MODEL from settings for AI decisions.",
+                    effective_model=check_passport_model,
+                )
+            )
 
         ai_model_usage = {
             "provider": current_provider,
             "providerName": provider_info.get("name", current_provider),
             "defaultModel": default_model,
             "availableModels": available_models,
-            "features": [
-                {
-                    "feature": AIUsageFeature.INVOICE_IMPORT_AI_PARSER,
-                    "purpose": "Extracts invoice/customer data from uploaded invoice files.",
-                    "modelStrategy": "Uses request llm_model override, otherwise LLM_DEFAULT_MODEL.",
-                    "effectiveModel": default_model,
-                    "provider": current_provider,
-                    "usageCurrentMonth": _period_usage(
-                        AIUsageFeature.INVOICE_IMPORT_AI_PARSER, current_provider, now, month=True
-                    ),
-                    "usageCurrentYear": _period_usage(
-                        AIUsageFeature.INVOICE_IMPORT_AI_PARSER, current_provider, now, month=False
-                    ),
-                },
-                {
-                    "feature": AIUsageFeature.PASSPORT_OCR_AI_EXTRACTOR,
-                    "purpose": "Extracts structured passport fields in hybrid MRZ + AI flow.",
-                    "modelStrategy": "Uses LLM_DEFAULT_MODEL unless parser is explicitly instantiated with a model.",
-                    "effectiveModel": default_model,
-                    "provider": current_provider,
-                    "usageCurrentMonth": _period_usage(
-                        AIUsageFeature.PASSPORT_OCR_AI_EXTRACTOR, current_provider, now, month=True
-                    ),
-                    "usageCurrentYear": _period_usage(
-                        AIUsageFeature.PASSPORT_OCR_AI_EXTRACTOR, current_provider, now, month=False
-                    ),
-                },
-                {
-                    "feature": AIUsageFeature.DOCUMENT_AI_CATEGORIZER,
-                    "purpose": "Classifies uploaded documents into document types using vision AI.",
-                    "modelStrategy": "Uses request model override, otherwise LLM_DEFAULT_MODEL.",
-                    "effectiveModel": default_model,
-                    "provider": current_provider,
-                    "usageCurrentMonth": _period_usage(
-                        AIUsageFeature.DOCUMENT_AI_CATEGORIZER, current_provider, now, month=True
-                    ),
-                    "usageCurrentYear": _period_usage(
-                        AIUsageFeature.DOCUMENT_AI_CATEGORIZER, current_provider, now, month=False
-                    ),
-                },
-            ],
+            "usageCurrentMonth": _period_usage(None, current_provider, now, month=True),
+            "usageCurrentYear": _period_usage(None, current_provider, now, month=False),
+            "features": feature_rows,
         }
 
         effective_credit_remaining = key_status.get("limitRemaining")

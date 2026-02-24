@@ -18,9 +18,8 @@ from datetime import timedelta
 from importlib import import_module
 from pathlib import Path
 
-from dotenv import load_dotenv
-
 from business_suite.settings.cache_backends import build_prod_redis_caches
+from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
@@ -597,47 +596,43 @@ else:
 CACHEOPS = {
     # Static/reference data - rarely changes (1-24 hours)
     # Rationale: Maximizes cache hit rate for frequently accessed reference data
-    'auth.permission': {'ops': 'all', 'timeout': 60 * 60},  # 1 hour
-    'contenttypes.*': {'ops': 'all', 'timeout': 60 * 60 * 24},  # 24 hours
-    'core.countrycode': {'ops': 'all', 'timeout': 60 * 60 * 24},  # 24 hours
-    'core.holiday': {'ops': 'all', 'timeout': 60 * 60 * 24},  # 24 hours
-    'products.documenttype': {'ops': 'all', 'timeout': 60 * 60},  # 1 hour
-    'products.product': {'ops': 'all', 'timeout': 60 * 60},  # 1 hour
-    'products.task': {'ops': 'all', 'timeout': 60 * 60},  # 1 hour
-    
+    "auth.permission": {"ops": "all", "timeout": 60 * 60},  # 1 hour
+    "contenttypes.*": {"ops": "all", "timeout": 60 * 60 * 24},  # 24 hours
+    "core.countrycode": {"ops": "all", "timeout": 60 * 60 * 24},  # 24 hours
+    "core.holiday": {"ops": "all", "timeout": 60 * 60 * 24},  # 24 hours
+    "products.documenttype": {"ops": "all", "timeout": 60 * 60},  # 1 hour
+    "products.product": {"ops": "all", "timeout": 60 * 60},  # 1 hour
+    "products.task": {"ops": "all", "timeout": 60 * 60},  # 1 hour
     # User data - moderate change frequency (10-15 minutes)
     # Rationale: Reduces database load for user authentication and profile lookups
-    'auth.user': {'ops': 'get', 'timeout': 60 * 15},  # 15 minutes
-    'core.userprofile': {'ops': 'get', 'timeout': 60 * 15},  # 15 minutes
-    'core.usersettings': {'ops': 'get', 'timeout': 60 * 15},  # 15 minutes
-    'customers.customer': {'ops': 'all', 'timeout': 60 * 10},  # 10 minutes
-    
+    "auth.user": {"ops": "get", "timeout": 60 * 15},  # 15 minutes
+    "core.userprofile": {"ops": "get", "timeout": 60 * 15},  # 15 minutes
+    "core.usersettings": {"ops": "get", "timeout": 60 * 15},  # 15 minutes
+    "customers.customer": {"ops": "all", "timeout": 60 * 10},  # 10 minutes
     # Content data - frequent changes (2-5 minutes)
     # Rationale: Balances freshness with cache efficiency for business data
-    'invoices.invoice': {'ops': 'all', 'timeout': 60 * 5},  # 5 minutes
-    'invoices.invoiceapplication': {'ops': 'all', 'timeout': 60 * 5},  # 5 minutes
-    'payments.payment': {'ops': 'all', 'timeout': 60 * 5},  # 5 minutes
-    'customer_applications.docapplication': {'ops': 'all', 'timeout': 60 * 5},  # 5 minutes
-    'customer_applications.document': {'ops': 'all', 'timeout': 60 * 5},  # 5 minutes
-    'customer_applications.docworkflow': {'ops': 'all', 'timeout': 60 * 2},  # 2 minutes
-    'core.calendarevent': {'ops': 'all', 'timeout': 60 * 2},  # 2 minutes
-    
+    "invoices.invoice": {"ops": "all", "timeout": 60 * 5},  # 5 minutes
+    "invoices.invoiceapplication": {"ops": "all", "timeout": 60 * 5},  # 5 minutes
+    "payments.payment": {"ops": "all", "timeout": 60 * 5},  # 5 minutes
+    "customer_applications.docapplication": {"ops": "all", "timeout": 60 * 5},  # 5 minutes
+    "customer_applications.document": {"ops": "all", "timeout": 60 * 5},  # 5 minutes
+    "customer_applications.docworkflow": {"ops": "all", "timeout": 60 * 2},  # 2 minutes
+    "core.calendarevent": {"ops": "all", "timeout": 60 * 2},  # 2 minutes
     # Real-time/notification data - very frequent changes (30 seconds)
     # Rationale: Provides caching benefit while maintaining near-real-time freshness
-    'core.calendarreminder': {'ops': 'get', 'timeout': 30},  # 30 seconds
-    'customer_applications.workflownotification': {'ops': 'get', 'timeout': 30},  # 30 seconds
-    'core.webpushsubscription': {'ops': 'get', 'timeout': 30},  # 30 seconds
-    
+    "core.calendarreminder": {"ops": "get", "timeout": 30},  # 30 seconds
+    "customer_applications.workflownotification": {"ops": "get", "timeout": 30},  # 30 seconds
+    "core.webpushsubscription": {"ops": "get", "timeout": 30},  # 30 seconds
     # Job/task tracking - short-lived (1 minute)
     # Rationale: Job status needs frequent updates but benefits from brief caching
-    'core.ocrjob': {'ops': 'get', 'timeout': 60},  # 1 minute
-    'core.documentocrjob': {'ops': 'get', 'timeout': 60},  # 1 minute
-    'core.asyncjob': {'ops': 'get', 'timeout': 60},  # 1 minute
-    'invoices.invoiceimportjob': {'ops': 'get', 'timeout': 60},  # 1 minute
-    'invoices.invoiceimportitem': {'ops': 'get', 'timeout': 60},  # 1 minute
-    'invoices.invoicedownloadjob': {'ops': 'get', 'timeout': 60},  # 1 minute
-    'invoices.invoicedocumentjob': {'ops': 'get', 'timeout': 60},  # 1 minute
-    'invoices.invoicedocumentitem': {'ops': 'get', 'timeout': 60},  # 1 minute
+    "core.ocrjob": {"ops": "get", "timeout": 60},  # 1 minute
+    "core.documentocrjob": {"ops": "get", "timeout": 60},  # 1 minute
+    "core.asyncjob": {"ops": "get", "timeout": 60},  # 1 minute
+    "invoices.invoiceimportjob": {"ops": "get", "timeout": 60},  # 1 minute
+    "invoices.invoiceimportitem": {"ops": "get", "timeout": 60},  # 1 minute
+    "invoices.invoicedownloadjob": {"ops": "get", "timeout": 60},  # 1 minute
+    "invoices.invoicedocumentjob": {"ops": "get", "timeout": 60},  # 1 minute
+    "invoices.invoicedocumentitem": {"ops": "get", "timeout": 60},  # 1 minute
 }
 
 # Graceful fallback to database on cache errors
@@ -947,6 +942,8 @@ OPENROUTER_HEALTHCHECK_MIN_CREDIT_REMAINING = float(os.getenv("OPENROUTER_HEALTH
 # LLM Provider: "openrouter" for multi-provider access, "openai" for direct OpenAI API
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openrouter")
 LLM_DEFAULT_MODEL = os.getenv("LLM_DEFAULT_MODEL", "google/gemini-2.5-flash-lite")
+# Dedicated model for document categorization; falls back to global LLM default when unset.
+DOCUMENT_CATEGORIZER_MODEL = os.getenv("DOCUMENT_CATEGORIZER_MODEL", LLM_DEFAULT_MODEL)
 
 NOTIFICATION_FROM_EMAIL = os.getenv("NOTIFICATION_FROM_EMAIL", "dewi@revisbali.com")
 GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD")

@@ -33,6 +33,7 @@ Base path: `frontend/src/app/shared/components/`
 | ProductSelect           | `app-product-select`            | `product-select/`                            | Product selection control.                                           |
 | SortableMultiSelect     | `app-sortable-multi-select`     | `sortable-multi-select/`                     | Ordered multi-select (drag/drop) for task/document flows.            |
 | FileUpload              | `app-file-upload`               | `file-upload/`                               | Generic upload with progress/reset events.                           |
+| MultiFileUpload         | `app-multi-file-upload`         | `multi-file-upload/`                         | Multi-file drag-and-drop upload with file list management.           |
 | ImageMagnifier          | `app-image-magnifier`           | `image-magnifier/`                           | Reusable image viewer with optional hover lens magnification toggle. |
 | DocumentPreview         | `app-document-preview`          | `document-preview/`                          | Inline preview launcher for uploaded docs.                           |
 | PdfViewerHost           | `app-pdf-viewer-host`           | `pdf-viewer-host/`                           | Lazy PDF viewer wrapper.                                             |

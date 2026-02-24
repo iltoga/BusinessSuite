@@ -21,6 +21,16 @@ class CacheStatusSerializer(serializers.Serializer):
         required=False,
         help_text="Optional status message"
     )
+    cache_backend = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        help_text="Configured default Django cache backend class path",
+    )
+    cache_location = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        help_text="Configured default Django cache location",
+    )
 
 
 class CacheClearSerializer(serializers.Serializer):

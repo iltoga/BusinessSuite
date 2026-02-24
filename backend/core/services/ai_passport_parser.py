@@ -163,6 +163,7 @@ class AIPassportParser:
         api_key: Optional[str] = None,
         model: Optional[str] = None,
         use_openrouter: Optional[bool] = None,
+        feature_name: str = AIUsageFeature.PASSPORT_OCR_AI_EXTRACTOR,
     ):
         """
         Initialize the parser.
@@ -171,12 +172,13 @@ class AIPassportParser:
             api_key: API key (defaults to settings)
             model: Model to use (defaults to settings)
             use_openrouter: Whether to use OpenRouter (defaults to settings)
+            feature_name: Logical feature label used for usage accounting
         """
         self.ai_client = AIClient(
             api_key=api_key,
             model=model,
             use_openrouter=use_openrouter,
-            feature_name=AIUsageFeature.PASSPORT_OCR_AI_EXTRACTOR,
+            feature_name=feature_name or AIUsageFeature.PASSPORT_OCR_AI_EXTRACTOR,
         )
         logger.info(
             f"Initialized AI Passport parser with {self.ai_client.provider_name} " f"(model: {self.ai_client.model})"

@@ -64,7 +64,12 @@ describe('ServerManagementComponent - Cache Controls', () => {
 
       const statusReq = httpMock.expectOne('/api/cache/status');
       expect(statusReq.request.method).toBe('GET');
-      statusReq.flush({ enabled: true, version: 1, message: 'Cache is enabled' });
+      statusReq.flush({
+        enabled: true,
+        version: 1,
+        message: 'Cache is enabled',
+        cacheBackend: 'django_redis.cache.RedisCache',
+      });
 
       const healthReq = httpMock.expectOne('/api/server-management/cache-health/');
       expect(healthReq.request.method).toBe('GET');
@@ -85,6 +90,7 @@ describe('ServerManagementComponent - Cache Controls', () => {
         enabled: true,
         version: 1,
         message: 'Cache is enabled',
+        cacheBackend: 'django_redis.cache.RedisCache',
       });
       expect(component.cacheHealth()?.ok).toBe(true);
     });
@@ -312,6 +318,25 @@ describe('ServerManagementComponent - Cache Controls', () => {
       expect(text).toContain('v3');
     });
 
+    it('should show cache backend type when available', async () => {
+      component.cacheStatus.set({
+        enabled: true,
+        version: 3,
+        message: 'Cache is enabled',
+        cacheBackend: 'django_redis.cache.RedisCache',
+      });
+      fixture.detectChanges();
+
+      await new Promise((r) => setTimeout(r, 0));
+      fixture.detectChanges();
+
+      const el: HTMLElement = fixture.nativeElement;
+      const text = String((el.innerText ?? el.textContent) || '');
+
+      expect(text).toContain('Cache Backend Type');
+      expect(text).toContain('RedisCache');
+    });
+
     it('should show loading state when cache status not loaded', async () => {
       component.cacheStatus.set(null);
       fixture.detectChanges();
@@ -323,6 +348,159 @@ describe('ServerManagementComponent - Cache Controls', () => {
       const text = String((el.innerText ?? el.textContent) || '');
       
       expect(text).toContain('Cache status not loaded yet');
+    });
+
+    it('should render AI global totals and per-model breakdown', async () => {
+      component.openRouterStatus.set({
+        ok: true,
+        openrouter: {
+          configured: true,
+          baseUrl: 'https://openrouter.ai/api/v1',
+          checkedAt: '2026-02-24T10:00:00+00:00',
+          keyStatus: {
+            ok: true,
+            httpStatus: 200,
+            message: null,
+            label: null,
+            limit: null,
+            limitRemaining: null,
+            limitReset: null,
+            usage: null,
+            usageDaily: null,
+            usageWeekly: null,
+            usageMonthly: null,
+            isFreeTier: null,
+          },
+          creditsStatus: {
+            ok: true,
+            available: true,
+            httpStatus: 200,
+            message: null,
+            totalCredits: null,
+            totalUsage: null,
+            remaining: null,
+          },
+          effectiveCreditRemaining: null,
+          effectiveCreditSource: null,
+        },
+        aiModels: {
+          provider: 'openrouter',
+          providerName: 'OpenRouter',
+          defaultModel: 'model-a',
+          availableModels: [],
+          usageCurrentMonth: {
+            requestCount: 3,
+            successCount: 3,
+            failedCount: 0,
+            totalTokens: 3000,
+            totalCost: 0.03,
+            year: 2026,
+            month: 2,
+          },
+          usageCurrentYear: {
+            requestCount: 3,
+            successCount: 3,
+            failedCount: 0,
+            totalTokens: 3000,
+            totalCost: 0.03,
+            year: 2026,
+            month: null,
+          },
+          features: [
+            {
+              feature: 'Document AI Categorizer',
+              purpose: 'Classifies documents.',
+              modelStrategy: 'Uses request model override.',
+              effectiveModel: 'model-a',
+              provider: 'openrouter',
+              usageCurrentMonth: {
+                requestCount: 3,
+                successCount: 3,
+                failedCount: 0,
+                totalTokens: 3000,
+                totalCost: 0.03,
+                year: 2026,
+                month: 2,
+              },
+              usageCurrentYear: {
+                requestCount: 3,
+                successCount: 3,
+                failedCount: 0,
+                totalTokens: 3000,
+                totalCost: 0.03,
+                year: 2026,
+                month: null,
+              },
+              modelBreakdownCurrentMonth: [
+                {
+                  model: 'model-a',
+                  requestCount: 2,
+                  successCount: 2,
+                  failedCount: 0,
+                  totalTokens: 2000,
+                  totalCost: 0.02,
+                },
+                {
+                  model: 'model-b',
+                  requestCount: 1,
+                  successCount: 1,
+                  failedCount: 0,
+                  totalTokens: 1000,
+                  totalCost: 0.01,
+                },
+                {
+                  model: 'model-zero-month',
+                  requestCount: 1,
+                  successCount: 1,
+                  failedCount: 0,
+                  totalTokens: 100,
+                  totalCost: 0,
+                },
+              ],
+              modelBreakdownCurrentYear: [
+                {
+                  model: 'model-a',
+                  requestCount: 2,
+                  successCount: 2,
+                  failedCount: 0,
+                  totalTokens: 2000,
+                  totalCost: 0.02,
+                },
+                {
+                  model: 'model-b',
+                  requestCount: 1,
+                  successCount: 1,
+                  failedCount: 0,
+                  totalTokens: 1000,
+                  totalCost: 0.01,
+                },
+                {
+                  model: 'model-zero-year',
+                  requestCount: 1,
+                  successCount: 1,
+                  failedCount: 0,
+                  totalTokens: 100,
+                  totalCost: 0,
+                },
+              ],
+            },
+          ],
+        },
+      } as any);
+      fixture.detectChanges();
+
+      await new Promise((r) => setTimeout(r, 0));
+      fixture.detectChanges();
+
+      const el: HTMLElement = fixture.nativeElement;
+      const text = String((el.innerText ?? el.textContent) || '');
+
+      expect(text).toContain('GLOBAL TOTALS (CURRENT MONTH)');
+      expect(text).toContain('MODEL BREAKDOWN (CURRENT MONTH)');
+      expect(text).toContain('model-a');
+      expect(text).toContain('model-b');
+      expect(text).not.toContain('model-zero-month');
+      expect(text).not.toContain('model-zero-year');
     });
   });
 

@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from typing import Any, Callable, Optional
 
 from core.services.ai_passport_parser import AIPassportParser
+from core.services.ai_usage_service import AIUsageFeature
 from core.services.image_quality_service import ImageQualityService
 from core.services.logger_service import Logger
 from core.utils.icao_validation import validate_passport_number_icao
@@ -41,7 +42,11 @@ class PassportUploadabilityService:
             )
 
         # Force this feature to use Gemini 3 Flash Preview via OpenRouter as requested.
-        self.ai_parser = AIPassportParser(model=self.CHECK_PASSPORT_MODEL, use_openrouter=True)
+        self.ai_parser = AIPassportParser(
+            model=self.CHECK_PASSPORT_MODEL,
+            use_openrouter=True,
+            feature_name=AIUsageFeature.PASSPORT_CHECK_API,
+        )
         self.image_quality_service = ImageQualityService()
 
     @staticmethod

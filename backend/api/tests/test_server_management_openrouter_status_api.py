@@ -11,6 +11,18 @@ from core.models.ai_request_usage import AIRequestUsage
 from core.services.ai_usage_service import AIUsageFeature
 
 
+@override_settings(
+    CACHES={
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "server-management-openrouter-status-tests",
+        },
+        "select2": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "server-management-openrouter-status-tests-select2",
+        },
+    }
+)
 class ServerManagementOpenRouterStatusApiTests(TestCase):
     def setUp(self):
         self.client = APIClient()
@@ -29,6 +41,7 @@ class ServerManagementOpenRouterStatusApiTests(TestCase):
         OPENROUTER_API_BASE_URL="https://openrouter.ai/api/v1",
         LLM_PROVIDER="openrouter",
         LLM_DEFAULT_MODEL="google/gemini-2.5-flash-lite",
+        CHECK_PASSPORT_MODEL="google/gemini-3-flash-preview",
     )
     def test_openrouter_status_returns_credit_and_ai_model_data(self):
         now = timezone.now()
@@ -52,6 +65,36 @@ class ServerManagementOpenRouterStatusApiTests(TestCase):
             cost_usd="0.040000",
         )
         AIRequestUsage.objects.filter(pk=passport_usage.pk).update(created_at=now)
+
+        passport_check_usage = AIRequestUsage.objects.create(
+            feature=AIUsageFeature.PASSPORT_CHECK_API,
+            provider="openrouter",
+            model="google/gemini-3-flash-preview",
+            success=True,
+            total_tokens=90,
+            cost_usd="0.030000",
+        )
+        AIRequestUsage.objects.filter(pk=passport_check_usage.pk).update(created_at=now)
+
+        document_usage_main = AIRequestUsage.objects.create(
+            feature=AIUsageFeature.DOCUMENT_AI_CATEGORIZER,
+            provider="openrouter",
+            model="google/gemini-2.5-flash-lite",
+            success=True,
+            total_tokens=1000,
+            cost_usd="0.005000",
+        )
+        AIRequestUsage.objects.filter(pk=document_usage_main.pk).update(created_at=now)
+
+        document_usage_alt = AIRequestUsage.objects.create(
+            feature=AIUsageFeature.DOCUMENT_AI_CATEGORIZER,
+            provider="openrouter",
+            model="google/gemini-3-flash-preview",
+            success=True,
+            total_tokens=2000,
+            cost_usd="0.020000",
+        )
+        AIRequestUsage.objects.filter(pk=document_usage_alt.pk).update(created_at=now)
 
         key_response = MagicMock()
         key_response.status_code = 200
@@ -78,7 +121,10 @@ class ServerManagementOpenRouterStatusApiTests(TestCase):
         self.assertEqual(payload["openrouter"]["keyStatus"]["limitRemaining"], 12.5)
         self.assertEqual(payload["openrouter"]["effectiveCreditRemaining"], 12.5)
         self.assertEqual(payload["aiModels"]["provider"], "openrouter")
-        self.assertGreaterEqual(len(payload["aiModels"]["features"]), 2)
+        self.assertEqual(payload["aiModels"]["usageCurrentMonth"]["requestCount"], 5)
+        self.assertEqual(payload["aiModels"]["usageCurrentMonth"]["totalTokens"], 3450)
+        self.assertAlmostEqual(payload["aiModels"]["usageCurrentMonth"]["totalCost"], 0.215)
+        self.assertGreaterEqual(len(payload["aiModels"]["features"]), 3)
         invoice_feature = next(
             feature for feature in payload["aiModels"]["features"] if feature["feature"] == AIUsageFeature.INVOICE_IMPORT_AI_PARSER
         )
@@ -91,6 +137,25 @@ class ServerManagementOpenRouterStatusApiTests(TestCase):
         )
         self.assertEqual(passport_feature["usageCurrentMonth"]["failedCount"], 1)
 
+        passport_check_feature = next(
+            feature for feature in payload["aiModels"]["features"] if feature["feature"] == AIUsageFeature.PASSPORT_CHECK_API
+        )
+        self.assertEqual(passport_check_feature["effectiveModel"], "google/gemini-3-flash-preview")
+        self.assertEqual(passport_check_feature["usageCurrentMonth"]["requestCount"], 1)
+        self.assertEqual(passport_check_feature["usageCurrentMonth"]["totalTokens"], 90)
+
+        document_feature = next(
+            feature for feature in payload["aiModels"]["features"] if feature["feature"] == AIUsageFeature.DOCUMENT_AI_CATEGORIZER
+        )
+        self.assertEqual(document_feature["usageCurrentMonth"]["requestCount"], 2)
+        self.assertEqual(document_feature["usageCurrentMonth"]["totalTokens"], 3000)
+        self.assertAlmostEqual(document_feature["usageCurrentMonth"]["totalCost"], 0.025)
+        self.assertEqual(len(document_feature["modelBreakdownCurrentMonth"]), 2)
+        self.assertEqual(document_feature["modelBreakdownCurrentMonth"][0]["model"], "google/gemini-3-flash-preview")
+        self.assertAlmostEqual(document_feature["modelBreakdownCurrentMonth"][0]["totalCost"], 0.02)
+        self.assertEqual(document_feature["modelBreakdownCurrentMonth"][1]["model"], "google/gemini-2.5-flash-lite")
+        self.assertAlmostEqual(document_feature["modelBreakdownCurrentMonth"][1]["totalCost"], 0.005)
+
     @override_settings(OPENROUTER_API_KEY="")
     def test_openrouter_status_handles_missing_usage_table(self):
         with patch("api.views_admin.AIRequestUsage.objects.filter", side_effect=ProgrammingError("missing table")):
@@ -100,6 +165,9 @@ class ServerManagementOpenRouterStatusApiTests(TestCase):
         payload = response.json()
         self.assertTrue(payload["ok"])
         self.assertFalse(payload["openrouter"]["configured"])
+        self.assertEqual(payload["aiModels"]["usageCurrentMonth"]["requestCount"], 0)
+        self.assertEqual(payload["aiModels"]["usageCurrentMonth"]["totalCost"], 0.0)
+        self.assertEqual(payload["aiModels"]["usageCurrentYear"]["requestCount"], 0)
 
         invoice_feature = next(
             feature
@@ -109,3 +177,17 @@ class ServerManagementOpenRouterStatusApiTests(TestCase):
         self.assertEqual(invoice_feature["usageCurrentMonth"]["requestCount"], 0)
         self.assertEqual(invoice_feature["usageCurrentMonth"]["totalCost"], 0.0)
         self.assertEqual(invoice_feature["usageCurrentYear"]["requestCount"], 0)
+
+    @override_settings(
+        OPENROUTER_API_KEY="",
+        LLM_PROVIDER="openrouter",
+        LLM_DEFAULT_MODEL="google/gemini-2.5-flash-lite",
+        CHECK_PASSPORT_MODEL="google/gemini-2.5-flash-lite",
+    )
+    def test_openrouter_status_omits_passport_check_feature_when_model_matches_default(self):
+        response = self.client.get("/api/server-management/openrouter-status/")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        feature_names = [feature["feature"] for feature in payload["aiModels"]["features"]]
+        self.assertNotIn(AIUsageFeature.PASSPORT_CHECK_API, feature_names)

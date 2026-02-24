@@ -39,6 +39,12 @@
 
 ## Fixes
 
+- **2026-02-24: AI Document Categorization — Model Findings**
+  - `openai/gpt-5-nano` via Azure/OpenRouter does **not** support vision + structured JSON output. All files fail with "No JSON object found".
+  - `google/gemini-2.5-flash-lite` works excellently: 8/8 test files correctly categorized, avg confidence 93.8%, ~3.8s/file sequential, ~6s wall-clock parallel for 8 files.
+  - PDFs must be converted to JPEG images before sending to vision APIs (OpenAI rejects `application/pdf` as `image_url` MIME type). Used `pdf2image` for conversion.
+  - Default model for production should be `google/gemini-2.5-flash-lite`.
+
 - **2026-02-09: OpenAPI Schema & Build Integrity Fix**
   - Added serializer fallbacks for ViewSets used with `@extend_schema`.
   - Improved schema generation reliability and frontend build stability.

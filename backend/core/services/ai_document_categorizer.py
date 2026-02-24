@@ -5,11 +5,15 @@ Uses vision-capable LLMs to classify uploaded documents into DocumentType catego
 Supports both single-file categorization and batch processing.
 """
 
+import io
+import os
+import tempfile
 from typing import Optional
 
 from core.services.ai_client import AIClient
 from core.services.ai_usage_service import AIUsageFeature
 from core.services.logger_service import Logger
+from django.conf import settings
 from products.models.document_type import DocumentType
 
 logger = Logger.get_logger(__name__)
@@ -89,7 +93,11 @@ class AIDocumentCategorizer:
         provider_order: Optional[list[str]] = None,
         feature_name: str = AIUsageFeature.DOCUMENT_AI_CATEGORIZER,
     ):
-        self.model = model
+        self.model = model or getattr(
+            settings,
+            "DOCUMENT_CATEGORIZER_MODEL",
+            getattr(settings, "LLM_DEFAULT_MODEL", None),
+        )
         self.provider_order = provider_order
         self.feature_name = feature_name
         self._client = None
@@ -101,6 +109,49 @@ class AIDocumentCategorizer:
                 kwargs["model"] = self.model
             self._client = AIClient(**kwargs)
         return self._client
+
+    @staticmethod
+    def _pdf_to_image_bytes(pdf_bytes: bytes) -> bytes:
+        """Convert first page of a PDF to a JPEG image for vision APIs."""
+        try:
+            from pdf2image import convert_from_bytes
+
+            images = convert_from_bytes(pdf_bytes, first_page=1, last_page=1, dpi=200)
+            if images:
+                buf = io.BytesIO()
+                images[0].save(buf, format="JPEG", quality=85)
+                return buf.getvalue()
+        except Exception as exc:
+            logger.warning("pdf2image conversion failed, trying PyPDF: %s", exc)
+
+        # Fallback: try pypdf to extract embedded images
+        try:
+            from pypdf import PdfReader
+
+            reader = PdfReader(io.BytesIO(pdf_bytes))
+            if reader.pages:
+                page = reader.pages[0]
+                for image_key in page.images:
+                    return image_key.data
+        except Exception as exc:
+            logger.warning("PyPDF image extraction also failed: %s", exc)
+
+        raise ValueError("Could not convert PDF to image for vision API")
+
+    def _prepare_vision_bytes(self, file_bytes: bytes, filename: str) -> tuple[bytes, str]:
+        """
+        Prepare file bytes for vision API.
+        Converts PDFs to JPEG images since most vision APIs don't support PDF as image_url.
+
+        Returns:
+            Tuple of (image_bytes, filename_for_mime_detection)
+        """
+        ext = os.path.splitext(filename)[1].lower()
+        if ext == ".pdf" or file_bytes[:5] == b"%PDF-":
+            logger.debug("Converting PDF '%s' to image for vision API", filename)
+            image_bytes = self._pdf_to_image_bytes(file_bytes)
+            return image_bytes, filename.rsplit(".", 1)[0] + ".jpg"
+        return file_bytes, filename
 
     def categorize_file(
         self,
@@ -129,10 +180,13 @@ class AIDocumentCategorizer:
         system_prompt = _build_system_prompt(document_types)
         user_prompt = _build_user_prompt(filename)
 
+        # Convert PDFs to images for vision API compatibility
+        vision_bytes, vision_filename = self._prepare_vision_bytes(file_bytes, filename)
+
         messages = client.build_vision_message(
             prompt=user_prompt,
-            image_bytes=file_bytes,
-            filename=filename,
+            image_bytes=vision_bytes,
+            filename=vision_filename,
             system_prompt=system_prompt,
         )
 

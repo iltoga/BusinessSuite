@@ -13,12 +13,26 @@ from cache.namespace import namespace_manager
 User = get_user_model()
 
 
+@pytest.fixture(autouse=True)
+def _use_locmem_cache(settings):
+    settings.CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "cache-api-unit-tests",
+        },
+        "select2": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "cache-api-unit-tests-select2",
+        },
+    }
+
+
 @pytest.mark.django_db
 class TestCacheStatusEndpoint:
     """Unit tests for cache status endpoint."""
     
     def test_status_returns_enabled_and_version(self):
-        """Test that status endpoint returns enabled flag and version."""
+        """Test that status endpoint returns enabled flag, version, and backend metadata."""
         user = User.objects.create_user(username="testuser", password="testpass123")
         client = APIClient()
         client.force_authenticate(user=user)
@@ -29,8 +43,14 @@ class TestCacheStatusEndpoint:
         assert response.status_code == 200
         assert "enabled" in response.data
         assert "version" in response.data
+        backend_key = "cacheBackend" if "cacheBackend" in response.data else "cache_backend"
+        location_key = "cacheLocation" if "cacheLocation" in response.data else "cache_location"
+        assert backend_key in response.data
+        assert location_key in response.data
         assert isinstance(response.data["enabled"], bool)
         assert isinstance(response.data["version"], int)
+        assert isinstance(response.data[backend_key], str)
+        assert isinstance(response.data[location_key], str)
         assert response.data["version"] >= 1
         
         user.delete()
