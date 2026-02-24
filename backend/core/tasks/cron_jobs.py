@@ -118,7 +118,7 @@ def _perform_full_backup() -> None:
     call_command("dbbackup")
     logger.info("DB Backup created successfully")
     dir_name = "media_" + datetime.date.today().strftime("%Y%m%d")
-    call_command("uploadmediatodropbox", dir_name)
+    call_command("uploadmediatos3", dir_name)
     logger.info("Media files uploaded successfully")
 
 

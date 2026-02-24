@@ -1,5 +1,5 @@
 import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import requests
 from django.core.cache import cache
@@ -139,6 +139,13 @@ class OpenRouterHealthCheckTests(TestCase):
         self.assertFalse(result)
 
 
+@override_settings(
+    CACHES={
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        }
+    }
+)
 class PrivilegedCronTaskLockingTests(TestCase):
     def setUp(self):
         cron_jobs.reset_privileged_cron_job_locks()
@@ -165,6 +172,16 @@ class PrivilegedCronTaskLockingTests(TestCase):
 
         self.assertFalse(executed)
         perform_clear_cache_mock.assert_not_called()
+
+    @patch("core.tasks.cron_jobs.call_command")
+    def test_full_backup_calls_dbbackup_and_uploadmediatos3(self, mock_call_command):
+        cron_jobs._perform_full_backup()
+
+        expected_dir_name = "media_" + datetime.date.today().strftime("%Y%m%d")
+        self.assertEqual(
+            mock_call_command.call_args_list,
+            [call("dbbackup"), call("uploadmediatos3", expected_dir_name)],
+        )
 
     @patch("core.tasks.cron_jobs._perform_full_backup")
     def test_full_backup_execution_releases_enqueue_lock_after_run(self, perform_full_backup_mock):

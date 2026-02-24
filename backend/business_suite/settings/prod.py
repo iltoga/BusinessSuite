@@ -111,13 +111,7 @@ LOGGING = {
             "level": "ERROR",
             "propagate": False,
         },
-        # Suppress noisy Dropbox SDK logging
-        "dropbox": {
-            "handlers": ["file"],  # Only log to file, not console
-            "level": "WARNING",  # Only show warnings and errors
-            "propagate": False,
-        },
-        # Suppress httpx/httpcore logs from Dropbox SDK
+        # Suppress noisy transport logs from external SDKs.
         "httpx": {
             "handlers": ["file"],
             "level": "WARNING",

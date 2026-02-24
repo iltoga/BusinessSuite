@@ -18,7 +18,6 @@ from datetime import timedelta
 from importlib import import_module
 from pathlib import Path
 
-from core.utils.dropbox_refresh_token import refresh_dropbox_token
 from dotenv import load_dotenv
 
 from business_suite.settings.cache_backends import build_prod_redis_caches
@@ -725,25 +724,6 @@ TESSERACT_CMD = "/opt/homebrew/bin/tesseract"
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 
-def get_dropbox_token():
-    # Skip token refresh in development to avoid network issues
-    if os.getenv("DJANGO_DEBUG", "False") == "True":
-        return None
-    try:
-        return refresh_dropbox_token(
-            os.getenv("DROPBOX_APP_KEY"),
-            os.getenv("DROPBOX_APP_SECRET"),
-            os.getenv("DROPBOX_OAUTH2_REFRESH_TOKEN"),
-        )
-    except Exception as e:
-        # Log the error and return None to allow Django to start
-        import logging
-
-        logger = logging.getLogger(__name__)
-        logger.error(f"Failed to refresh Dropbox token: {e}")
-        return None
-
-
 # Storage configuration
 USE_CLOUD_STORAGE = _parse_bool(os.getenv("USE_CLOUD_STORAGE", "False"))
 OCR_PREVIEW_STORAGE_PREFIX = os.getenv("OCR_PREVIEW_STORAGE_PREFIX", "ocr_previews")
@@ -765,43 +745,25 @@ AWS_DBBACKUP_LOCATION = os.getenv("AWS_DBBACKUP_LOCATION", "backups")
 
 if USE_CLOUD_STORAGE:
     DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
-    STORAGES = {
-        "default": {
-            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
-        },
-        "staticfiles": {
-            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-        },
-        "dbbackup": {
-            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
-            "OPTIONS": {
-                "location": AWS_DBBACKUP_LOCATION,
-            },
-        },
-    }
-    DBBACKUP_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
-    DBBACKUP_STORAGE_OPTIONS = {"location": AWS_DBBACKUP_LOCATION}
 else:
     DEFAULT_FILE_STORAGE = "django.core.files.storage.FileSystemStorage"
-    _dropbox_storage_options = {
-        "oauth2_access_token": get_dropbox_token(),
-        "app_key": os.getenv("DROPBOX_APP_KEY"),
-        "app_secret": os.getenv("DROPBOX_APP_SECRET"),
-    }
-    STORAGES = {
-        "default": {
-            "BACKEND": "django.core.files.storage.FileSystemStorage",
+
+STORAGES = {
+    "default": {
+        "BACKEND": DEFAULT_FILE_STORAGE,
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+    "dbbackup": {
+        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        "OPTIONS": {
+            "location": AWS_DBBACKUP_LOCATION,
         },
-        "staticfiles": {
-            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-        },
-        "dbbackup": {
-            "BACKEND": "storages.backends.dropbox.DropBoxStorage",
-            "OPTIONS": _dropbox_storage_options,
-        },
-    }
-    DBBACKUP_STORAGE = "storages.backends.dropbox.DropBoxStorage"
-    DBBACKUP_STORAGE_OPTIONS = _dropbox_storage_options
+    },
+}
+DBBACKUP_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
+DBBACKUP_STORAGE_OPTIONS = {"location": AWS_DBBACKUP_LOCATION}
 
 # Folders to exclude from media backup
 DBBACKUP_EXCLUDE_MEDIA_FODERS = ["tmpfiles"]
