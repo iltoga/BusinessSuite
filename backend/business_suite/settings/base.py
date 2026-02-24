@@ -944,6 +944,10 @@ LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openrouter")
 LLM_DEFAULT_MODEL = os.getenv("LLM_DEFAULT_MODEL", "google/gemini-2.5-flash-lite")
 # Dedicated model for document categorization; falls back to global LLM default when unset.
 DOCUMENT_CATEGORIZER_MODEL = os.getenv("DOCUMENT_CATEGORIZER_MODEL", LLM_DEFAULT_MODEL)
+# Higher-tier model used as fallback when the primary categorizer fails to classify.
+DOCUMENT_CATEGORIZER_MODEL_HIGH = os.getenv("DOCUMENT_CATEGORIZER_MODEL_HIGH", "google/gemini-3-flash-preview")
+# Dedicated model for document validation (positive/negative prompt analysis).
+DOCUMENT_VALIDATOR_MODEL = os.getenv("DOCUMENT_VALIDATOR_MODEL", "google/gemini-3-flash-preview")
 
 NOTIFICATION_FROM_EMAIL = os.getenv("NOTIFICATION_FROM_EMAIL", "dewi@revisbali.com")
 GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD")

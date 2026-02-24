@@ -23,6 +23,7 @@ export interface ApplicationProduct {
   requiredDocuments?: string | null;
   optionalDocuments?: string | null;
   documentsMinValidity?: number | null;
+  validationPrompt?: string | null;
 }
 
 export interface DocumentTypeInfo {
@@ -33,6 +34,8 @@ export interface DocumentTypeInfo {
   hasDocNumber: boolean;
   hasDetails: boolean;
   hasFile: boolean;
+  validationRuleAiPositive?: string | null;
+  validationRuleAiNegative?: string | null;
 }
 
 export interface DocumentAction {
@@ -53,6 +56,8 @@ export interface ApplicationDocument {
   metadata?: Record<string, unknown> | null;
   required: boolean;
   ocrCheck: boolean;
+  aiValidationStatus?: string | null;
+  aiValidationResult?: Record<string, unknown> | null;
   updatedAt?: string | null;
   createdAt?: string | null;
   updatedByUsername?: string | null;
@@ -175,14 +180,24 @@ export class ApplicationsService {
     );
   }
 
-  updateWorkflowDueDate(applicationId: number, workflowId: number, dueDate: string): Observable<any> {
-    return this.http.post(`/api/customer-applications/${applicationId}/workflows/${workflowId}/due-date/`, {
-      dueDate,
-    });
+  updateWorkflowDueDate(
+    applicationId: number,
+    workflowId: number,
+    dueDate: string,
+  ): Observable<any> {
+    return this.http.post(
+      `/api/customer-applications/${applicationId}/workflows/${workflowId}/due-date/`,
+      {
+        dueDate,
+      },
+    );
   }
 
   rollbackWorkflow(applicationId: number, workflowId: number): Observable<any> {
-    return this.http.post(`/api/customer-applications/${applicationId}/workflows/${workflowId}/rollback/`, {});
+    return this.http.post(
+      `/api/customer-applications/${applicationId}/workflows/${workflowId}/rollback/`,
+      {},
+    );
   }
 
   reopenApplication(applicationId: number): Observable<any> {
@@ -208,6 +223,7 @@ export class ApplicationsService {
       metadata?: Record<string, unknown> | null;
     },
     file?: File | null,
+    validateWithAi?: boolean,
   ): Observable<UploadState> {
     // Use DocumentsService wrapper that supports multipart uploads with progress
     return this.documentsService
@@ -217,6 +233,7 @@ export class ApplicationsService {
         details: payload.details ?? undefined,
         metadata: payload.metadata ?? undefined,
         file: file ?? undefined,
+        validateWithAi,
       })
       .pipe(
         map((event: HttpEvent<ApplicationDocument>) => {

@@ -42,6 +42,16 @@
           <div class="text-sm text-muted-foreground">
             {{ product()?.description || 'No description provided.' }}
           </div>
+          <div class="space-y-1">
+            <p class="text-xs uppercase text-muted-foreground">AI Validation Prompt</p>
+            @if (validationPrompt()) {
+              <p class="text-sm whitespace-pre-wrap rounded-md border bg-accent/20 px-3 py-2">
+                {{ validationPrompt() }}
+              </p>
+            } @else {
+              <p class="text-sm text-muted-foreground">No AI validation prompt configured.</p>
+            }
+          </div>
           <div class="grid gap-3 sm:grid-cols-2">
             <div>
               <p class="text-xs uppercase text-muted-foreground">Validity (days)</p>

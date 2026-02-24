@@ -55,6 +55,32 @@
           ></textarea>
         </div>
 
+        <div class="space-y-2">
+          <label class="text-sm font-medium" for="validationRuleAiPositive"
+            >AI Validation Rule (Positive)</label
+          >
+          <textarea
+            z-input
+            id="validationRuleAiPositive"
+            formControlName="validationRuleAiPositive"
+            placeholder="Describe what a valid document should contain"
+            rows="4"
+          ></textarea>
+        </div>
+
+        <div class="space-y-2">
+          <label class="text-sm font-medium" for="validationRuleAiNegative"
+            >AI Validation Rule (Negative)</label
+          >
+          <textarea
+            z-input
+            id="validationRuleAiNegative"
+            formControlName="validationRuleAiNegative"
+            placeholder="Describe issues that should invalidate the document"
+            rows="4"
+          ></textarea>
+        </div>
+
         <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
           <label class="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" formControlName="hasOcrCheck" class="rounded" />

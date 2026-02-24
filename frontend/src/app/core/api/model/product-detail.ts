@@ -27,6 +27,7 @@ export interface ProductDetail {
     requiredDocuments?: string;
     optionalDocuments?: string;
     documentsMinValidity?: number | null;
+    validationPrompt?: string;
     readonly tasks: Array<TaskNested>;
     readonly requiredDocumentTypes: Array<DocumentType>;
     readonly optionalDocumentTypes: Array<DocumentType>;

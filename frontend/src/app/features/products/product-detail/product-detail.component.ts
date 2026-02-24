@@ -87,6 +87,7 @@ export class ProductDetailComponent implements OnInit {
   readonly optionalDocuments = computed<DocumentType[]>(
     () => this.product()?.optionalDocumentTypes ?? [],
   );
+  readonly validationPrompt = computed(() => (this.product()?.validationPrompt ?? '').trim());
 
   readonly tasks = computed(() => {
     const items = this.product()?.tasks ?? [];
@@ -167,12 +168,12 @@ export class ProductDetailComponent implements OnInit {
   }
 
   retailPriceValue(): string | null {
-    const product = this.product() as any;
+    const product = this.product();
     return product?.retailPrice ?? product?.basePrice ?? null;
   }
 
   unitProfitValue(): number {
-    const product = this.product() as any;
+    const product = this.product();
     const retail = Number(product?.retailPrice ?? product?.basePrice ?? 0);
     const base = Number(product?.basePrice ?? 0);
     if (Number.isNaN(retail) || Number.isNaN(base)) {

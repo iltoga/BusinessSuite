@@ -163,6 +163,20 @@ export class ApplicationDetailComponent implements OnInit {
   readonly isAddDocumentDialogOpen = signal(false);
   readonly actionLoading = signal<string | null>(null);
   readonly workflowAction = signal<string | null>(null);
+
+  // AI validation on upload
+  readonly validateWithAi = signal(true);
+  readonly aiValidationInProgress = signal(false);
+  readonly aiValidationDocId = signal<number | null>(null);
+  readonly hasAiValidationRules = computed(() => {
+    const app = this.application();
+    const doc = this.selectedDocument();
+    if (!app || !doc) return false;
+    const productHasPrompt = !!app.product?.validationPrompt;
+    const docTypeHasPositive = !!doc.docType?.validationRuleAiPositive;
+    const docTypeHasNegative = !!doc.docType?.validationRuleAiNegative;
+    return productHasPrompt || docTypeHasPositive || docTypeHasNegative;
+  });
   readonly originSearchQuery = signal<string | null>(null);
   readonly isSuperuser = this.authService.isSuperuser;
   readonly isSavingMeta = signal(false);
@@ -424,6 +438,7 @@ export class ApplicationDetailComponent implements OnInit {
       this.clearUploadPreview();
       this.clearExistingPreview();
       this.categorizationSub?.unsubscribe();
+      this.closeValidationStream();
     });
   }
 
@@ -437,6 +452,7 @@ export class ApplicationDetailComponent implements OnInit {
     this.ocrReviewOpen.set(false);
     this.ocrReviewData.set(null);
     this.ocrMetadata.set(document.metadata ?? null);
+    this.validateWithAi.set(true);
     this.uploadForm.reset({
       docNumber: document.docNumber ?? '',
       expirationDate: this.parseApiDate(document.expirationDate),
@@ -454,6 +470,7 @@ export class ApplicationDetailComponent implements OnInit {
     this.uploadProgress.set(null);
     this.ocrPolling.set(false);
     this.ocrStatus.set(null);
+    this.closeValidationStream();
   }
 
   onFileSelected(file: File): void {
@@ -481,6 +498,8 @@ export class ApplicationDetailComponent implements OnInit {
     this.uploadProgress.set(0);
 
     const formValue = this.uploadForm.getRawValue();
+    const shouldValidate =
+      this.validateWithAi() && this.hasAiValidationRules() && !!this.selectedFile();
 
     this.applicationsService
       .updateDocument(
@@ -492,6 +511,7 @@ export class ApplicationDetailComponent implements OnInit {
           metadata: this.ocrMetadata(),
         },
         this.selectedFile(),
+        shouldValidate,
       )
       .subscribe({
         next: (state) => {
@@ -502,7 +522,13 @@ export class ApplicationDetailComponent implements OnInit {
             this.replaceDocument(state.document);
             this.toast.success('Document updated');
             this.isSaving.set(false);
-            this.closeUpload();
+
+            if (shouldValidate && state.document.aiValidationStatus) {
+              // Start SSE stream for validation progress
+              this.startValidationStream(state.document.id);
+            } else {
+              this.closeUpload();
+            }
           }
         },
         error: (error) => {
@@ -510,6 +536,144 @@ export class ApplicationDetailComponent implements OnInit {
           this.isSaving.set(false);
         },
       });
+  }
+
+  startValidationStream(documentId: number): void {
+    this.closeValidationStream();
+    this.aiValidationInProgress.set(true);
+    this.aiValidationDocId.set(documentId);
+
+    const controller = new AbortController();
+    this.validationAbortController = controller;
+
+    const runStream = async () => {
+      try {
+        const headers = new Headers({ Accept: 'text/event-stream' });
+        const token = this.authService.getToken();
+        if (token) {
+          headers.set('Authorization', `Bearer ${token}`);
+        }
+
+        const response = await fetch(`/api/documents/${documentId}/validation-stream/`, {
+          method: 'GET',
+          headers,
+          credentials: 'include',
+          cache: 'no-store',
+          signal: controller.signal,
+        });
+
+        if (!response.ok || !response.body) {
+          this.toast.error('Failed to connect to validation stream');
+          this.closeValidationStream();
+          this.closeUpload();
+          return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          let eventType = '';
+          for (const line of lines) {
+            if (line.startsWith('event: ')) {
+              eventType = line.slice(7).trim();
+            } else if (line.startsWith('data: ') && eventType) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                this.handleValidationEvent(eventType, data, documentId);
+              } catch {
+                // ignore parse errors
+              }
+              eventType = '';
+            }
+          }
+        }
+      } catch (err: unknown) {
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        this.closeValidationStream();
+        this.closeUpload();
+      }
+    };
+
+    void runStream();
+  }
+
+  private handleValidationEvent(
+    eventType: string,
+    data: Record<string, unknown>,
+    documentId: number,
+  ): void {
+    if (eventType === 'complete') {
+      const status = data['validationStatus'] as string;
+      const result = (data['validationResult'] as Record<string, unknown>) || {};
+
+      this.updateDocumentValidation(documentId, status, result);
+
+      if (status === 'valid') {
+        this.toast.success('AI validation passed');
+      } else if (status === 'invalid') {
+        const issues = ((result['negative_issues'] as string[]) || []).join('; ');
+        this.toast.error(
+          `AI validation failed: ${issues || (result['reasoning'] as string) || 'See details'}`,
+        );
+      } else {
+        this.toast.error('AI validation encountered an error');
+      }
+      this.closeValidationStream();
+      this.closeUpload();
+    } else if (eventType === 'timeout') {
+      this.toast.error('AI validation timed out');
+      this.closeValidationStream();
+      this.closeUpload();
+    }
+  }
+
+  private validationAbortController: AbortController | null = null;
+
+  closeValidationStream(): void {
+    this.aiValidationInProgress.set(false);
+    this.aiValidationDocId.set(null);
+    this.validationAbortController?.abort();
+    this.validationAbortController = null;
+  }
+
+  private updateDocumentValidation(
+    documentId: number,
+    status: string,
+    result: Record<string, unknown>,
+  ): void {
+    // Update in localUploadedDocuments
+    const docs = this.localUploadedDocuments();
+    const idx = docs.findIndex((d) => d.id === documentId);
+    if (idx >= 0) {
+      const updated = { ...docs[idx], aiValidationStatus: status, aiValidationResult: result };
+      const newDocs = [...docs];
+      newDocs[idx] = updated;
+      this.localUploadedDocuments.set(newDocs);
+    }
+
+    // Also update in the main application signal
+    const app = this.application();
+    if (app) {
+      const appDocs = [...(app.documents || [])];
+      const appIdx = appDocs.findIndex((d) => d.id === documentId);
+      if (appIdx >= 0) {
+        appDocs[appIdx] = {
+          ...appDocs[appIdx],
+          aiValidationStatus: status,
+          aiValidationResult: result,
+        };
+        this.application.set({ ...app, documents: appDocs });
+      }
+    }
   }
 
   runOcr(): void {
@@ -1683,6 +1847,10 @@ export class ApplicationDetailComponent implements OnInit {
                 confidence: 0,
                 reasoning: '',
                 error: null,
+                categorizationPass: 1,
+                validationStatus: null,
+                validationReasoning: null,
+                validationNegativeIssues: null,
               },
             ]);
           }
@@ -1703,6 +1871,10 @@ export class ApplicationDetailComponent implements OnInit {
           confidence: event.data['confidence'] ?? 0,
           reasoning: event.data['reasoning'] ?? '',
           error: null,
+          categorizationPass: event.data['categorizationPass'] ?? 1,
+          validationStatus: null,
+          validationReasoning: null,
+          validationNegativeIssues: null,
         };
         if (idx >= 0) {
           results[idx] = result;
@@ -1728,6 +1900,10 @@ export class ApplicationDetailComponent implements OnInit {
           confidence: 0,
           reasoning: '',
           error: event.data['error'] ?? 'Unknown error',
+          categorizationPass: null,
+          validationStatus: null,
+          validationReasoning: null,
+          validationNegativeIssues: null,
         };
         if (idx >= 0) {
           results[idx] = errorResult;
@@ -1735,6 +1911,47 @@ export class ApplicationDetailComponent implements OnInit {
           results.push(errorResult);
         }
         this.categorizationResults.set(results);
+        break;
+      }
+
+      case 'file_categorizing_pass2': {
+        const results = [...this.categorizationResults()];
+        const idx = results.findIndex((r) => r.filename === event.data['filename']);
+        if (idx >= 0) {
+          results[idx] = { ...results[idx], categorizationPass: 2 };
+          this.categorizationResults.set(results);
+        }
+        this.categorizationStatusMessage.set(
+          event.data['message'] ?? 'Retrying with high-tier model...',
+        );
+        break;
+      }
+
+      case 'file_validating': {
+        const results = [...this.categorizationResults()];
+        const idx = results.findIndex((r) => r.filename === event.data['filename']);
+        if (idx >= 0) {
+          results[idx] = { ...results[idx], validationStatus: 'pending' };
+          this.categorizationResults.set(results);
+        }
+        this.categorizationStatusMessage.set(event.data['message'] ?? 'Validating document...');
+        break;
+      }
+
+      case 'file_validated': {
+        const results = [...this.categorizationResults()];
+        const idx = results.findIndex((r) => r.filename === event.data['filename']);
+        if (idx >= 0) {
+          results[idx] = {
+            ...results[idx],
+            validationStatus:
+              (event.data['validationStatus'] as CategorizationFileResult['validationStatus']) ??
+              null,
+            validationReasoning: event.data['validationReasoning'] ?? null,
+            validationNegativeIssues: event.data['validationNegativeIssues'] ?? null,
+          };
+          this.categorizationResults.set(results);
+        }
         break;
       }
 
@@ -1755,6 +1972,10 @@ export class ApplicationDetailComponent implements OnInit {
             confidence: r.confidence,
             reasoning: r.reasoning,
             error: r.error ?? null,
+            categorizationPass: r.categorizationPass ?? null,
+            validationStatus: r.validationStatus ?? null,
+            validationReasoning: r.validationReasoning ?? null,
+            validationNegativeIssues: r.validationNegativeIssues ?? null,
           }));
           this.categorizationResults.set(finalResults);
         }
@@ -1798,6 +2019,34 @@ export class ApplicationDetailComponent implements OnInit {
           this.toast.error(extractServerErrorMessage(error) || 'Failed to apply categorization');
         },
       });
+  }
+
+  dismissSelectedCategorization(selectedKeys: string[]): void {
+    if (!selectedKeys || selectedKeys.length === 0) {
+      return;
+    }
+
+    const current = this.categorizationResults();
+    const selectedKeySet = new Set(selectedKeys);
+    const remaining = current.filter(
+      (result, index) => !selectedKeySet.has(this.getCategorizationResultKey(result, index)),
+    );
+    const dismissedCount = current.length - remaining.length;
+
+    if (dismissedCount <= 0) {
+      return;
+    }
+
+    this.categorizationResults.set(remaining);
+    this.toast.success(`${dismissedCount} document(s) dismissed`);
+
+    if (remaining.length === 0) {
+      this.dismissCategorization();
+    }
+  }
+
+  private getCategorizationResultKey(result: CategorizationFileResult, index: number): string {
+    return result.itemId || `${result.filename}-${index}`;
   }
 
   dismissCategorization(): void {

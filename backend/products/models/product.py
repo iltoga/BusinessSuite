@@ -35,6 +35,8 @@ class Product(models.Model):
     optional_documents = models.CharField(max_length=1024, blank=True)
     # Documents must be valid for this many days
     documents_min_validity = models.PositiveIntegerField(blank=True, null=True)
+    # Optional AI system prompt injected during document validation for all applications using this product
+    validation_prompt = models.TextField(blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True, db_index=True)
@@ -88,8 +90,10 @@ class Product(models.Model):
 
     def save(self, *args, **kwargs):
         # Preserve legacy creates where base_price is provided but retail_price is omitted.
-        if self._state.adding and self.base_price not in (None, Decimal("0.00")) and self.retail_price == Decimal(
-            "0.00"
+        if (
+            self._state.adding
+            and self.base_price not in (None, Decimal("0.00"))
+            and self.retail_price == Decimal("0.00")
         ):
             self.retail_price = self.base_price
         elif self.retail_price is None:

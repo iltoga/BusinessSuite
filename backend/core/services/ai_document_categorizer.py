@@ -8,7 +8,7 @@ Supports both single-file categorization and batch processing.
 import io
 import os
 import tempfile
-from typing import Optional
+from typing import Callable, Optional
 
 from core.services.ai_client import AIClient
 from core.services.ai_usage_service import AIUsageFeature
@@ -36,6 +36,36 @@ CATEGORIZATION_SCHEMA = {
         },
     },
     "required": ["document_type", "confidence", "reasoning"],
+    "additionalProperties": False,
+}
+
+# JSON schema for document validation output
+VALIDATION_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "valid": {
+            "type": "boolean",
+            "description": "Whether the document meets the validation criteria.",
+        },
+        "confidence": {
+            "type": "number",
+            "description": "Confidence score between 0.0 and 1.0.",
+        },
+        "positive_analysis": {
+            "type": "string",
+            "description": "Summary of which positive criteria the document meets.",
+        },
+        "negative_issues": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "List of specific issues found based on negative validation criteria. Empty if valid.",
+        },
+        "reasoning": {
+            "type": "string",
+            "description": "Overall reasoning for the validation verdict.",
+        },
+    },
+    "required": ["valid", "confidence", "positive_analysis", "negative_issues", "reasoning"],
     "additionalProperties": False,
 }
 
@@ -81,7 +111,11 @@ def _build_user_prompt(filename: str) -> str:
 
 def get_document_types_for_prompt() -> list[dict]:
     """Fetch all DocumentType records formatted for the prompt."""
-    return list(DocumentType.objects.values("id", "name", "description").order_by("name"))
+    return list(
+        DocumentType.objects.values(
+            "id", "name", "description", "validation_rule_ai_positive", "validation_rule_ai_negative"
+        ).order_by("name")
+    )
 
 
 class AIDocumentCategorizer:
@@ -255,3 +289,167 @@ class AIDocumentCategorizer:
             "reasoning": result.get("reasoning", ""),
             "document_type_id": result.get("document_type_id"),
         }
+
+    def categorize_file_two_pass(
+        self,
+        file_bytes: bytes,
+        filename: str,
+        document_types: Optional[list[dict]] = None,
+        on_pass_update: Optional[Callable[[int, str], None]] = None,
+    ) -> dict:
+        """
+        Two-pass categorization with automatic fallback to a higher-tier model.
+
+        Pass 1 uses the primary model (self.model).
+        If pass 1 returns document_type=None, pass 2 uses DOCUMENT_CATEGORIZER_MODEL_HIGH.
+
+        Args:
+            file_bytes: Raw file content.
+            filename: Original filename.
+            document_types: Pre-fetched document types list; fetched from DB if None.
+            on_pass_update: Optional callback(pass_number, message) for progress updates.
+
+        Returns:
+            Dict with categorization result plus 'pass_used' (1 or 2).
+        """
+        if document_types is None:
+            document_types = get_document_types_for_prompt()
+
+        # --- Pass 1 ---
+        if on_pass_update:
+            on_pass_update(1, f"Categorizing {filename} (pass 1)...")
+
+        try:
+            result = self.categorize_file(file_bytes, filename, document_types)
+        except Exception as exc:
+            logger.warning("Pass 1 failed for %s: %s", filename, exc)
+            result = {"document_type": None, "confidence": 0, "reasoning": f"Pass 1 error: {exc}"}
+
+        if result.get("document_type_id"):
+            result["pass_used"] = 1
+            return result
+
+        # --- Pass 2: fallback to higher-tier model ---
+        high_model = getattr(settings, "DOCUMENT_CATEGORIZER_MODEL_HIGH", None)
+        if not high_model or high_model == self.model:
+            # No distinct fallback configured
+            result["pass_used"] = 1
+            return result
+
+        if on_pass_update:
+            on_pass_update(2, f"Retrying {filename} with higher-tier model (pass 2)...")
+
+        logger.info("Pass 1 returned no match for %s, retrying with model %s", filename, high_model)
+
+        high_categorizer = AIDocumentCategorizer(
+            model=high_model,
+            provider_order=self.provider_order,
+            feature_name=self.feature_name,
+        )
+        try:
+            result2 = high_categorizer.categorize_file(file_bytes, filename, document_types)
+        except Exception as exc:
+            logger.warning("Pass 2 failed for %s: %s", filename, exc)
+            result2 = {"document_type": None, "confidence": 0, "reasoning": f"Pass 2 error: {exc}"}
+
+        result2["pass_used"] = 2
+        return result2
+
+    @staticmethod
+    def validate_document(
+        file_bytes: bytes,
+        filename: str,
+        doc_type_name: str,
+        positive_prompt: str,
+        negative_prompt: str,
+        product_prompt: str = "",
+        model: Optional[str] = None,
+        provider_order: Optional[list[str]] = None,
+    ) -> dict:
+        """
+        Validate a document against its DocumentType's positive/negative criteria.
+
+        Uses a dedicated validator model (DOCUMENT_VALIDATOR_MODEL).
+        If no prompts are configured, returns an auto-valid result without calling the LLM.
+
+        Returns:
+            Dict with 'valid' (bool), 'confidence' (float), 'positive_analysis' (str),
+            'negative_issues' (list[str]), 'reasoning' (str).
+        """
+        if not positive_prompt and not negative_prompt and not product_prompt:
+            return {
+                "valid": True,
+                "confidence": 1.0,
+                "positive_analysis": "No validation rules configured for this document type.",
+                "negative_issues": [],
+                "reasoning": "Validation skipped — no AI validation prompts defined.",
+            }
+
+        validator_model = model or getattr(settings, "DOCUMENT_VALIDATOR_MODEL", None)
+        client = AIClient(
+            model=validator_model,
+            feature_name=AIUsageFeature.DOCUMENT_AI_VALIDATOR,
+        )
+
+        # Build system prompt incorporating both positive and negative rules
+        sections = [
+            f"You are a document quality validator for a visa/immigration agency. "
+            f'You are validating a document classified as "{doc_type_name}".\n'
+        ]
+        if positive_prompt:
+            sections.append(f"POSITIVE VALIDATION CRITERIA (the document SHOULD meet these):\n{positive_prompt}\n")
+        if negative_prompt:
+            sections.append(
+                f"NEGATIVE VALIDATION CRITERIA (the document should NOT have these issues):\n{negative_prompt}\n"
+            )
+        if product_prompt:
+            sections.append(
+                f"PRODUCT-SPECIFIC CONTEXT (applies to this visa/product and takes priority over generic rules):\n{product_prompt}\n"
+            )
+        sections.append(
+            "Analyze the uploaded image/document against both sets of criteria.\n"
+            "Return valid=true ONLY if the document reasonably meets the positive criteria "
+            "AND has no major negative issues.\n"
+            "List each specific negative issue found in 'negative_issues' (empty array if none).\n"
+            "Provide an overall confidence score (0.0-1.0) and clear reasoning."
+        )
+        system_prompt = "\n".join(sections)
+        user_prompt = (
+            f"Validate this document (classified as '{doc_type_name}'). "
+            f"Original filename: '{filename}'. "
+            "Check it against the positive and negative validation criteria."
+        )
+
+        # Prepare vision bytes (PDF → image if needed)
+        categorizer = AIDocumentCategorizer.__new__(AIDocumentCategorizer)
+        vision_bytes, vision_filename = categorizer._prepare_vision_bytes(file_bytes, filename)
+
+        messages = client.build_vision_message(
+            prompt=user_prompt,
+            image_bytes=vision_bytes,
+            filename=vision_filename,
+            system_prompt=system_prompt,
+        )
+
+        extra_kwargs = {}
+        if provider_order:
+            extra_kwargs["extra_body"] = {"provider": {"order": provider_order}}
+
+        result = client.chat_completion_json(
+            messages=messages,
+            json_schema=VALIDATION_SCHEMA,
+            schema_name="document_validation",
+            temperature=0.1,
+            strict=True,
+            **extra_kwargs,
+        )
+
+        logger.info(
+            "Document validated: %s (%s) -> valid=%s (confidence: %.2f)",
+            filename,
+            doc_type_name,
+            result.get("valid"),
+            result.get("confidence", 0),
+        )
+
+        return result

@@ -4970,6 +4970,8 @@ export class V1Service extends BaseService {
      * @param fileLink 
      * @param completed 
      * @param ocrCheck 
+     * @param aiValidationStatus * &#x60;&#x60; - Not requested * &#x60;pending&#x60; - Pending * &#x60;validating&#x60; - Validating * &#x60;valid&#x60; - Valid * &#x60;invalid&#x60; - Invalid * &#x60;error&#x60; - Error
+     * @param aiValidationResult 
      * @param createdAt 
      * @param updatedAt 
      * @param createdBy 
@@ -4988,10 +4990,10 @@ export class V1Service extends BaseService {
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public v1DocumentsActionsCreate(actionName: string, id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<Document>;
-    public v1DocumentsActionsCreate(actionName: string, id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<Document>>;
-    public v1DocumentsActionsCreate(actionName: string, id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<Document>>;
-    public v1DocumentsActionsCreate(actionName: string, id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+    public v1DocumentsActionsCreate(actionName: string, id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, aiValidationStatus: string, aiValidationResult: any, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<Document>;
+    public v1DocumentsActionsCreate(actionName: string, id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, aiValidationStatus: string, aiValidationResult: any, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<Document>>;
+    public v1DocumentsActionsCreate(actionName: string, id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, aiValidationStatus: string, aiValidationResult: any, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<Document>>;
+    public v1DocumentsActionsCreate(actionName: string, id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, aiValidationStatus: string, aiValidationResult: any, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
         if (actionName === null || actionName === undefined) {
             throw new Error('Required parameter actionName was null or undefined when calling v1DocumentsActionsCreate.');
         }
@@ -5015,6 +5017,12 @@ export class V1Service extends BaseService {
         }
         if (ocrCheck === null || ocrCheck === undefined) {
             throw new Error('Required parameter ocrCheck was null or undefined when calling v1DocumentsActionsCreate.');
+        }
+        if (aiValidationStatus === null || aiValidationStatus === undefined) {
+            throw new Error('Required parameter aiValidationStatus was null or undefined when calling v1DocumentsActionsCreate.');
+        }
+        if (aiValidationResult === null || aiValidationResult === undefined) {
+            throw new Error('Required parameter aiValidationResult was null or undefined when calling v1DocumentsActionsCreate.');
         }
         if (createdAt === null || createdAt === undefined) {
             throw new Error('Required parameter createdAt was null or undefined when calling v1DocumentsActionsCreate.');
@@ -5113,6 +5121,12 @@ export class V1Service extends BaseService {
         if (required !== undefined) {
             localVarFormParams = localVarFormParams.append('required', <any>required) as any || localVarFormParams;
         }
+        if (aiValidationStatus !== undefined) {
+            localVarFormParams = localVarFormParams.append('ai_validation_status', <any>aiValidationStatus) as any || localVarFormParams;
+        }
+        if (aiValidationResult !== undefined) {
+            localVarFormParams = localVarFormParams.append('ai_validation_result', <any>aiValidationResult) as any || localVarFormParams;
+        }
         if (createdAt !== undefined) {
             localVarFormParams = localVarFormParams.append('created_at', <any>createdAt) as any || localVarFormParams;
         }
@@ -5176,6 +5190,8 @@ export class V1Service extends BaseService {
      * @param fileLink 
      * @param completed 
      * @param ocrCheck 
+     * @param aiValidationStatus * &#x60;&#x60; - Not requested * &#x60;pending&#x60; - Pending * &#x60;validating&#x60; - Validating * &#x60;valid&#x60; - Valid * &#x60;invalid&#x60; - Invalid * &#x60;error&#x60; - Error
+     * @param aiValidationResult 
      * @param createdAt 
      * @param updatedAt 
      * @param createdBy 
@@ -5194,10 +5210,10 @@ export class V1Service extends BaseService {
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public v1DocumentsCreate(id: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<Document>;
-    public v1DocumentsCreate(id: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<Document>>;
-    public v1DocumentsCreate(id: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<Document>>;
-    public v1DocumentsCreate(id: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+    public v1DocumentsCreate(id: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, aiValidationStatus: string, aiValidationResult: any, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<Document>;
+    public v1DocumentsCreate(id: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, aiValidationStatus: string, aiValidationResult: any, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<Document>>;
+    public v1DocumentsCreate(id: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, aiValidationStatus: string, aiValidationResult: any, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<Document>>;
+    public v1DocumentsCreate(id: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, aiValidationStatus: string, aiValidationResult: any, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
         if (id === null || id === undefined) {
             throw new Error('Required parameter id was null or undefined when calling v1DocumentsCreate.');
         }
@@ -5215,6 +5231,12 @@ export class V1Service extends BaseService {
         }
         if (ocrCheck === null || ocrCheck === undefined) {
             throw new Error('Required parameter ocrCheck was null or undefined when calling v1DocumentsCreate.');
+        }
+        if (aiValidationStatus === null || aiValidationStatus === undefined) {
+            throw new Error('Required parameter aiValidationStatus was null or undefined when calling v1DocumentsCreate.');
+        }
+        if (aiValidationResult === null || aiValidationResult === undefined) {
+            throw new Error('Required parameter aiValidationResult was null or undefined when calling v1DocumentsCreate.');
         }
         if (createdAt === null || createdAt === undefined) {
             throw new Error('Required parameter createdAt was null or undefined when calling v1DocumentsCreate.');
@@ -5312,6 +5334,12 @@ export class V1Service extends BaseService {
         }
         if (required !== undefined) {
             localVarFormParams = localVarFormParams.append('required', <any>required) as any || localVarFormParams;
+        }
+        if (aiValidationStatus !== undefined) {
+            localVarFormParams = localVarFormParams.append('ai_validation_status', <any>aiValidationStatus) as any || localVarFormParams;
+        }
+        if (aiValidationResult !== undefined) {
+            localVarFormParams = localVarFormParams.append('ai_validation_result', <any>aiValidationResult) as any || localVarFormParams;
         }
         if (createdAt !== undefined) {
             localVarFormParams = localVarFormParams.append('created_at', <any>createdAt) as any || localVarFormParams;
@@ -5564,6 +5592,7 @@ export class V1Service extends BaseService {
     }
 
     /**
+     * Override to trigger AI validation when requested.
      * @endpoint patch /api/v1/documents/{id}/
      * @param id A unique integer value identifying this document.
      * @param id2 
@@ -5572,6 +5601,8 @@ export class V1Service extends BaseService {
      * @param fileLink 
      * @param completed 
      * @param ocrCheck 
+     * @param aiValidationStatus * &#x60;&#x60; - Not requested * &#x60;pending&#x60; - Pending * &#x60;validating&#x60; - Validating * &#x60;valid&#x60; - Valid * &#x60;invalid&#x60; - Invalid * &#x60;error&#x60; - Error
+     * @param aiValidationResult 
      * @param createdAt 
      * @param updatedAt 
      * @param createdBy 
@@ -5590,10 +5621,10 @@ export class V1Service extends BaseService {
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public v1DocumentsPartialUpdate(id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<Document>;
-    public v1DocumentsPartialUpdate(id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<Document>>;
-    public v1DocumentsPartialUpdate(id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<Document>>;
-    public v1DocumentsPartialUpdate(id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+    public v1DocumentsPartialUpdate(id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, aiValidationStatus: string, aiValidationResult: any, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<Document>;
+    public v1DocumentsPartialUpdate(id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, aiValidationStatus: string, aiValidationResult: any, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<Document>>;
+    public v1DocumentsPartialUpdate(id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, aiValidationStatus: string, aiValidationResult: any, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<Document>>;
+    public v1DocumentsPartialUpdate(id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, aiValidationStatus: string, aiValidationResult: any, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
         if (id === null || id === undefined) {
             throw new Error('Required parameter id was null or undefined when calling v1DocumentsPartialUpdate.');
         }
@@ -5614,6 +5645,12 @@ export class V1Service extends BaseService {
         }
         if (ocrCheck === null || ocrCheck === undefined) {
             throw new Error('Required parameter ocrCheck was null or undefined when calling v1DocumentsPartialUpdate.');
+        }
+        if (aiValidationStatus === null || aiValidationStatus === undefined) {
+            throw new Error('Required parameter aiValidationStatus was null or undefined when calling v1DocumentsPartialUpdate.');
+        }
+        if (aiValidationResult === null || aiValidationResult === undefined) {
+            throw new Error('Required parameter aiValidationResult was null or undefined when calling v1DocumentsPartialUpdate.');
         }
         if (createdAt === null || createdAt === undefined) {
             throw new Error('Required parameter createdAt was null or undefined when calling v1DocumentsPartialUpdate.');
@@ -5711,6 +5748,12 @@ export class V1Service extends BaseService {
         }
         if (required !== undefined) {
             localVarFormParams = localVarFormParams.append('required', <any>required) as any || localVarFormParams;
+        }
+        if (aiValidationStatus !== undefined) {
+            localVarFormParams = localVarFormParams.append('ai_validation_status', <any>aiValidationStatus) as any || localVarFormParams;
+        }
+        if (aiValidationResult !== undefined) {
+            localVarFormParams = localVarFormParams.append('ai_validation_result', <any>aiValidationResult) as any || localVarFormParams;
         }
         if (createdAt !== undefined) {
             localVarFormParams = localVarFormParams.append('created_at', <any>createdAt) as any || localVarFormParams;
@@ -5897,6 +5940,8 @@ export class V1Service extends BaseService {
      * @param fileLink 
      * @param completed 
      * @param ocrCheck 
+     * @param aiValidationStatus * &#x60;&#x60; - Not requested * &#x60;pending&#x60; - Pending * &#x60;validating&#x60; - Validating * &#x60;valid&#x60; - Valid * &#x60;invalid&#x60; - Invalid * &#x60;error&#x60; - Error
+     * @param aiValidationResult 
      * @param createdAt 
      * @param updatedAt 
      * @param createdBy 
@@ -5915,10 +5960,10 @@ export class V1Service extends BaseService {
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public v1DocumentsUpdate(id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<Document>;
-    public v1DocumentsUpdate(id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<Document>>;
-    public v1DocumentsUpdate(id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<Document>>;
-    public v1DocumentsUpdate(id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+    public v1DocumentsUpdate(id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, aiValidationStatus: string, aiValidationResult: any, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<Document>;
+    public v1DocumentsUpdate(id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, aiValidationStatus: string, aiValidationResult: any, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<Document>>;
+    public v1DocumentsUpdate(id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, aiValidationStatus: string, aiValidationResult: any, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<Document>>;
+    public v1DocumentsUpdate(id: number, id2: number, docApplication: number, docType: DocumentType, fileLink: string, completed: boolean, ocrCheck: boolean, aiValidationStatus: string, aiValidationResult: any, createdAt: string, updatedAt: string, createdBy: number, updatedBy: number, updatedByUsername: string, createdByUsername: string, extraActions: Array<DocumentAction>, docTypeId?: number, docNumber?: string, expirationDate?: string, file?: string, details?: string, metadata?: any, required?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
         if (id === null || id === undefined) {
             throw new Error('Required parameter id was null or undefined when calling v1DocumentsUpdate.');
         }
@@ -5939,6 +5984,12 @@ export class V1Service extends BaseService {
         }
         if (ocrCheck === null || ocrCheck === undefined) {
             throw new Error('Required parameter ocrCheck was null or undefined when calling v1DocumentsUpdate.');
+        }
+        if (aiValidationStatus === null || aiValidationStatus === undefined) {
+            throw new Error('Required parameter aiValidationStatus was null or undefined when calling v1DocumentsUpdate.');
+        }
+        if (aiValidationResult === null || aiValidationResult === undefined) {
+            throw new Error('Required parameter aiValidationResult was null or undefined when calling v1DocumentsUpdate.');
         }
         if (createdAt === null || createdAt === undefined) {
             throw new Error('Required parameter createdAt was null or undefined when calling v1DocumentsUpdate.');
@@ -6036,6 +6087,12 @@ export class V1Service extends BaseService {
         }
         if (required !== undefined) {
             localVarFormParams = localVarFormParams.append('required', <any>required) as any || localVarFormParams;
+        }
+        if (aiValidationStatus !== undefined) {
+            localVarFormParams = localVarFormParams.append('ai_validation_status', <any>aiValidationStatus) as any || localVarFormParams;
+        }
+        if (aiValidationResult !== undefined) {
+            localVarFormParams = localVarFormParams.append('ai_validation_result', <any>aiValidationResult) as any || localVarFormParams;
         }
         if (createdAt !== undefined) {
             localVarFormParams = localVarFormParams.append('created_at', <any>createdAt) as any || localVarFormParams;
@@ -9398,14 +9455,15 @@ export class V1Service extends BaseService {
      * @param requiredDocuments 
      * @param optionalDocuments 
      * @param documentsMinValidity 
+     * @param validationPrompt 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public v1ProductsImportStartCreate(id: number, name: string, code: string, createdAt: string, updatedAt: string, createdBy: string, updatedBy: string, description?: string, immigrationId?: string, basePrice?: string, retailPrice?: string, productType?: string, validity?: number, requiredDocuments?: string, optionalDocuments?: string, documentsMinValidity?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<Product>;
-    public v1ProductsImportStartCreate(id: number, name: string, code: string, createdAt: string, updatedAt: string, createdBy: string, updatedBy: string, description?: string, immigrationId?: string, basePrice?: string, retailPrice?: string, productType?: string, validity?: number, requiredDocuments?: string, optionalDocuments?: string, documentsMinValidity?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<Product>>;
-    public v1ProductsImportStartCreate(id: number, name: string, code: string, createdAt: string, updatedAt: string, createdBy: string, updatedBy: string, description?: string, immigrationId?: string, basePrice?: string, retailPrice?: string, productType?: string, validity?: number, requiredDocuments?: string, optionalDocuments?: string, documentsMinValidity?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<Product>>;
-    public v1ProductsImportStartCreate(id: number, name: string, code: string, createdAt: string, updatedAt: string, createdBy: string, updatedBy: string, description?: string, immigrationId?: string, basePrice?: string, retailPrice?: string, productType?: string, validity?: number, requiredDocuments?: string, optionalDocuments?: string, documentsMinValidity?: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+    public v1ProductsImportStartCreate(id: number, name: string, code: string, createdAt: string, updatedAt: string, createdBy: string, updatedBy: string, description?: string, immigrationId?: string, basePrice?: string, retailPrice?: string, productType?: string, validity?: number, requiredDocuments?: string, optionalDocuments?: string, documentsMinValidity?: number, validationPrompt?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<Product>;
+    public v1ProductsImportStartCreate(id: number, name: string, code: string, createdAt: string, updatedAt: string, createdBy: string, updatedBy: string, description?: string, immigrationId?: string, basePrice?: string, retailPrice?: string, productType?: string, validity?: number, requiredDocuments?: string, optionalDocuments?: string, documentsMinValidity?: number, validationPrompt?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<Product>>;
+    public v1ProductsImportStartCreate(id: number, name: string, code: string, createdAt: string, updatedAt: string, createdBy: string, updatedBy: string, description?: string, immigrationId?: string, basePrice?: string, retailPrice?: string, productType?: string, validity?: number, requiredDocuments?: string, optionalDocuments?: string, documentsMinValidity?: number, validationPrompt?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<Product>>;
+    public v1ProductsImportStartCreate(id: number, name: string, code: string, createdAt: string, updatedAt: string, createdBy: string, updatedBy: string, description?: string, immigrationId?: string, basePrice?: string, retailPrice?: string, productType?: string, validity?: number, requiredDocuments?: string, optionalDocuments?: string, documentsMinValidity?: number, validationPrompt?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
         if (id === null || id === undefined) {
             throw new Error('Required parameter id was null or undefined when calling v1ProductsImportStartCreate.');
         }
@@ -9498,6 +9556,9 @@ export class V1Service extends BaseService {
         }
         if (documentsMinValidity !== undefined) {
             localVarFormParams = localVarFormParams.append('documents_min_validity', <any>documentsMinValidity) as any || localVarFormParams;
+        }
+        if (validationPrompt !== undefined) {
+            localVarFormParams = localVarFormParams.append('validation_prompt', <any>validationPrompt) as any || localVarFormParams;
         }
         if (createdAt !== undefined) {
             localVarFormParams = localVarFormParams.append('created_at', <any>createdAt) as any || localVarFormParams;
@@ -10444,6 +10505,64 @@ export class V1Service extends BaseService {
         let localVarPath = `/api/v1/push-notifications/users/`;
         const { basePath, withCredentials } = this.configuration;
         return this.httpClient.request<WebPushSubscription>('get', `${basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                responseType: <any>responseType_,
+                ...(withCredentials ? { withCredentials } : {}),
+                headers: localVarHeaders,
+                observe: observe,
+                ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Run live cache health check
+     * Run a live cache round-trip and Redis connectivity probe.
+     * @endpoint get /api/v1/server-management/cache-health/
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     * @param options additional options
+     */
+    public v1ServerManagementCacheHealthRetrieve(observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<{ [key: string]: any; }>;
+    public v1ServerManagementCacheHealthRetrieve(observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<{ [key: string]: any; }>>;
+    public v1ServerManagementCacheHealthRetrieve(observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<{ [key: string]: any; }>>;
+    public v1ServerManagementCacheHealthRetrieve(observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+
+        let localVarHeaders = this.defaultHeaders;
+
+        // authentication (cookieAuth) required
+
+        // authentication (jwtAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
+
+        const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            'application/json'
+        ]);
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+        const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/server-management/cache-health/`;
+        const { basePath, withCredentials } = this.configuration;
+        return this.httpClient.request<{ [key: string]: any; }>('get', `${basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 responseType: <any>responseType_,

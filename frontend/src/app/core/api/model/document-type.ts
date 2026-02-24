@@ -18,6 +18,9 @@ export interface DocumentType {
     hasDocNumber?: boolean;
     hasFile?: boolean;
     hasDetails?: boolean;
+    validationRuleRegex?: string;
+    validationRuleAiPositive?: string;
+    validationRuleAiNegative?: string;
     isInRequiredDocuments?: boolean;
 }
 

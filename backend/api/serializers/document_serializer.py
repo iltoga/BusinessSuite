@@ -1,10 +1,9 @@
-from drf_spectacular.utils import extend_schema_field
-from rest_framework import serializers
-
 from api.serializers.document_type_serializer import DocumentTypeSerializer
 from customer_applications.hooks.registry import hook_registry
 from customer_applications.models import Document
+from drf_spectacular.utils import extend_schema_field
 from products.models.document_type import DocumentType
+from rest_framework import serializers
 
 
 class DocumentActionSerializer(serializers.Serializer):
@@ -54,6 +53,8 @@ class DocumentSerializer(serializers.ModelSerializer):
             "metadata",
             "ocr_check",
             "required",
+            "ai_validation_status",
+            "ai_validation_result",
             "created_at",
             "updated_at",
             "created_by",
@@ -68,6 +69,8 @@ class DocumentSerializer(serializers.ModelSerializer):
             "file_link",
             "completed",
             "ocr_check",
+            "ai_validation_status",
+            "ai_validation_result",
             "created_at",
             "updated_at",
             "created_by",

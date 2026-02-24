@@ -5,10 +5,8 @@ using the existing LetterService. The generated DOCX is converted to PDF
 before being saved to the document.
 """
 
-import logging
 from typing import TYPE_CHECKING, Any, Dict, List
 
-from django.conf import settings
 from django.core.files.base import ContentFile
 
 from core.utils.pdf_converter import PDFConverter, PDFConverterError
@@ -33,6 +31,17 @@ class SuratPermohonanHook(BaseDocumentTypeHook):
     """
 
     document_type_name = "Surat Permohonan dan Jaminan"
+
+    @staticmethod
+    def _safe_file_path_for_logging(document: "Document") -> str:
+        """Return file path when backend supports it, otherwise a safe placeholder."""
+        if not document.file:
+            return "N/A"
+
+        try:
+            return document.file.path
+        except (AttributeError, NotImplementedError, ValueError):
+            return "N/A"
 
     def get_extra_actions(self) -> List[DocumentAction]:
         """Returns the auto-generate action for this document type."""
@@ -127,7 +136,7 @@ class SuratPermohonanHook(BaseDocumentTypeHook):
             logger.info(
                 "File save completed. document.file.name=%s, document.file.path=%s",
                 document.file.name if document.file else "None",
-                document.file.path if document.file and hasattr(document.file, "path") else "N/A",
+                self._safe_file_path_for_logging(document),
             )
 
             logger.info(

@@ -139,8 +139,21 @@ def categorization_stream_sse(request, job_id):
             items = list(job.items.all().order_by("sort_index"))
 
             for item in items:
-                state = sent_states.get(item.id, {"processing": False, "done": False})
+                state = sent_states.get(
+                    item.id,
+                    {
+                        "processing": False,
+                        "pass2_sent": False,
+                        "categorized_sent": False,
+                        "validating_sent": False,
+                        "validated_sent": False,
+                        "done": False,
+                    },
+                )
+                result = item.result or {}
+                stage = result.get("stage", "")
 
+                # Processing started
                 if item.status == DocumentCategorizationItem.STATUS_PROCESSING and not state["processing"]:
                     yield _send_event(
                         "file_start",
@@ -152,22 +165,70 @@ def categorization_stream_sse(request, job_id):
                     )
                     state["processing"] = True
 
-                if item.status == DocumentCategorizationItem.STATUS_CATEGORIZED and not state["done"]:
+                # Pass 2 fallback triggered
+                if stage == "categorizing_pass_2" and not state["pass2_sent"]:
+                    yield _send_event(
+                        "file_categorizing_pass2",
+                        {
+                            "index": item.sort_index,
+                            "filename": item.filename,
+                            "message": f"🔄 Retrying {item.filename} with higher-tier model...",
+                        },
+                    )
+                    state["pass2_sent"] = True
+
+                # Categorized (but may still be validating)
+                if item.status == DocumentCategorizationItem.STATUS_CATEGORIZED and not state["categorized_sent"]:
+                    pass_used = result.get("pass_used", 1)
                     yield _send_event(
                         "file_categorized",
                         {
                             "index": item.sort_index,
                             "filename": item.filename,
-                            "documentType": item.result.get("document_type") if item.result else None,
-                            "documentTypeId": item.result.get("document_type_id") if item.result else None,
+                            "documentType": result.get("document_type"),
+                            "documentTypeId": result.get("document_type_id"),
                             "documentId": item.document_id,
                             "confidence": item.confidence,
-                            "reasoning": item.result.get("reasoning", "") if item.result else "",
-                            "message": f"✓ {item.filename} → {item.result.get('document_type', 'Unknown') if item.result else 'Unknown'}",
+                            "reasoning": result.get("reasoning", ""),
+                            "categorizationPass": pass_used,
+                            "message": f"✓ {item.filename} → {result.get('document_type', 'Unknown')}"
+                            + (f" (pass {pass_used})" if pass_used > 1 else ""),
                         },
                     )
-                    state["done"] = True
+                    state["categorized_sent"] = True
 
+                # Validating in progress
+                if stage == "validating" and not state["validating_sent"]:
+                    yield _send_event(
+                        "file_validating",
+                        {
+                            "index": item.sort_index,
+                            "filename": item.filename,
+                            "message": f"🔍 Validating {item.filename}...",
+                        },
+                    )
+                    state["validating_sent"] = True
+
+                # Validation complete
+                if item.validation_status and not state["validated_sent"]:
+                    v_result = item.validation_result or {}
+                    yield _send_event(
+                        "file_validated",
+                        {
+                            "index": item.sort_index,
+                            "filename": item.filename,
+                            "validationStatus": item.validation_status,
+                            "validationReasoning": v_result.get("reasoning", ""),
+                            "validationNegativeIssues": v_result.get("negative_issues", []),
+                            "validationConfidence": v_result.get("confidence", 0),
+                            "message": f"{'✅' if item.validation_status == 'valid' else '⚠️'} "
+                            f"{item.filename}: {item.validation_status}",
+                        },
+                    )
+                    state["validated_sent"] = True
+
+                # Mark done: error items are done immediately; categorized items
+                # are done after validation completes (or if no validation will happen)
                 if item.status == DocumentCategorizationItem.STATUS_ERROR and not state["done"]:
                     yield _send_event(
                         "file_error",
@@ -180,23 +241,40 @@ def categorization_stream_sse(request, job_id):
                     )
                     state["done"] = True
 
+                if item.status == DocumentCategorizationItem.STATUS_CATEGORIZED:
+                    # Done when validation is finished or stage is back to "validated"/"categorized"
+                    if stage in ("validated", "categorized") and state["categorized_sent"]:
+                        # If validation was run, wait for validated_sent; if skipped (stage=categorized), done
+                        if stage == "validated" and state["validated_sent"]:
+                            state["done"] = True
+                        elif stage == "categorized":
+                            state["done"] = True
+
                 sent_states[item.id] = state
 
-            if job.processed_files >= job.total_files and all(s.get("done", False) for s in sent_states.values()):
+            all_done = len(sent_states) >= total_files and all(s.get("done", False) for s in sent_states.values())
+
+            if job.processed_files >= job.total_files and all_done:
                 # Build final results
                 results = []
                 for item in items:
+                    item_result = item.result or {}
+                    v_result = item.validation_result or {}
                     results.append(
                         {
                             "itemId": str(item.id),
                             "filename": item.filename,
                             "status": item.status,
-                            "documentType": item.result.get("document_type") if item.result else None,
-                            "documentTypeId": item.result.get("document_type_id") if item.result else None,
+                            "documentType": item_result.get("document_type"),
+                            "documentTypeId": item_result.get("document_type_id"),
                             "documentId": item.document_id,
                             "confidence": item.confidence,
-                            "reasoning": item.result.get("reasoning", "") if item.result else "",
+                            "reasoning": item_result.get("reasoning", ""),
+                            "categorizationPass": item_result.get("pass_used", 1),
                             "error": item.error_message or None,
+                            "validationStatus": item.validation_status or None,
+                            "validationReasoning": v_result.get("reasoning", ""),
+                            "validationNegativeIssues": v_result.get("negative_issues", []),
                         }
                     )
 
@@ -253,8 +331,8 @@ def categorization_apply(request, job_id):
     errors = []
 
     for mapping in mappings:
-        item_id = mapping["itemId"]
-        document_id = mapping["documentId"]
+        item_id = mapping["item_id"]
+        document_id = mapping["document_id"]
 
         try:
             item = DocumentCategorizationItem.objects.get(id=item_id, job=job)
@@ -392,3 +470,75 @@ def categorization_job_status(request, job_id):
 def _send_event(event_type: str, data: dict) -> str:
     """Format an SSE event."""
     return f"event: {event_type}\ndata: {json.dumps(data)}\n\n"
+
+
+@sse_token_auth_required
+def document_validation_stream_sse(request, document_id):
+    """SSE endpoint for streaming AI validation progress of a single document."""
+    try:
+        document = Document.objects.select_related("doc_type").get(id=document_id)
+    except Document.DoesNotExist:
+        return JsonResponse({"error": "Document not found"}, status=404)
+
+    def event_stream():
+        yield _send_event(
+            "start",
+            {
+                "documentId": document.id,
+                "message": "Waiting for AI validation...",
+            },
+        )
+
+        last_status = None
+        max_polls = 120  # 60 seconds at 0.5s intervals
+
+        for _ in range(max_polls):
+            document.refresh_from_db()
+            current_status = document.ai_validation_status
+
+            if current_status != last_status:
+                if current_status == Document.AI_VALIDATION_VALIDATING:
+                    yield _send_event(
+                        "validating",
+                        {
+                            "documentId": document.id,
+                            "message": f"🔍 Validating {document.doc_type.name}...",
+                        },
+                    )
+
+                elif current_status in (
+                    Document.AI_VALIDATION_VALID,
+                    Document.AI_VALIDATION_INVALID,
+                    Document.AI_VALIDATION_ERROR,
+                ):
+                    v_result = document.ai_validation_result or {}
+                    yield _send_event(
+                        "complete",
+                        {
+                            "documentId": document.id,
+                            "validationStatus": current_status,
+                            "validationResult": v_result,
+                            "message": f"{'✅' if current_status == 'valid' else '⚠️'} "
+                            f"{document.doc_type.name}: {current_status}",
+                        },
+                    )
+                    return
+
+                last_status = current_status
+
+            yield ": keep-alive\n\n"
+            time.sleep(0.5)
+
+        # Timeout
+        yield _send_event(
+            "timeout",
+            {
+                "documentId": document.id,
+                "message": "Validation timed out.",
+            },
+        )
+
+    response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
+    response["Cache-Control"] = "no-cache"
+    response["X-Accel-Buffering"] = "no"
+    return response

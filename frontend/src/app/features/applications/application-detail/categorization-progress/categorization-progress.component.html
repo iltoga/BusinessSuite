@@ -25,15 +25,33 @@
 
   <!-- Summary when complete -->
   @if (isComplete()) {
-    <div class="flex gap-4 text-sm">
+    <div class="flex flex-wrap gap-4 text-sm">
       <span class="text-success-foreground">✓ {{ categorizedResults().length }} matched</span>
       @if (unmatchedResults().length > 0) {
-        <span class="text-warning-foreground">⚠ {{ unmatchedResults().length }} unmatched</span>
+        <span class="text-warning-foreground">⚠ {{ unmatchedResults().length }} no slot</span>
       }
       @if (errorResults().length > 0) {
         <span class="text-destructive">✗ {{ errorResults().length }} errors</span>
       }
+      @if (validResults().length > 0) {
+        <span class="text-success-foreground">🛡 {{ validResults().length }} valid</span>
+      }
+      @if (invalidResults().length > 0) {
+        <span class="text-destructive">🛡 {{ invalidResults().length }} invalid</span>
+      }
     </div>
+    @if (unmatchedResults().length > 0) {
+      <p class="text-xs text-muted-foreground">
+        Files marked "No Slot" were recognized by AI but the application has no document slot for
+        that type.
+      </p>
+    }
+    @if (invalidResults().length > 0) {
+      <p class="text-xs text-muted-foreground">
+        Files marked "Invalid" may not match the expected document content. Review them before
+        applying.
+      </p>
+    }
   }
 
   <!-- File results table -->
@@ -42,17 +60,39 @@
       <table class="w-full text-sm border-collapse">
         <thead>
           <tr class="border-b text-xs text-muted-foreground">
-            <th class="text-left py-1.5 pr-2">File</th>
+            <th class="text-left py-1.5 pr-2">
+              <div class="inline-flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  class="h-4 w-4 rounded border text-primary"
+                  [checked]="allSelected()"
+                  [indeterminate]="selectionPartial()"
+                  [disabled]="!isComplete() || isApplying()"
+                  (change)="toggleAllSelection($any($event.target).checked)"
+                  aria-label="Select all files"
+                />
+                <span>File</span>
+              </div>
+            </th>
             <th class="text-left py-1.5 pr-2">Detected Type</th>
             <th class="text-left py-1.5 pr-2">Confidence</th>
-            <th class="text-left py-1.5">Status</th>
+            <th class="text-left py-1.5 pr-2">Status</th>
+            <th class="text-left py-1.5">Validation</th>
           </tr>
         </thead>
         <tbody>
-          @for (result of results(); track result.itemId) {
+          @for (result of results(); track (result.itemId || result.filename + '-' + $index)) {
             <tr class="border-b last:border-0">
               <td class="py-1.5 pr-2">
-                <div class="flex items-center gap-1.5">
+                <div class="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    class="h-4 w-4 rounded border text-primary"
+                    [checked]="isResultSelected(result, $index)"
+                    [disabled]="!isComplete() || isApplying()"
+                    (change)="toggleResultSelection(result, $index, $any($event.target).checked)"
+                    [attr.aria-label]="'Select ' + result.filename"
+                  />
                   <span>{{ getStatusIcon(result.status) }}</span>
                   <span class="truncate max-w-48">{{ result.filename }}</span>
                 </div>
@@ -77,13 +117,30 @@
                 @if (result.documentId) {
                   <z-badge zType="success">Matched</z-badge>
                 } @else if (result.status === 'categorized') {
-                  <z-badge zType="warning">No Match</z-badge>
+                  <z-badge
+                    zType="warning"
+                    title="Recognized, but no document slot for this type in the application"
+                    >No Slot</z-badge
+                  >
                 } @else if (result.status === 'error') {
                   <z-badge zType="destructive">Error</z-badge>
                 } @else if (result.status === 'processing') {
                   <z-badge zType="secondary">Processing</z-badge>
                 } @else {
                   <z-badge zType="secondary">Queued</z-badge>
+                }
+              </td>
+              <td class="py-1.5">
+                @if (result.validationStatus === 'valid') {
+                  <z-badge zType="success">Valid</z-badge>
+                } @else if (result.validationStatus === 'invalid') {
+                  <z-badge zType="destructive" [title]="result.validationReasoning ?? ''"
+                    >Invalid</z-badge
+                  >
+                } @else if (result.validationStatus === 'pending') {
+                  <z-badge zType="secondary">Validating…</z-badge>
+                } @else {
+                  <span class="text-muted-foreground">—</span>
                 }
               </td>
             </tr>
@@ -96,7 +153,18 @@
   <!-- Action buttons -->
   @if (isComplete()) {
     <div class="flex justify-end gap-2 pt-2">
-      <button z-button zType="outline" zSize="sm" (click)="onDismiss()">Dismiss</button>
+      <button
+        z-button
+        zType="outline"
+        zSize="sm"
+        [disabled]="!canDismissSelected()"
+        (click)="onDismissSelected()"
+      >
+        Dismiss
+        @if (selectedCount() > 0) {
+          ({{ selectedCount() }})
+        }
+      </button>
       <button z-button zType="default" zSize="sm" [disabled]="!canApply()" (click)="onApplyAll()">
         @if (isApplying()) {
           <span class="mr-1 inline-block animate-spin">⏳</span>
