@@ -20,6 +20,10 @@ export interface CategorizationFileResult {
   confidence: number;
   reasoning: string;
   error: string | null;
+  categorizationPass: number | null;
+  validationStatus: 'valid' | 'invalid' | 'pending' | null;
+  validationReasoning: string | null;
+  validationNegativeIssues: string[] | null;
 }
 
 export interface CategorizationSseEvent {
@@ -36,6 +40,11 @@ export interface CategorizationSseEvent {
     message?: string;
     error?: string;
     total?: number;
+    categorizationPass?: number;
+    validationStatus?: string;
+    validationReasoning?: string;
+    validationNegativeIssues?: string[];
+    validationConfidence?: number;
     summary?: {
       total: number;
       success: number;

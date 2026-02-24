@@ -17,12 +17,16 @@ class DocumentCategorizationItemSerializer(serializers.ModelSerializer):
             "documentId",
             "confidence",
             "result",
+            "validationStatus",
+            "validationResult",
             "errorMessage",
             "createdAt",
             "updatedAt",
         ]
         extra_kwargs = {
             "sortIndex": {"source": "sort_index"},
+            "validationStatus": {"source": "validation_status"},
+            "validationResult": {"source": "validation_result"},
             "errorMessage": {"source": "error_message"},
             "createdAt": {"source": "created_at"},
             "updatedAt": {"source": "updated_at"},
@@ -64,8 +68,8 @@ class DocumentCategorizationJobSerializer(serializers.ModelSerializer):
 
 
 class CategorizationApplyItemSerializer(serializers.Serializer):
-    itemId = serializers.UUIDField()
-    documentId = serializers.IntegerField()
+    item_id = serializers.UUIDField()
+    document_id = serializers.IntegerField()
 
 
 class CategorizationApplySerializer(serializers.Serializer):

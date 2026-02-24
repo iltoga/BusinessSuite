@@ -24,6 +24,7 @@ export interface ProductCreateUpdate {
     productType?: ProductCreateUpdate.ProductTypeEnum;
     validity?: number | null;
     documentsMinValidity?: number | null;
+    validationPrompt?: string;
     tasks?: Array<TaskNested>;
     requiredDocumentIds?: Array<number>;
     optionalDocumentIds?: Array<number>;

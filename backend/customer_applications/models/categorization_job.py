@@ -89,6 +89,8 @@ class DocumentCategorizationItem(models.Model):
     )
     confidence = models.FloatField(null=True, blank=True)
     result = models.JSONField(blank=True, null=True)
+    validation_status = models.CharField(max_length=20, blank=True)
+    validation_result = models.JSONField(blank=True, null=True)
     error_message = models.TextField(blank=True)
     traceback = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

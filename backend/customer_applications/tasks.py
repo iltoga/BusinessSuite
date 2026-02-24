@@ -1,9 +1,12 @@
 import logging
+import os
+import posixpath
 from datetime import datetime, time, timedelta
 
 from customer_applications.models import DocApplication
 from django.contrib.auth import get_user_model
 from django.conf import settings
+from django.core.files.storage import FileSystemStorage, default_storage
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 from huey import crontab
@@ -15,6 +18,154 @@ logger = logging.getLogger(__name__)
 SYNC_ACTION_UPSERT = "upsert"
 SYNC_ACTION_DELETE = "delete"
 WHATSAPP_POLL_UNSUPPORTED_MARKER = "Meta poll unsupported: waiting for webhook status updates."
+
+
+def _normalize_storage_prefix(path: str | None) -> str:
+    return str(path or "").strip().strip("/")
+
+
+def _delete_storage_file_if_exists(file_path: str) -> None:
+    try:
+        if default_storage.exists(file_path):
+            default_storage.delete(file_path)
+    except Exception as exc:
+        logger.error(
+            "Failed deleting storage object '%s': error_type=%s error=%s",
+            file_path,
+            type(exc).__name__,
+            str(exc),
+        )
+
+
+def _delete_empty_storage_folder(folder_path: str | None) -> None:
+    folder = _normalize_storage_prefix(folder_path)
+    if not folder:
+        return
+
+    try:
+        directories, files = default_storage.listdir(folder)
+    except FileNotFoundError:
+        return
+    except Exception as exc:
+        logger.error(
+            "Failed listing folder '%s' while checking emptiness: error_type=%s error=%s",
+            folder,
+            type(exc).__name__,
+            str(exc),
+        )
+        return
+
+    if directories or files:
+        return
+
+    # S3-style storages can use directory marker objects; deleting is best-effort.
+    folder_marker = f"{folder}/"
+    try:
+        if default_storage.exists(folder_marker):
+            default_storage.delete(folder_marker)
+    except Exception as exc:
+        logger.error(
+            "Failed deleting folder marker '%s': error_type=%s error=%s",
+            folder_marker,
+            type(exc).__name__,
+            str(exc),
+        )
+
+    # Local storage may still have an empty physical directory to remove.
+    try:
+        if isinstance(default_storage, FileSystemStorage):
+            local_folder = default_storage.path(folder)
+            if os.path.isdir(local_folder):
+                os.rmdir(local_folder)
+    except FileNotFoundError:
+        return
+    except OSError:
+        # Ignore race conditions or non-empty directories created in the meantime.
+        return
+    except Exception as exc:
+        logger.error(
+            "Failed deleting local folder '%s': error_type=%s error=%s",
+            folder,
+            type(exc).__name__,
+            str(exc),
+        )
+
+
+def _delete_storage_prefix_tree(folder_path: str | None) -> None:
+    folder = _normalize_storage_prefix(folder_path)
+    if not folder:
+        return
+
+    pending_paths = [folder]
+    visited = set()
+
+    while pending_paths:
+        current = pending_paths.pop()
+        if current in visited:
+            continue
+        visited.add(current)
+
+        try:
+            directories, files = default_storage.listdir(current)
+        except FileNotFoundError:
+            continue
+        except Exception as exc:
+            logger.error(
+                "Failed listing folder '%s' while deleting tree: error_type=%s error=%s",
+                current,
+                type(exc).__name__,
+                str(exc),
+            )
+            continue
+
+        for filename in files:
+            file_path = posixpath.join(current, filename) if current else filename
+            _delete_storage_file_if_exists(file_path)
+
+        for dirname in directories:
+            subfolder_path = posixpath.join(current, dirname) if current else dirname
+            pending_paths.append(subfolder_path)
+
+    for current in sorted(visited, key=lambda path: path.count("/"), reverse=True):
+        _delete_empty_storage_folder(current)
+
+
+@db_task()
+def cleanup_document_storage_task(*, file_path: str, folder_path: str | None = None) -> None:
+    """Delete a document object from storage, then remove its folder when empty."""
+    normalized_file_path = str(file_path or "").strip()
+    if not normalized_file_path:
+        return
+
+    try:
+        _delete_storage_file_if_exists(normalized_file_path)
+        _delete_empty_storage_folder(folder_path)
+    except Exception as exc:
+        logger.error(
+            "Unexpected error in cleanup_document_storage_task: file_path=%s folder_path=%s error_type=%s error=%s",
+            normalized_file_path,
+            folder_path,
+            type(exc).__name__,
+            str(exc),
+        )
+
+
+@db_task()
+def cleanup_application_storage_folder_task(*, folder_path: str) -> None:
+    """Delete all storage objects for one application folder."""
+    normalized_folder_path = _normalize_storage_prefix(folder_path)
+    if not normalized_folder_path:
+        return
+
+    try:
+        _delete_storage_prefix_tree(normalized_folder_path)
+    except Exception as exc:
+        logger.error(
+            "Unexpected error in cleanup_application_storage_folder_task: folder_path=%s error_type=%s error=%s",
+            normalized_folder_path,
+            type(exc).__name__,
+            str(exc),
+        )
 
 
 def _append_provider_message(existing: str, new_line: str) -> str:

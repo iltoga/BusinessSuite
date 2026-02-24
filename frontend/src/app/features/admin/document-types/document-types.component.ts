@@ -76,6 +76,8 @@ export class DocumentTypesComponent implements OnInit {
     name: ['', Validators.required],
     description: [''],
     validationRuleRegex: [''],
+    validationRuleAiPositive: [''],
+    validationRuleAiNegative: [''],
     hasOcrCheck: [false],
     hasExpirationDate: [false],
     hasDocNumber: [false],
@@ -111,6 +113,8 @@ export class DocumentTypesComponent implements OnInit {
       name: '',
       description: '',
       validationRuleRegex: '',
+      validationRuleAiPositive: '',
+      validationRuleAiNegative: '',
       hasOcrCheck: false,
       hasExpirationDate: false,
       hasDocNumber: false,
@@ -142,7 +146,9 @@ export class DocumentTypesComponent implements OnInit {
     this.documentTypeForm.patchValue({
       name: documentType.name || '',
       description: documentType.description || '',
-      validationRuleRegex: '',
+      validationRuleRegex: documentType.validationRuleRegex || '',
+      validationRuleAiPositive: documentType.validationRuleAiPositive || '',
+      validationRuleAiNegative: documentType.validationRuleAiNegative || '',
       hasOcrCheck: documentType.hasOcrCheck || false,
       hasExpirationDate: documentType.hasExpirationDate || false,
       hasDocNumber: documentType.hasDocNumber || false,
@@ -174,9 +180,13 @@ export class DocumentTypesComponent implements OnInit {
 
     this.isSaving.set(true);
     const formValue = this.documentTypeForm.value;
-    const documentTypeData: Partial<DocumentType> = {
+    const documentTypeData: DocumentType = {
+      id: this.editingDocumentType()?.id ?? 0,
       name: formValue.name!,
       description: formValue.description || '',
+      validationRuleRegex: formValue.validationRuleRegex || '',
+      validationRuleAiPositive: formValue.validationRuleAiPositive || '',
+      validationRuleAiNegative: formValue.validationRuleAiNegative || '',
       hasOcrCheck: formValue.hasOcrCheck || false,
       hasExpirationDate: formValue.hasExpirationDate || false,
       hasDocNumber: formValue.hasDocNumber || false,
@@ -186,11 +196,8 @@ export class DocumentTypesComponent implements OnInit {
     };
 
     const request = this.editingDocumentType()
-      ? this.documentTypesApi.documentTypesUpdate(
-          this.editingDocumentType()!.id!,
-          documentTypeData as any,
-        )
-      : this.documentTypesApi.documentTypesCreate(documentTypeData as any);
+      ? this.documentTypesApi.documentTypesUpdate(this.editingDocumentType()!.id!, documentTypeData)
+      : this.documentTypesApi.documentTypesCreate(documentTypeData);
 
     request
       .pipe(

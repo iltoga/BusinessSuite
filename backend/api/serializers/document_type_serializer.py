@@ -1,6 +1,5 @@
-from rest_framework import serializers
-
 from products.models.document_type import DocumentType
+from rest_framework import serializers
 
 
 class DocumentTypeSerializer(serializers.ModelSerializer):
@@ -15,5 +14,8 @@ class DocumentTypeSerializer(serializers.ModelSerializer):
             "has_doc_number",
             "has_file",
             "has_details",
+            "validation_rule_regex",
+            "validation_rule_ai_positive",
+            "validation_rule_ai_negative",
             "is_in_required_documents",
         ]

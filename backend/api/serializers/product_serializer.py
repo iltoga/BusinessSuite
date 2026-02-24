@@ -69,6 +69,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "required_documents",
             "optional_documents",
             "documents_min_validity",
+            "validation_prompt",
             "created_at",
             "updated_at",
             "created_by",
@@ -98,6 +99,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "required_documents",
             "optional_documents",
             "documents_min_validity",
+            "validation_prompt",
             "tasks",
             "required_document_types",
             "optional_document_types",
@@ -136,6 +138,7 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
             "product_type",
             "validity",
             "documents_min_validity",
+            "validation_prompt",
             "tasks",
             "required_document_ids",
             "optional_document_ids",
@@ -156,7 +159,9 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
                 retail_price = base_price
 
         if base_price is not None and retail_price is not None and retail_price < base_price:
-            raise serializers.ValidationError({"retail_price": "Retail price must be greater than or equal to base price."})
+            raise serializers.ValidationError(
+                {"retail_price": "Retail price must be greater than or equal to base price."}
+            )
 
         if retail_price is not None:
             attrs["retail_price"] = retail_price

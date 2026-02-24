@@ -33,6 +33,7 @@ from .views_categorization import (
     categorization_job_status,
     categorization_stream_sse,
     categorize_documents,
+    document_validation_stream_sse,
     validate_document_category,
 )
 
@@ -224,6 +225,11 @@ urlpatterns = [
         "documents/<int:document_id>/validate-category/",
         validate_document_category,
         name="api-validate-document-category",
+    ),
+    path(
+        "documents/<int:document_id>/validation-stream/",
+        document_validation_stream_sse,
+        name="api-document-validation-stream",
     ),
     # Include all router URLs - main REST API endpoints for Angular
     path("", include(router.urls)),

@@ -2115,6 +2115,7 @@ paths:
           description: ''
     patch:
       operationId: documentsPartialUpdate
+      description: Override to trigger AI validation when requested.
       parameters:
       - in: path
         name: id
@@ -4000,6 +4001,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/WebPushSubscription'
+          description: ''
+  /api/server-management/cache-health/:
+    get:
+      operationId: serverManagementCacheHealthRetrieve
+      description: Run a live cache round-trip and Redis connectivity probe.
+      summary: Run live cache health check
+      tags:
+      - server-management
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/server-management/clear-cache/:
     post:
@@ -6522,6 +6541,7 @@ paths:
           description: ''
     patch:
       operationId: v1DocumentsPartialUpdate
+      description: Override to trigger AI validation when requested.
       parameters:
       - in: path
         name: id
@@ -8407,6 +8427,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/WebPushSubscription'
+          description: ''
+  /api/v1/server-management/cache-health/:
+    get:
+      operationId: v1ServerManagementCacheHealthRetrieve
+      description: Run a live cache round-trip and Redis connectivity probe.
+      summary: Run live cache health check
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/v1/server-management/clear-cache/:
     post:
@@ -10563,6 +10601,27 @@ components:
           readOnly: true
         required:
           type: boolean
+        ai_validation_status:
+          enum:
+          - ''
+          - pending
+          - validating
+          - valid
+          - invalid
+          - error
+          type: string
+          description: |-
+            * `` - Not requested
+            * `pending` - Pending
+            * `validating` - Validating
+            * `valid` - Valid
+            * `invalid` - Invalid
+            * `error` - Error
+          x-spec-enum-id: e52c812f70ac4afc
+          readOnly: true
+        ai_validation_result:
+          readOnly: true
+          nullable: true
         created_at:
           type: string
           format: date-time
@@ -10594,6 +10653,8 @@ components:
             $ref: '#/components/schemas/DocumentAction'
           readOnly: true
       required:
+      - ai_validation_result
+      - ai_validation_status
       - completed
       - created_at
       - created_by
@@ -10658,6 +10719,13 @@ components:
           type: boolean
         has_details:
           type: boolean
+        validation_rule_regex:
+          type: string
+          maxLength: 500
+        validation_rule_ai_positive:
+          type: string
+        validation_rule_ai_negative:
+          type: string
         is_in_required_documents:
           type: boolean
       required:
@@ -11490,6 +11558,8 @@ components:
           maximum: 2147483647
           minimum: 0
           nullable: true
+        validation_prompt:
+          type: string
         created_at:
           type: string
           format: date-time
@@ -11562,6 +11632,8 @@ components:
           maximum: 2147483647
           minimum: 0
           nullable: true
+        validation_prompt:
+          type: string
         tasks:
           type: array
           items:
@@ -11632,6 +11704,8 @@ components:
           maximum: 2147483647
           minimum: 0
           nullable: true
+        validation_prompt:
+          type: string
         tasks:
           type: array
           items:

@@ -16,6 +16,8 @@ class DocumentType(models.Model):
     has_file = models.BooleanField(default=False)
     has_details = models.BooleanField(default=False)
     validation_rule_regex = models.CharField(max_length=500, blank=True)
+    validation_rule_ai_positive = models.TextField(blank=True)
+    validation_rule_ai_negative = models.TextField(blank=True)
     is_in_required_documents = models.BooleanField(default=False)
 
     objects = DocumentTypeManager()

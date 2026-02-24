@@ -14,6 +14,7 @@ class AIUsageFeature:
     PASSPORT_OCR_AI_EXTRACTOR = "Passport OCR AI Extractor"
     PASSPORT_CHECK_API = "Passport Check API"
     DOCUMENT_AI_CATEGORIZER = "Document AI Categorizer"
+    DOCUMENT_AI_VALIDATOR = "Document AI Validator"
     UNKNOWN = "Unclassified AI Feature"
 
 

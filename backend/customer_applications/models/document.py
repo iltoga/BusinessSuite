@@ -1,16 +1,18 @@
 import os
-
-from django.conf import settings
-from django.core.files.storage import default_storage
-from django.db import models
-from django.db.models.signals import post_save
-from django.dispatch import receiver
-from django.utils import timezone
+from logging import getLogger
 
 from core.utils.helpers import whitespaces_to_underscores
+from django.conf import settings
+from django.core.files.storage import default_storage
+from django.db import models, transaction
+from django.db.models.signals import post_delete, post_save, pre_delete
+from django.dispatch import receiver
+from django.utils import timezone
 from products.models.document_type import DocumentType
 
 from .doc_application import DocApplication
+
+logger = getLogger(__name__)
 
 
 class DocumentManager(models.Manager):
@@ -49,6 +51,25 @@ class Document(models.Model):
     completed = models.BooleanField(default=False)
     metadata = models.JSONField(blank=True, null=True)
     required = models.BooleanField(default=True)
+
+    # AI validation fields
+    AI_VALIDATION_NONE = ""
+    AI_VALIDATION_PENDING = "pending"
+    AI_VALIDATION_VALIDATING = "validating"
+    AI_VALIDATION_VALID = "valid"
+    AI_VALIDATION_INVALID = "invalid"
+    AI_VALIDATION_ERROR = "error"
+    AI_VALIDATION_CHOICES = [
+        (AI_VALIDATION_NONE, "Not requested"),
+        (AI_VALIDATION_PENDING, "Pending"),
+        (AI_VALIDATION_VALIDATING, "Validating"),
+        (AI_VALIDATION_VALID, "Valid"),
+        (AI_VALIDATION_INVALID, "Invalid"),
+        (AI_VALIDATION_ERROR, "Error"),
+    ]
+    ai_validation_status = models.CharField(max_length=20, blank=True, default="", choices=AI_VALIDATION_CHOICES)
+    ai_validation_result = models.JSONField(blank=True, null=True)
+
     created_at = models.DateTimeField(db_index=True)
     updated_at = models.DateTimeField(db_index=True)
     created_by = models.ForeignKey(
@@ -145,6 +166,38 @@ class Document(models.Model):
             self.ocr_check = False
 
         super().save(*args, **kwargs)
+
+
+@receiver(pre_delete, sender=Document)
+def pre_delete_document_storage_signal(sender, instance, **kwargs):
+    # Keep storage paths before deleting DB row.
+    file_path = getattr(instance.file, "name", "") or ""
+    instance._storage_file_path = file_path
+    instance._storage_folder_path = os.path.dirname(file_path).strip("/") if file_path else ""
+
+
+@receiver(post_delete, sender=Document)
+def post_delete_document_storage_signal(sender, instance, **kwargs):
+    file_path = getattr(instance, "_storage_file_path", "") or ""
+    if not file_path:
+        return
+
+    folder_path = getattr(instance, "_storage_folder_path", "") or ""
+    document_id = instance.id
+
+    def _queue_storage_cleanup():
+        try:
+            from customer_applications.tasks import cleanup_document_storage_task
+
+            cleanup_document_storage_task(file_path=file_path, folder_path=folder_path or None)
+        except Exception as exc:
+            # Do not block document deletion when queueing storage cleanup fails.
+            logger.warning("Failed to queue storage cleanup for document #%s: %s", document_id, exc)
+
+    try:
+        transaction.on_commit(_queue_storage_cleanup)
+    except Exception as exc:
+        logger.warning("Failed registering storage cleanup on_commit for document #%s: %s", document_id, exc)
 
 
 @receiver(post_save, sender=Document)

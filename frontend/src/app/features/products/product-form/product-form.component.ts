@@ -78,19 +78,23 @@ export class ProductFormComponent implements OnInit {
       .map((doc) => ({ id: doc.id, label: doc.name })),
   );
 
-  readonly form = this.fb.group({
-    name: ['', Validators.required],
-    code: ['', Validators.required],
-    description: [''],
-    basePrice: [0, [Validators.min(0)]],
-    retailPrice: [0, [Validators.min(0)]],
-    productType: ['visa', Validators.required],
-    validity: [null as number | null],
-    documentsMinValidity: [null as number | null],
-    requiredDocumentIds: [[] as number[]],
-    optionalDocumentIds: [[] as number[]],
-    tasks: this.fb.array<FormGroup>([]),
-  }, { validators: [this.retailPriceValidator] });
+  readonly form = this.fb.group(
+    {
+      name: ['', Validators.required],
+      code: ['', Validators.required],
+      description: [''],
+      basePrice: [0, [Validators.min(0)]],
+      retailPrice: [0, [Validators.min(0)]],
+      productType: ['visa', Validators.required],
+      validity: [null as number | null],
+      documentsMinValidity: [null as number | null],
+      validationPrompt: [''],
+      requiredDocumentIds: [[] as number[]],
+      optionalDocumentIds: [[] as number[]],
+      tasks: this.fb.array<FormGroup>([]),
+    },
+    { validators: [this.retailPriceValidator] },
+  );
 
   readonly formErrorLabels: Record<string, string> = {
     name: 'Name',
@@ -101,6 +105,7 @@ export class ProductFormComponent implements OnInit {
     productType: 'Product Type',
     validity: 'Validity',
     documentsMinValidity: 'Documents Min Validity',
+    validationPrompt: 'Validation Prompt',
     requiredDocumentIds: 'Required Documents',
     optionalDocumentIds: 'Optional Documents',
     tasks: 'Tasks',
@@ -286,6 +291,7 @@ export class ProductFormComponent implements OnInit {
       retail_price: rawValue.retailPrice !== null ? String(rawValue.retailPrice) : null,
       validity: rawValue.validity,
       documents_min_validity: rawValue.documentsMinValidity,
+      validation_prompt: rawValue.validationPrompt ?? '',
       required_document_ids: rawValue.requiredDocumentIds,
       optional_document_ids: rawValue.optionalDocumentIds,
       tasks: (rawValue.tasks || []).map((t: any) => {
@@ -361,10 +367,13 @@ export class ProductFormComponent implements OnInit {
           code: product.code ?? '',
           description: product.description ?? '',
           basePrice: product.basePrice ? Number(product.basePrice) : 0,
-          retailPrice: product.retailPrice ? Number(product.retailPrice) : Number(product.basePrice ?? 0),
+          retailPrice: product.retailPrice
+            ? Number(product.retailPrice)
+            : Number(product.basePrice ?? 0),
           productType: product.productType ?? 'visa',
           validity: product.validity ?? null,
           documentsMinValidity: product.documentsMinValidity ?? null,
+          validationPrompt: product.validationPrompt ?? '',
           requiredDocumentIds: (product.requiredDocumentTypes ?? []).map(
             (doc: DocumentType) => doc.id,
           ),
@@ -425,7 +434,8 @@ export class ProductFormComponent implements OnInit {
     const baseRaw = group.get('basePrice')?.value;
     const retailRaw = group.get('retailPrice')?.value;
 
-    const base = baseRaw === null || baseRaw === undefined || baseRaw === '' ? null : Number(baseRaw);
+    const base =
+      baseRaw === null || baseRaw === undefined || baseRaw === '' ? null : Number(baseRaw);
     const retail =
       retailRaw === null || retailRaw === undefined || retailRaw === '' ? null : Number(retailRaw);
 

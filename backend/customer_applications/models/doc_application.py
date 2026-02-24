@@ -1,6 +1,4 @@
 import logging
-import os
-import shutil
 
 # Get an instance of a logger
 from core.services.logger_service import Logger
@@ -512,7 +510,7 @@ class DocApplication(models.Model):
 @receiver(pre_delete, sender=DocApplication)
 def pre_delete_doc_application_signal(sender, instance, **kwargs):
     # retain the folder path before deleting the doc application
-    instance.folder_path = instance.upload_folder
+    instance._storage_folder_path = instance.upload_folder
 
     # Queue Google Calendar cleanup asynchronously after the DB transaction commits.
     known_event_ids = set()
@@ -552,10 +550,24 @@ def pre_delete_doc_application_signal(sender, instance, **kwargs):
 @receiver(post_delete, sender=DocApplication)
 def post_delete_doc_application_signal(sender, instance, **kwargs):
     logger.info("Deleted: %s", instance)
-    # get media root path from settings
-    media_root = settings.MEDIA_ROOT
-    # delete the folder containing the documents' files
+    folder_path = getattr(instance, "_storage_folder_path", "") or ""
+    if not folder_path:
+        return
+    application_id = instance.id
+
+    def _queue_storage_cleanup():
+        try:
+            from customer_applications.tasks import cleanup_application_storage_folder_task
+
+            cleanup_application_storage_folder_task(folder_path=folder_path)
+        except Exception as exc:
+            logger.warning(
+                "Failed to queue storage folder cleanup for application #%s: %s",
+                application_id,
+                exc,
+            )
+
     try:
-        shutil.rmtree(os.path.join(media_root, instance.folder_path))
-    except FileNotFoundError:
-        logger.info("Folder not found: %s", instance.folder_path)
+        transaction.on_commit(_queue_storage_cleanup)
+    except Exception as exc:
+        logger.warning("Failed registering storage cleanup on_commit for application #%s: %s", application_id, exc)

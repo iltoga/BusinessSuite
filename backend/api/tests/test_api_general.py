@@ -382,6 +382,21 @@ class CustomerApplicationDetailAPITestCase(TestCase):
         self.assertEqual(self.document.doc_number, "A123456")
         self.assertEqual(self.document.metadata.get("number"), "A123456")
 
+    @patch("api.views.run_document_validation")
+    def test_document_update_accepts_boolean_validate_with_ai_flag(self, run_validation_mock):
+        url = reverse("documents-detail", kwargs={"pk": self.document.pk})
+        payload = {
+            "doc_number": "B987654",
+            "validate_with_ai": True,
+        }
+
+        response = self.client.patch(url, payload, content_type="application/json")
+
+        self.assertEqual(response.status_code, 200)
+        self.document.refresh_from_db()
+        self.assertEqual(self.document.doc_number, "B987654")
+        run_validation_mock.assert_not_called()
+
     def test_application_detail_documents_ordering(self):
         # Create a product with specific document order
         product = Product.objects.create(

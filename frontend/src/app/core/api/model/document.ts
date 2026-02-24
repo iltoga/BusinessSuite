@@ -25,6 +25,11 @@ export interface Document {
     metadata?: any | null;
     readonly ocrCheck: boolean;
     required?: boolean;
+    /**
+     * * `` - Not requested * `pending` - Pending * `validating` - Validating * `valid` - Valid * `invalid` - Invalid * `error` - Error
+     */
+    readonly aiValidationStatus: Document.AiValidationStatusEnum;
+    readonly aiValidationResult: any | null;
     readonly createdAt: string;
     readonly updatedAt: string;
     readonly createdBy: number;
@@ -39,4 +44,16 @@ export interface Document {
     readonly createdByUsername: string | null;
     readonly extraActions: Array<DocumentAction>;
 }
+export namespace Document {
+    export const AiValidationStatusEnum = {
+        Empty: '',
+        Pending: 'pending',
+        Validating: 'validating',
+        Valid: 'valid',
+        Invalid: 'invalid',
+        Error: 'error'
+    } as const;
+    export type AiValidationStatusEnum = typeof AiValidationStatusEnum[keyof typeof AiValidationStatusEnum];
+}
+
 

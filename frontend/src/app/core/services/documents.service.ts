@@ -10,6 +10,7 @@ export interface DocumentPartialUpdatePayload {
   details?: string | null;
   metadata?: Record<string, unknown> | null;
   file?: File | null;
+  validateWithAi?: boolean;
 }
 
 @Injectable({
@@ -44,6 +45,9 @@ export class DocumentsService {
     }
     if (payload.file) {
       form.append('file', payload.file);
+    }
+    if (payload.validateWithAi) {
+      form.append('validate_with_ai', 'true');
     }
 
     const token = this.auth.getToken();

@@ -15,7 +15,7 @@ logger = Logger.get_logger(__name__)
 
 @db_task()
 def run_document_categorization_item(item_id: str) -> None:
-    """Categorize a single uploaded file using AI vision."""
+    """Categorize a single uploaded file using AI vision (two-pass) and validate."""
     lock_key = build_task_lock_key(namespace="doc_categorization_item", item_id=str(item_id))
     lock_token = acquire_task_lock(lock_key)
     if not lock_token:
@@ -38,7 +38,7 @@ def run_document_categorization_item(item_id: str) -> None:
             job.save(update_fields=["status", "updated_at"])
 
         item.status = DocumentCategorizationItem.STATUS_PROCESSING
-        item.result = {"stage": "processing"}
+        item.result = {"stage": "categorizing_pass_1"}
         item.save(update_fields=["status", "result", "updated_at"])
 
         try:
@@ -54,20 +54,29 @@ def run_document_categorization_item(item_id: str) -> None:
                 provider_order=provider_order,
             )
 
-            # Fetch document types once (shared across calls within same worker)
+            # Fetch document types once
             document_types = get_document_types_for_prompt()
 
-            result = categorizer.categorize_file(
+            # Callback to persist pass updates for SSE visibility
+            def on_pass_update(pass_num: int, message: str) -> None:
+                item.result = {"stage": f"categorizing_pass_{pass_num}", "message": message}
+                item.save(update_fields=["result", "updated_at"])
+
+            # --- Two-pass categorization ---
+            result = categorizer.categorize_file_two_pass(
                 file_bytes=file_bytes,
                 filename=item.filename,
                 document_types=document_types,
+                on_pass_update=on_pass_update,
             )
 
             doc_type_id = result.get("document_type_id")
             doc_type_name = result.get("document_type")
+            pass_used = result.get("pass_used", 1)
 
             if doc_type_id:
-                item.document_type = DocumentType.objects.get(id=doc_type_id)
+                doc_type = DocumentType.objects.get(id=doc_type_id)
+                item.document_type = doc_type
                 item.status = DocumentCategorizationItem.STATUS_CATEGORIZED
 
                 # Try to match with an existing Document row in the application
@@ -82,6 +91,8 @@ def run_document_categorization_item(item_id: str) -> None:
                 "document_type_id": doc_type_id,
                 "confidence": result.get("confidence", 0),
                 "reasoning": result.get("reasoning", ""),
+                "pass_used": pass_used,
+                "stage": "categorized",
             }
             item.save(
                 update_fields=[
@@ -94,6 +105,18 @@ def run_document_categorization_item(item_id: str) -> None:
                     "updated_at",
                 ]
             )
+
+            # --- Validation step (only if categorization succeeded) ---
+            if item.status == DocumentCategorizationItem.STATUS_CATEGORIZED and doc_type_id:
+                from customer_applications.models.doc_application import DocApplication as _DocApp
+
+                product_prompt = (
+                    _DocApp.objects.filter(pk=job.doc_application_id)
+                    .values_list("product__validation_prompt", flat=True)
+                    .first()
+                    or ""
+                )
+                _run_validation_step(item, file_bytes, doc_type, document_types, provider_order, product_prompt)
 
         except Exception as exc:
             full_traceback = tb_module.format_exc()
@@ -113,6 +136,61 @@ def run_document_categorization_item(item_id: str) -> None:
 
     finally:
         release_task_lock(lock_key, lock_token)
+
+
+def _run_validation_step(
+    item: DocumentCategorizationItem,
+    file_bytes: bytes,
+    doc_type: DocumentType,
+    document_types: list[dict],
+    provider_order: list[str] | None,
+    product_prompt: str = "",
+) -> None:
+    """Run AI validation on a categorized item using its DocumentType's positive/negative prompts."""
+    positive_prompt = doc_type.validation_rule_ai_positive
+    negative_prompt = doc_type.validation_rule_ai_negative
+
+    # Signal validating stage for SSE
+    current_result = item.result or {}
+    current_result["stage"] = "validating"
+    item.result = current_result
+    item.save(update_fields=["result", "updated_at"])
+
+    try:
+        validation = AIDocumentCategorizer.validate_document(
+            file_bytes=file_bytes,
+            filename=item.filename,
+            doc_type_name=doc_type.name,
+            positive_prompt=positive_prompt,
+            negative_prompt=negative_prompt,
+            product_prompt=product_prompt,
+            provider_order=provider_order,
+        )
+
+        item.validation_status = "valid" if validation.get("valid") else "invalid"
+        item.validation_result = validation
+
+        # Update result.stage for SSE
+        current_result = item.result or {}
+        current_result["stage"] = "validated"
+        item.result = current_result
+
+        item.save(update_fields=["validation_status", "validation_result", "result", "updated_at"])
+
+    except Exception as exc:
+        logger.error("Document validation failed for %s: %s", item.filename, exc, exc_info=True)
+        item.validation_status = "invalid"
+        item.validation_result = {
+            "valid": False,
+            "confidence": 0,
+            "positive_analysis": "",
+            "negative_issues": [f"Validation error: {exc}"],
+            "reasoning": f"Validation could not be completed: {exc}",
+        }
+        current_result = item.result or {}
+        current_result["stage"] = "validated"
+        item.result = current_result
+        item.save(update_fields=["validation_status", "validation_result", "result", "updated_at"])
 
 
 def _try_match_document(item: DocumentCategorizationItem, doc_application_id: int) -> None:

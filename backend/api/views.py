@@ -94,6 +94,7 @@ from core.services.push_notifications import FcmConfigurationError, PushNotifica
 from core.services.quick_create import create_quick_customer, create_quick_customer_application, create_quick_product
 from core.tasks.cron_jobs import enqueue_clear_cache_now, enqueue_full_backup_now
 from core.tasks.document_ocr import run_document_ocr_job
+from core.tasks.document_validation import run_document_validation
 from core.tasks.ocr import run_ocr_job
 from core.utils.dateutils import calculate_due_date
 from core.utils.pdf_converter import PDFConverter, PDFConverterError
@@ -2752,6 +2753,28 @@ class DocumentViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         serializer.save(updated_by=self.request.user)
+
+    def partial_update(self, request, *args, **kwargs):
+        """Override to trigger AI validation when requested."""
+        response = super().partial_update(request, *args, **kwargs)
+
+        validate_with_ai_value = request.data.get("validate_with_ai", "")
+        if isinstance(validate_with_ai_value, bool):
+            validate_with_ai = validate_with_ai_value
+        else:
+            validate_with_ai = str(validate_with_ai_value).lower() in ("true", "1", "yes")
+
+        if validate_with_ai and response.status_code == 200:
+            document = self.get_object()
+            if document.file and document.file.name:
+                document.ai_validation_status = Document.AI_VALIDATION_PENDING
+                document.ai_validation_result = None
+                document.save(update_fields=["ai_validation_status", "ai_validation_result", "updated_at"])
+                run_document_validation(document.id)
+                # Re-serialize to include pending validation status
+                response.data = self.get_serializer(document).data
+
+        return response
 
     @extend_schema(parameters=[OpenApiParameter("action_name", OpenApiTypes.STR, OpenApiParameter.PATH)])
     @action(detail=True, methods=["post"], url_path=r"actions/(?P<action_name>[^/.]+)")
