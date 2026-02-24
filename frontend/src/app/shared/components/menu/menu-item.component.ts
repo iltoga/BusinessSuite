@@ -24,6 +24,11 @@ export class MenuItemComponent {
   @HostBinding('attr.role')
   role = 'none';
 
+  @HostBinding('attr.app-region')
+  get appRegion(): 'no-drag' | null {
+    return this.mode() === 'overlay' ? 'no-drag' : null;
+  }
+
   isExpanded(): boolean {
     return !this.menuService.isCollapsed(this.item().id);
   }
