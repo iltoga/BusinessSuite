@@ -77,3 +77,14 @@ STORAGES["staticfiles"] = {
     "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
 }
 STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
+
+# Development throttle override:
+# Base settings keep conservative global DRF limits (anon/user) for shared environments.
+# In local dev, Angular startup + browser log forwarding can quickly exhaust daily counters,
+# causing unrelated API calls to fail with HTTP 429 for the rest of the window.
+# Keep scoped throttles from base.py intact, but raise generic anon/user rates for dev.
+REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {
+    **REST_FRAMEWORK.get("DEFAULT_THROTTLE_RATES", {}),
+    "anon": os.getenv("DEV_ANON_THROTTLE_RATE", "20000/day"),
+    "user": os.getenv("DEV_USER_THROTTLE_RATE", "200000/day"),
+}

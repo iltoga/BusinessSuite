@@ -1,16 +1,19 @@
 import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { BreakpointObserver } from '@angular/cdk/layout';
 import {
   AfterViewInit,
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   inject,
   OnDestroy,
   PLATFORM_ID,
   signal,
 } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { Router, RouterLink, RouterOutlet } from '@angular/router';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
+import { filter, map } from 'rxjs';
 
 import { AuthService } from '@/core/services/auth.service';
 import { ReminderDialogService } from '@/core/services/reminder-dialog.service';
@@ -48,8 +51,14 @@ import { PwaOverlayService } from '@/shared/services/pwa-overlay.service';
 export class MainLayoutComponent implements AfterViewInit, OnDestroy {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly isBrowser = isPlatformBrowser(this.platformId);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly breakpointObserver = inject(BreakpointObserver);
+  private readonly initialDesktopViewport = this.isBrowser
+    ? window.matchMedia('(min-width: 1024px)').matches
+    : true;
 
-  sidebarOpen = signal(true);
+  private readonly desktopSidebarExpanded = signal(true);
+  private readonly mobileSidebarOpen = signal(false);
 
   private themeService = inject(ThemeService);
   private authService = inject(AuthService);
@@ -59,6 +68,15 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
   private overlayService = inject(PwaOverlayService);
 
   isOverlayMode = toSignal(this.overlayService.isOverlayMode$, { initialValue: false });
+  isDesktopViewport = toSignal(
+    this.breakpointObserver
+      .observe('(min-width: 1024px)')
+      .pipe(map((state) => state.matches)),
+    { initialValue: this.initialDesktopViewport },
+  );
+  sidebarOpen = computed(() =>
+    this.isDesktopViewport() ? this.desktopSidebarExpanded() : this.mobileSidebarOpen(),
+  );
 
   logoSrc = computed(() => {
     const normal = '/assets/logo_transparent.png';
@@ -125,6 +143,19 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
     }
   };
 
+  constructor() {
+    this.router.events
+      .pipe(
+        filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe(() => {
+        if (!this.isDesktopViewport()) {
+          this.mobileSidebarOpen.set(false);
+        }
+      });
+  }
+
   ngAfterViewInit(): void {
     if (this.isBrowser) {
       window.addEventListener('keydown', this._capturingKeydown, true);
@@ -141,19 +172,19 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
 
   toggleSidebar() {
     if (this.isOverlayMode()) return;
-    this.sidebarOpen.update((v) => !v);
+    if (this.isDesktopViewport()) {
+      this.desktopSidebarExpanded.update((v) => !v);
+      return;
+    }
+    this.mobileSidebarOpen.update((v) => !v);
   }
 
   onSidebarNavigationClick(event: Event): void {
-    if (!this.isBrowser || !this.sidebarOpen() || !this.isMobileViewport()) return;
+    if (!this.isBrowser || !this.sidebarOpen() || this.isDesktopViewport()) return;
     const target = event.target as HTMLElement | null;
     if (target?.closest('a[routerLink]')) {
-      this.sidebarOpen.set(false);
+      this.mobileSidebarOpen.set(false);
     }
-  }
-
-  private isMobileViewport(): boolean {
-    return this.isBrowser && window.matchMedia('(max-width: 767px)').matches;
   }
 
   openReminderInbox() {

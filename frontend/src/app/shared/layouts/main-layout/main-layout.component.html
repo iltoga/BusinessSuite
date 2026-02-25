@@ -3,9 +3,11 @@
     <aside
       [class.-translate-x-full]="!sidebarOpen()"
       [ngClass]="
-        sidebarOpen() ? 'md:w-64 md:visible md:opacity-100' : 'md:w-0 md:invisible md:opacity-0'
+        sidebarOpen()
+          ? 'lg:w-64 lg:visible lg:opacity-100 lg:pointer-events-auto'
+          : 'lg:w-0 lg:invisible lg:opacity-0 lg:pointer-events-none'
       "
-      class="fixed md:relative inset-y-0 left-0 z-40 h-dvh md:h-full min-h-0 w-64 transform flex flex-col border-r bg-card transition-all duration-200 ease-in-out overflow-hidden"
+      class="fixed lg:relative inset-y-0 left-0 z-40 h-dvh lg:h-full min-h-0 w-[min(18rem,86vw)] shrink-0 transform flex flex-col border-r bg-card transition-[width,transform,opacity,visibility] duration-200 ease-in-out overflow-hidden"
     >
       <div class="h-32 shrink-0 border-b bg-accent/5 dark:bg-accent/10">
         <a
@@ -36,13 +38,13 @@
     </aside>
 
     <div
-      *ngIf="sidebarOpen()"
-      class="fixed inset-0 bg-black/40 z-30 md:hidden"
+      *ngIf="sidebarOpen() && !isDesktopViewport()"
+      class="fixed inset-0 bg-black/40 z-30"
       (click)="toggleSidebar()"
     ></div>
   }
 
-  <div class="flex flex-1 flex-col md:pl-0" [class.pt-9]="isOverlayMode()">
+  <div class="flex min-w-0 flex-1 flex-col" [class.pt-9]="isOverlayMode()">
     @if (isOverlayMode()) {
       <app-menu-container />
     }
