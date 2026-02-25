@@ -405,24 +405,49 @@ def _checksum_for_storage_path(path: str) -> str:
 def refresh_media_manifest(*, source_node: str | None = None) -> int:
     source = source_node or get_local_node_id()
     storage_backend = f"{default_storage.__class__.__module__}.{default_storage.__class__.__name__}"
+    encrypted = bool(getattr(settings, "LOCAL_MEDIA_ENCRYPTION_ENABLED", False))
     updated = 0
 
     for path in _iter_local_media_paths():
         try:
             checksum = _checksum_for_storage_path(path)
             size = int(default_storage.size(path))
-            modified_at = timezone.now()
-            MediaManifestEntry.objects.update_or_create(
+            modified_at = default_storage.get_modified_time(path)
+            if timezone.is_naive(modified_at):
+                modified_at = timezone.make_aware(modified_at, timezone.get_current_timezone())
+
+            entry, created = MediaManifestEntry.objects.get_or_create(
                 path=path,
                 defaults={
                     "checksum": checksum,
                     "size": size,
                     "modified_at": modified_at,
-                    "encrypted": bool(getattr(settings, "LOCAL_MEDIA_ENCRYPTION_ENABLED", False)),
+                    "encrypted": encrypted,
                     "storage_backend": storage_backend,
                     "source_node": source,
                 },
             )
+            if created:
+                updated += 1
+                continue
+
+            if (
+                entry.checksum == checksum
+                and int(entry.size) == size
+                and entry.modified_at == modified_at
+                and bool(entry.encrypted) == encrypted
+                and entry.storage_backend == storage_backend
+                and entry.source_node == source
+            ):
+                continue
+
+            entry.checksum = checksum
+            entry.size = size
+            entry.modified_at = modified_at
+            entry.encrypted = encrypted
+            entry.storage_backend = storage_backend
+            entry.source_node = source
+            entry.save(update_fields=["checksum", "size", "modified_at", "encrypted", "storage_backend", "source_node", "updated_at"])
             updated += 1
         except Exception:
             continue

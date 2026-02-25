@@ -124,6 +124,13 @@ class SyncApiTests(TestCase):
         self.assertFalse(settings_obj.enabled)
         self.assertEqual(SyncConflict.objects.count(), 1)
 
+    def test_session_authenticated_request_requires_explicit_token(self):
+        session_client = APIClient(enforce_csrf_checks=True)
+        self.assertTrue(session_client.login(username="sync-admin", password="password"))
+
+        response = session_client.post("/api/sync/changes/push/", {"source_node": "remote-node", "changes": []}, format="json")
+        self.assertEqual(response.status_code, 401)
+
     @override_settings(LOCAL_SYNC_REMOTE_TOKEN="sync-shared-token")
     def test_service_token_can_access_sync_api_without_user_auth(self):
         service_client = APIClient()

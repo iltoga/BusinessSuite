@@ -79,14 +79,13 @@ class SyncViewSet(viewsets.ViewSet):
         return secrets.compare_digest(configured, token_str)
 
     def _authorize(self, request):
-        session_user = getattr(getattr(request, "_request", None), "user", None)
-        if session_user and session_user.is_authenticated and is_superuser_or_admin_group(session_user):
-            request.user = session_user
-            return None
         if request.user and request.user.is_authenticated and is_superuser_or_admin_group(request.user):
             return None
 
         token_str = self._extract_header_token(request)
+        if not token_str:
+            return Response({"detail": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED)
+
         if self._has_sync_service_token(token_str):
             return None
 
