@@ -96,4 +96,36 @@ contextBridge.exposeInMainWorld('revisDesktop', {
   setLaunchAtLogin(enabled) {
     return ipcRenderer.invoke('desktop:launch-at-login:set', Boolean(enabled));
   },
+
+  getRuntimeStatus() {
+    return ipcRenderer.invoke('desktop:runtime:status:get');
+  },
+
+  startLocalRuntime() {
+    return ipcRenderer.invoke('desktop:runtime:start');
+  },
+
+  stopLocalRuntime() {
+    return ipcRenderer.invoke('desktop:runtime:stop');
+  },
+
+  getSyncStatus() {
+    return ipcRenderer.invoke('desktop:sync:status:get');
+  },
+
+  getVaultStatus() {
+    return ipcRenderer.invoke('desktop:vault:status:get');
+  },
+
+  unlockVault(passphrase) {
+    return ipcRenderer.invoke('desktop:vault:unlock', String(passphrase || ''));
+  },
+
+  lockVault() {
+    return ipcRenderer.invoke('desktop:vault:lock');
+  },
+
+  setVaultEpoch(epoch) {
+    return ipcRenderer.invoke('desktop:vault:epoch:set', Number(epoch) || 1);
+  },
 });

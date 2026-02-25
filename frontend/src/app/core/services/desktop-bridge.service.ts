@@ -12,6 +12,28 @@ export interface DesktopPushReminderPayload {
   body: string;
 }
 
+export interface DesktopRuntimeStatus {
+  available: boolean;
+  running: boolean;
+  healthy: boolean;
+  reason?: string | null;
+}
+
+export interface DesktopSyncStatus {
+  running: boolean;
+  lastPushAt?: string | null;
+  lastPullAt?: string | null;
+  lastError?: string | null;
+}
+
+export interface DesktopVaultStatus {
+  initialized: boolean;
+  unlocked: boolean;
+  vaultEpoch?: number | null;
+  safeStorageAvailable?: boolean;
+  lastError?: string | null;
+}
+
 type ReminderOpenHandler = (payload: DesktopReminderOpenPayload) => void;
 
 export interface RevisDesktopApi {
@@ -23,6 +45,14 @@ export interface RevisDesktopApi {
   onReminderOpen(handler: ReminderOpenHandler): () => void;
   getLaunchAtLogin?(): Promise<boolean>;
   setLaunchAtLogin?(enabled: boolean): Promise<boolean>;
+  getRuntimeStatus?(): Promise<DesktopRuntimeStatus>;
+  startLocalRuntime?(): Promise<DesktopRuntimeStatus>;
+  stopLocalRuntime?(): Promise<DesktopRuntimeStatus>;
+  getSyncStatus?(): Promise<DesktopSyncStatus>;
+  getVaultStatus?(): Promise<DesktopVaultStatus>;
+  unlockVault?(passphrase: string): Promise<DesktopVaultStatus>;
+  lockVault?(): Promise<DesktopVaultStatus>;
+  setVaultEpoch?(epoch: number): Promise<DesktopVaultStatus>;
 }
 
 declare global {
@@ -118,6 +148,84 @@ export class DesktopBridgeService {
       return Boolean(await this.api.setLaunchAtLogin(Boolean(enabled)));
     } catch {
       return false;
+    }
+  }
+
+  async getRuntimeStatus(): Promise<DesktopRuntimeStatus> {
+    try {
+      if (!this.api?.getRuntimeStatus) return { available: false, running: false, healthy: false };
+      return (await this.api.getRuntimeStatus()) || { available: false, running: false, healthy: false };
+    } catch {
+      return { available: false, running: false, healthy: false };
+    }
+  }
+
+  async startLocalRuntime(): Promise<DesktopRuntimeStatus> {
+    try {
+      if (!this.api?.startLocalRuntime) return { available: false, running: false, healthy: false };
+      return (await this.api.startLocalRuntime()) || { available: false, running: false, healthy: false };
+    } catch {
+      return { available: false, running: false, healthy: false };
+    }
+  }
+
+  async stopLocalRuntime(): Promise<DesktopRuntimeStatus> {
+    try {
+      if (!this.api?.stopLocalRuntime) return { available: false, running: false, healthy: false };
+      return (await this.api.stopLocalRuntime()) || { available: false, running: false, healthy: false };
+    } catch {
+      return { available: false, running: false, healthy: false };
+    }
+  }
+
+  async getSyncStatus(): Promise<DesktopSyncStatus> {
+    try {
+      if (!this.api?.getSyncStatus) return { running: false };
+      return (await this.api.getSyncStatus()) || { running: false };
+    } catch {
+      return { running: false };
+    }
+  }
+
+  async getVaultStatus(): Promise<DesktopVaultStatus> {
+    try {
+      if (!this.api?.getVaultStatus) return { initialized: false, unlocked: false };
+      return (await this.api.getVaultStatus()) || { initialized: false, unlocked: false };
+    } catch {
+      return { initialized: false, unlocked: false };
+    }
+  }
+
+  async unlockVault(passphrase: string): Promise<DesktopVaultStatus> {
+    try {
+      if (!this.api?.unlockVault) return { initialized: false, unlocked: false };
+      return (await this.api.unlockVault(String(passphrase || ''))) || {
+        initialized: false,
+        unlocked: false,
+      };
+    } catch {
+      return { initialized: false, unlocked: false };
+    }
+  }
+
+  async lockVault(): Promise<DesktopVaultStatus> {
+    try {
+      if (!this.api?.lockVault) return { initialized: false, unlocked: false };
+      return (await this.api.lockVault()) || { initialized: false, unlocked: false };
+    } catch {
+      return { initialized: false, unlocked: false };
+    }
+  }
+
+  async setVaultEpoch(epoch: number): Promise<DesktopVaultStatus> {
+    try {
+      if (!this.api?.setVaultEpoch) return { initialized: false, unlocked: false };
+      return (await this.api.setVaultEpoch(Number(epoch) || 1)) || {
+        initialized: false,
+        unlocked: false,
+      };
+    } catch {
+      return { initialized: false, unlocked: false };
     }
   }
 

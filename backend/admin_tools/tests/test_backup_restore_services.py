@@ -54,6 +54,61 @@ class BackupSerializationTests(SimpleTestCase):
         self.assertNotIn("--natural-foreign", dump_args)
         self.assertNotIn("--natural-primary", dump_args)
 
+    def test_backup_disables_postgres_server_side_cursors_while_dumping(self):
+        class _StopBackup(Exception):
+            pass
+
+        class _FakeConnection:
+            vendor = "postgresql"
+
+            def __init__(self):
+                self.settings_dict = {}
+
+        fake_connection = _FakeConnection()
+
+        def _assert_cursor_setting_during_dump(*args, **kwargs):
+            self.assertTrue(fake_connection.settings_dict.get("DISABLE_SERVER_SIDE_CURSORS"))
+            raise _StopBackup(args)
+
+        with tempfile.TemporaryDirectory() as tmpdir, patch.object(services, "BACKUPS_DIR", tmpdir), patch(
+            "admin_tools.services.connections", {"default": fake_connection}
+        ), patch("admin_tools.services.call_command", side_effect=_assert_cursor_setting_during_dump):
+            gen = services.backup_all(include_users=False)
+            self.assertEqual(next(gen), "Starting Django dumpdata backup...")
+            with self.assertRaises(_StopBackup):
+                next(gen)
+
+        self.assertNotIn("DISABLE_SERVER_SIDE_CURSORS", fake_connection.settings_dict)
+
+    def test_backup_retries_without_userprofile_on_missing_cache_enabled_column(self):
+        class _StopBackup(Exception):
+            pass
+
+        attempts: list[tuple] = []
+
+        def _call_command(*args, **kwargs):
+            attempts.append(args)
+            if len(attempts) == 1:
+                raise Exception(
+                    "Unable to serialize database: column core_userprofile.cache_enabled does not exist"
+                )
+            raise _StopBackup(args)
+
+        with tempfile.TemporaryDirectory() as tmpdir, patch.object(services, "BACKUPS_DIR", tmpdir), patch(
+            "admin_tools.services.call_command", side_effect=_call_command
+        ):
+            gen = services.backup_all(include_users=True)
+            self.assertEqual(next(gen), "Starting Django dumpdata backup...")
+            warning_message = next(gen)
+            self.assertIn("excluding core.userprofile", warning_message)
+            with self.assertRaises(_StopBackup):
+                next(gen)
+
+        self.assertEqual(attempts[0][0], "dumpdata")
+        self.assertNotIn("--exclude=core.userprofile", attempts[0])
+        self.assertEqual(attempts[1][0], "dumpdata")
+        self.assertIn("--exclude=core.userprofile", attempts[1])
+
 
 class RestoreCompatibilityTests(TestCase):
     def test_restore_handles_legacy_dict_fk_fixture(self):

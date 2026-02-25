@@ -111,6 +111,14 @@ services:
       OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://bs-alloy:4318/v1/traces
       OTEL_PROPAGATORS: tracecontext,baggage
       OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=production,service.namespace=revisbali"
+      LOCAL_MEDIA_ENCRYPTION_ENABLED: ${LOCAL_MEDIA_ENCRYPTION_ENABLED:-false}
+      LOCAL_MEDIA_ENCRYPTION_KEY: ${LOCAL_MEDIA_ENCRYPTION_KEY:-}
+      LOCAL_SYNC_ENABLED: ${LOCAL_SYNC_ENABLED:-false}
+      LOCAL_SYNC_NODE_ID: ${LOCAL_SYNC_NODE_ID:-vps-primary}
+      LOCAL_SYNC_REMOTE_BASE_URL: ${LOCAL_SYNC_REMOTE_BASE_URL:-}
+      LOCAL_SYNC_REMOTE_TOKEN: ${LOCAL_SYNC_REMOTE_TOKEN:-}
+      LOCAL_SYNC_PUSH_LIMIT: ${LOCAL_SYNC_PUSH_LIMIT:-200}
+      LOCAL_SYNC_PULL_LIMIT: ${LOCAL_SYNC_PULL_LIMIT:-200}
     volumes:
       - ./.env:/usr/src/app/.env:ro
       - type: bind
@@ -165,6 +173,14 @@ services:
       OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://bs-alloy:4318/v1/traces
       OTEL_PROPAGATORS: tracecontext,baggage
       OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=production,service.namespace=revisbali"
+      LOCAL_MEDIA_ENCRYPTION_ENABLED: ${LOCAL_MEDIA_ENCRYPTION_ENABLED:-false}
+      LOCAL_MEDIA_ENCRYPTION_KEY: ${LOCAL_MEDIA_ENCRYPTION_KEY:-}
+      LOCAL_SYNC_ENABLED: ${LOCAL_SYNC_ENABLED:-false}
+      LOCAL_SYNC_NODE_ID: ${LOCAL_SYNC_NODE_ID:-vps-worker}
+      LOCAL_SYNC_REMOTE_BASE_URL: ${LOCAL_SYNC_REMOTE_BASE_URL:-}
+      LOCAL_SYNC_REMOTE_TOKEN: ${LOCAL_SYNC_REMOTE_TOKEN:-}
+      LOCAL_SYNC_PUSH_LIMIT: ${LOCAL_SYNC_PUSH_LIMIT:-200}
+      LOCAL_SYNC_PULL_LIMIT: ${LOCAL_SYNC_PULL_LIMIT:-200}
     volumes:
       - ./.env:/usr/src/app/.env:ro
       - type: bind

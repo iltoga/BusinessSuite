@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
@@ -6,11 +6,18 @@ import {
   computed,
   inject,
   OnInit,
+  PLATFORM_ID,
   signal,
 } from '@angular/core';
 import { catchError, EMPTY, finalize } from 'rxjs';
 
 import { ServerManagementService } from '@/core/api';
+import {
+  DesktopBridgeService,
+  DesktopRuntimeStatus,
+  DesktopSyncStatus,
+  DesktopVaultStatus,
+} from '@/core/services/desktop-bridge.service';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
@@ -61,6 +68,19 @@ interface CacheHealthResponse {
   errors: string[];
 }
 
+interface LocalResilienceSettingsResponse {
+  enabled: boolean;
+  encryptionRequired: boolean;
+  desktopMode: 'localPrimary' | 'remotePrimary' | string;
+  vaultEpoch: number;
+  updatedAt?: string;
+  updatedBy?: {
+    id: number;
+    username?: string | null;
+    email?: string | null;
+  } | null;
+}
+
 @Component({
   selector: 'app-server-management',
   standalone: true,
@@ -70,8 +90,10 @@ interface CacheHealthResponse {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ServerManagementComponent implements OnInit {
+  private readonly platformId = inject(PLATFORM_ID);
   private serverManagementApi = inject(ServerManagementService);
   private http = inject(HttpClient);
+  private desktopBridge = inject(DesktopBridgeService);
   private toast = inject(GlobalToastService);
 
   readonly isLoading = signal(false);
@@ -84,6 +106,15 @@ export class ServerManagementComponent implements OnInit {
   readonly cacheLoading = signal(false);
   readonly cacheHealth = signal<CacheHealthResponse | null>(null);
   readonly cacheHealthLoading = signal(false);
+  readonly localResilience = signal<LocalResilienceSettingsResponse | null>(null);
+  readonly localResilienceLoading = signal(false);
+  readonly localResilienceSaving = signal(false);
+  readonly isDesktop = signal(false);
+  readonly desktopRuntimeStatus = signal<DesktopRuntimeStatus | null>(null);
+  readonly desktopSyncStatus = signal<DesktopSyncStatus | null>(null);
+  readonly desktopVaultStatus = signal<DesktopVaultStatus | null>(null);
+  readonly desktopRuntimeLoading = signal(false);
+  readonly desktopVaultLoading = signal(false);
 
   readonly missingFilesCount = computed(
     () => this.diagnosticResults().filter((r) => !r.exists).length,
@@ -94,8 +125,13 @@ export class ServerManagementComponent implements OnInit {
   );
 
   ngOnInit(): void {
+    this.isDesktop.set(
+      isPlatformBrowser(this.platformId) && this.desktopBridge.isDesktop(),
+    );
     this.loadCacheStatus();
     this.loadCacheHealth();
+    this.loadLocalResilience();
+    void this.loadDesktopResilienceState();
   }
 
   clearCache(): void {
@@ -182,6 +218,164 @@ export class ServerManagementComponent implements OnInit {
 
   runCacheHealthCheck(): void {
     this.loadCacheHealth(true);
+  }
+
+  loadLocalResilience(): void {
+    this.localResilienceLoading.set(true);
+    this.serverManagementApi
+      .serverManagementLocalResilienceRetrieve()
+      .pipe(
+        catchError(() => {
+          this.toast.error('Failed to load local resilience settings');
+          return EMPTY;
+        }),
+        finalize(() => this.localResilienceLoading.set(false)),
+      )
+      .subscribe((response) => {
+        this.localResilience.set(this.normalizeLocalResilience(response));
+      });
+  }
+
+  toggleLocalResilience(): void {
+    const current = this.localResilience();
+    if (!current || this.localResilienceSaving()) {
+      return;
+    }
+
+    this.localResilienceSaving.set(true);
+    this.serverManagementApi
+      .serverManagementLocalResiliencePartialUpdate({
+        enabled: !current.enabled,
+      })
+      .pipe(
+        catchError(() => {
+          this.toast.error('Failed to update local resilience setting');
+          return EMPTY;
+        }),
+        finalize(() => this.localResilienceSaving.set(false)),
+      )
+      .subscribe((response) => {
+        const normalized = this.normalizeLocalResilience(response);
+        this.localResilience.set(normalized);
+        this.toast.success(normalized.enabled ? 'Local resilience enabled' : 'Local resilience disabled');
+      });
+  }
+
+  resetLocalVault(): void {
+    if (this.localResilienceSaving()) {
+      return;
+    }
+
+    this.localResilienceSaving.set(true);
+    this.serverManagementApi
+      .serverManagementLocalResilienceResetVaultCreate()
+      .pipe(
+        catchError(() => {
+          this.toast.error('Failed to reset local media vault');
+          return EMPTY;
+        }),
+        finalize(() => this.localResilienceSaving.set(false)),
+      )
+      .subscribe((response) => {
+        const payload = response as { ok?: boolean; message?: string; vaultEpoch?: number };
+        this.toast.success(payload.message || 'Local media vault reset requested');
+        if (this.isDesktop() && payload.vaultEpoch) {
+          void this.desktopBridge.setVaultEpoch(payload.vaultEpoch);
+          void this.loadDesktopResilienceState();
+        }
+        this.loadLocalResilience();
+      });
+  }
+
+  async loadDesktopResilienceState(): Promise<void> {
+    if (!this.isDesktop()) {
+      return;
+    }
+    const [runtime, sync, vault] = await Promise.all([
+      this.desktopBridge.getRuntimeStatus(),
+      this.desktopBridge.getSyncStatus(),
+      this.desktopBridge.getVaultStatus(),
+    ]);
+    this.desktopRuntimeStatus.set(runtime);
+    this.desktopSyncStatus.set(sync);
+    this.desktopVaultStatus.set(vault);
+  }
+
+  async startDesktopLocalRuntime(): Promise<void> {
+    if (!this.isDesktop() || this.desktopRuntimeLoading()) {
+      return;
+    }
+    this.desktopRuntimeLoading.set(true);
+    try {
+      const runtime = await this.desktopBridge.startLocalRuntime();
+      this.desktopRuntimeStatus.set(runtime);
+      if (runtime.running && runtime.healthy) {
+        this.toast.success('Desktop local runtime is running');
+      } else {
+        this.toast.info(runtime.reason || 'Desktop local runtime start requested');
+      }
+      this.desktopSyncStatus.set(await this.desktopBridge.getSyncStatus());
+    } catch {
+      this.toast.error('Failed to start desktop local runtime');
+    } finally {
+      this.desktopRuntimeLoading.set(false);
+    }
+  }
+
+  async stopDesktopLocalRuntime(): Promise<void> {
+    if (!this.isDesktop() || this.desktopRuntimeLoading()) {
+      return;
+    }
+    this.desktopRuntimeLoading.set(true);
+    try {
+      const runtime = await this.desktopBridge.stopLocalRuntime();
+      this.desktopRuntimeStatus.set(runtime);
+      this.desktopSyncStatus.set(await this.desktopBridge.getSyncStatus());
+      this.toast.success('Desktop local runtime stopped');
+    } catch {
+      this.toast.error('Failed to stop desktop local runtime');
+    } finally {
+      this.desktopRuntimeLoading.set(false);
+    }
+  }
+
+  async unlockDesktopVault(): Promise<void> {
+    if (!this.isDesktop() || this.desktopVaultLoading()) {
+      return;
+    }
+    const passphrase = window.prompt('Enter local vault passphrase');
+    if (!passphrase) {
+      return;
+    }
+
+    this.desktopVaultLoading.set(true);
+    try {
+      const vault = await this.desktopBridge.unlockVault(passphrase);
+      this.desktopVaultStatus.set(vault);
+      if (vault.unlocked) {
+        this.toast.success('Desktop vault unlocked');
+      } else {
+        this.toast.error(vault.lastError || 'Failed to unlock desktop vault');
+      }
+      this.desktopRuntimeStatus.set(await this.desktopBridge.getRuntimeStatus());
+      this.desktopSyncStatus.set(await this.desktopBridge.getSyncStatus());
+    } finally {
+      this.desktopVaultLoading.set(false);
+    }
+  }
+
+  async lockDesktopVault(): Promise<void> {
+    if (!this.isDesktop() || this.desktopVaultLoading()) {
+      return;
+    }
+    this.desktopVaultLoading.set(true);
+    try {
+      const vault = await this.desktopBridge.lockVault();
+      this.desktopVaultStatus.set(vault);
+      this.toast.success('Desktop vault locked');
+    } finally {
+      this.desktopVaultLoading.set(false);
+    }
   }
 
   loadCacheHealth(showToast = false): void {
@@ -285,5 +479,27 @@ export class ServerManagementComponent implements OnInit {
     }
     const backendTokens = cacheBackend.split('.');
     return backendTokens[backendTokens.length - 1] || cacheBackend;
+  }
+
+  getLocalDesktopModeLabel(mode: string | null | undefined): string {
+    const normalized = String(mode || '').trim().toLowerCase();
+    if (normalized === 'localprimary' || normalized === 'local_primary') {
+      return 'Local Primary';
+    }
+    if (normalized === 'remoteprimary' || normalized === 'remote_primary') {
+      return 'Remote Primary';
+    }
+    return mode || 'Unknown';
+  }
+
+  private normalizeLocalResilience(raw: any): LocalResilienceSettingsResponse {
+    return {
+      enabled: Boolean(raw?.enabled),
+      encryptionRequired: Boolean(raw?.encryptionRequired ?? raw?.encryption_required ?? true),
+      desktopMode: String(raw?.desktopMode ?? raw?.desktop_mode ?? 'localPrimary'),
+      vaultEpoch: Number(raw?.vaultEpoch ?? raw?.vault_epoch ?? 1),
+      updatedAt: raw?.updatedAt ?? raw?.updated_at,
+      updatedBy: raw?.updatedBy ?? raw?.updated_by ?? null,
+    };
   }
 }

@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 import json
 import logging
 import os
+import socket
 import sys
 from datetime import timedelta
 from importlib import import_module
@@ -721,6 +722,8 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 # Storage configuration
 USE_CLOUD_STORAGE = _parse_bool(os.getenv("USE_CLOUD_STORAGE", "False"))
+LOCAL_MEDIA_ENCRYPTION_ENABLED = _parse_bool(os.getenv("LOCAL_MEDIA_ENCRYPTION_ENABLED", "False"))
+LOCAL_MEDIA_ENCRYPTION_KEY = os.getenv("LOCAL_MEDIA_ENCRYPTION_KEY", "")
 OCR_PREVIEW_STORAGE_PREFIX = os.getenv("OCR_PREVIEW_STORAGE_PREFIX", "ocr_previews")
 _settings_module = os.getenv("DJANGO_SETTINGS_MODULE", "")
 _default_bucket_name = "crmrevisbali" if _settings_module.endswith(".prod") else "crmrevisbalidev"
@@ -740,6 +743,8 @@ AWS_DBBACKUP_LOCATION = os.getenv("AWS_DBBACKUP_LOCATION", "backups")
 
 if USE_CLOUD_STORAGE:
     DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
+elif LOCAL_MEDIA_ENCRYPTION_ENABLED:
+    DEFAULT_FILE_STORAGE = "core.storage.encrypted_local.EncryptedLocalStorage"
 else:
     DEFAULT_FILE_STORAGE = "django.core.files.storage.FileSystemStorage"
 
@@ -795,6 +800,15 @@ CUSTOMER_NOTIFICATIONS_DAILY_MINUTE = int(os.getenv("CUSTOMER_NOTIFICATIONS_DAIL
 # Calendar reminder push dispatch settings.
 # Huey periodic task checks reminders every minute and processes at most this many rows per run.
 CALENDAR_REMINDER_DISPATCH_LIMIT = int(os.getenv("CALENDAR_REMINDER_DISPATCH_LIMIT", "200"))
+
+# Local-first synchronization settings (desktop replica mode).
+LOCAL_SYNC_ENABLED = _parse_bool(os.getenv("LOCAL_SYNC_ENABLED", "False"))
+LOCAL_SYNC_NODE_ID = os.getenv("LOCAL_SYNC_NODE_ID", socket.gethostname())
+LOCAL_SYNC_REMOTE_BASE_URL = os.getenv("LOCAL_SYNC_REMOTE_BASE_URL", "").strip().rstrip("/")
+LOCAL_SYNC_REMOTE_TOKEN = os.getenv("LOCAL_SYNC_REMOTE_TOKEN", "").strip()
+LOCAL_SYNC_PUSH_LIMIT = int(os.getenv("LOCAL_SYNC_PUSH_LIMIT", "200"))
+LOCAL_SYNC_PULL_LIMIT = int(os.getenv("LOCAL_SYNC_PULL_LIMIT", "200"))
+LOCAL_SYNC_REQUEST_TIMEOUT_SECONDS = float(os.getenv("LOCAL_SYNC_REQUEST_TIMEOUT_SECONDS", "10"))
 
 # Conditionally enable the `auditlog` app and its middleware (so the feature can be fully toggled at startup)
 if AUDIT_ENABLED:

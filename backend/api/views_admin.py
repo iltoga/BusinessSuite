@@ -14,9 +14,11 @@ from api.permissions import (
     IsSuperuserOrAdminGroup,
     is_superuser_or_admin_group,
 )
+from api.serializers.local_resilience_serializer import LocalResilienceSettingsSerializer
 from api.utils.sse_auth import sse_token_auth_required
 from api.views import ApiErrorHandlingMixin
 from core.models.ai_request_usage import AIRequestUsage
+from core.services.local_resilience_service import LocalResilienceService
 from core.services.ai_usage_service import AIUsageFeature
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -31,6 +33,7 @@ from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serial
 from rest_framework import serializers, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.response import Response
 
 User = get_user_model()
@@ -530,6 +533,53 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                 },
                 status=500,
             )
+
+    @extend_schema(
+        summary="Get or update local resilience settings",
+        request=OpenApiTypes.OBJECT,
+        responses={200: OpenApiTypes.OBJECT},
+    )
+    @action(detail=False, methods=["get", "patch"], url_path="local-resilience")
+    def local_resilience(self, request):
+        settings_obj = LocalResilienceService.get_settings()
+
+        if request.method.lower() == "get":
+            return Response(LocalResilienceSettingsSerializer(settings_obj).data)
+
+        raw_enabled = request.data.get("enabled")
+        raw_desktop_mode = request.data.get("desktop_mode", request.data.get("desktopMode"))
+
+        parsed_enabled = None
+        if raw_enabled is not None:
+            if isinstance(raw_enabled, bool):
+                parsed_enabled = raw_enabled
+            else:
+                normalized = str(raw_enabled).strip().lower()
+                if normalized in {"1", "true", "yes", "on"}:
+                    parsed_enabled = True
+                elif normalized in {"0", "false", "no", "off"}:
+                    parsed_enabled = False
+                else:
+                    return Response({"detail": "Invalid 'enabled' value"}, status=HTTP_400_BAD_REQUEST)
+
+        updated = LocalResilienceService.update_settings(
+            enabled=parsed_enabled,
+            desktop_mode=raw_desktop_mode,
+            updated_by=request.user,
+        )
+        return Response(LocalResilienceSettingsSerializer(updated).data)
+
+    @extend_schema(summary="Reset local media vault epoch", responses={200: OpenApiTypes.OBJECT})
+    @action(detail=False, methods=["post"], url_path="local-resilience/reset-vault")
+    def reset_local_resilience_vault(self, request):
+        settings_obj = LocalResilienceService.reset_vault_epoch(updated_by=request.user)
+        return Response(
+            {
+                "ok": True,
+                "message": "Local media vault reset requested. Desktop clients must re-bootstrap.",
+                "vaultEpoch": settings_obj.vault_epoch,
+            }
+        )
 
     @extend_schema(summary="Run media files diagnostic", responses={200: OpenApiTypes.OBJECT})
     @action(detail=False, methods=["get"], url_path="media-diagnostic")

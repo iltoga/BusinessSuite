@@ -4053,6 +4053,74 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/server-management/local-resilience/:
+    get:
+      operationId: serverManagementLocalResilienceRetrieve
+      summary: Get or update local resilience settings
+      tags:
+      - server-management
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+    patch:
+      operationId: serverManagementLocalResiliencePartialUpdate
+      summary: Get or update local resilience settings
+      tags:
+      - server-management
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+          '*/*':
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/server-management/local-resilience/reset-vault/:
+    post:
+      operationId: serverManagementLocalResilienceResetVaultCreate
+      summary: Reset local media vault epoch
+      tags:
+      - server-management
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/server-management/media-diagnostic/:
     get:
       operationId: serverManagementMediaDiagnosticRetrieve
@@ -4099,6 +4167,105 @@ paths:
       security:
       - jwtAuth: []
       - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/sync/changes/pull/:
+    get:
+      operationId: syncChangesPullRetrieve
+      summary: Pull sync changes
+      parameters:
+      - in: query
+        name: after_seq
+        schema:
+          type: integer
+      - in: query
+        name: limit
+        schema:
+          type: integer
+      tags:
+      - sync
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/sync/changes/push/:
+    post:
+      operationId: syncChangesPushCreate
+      summary: Push sync changes
+      tags:
+      - sync
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/sync/media/fetch/:
+    post:
+      operationId: syncMediaFetchCreate
+      summary: Fetch media entries
+      tags:
+      - sync
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/sync/media/manifest/:
+    get:
+      operationId: syncMediaManifestRetrieve
+      summary: Get media manifest
+      parameters:
+      - in: query
+        name: after_updated_at
+        schema:
+          type: string
+          format: date-time
+      - in: query
+        name: limit
+        schema:
+          type: integer
+      tags:
+      - sync
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/sync/state/:
+    get:
+      operationId: syncStateRetrieve
+      summary: Get sync state
+      tags:
+      - sync
+      security:
+      - {}
       responses:
         '200':
           content:
@@ -8479,6 +8646,74 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/v1/server-management/local-resilience/:
+    get:
+      operationId: v1ServerManagementLocalResilienceRetrieve
+      summary: Get or update local resilience settings
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+    patch:
+      operationId: v1ServerManagementLocalResiliencePartialUpdate
+      summary: Get or update local resilience settings
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+          '*/*':
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/server-management/local-resilience/reset-vault/:
+    post:
+      operationId: v1ServerManagementLocalResilienceResetVaultCreate
+      summary: Reset local media vault epoch
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/server-management/media-diagnostic/:
     get:
       operationId: v1ServerManagementMediaDiagnosticRetrieve
@@ -8525,6 +8760,105 @@ paths:
       security:
       - jwtAuth: []
       - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/sync/changes/pull/:
+    get:
+      operationId: v1SyncChangesPullRetrieve
+      summary: Pull sync changes
+      parameters:
+      - in: query
+        name: after_seq
+        schema:
+          type: integer
+      - in: query
+        name: limit
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/sync/changes/push/:
+    post:
+      operationId: v1SyncChangesPushCreate
+      summary: Push sync changes
+      tags:
+      - v1
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/sync/media/fetch/:
+    post:
+      operationId: v1SyncMediaFetchCreate
+      summary: Fetch media entries
+      tags:
+      - v1
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/sync/media/manifest/:
+    get:
+      operationId: v1SyncMediaManifestRetrieve
+      summary: Get media manifest
+      parameters:
+      - in: query
+        name: after_updated_at
+        schema:
+          type: string
+          format: date-time
+      - in: query
+        name: limit
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/sync/state/:
+    get:
+      operationId: v1SyncStateRetrieve
+      summary: Get sync state
+      tags:
+      - v1
+      security:
+      - {}
       responses:
         '200':
           content:

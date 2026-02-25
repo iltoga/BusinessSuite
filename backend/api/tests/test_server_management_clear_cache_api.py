@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.test import TestCase, override_settings
+from core.models.local_resilience import LocalResilienceSettings
 from rest_framework.test import APIClient
 
 
@@ -108,3 +109,34 @@ class ServerManagementClearCacheApiTests(TestCase):
         payload = response.json()
         self.assertFalse(payload["ok"])
         self.assertIn("Failed to run cache health check", payload["message"])
+
+    def test_local_resilience_get_returns_defaults(self):
+        response = self.client.get("/api/server-management/local-resilience/")
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertFalse(payload.get("enabled"))
+        self.assertTrue(payload.get("encryptionRequired", payload.get("encryption_required")))
+
+    def test_local_resilience_patch_updates_enabled_flag(self):
+        response = self.client.patch(
+            "/api/server-management/local-resilience/",
+            {"enabled": True},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+
+        settings_obj = LocalResilienceSettings.get_solo()
+        self.assertTrue(settings_obj.enabled)
+        self.assertEqual(settings_obj.updated_by_id, self.user.id)
+
+    def test_local_resilience_reset_vault_increments_epoch(self):
+        settings_obj = LocalResilienceSettings.get_solo()
+        original_epoch = settings_obj.vault_epoch
+
+        response = self.client.post("/api/server-management/local-resilience/reset-vault/")
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload.get("ok"))
+
+        settings_obj.refresh_from_db()
+        self.assertEqual(settings_obj.vault_epoch, original_epoch + 1)
