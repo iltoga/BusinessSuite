@@ -3,12 +3,7 @@ from __future__ import annotations
 import secrets
 
 from api.permissions import is_superuser_or_admin_group
-from core.models.local_resilience import (
-    LocalResilienceSettings,
-    SyncChangeLog,
-    SyncConflict,
-    SyncCursor,
-)
+from core.models.local_resilience import LocalResilienceSettings, SyncChangeLog, SyncConflict, SyncCursor
 from core.services.sync_service import (
     fetch_media_entries,
     get_local_node_id,
@@ -117,10 +112,20 @@ class SyncViewSet(viewsets.ViewSet):
                 "remoteCursor": {
                     "lastPulledSeq": int(remote_cursor.last_pulled_seq) if remote_cursor else 0,
                     "lastPushedSeq": int(remote_cursor.last_pushed_seq) if remote_cursor else 0,
-                    "lastPulledAt": remote_cursor.last_pulled_at.isoformat() if remote_cursor and remote_cursor.last_pulled_at else None,
-                    "lastPushedAt": remote_cursor.last_pushed_at.isoformat() if remote_cursor and remote_cursor.last_pushed_at else None,
+                    "lastPulledAt": (
+                        remote_cursor.last_pulled_at.isoformat()
+                        if remote_cursor and remote_cursor.last_pulled_at
+                        else None
+                    ),
+                    "lastPushedAt": (
+                        remote_cursor.last_pushed_at.isoformat()
+                        if remote_cursor and remote_cursor.last_pushed_at
+                        else None
+                    ),
                     "lastError": remote_cursor.last_error if remote_cursor else "",
-                    "updatedAt": remote_cursor.updated_at.isoformat() if remote_cursor and remote_cursor.updated_at else None,
+                    "updatedAt": (
+                        remote_cursor.updated_at.isoformat() if remote_cursor and remote_cursor.updated_at else None
+                    ),
                 },
             }
         )
@@ -205,7 +210,8 @@ class SyncViewSet(viewsets.ViewSet):
             return auth_error
 
         body = request.data if isinstance(request.data, dict) else {}
-        paths = body.get("paths") if isinstance(body.get("paths"), list) else []
+        raw_paths = body.get("paths")
+        paths = raw_paths if isinstance(raw_paths, list) else ([] if raw_paths is None else [raw_paths])
         include_content = bool(body.get("include_content") or body.get("includeContent"))
         try:
             content_size_limit = int(body.get("content_size_limit") or body.get("contentSizeLimit") or 5_000_000)
@@ -213,7 +219,7 @@ class SyncViewSet(viewsets.ViewSet):
             content_size_limit = 5_000_000
 
         items = fetch_media_entries(
-            paths=[str(path) for path in paths],
+            paths=[str(path) for path in (paths or [])],
             include_content=include_content,
             content_size_limit=max(1024, content_size_limit),
         )
