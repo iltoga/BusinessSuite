@@ -1,8 +1,8 @@
-import { TestBed } from '@angular/core/testing';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideHttpClient } from '@angular/common/http';
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { TestBed } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ServerManagementService } from '@/core/api';
 import { GlobalToastService } from '@/core/services/toast.service';
@@ -23,15 +23,13 @@ describe('ServerManagementComponent - Cache Controls', () => {
     };
 
     mockServerManagementService = {
-      serverManagementClearCacheCreate: vi.fn().mockReturnValue(
-        of({ ok: true, message: 'Cache cleared' })
-      ),
-      serverManagementMediaDiagnosticRetrieve: vi.fn().mockReturnValue(
-        of({ ok: true, results: [], settings: null })
-      ),
-      serverManagementMediaRepairCreate: vi.fn().mockReturnValue(
-        of({ ok: true, repairs: [] })
-      ),
+      serverManagementClearCacheCreate: vi
+        .fn()
+        .mockReturnValue(of({ ok: true, message: 'Cache cleared' })),
+      serverManagementMediaDiagnosticRetrieve: vi
+        .fn()
+        .mockReturnValue(of({ ok: true, results: [], settings: null })),
+      serverManagementMediaRepairCreate: vi.fn().mockReturnValue(of({ ok: true, repairs: [] })),
     };
 
     await TestBed.configureTestingModule({
@@ -155,7 +153,7 @@ describe('ServerManagementComponent - Cache Controls', () => {
 
       const req = httpMock.expectOne('/api/cache/enable');
       expect(req.request.method).toBe('POST');
-      
+
       req.flush({ enabled: true, version: 1, message: 'Cache enabled successfully' });
 
       expect(component.cacheStatus()?.enabled).toBe(true);
@@ -169,7 +167,7 @@ describe('ServerManagementComponent - Cache Controls', () => {
 
       const req = httpMock.expectOne('/api/cache/disable');
       expect(req.request.method).toBe('POST');
-      
+
       req.flush({ enabled: false, version: 1, message: 'Cache disabled successfully' });
 
       expect(component.cacheStatus()?.enabled).toBe(false);
@@ -218,10 +216,16 @@ describe('ServerManagementComponent - Cache Controls', () => {
 
       const clearReq = httpMock.expectOne('/api/cache/clear');
       expect(clearReq.request.method).toBe('POST');
-      
-      clearReq.flush({ version: 2, cleared: true, message: 'Cache cleared successfully (new version: 2)' });
 
-      expect(mockToastService.success).toHaveBeenCalledWith('Cache cleared successfully (new version: 2)');
+      clearReq.flush({
+        version: 2,
+        cleared: true,
+        message: 'Cache cleared successfully (new version: 2)',
+      });
+
+      expect(mockToastService.success).toHaveBeenCalledWith(
+        'Cache cleared successfully (new version: 2)',
+      );
 
       // Should reload status after clearing
       const statusReq = httpMock.expectOne('/api/cache/status');
@@ -298,7 +302,7 @@ describe('ServerManagementComponent - Cache Controls', () => {
 
       const el: HTMLElement = fixture.nativeElement;
       const text = String((el.innerText ?? el.textContent) || '');
-      
+
       expect(text).toContain('Cache Management');
       expect(text).toContain('Enabled');
       expect(text).toContain('v5');
@@ -313,7 +317,7 @@ describe('ServerManagementComponent - Cache Controls', () => {
 
       const el: HTMLElement = fixture.nativeElement;
       const text = String((el.innerText ?? el.textContent) || '');
-      
+
       expect(text).toContain('Disabled');
       expect(text).toContain('v3');
     });
@@ -346,161 +350,8 @@ describe('ServerManagementComponent - Cache Controls', () => {
 
       const el: HTMLElement = fixture.nativeElement;
       const text = String((el.innerText ?? el.textContent) || '');
-      
+
       expect(text).toContain('Cache status not loaded yet');
-    });
-
-    it('should render AI global totals and per-model breakdown', async () => {
-      component.openRouterStatus.set({
-        ok: true,
-        openrouter: {
-          configured: true,
-          baseUrl: 'https://openrouter.ai/api/v1',
-          checkedAt: '2026-02-24T10:00:00+00:00',
-          keyStatus: {
-            ok: true,
-            httpStatus: 200,
-            message: null,
-            label: null,
-            limit: null,
-            limitRemaining: null,
-            limitReset: null,
-            usage: null,
-            usageDaily: null,
-            usageWeekly: null,
-            usageMonthly: null,
-            isFreeTier: null,
-          },
-          creditsStatus: {
-            ok: true,
-            available: true,
-            httpStatus: 200,
-            message: null,
-            totalCredits: null,
-            totalUsage: null,
-            remaining: null,
-          },
-          effectiveCreditRemaining: null,
-          effectiveCreditSource: null,
-        },
-        aiModels: {
-          provider: 'openrouter',
-          providerName: 'OpenRouter',
-          defaultModel: 'model-a',
-          availableModels: [],
-          usageCurrentMonth: {
-            requestCount: 3,
-            successCount: 3,
-            failedCount: 0,
-            totalTokens: 3000,
-            totalCost: 0.03,
-            year: 2026,
-            month: 2,
-          },
-          usageCurrentYear: {
-            requestCount: 3,
-            successCount: 3,
-            failedCount: 0,
-            totalTokens: 3000,
-            totalCost: 0.03,
-            year: 2026,
-            month: null,
-          },
-          features: [
-            {
-              feature: 'Document AI Categorizer',
-              purpose: 'Classifies documents.',
-              modelStrategy: 'Uses request model override.',
-              effectiveModel: 'model-a',
-              provider: 'openrouter',
-              usageCurrentMonth: {
-                requestCount: 3,
-                successCount: 3,
-                failedCount: 0,
-                totalTokens: 3000,
-                totalCost: 0.03,
-                year: 2026,
-                month: 2,
-              },
-              usageCurrentYear: {
-                requestCount: 3,
-                successCount: 3,
-                failedCount: 0,
-                totalTokens: 3000,
-                totalCost: 0.03,
-                year: 2026,
-                month: null,
-              },
-              modelBreakdownCurrentMonth: [
-                {
-                  model: 'model-a',
-                  requestCount: 2,
-                  successCount: 2,
-                  failedCount: 0,
-                  totalTokens: 2000,
-                  totalCost: 0.02,
-                },
-                {
-                  model: 'model-b',
-                  requestCount: 1,
-                  successCount: 1,
-                  failedCount: 0,
-                  totalTokens: 1000,
-                  totalCost: 0.01,
-                },
-                {
-                  model: 'model-zero-month',
-                  requestCount: 1,
-                  successCount: 1,
-                  failedCount: 0,
-                  totalTokens: 100,
-                  totalCost: 0,
-                },
-              ],
-              modelBreakdownCurrentYear: [
-                {
-                  model: 'model-a',
-                  requestCount: 2,
-                  successCount: 2,
-                  failedCount: 0,
-                  totalTokens: 2000,
-                  totalCost: 0.02,
-                },
-                {
-                  model: 'model-b',
-                  requestCount: 1,
-                  successCount: 1,
-                  failedCount: 0,
-                  totalTokens: 1000,
-                  totalCost: 0.01,
-                },
-                {
-                  model: 'model-zero-year',
-                  requestCount: 1,
-                  successCount: 1,
-                  failedCount: 0,
-                  totalTokens: 100,
-                  totalCost: 0,
-                },
-              ],
-            },
-          ],
-        },
-      } as any);
-      fixture.detectChanges();
-
-      await new Promise((r) => setTimeout(r, 0));
-      fixture.detectChanges();
-
-      const el: HTMLElement = fixture.nativeElement;
-      const text = String((el.innerText ?? el.textContent) || '');
-
-      expect(text).toContain('GLOBAL TOTALS (CURRENT MONTH)');
-      expect(text).toContain('MODEL BREAKDOWN (CURRENT MONTH)');
-      expect(text).toContain('model-a');
-      expect(text).toContain('model-b');
-      expect(text).not.toContain('model-zero-month');
-      expect(text).not.toContain('model-zero-year');
     });
   });
 
@@ -515,7 +366,7 @@ describe('ServerManagementComponent - Cache Controls', () => {
 
     it('should handle existing clearCache errors', () => {
       mockServerManagementService.serverManagementClearCacheCreate.mockReturnValue(
-        throwError(() => new Error('Network error'))
+        throwError(() => new Error('Network error')),
       );
 
       component.clearCache();

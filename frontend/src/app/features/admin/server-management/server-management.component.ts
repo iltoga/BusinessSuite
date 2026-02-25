@@ -34,105 +34,6 @@ interface ServerSettings {
   debug: boolean;
 }
 
-interface OpenRouterStatusResponse {
-  ok: boolean;
-  openrouter: {
-    configured: boolean;
-    baseUrl: string;
-    checkedAt: string;
-    keyStatus: {
-      ok: boolean;
-      httpStatus: number | null;
-      message: string | null;
-      label: string | null;
-      limit: number | null;
-      limitRemaining: number | null;
-      limitReset: string | null;
-      usage: number | null;
-      usageDaily: number | null;
-      usageWeekly: number | null;
-      usageMonthly: number | null;
-      isFreeTier: boolean | null;
-    };
-    creditsStatus: {
-      ok: boolean;
-      available: boolean;
-      httpStatus: number | null;
-      message: string | null;
-      totalCredits: number | null;
-      totalUsage: number | null;
-      remaining: number | null;
-    };
-    effectiveCreditRemaining: number | null;
-    effectiveCreditSource: string | null;
-  };
-  aiModels: {
-    provider: string;
-    providerName: string;
-    defaultModel: string;
-    availableModels: Array<{ id: string; name: string; description?: string }>;
-    usageCurrentMonth: {
-      requestCount: number;
-      successCount: number;
-      failedCount: number;
-      totalTokens: number;
-      totalCost: number;
-      year: number;
-      month: number | null;
-    };
-    usageCurrentYear: {
-      requestCount: number;
-      successCount: number;
-      failedCount: number;
-      totalTokens: number;
-      totalCost: number;
-      year: number;
-      month: number | null;
-    };
-    features: Array<{
-      feature: string;
-      purpose: string;
-      modelStrategy: string;
-      effectiveModel: string;
-      provider: string;
-      usageCurrentMonth: {
-        requestCount: number;
-        successCount: number;
-        failedCount: number;
-        totalTokens: number;
-        totalCost: number;
-        year: number;
-        month: number | null;
-      };
-      usageCurrentYear: {
-        requestCount: number;
-        successCount: number;
-        failedCount: number;
-        totalTokens: number;
-        totalCost: number;
-        year: number;
-        month: number | null;
-      };
-      modelBreakdownCurrentMonth: Array<{
-        model: string;
-        requestCount: number;
-        successCount: number;
-        failedCount: number;
-        totalTokens: number;
-        totalCost: number;
-      }>;
-      modelBreakdownCurrentYear: Array<{
-        model: string;
-        requestCount: number;
-        successCount: number;
-        failedCount: number;
-        totalTokens: number;
-        totalCost: number;
-      }>;
-    }>;
-  };
-}
-
 interface CacheStatusResponse {
   enabled: boolean;
   version: number;
@@ -177,9 +78,7 @@ export class ServerManagementComponent implements OnInit {
   readonly diagnosticResults = signal<MediaDiagnosticResult[]>([]);
   readonly repairResults = signal<string[]>([]);
   readonly serverSettings = signal<ServerSettings | null>(null);
-  readonly openRouterStatus = signal<OpenRouterStatusResponse | null>(null);
-  readonly openRouterLoading = signal(false);
-  
+
   // Cache management state
   readonly cacheStatus = signal<CacheStatusResponse | null>(null);
   readonly cacheLoading = signal(false);
@@ -195,7 +94,6 @@ export class ServerManagementComponent implements OnInit {
   );
 
   ngOnInit(): void {
-    this.loadOpenRouterStatus();
     this.loadCacheStatus();
     this.loadCacheHealth();
   }
@@ -381,34 +279,11 @@ export class ServerManagementComponent implements OnInit {
       });
   }
 
-  loadOpenRouterStatus(): void {
-    this.openRouterLoading.set(true);
-    this.http
-      .get<OpenRouterStatusResponse>('/api/server-management/openrouter-status/')
-      .pipe(
-        catchError(() => {
-          this.toast.error('Failed to load OpenRouter status');
-          return EMPTY;
-        }),
-        finalize(() => this.openRouterLoading.set(false)),
-      )
-      .subscribe((response) => {
-        this.openRouterStatus.set(response);
-      });
-  }
-
   getCacheBackendType(cacheBackend?: string | null): string {
     if (!cacheBackend) {
       return 'Unknown';
     }
     const backendTokens = cacheBackend.split('.');
     return backendTokens[backendTokens.length - 1] || cacheBackend;
-  }
-
-  getNonZeroCostModels<T extends { totalCost: number }>(models: T[] | null | undefined): T[] {
-    if (!models?.length) {
-      return [];
-    }
-    return models.filter((modelUsage) => Number(modelUsage.totalCost) > 0);
   }
 }

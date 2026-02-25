@@ -1,0 +1,208 @@
+<div class="space-y-6">
+  <div class="flex flex-wrap items-start justify-between gap-3">
+    <h1 class="text-2xl font-bold tracking-tight">System Costs</h1>
+  </div>
+
+  <z-card class="p-6">
+    <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+      <h3 class="text-lg font-medium">OpenRouter & AI Models</h3>
+      <button
+        z-button
+        zType="outline"
+        class="w-full sm:w-auto"
+        (click)="loadOpenRouterStatus()"
+        [zDisabled]="openRouterLoading()"
+      >
+        @if (openRouterLoading()) {
+          <span>Refreshing...</span>
+        } @else {
+          <span>Refresh</span>
+        }
+      </button>
+    </div>
+
+    @if (openRouterStatus(); as status) {
+      <div class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div>
+          <label class="text-sm font-medium text-muted-foreground">OpenRouter Config</label>
+          <div class="mt-1">
+            <z-badge [zType]="status.openrouter.configured ? 'default' : 'destructive'">
+              {{ status.openrouter.configured ? 'Configured' : 'Missing API Key' }}
+            </z-badge>
+          </div>
+        </div>
+        <div>
+          <label class="text-sm font-medium text-muted-foreground"
+            >Effective Credit Remaining</label
+          >
+          <p class="text-sm font-mono bg-muted p-2 rounded mt-1">
+            @if (status.openrouter.effectiveCreditRemaining !== null) {
+              ${{ status.openrouter.effectiveCreditRemaining }}
+            } @else {
+              n/a
+            }
+          </p>
+        </div>
+        <div>
+          <label class="text-sm font-medium text-muted-foreground"
+            >Current Provider / Default Model</label
+          >
+          <p class="text-sm font-mono bg-muted p-2 rounded mt-1 wrap-break-word">
+            {{ status.aiModels.providerName }} / {{ status.aiModels.defaultModel }}
+          </p>
+        </div>
+      </div>
+
+      <div class="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div class="text-sm bg-muted p-3 rounded">
+          <div class="font-medium mb-1">Key Endpoint (`/key`)</div>
+          <div>Status: {{ status.openrouter.keyStatus.ok ? 'OK' : 'Error' }}</div>
+          @if (status.openrouter.keyStatus.message) {
+            <div class="text-destructive mt-1">{{ status.openrouter.keyStatus.message }}</div>
+          }
+          @if (status.openrouter.keyStatus.limitRemaining !== null) {
+            <div class="mt-1">
+              Limit Remaining: ${{ status.openrouter.keyStatus.limitRemaining }}
+            </div>
+          }
+          @if (status.openrouter.keyStatus.usageMonthly !== null) {
+            <div class="mt-1">Usage Monthly: {{ status.openrouter.keyStatus.usageMonthly }}</div>
+          }
+        </div>
+        <div class="text-sm bg-muted p-3 rounded">
+          <div class="font-medium mb-1">Credits Endpoint (`/credits`)</div>
+          <div>Status: {{ status.openrouter.creditsStatus.ok ? 'OK' : 'Unavailable' }}</div>
+          @if (status.openrouter.creditsStatus.message) {
+            <div class="text-muted-foreground mt-1">
+              {{ status.openrouter.creditsStatus.message }}
+            </div>
+          }
+          @if (status.openrouter.creditsStatus.remaining !== null) {
+            <div class="mt-1">Remaining: ${{ status.openrouter.creditsStatus.remaining }}</div>
+          }
+          @if (status.openrouter.creditsStatus.totalCredits !== null) {
+            <div class="mt-1">
+              Total Credits: ${{ status.openrouter.creditsStatus.totalCredits }}
+            </div>
+          }
+          @if (status.openrouter.creditsStatus.totalUsage !== null) {
+            <div class="mt-1">Total Usage: ${{ status.openrouter.creditsStatus.totalUsage }}</div>
+          }
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <h4 class="text-sm font-medium mb-2">AI Features and Model Usage</h4>
+        <div class="mb-3 grid grid-cols-1 gap-2 md:grid-cols-2">
+          <div class="rounded border border-border/70 bg-muted/30 p-3 text-sm">
+            <div class="text-xs uppercase tracking-wide text-muted-foreground">
+              Global Totals (Current Month)
+            </div>
+            <div class="mt-1">Requests: {{ status.aiModels.usageCurrentMonth.requestCount }}</div>
+            <div>Tokens: {{ status.aiModels.usageCurrentMonth.totalTokens }}</div>
+            <div>Cost: ${{ status.aiModels.usageCurrentMonth.totalCost | number: '1.4-6' }}</div>
+          </div>
+          <div class="rounded border border-border/70 bg-muted/30 p-3 text-sm">
+            <div class="text-xs uppercase tracking-wide text-muted-foreground">
+              Global Totals (Current Year)
+            </div>
+            <div class="mt-1">Requests: {{ status.aiModels.usageCurrentYear.requestCount }}</div>
+            <div>Tokens: {{ status.aiModels.usageCurrentYear.totalTokens }}</div>
+            <div>Cost: ${{ status.aiModels.usageCurrentYear.totalCost | number: '1.4-6' }}</div>
+          </div>
+        </div>
+        <div class="space-y-2">
+          @for (feature of status.aiModels.features; track feature.feature) {
+            <div class="text-sm bg-muted p-3 rounded">
+              <div class="font-medium">{{ feature.feature }}</div>
+              <div class="text-muted-foreground">{{ feature.purpose }}</div>
+              <div class="mt-1 font-mono">Model: {{ feature.effectiveModel }}</div>
+              <div class="text-muted-foreground">{{ feature.modelStrategy }}</div>
+              <div class="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
+                <div class="rounded border border-border/70 bg-background p-2">
+                  <div class="text-xs uppercase tracking-wide text-muted-foreground">
+                    Global Total (Current Month)
+                  </div>
+                  <div class="mt-1">Requests: {{ feature.usageCurrentMonth.requestCount }}</div>
+                  <div>Tokens: {{ feature.usageCurrentMonth.totalTokens }}</div>
+                  <div>Cost: ${{ feature.usageCurrentMonth.totalCost | number: '1.4-6' }}</div>
+                </div>
+                <div class="rounded border border-border/70 bg-background p-2">
+                  <div class="text-xs uppercase tracking-wide text-muted-foreground">
+                    Global Total (Current Year)
+                  </div>
+                  <div class="mt-1">Requests: {{ feature.usageCurrentYear.requestCount }}</div>
+                  <div>Tokens: {{ feature.usageCurrentYear.totalTokens }}</div>
+                  <div>Cost: ${{ feature.usageCurrentYear.totalCost | number: '1.4-6' }}</div>
+                </div>
+              </div>
+              @if (
+                getNonZeroCostModels(feature.modelBreakdownCurrentMonth).length > 0 ||
+                getNonZeroCostModels(feature.modelBreakdownCurrentYear).length > 0
+              ) {
+                <div class="mt-3 grid grid-cols-1 gap-2 xl:grid-cols-2">
+                  <div class="rounded border border-border/70 bg-background p-2">
+                    <div class="text-xs uppercase tracking-wide text-muted-foreground">
+                      Model Breakdown (Current Month)
+                    </div>
+                    @if (getNonZeroCostModels(feature.modelBreakdownCurrentMonth).length === 0) {
+                      <div class="mt-1 text-xs text-muted-foreground">No usage data.</div>
+                    } @else {
+                      <div class="mt-2 space-y-1">
+                        @for (
+                          modelUsage of getNonZeroCostModels(feature.modelBreakdownCurrentMonth);
+                          track modelUsage.model
+                        ) {
+                          <div class="rounded border border-border/70 bg-muted/30 p-2">
+                            <div class="font-mono text-xs wrap-break-word">
+                              {{ modelUsage.model }}
+                            </div>
+                            <div class="text-xs text-muted-foreground">
+                              Requests: {{ modelUsage.requestCount }} | Tokens:
+                              {{ modelUsage.totalTokens }} | Cost: ${{
+                                modelUsage.totalCost | number: '1.4-6'
+                              }}
+                            </div>
+                          </div>
+                        }
+                      </div>
+                    }
+                  </div>
+                  <div class="rounded border border-border/70 bg-background p-2">
+                    <div class="text-xs uppercase tracking-wide text-muted-foreground">
+                      Model Breakdown (Current Year)
+                    </div>
+                    @if (getNonZeroCostModels(feature.modelBreakdownCurrentYear).length === 0) {
+                      <div class="mt-1 text-xs text-muted-foreground">No usage data.</div>
+                    } @else {
+                      <div class="mt-2 space-y-1">
+                        @for (
+                          modelUsage of getNonZeroCostModels(feature.modelBreakdownCurrentYear);
+                          track modelUsage.model
+                        ) {
+                          <div class="rounded border border-border/70 bg-muted/30 p-2">
+                            <div class="font-mono text-xs wrap-break-word">
+                              {{ modelUsage.model }}
+                            </div>
+                            <div class="text-xs text-muted-foreground">
+                              Requests: {{ modelUsage.requestCount }} | Tokens:
+                              {{ modelUsage.totalTokens }} | Cost: ${{
+                                modelUsage.totalCost | number: '1.4-6'
+                              }}
+                            </div>
+                          </div>
+                        }
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    } @else {
+      <p class="text-sm text-muted-foreground">OpenRouter status not loaded yet.</p>
+    }
+  </z-card>
+</div>

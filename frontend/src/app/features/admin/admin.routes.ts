@@ -42,6 +42,13 @@ export const adminRoutes: Routes = [
         (c) => c.ServerManagementComponent,
       ),
   },
+  {
+    path: 'systemcosts',
+    title: 'System Costs',
+    canActivate: [adminGroupGuard],
+    loadComponent: () =>
+      import('./system-costs/system-costs.component').then((c) => c.SystemCostsComponent),
+  },
 
   {
     path: '',

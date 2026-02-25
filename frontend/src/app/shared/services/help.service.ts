@@ -76,6 +76,7 @@ export class HelpService {
       '/letters/surat-permohonan',
       { id: '/letters/surat-permohonan', contentUrl: '/help/letters/surat-permohonan.md' },
     ],
+    ['/admin/systemcosts', { id: '/admin/systemcosts', contentUrl: '/help/admin/system-costs.md' }],
     ['/profile', { id: '/profile', contentUrl: '/help/profile/index.md' }],
   ]);
 
@@ -198,11 +199,17 @@ export class HelpService {
       const w: any = window as any;
       const contextId = this._context()?.id || 'unknown';
       const totalOpens = this._openCount();
-      console.info(`[HelpService] Help drawer opened context=${contextId} open_count=${totalOpens}`);
+      console.info(
+        `[HelpService] Help drawer opened context=${contextId} open_count=${totalOpens}`,
+      );
 
       // Google Analytics / gtag
       if (typeof w.gtag === 'function') {
-        w.gtag('event', 'help_open', { method: 'F1_or_button', context: contextId, open_count: totalOpens });
+        w.gtag('event', 'help_open', {
+          method: 'F1_or_button',
+          context: contextId,
+          open_count: totalOpens,
+        });
         return;
       }
 

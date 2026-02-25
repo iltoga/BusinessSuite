@@ -56,7 +56,11 @@ export class MenuService {
           label: 'Application Pipeline',
           route: '/reports/application-pipeline',
         },
-        { id: 'reports-product-revenue', label: 'Product Revenue', route: '/reports/product-revenue' },
+        {
+          id: 'reports-product-revenue',
+          label: 'Product Revenue',
+          route: '/reports/product-revenue',
+        },
         { id: 'reports-product-demand', label: 'Product Demand', route: '/reports/product-demand' },
         { id: 'reports-ai-costing', label: 'AI Costing', route: '/reports/ai-costing' },
       ],
@@ -113,6 +117,12 @@ export class MenuService {
           route: '/admin/server',
           visible: () => this.authService.isInAdminGroup(),
         },
+        {
+          id: 'admin-system-costs',
+          label: 'System Costs',
+          route: '/admin/systemcosts',
+          visible: () => this.authService.isInAdminGroup(),
+        },
       ],
     },
   ]);
@@ -160,6 +170,10 @@ export class MenuService {
   }
 
   private canAccessAdminSection(): boolean {
-    return this.canAccessStaffAdminItems() || this.canAccessBackups() || this.authService.isInAdminGroup();
+    return (
+      this.canAccessStaffAdminItems() ||
+      this.canAccessBackups() ||
+      this.authService.isInAdminGroup()
+    );
   }
 }

@@ -15,6 +15,8 @@ from .base import *
 # Ensure a sane default for document language in development/testing
 DEFAULT_DOCUMENT_LANGUAGE_CODE = os.getenv("DEFAULT_DOCUMENT_LANGUAGE_CODE", "id")
 
+SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-dev-only-not-for-production")
+
 CSRF_COOKIE_SECURE = False
 SESSION_COOKIE_SECURE = False
 CSRF_COOKIE_DOMAIN = None

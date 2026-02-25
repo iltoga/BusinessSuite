@@ -152,14 +152,16 @@
     >
       Download
     </button>
-    <button
-      z-button
-      zType="ghost"
-      zSize="sm"
-      (click)="restoreBackup(item.filename)"
-      [zDisabled]="isOperationRunning()"
-    >
-      Restore
-    </button>
+    @if (canRestoreBackups()) {
+      <button
+        z-button
+        zType="ghost"
+        zSize="sm"
+        (click)="restoreBackup(item.filename)"
+        [zDisabled]="isOperationRunning()"
+      >
+        Restore
+      </button>
+    }
   </div>
 </ng-template>

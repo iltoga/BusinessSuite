@@ -79,6 +79,7 @@ export class BackupsComponent implements OnInit, OnDestroy {
   readonly uploadHelperText = signal<string | null>(null);
   readonly operationProgress = signal<number | null>(null);
   readonly operationLabel = signal<string>('Operation progress');
+  readonly canRestoreBackups = this.authService.isInAdminGroup;
 
   // Selection state
   readonly selectedFiles = signal<string[]>([]);
@@ -189,6 +190,11 @@ export class BackupsComponent implements OnInit, OnDestroy {
   }
 
   restoreBackup(filename: string): void {
+    if (!this.canRestoreBackups()) {
+      this.toast.error('Only users in admin group can restore backups');
+      return;
+    }
+
     if (
       !confirm(
         `Are you sure you want to restore from "${filename}"? This will overwrite existing data.`,
