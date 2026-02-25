@@ -403,10 +403,19 @@ STATICFILES_DIRS = [
     os.path.join(BASE_DIR, "static"),
 ]
 
-CSRF_COOKIE_SECURE = True
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_DOMAIN = APP_DOMAIN
-SESSION_COOKIE_DOMAIN = APP_DOMAIN
+CSRF_COOKIE_SECURE = _parse_bool(os.getenv("CSRF_COOKIE_SECURE", "True"))
+SESSION_COOKIE_SECURE = _parse_bool(os.getenv("SESSION_COOKIE_SECURE", "True"))
+
+
+def _normalize_cookie_domain(value):
+    normalized = str(value or "").strip()
+    if normalized.lower() in {"", "none", "null"}:
+        return None
+    return normalized
+
+
+CSRF_COOKIE_DOMAIN = _normalize_cookie_domain(os.getenv("CSRF_COOKIE_DOMAIN", APP_DOMAIN))
+SESSION_COOKIE_DOMAIN = _normalize_cookie_domain(os.getenv("SESSION_COOKIE_DOMAIN", APP_DOMAIN))
 CSRF_TRUSTED_ORIGINS = [
     f"https://www.admin.{APP_DOMAIN}",
     f"https://admin.{APP_DOMAIN}",

@@ -13,7 +13,9 @@ COPY --from=bun /usr/local/bin/bun /usr/local/bin/bun
 
 # Install dependencies separately for better caching
 COPY frontend/package.json frontend/bun.lock ./
-RUN bun install --frozen-lockfile
+RUN set -eux; \
+  bun install --frozen-lockfile || \
+  (rm -rf /root/.bun/install/cache && bun install --frozen-lockfile)
 
 # Copy the rest of the frontend files
 COPY frontend/ ./
@@ -26,7 +28,9 @@ FROM oven/bun:latest AS runner
 WORKDIR /app
 
 COPY frontend/package.json frontend/bun.lock ./
-RUN bun install --frozen-lockfile --production
+RUN set -eux; \
+  bun install --frozen-lockfile --production || \
+  (rm -rf /root/.bun/install/cache && bun install --frozen-lockfile --production)
 
 COPY --from=builder /app/dist ./dist
 

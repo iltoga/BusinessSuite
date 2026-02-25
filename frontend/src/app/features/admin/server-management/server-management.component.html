@@ -326,6 +326,14 @@
           </div>
 
           <div class="flex flex-wrap gap-3">
+            <input
+              type="password"
+              class="h-10 min-w-[240px] rounded-md border border-input bg-background px-3 text-sm"
+              placeholder="Vault passphrase"
+              [value]="desktopVaultPassphrase()"
+              (input)="desktopVaultPassphrase.set($any($event.target).value || '')"
+              (keydown.enter)="unlockDesktopVault()"
+            />
             <button
               z-button
               class="w-full sm:w-auto"

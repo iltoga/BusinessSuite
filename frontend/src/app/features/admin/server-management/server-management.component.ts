@@ -113,6 +113,7 @@ export class ServerManagementComponent implements OnInit {
   readonly desktopRuntimeStatus = signal<DesktopRuntimeStatus | null>(null);
   readonly desktopSyncStatus = signal<DesktopSyncStatus | null>(null);
   readonly desktopVaultStatus = signal<DesktopVaultStatus | null>(null);
+  readonly desktopVaultPassphrase = signal('');
   readonly desktopRuntimeLoading = signal(false);
   readonly desktopVaultLoading = signal(false);
 
@@ -343,8 +344,9 @@ export class ServerManagementComponent implements OnInit {
     if (!this.isDesktop() || this.desktopVaultLoading()) {
       return;
     }
-    const passphrase = window.prompt('Enter local vault passphrase');
+    const passphrase = this.desktopVaultPassphrase().trim();
     if (!passphrase) {
+      this.toast.error('Enter the local vault passphrase');
       return;
     }
 
@@ -354,6 +356,7 @@ export class ServerManagementComponent implements OnInit {
       this.desktopVaultStatus.set(vault);
       if (vault.unlocked) {
         this.toast.success('Desktop vault unlocked');
+        this.desktopVaultPassphrase.set('');
       } else {
         this.toast.error(vault.lastError || 'Failed to unlock desktop vault');
       }

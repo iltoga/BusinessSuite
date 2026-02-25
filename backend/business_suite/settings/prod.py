@@ -11,7 +11,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 from .base import *
-from .base import _resolved_db_host
+from .base import _parse_bool, _resolved_db_host
 from .cache_backends import build_prod_redis_caches
 
 ALLOWED_HOSTS = [
@@ -159,7 +159,7 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 # Honor X-Forwarded-Host when constructing absolute URIs
 USE_X_FORWARDED_HOST = True
 # Redirect plain HTTP requests to HTTPS (recommended in production)
-SECURE_SSL_REDIRECT = True
+SECURE_SSL_REDIRECT = _parse_bool(os.getenv("SECURE_SSL_REDIRECT", "True"))
 
 # OpenRouter / OpenAI API Configuration
 # Timeout settings for LLM API calls (vision models can take 60-120 seconds)

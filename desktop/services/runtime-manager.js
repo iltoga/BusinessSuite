@@ -17,10 +17,10 @@ class DesktopRuntimeManager {
   constructor({
     projectRoot,
     composeFile,
-    projectName = 'revisbali-local',
-    localFrontendUrl = 'http://127.0.0.1:4200',
-    localBackendHealthUrl = 'http://127.0.0.1:8000/api/app-config/',
-    localSyncStateUrl = 'http://127.0.0.1:8000/api/sync/state/',
+    projectName = 'revisbali-desktop-local',
+    localFrontendUrl = 'http://127.0.0.1:14200',
+    localBackendHealthUrl = 'http://127.0.0.1:18000/api/app-config/',
+    localSyncStateUrl = 'http://127.0.0.1:18000/api/sync/state/',
     localDataPath,
     localDbPath,
     remoteSyncBaseUrl = '',
@@ -30,11 +30,11 @@ class DesktopRuntimeManager {
     log,
   } = {}) {
     this.projectRoot = projectRoot || path.resolve(__dirname, '..', '..');
-    this.composeFile = composeFile || path.join(this.projectRoot, 'docker-compose-local.yml');
-    this.projectName = String(projectName || 'revisbali-local').trim() || 'revisbali-local';
-    this.localFrontendUrl = String(localFrontendUrl || 'http://127.0.0.1:4200').trim();
-    this.localBackendHealthUrl = String(localBackendHealthUrl || 'http://127.0.0.1:8000/api/app-config/').trim();
-    this.localSyncStateUrl = String(localSyncStateUrl || 'http://127.0.0.1:8000/api/sync/state/').trim();
+    this.composeFile = composeFile || path.join(this.projectRoot, 'docker-compose-desktop-stack.yml');
+    this.projectName = String(projectName || 'revisbali-desktop-local').trim() || 'revisbali-desktop-local';
+    this.localFrontendUrl = String(localFrontendUrl || 'http://127.0.0.1:14200').trim();
+    this.localBackendHealthUrl = String(localBackendHealthUrl || 'http://127.0.0.1:18000/api/app-config/').trim();
+    this.localSyncStateUrl = String(localSyncStateUrl || 'http://127.0.0.1:18000/api/sync/state/').trim();
     this.localDataPath =
       localDataPath || path.join(this.projectRoot, '.desktop-local-runtime');
     this.localDbPath = localDbPath || path.join(this.localDataPath, 'postgresql');
@@ -88,14 +88,24 @@ class DesktopRuntimeManager {
       ...process.env,
       DATA_PATH: this.localDataPath,
       DB_PATH: this.localDbPath,
-      DB_HOST: process.env.DESKTOP_LOCAL_DB_HOST || 'db',
-      DB_PORT: process.env.DESKTOP_LOCAL_DB_PORT || '5432',
-      DB_NAME: process.env.DESKTOP_LOCAL_DB_NAME || 'business_suite',
-      DB_USER: process.env.DESKTOP_LOCAL_DB_USER || 'postgres',
-      DB_PASS: process.env.DESKTOP_LOCAL_DB_PASS || 'postgres',
-      REDIS_HOST: process.env.DESKTOP_LOCAL_REDIS_HOST || 'bs-redis',
-      REDIS_PORT: process.env.DESKTOP_LOCAL_REDIS_PORT || '6379',
-      HUEY_REDIS_DB: process.env.DESKTOP_LOCAL_HUEY_REDIS_DB || '0',
+      DESKTOP_DB_HOST: process.env.DESKTOP_DB_HOST || process.env.DESKTOP_LOCAL_DB_HOST || 'db',
+      DESKTOP_DB_PORT: process.env.DESKTOP_DB_PORT || process.env.DESKTOP_LOCAL_DB_PORT || '5432',
+      DESKTOP_DB_NAME: process.env.DESKTOP_DB_NAME || process.env.DESKTOP_LOCAL_DB_NAME || 'business_suite',
+      DESKTOP_DB_USER: process.env.DESKTOP_DB_USER || process.env.DESKTOP_LOCAL_DB_USER || 'postgres',
+      DESKTOP_DB_PASS: process.env.DESKTOP_DB_PASS || process.env.DESKTOP_LOCAL_DB_PASS || 'postgres',
+      DB_HOST: process.env.DESKTOP_DB_HOST || process.env.DESKTOP_LOCAL_DB_HOST || 'db',
+      DB_PORT: process.env.DESKTOP_DB_PORT || process.env.DESKTOP_LOCAL_DB_PORT || '5432',
+      DB_NAME: process.env.DESKTOP_DB_NAME || process.env.DESKTOP_LOCAL_DB_NAME || 'business_suite',
+      DB_USER: process.env.DESKTOP_DB_USER || process.env.DESKTOP_LOCAL_DB_USER || 'postgres',
+      DB_PASS: process.env.DESKTOP_DB_PASS || process.env.DESKTOP_LOCAL_DB_PASS || 'postgres',
+      DESKTOP_SECRET_KEY: process.env.DESKTOP_SECRET_KEY || process.env.SECRET_KEY || 'desktop-local-secret-key-change-me',
+      DESKTOP_APP_DOMAIN: process.env.DESKTOP_APP_DOMAIN || '127.0.0.1',
+      DESKTOP_REDIS_HOST: process.env.DESKTOP_REDIS_HOST || process.env.DESKTOP_LOCAL_REDIS_HOST || 'redis',
+      DESKTOP_REDIS_PORT: process.env.DESKTOP_REDIS_PORT || process.env.DESKTOP_LOCAL_REDIS_PORT || '6379',
+      DESKTOP_HUEY_REDIS_DB: process.env.DESKTOP_HUEY_REDIS_DB || process.env.DESKTOP_LOCAL_HUEY_REDIS_DB || '0',
+      REDIS_HOST: process.env.DESKTOP_REDIS_HOST || process.env.DESKTOP_LOCAL_REDIS_HOST || 'redis',
+      REDIS_PORT: process.env.DESKTOP_REDIS_PORT || process.env.DESKTOP_LOCAL_REDIS_PORT || '6379',
+      HUEY_REDIS_DB: process.env.DESKTOP_HUEY_REDIS_DB || process.env.DESKTOP_LOCAL_HUEY_REDIS_DB || '0',
       LOCAL_SYNC_ENABLED: process.env.LOCAL_SYNC_ENABLED || 'true',
       LOCAL_SYNC_NODE_ID:
         this.remoteSyncNodeId || process.env.LOCAL_SYNC_NODE_ID || 'desktop-local-node',
@@ -116,6 +126,7 @@ class DesktopRuntimeManager {
       path.join(this.localDataPath, 'db'),
       path.join(this.localDataPath, 'logs'),
       path.join(this.localDataPath, 'staticfiles'),
+      path.join(this.localDataPath, 'backups'),
     ];
     for (const dirPath of requiredDirs) {
       fs.mkdirSync(dirPath, { recursive: true });

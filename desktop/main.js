@@ -20,9 +20,9 @@ const { DesktopRuntimeManager } = require("./services/runtime-manager");
 const { DesktopVaultService } = require("./services/vault-service");
 
 const DEFAULT_START_URL = "https://crm.revisbali.com";
-const DEFAULT_LOCAL_FRONTEND_URL = "http://127.0.0.1:4200";
-const DEFAULT_LOCAL_BACKEND_HEALTH_URL = "http://127.0.0.1:8000/api/app-config/";
-const DEFAULT_LOCAL_SYNC_STATE_URL = "http://127.0.0.1:8000/api/sync/state/";
+const DEFAULT_LOCAL_FRONTEND_URL = "http://127.0.0.1:14200";
+const DEFAULT_LOCAL_BACKEND_HEALTH_URL = "http://127.0.0.1:18000/api/app-config/";
+const DEFAULT_LOCAL_SYNC_STATE_URL = "http://127.0.0.1:18000/api/sync/state/";
 const APP_NAME = "Revis Bali CRM";
 const RENDERER_UNREAD_SYNC_TTL_MS = 20_000;
 const DEFAULT_REMINDER_POLL_INTERVAL_MS = 15_000;
@@ -276,7 +276,7 @@ function buildRuntimeManager() {
   ).trim();
   const composeFile = composeFileFromEnv
     ? path.resolve(composeFileFromEnv)
-    : path.resolve(__dirname, "..", "docker-compose-local.yml");
+    : path.resolve(__dirname, "..", "docker-compose-desktop-stack.yml");
   const localRuntimeDataPath = path.join(app.getPath("userData"), "local-runtime");
   const localRuntimeDbPath = path.join(localRuntimeDataPath, "postgresql");
 
@@ -284,7 +284,7 @@ function buildRuntimeManager() {
     projectRoot: path.resolve(__dirname, ".."),
     composeFile,
     projectName:
-      process.env.DESKTOP_LOCAL_COMPOSE_PROJECT || "revisbali-local",
+      process.env.DESKTOP_LOCAL_COMPOSE_PROJECT || "revisbali-desktop-local",
     localFrontendUrl,
     localBackendHealthUrl,
     localSyncStateUrl,
