@@ -45,8 +45,8 @@ class Document(models.Model):
     expiration_date = models.DateField(blank=True, null=True, db_index=True)
     file = models.FileField(upload_to=get_upload_to, blank=True)
     file_link = models.CharField(max_length=1024, blank=True)
-    # metadata field to store the extracted metadata from the document
-    ocr_check = models.BooleanField(default=False)
+    # True when AI validation has been requested/performed for this document
+    ai_validation = models.BooleanField(default=False)
     details = models.TextField(blank=True)
     completed = models.BooleanField(default=False)
     metadata = models.JSONField(blank=True, null=True)
@@ -160,10 +160,13 @@ class Document(models.Model):
         else:
             self.file_link = ""
 
-        if self.metadata is not None and self.metadata != {}:
-            self.ocr_check = True
-        else:
-            self.ocr_check = False
+        self.ai_validation = self.ai_validation_status in {
+            self.AI_VALIDATION_PENDING,
+            self.AI_VALIDATION_VALIDATING,
+            self.AI_VALIDATION_VALID,
+            self.AI_VALIDATION_INVALID,
+            self.AI_VALIDATION_ERROR,
+        }
 
         super().save(*args, **kwargs)
 

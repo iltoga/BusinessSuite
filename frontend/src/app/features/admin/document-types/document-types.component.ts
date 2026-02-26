@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -51,6 +52,7 @@ export class DocumentTypesComponent implements OnInit {
 
   private fb = inject(FormBuilder);
   private router = inject(Router);
+  private http = inject(HttpClient);
   private documentTypesApi = inject(DocumentTypesService);
   private toast = inject(GlobalToastService);
   private dialogService = inject(ZardDialogService);
@@ -60,17 +62,22 @@ export class DocumentTypesComponent implements OnInit {
   readonly documentTypes = signal<DocumentType[]>([]);
   readonly isLoading = signal(true);
   readonly query = signal('');
+  readonly includeDeprecated = signal(false);
   readonly isDialogOpen = signal(false);
   readonly isSaving = signal(false);
   readonly editingDocumentType = signal<DocumentType | null>(null);
   readonly showConfirmDelete = signal(false);
   readonly confirmDeleteMessage = signal('');
+  readonly showDeprecationConfirm = signal(false);
+  readonly deprecationConfirmMessage = signal('');
+  readonly pendingDeprecationPayload = signal<DocumentType | null>(null);
   readonly pendingEditId = signal<number | null>(null);
 
   columns: ColumnConfig<DocumentType>[] = [
     { key: 'name', header: 'Name', sortable: true },
     { key: 'description', header: 'Description', sortable: false },
-    { key: 'hasOcrCheck', header: 'OCR Check', sortable: false },
+    { key: 'aiValidation', header: 'AI Validation', sortable: false },
+    { key: 'deprecated', header: 'Deprecated', sortable: false },
     { key: 'hasExpirationDate', header: 'Expiration', sortable: false },
     { key: 'actions', header: 'Actions' },
   ];
@@ -112,7 +119,8 @@ export class DocumentTypesComponent implements OnInit {
     validationRuleRegex: [''],
     validationRuleAiPositive: [''],
     validationRuleAiNegative: [''],
-    hasOcrCheck: [false],
+    aiValidation: [true],
+    deprecated: [false],
     hasExpirationDate: [false],
     hasDocNumber: [false],
     hasFile: [false],
@@ -145,11 +153,22 @@ export class DocumentTypesComponent implements OnInit {
     this.dataTable?.focusFirstRowIfNone();
   }
 
+  onToggleIncludeDeprecated(value: boolean): void {
+    this.includeDeprecated.set(value);
+    this.loadDocumentTypes();
+  }
+
   private loadDocumentTypes(): void {
     const query = this.query().trim();
     this.isLoading.set(true);
-    this.documentTypesApi
-      .documentTypesList(undefined, query || undefined)
+
+    let params = new HttpParams().set('hide_deprecated', String(!this.includeDeprecated()));
+    if (query) {
+      params = params.set('search', query);
+    }
+
+    this.http
+      .get<DocumentType[]>('/api/document-types/', { params })
       .pipe(
         catchError(() => {
           this.toast.error('Failed to load document types');
@@ -197,7 +216,8 @@ export class DocumentTypesComponent implements OnInit {
       validationRuleRegex: '',
       validationRuleAiPositive: '',
       validationRuleAiNegative: '',
-      hasOcrCheck: false,
+      aiValidation: true,
+      deprecated: false,
       hasExpirationDate: false,
       hasDocNumber: false,
       hasFile: false,
@@ -231,7 +251,8 @@ export class DocumentTypesComponent implements OnInit {
       validationRuleRegex: documentType.validationRuleRegex || '',
       validationRuleAiPositive: documentType.validationRuleAiPositive || '',
       validationRuleAiNegative: documentType.validationRuleAiNegative || '',
-      hasOcrCheck: documentType.hasOcrCheck || false,
+      aiValidation: documentType.aiValidation ?? true,
+      deprecated: documentType.deprecated ?? false,
       hasExpirationDate: documentType.hasExpirationDate || false,
       hasDocNumber: documentType.hasDocNumber || false,
       hasFile: documentType.hasFile || false,
@@ -269,7 +290,8 @@ export class DocumentTypesComponent implements OnInit {
       validationRuleRegex: formValue.validationRuleRegex || '',
       validationRuleAiPositive: formValue.validationRuleAiPositive || '',
       validationRuleAiNegative: formValue.validationRuleAiNegative || '',
-      hasOcrCheck: formValue.hasOcrCheck || false,
+      aiValidation: formValue.aiValidation ?? true,
+      deprecated: formValue.deprecated || false,
       hasExpirationDate: formValue.hasExpirationDate || false,
       hasDocNumber: formValue.hasDocNumber || false,
       hasFile: formValue.hasFile || false,
@@ -277,9 +299,12 @@ export class DocumentTypesComponent implements OnInit {
       isInRequiredDocuments: formValue.isInRequiredDocuments || false,
     };
 
-    const request = this.editingDocumentType()
-      ? this.documentTypesApi.documentTypesUpdate(this.editingDocumentType()!.id!, documentTypeData)
-      : this.documentTypesApi.documentTypesCreate(documentTypeData);
+    if (this.editingDocumentType()) {
+      this.updateDocumentType(this.editingDocumentType()!.id!, documentTypeData, false);
+      return;
+    }
+
+    const request = this.documentTypesApi.documentTypesCreate(documentTypeData);
 
     request
       .pipe(
@@ -290,11 +315,78 @@ export class DocumentTypesComponent implements OnInit {
         finalize(() => this.isSaving.set(false)),
       )
       .subscribe(() => {
-        const action = this.editingDocumentType() ? 'updated' : 'created';
+        const action = 'created';
         this.toast.success(`Document type ${action} successfully`);
         this.closeForm();
         this.loadDocumentTypes();
       });
+  }
+
+  private updateDocumentType(
+    documentTypeId: number,
+    payload: DocumentType,
+    deprecateRelatedProducts: boolean,
+  ): void {
+    let params = new HttpParams();
+    if (deprecateRelatedProducts) {
+      params = params.set('deprecate_related_products', 'true');
+    }
+
+    this.http
+      .put<DocumentType>(`/api/document-types/${documentTypeId}/`, payload, { params })
+      .pipe(
+        catchError((error) => {
+          if (
+            error?.status === 409 &&
+            error?.error?.code === 'deprecated_products_confirmation_required'
+          ) {
+            const relatedProducts = Array.isArray(error?.error?.relatedProducts)
+              ? error.error.relatedProducts
+              : [];
+            const relatedNames = relatedProducts
+              .map((product: any) => `${product.code} - ${product.name}`)
+              .join('\n• ');
+
+            this.pendingDeprecationPayload.set(payload);
+            this.deprecationConfirmMessage.set(
+              relatedProducts.length
+                ? `Deprecating this document type will also deprecate these products:\n\n• ${relatedNames}\n\nContinue?`
+                : 'Deprecating this document type will also deprecate related products. Continue?',
+            );
+            this.showDeprecationConfirm.set(true);
+            this.isSaving.set(false);
+            return EMPTY;
+          }
+
+          this.toast.error('Failed to save document type');
+          this.isSaving.set(false);
+          return EMPTY;
+        }),
+        finalize(() => this.isSaving.set(false)),
+      )
+      .subscribe(() => {
+        this.toast.success('Document type updated successfully');
+        this.showDeprecationConfirm.set(false);
+        this.pendingDeprecationPayload.set(null);
+        this.closeForm();
+        this.loadDocumentTypes();
+      });
+  }
+
+  confirmDeprecationCascade(): void {
+    const payload = this.pendingDeprecationPayload();
+    const editingId = this.editingDocumentType()?.id;
+    if (!payload || !editingId) {
+      this.showDeprecationConfirm.set(false);
+      return;
+    }
+    this.isSaving.set(true);
+    this.updateDocumentType(editingId, payload, true);
+  }
+
+  cancelDeprecationCascade(): void {
+    this.showDeprecationConfirm.set(false);
+    this.pendingDeprecationPayload.set(null);
   }
 
   deleteDocumentType(documentType: DocumentType): void {
@@ -347,6 +439,8 @@ export class DocumentTypesComponent implements OnInit {
       this.dialogRef = null;
     }
     this.isDialogOpen.set(false);
+    this.showDeprecationConfirm.set(false);
+    this.pendingDeprecationPayload.set(null);
     this.editingDocumentType.set(null);
   }
 }

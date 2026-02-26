@@ -159,7 +159,7 @@ export class ServerManagementComponent implements OnInit {
   loadCacheStatus(): void {
     this.cacheLoading.set(true);
     this.http
-      .get<CacheStatusResponse>('/api/cache/status')
+      .get<CacheStatusResponse>('/api/cache/status/')
       .pipe(
         catchError(() => {
           this.toast.error('Failed to load cache status');
@@ -179,7 +179,7 @@ export class ServerManagementComponent implements OnInit {
       return;
     }
 
-    const endpoint = currentStatus.enabled ? '/api/cache/disable' : '/api/cache/enable';
+    const endpoint = currentStatus.enabled ? '/api/cache/disable/' : '/api/cache/enable/';
     this.cacheLoading.set(true);
 
     this.http
@@ -201,7 +201,7 @@ export class ServerManagementComponent implements OnInit {
   clearUserCache(): void {
     this.cacheLoading.set(true);
     this.http
-      .post<CacheClearResponse>('/api/cache/clear', {})
+      .post<CacheClearResponse>('/api/cache/clear/', {})
       .pipe(
         catchError(() => {
           this.toast.error('Failed to clear user cache');

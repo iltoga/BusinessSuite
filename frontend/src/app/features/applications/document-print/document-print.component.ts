@@ -22,7 +22,7 @@ interface DocumentPrintData {
   id: number;
   docType: {
     name: string;
-    hasOcrCheck: boolean;
+    aiValidation: boolean;
   };
   docApplication: {
     id: number;
@@ -37,20 +37,14 @@ interface DocumentPrintData {
   expirationDate?: string | null;
   details?: string | null;
   fileLink?: string | null;
-  ocrCheck: boolean;
+  aiValidation: boolean;
   completed: boolean;
 }
 
 @Component({
   selector: 'app-document-print',
   standalone: true,
-  imports: [
-    CommonModule,
-    ZardBadgeComponent,
-    ZardButtonComponent,
-    ZardCardComponent,
-    AppDatePipe,
-  ],
+  imports: [CommonModule, ZardBadgeComponent, ZardButtonComponent, ZardCardComponent, AppDatePipe],
   templateUrl: './document-print.component.html',
   styleUrls: ['./document-print.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

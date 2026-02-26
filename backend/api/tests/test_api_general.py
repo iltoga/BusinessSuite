@@ -3,12 +3,12 @@ import json
 import tempfile
 from unittest.mock import patch
 
-from customer_applications.models import DocApplication, Document
 from core.models import Holiday
+from customer_applications.models import DocApplication, Document
 from customers.models import Customer
+from django.contrib.auth import get_user_model
 from django.core.files.storage import FileSystemStorage
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.contrib.auth import get_user_model
 from django.db import connection
 from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
@@ -294,7 +294,7 @@ class CustomerApplicationDetailAPITestCase(TestCase):
         )
         self.doc_type = DocumentType.objects.create(
             name="Passport",
-            has_ocr_check=True,
+            ai_validation=True,
             has_doc_number=True,
             has_expiration_date=True,
             has_file=True,
@@ -313,6 +313,54 @@ class CustomerApplicationDetailAPITestCase(TestCase):
         self.assertEqual(payload["id"], self.application.id)
         self.assertEqual(len(payload["documents"]), 1)
         self.assertEqual(payload["documents"][0]["docType"]["name"], "Passport")
+
+    def test_application_detail_uses_cached_file_link_without_storage_url_lookup(self):
+        Document.objects.filter(pk=self.document.pk).update(
+            file="documents/customer_1/application_1/passport.pdf",
+            file_link="https://example.test/documents/passport.pdf",
+        )
+        self.document.refresh_from_db()
+
+        url = reverse("customer-applications-detail", kwargs={"pk": self.application.pk})
+        with patch.object(
+            self.document.file.storage,
+            "url",
+            side_effect=AssertionError("storage.url should not be called for cached detail responses"),
+        ):
+            response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(
+            payload["documents"][0]["file"],
+            "https://example.test/documents/passport.pdf",
+        )
+
+    def test_application_detail_ktp_sponsor_actions_skip_remote_exists_probe(self):
+        ktp_doc_type = DocumentType.objects.create(name="KTP Sponsor", has_file=True)
+        Document.objects.create(
+            doc_application=self.application,
+            doc_type=ktp_doc_type,
+            created_by=self.user,
+        )
+
+        class RemoteStorageStub:
+            def exists(self, *_args, **_kwargs):
+                raise AssertionError("Remote storage exists() should not be probed on detail serialization")
+
+        url = reverse("customer-applications-detail", kwargs={"pk": self.application.pk})
+        with self.settings(DEFAULT_SPONSOR_PASSPORT_FILE_PATH="default_documents/default_sponsor_document.pdf"), patch(
+            "customer_applications.hooks.ktp_sponsor.default_storage",
+            RemoteStorageStub(),
+        ):
+            response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        ktp_docs = [doc for doc in payload["documents"] if doc["docType"]["name"] == "KTP Sponsor"]
+        self.assertEqual(len(ktp_docs), 1)
+        action_names = [action["name"] for action in ktp_docs[0]["extraActions"]]
+        self.assertIn("upload_default", action_names)
 
     def test_create_application_via_api_creates_documents_and_workflow(self):
         # Create a product with required docs and a task
@@ -707,6 +755,87 @@ class ProductApiTestCase(TestCase):
         self.assertGreater(len(results), 0)
         self.assertTrue(any(item.get("code") == "DESC-1" for item in results))
 
+    def test_document_type_deprecation_requires_confirmation_and_cascades_products(self):
+        document_type = DocumentType.objects.create(name="KITAS Sponsor Letter")
+        product = Product.objects.create(
+            name="KITAS Service",
+            code="KITAS-SRV",
+            product_type="visa",
+            required_documents=document_type.name,
+        )
+
+        url = reverse("document-types-detail", kwargs={"pk": document_type.id})
+
+        response = self.client.patch(url, data=json.dumps({"deprecated": True}), content_type="application/json")
+        self.assertEqual(response.status_code, 409)
+        body = response.json()
+        self.assertEqual(body.get("code"), "deprecated_products_confirmation_required")
+        self.assertTrue(body.get("relatedProducts"))
+
+        response = self.client.patch(
+            f"{url}?deprecate_related_products=true",
+            data=json.dumps({"deprecated": True}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+
+        document_type.refresh_from_db()
+        product.refresh_from_db()
+        self.assertTrue(document_type.deprecated)
+        self.assertTrue(product.deprecated)
+
+    def test_products_list_hides_deprecated_by_default(self):
+        active_product = Product.objects.create(name="Active", code="ACTIVE-1", product_type="other")
+        deprecated_product = Product.objects.create(
+            name="Deprecated",
+            code="DEPR-1",
+            product_type="other",
+            deprecated=True,
+        )
+
+        url = reverse("products-list")
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        visible_codes = {item.get("code") for item in response.json().get("results", [])}
+        self.assertIn(active_product.code, visible_codes)
+        self.assertNotIn(deprecated_product.code, visible_codes)
+
+        response = self.client.get(f"{url}?hide_deprecated=false")
+        self.assertEqual(response.status_code, 200)
+        visible_codes = {item.get("code") for item in response.json().get("results", [])}
+        self.assertIn(active_product.code, visible_codes)
+        self.assertIn(deprecated_product.code, visible_codes)
+
+    def test_invoice_create_rejects_applications_with_deprecated_products(self):
+        customer = Customer.objects.create(customer_type="person", first_name="Dep", last_name="Invoice")
+        deprecated_product = Product.objects.create(
+            name="Deprecated Product",
+            code="DEP-INV",
+            product_type="visa",
+            deprecated=True,
+        )
+        app = DocApplication.objects.create(
+            customer=customer,
+            product=deprecated_product,
+            doc_date=timezone.now().date(),
+            created_by=self.user,
+        )
+
+        payload = {
+            "customer": customer.id,
+            "invoice_date": timezone.now().date().isoformat(),
+            "due_date": timezone.now().date().isoformat(),
+            "invoice_applications": [{"customer_application": app.id, "amount": "1000.00"}],
+        }
+        response = self.client.post(
+            reverse("invoices-list"),
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
+        body = response.json()
+        self.assertIn("errors", body)
+
 
 class UserSettingsApiTestCase(TestCase):
     def setUp(self):
@@ -774,15 +903,18 @@ class InvoiceDownloadAPITestCase(TestCase):
         self.assertNotEqual(response.status_code, 404)
 
 
-
 class HolidayAPIPermissionsTestCase(TestCase):
     def setUp(self):
         User = get_user_model()
         self.superuser = User.objects.create_superuser(
             username="holidayadmin", email="holidayadmin@example.com", password="password"
         )
-        self.user = User.objects.create_user(username="holidayuser", email="holidayuser@example.com", password="password")
-        self.holiday = Holiday.objects.create(name="Independence Day", date=datetime.date(2025, 8, 17), country="Indonesia")
+        self.user = User.objects.create_user(
+            username="holidayuser", email="holidayuser@example.com", password="password"
+        )
+        self.holiday = Holiday.objects.create(
+            name="Independence Day", date=datetime.date(2025, 8, 17), country="Indonesia"
+        )
 
     def test_non_superuser_can_list_and_retrieve_holidays(self):
         self.client.force_login(self.user)

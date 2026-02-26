@@ -5,13 +5,12 @@ from datetime import date
 from decimal import Decimal
 from typing import Iterable
 
+from customer_applications.models import DocApplication
 from django.db import transaction
 from django.utils import timezone
-from rest_framework.exceptions import ValidationError
-
-from customer_applications.models import DocApplication
 from invoices.models.invoice import Invoice, InvoiceApplication
 from payments.models import Payment
+from rest_framework.exceptions import ValidationError
 
 
 @dataclass(frozen=True)
@@ -55,6 +54,15 @@ def _validate_application_availability(
         existing = existing.exclude(invoice=current_invoice)
     if existing.exists():
         raise ValidationError({"invoice_applications": ["One or more customer applications are already invoiced."]})
+
+    deprecated_product_apps = DocApplication.objects.filter(
+        id__in=application_ids,
+        product__deprecated=True,
+    )
+    if deprecated_product_apps.exists():
+        raise ValidationError(
+            {"invoice_applications": ["Cannot create/update invoice with applications linked to deprecated products."]}
+        )
 
 
 def create_invoice(*, data: dict, user) -> Invoice:

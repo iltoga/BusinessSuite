@@ -19,6 +19,15 @@ def _ordered_document_names(document_ids):
     return ",".join(documents_by_id[doc_id] for doc_id in document_ids)
 
 
+def _validate_not_deprecated_document_ids(document_ids, field_name: str):
+    if not document_ids:
+        return
+    deprecated_docs = DocumentType.objects.filter(pk__in=document_ids, deprecated=True)
+    if deprecated_docs.exists():
+        names = ", ".join(sorted(deprecated_docs.values_list("name", flat=True)))
+        raise serializers.ValidationError({field_name: [f"Deprecated document types are not allowed: {names}"]})
+
+
 def ordered_document_types(names):
     if not names:
         return []
@@ -70,6 +79,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "optional_documents",
             "documents_min_validity",
             "validation_prompt",
+            "deprecated",
             "created_at",
             "updated_at",
             "created_by",
@@ -100,6 +110,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "optional_documents",
             "documents_min_validity",
             "validation_prompt",
+            "deprecated",
             "tasks",
             "required_document_types",
             "optional_document_types",
@@ -139,6 +150,7 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
             "validity",
             "documents_min_validity",
             "validation_prompt",
+            "deprecated",
             "tasks",
             "required_document_ids",
             "optional_document_ids",
@@ -191,6 +203,9 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
         required_ids = validated_data.pop("required_document_ids", [])
         optional_ids = validated_data.pop("optional_document_ids", [])
 
+        _validate_not_deprecated_document_ids(required_ids, "required_document_ids")
+        _validate_not_deprecated_document_ids(optional_ids, "optional_document_ids")
+
         required_documents = _ordered_document_names(required_ids)
         optional_documents = _ordered_document_names(optional_ids)
 
@@ -211,8 +226,10 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
         optional_ids = validated_data.pop("optional_document_ids", None)
 
         if required_ids is not None:
+            _validate_not_deprecated_document_ids(required_ids, "required_document_ids")
             instance.required_documents = _ordered_document_names(required_ids)
         if optional_ids is not None:
+            _validate_not_deprecated_document_ids(optional_ids, "optional_document_ids")
             instance.optional_documents = _ordered_document_names(optional_ids)
 
         for attr, value in validated_data.items():

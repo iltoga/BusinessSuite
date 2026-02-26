@@ -19,6 +19,15 @@
         (tabOut)="dataTable.focusFirstRowIfNone()"
         [contextHelp]="'/products/search'"
       >
+        <label class="flex items-center gap-2 text-sm text-muted-foreground">
+          <input
+            type="checkbox"
+            class="rounded"
+            [checked]="includeDeprecated()"
+            (change)="onToggleIncludeDeprecated($any($event.target).checked)"
+          />
+          Include deprecated
+        </label>
         <z-button
           zType="default"
           zSize="sm"
@@ -69,6 +78,7 @@
         [columns]="columns()"
         [data]="products()"
         [actions]="actions()"
+        [rowClass]="rowClassFn"
         [isLoading]="isLoading()"
         [currentPage]="page()"
         [totalPages]="totalPages()"
@@ -96,6 +106,11 @@
   >
     {{ row.name }}
   </a>
+  @if (row.deprecated) {
+    <span class="ml-2 inline-flex rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+      Deprecated
+    </span>
+  }
 </ng-template>
 
 <ng-template #descriptionTemplate let-row>

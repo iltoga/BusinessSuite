@@ -29,10 +29,10 @@ import {
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ConfirmDialogComponent } from '@/shared/components/confirm-dialog/confirm-dialog.component';
 import {
-  type ColumnFilterChangeEvent,
-  type ColumnFilterOption,
   DataTableComponent,
   type ColumnConfig,
+  type ColumnFilterChangeEvent,
+  type ColumnFilterOption,
   type DataTableAction,
   type SortEvent,
 } from '@/shared/components/data-table/data-table.component';
@@ -245,7 +245,11 @@ export class ApplicationListComponent implements OnInit {
   });
 
   readonly rowClassFn = (row: DocApplicationSerializerWithRelations): string =>
-    row.status === 'rejected' ? 'row-danger-soft' : '';
+    row.status === 'rejected'
+      ? 'row-danger-soft'
+      : this.isDeprecatedProduct(row)
+        ? 'opacity-60'
+        : '';
 
   readonly filteredItems = computed(() => {
     const selectedProducts = new Set(this.columnFilters()['product'] ?? []);
@@ -269,9 +273,7 @@ export class ApplicationListComponent implements OnInit {
         unique.add(label);
       }
     }
-    return [...unique]
-      .sort((a, b) => a.localeCompare(b))
-      .map((value) => ({ value, label: value }));
+    return [...unique].sort((a, b) => a.localeCompare(b)).map((value) => ({ value, label: value }));
   });
 
   readonly statusFilterOptions = computed<ColumnFilterOption[]>(() => {
@@ -548,6 +550,10 @@ export class ApplicationListComponent implements OnInit {
 
   private getProductLabel(item: DocApplicationSerializerWithRelations): string {
     return (item as any)?.product?.name?.trim() || '';
+  }
+
+  isDeprecatedProduct(item: DocApplicationSerializerWithRelations): boolean {
+    return Boolean((item as any)?.product?.deprecated);
   }
 
   private getStatusValue(item: DocApplicationSerializerWithRelations): string {

@@ -714,12 +714,14 @@
               </span>
             } @else if (ocrPolling()) {
               OCR: {{ ocrStatus() || 'Processing' }}
-            } @else if (selectedDocument()!.docType.hasOcrCheck) {
+            } @else if (selectedDocument()!.docType.aiValidation) {
               OCR available for this document.
             }
           </div>
           <div class="flex items-center gap-2">
-            @if (hasAiValidationRules() && selectedFile()) {
+            @if (
+              isAiValidationEnabledForSelectedDocument() && hasAiValidationRules() && selectedFile()
+            ) {
               <label class="flex items-center gap-1.5 text-sm cursor-pointer select-none">
                 <input
                   type="checkbox"
@@ -741,7 +743,7 @@
               previewSize="md"
               (viewFull)="viewDocument(selectedDocument()!)"
             />
-            @if (selectedDocument()!.docType.hasOcrCheck) {
+            @if (selectedDocument()!.docType.aiValidation) {
               <button
                 z-button
                 zType="outline"

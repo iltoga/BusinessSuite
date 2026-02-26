@@ -14,6 +14,13 @@ class ProductManager(models.Manager):
             | models.Q(product_type__icontains=query)
         )
 
+    def filter_by_document_type_name(self, document_type_name: str):
+        candidates = self.filter(
+            models.Q(required_documents__icontains=document_type_name)
+            | models.Q(optional_documents__icontains=document_type_name)
+        )
+        return [product for product in candidates if product.has_document_type(document_type_name)]
+
 
 class Product(models.Model):
     PRODUCT_TYPE_CHOICES = [
@@ -37,6 +44,7 @@ class Product(models.Model):
     documents_min_validity = models.PositiveIntegerField(blank=True, null=True)
     # Optional AI system prompt injected during document validation for all applications using this product
     validation_prompt = models.TextField(blank=True)
+    deprecated = models.BooleanField(default=False, db_index=True)
 
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True, db_index=True)
@@ -88,6 +96,33 @@ class Product(models.Model):
         if self.base_price is not None and self.retail_price < self.base_price:
             raise ValidationError({"retail_price": "Retail price must be greater than or equal to base price."})
 
+    @property
+    def required_document_names(self) -> list[str]:
+        return [name.strip() for name in (self.required_documents or "").split(",") if name.strip()]
+
+    @property
+    def optional_document_names(self) -> list[str]:
+        return [name.strip() for name in (self.optional_documents or "").split(",") if name.strip()]
+
+    @property
+    def all_document_names(self) -> list[str]:
+        return [*self.required_document_names, *self.optional_document_names]
+
+    def has_document_type(self, document_type_name: str) -> bool:
+        return document_type_name in self.all_document_names
+
+    def has_deprecated_document_types(self) -> bool:
+        from products.models.document_type import DocumentType
+
+        doc_names = self.all_document_names
+        if not doc_names:
+            return False
+        return DocumentType.objects.filter(name__in=doc_names, deprecated=True).exists()
+
+    def sync_deprecated_status_from_documents(self) -> None:
+        if self.has_deprecated_document_types():
+            self.deprecated = True
+
     def save(self, *args, **kwargs):
         # Preserve legacy creates where base_price is provided but retail_price is omitted.
         if (
@@ -98,6 +133,7 @@ class Product(models.Model):
             self.retail_price = self.base_price
         elif self.retail_price is None:
             self.retail_price = self.base_price if self.base_price is not None else Decimal("0.00")
+        self.sync_deprecated_status_from_documents()
         super().save(*args, **kwargs)
 
     def can_be_deleted(self):

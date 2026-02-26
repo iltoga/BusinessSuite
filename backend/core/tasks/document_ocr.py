@@ -40,9 +40,27 @@ def run_document_ocr_job(job_id: str) -> None:
                 job.progress = 35
                 job.save(update_fields=["progress", "updated_at"])
 
-                extracted_text = DocumentParser.extract_text_from_file(abs_path)
-                job.progress = 85
-                job.save(update_fields=["progress", "updated_at"])
+                last_progress = 35
+
+                def _on_progress(progress: int) -> None:
+                    nonlocal last_progress
+                    bounded = max(36, min(94, int(progress)))
+                    if bounded <= last_progress:
+                        return
+                    # Avoid excessive writes while still keeping UI visibly alive.
+                    if bounded - last_progress < 2 and bounded < 94:
+                        return
+                    last_progress = bounded
+                    job.progress = bounded
+                    job.save(update_fields=["progress", "updated_at"])
+
+                extracted_text = DocumentParser.extract_text_from_file(
+                    abs_path,
+                    progress_callback=_on_progress,
+                )
+                if job.progress < 95:
+                    job.progress = 95
+                    job.save(update_fields=["progress", "updated_at"])
 
                 job.result_text = extracted_text or ""
                 job.status = DocumentOCRJob.STATUS_COMPLETED

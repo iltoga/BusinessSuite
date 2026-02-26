@@ -27,6 +27,7 @@ class DocumentMergeSerializer(serializers.Serializer):
 
 class DocumentSerializer(serializers.ModelSerializer):
     doc_type = DocumentTypeSerializer(read_only=True)
+    file = serializers.SerializerMethodField()
     doc_type_id = serializers.PrimaryKeyRelatedField(
         source="doc_type",
         queryset=DocumentType.objects.all(),
@@ -51,7 +52,7 @@ class DocumentSerializer(serializers.ModelSerializer):
             "details",
             "completed",
             "metadata",
-            "ocr_check",
+            "ai_validation",
             "required",
             "ai_validation_status",
             "ai_validation_result",
@@ -68,7 +69,7 @@ class DocumentSerializer(serializers.ModelSerializer):
             "doc_type",
             "file_link",
             "completed",
-            "ocr_check",
+            "ai_validation",
             "ai_validation_status",
             "ai_validation_result",
             "created_at",
@@ -92,16 +93,43 @@ class DocumentSerializer(serializers.ModelSerializer):
             return obj.created_by.username
         return None
 
+    def get_file(self, obj) -> str | None:
+        """
+        Return file URL while allowing detail responses to skip expensive storage URL generation.
+
+        When `prefer_cached_file_url` is enabled in serializer context, use the persisted
+        `file_link` first and only fall back to storage-generated URLs if needed.
+        """
+        if not obj.file:
+            return None
+
+        if self.context.get("prefer_cached_file_url") and obj.file_link:
+            return obj.file_link
+
+        try:
+            return obj.file.url
+        except Exception:
+            # Keep response backward-compatible even if storage URL generation fails.
+            return obj.file_link or obj.file.name
+
     @extend_schema_field(DocumentActionSerializer(many=True))
     def get_extra_actions(self, obj):
         """Return hook actions available for this document type."""
         if not obj.doc_type:
             return []
+        cache = self.context.setdefault("_extra_actions_by_doc_type", {})
+        cache_key = obj.doc_type_id
+        if cache_key in cache:
+            return cache[cache_key]
+
         hook = hook_registry.get_hook(obj.doc_type.name)
         if not hook:
+            cache[cache_key] = []
             return []
         actions = hook.get_extra_actions()
-        return DocumentActionSerializer(actions, many=True).data
+        serialized = DocumentActionSerializer(actions, many=True).data
+        cache[cache_key] = serialized
+        return serialized
 
     def validate_metadata(self, value):
         if isinstance(value, str):

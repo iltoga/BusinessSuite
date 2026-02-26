@@ -132,11 +132,11 @@
                 }
               </div>
             </div>
-            @if (document()!.docType.hasOcrCheck) {
+            @if (document()!.docType.aiValidation) {
               <div class="flex flex-col gap-1">
-                <span class="text-xs text-muted-foreground">OCR Verification</span>
+                <span class="text-xs text-muted-foreground">AI Validation</span>
                 <span class="font-medium">{{
-                  document()!.ocrCheck ? 'Verified' : 'Not Verified'
+                  document()!.aiValidation ? 'Enabled' : 'Disabled'
                 }}</span>
               </div>
             }

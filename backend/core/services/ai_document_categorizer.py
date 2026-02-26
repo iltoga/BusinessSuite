@@ -7,7 +7,7 @@ Supports both single-file categorization and batch processing.
 
 import io
 import os
-import tempfile
+from datetime import date
 from typing import Callable, Optional
 
 from core.services.ai_client import AIClient
@@ -64,10 +64,40 @@ VALIDATION_SCHEMA = {
             "type": "string",
             "description": "Overall reasoning for the validation verdict.",
         },
+        "extracted_expiration_date": {
+            "type": ["string", "null"],
+            "description": (
+                "Extracted document expiration date in YYYY-MM-DD format when requested, otherwise null."
+            ),
+        },
     },
-    "required": ["valid", "confidence", "positive_analysis", "negative_issues", "reasoning"],
+    "required": [
+        "valid",
+        "confidence",
+        "positive_analysis",
+        "negative_issues",
+        "reasoning",
+        "extracted_expiration_date",
+    ],
     "additionalProperties": False,
 }
+
+
+def extract_validation_expiration_date(validation_result: dict) -> date | None:
+    """Return parsed expiration date from validation result, if present and valid."""
+    raw_value = validation_result.get("extracted_expiration_date")
+    if not raw_value:
+        return None
+
+    if not isinstance(raw_value, str):
+        logger.warning("Invalid extracted_expiration_date type: %s", type(raw_value).__name__)
+        return None
+
+    try:
+        return date.fromisoformat(raw_value)
+    except ValueError:
+        logger.warning("Invalid extracted_expiration_date format: %s", raw_value)
+        return None
 
 
 def _build_system_prompt(document_types: list[dict]) -> str:
@@ -363,6 +393,7 @@ class AIDocumentCategorizer:
         positive_prompt: str,
         negative_prompt: str,
         product_prompt: str = "",
+        require_expiration_date: bool = False,
         model: Optional[str] = None,
         provider_order: Optional[list[str]] = None,
     ) -> dict:
@@ -374,7 +405,8 @@ class AIDocumentCategorizer:
 
         Returns:
             Dict with 'valid' (bool), 'confidence' (float), 'positive_analysis' (str),
-            'negative_issues' (list[str]), 'reasoning' (str).
+            'negative_issues' (list[str]), 'reasoning' (str), and
+            'extracted_expiration_date' (YYYY-MM-DD string or null).
         """
         if not positive_prompt and not negative_prompt and not product_prompt:
             return {
@@ -383,6 +415,7 @@ class AIDocumentCategorizer:
                 "positive_analysis": "No validation rules configured for this document type.",
                 "negative_issues": [],
                 "reasoning": "Validation skipped — no AI validation prompts defined.",
+                "extracted_expiration_date": None,
             }
 
         validator_model = model or getattr(settings, "DOCUMENT_VALIDATOR_MODEL", None)
@@ -406,12 +439,25 @@ class AIDocumentCategorizer:
             sections.append(
                 f"PRODUCT-SPECIFIC CONTEXT (applies to this visa/product and takes priority over generic rules):\n{product_prompt}\n"
             )
+        if require_expiration_date:
+            sections.append(
+                "MANDATORY EXPIRATION DATE EXTRACTION:\n"
+                "- Extract the document expiration date from the document image/content.\n"
+                "- Return it in 'extracted_expiration_date' using YYYY-MM-DD format.\n"
+                "- If the date is missing or unreadable, return null.\n"
+                "- Do not guess or hallucinate."
+            )
+        else:
+            sections.append(
+                "Set 'extracted_expiration_date' to null unless expiration-date extraction is explicitly required."
+            )
         sections.append(
             "Analyze the uploaded image/document against both sets of criteria.\n"
             "Return valid=true ONLY if the document reasonably meets the positive criteria "
             "AND has no major negative issues.\n"
             "List each specific negative issue found in 'negative_issues' (empty array if none).\n"
-            "Provide an overall confidence score (0.0-1.0) and clear reasoning."
+            "Provide an overall confidence score (0.0-1.0) and clear reasoning.\n"
+            "Always include 'extracted_expiration_date'."
         )
         system_prompt = "\n".join(sections)
         user_prompt = (

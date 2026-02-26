@@ -77,7 +77,7 @@ export class ProductSelectComponent implements ControlValueAccessor {
   // Loader function for Typeahead wrapper
   readonly productLoader = (q?: string, page = 1) => {
     return this.productsService
-      .productsList(undefined, page, this.pageSize(), q)
+      .productsList(undefined, true, undefined, page, this.pageSize(), q)
       .pipe(map((resp: any) => resp.results ?? []));
   };
 

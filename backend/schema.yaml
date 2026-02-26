@@ -1826,6 +1826,16 @@ paths:
     get:
       operationId: documentTypesList
       parameters:
+      - in: query
+        name: deprecated
+        schema:
+          type: boolean
+        description: Filter by explicit deprecated status.
+      - in: query
+        name: hide_deprecated
+        schema:
+          type: boolean
+        description: When true (default), hide deprecated document types.
       - name: ordering
         required: false
         in: query
@@ -2016,6 +2026,28 @@ paths:
               schema:
                 type: object
                 additionalProperties: {}
+          description: ''
+  /api/document-types/{id}/deprecation-impact/:
+    get:
+      operationId: documentTypesDeprecationImpactRetrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this document type.
+        required: true
+      tags:
+      - document-types
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentType'
           description: ''
   /api/documents/:
     get:
@@ -3399,6 +3431,16 @@ paths:
     get:
       operationId: productsList
       parameters:
+      - in: query
+        name: deprecated
+        schema:
+          type: boolean
+        description: Filter by explicit deprecated status.
+      - in: query
+        name: hide_deprecated
+        schema:
+          type: boolean
+        description: When true (default), hide deprecated products.
       - name: ordering
         required: false
         in: query
@@ -6419,6 +6461,16 @@ paths:
     get:
       operationId: v1DocumentTypesList
       parameters:
+      - in: query
+        name: deprecated
+        schema:
+          type: boolean
+        description: Filter by explicit deprecated status.
+      - in: query
+        name: hide_deprecated
+        schema:
+          type: boolean
+        description: When true (default), hide deprecated document types.
       - name: ordering
         required: false
         in: query
@@ -6609,6 +6661,28 @@ paths:
               schema:
                 type: object
                 additionalProperties: {}
+          description: ''
+  /api/v1/document-types/{id}/deprecation-impact/:
+    get:
+      operationId: v1DocumentTypesDeprecationImpactRetrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this document type.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentType'
           description: ''
   /api/v1/documents/:
     get:
@@ -7992,6 +8066,16 @@ paths:
     get:
       operationId: v1ProductsList
       parameters:
+      - in: query
+        name: deprecated
+        schema:
+          type: boolean
+        description: Filter by explicit deprecated status.
+      - in: query
+        name: hide_deprecated
+        schema:
+          type: boolean
+        description: When true (default), hide deprecated products.
       - name: ordering
         required: false
         in: query
@@ -10930,7 +11014,7 @@ components:
           readOnly: true
         metadata:
           nullable: true
-        ocr_check:
+        ai_validation:
           type: boolean
           readOnly: true
         required:
@@ -10987,6 +11071,7 @@ components:
             $ref: '#/components/schemas/DocumentAction'
           readOnly: true
       required:
+      - ai_validation
       - ai_validation_result
       - ai_validation_status
       - completed
@@ -10998,7 +11083,6 @@ components:
       - extra_actions
       - file_link
       - id
-      - ocr_check
       - updated_at
       - updated_by
       - updated_by_username
@@ -11043,7 +11127,9 @@ components:
         description:
           type: string
           maxLength: 500
-        has_ocr_check:
+        deprecated:
+          type: boolean
+        ai_validation:
           type: boolean
         has_expiration_date:
           type: boolean
@@ -11894,6 +11980,8 @@ components:
           nullable: true
         validation_prompt:
           type: string
+        deprecated:
+          type: boolean
         created_at:
           type: string
           format: date-time
@@ -11968,6 +12056,8 @@ components:
           nullable: true
         validation_prompt:
           type: string
+        deprecated:
+          type: boolean
         tasks:
           type: array
           items:
@@ -12040,6 +12130,8 @@ components:
           nullable: true
         validation_prompt:
           type: string
+        deprecated:
+          type: boolean
         tasks:
           type: array
           items:

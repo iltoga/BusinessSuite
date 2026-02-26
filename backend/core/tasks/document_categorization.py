@@ -107,7 +107,7 @@ def run_document_categorization_item(item_id: str) -> None:
             )
 
             # --- Validation step (only if categorization succeeded) ---
-            if item.status == DocumentCategorizationItem.STATUS_CATEGORIZED and doc_type_id:
+            if item.status == DocumentCategorizationItem.STATUS_CATEGORIZED and doc_type_id and doc_type.ai_validation:
                 from customer_applications.models.doc_application import DocApplication as _DocApp
 
                 product_prompt = (
@@ -117,6 +117,13 @@ def run_document_categorization_item(item_id: str) -> None:
                     or ""
                 )
                 _run_validation_step(item, file_bytes, doc_type, document_types, provider_order, product_prompt)
+            elif item.status == DocumentCategorizationItem.STATUS_CATEGORIZED:
+                current_result = item.result or {}
+                current_result["stage"] = "categorized"
+                item.result = current_result
+                item.validation_status = None
+                item.validation_result = None
+                item.save(update_fields=["result", "validation_status", "validation_result", "updated_at"])
 
         except Exception as exc:
             full_traceback = tb_module.format_exc()
@@ -164,6 +171,7 @@ def _run_validation_step(
             positive_prompt=positive_prompt,
             negative_prompt=negative_prompt,
             product_prompt=product_prompt,
+            require_expiration_date=bool(doc_type.has_expiration_date),
             provider_order=provider_order,
         )
 

@@ -55,36 +55,42 @@
           ></textarea>
         </div>
 
-        <div class="space-y-2">
-          <label class="text-sm font-medium" for="validationRuleAiPositive"
-            >AI Validation Rule (Positive)</label
-          >
-          <textarea
-            z-input
-            id="validationRuleAiPositive"
-            formControlName="validationRuleAiPositive"
-            placeholder="Describe what a valid document should contain"
-            rows="4"
-          ></textarea>
-        </div>
+        @if (documentTypeForm.get('aiValidation')?.value) {
+          <div class="space-y-2">
+            <label class="text-sm font-medium" for="validationRuleAiPositive"
+              >AI Validation Rule (Positive)</label
+            >
+            <textarea
+              z-input
+              id="validationRuleAiPositive"
+              formControlName="validationRuleAiPositive"
+              placeholder="Describe what a valid document should contain"
+              rows="4"
+            ></textarea>
+          </div>
 
-        <div class="space-y-2">
-          <label class="text-sm font-medium" for="validationRuleAiNegative"
-            >AI Validation Rule (Negative)</label
-          >
-          <textarea
-            z-input
-            id="validationRuleAiNegative"
-            formControlName="validationRuleAiNegative"
-            placeholder="Describe issues that should invalidate the document"
-            rows="4"
-          ></textarea>
-        </div>
+          <div class="space-y-2">
+            <label class="text-sm font-medium" for="validationRuleAiNegative"
+              >AI Validation Rule (Negative)</label
+            >
+            <textarea
+              z-input
+              id="validationRuleAiNegative"
+              formControlName="validationRuleAiNegative"
+              placeholder="Describe issues that should invalidate the document"
+              rows="4"
+            ></textarea>
+          </div>
+        }
 
         <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
           <label class="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" formControlName="hasOcrCheck" class="rounded" />
-            <span class="text-sm">Has OCR Check</span>
+            <input type="checkbox" formControlName="aiValidation" class="rounded" />
+            <span class="text-sm">AI Validation</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" formControlName="deprecated" class="rounded" />
+            <span class="text-sm">Deprecated</span>
           </label>
           <label class="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" formControlName="hasExpirationDate" class="rounded" />
@@ -132,7 +138,17 @@
         [isLoading]="isLoading()"
         (queryChange)="onQueryChange($event)"
         (tabOut)="onEnterSearch()"
-      />
+      >
+        <label class="flex items-center gap-2 text-sm text-muted-foreground">
+          <input
+            type="checkbox"
+            class="rounded"
+            [checked]="includeDeprecated()"
+            (change)="onToggleIncludeDeprecated($any($event.target).checked)"
+          />
+          Include deprecated
+        </label>
+      </app-search-toolbar>
     </div>
     <app-data-table
       #dataTable
@@ -151,5 +167,16 @@
     [destructive]="true"
     (confirmed)="confirmDelete()"
     (cancelled)="showConfirmDelete.set(false)"
+  />
+
+  <app-confirm-dialog
+    [isOpen]="showDeprecationConfirm()"
+    title="Confirm product deprecation"
+    [message]="deprecationConfirmMessage()"
+    [destructive]="true"
+    confirmText="Deprecate all"
+    cancelText="Cancel"
+    (confirmed)="confirmDeprecationCascade()"
+    (cancelled)="cancelDeprecationCascade()"
   />
 </div>
