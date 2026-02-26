@@ -394,8 +394,14 @@ def _iter_local_media_paths() -> list[str]:
     return paths
 
 
-def _checksum_for_storage_path(path: str) -> str:
+def _checksum_for_storage_path(path: str, *, absolute_path: str | None = None) -> str:
     digest = hashlib.sha256()
+    if absolute_path and os.path.exists(absolute_path):
+        with open(absolute_path, "rb") as file_handle:
+            for chunk in iter(lambda: file_handle.read(64 * 1024), b""):
+                digest.update(chunk)
+        return digest.hexdigest()
+
     with default_storage.open(path, "rb") as file_handle:
         for chunk in file_handle.chunks():
             digest.update(chunk)
@@ -407,12 +413,20 @@ def refresh_media_manifest(*, source_node: str | None = None) -> int:
     storage_backend = f"{default_storage.__class__.__module__}.{default_storage.__class__.__name__}"
     encrypted = bool(getattr(settings, "LOCAL_MEDIA_ENCRYPTION_ENABLED", False))
     updated = 0
+    media_root = str(getattr(settings, "MEDIA_ROOT", "") or "")
 
     for path in _iter_local_media_paths():
         try:
-            checksum = _checksum_for_storage_path(path)
-            size = int(default_storage.size(path))
-            modified_at = default_storage.get_modified_time(path)
+            absolute_path = os.path.join(media_root, path) if media_root else None
+            checksum = _checksum_for_storage_path(path, absolute_path=absolute_path)
+            if absolute_path and os.path.exists(absolute_path):
+                size = int(os.path.getsize(absolute_path))
+                modified_at = datetime.fromtimestamp(
+                    os.path.getmtime(absolute_path), tz=timezone.get_current_timezone()
+                )
+            else:
+                size = int(default_storage.size(path))
+                modified_at = default_storage.get_modified_time(path)
             if timezone.is_naive(modified_at):
                 modified_at = timezone.make_aware(modified_at, timezone.get_current_timezone())
 
@@ -447,7 +461,17 @@ def refresh_media_manifest(*, source_node: str | None = None) -> int:
             entry.encrypted = encrypted
             entry.storage_backend = storage_backend
             entry.source_node = source
-            entry.save(update_fields=["checksum", "size", "modified_at", "encrypted", "storage_backend", "source_node", "updated_at"])
+            entry.save(
+                update_fields=[
+                    "checksum",
+                    "size",
+                    "modified_at",
+                    "encrypted",
+                    "storage_backend",
+                    "source_node",
+                    "updated_at",
+                ]
+            )
             updated += 1
         except Exception:
             continue
@@ -476,7 +500,9 @@ def get_media_manifest(*, after_updated_at: datetime | None = None, limit: int =
     ]
 
 
-def fetch_media_entries(*, paths: list[str], include_content: bool = False, content_size_limit: int = 5_000_000) -> list[dict[str, Any]]:
+def fetch_media_entries(
+    *, paths: list[str], include_content: bool = False, content_size_limit: int = 5_000_000
+) -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
     for raw_path in paths:
         path = str(raw_path or "").strip().lstrip("/")

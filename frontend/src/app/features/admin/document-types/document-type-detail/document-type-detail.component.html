@@ -1,0 +1,121 @@
+@if (isLoading()) {
+  <div class="space-y-6">
+    <div class="flex flex-wrap items-start justify-between gap-4">
+      <div class="space-y-2">
+        <z-skeleton class="h-8 w-64" />
+        <z-skeleton class="h-4 w-52" />
+      </div>
+      <div class="flex gap-2">
+        <z-skeleton class="h-10 w-24" />
+        <z-skeleton class="h-10 w-24" />
+      </div>
+    </div>
+
+    <app-card-skeleton [lines]="6" />
+    <app-card-skeleton [lines]="8" />
+  </div>
+} @else if (!documentType()) {
+  <div class="text-muted-foreground">Document type not found.</div>
+} @else {
+  <div class="space-y-6">
+    <div class="flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <h1 class="text-2xl font-semibold">Document Type #{{ documentType()!.id }}</h1>
+        <p class="text-sm text-muted-foreground">Document type detail</p>
+      </div>
+      <div class="detail-header-actions flex w-full flex-wrap gap-2 sm:w-auto">
+        <button z-button zType="outline" (click)="onEdit()">Edit</button>
+        <button z-button zType="ghost" (click)="onBack()">Back to list</button>
+      </div>
+    </div>
+
+    <z-card class="p-4 sm:p-6">
+      <div class="mb-4 border-b pb-2">
+        <h3 class="text-lg font-semibold">Core Information</h3>
+      </div>
+
+      <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <dt class="text-sm font-medium text-muted-foreground">Name</dt>
+          <dd class="text-sm">{{ documentType()!.name || '—' }}</dd>
+        </div>
+        <div>
+          <dt class="text-sm font-medium text-muted-foreground">Description</dt>
+          <dd class="text-sm whitespace-pre-wrap">{{ documentType()!.description || '—' }}</dd>
+        </div>
+      </dl>
+    </z-card>
+
+    <z-card class="p-4 sm:p-6">
+      <div class="mb-4 border-b pb-2">
+        <h3 class="text-lg font-semibold">Validation Rules</h3>
+      </div>
+
+      <dl class="grid grid-cols-1 gap-4">
+        <div>
+          <dt class="text-sm font-medium text-muted-foreground">Regex rule</dt>
+          <dd class="text-sm whitespace-pre-wrap">
+            {{ documentType()!.validationRuleRegex || '—' }}
+          </dd>
+        </div>
+        <div>
+          <dt class="text-sm font-medium text-muted-foreground">AI positive rule</dt>
+          <dd class="text-sm whitespace-pre-wrap">
+            {{ documentType()!.validationRuleAiPositive || '—' }}
+          </dd>
+        </div>
+        <div>
+          <dt class="text-sm font-medium text-muted-foreground">AI negative rule</dt>
+          <dd class="text-sm whitespace-pre-wrap">
+            {{ documentType()!.validationRuleAiNegative || '—' }}
+          </dd>
+        </div>
+      </dl>
+    </z-card>
+
+    <z-card class="p-4 sm:p-6">
+      <div class="mb-4 border-b pb-2">
+        <h3 class="text-lg font-semibold">Behavior Flags</h3>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div class="flag-item">
+          <span class="text-sm">OCR Check</span>
+          <z-badge [zType]="badgeType(documentType()!.hasOcrCheck)">
+            {{ yesNo(documentType()!.hasOcrCheck) }}
+          </z-badge>
+        </div>
+        <div class="flag-item">
+          <span class="text-sm">Has Expiration Date</span>
+          <z-badge [zType]="badgeType(documentType()!.hasExpirationDate)">
+            {{ yesNo(documentType()!.hasExpirationDate) }}
+          </z-badge>
+        </div>
+        <div class="flag-item">
+          <span class="text-sm">Has Document Number</span>
+          <z-badge [zType]="badgeType(documentType()!.hasDocNumber)">
+            {{ yesNo(documentType()!.hasDocNumber) }}
+          </z-badge>
+        </div>
+        <div class="flag-item">
+          <span class="text-sm">Has File</span>
+          <z-badge [zType]="badgeType(documentType()!.hasFile)">
+            {{ yesNo(documentType()!.hasFile) }}
+          </z-badge>
+        </div>
+        <div class="flag-item">
+          <span class="text-sm">Has Details</span>
+          <z-badge [zType]="badgeType(documentType()!.hasDetails)">
+            {{ yesNo(documentType()!.hasDetails) }}
+          </z-badge>
+        </div>
+        <div class="flag-item">
+          <span class="text-sm">In Required Documents</span>
+          <z-badge [zType]="badgeType(documentType()!.isInRequiredDocuments)">
+            {{ yesNo(documentType()!.isInRequiredDocuments) }}
+          </z-badge>
+        </div>
+      </div>
+    </z-card>
+  </div>
+}

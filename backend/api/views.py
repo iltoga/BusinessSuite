@@ -736,7 +736,15 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     search_fields = ["name", "code", "description", "product_type"]
     ordering_fields = ["name", "code", "product_type", "base_price", "retail_price", "created_at", "updated_at"]
     ordering = ["name"]
-    authenticated_lookup_actions = frozenset({"list", "get_product_by_id", "get_products_by_product_type"})
+    authenticated_lookup_actions = frozenset(
+        {
+            "list",
+            "get_product_by_id",
+            "get_products_by_product_type",
+            "export_start",
+            "import_start",
+        }
+    )
 
     def get_serializer_class(self):
         if self.action in ["create", "update", "partial_update"]:

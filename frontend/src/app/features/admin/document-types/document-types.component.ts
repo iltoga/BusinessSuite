@@ -9,22 +9,23 @@ import {
   ViewChild,
 } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
 import { catchError, EMPTY, finalize } from 'rxjs';
 
 import { DocumentTypesService } from '@/core/api';
 import { DocumentType } from '@/core/api/model/document-type';
 import { GlobalToastService } from '@/core/services/toast.service';
-import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
-import { ZardCheckboxComponent } from '@/shared/components/checkbox';
 import { ConfirmDialogComponent } from '@/shared/components/confirm-dialog/confirm-dialog.component';
 import {
   ColumnConfig,
+  DataTableAction,
   DataTableComponent,
 } from '@/shared/components/data-table/data-table.component';
 import { ZardDialogService } from '@/shared/components/dialog';
 import { ZardInputDirective } from '@/shared/components/input';
+import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
 
 @Component({
   selector: 'app-document-types',
@@ -34,10 +35,9 @@ import { ZardInputDirective } from '@/shared/components/input';
     ReactiveFormsModule,
     ZardCardComponent,
     ZardButtonComponent,
-    ZardBadgeComponent,
-    ZardCheckboxComponent,
     ZardInputDirective,
     DataTableComponent,
+    SearchToolbarComponent,
     ConfirmDialogComponent,
   ],
   templateUrl: './document-types.component.html',
@@ -45,11 +45,12 @@ import { ZardInputDirective } from '@/shared/components/input';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DocumentTypesComponent implements OnInit {
-  @ViewChild('actionsTemplate', { static: true }) actionsTemplate!: TemplateRef<any>;
   @ViewChild('documentTypeModalTemplate', { static: true })
   documentTypeModalTemplate!: TemplateRef<any>;
+  @ViewChild('dataTable') dataTable?: DataTableComponent<DocumentType>;
 
   private fb = inject(FormBuilder);
+  private router = inject(Router);
   private documentTypesApi = inject(DocumentTypesService);
   private toast = inject(GlobalToastService);
   private dialogService = inject(ZardDialogService);
@@ -58,18 +59,51 @@ export class DocumentTypesComponent implements OnInit {
 
   readonly documentTypes = signal<DocumentType[]>([]);
   readonly isLoading = signal(true);
+  readonly query = signal('');
   readonly isDialogOpen = signal(false);
   readonly isSaving = signal(false);
   readonly editingDocumentType = signal<DocumentType | null>(null);
   readonly showConfirmDelete = signal(false);
   readonly confirmDeleteMessage = signal('');
+  readonly pendingEditId = signal<number | null>(null);
 
-  columns: ColumnConfig[] = [
+  columns: ColumnConfig<DocumentType>[] = [
     { key: 'name', header: 'Name', sortable: true },
     { key: 'description', header: 'Description', sortable: false },
     { key: 'hasOcrCheck', header: 'OCR Check', sortable: false },
     { key: 'hasExpirationDate', header: 'Expiration', sortable: false },
-    { key: 'actions', header: '' },
+    { key: 'actions', header: 'Actions' },
+  ];
+  readonly actions: DataTableAction<DocumentType>[] = [
+    {
+      label: 'View details',
+      icon: 'eye',
+      variant: 'default',
+      shortcut: 'v',
+      action: (item) =>
+        this.router.navigate(['/admin/document-types', item.id], {
+          state: {
+            from: 'admin-document-types',
+            focusId: item.id,
+            searchQuery: this.query(),
+          },
+        }),
+    },
+    {
+      label: 'Edit',
+      icon: 'settings',
+      variant: 'warning',
+      shortcut: 'e',
+      action: (item) => this.editDocumentType(item),
+    },
+    {
+      label: 'Delete',
+      icon: 'trash',
+      variant: 'destructive',
+      isDestructive: true,
+      shortcut: 'd',
+      action: (item) => this.deleteDocumentType(item),
+    },
   ];
 
   readonly documentTypeForm = this.fb.group({
@@ -87,14 +121,35 @@ export class DocumentTypesComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    this.columns[this.columns.length - 1].template = this.actionsTemplate;
+    if (typeof window !== 'undefined') {
+      const state = (window as any).history.state ?? {};
+      const openEditId = Number(state.openEditId ?? 0);
+      if (openEditId > 0) {
+        this.pendingEditId.set(openEditId);
+      }
+      if (typeof state.searchQuery === 'string' && state.searchQuery.trim()) {
+        this.query.set(state.searchQuery.trim());
+      }
+    }
     this.loadDocumentTypes();
   }
 
+  onQueryChange(value: string): void {
+    const trimmed = value.trim();
+    if (this.query() === trimmed) return;
+    this.query.set(trimmed);
+    this.loadDocumentTypes();
+  }
+
+  onEnterSearch(): void {
+    this.dataTable?.focusFirstRowIfNone();
+  }
+
   private loadDocumentTypes(): void {
+    const query = this.query().trim();
     this.isLoading.set(true);
     this.documentTypesApi
-      .documentTypesList()
+      .documentTypesList(undefined, query || undefined)
       .pipe(
         catchError(() => {
           this.toast.error('Failed to load document types');
@@ -103,8 +158,35 @@ export class DocumentTypesComponent implements OnInit {
         finalize(() => this.isLoading.set(false)),
       )
       .subscribe((data) => {
-        this.documentTypes.set(data || []);
+        const items = data || [];
+        this.documentTypes.set(items);
+        this.openPendingEditIfRequested(items);
       });
+  }
+
+  private openPendingEditIfRequested(items: DocumentType[]): void {
+    const pendingId = this.pendingEditId();
+    if (!pendingId) {
+      return;
+    }
+
+    const fromList = items.find((item) => item.id === pendingId);
+    if (fromList) {
+      this.pendingEditId.set(null);
+      this.editDocumentType(fromList);
+      return;
+    }
+
+    this.pendingEditId.set(null);
+    this.documentTypesApi
+      .documentTypesRetrieve(pendingId)
+      .pipe(
+        catchError(() => {
+          this.toast.error('Could not load the selected document type for editing');
+          return EMPTY;
+        }),
+      )
+      .subscribe((documentType) => this.editDocumentType(documentType));
   }
 
   createNew(): void {

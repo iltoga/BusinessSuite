@@ -16,8 +16,7 @@ from django.apps import apps
 from django.conf import settings
 from django.core.cache import caches
 from django.core.files import File
-from django.core.files.storage import FileSystemStorage
-from django.core.files.storage import default_storage
+from django.core.files.storage import FileSystemStorage, default_storage
 from django.core.management import call_command
 from django.db import connections
 from django.db.models.fields.files import FileField
@@ -898,10 +897,13 @@ def restore_from_file(path, include_users=False):
                 else:
                     # Only flush non-system tables
                     tables_to_flush = []
+                    existing_tables = set(connection.introspection.table_names())
                     for model in apps.get_models():
                         label = model._meta.label_lower
                         if not label.startswith(excluded_prefixes) and label not in USER_RELATED_MODELS:
-                            tables_to_flush.append(model._meta.db_table)
+                            table_name = model._meta.db_table
+                            if table_name in existing_tables:
+                                tables_to_flush.append(table_name)
                     if tables_to_flush:
                         with connection.cursor() as cursor:
                             for table in tables_to_flush:

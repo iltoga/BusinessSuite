@@ -125,7 +125,22 @@
 
   <!-- Table -->
   <z-card class="p-0">
-    <app-data-table [data]="documentTypes()" [columns]="columns" [isLoading]="isLoading()" />
+    <div class="border-b p-3 sm:p-4">
+      <app-search-toolbar
+        [query]="query()"
+        [placeholder]="'Search Document Types...'"
+        [isLoading]="isLoading()"
+        (queryChange)="onQueryChange($event)"
+        (tabOut)="onEnterSearch()"
+      />
+    </div>
+    <app-data-table
+      #dataTable
+      [data]="documentTypes()"
+      [columns]="columns"
+      [actions]="actions"
+      [isLoading]="isLoading()"
+    />
   </z-card>
 
   <!-- Confirm Delete Dialog -->
@@ -138,11 +153,3 @@
     (cancelled)="showConfirmDelete.set(false)"
   />
 </div>
-
-<!-- Actions Template for DataTable -->
-<ng-template #actionsTemplate let-item>
-  <div class="flex flex-wrap items-center gap-2 whitespace-nowrap sm:flex-nowrap">
-    <z-button zType="warning" zSize="sm" (click)="editDocumentType(item)">Edit</z-button>
-    <z-button zType="destructive" zSize="sm" (click)="deleteDocumentType(item)">Delete</z-button>
-  </div>
-</ng-template>
