@@ -167,6 +167,9 @@ services:
       REDIS_HOST: bs-redis
       REDIS_PORT: 6379
       HUEY_REDIS_DB: ${HUEY_REDIS_DB:-0}
+      HUEY_WORKERS: ${HUEY_WORKERS:-4}
+      HUEY_BLOCKING: ${HUEY_BLOCKING:-true}
+      HUEY_READ_TIMEOUT: ${HUEY_READ_TIMEOUT:-1}
       COMPONENT: task_worker
       MEDIA_ROOT: /media
       MEDIA_URL: /media/

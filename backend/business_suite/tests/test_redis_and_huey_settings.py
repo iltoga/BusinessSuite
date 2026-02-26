@@ -1,11 +1,10 @@
 import os
 from unittest.mock import patch
 
+from business_suite.settings.base import _build_huey_settings, _default_huey_workers
+from business_suite.settings.cache_backends import build_prod_redis_caches
 from django.conf import settings
 from django.test import SimpleTestCase, override_settings
-
-from business_suite.settings.base import _build_huey_settings
-from business_suite.settings.cache_backends import build_prod_redis_caches
 
 
 class RedisCacheSettingsTests(SimpleTestCase):
@@ -42,6 +41,21 @@ class HueySettingsTests(SimpleTestCase):
         self.assertEqual(huey_settings["connection"]["host"], "bs-redis")
         self.assertEqual(huey_settings["connection"]["port"], 6379)
         self.assertEqual(huey_settings["connection"]["db"], 5)
+
+    def test_huey_redis_defaults_enable_blocking_with_read_timeout(self):
+        with patch.dict(
+            os.environ,
+            {"REDIS_HOST": "bs-redis", "REDIS_PORT": "6379", "HUEY_REDIS_DB": "0"},
+            clear=False,
+        ):
+            huey_settings = _build_huey_settings(testing=False)
+
+        self.assertTrue(huey_settings["blocking"])
+        self.assertEqual(huey_settings["connection"]["read_timeout"], 1.0)
+
+    def test_huey_worker_default_is_four_for_task_worker_component(self):
+        with patch.dict(os.environ, {"COMPONENT": "task_worker"}, clear=False):
+            self.assertEqual(_default_huey_workers(), "4")
 
     def test_huey_defaults_to_localhost_when_running_on_host(self):
         with (

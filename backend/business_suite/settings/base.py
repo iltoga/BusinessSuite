@@ -652,10 +652,20 @@ CACHEOPS_DEGRADE_ON_FAILURE = True
 CSP_ENABLED = _parse_bool(os.getenv("CSP_ENABLED", "False"))
 CSP_MODE = os.getenv("CSP_MODE", "report-only")  # report-only|enforce
 
-_HUEY_WORKERS = int(os.getenv("HUEY_WORKERS", "2"))
+
+def _default_huey_workers() -> str:
+    component = (os.getenv("COMPONENT") or "").strip().lower()
+    if component == "task_worker" or "run_huey" in sys.argv:
+        return "4"
+    return "2"
+
+
+_HUEY_WORKERS = int(os.getenv("HUEY_WORKERS", _default_huey_workers()))
 _HUEY_INITIAL_DELAY = float(os.getenv("HUEY_INITIAL_DELAY", "0.05"))
 _HUEY_BACKOFF = float(os.getenv("HUEY_BACKOFF", "1.05"))
 _HUEY_MAX_DELAY = float(os.getenv("HUEY_MAX_DELAY", "1.0"))
+_HUEY_BLOCKING = _parse_bool(os.getenv("HUEY_BLOCKING", "True"))
+_HUEY_READ_TIMEOUT = float(os.getenv("HUEY_READ_TIMEOUT", "1"))
 
 
 def _build_huey_settings(testing: bool) -> dict:
@@ -695,10 +705,12 @@ def _build_huey_settings(testing: bool) -> dict:
         "huey_class": redis_huey_class,
         "name": "business_suite",
         "immediate": False,
+        "blocking": _HUEY_BLOCKING,
         "connection": {
             "host": _resolved_redis_host(),
             "port": int(os.getenv("REDIS_PORT", "6379")),
             "db": int(os.getenv("HUEY_REDIS_DB", "0")),
+            "read_timeout": _HUEY_READ_TIMEOUT,
         },
         "consumer": {
             "workers": _HUEY_WORKERS,
