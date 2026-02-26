@@ -4099,6 +4099,9 @@ class CalendarReminderViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     @action(detail=False, methods=["get"], url_path="inbox")
     def inbox(self, request):
         today = timezone.localdate()
+        tz = timezone.get_current_timezone()
+        today_start = timezone.make_aware(datetime.combine(today, datetime.min.time()), tz)
+        today_end = today_start + timedelta(days=1)
         limit = self._safe_positive_int(request.query_params.get("limit"), default=20, minimum=1, maximum=100)
 
         today_queryset = (
@@ -4106,7 +4109,8 @@ class CalendarReminderViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             .filter(
                 user=request.user,
                 status=CalendarReminder.STATUS_SENT,
-                sent_at__date=today,
+                sent_at__gte=today_start,
+                sent_at__lt=today_end,
             )
             .order_by("-sent_at", "-id")
         )
@@ -4130,11 +4134,15 @@ class CalendarReminderViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         device_label = (serializer.validated_data.get("device_label") or "").strip()
 
         today = timezone.localdate()
+        tz = timezone.get_current_timezone()
+        today_start = timezone.make_aware(datetime.combine(today, datetime.min.time()), tz)
+        today_end = today_start + timedelta(days=1)
         now = timezone.now()
         unread_queryset = CalendarReminder.objects.filter(
             user=request.user,
             status=CalendarReminder.STATUS_SENT,
-            sent_at__date=today,
+            sent_at__gte=today_start,
+            sent_at__lt=today_end,
             read_at__isnull=True,
         )
         target_queryset = unread_queryset.filter(id__in=ids) if ids else unread_queryset
@@ -4145,7 +4153,8 @@ class CalendarReminderViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         unread_count = CalendarReminder.objects.filter(
             user=request.user,
             status=CalendarReminder.STATUS_SENT,
-            sent_at__date=today,
+            sent_at__gte=today_start,
+            sent_at__lt=today_end,
             read_at__isnull=True,
         ).count()
         return Response({"updated": updated, "unreadCount": unread_count})

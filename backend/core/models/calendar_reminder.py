@@ -58,7 +58,7 @@ class CalendarReminder(models.Model):
         default=STATUS_PENDING,
         db_index=True,
     )
-    sent_at = models.DateTimeField(null=True, blank=True)
+    sent_at = models.DateTimeField(null=True, blank=True, db_index=True)
     read_at = models.DateTimeField(null=True, blank=True, db_index=True)
     delivery_channel = models.CharField(
         max_length=16,
@@ -79,6 +79,11 @@ class CalendarReminder(models.Model):
             models.Index(fields=["status", "scheduled_for"], name="core_calrem_status_sched_idx"),
             models.Index(fields=["created_by", "status"], name="core_calrem_creator_status_idx"),
             models.Index(fields=["user", "scheduled_for"], name="core_calrem_user_sched_idx"),
+            models.Index(fields=["user", "status", "sent_at"], name="calrem_usr_st_sent_idx"),
+            models.Index(
+                fields=["user", "status", "sent_at", "read_at"],
+                name="calrem_usr_st_sr_rd_idx",
+            ),
         ]
 
     def __str__(self) -> str:
