@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any, Dict, List
 
 from django.conf import settings
 from django.core.files import File
-from django.core.files.storage import default_storage
+from django.core.files.storage import FileSystemStorage, default_storage
 
 from .base import BaseDocumentTypeHook, DocumentAction
 
@@ -39,7 +39,11 @@ class PassportSponsorHook(BaseDocumentTypeHook):
         if not default_path:
             return []
 
-        if not default_storage.exists(default_path):
+        # On remote object storage, `exists()` is a network call and can dominate
+        # application-detail response time. We keep strict existence checks only
+        # for local filesystem storage and validate on action execution otherwise.
+        should_check_exists = isinstance(default_storage, FileSystemStorage)
+        if should_check_exists and not default_storage.exists(default_path):
             logger.warning(
                 "DEFAULT_SPONSOR_PASSPORT_FILE_PATH configured but file not found: %s",
                 default_path,

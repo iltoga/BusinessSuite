@@ -9,6 +9,7 @@ import tarfile
 import tempfile
 import time
 import uuid
+from contextlib import contextmanager
 from pathlib import Path
 
 from django.apps import apps
@@ -17,6 +18,7 @@ from django.core.cache import caches
 from django.core.files import File
 from django.core.files.storage import FileSystemStorage, default_storage
 from django.core.management import call_command
+from django.db import connections
 from django.db.models.fields.files import FileField
 from django.utils import timezone
 from django.utils.module_loading import import_string
@@ -552,6 +554,29 @@ def ensure_backups_dir():
     os.makedirs(BACKUPS_DIR, exist_ok=True)
 
 
+def _is_missing_userprofile_cache_enabled_column_error(exc: Exception) -> bool:
+    text = str(exc).lower()
+    return "core_userprofile.cache_enabled" in text and "does not exist" in text
+
+
+@contextmanager
+def _temporarily_disable_postgres_server_side_cursors(database_alias: str = "default"):
+    connection = connections[database_alias]
+    if connection.vendor != "postgresql":
+        yield
+        return
+
+    previous_value = connection.settings_dict.get("DISABLE_SERVER_SIDE_CURSORS", _MISSING)
+    connection.settings_dict["DISABLE_SERVER_SIDE_CURSORS"] = True
+    try:
+        yield
+    finally:
+        if previous_value is _MISSING:
+            connection.settings_dict.pop("DISABLE_SERVER_SIDE_CURSORS", None)
+        else:
+            connection.settings_dict["DISABLE_SERVER_SIDE_CURSORS"] = previous_value
+
+
 def backup_all(include_users=False):
     """Backup all Django model data using dumpdata, compress to gzipped JSON.
     If include_users is False, exclude system/user tables.
@@ -578,7 +603,22 @@ def backup_all(include_users=False):
         for model_label in USER_RELATED_MODELS:
             dump_args.append(f"--exclude={model_label}")
     with open(tmp_path, "w+") as tmpf:
-        call_command(*dump_args, stdout=tmpf)
+        try:
+            with _temporarily_disable_postgres_server_side_cursors("default"):
+                call_command(*dump_args, stdout=tmpf)
+        except Exception as exc:
+            if include_users and _is_missing_userprofile_cache_enabled_column_error(exc):
+                yield (
+                    "Warning: detected schema drift (missing core_userprofile.cache_enabled). "
+                    "Retrying backup while excluding core.userprofile."
+                )
+                tmpf.seek(0)
+                tmpf.truncate(0)
+                fallback_args = [*dump_args, "--exclude=core.userprofile"]
+                with _temporarily_disable_postgres_server_side_cursors("default"):
+                    call_command(*fallback_args, stdout=tmpf)
+            else:
+                raise
     try:
         json_size = os.path.getsize(tmp_path)
         yield f"DB dump JSON size (uncompressed): {_format_bytes(json_size)}"
@@ -857,10 +897,13 @@ def restore_from_file(path, include_users=False):
                 else:
                     # Only flush non-system tables
                     tables_to_flush = []
+                    existing_tables = set(connection.introspection.table_names())
                     for model in apps.get_models():
                         label = model._meta.label_lower
                         if not label.startswith(excluded_prefixes) and label not in USER_RELATED_MODELS:
-                            tables_to_flush.append(model._meta.db_table)
+                            table_name = model._meta.db_table
+                            if table_name in existing_tables:
+                                tables_to_flush.append(table_name)
                     if tables_to_flush:
                         with connection.cursor() as cursor:
                             for table in tables_to_flush:

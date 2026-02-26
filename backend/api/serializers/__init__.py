@@ -40,6 +40,7 @@ from .invoice_serializer import (
     PaymentSerializer,
 )
 from .letters_serializer import SuratPermohonanCustomerDataSerializer, SuratPermohonanRequestSerializer
+from .local_resilience_serializer import LocalResilienceSettingsSerializer
 from .product_serializer import (
     ProductCreateUpdateSerializer,
     ProductDetailSerializer,

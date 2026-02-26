@@ -36,6 +36,7 @@ from .views_categorization import (
     document_validation_stream_sse,
     validate_document_category,
 )
+from .views_sync import SyncViewSet
 
 # DRF Router for RESTful API endpoints
 # These ViewSets provide CRUD operations for Angular frontend consumption
@@ -84,6 +85,7 @@ router.register(r"calendar-reminders", views.CalendarReminderViewSet, basename="
 router.register(r"async-jobs", views.AsyncJobViewSet, basename="async-jobs")
 router.register(r"push-notifications", views.PushNotificationViewSet, basename="push-notifications")
 router.register(r"holidays", views.HolidayViewSet, basename="holidays")
+router.register(r"sync", SyncViewSet, basename="sync")
 
 urlpatterns = [
     # OpenAPI schema endpoints for API documentation and client generation

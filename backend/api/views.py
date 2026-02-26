@@ -553,31 +553,54 @@ class DocumentTypeViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     search_fields = ["name", "description"]
     ordering = ["name"]
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        deprecated_param = self.request.query_params.get("deprecated")
+        hide_deprecated = parse_bool(self.request.query_params.get("hide_deprecated"), True)
+
+        if deprecated_param is not None:
+            queryset = queryset.filter(deprecated=parse_bool(deprecated_param, False))
+        elif hide_deprecated:
+            queryset = queryset.filter(deprecated=False)
+
+        return queryset
+
     def get_permissions(self):
         """Only staff or admin-group members can create/update/delete document types."""
         if self.action in ["create", "update", "partial_update", "destroy"]:
             return [IsAuthenticated(), IsStaffOrAdminGroup()]
         return super().get_permissions()
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="hide_deprecated",
+                type=OpenApiTypes.BOOL,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="When true (default), hide deprecated document types.",
+            ),
+            OpenApiParameter(
+                name="deprecated",
+                type=OpenApiTypes.BOOL,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Filter by explicit deprecated status.",
+            ),
+        ]
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
     @extend_schema(summary="Check if a document type can be deleted", responses={200: OpenApiTypes.OBJECT})
     @action(detail=True, methods=["get"], url_path="can-delete")
     def can_delete(self, request, pk=None):
         """Check if document type can be safely deleted."""
-        from django.db.models import Q
-        from products.models.product import Product
-
         document_type = self.get_object()
 
-        # Check if any product uses this document type
-        products = Product.objects.filter(
-            Q(required_documents__icontains=document_type.name) | Q(optional_documents__icontains=document_type.name)
-        )
-
-        # Double check to avoid partial matches
+        products = document_type.get_related_products()
         for product in products:
-            req = [d.strip() for d in product.required_documents.split(",") if d.strip()]
-            opt = [d.strip() for d in product.optional_documents.split(",") if d.strip()]
-            if document_type.name in req or document_type.name in opt:
+            if not product.deprecated:
                 return Response(
                     {
                         "canDelete": False,
@@ -587,6 +610,79 @@ class DocumentTypeViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                 )
 
         return Response({"canDelete": True, "message": None, "warning": None})
+
+    @action(detail=True, methods=["get"], url_path="deprecation-impact")
+    def deprecation_impact(self, request, pk=None):
+        document_type = self.get_object()
+        related_products = [product for product in document_type.get_related_products() if not product.deprecated]
+        return Response(
+            {
+                "documentTypeId": document_type.id,
+                "documentTypeName": document_type.name,
+                "relatedProducts": [
+                    {
+                        "id": product.id,
+                        "name": product.name,
+                        "code": product.code,
+                    }
+                    for product in related_products
+                ],
+                "count": len(related_products),
+            }
+        )
+
+    def _perform_update_with_deprecation_rules(self, request, partial: bool):
+        document_type = self.get_object()
+        serializer = self.get_serializer(document_type, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+
+        target_deprecated = serializer.validated_data.get("deprecated", document_type.deprecated)
+        should_deprecate_now = not document_type.deprecated and bool(target_deprecated)
+        related_products = []
+        if should_deprecate_now:
+            related_products = [product for product in document_type.get_related_products() if not product.deprecated]
+            if related_products:
+                confirm_related_deprecation = parse_bool(
+                    request.data.get("deprecate_related_products")
+                    or request.query_params.get("deprecate_related_products"),
+                    False,
+                )
+                if not confirm_related_deprecation:
+                    return Response(
+                        {
+                            "code": "deprecated_products_confirmation_required",
+                            "message": "Deprecating this document type will also deprecate related products.",
+                            "relatedProducts": [
+                                {
+                                    "id": product.id,
+                                    "name": product.name,
+                                    "code": product.code,
+                                }
+                                for product in related_products
+                            ],
+                        },
+                        status=status.HTTP_409_CONFLICT,
+                    )
+
+        self.perform_update(serializer)
+
+        if should_deprecate_now and related_products:
+            Product.objects.filter(id__in=[product.id for product in related_products]).update(
+                deprecated=True,
+                updated_by=request.user,
+                updated_at=timezone.now(),
+            )
+
+        if getattr(document_type, "_prefetched_objects_cache", None):
+            document_type._prefetched_objects_cache = {}
+
+        return Response(serializer.data)
+
+    def update(self, request, *args, **kwargs):
+        return self._perform_update_with_deprecation_rules(request, partial=False)
+
+    def partial_update(self, request, *args, **kwargs):
+        return self._perform_update_with_deprecation_rules(request, partial=True)
 
 
 class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
@@ -736,7 +832,15 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     search_fields = ["name", "code", "description", "product_type"]
     ordering_fields = ["name", "code", "product_type", "base_price", "retail_price", "created_at", "updated_at"]
     ordering = ["name"]
-    authenticated_lookup_actions = frozenset({"list", "get_product_by_id", "get_products_by_product_type"})
+    authenticated_lookup_actions = frozenset(
+        {
+            "list",
+            "get_product_by_id",
+            "get_products_by_product_type",
+            "export_start",
+            "import_start",
+        }
+    )
 
     def get_serializer_class(self):
         if self.action in ["create", "update", "partial_update"]:
@@ -752,11 +856,40 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             self.permission_classes = [IsAuthenticated, IsAdminOrManagerGroup]
         return super().get_permissions()
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="hide_deprecated",
+                type=OpenApiTypes.BOOL,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="When true (default), hide deprecated products.",
+            ),
+            OpenApiParameter(
+                name="deprecated",
+                type=OpenApiTypes.BOOL,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Filter by explicit deprecated status.",
+            ),
+        ]
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
     def get_queryset(self):
         queryset = super().get_queryset()
         product_type = self.request.query_params.get("product_type")
         if product_type:
             queryset = queryset.filter(product_type=product_type)
+
+        deprecated_param = self.request.query_params.get("deprecated")
+        hide_deprecated = parse_bool(self.request.query_params.get("hide_deprecated"), True)
+        if deprecated_param is not None:
+            queryset = queryset.filter(deprecated=parse_bool(deprecated_param, False))
+        elif hide_deprecated:
+            queryset = queryset.filter(deprecated=False)
+
         return queryset
 
     def perform_create(self, serializer):
@@ -824,7 +957,7 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], url_path="get_products_by_product_type/(?P<product_type>[^/.]+)")
     def get_products_by_product_type(self, request, product_type=None):
-        products = Product.objects.filter(product_type=product_type)
+        products = Product.objects.filter(product_type=product_type, deprecated=False)
         page = self.paginate_queryset(products)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
@@ -1728,6 +1861,7 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             return self.error_response("Invalid request", status.HTTP_400_BAD_REQUEST)
         applications = (
             DocApplication.objects.filter(customer_id=customer_id)
+            .filter(product__deprecated=False)
             .select_related("customer", "product")
             .prefetch_related("invoice_applications")
         )
@@ -2418,14 +2552,32 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             return DocApplicationDetailSerializer
         return DocApplicationSerializerWithRelations
 
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        if self.action == "retrieve":
+            # Avoid expensive per-document storage URL generation on detail load.
+            context["prefer_cached_file_url"] = True
+        return context
+
     def _serialize_application_detail(self, application):
         detail_instance = (
             self.get_queryset().filter(pk=application.pk).first() if getattr(application, "pk", None) else application
         )
         return DocApplicationDetailSerializer(
             detail_instance or application,
-            context={"request": self.request},
+            context={
+                "request": self.request,
+                "prefer_cached_file_url": True,
+            },
         ).data
+
+    def _ensure_application_product_is_active(self, application):
+        if application.product and application.product.deprecated:
+            return self.error_response(
+                "This application uses a deprecated product and workflow actions are disabled.",
+                status.HTTP_409_CONFLICT,
+            )
+        return None
 
     def _queue_calendar_sync(
         self,
@@ -2525,6 +2677,10 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         except DocApplication.DoesNotExist:
             return self.error_response("Application not found", status.HTTP_404_NOT_FOUND)
 
+        deprecated_response = self._ensure_application_product_is_active(application)
+        if deprecated_response:
+            return deprecated_response
+
         result = ApplicationLifecycleService().advance_workflow(application=application, user=request.user)
         self._queue_calendar_sync(
             application_id=result.application.id,
@@ -2587,6 +2743,10 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         if not workflow:
             return self.error_response("Workflow not found", status.HTTP_404_NOT_FOUND)
 
+        deprecated_response = self._ensure_application_product_is_active(workflow.doc_application)
+        if deprecated_response:
+            return deprecated_response
+
         from api.serializers.doc_workflow_serializer import DocWorkflowSerializer
 
         if workflow.status == status_value:
@@ -2624,6 +2784,10 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         workflow = self._get_application_workflow_or_none(application_id=pk, workflow_id=workflow_id)
         if not workflow:
             return self.error_response("Workflow not found", status.HTTP_404_NOT_FOUND)
+
+        deprecated_response = self._ensure_application_product_is_active(workflow.doc_application)
+        if deprecated_response:
+            return deprecated_response
 
         due_date = self._parse_request_date(request.data.get("due_date"))
         if due_date is None:
@@ -2667,6 +2831,10 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         if not workflow:
             return self.error_response("Workflow not found", status.HTTP_404_NOT_FOUND)
 
+        deprecated_response = self._ensure_application_product_is_active(workflow.doc_application)
+        if deprecated_response:
+            return deprecated_response
+
         application = workflow.doc_application
         current_workflow = application.current_workflow
         if not current_workflow or current_workflow.id != workflow.id:
@@ -2707,6 +2875,9 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     def reopen_application(self, request, pk=None):
         """Re-open a completed application."""
         application = self.get_object()
+        deprecated_response = self._ensure_application_product_is_active(application)
+        if deprecated_response:
+            return deprecated_response
         if not application.reopen(request.user):
             return self.error_response("Application is not completed", status.HTTP_400_BAD_REQUEST)
         return Response({"success": True})
@@ -2724,6 +2895,10 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         except DocApplication.DoesNotExist:
             return self.error_response("Application not found", status.HTTP_404_NOT_FOUND)
 
+        deprecated_response = self._ensure_application_product_is_active(application)
+        if deprecated_response:
+            return deprecated_response
+
         # Permission check
         if not request.user.has_perm("customer_applications.change_docapplication"):
             return self.error_response("Permission denied", status.HTTP_403_FORBIDDEN)
@@ -2738,7 +2913,13 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         application.save(skip_status_calculation=True)
 
         # Return serialized application detail
-        serializer = DocApplicationDetailSerializer(application, context={"request": request})
+        serializer = DocApplicationDetailSerializer(
+            application,
+            context={
+                "request": request,
+                "prefer_cached_file_url": True,
+            },
+        )
         return Response(serializer.data)
 
 
@@ -2766,12 +2947,17 @@ class DocumentViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
         if validate_with_ai and response.status_code == 200:
             document = self.get_object()
-            if document.file and document.file.name:
+            if document.doc_type and document.doc_type.ai_validation and document.file and document.file.name:
                 document.ai_validation_status = Document.AI_VALIDATION_PENDING
                 document.ai_validation_result = None
                 document.save(update_fields=["ai_validation_status", "ai_validation_result", "updated_at"])
                 run_document_validation(document.id)
                 # Re-serialize to include pending validation status
+                response.data = self.get_serializer(document).data
+            elif document.doc_type and not document.doc_type.ai_validation:
+                document.ai_validation_status = Document.AI_VALIDATION_NONE
+                document.ai_validation_result = None
+                document.save(update_fields=["ai_validation_status", "ai_validation_result", "updated_at"])
                 response.data = self.get_serializer(document).data
 
         return response
@@ -2862,7 +3048,7 @@ class DocumentViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             "id": document.id,
             "docType": {
                 "name": document.doc_type.name if document.doc_type else "",
-                "hasOcrCheck": document.doc_type.has_ocr_check if document.doc_type else False,
+                "aiValidation": document.doc_type.ai_validation if document.doc_type else False,
             },
             "docApplication": {
                 "id": doc_application.id if doc_application else None,
@@ -2881,7 +3067,7 @@ class DocumentViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             "expirationDate": str(document.expiration_date) if document.expiration_date else None,
             "details": document.details,
             "fileLink": document.file_link,
-            "ocrCheck": document.ocr_check,
+            "aiValidation": document.ai_validation,
             "completed": document.completed,
         }
         return Response(data)
@@ -3218,6 +3404,13 @@ class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             ".xls": "application/vnd.ms-excel",
             ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             ".doc": "application/msword",
+            ".png": "image/png",
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".webp": "image/webp",
+            ".tif": "image/tiff",
+            ".tiff": "image/tiff",
+            ".bmp": "image/bmp",
         }
 
         file_type = mimetypes.guess_type(file.name)[0]
@@ -3227,7 +3420,7 @@ class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
 
         if file_ext not in valid_file_types or file_type not in valid_file_types.values():
             return self.error_response(
-                "File format not supported. Only PDF, Excel, and Word are accepted!",
+                "File format not supported. Only PDF, Excel, Word, and image files are accepted!",
                 status.HTTP_400_BAD_REQUEST,
             )
 

@@ -30,6 +30,20 @@ describe('ServerManagementComponent - Cache Controls', () => {
         .fn()
         .mockReturnValue(of({ ok: true, results: [], settings: null })),
       serverManagementMediaRepairCreate: vi.fn().mockReturnValue(of({ ok: true, repairs: [] })),
+      serverManagementLocalResilienceRetrieve: vi.fn().mockReturnValue(
+        of({
+          enabled: false,
+          encryptionRequired: true,
+          desktopMode: 'localPrimary',
+          vaultEpoch: 1,
+        }),
+      ),
+      serverManagementLocalResiliencePartialUpdate: vi
+        .fn()
+        .mockReturnValue(of({ enabled: true, encryptionRequired: true, desktopMode: 'localPrimary', vaultEpoch: 1 })),
+      serverManagementLocalResilienceResetVaultCreate: vi
+        .fn()
+        .mockReturnValue(of({ ok: true, message: 'Local media vault reset requested', vaultEpoch: 2 })),
     };
 
     await TestBed.configureTestingModule({
@@ -86,6 +100,8 @@ describe('ServerManagementComponent - Cache Controls', () => {
         errors: [],
       });
 
+      expect(mockServerManagementService.serverManagementLocalResilienceRetrieve).toHaveBeenCalledTimes(1);
+
       expect(component.cacheStatus()).toEqual({
         enabled: true,
         version: 1,
@@ -116,6 +132,8 @@ describe('ServerManagementComponent - Cache Controls', () => {
         probeLatencyMs: 1.2,
         errors: [],
       });
+
+      expect(mockServerManagementService.serverManagementLocalResilienceRetrieve).toHaveBeenCalledTimes(1);
 
       expect(mockToastService.error).toHaveBeenCalledWith('Failed to load cache status');
       expect(component.cacheStatus()).toBeNull();

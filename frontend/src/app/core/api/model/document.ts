@@ -23,7 +23,7 @@ export interface Document {
     details?: string;
     readonly completed: boolean;
     metadata?: any | null;
-    readonly ocrCheck: boolean;
+    readonly aiValidation: boolean;
     required?: boolean;
     /**
      * * `` - Not requested * `pending` - Pending * `validating` - Validating * `valid` - Valid * `invalid` - Invalid * `error` - Error

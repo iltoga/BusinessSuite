@@ -1,16 +1,15 @@
 from datetime import datetime, timedelta
 from unittest.mock import patch
 
-from django.contrib.auth import get_user_model
-from django.test import TestCase
-from django.utils import timezone
-from rest_framework.test import APIRequestFactory
-
 from api.serializers.doc_application_serializer import DocApplicationCreateUpdateSerializer
 from customer_applications.models import DocApplication, Document, WorkflowNotification
 from customers.models import Customer
+from django.contrib.auth import get_user_model
+from django.test import TestCase
+from django.utils import timezone
 from products.models import Product, Task
 from products.models.document_type import DocumentType
+from rest_framework.test import APIRequestFactory
 
 User = get_user_model()
 
@@ -39,6 +38,21 @@ class ImmediateDueTomorrowNotificationTests(TestCase):
         self.factory = APIRequestFactory()
         self.now = timezone.make_aware(datetime(2026, 2, 12, 9, 0, 0))
 
+    def _run_calendar_sync_now(self, *, application_id: int, user_id: int):
+        from customer_applications.tasks import SYNC_ACTION_UPSERT, sync_application_calendar_task
+
+        if hasattr(sync_application_calendar_task, "call_local"):
+            return sync_application_calendar_task.call_local(
+                application_id=application_id,
+                user_id=user_id,
+                action=SYNC_ACTION_UPSERT,
+            )
+        return sync_application_calendar_task(
+            application_id=application_id,
+            user_id=user_id,
+            action=SYNC_ACTION_UPSERT,
+        )
+
     @patch("notifications.services.providers.NotificationDispatcher.send", return_value="sent:1")
     @patch("django.utils.timezone.now")
     def test_create_sends_immediate_notification_when_due_tomorrow(self, now_mock, send_mock):
@@ -61,6 +75,7 @@ class ImmediateDueTomorrowNotificationTests(TestCase):
         )
         self.assertTrue(serializer.is_valid(), serializer.errors)
         application = serializer.save()
+        self._run_calendar_sync_now(application_id=application.id, user_id=self.user.id)
 
         send_mock.assert_called_once()
         notification = WorkflowNotification.objects.get(doc_application=application)
@@ -100,6 +115,7 @@ class ImmediateDueTomorrowNotificationTests(TestCase):
         )
         self.assertTrue(serializer.is_valid(), serializer.errors)
         application = serializer.save()
+        self._run_calendar_sync_now(application_id=application.id, user_id=self.user.id)
 
         send_mock.assert_called_once()
         notification = WorkflowNotification.objects.get(doc_application=application)

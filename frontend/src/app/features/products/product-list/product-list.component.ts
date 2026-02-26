@@ -1,4 +1,5 @@
 import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -39,8 +40,8 @@ import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
 import { ZardTooltipImports } from '@/shared/components/tooltip';
 import { ContextHelpDirective } from '@/shared/directives';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
-import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 import { downloadBlob } from '@/shared/utils/file-download';
+import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 
 @Component({
   selector: 'app-product-list',
@@ -66,6 +67,7 @@ import { downloadBlob } from '@/shared/utils/file-download';
 })
 export class ProductListComponent implements OnInit {
   private productsApi = inject(ProductsService);
+  private http = inject(HttpClient);
   private productImportExportApi = inject(ProductImportExportService);
   private sseService = inject(SseService);
   private authService = inject(AuthService);
@@ -115,6 +117,7 @@ export class ProductListComponent implements OnInit {
   readonly pageSize = signal(10);
   readonly totalItems = signal(0);
   readonly ordering = signal<string | undefined>('name');
+  readonly includeDeprecated = signal(false);
   readonly isSuperuser = this.authService.isSuperuser;
 
   readonly bulkDeleteOpen = signal(false);
@@ -215,6 +218,8 @@ export class ProductListComponent implements OnInit {
     return Math.max(1, Math.ceil(total / size));
   });
 
+  readonly rowClassFn = (row: Product): string => (row.deprecated ? 'opacity-60' : '');
+
   @HostListener('window:keydown', ['$event'])
   handleGlobalKeydown(event: KeyboardEvent): void {
     const activeElement = document.activeElement as HTMLElement | null;
@@ -261,6 +266,12 @@ export class ProductListComponent implements OnInit {
   onSortChange(sort: SortEvent): void {
     const ordering = sort.direction === 'desc' ? `-${sort.column}` : sort.column;
     this.ordering.set(ordering);
+    this.page.set(1);
+    this.loadProducts();
+  }
+
+  onToggleIncludeDeprecated(value: boolean): void {
+    this.includeDeprecated.set(value);
     this.page.set(1);
     this.loadProducts();
   }
@@ -547,12 +558,16 @@ export class ProductListComponent implements OnInit {
       },
       error: (error) => {
         const message = extractServerErrorMessage(error);
-        this.toast.error(message ? `Failed to download export: ${message}` : 'Failed to download export');
+        this.toast.error(
+          message ? `Failed to download export: ${message}` : 'Failed to download export',
+        );
       },
     });
   }
 
-  private resolveFilename(response: { headers?: { get(name: string): string | null } }): string | null {
+  private resolveFilename(response: {
+    headers?: { get(name: string): string | null };
+  }): string | null {
     const contentDisposition = response.headers?.get('content-disposition');
     if (!contentDisposition) return null;
     const filenameStarMatch = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
@@ -577,30 +592,41 @@ export class ProductListComponent implements OnInit {
     this.isLoading.set(true);
     const ordering = this.ordering();
 
-    this.productsApi
-      .productsList(ordering ?? undefined, this.page(), this.pageSize(), this.query() || undefined)
-      .subscribe({
-        next: (response: PaginatedProductList) => {
-          this.products.set(response.results ?? []);
-          this.totalItems.set(response.count ?? 0);
-          this.isLoading.set(false);
+    let params = new HttpParams()
+      .set('page', String(this.page()))
+      .set('page_size', String(this.pageSize()))
+      .set('hide_deprecated', String(!this.includeDeprecated()));
 
-          const table = this.dataTable();
-          if (table) {
-            const focusId = this.focusIdOnInit();
-            if (focusId) {
-              this.focusIdOnInit.set(null);
-              table.focusRowById(focusId);
-            } else if (this.focusTableOnInit()) {
-              this.focusTableOnInit.set(false);
-              table.focusFirstRowIfNone();
-            }
+    if (ordering) {
+      params = params.set('ordering', ordering);
+    }
+    const search = this.query();
+    if (search) {
+      params = params.set('search', search);
+    }
+
+    this.http.get<PaginatedProductList>('/api/products/', { params }).subscribe({
+      next: (response: PaginatedProductList) => {
+        this.products.set(response.results ?? []);
+        this.totalItems.set(response.count ?? 0);
+        this.isLoading.set(false);
+
+        const table = this.dataTable();
+        if (table) {
+          const focusId = this.focusIdOnInit();
+          if (focusId) {
+            this.focusIdOnInit.set(null);
+            table.focusRowById(focusId);
+          } else if (this.focusTableOnInit()) {
+            this.focusTableOnInit.set(false);
+            table.focusFirstRowIfNone();
           }
-        },
-        error: () => {
-          this.toast.error('Failed to load products');
-          this.isLoading.set(false);
-        },
-      });
+        }
+      },
+      error: () => {
+        this.toast.error('Failed to load products');
+        this.isLoading.set(false);
+      },
+    });
   }
 }

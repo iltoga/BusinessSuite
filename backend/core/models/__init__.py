@@ -56,6 +56,21 @@ try:
 except Exception:  # pragma: no cover
     AIRequestUsage = None
 
+try:
+    from .local_resilience import (
+        LocalResilienceSettings,
+        MediaManifestEntry,
+        SyncChangeLog,
+        SyncConflict,
+        SyncCursor,
+    )
+except Exception:  # pragma: no cover
+    LocalResilienceSettings = None
+    SyncChangeLog = None
+    SyncCursor = None
+    SyncConflict = None
+    MediaManifestEntry = None
+
 __all__ = [
     "CountryCode",
     "DocumentOCRJob",
@@ -68,4 +83,9 @@ __all__ = [
     "CalendarEvent",
     "CalendarReminder",
     "AIRequestUsage",
+    "LocalResilienceSettings",
+    "SyncChangeLog",
+    "SyncCursor",
+    "SyncConflict",
+    "MediaManifestEntry",
 ]

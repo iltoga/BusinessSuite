@@ -4,7 +4,11 @@ import { Observable, map } from 'rxjs';
 
 import { CustomerApplicationsService } from '@/core/api/api/customer-applications.service';
 import { DocumentsService } from '@/core/services/documents.service';
-import { OcrService } from '@/core/services/ocr.service';
+import {
+  OcrService,
+  type DocumentOcrStatusResponse,
+  type OcrQueuedResponse as ServiceOcrQueuedResponse,
+} from '@/core/services/ocr.service';
 
 export interface ApplicationCustomer {
   id: number;
@@ -29,7 +33,7 @@ export interface ApplicationProduct {
 export interface DocumentTypeInfo {
   id: number;
   name: string;
-  hasOcrCheck: boolean;
+  aiValidation: boolean;
   hasExpirationDate: boolean;
   hasDocNumber: boolean;
   hasDetails: boolean;
@@ -55,7 +59,7 @@ export interface ApplicationDocument {
   completed: boolean;
   metadata?: Record<string, unknown> | null;
   required: boolean;
-  ocrCheck: boolean;
+  aiValidation: boolean;
   aiValidationStatus?: string | null;
   aiValidationResult?: Record<string, unknown> | null;
   updatedAt?: string | null;
@@ -131,6 +135,7 @@ export interface OcrStatusResponse {
   jobId: string;
   status: string;
   progress?: number;
+  text?: string;
   error?: string;
   mrzData?: {
     number?: string;
@@ -249,13 +254,12 @@ export class ApplicationsService {
       );
   }
 
-  startOcrCheck(file: File, docType: string): Observable<any> {
-    // Delegate to OcrService which handles headers and form-data building
-    return this.ocrService.startPassportOcr(file, { useAi: true, previewWidth: 900 });
+  startDocumentOcr(file: File): Observable<ServiceOcrQueuedResponse | DocumentOcrStatusResponse> {
+    return this.ocrService.startDocumentOcr(file);
   }
 
-  getOcrStatus(statusUrl: string): Observable<OcrStatusResponse> {
-    return this.ocrService.getOcrStatus(statusUrl);
+  getDocumentOcrStatus(statusUrl: string): Observable<DocumentOcrStatusResponse> {
+    return this.ocrService.getDocumentOcrStatus(statusUrl);
   }
 
   executeDocumentAction(

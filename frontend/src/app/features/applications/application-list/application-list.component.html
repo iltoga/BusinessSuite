@@ -52,7 +52,12 @@
           }}</a>
         </ng-template>
         <ng-template #columnProduct let-row>
-          <div>{{ row.product?.name }}</div>
+          <div class="flex items-center gap-2">
+            <span>{{ row.product?.name }}</span>
+            @if (isDeprecatedProduct(row)) {
+              <z-badge zType="outline">Deprecated</z-badge>
+            }
+          </div>
         </ng-template>
         <ng-template #columnDate let-row>
           <div class="whitespace-nowrap">{{ row.docDate | appDate }}</div>

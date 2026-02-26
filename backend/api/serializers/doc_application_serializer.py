@@ -77,6 +77,8 @@ class DocApplicationSerializerWithRelations(serializers.ModelSerializer):
         Ready if all required documents are completed OR if the application
         has been marked as completed (e.g. force closed).
         """
+        if getattr(instance.product, "deprecated", False):
+            return False
         if instance.status in (DocApplication.STATUS_COMPLETED, DocApplication.STATUS_REJECTED):
             return True
         return instance.total_required_documents == instance.completed_required_documents
@@ -86,9 +88,9 @@ class DocApplicationSerializerWithRelations(serializers.ModelSerializer):
         request = self.context.get("request") if hasattr(self, "context") else None
         if not request or not getattr(request, "user", None) or not request.user.is_authenticated:
             return False
-        return (
-            request.user.has_perm("customer_applications.change_docapplication")
-            and instance.status not in (DocApplication.STATUS_COMPLETED, DocApplication.STATUS_REJECTED)
+        return request.user.has_perm("customer_applications.change_docapplication") and instance.status not in (
+            DocApplication.STATUS_COMPLETED,
+            DocApplication.STATUS_REJECTED,
         )
 
     def to_representation(self, instance):
@@ -153,6 +155,8 @@ class CustomerUninvoicedApplicationSerializer(DocApplicationInvoiceSerializer):
         return invoice.id if invoice else None
 
     def get_ready_for_invoice(self, instance) -> bool:
+        if getattr(instance.product, "deprecated", False):
+            return False
         if instance.status in (DocApplication.STATUS_COMPLETED, DocApplication.STATUS_REJECTED):
             return True
         return instance.is_document_collection_completed
@@ -280,9 +284,9 @@ class DocApplicationDetailSerializer(serializers.ModelSerializer):
         request = self.context.get("request") if hasattr(self, "context") else None
         if not request or not getattr(request, "user", None) or not request.user.is_authenticated:
             return False
-        return (
-            request.user.has_perm("customer_applications.change_docapplication")
-            and instance.status not in (DocApplication.STATUS_COMPLETED, DocApplication.STATUS_REJECTED)
+        return request.user.has_perm("customer_applications.change_docapplication") and instance.status not in (
+            DocApplication.STATUS_COMPLETED,
+            DocApplication.STATUS_REJECTED,
         )
 
 
@@ -319,6 +323,11 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
             notify_customer_channel = self.instance.notify_customer_channel
 
         customer = attrs.get("customer") or getattr(self.instance, "customer", None)
+        product = attrs.get("product") or getattr(self.instance, "product", None)
+
+        if product and getattr(product, "deprecated", False):
+            raise serializers.ValidationError({"product": "Deprecated products cannot be used for applications."})
+
         if notify_customer_too:
             if not notify_customer_channel:
                 raise serializers.ValidationError({"notify_customer_channel": "Select a notification channel."})
@@ -372,7 +381,9 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
             except (TypeError, ValueError):
                 normalized_id = None
             normalized_doc_type_ids.append(normalized_id)
-        document_types_by_id = DocumentType.objects.in_bulk([doc_type_id for doc_type_id in normalized_doc_type_ids if doc_type_id])
+        document_types_by_id = DocumentType.objects.in_bulk(
+            [doc_type_id for doc_type_id in normalized_doc_type_ids if doc_type_id]
+        )
 
         # Create provided placeholder documents in one query.
         placeholder_documents = []
@@ -568,7 +579,7 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
                     doc_number=customer.passport_number,
                     expiration_date=customer.passport_expiration_date,
                     details="\n".join(details_parts),
-                    ocr_check=bool(customer.passport_metadata),
+                    ai_validation=False,
                     metadata=trimmed_metadata,
                     completed=True,
                     required=True,  # Passports are usually required if present
@@ -605,7 +616,7 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
                     file_link=previous_doc.file_link,
                     doc_number=previous_doc.doc_number,
                     expiration_date=previous_doc.expiration_date,
-                    ocr_check=previous_doc.ocr_check,
+                    ai_validation=previous_doc.ai_validation,
                     metadata=previous_doc.metadata,
                     completed=previous_doc.completed,
                     required=previous_doc.required,

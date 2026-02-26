@@ -5,7 +5,7 @@ Extracts text content from PDF, Excel, and Word documents for invoice processing
 
 import logging
 import os
-from typing import Optional
+from typing import Callable, Optional
 
 from core.services.logger_service import Logger
 
@@ -24,7 +24,10 @@ class DocumentParser:
     """
 
     @staticmethod
-    def extract_text_from_file(file_path: str) -> Optional[str]:
+    def extract_text_from_file(
+        file_path: str,
+        progress_callback: Optional[Callable[[int], None]] = None,
+    ) -> Optional[str]:
         """
         Extract text from a document based on its file extension.
 
@@ -42,11 +45,13 @@ class DocumentParser:
 
         try:
             if file_extension == ".pdf":
-                return DocumentParser._extract_from_pdf(file_path)
+                return DocumentParser._extract_from_pdf(file_path, progress_callback=progress_callback)
             elif file_extension in [".xlsx", ".xls"]:
-                return DocumentParser._extract_from_excel(file_path)
+                return DocumentParser._extract_from_excel(file_path, progress_callback=progress_callback)
             elif file_extension in [".docx", ".doc"]:
-                return DocumentParser._extract_from_word(file_path)
+                return DocumentParser._extract_from_word(file_path, progress_callback=progress_callback)
+            elif file_extension in [".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff", ".bmp"]:
+                return DocumentParser._extract_from_image(file_path, progress_callback=progress_callback)
             else:
                 logger.error(f"Unsupported file format: {file_extension}")
                 return None
@@ -55,7 +60,10 @@ class DocumentParser:
             return None
 
     @staticmethod
-    def _extract_from_pdf(file_path: str) -> str:
+    def _extract_from_pdf(
+        file_path: str,
+        progress_callback: Optional[Callable[[int], None]] = None,
+    ) -> str:
         """
         Extract text from PDF using OCR.
         Uses pdf2image + pytesseract for text extraction.
@@ -65,12 +73,18 @@ class DocumentParser:
             images = convert_from_path(file_path, dpi=300)
 
             extracted_text = []
+            total_pages = len(images)
             for i, image in enumerate(images):
-                logger.info(f"Processing page {i+1}/{len(images)} from PDF")
+                logger.info(f"Processing page {i + 1}/{total_pages} from PDF")
 
                 # Use OCR to extract text
                 text = pytesseract.image_to_string(image, lang="eng")
                 extracted_text.append(text)
+
+                if progress_callback and total_pages > 0:
+                    # Smoothly progress from 40% to 90% while pages are being OCRed.
+                    progress = 40 + int(((i + 1) / total_pages) * 50)
+                    progress_callback(min(progress, 90))
 
             full_text = "\n\n--- PAGE BREAK ---\n\n".join(extracted_text)
             logger.info(f"Successfully extracted {len(full_text)} characters from PDF")
@@ -81,13 +95,18 @@ class DocumentParser:
             raise
 
     @staticmethod
-    def _extract_from_excel(file_path: str) -> str:
+    def _extract_from_excel(
+        file_path: str,
+        progress_callback: Optional[Callable[[int], None]] = None,
+    ) -> str:
         """
         Extract text from Excel files.
         Reads all sheets and cells, formats them as structured text.
         """
         try:
             workbook = openpyxl.load_workbook(file_path, data_only=True)
+            if progress_callback:
+                progress_callback(55)
             extracted_text = []
 
             for sheet_name in workbook.sheetnames:
@@ -105,6 +124,8 @@ class DocumentParser:
                 extracted_text.append("\n")
 
             full_text = "\n".join(extracted_text)
+            if progress_callback:
+                progress_callback(90)
             logger.info(f"Successfully extracted {len(full_text)} characters from Excel")
             return full_text
 
@@ -113,13 +134,18 @@ class DocumentParser:
             raise
 
     @staticmethod
-    def _extract_from_word(file_path: str) -> str:
+    def _extract_from_word(
+        file_path: str,
+        progress_callback: Optional[Callable[[int], None]] = None,
+    ) -> str:
         """
         Extract text from Word documents.
         Reads all paragraphs and tables.
         """
         try:
             doc = Document(file_path)
+            if progress_callback:
+                progress_callback(55)
             extracted_text = []
 
             # Extract text from paragraphs
@@ -137,11 +163,32 @@ class DocumentParser:
                 extracted_text.append("=== END TABLE ===\n")
 
             full_text = "\n".join(extracted_text)
+            if progress_callback:
+                progress_callback(90)
             logger.info(f"Successfully extracted {len(full_text)} characters from Word document")
             return full_text
 
         except Exception as e:
             logger.error(f"Error extracting from Word: {str(e)}")
+            raise
+
+    @staticmethod
+    def _extract_from_image(
+        file_path: str,
+        progress_callback: Optional[Callable[[int], None]] = None,
+    ) -> str:
+        """Extract text from image files using OCR."""
+        try:
+            if progress_callback:
+                progress_callback(55)
+            image = Image.open(file_path)
+            text = pytesseract.image_to_string(image, lang="eng")
+            if progress_callback:
+                progress_callback(90)
+            logger.info(f"Successfully extracted {len(text)} characters from image")
+            return text
+        except Exception as e:
+            logger.error(f"Error extracting from image: {str(e)}")
             raise
 
     @staticmethod

@@ -13,7 +13,8 @@ export interface DocumentType {
     readonly id: number;
     name: string;
     description?: string;
-    hasOcrCheck?: boolean;
+    deprecated?: boolean;
+    aiValidation?: boolean;
     hasExpirationDate?: boolean;
     hasDocNumber?: boolean;
     hasFile?: boolean;

@@ -1,0 +1,231 @@
+services:
+  db:
+    container_name: revisbali-desktop-db
+    image: postgres:18
+    restart: unless-stopped
+    command:
+      - "postgres"
+      - "-c"
+      - "tcp_keepalives_idle=300"
+      - "-c"
+      - "tcp_keepalives_interval=60"
+      - "-c"
+      - "tcp_keepalives_count=5"
+      - "-c"
+      - "idle_in_transaction_session_timeout=300000"
+    environment:
+      POSTGRES_USER: ${DESKTOP_DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DESKTOP_DB_PASS:-postgres}
+      POSTGRES_DB: ${DESKTOP_DB_NAME:-business_suite}
+    networks:
+      - desktop_stack
+    volumes:
+      - type: bind
+        source: ${DB_PATH}
+        target: /usr/local/var/postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DESKTOP_DB_USER:-postgres} -d ${DESKTOP_DB_NAME:-business_suite} || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    container_name: revisbali-desktop-redis
+    image: redis:7-alpine
+    restart: unless-stopped
+    command:
+      - "redis-server"
+      - "--save"
+      - "300"
+      - "10"
+      - "--appendonly"
+      - "no"
+      - "--maxmemory"
+      - "96mb"
+      - "--maxmemory-policy"
+      - "allkeys-lru"
+      - "--tcp-keepalive"
+      - "60"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - redis_data:/data
+    mem_limit: 128m
+    cpus: 0.5
+    networks:
+      - desktop_stack
+
+  bs-core:
+    profiles:
+      - app
+    depends_on:
+      - redis
+      - db
+    image: bs-app:web
+    build:
+      context: ./backend/
+      dockerfile: Dockerfile
+      target: web
+    restart: unless-stopped
+    ports:
+      - "${DESKTOP_STACK_BACKEND_PORT:-18000}:8000"
+    networks:
+      - desktop_stack
+    env_file:
+      - ./.env
+    environment:
+      DB_HOST: ${DESKTOP_DB_HOST:-db}
+      DB_PORT: ${DESKTOP_DB_PORT:-5432}
+      DB_NAME: ${DESKTOP_DB_NAME:-business_suite}
+      DB_USER: ${DESKTOP_DB_USER:-postgres}
+      DB_PASS: ${DESKTOP_DB_PASS:-postgres}
+      SECRET_KEY: ${DESKTOP_SECRET_KEY:-desktop-local-secret-key-change-me}
+      APP_DOMAIN: ${DESKTOP_APP_DOMAIN:-127.0.0.1}
+      SECURE_SSL_REDIRECT: "false"
+      CSRF_COOKIE_SECURE: "false"
+      SESSION_COOKIE_SECURE: "false"
+      CSRF_COOKIE_DOMAIN: ""
+      SESSION_COOKIE_DOMAIN: ""
+      REDIS_HOST: ${DESKTOP_REDIS_HOST:-redis}
+      REDIS_PORT: ${DESKTOP_REDIS_PORT:-6379}
+      HUEY_REDIS_DB: ${DESKTOP_HUEY_REDIS_DB:-0}
+      COMPONENT: backend
+      MEDIA_ROOT: /media
+      MEDIA_URL: /media/
+      BACKUPS_ROOT: /backups
+      LOKI_ENABLED: "false"
+      LOCAL_MEDIA_ENCRYPTION_ENABLED: ${LOCAL_MEDIA_ENCRYPTION_ENABLED:-true}
+      LOCAL_MEDIA_ENCRYPTION_KEY: ${LOCAL_MEDIA_ENCRYPTION_KEY:-}
+      LOCAL_SYNC_ENABLED: ${LOCAL_SYNC_ENABLED:-false}
+      LOCAL_SYNC_NODE_ID: ${LOCAL_SYNC_NODE_ID:-desktop-local-node}
+      LOCAL_SYNC_REMOTE_BASE_URL: ${LOCAL_SYNC_REMOTE_BASE_URL:-}
+      LOCAL_SYNC_REMOTE_TOKEN: ${LOCAL_SYNC_REMOTE_TOKEN:-}
+      LOCAL_SYNC_PUSH_LIMIT: ${LOCAL_SYNC_PUSH_LIMIT:-200}
+      LOCAL_SYNC_PULL_LIMIT: ${LOCAL_SYNC_PULL_LIMIT:-200}
+      SITE_ADMIN_USERNAME: ${DESKTOP_SITE_ADMIN_USERNAME:-revisadmin}
+      SITE_ADMIN_EMAIL: ${DESKTOP_SITE_ADMIN_EMAIL:-info@example.com}
+      SITE_ADMIN_PASSWORD: ${DESKTOP_SITE_ADMIN_PASSWORD:-P12345678!}
+      SYSTEM_USER_EMAIL: ${SYSTEM_USER_EMAIL:-desktop-local@revisbali.local}
+      SYSTEM_USER_PASSWORD: ${SYSTEM_USER_PASSWORD:-desktop-local-change-me}
+    volumes:
+      - type: bind
+        source: ./backend
+        target: /usr/src/app
+      - type: bind
+        source: ${DATA_PATH}/media
+        target: /media
+      - type: bind
+        source: ${DATA_PATH}/db
+        target: /db
+      - type: bind
+        source: ${DATA_PATH}/logs
+        target: /logs
+      - type: bind
+        source: ${DATA_PATH}/staticfiles
+        target: /staticfiles
+      - type: bind
+        source: ${DATA_PATH}/backups
+        target: /backups
+
+  bs-worker:
+    profiles:
+      - app
+    depends_on:
+      - db
+      - bs-core
+      - redis
+    image: bs-app:web
+    restart: unless-stopped
+    networks:
+      - desktop_stack
+    env_file:
+      - ./.env
+    environment:
+      DB_HOST: ${DESKTOP_DB_HOST:-db}
+      DB_PORT: ${DESKTOP_DB_PORT:-5432}
+      DB_NAME: ${DESKTOP_DB_NAME:-business_suite}
+      DB_USER: ${DESKTOP_DB_USER:-postgres}
+      DB_PASS: ${DESKTOP_DB_PASS:-postgres}
+      SECRET_KEY: ${DESKTOP_SECRET_KEY:-desktop-local-secret-key-change-me}
+      APP_DOMAIN: ${DESKTOP_APP_DOMAIN:-127.0.0.1}
+      SECURE_SSL_REDIRECT: "false"
+      CSRF_COOKIE_SECURE: "false"
+      SESSION_COOKIE_SECURE: "false"
+      CSRF_COOKIE_DOMAIN: ""
+      SESSION_COOKIE_DOMAIN: ""
+      REDIS_HOST: ${DESKTOP_REDIS_HOST:-redis}
+      REDIS_PORT: ${DESKTOP_REDIS_PORT:-6379}
+      HUEY_REDIS_DB: ${DESKTOP_HUEY_REDIS_DB:-0}
+      COMPONENT: task_worker
+      MEDIA_ROOT: /media
+      MEDIA_URL: /media/
+      BACKUPS_ROOT: /backups
+      LOKI_ENABLED: "false"
+      LOCAL_MEDIA_ENCRYPTION_ENABLED: ${LOCAL_MEDIA_ENCRYPTION_ENABLED:-true}
+      LOCAL_MEDIA_ENCRYPTION_KEY: ${LOCAL_MEDIA_ENCRYPTION_KEY:-}
+      LOCAL_SYNC_ENABLED: ${LOCAL_SYNC_ENABLED:-false}
+      LOCAL_SYNC_NODE_ID: ${LOCAL_SYNC_NODE_ID:-desktop-local-node}
+      LOCAL_SYNC_REMOTE_BASE_URL: ${LOCAL_SYNC_REMOTE_BASE_URL:-}
+      LOCAL_SYNC_REMOTE_TOKEN: ${LOCAL_SYNC_REMOTE_TOKEN:-}
+      LOCAL_SYNC_PUSH_LIMIT: ${LOCAL_SYNC_PUSH_LIMIT:-200}
+      LOCAL_SYNC_PULL_LIMIT: ${LOCAL_SYNC_PULL_LIMIT:-200}
+      SITE_ADMIN_USERNAME: ${DESKTOP_SITE_ADMIN_USERNAME:-revisadmin}
+      SITE_ADMIN_EMAIL: ${DESKTOP_SITE_ADMIN_EMAIL:-info@example.com}
+      SITE_ADMIN_PASSWORD: ${DESKTOP_SITE_ADMIN_PASSWORD:-P12345678!}
+      SYSTEM_USER_EMAIL: ${SYSTEM_USER_EMAIL:-desktop-local@revisbali.local}
+      SYSTEM_USER_PASSWORD: ${SYSTEM_USER_PASSWORD:-desktop-local-change-me}
+    volumes:
+      - type: bind
+        source: ./backend
+        target: /usr/src/app
+      - type: bind
+        source: ${DATA_PATH}/media
+        target: /media
+      - type: bind
+        source: ${DATA_PATH}/db
+        target: /db
+      - type: bind
+        source: ${DATA_PATH}/logs
+        target: /logs
+      - type: bind
+        source: ${DATA_PATH}/staticfiles
+        target: /staticfiles
+      - type: bind
+        source: ${DATA_PATH}/backups
+        target: /backups
+    command: python manage.py run_huey
+
+  bs-frontend:
+    profiles:
+      - app
+    depends_on:
+      - bs-core
+    image: bs-frontend:web
+    build:
+      context: ./
+      dockerfile: Dockerfile.frontend
+    restart: unless-stopped
+    env_file:
+      - ./frontend/.env
+    environment:
+      PORT: 4000
+      BACKEND_URL: http://bs-core:8000
+      FE_LOG_FILE_PATH: /logs/frontend.log
+    ports:
+      - "${DESKTOP_STACK_FRONTEND_PORT:-14200}:4000"
+    volumes:
+      - type: bind
+        source: ${DATA_PATH}/logs
+        target: /logs
+    networks:
+      - desktop_stack
+
+networks:
+  desktop_stack:
+    driver: bridge
+
+volumes:
+  redis_data:

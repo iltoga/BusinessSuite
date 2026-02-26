@@ -39,6 +39,14 @@ export interface OcrStatusResponse {
   previewUrl?: string;
 }
 
+export interface DocumentOcrStatusResponse {
+  jobId?: string;
+  status: string;
+  progress?: number;
+  text?: string;
+  error?: string;
+}
+
 export interface PassportOcrOptions {
   useAi?: boolean;
   saveSession?: boolean;
@@ -79,6 +87,26 @@ export class OcrService {
     const headers = this.buildHeaders();
     const normalizedUrl = statusUrl.replace(/^https?:\/\/[^/]+/, '');
     return this.http.get<OcrStatusResponse>(normalizedUrl, { headers });
+  }
+
+  startDocumentOcr(
+    file: File,
+  ): Observable<OcrQueuedResponse | DocumentOcrStatusResponse> {
+    const headers = this.buildHeaders();
+    const formData = new FormData();
+    formData.append('file', file);
+
+    return this.http.post<OcrQueuedResponse | DocumentOcrStatusResponse>(
+      '/api/document-ocr/check/',
+      formData,
+      { headers },
+    );
+  }
+
+  getDocumentOcrStatus(statusUrl: string): Observable<DocumentOcrStatusResponse> {
+    const headers = this.buildHeaders();
+    const normalizedUrl = statusUrl.replace(/^https?:\/\/[^/]+/, '');
+    return this.http.get<DocumentOcrStatusResponse>(normalizedUrl, { headers });
   }
 
   private buildHeaders(): HttpHeaders | undefined {

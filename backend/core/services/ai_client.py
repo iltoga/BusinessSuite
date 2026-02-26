@@ -76,8 +76,14 @@ class AIClient:
         if not self.api_key:
             raise ValueError("OpenRouter API key not configured. Set OPENROUTER_API_KEY in settings or .env file.")
 
-        default_model = getattr(settings, "LLM_DEFAULT_MODEL", "google/gemini-2.5-flash-lite")
-        self.model = model or default_model
+        configured_default_model = getattr(settings, "LLM_DEFAULT_MODEL", None)
+        deprecated_default_models = {"google/gemini-2.0-flash-001"}
+        effective_default_model = (
+            "google/gemini-2.5-flash-lite"
+            if not configured_default_model or configured_default_model in deprecated_default_models
+            else configured_default_model
+        )
+        self.model = model or effective_default_model
 
         base_url = getattr(settings, "OPENROUTER_API_BASE_URL", "https://openrouter.ai/api/v1")
         self.timeout = timeout or getattr(settings, "OPENROUTER_TIMEOUT", 120.0)

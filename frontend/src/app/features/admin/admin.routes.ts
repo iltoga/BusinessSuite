@@ -12,6 +12,15 @@ export const adminRoutes: Routes = [
       import('./document-types/document-types.component').then((c) => c.DocumentTypesComponent),
   },
   {
+    path: 'document-types/:id',
+    title: 'Document Type Details',
+    canActivate: [staffGuard],
+    loadComponent: () =>
+      import('./document-types/document-type-detail/document-type-detail.component').then(
+        (c) => c.DocumentTypeDetailComponent,
+      ),
+  },
+  {
     path: 'workflow-notifications',
     title: 'Notifications Center',
     canActivate: [staffGuard],

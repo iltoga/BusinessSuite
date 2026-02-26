@@ -9,7 +9,7 @@ progress to the frontend.
 
 import traceback as tb_module
 
-from core.services.ai_document_categorizer import AIDocumentCategorizer
+from core.services.ai_document_categorizer import AIDocumentCategorizer, extract_validation_expiration_date
 from core.services.logger_service import Logger
 from core.tasks.idempotency import acquire_task_lock, build_task_lock_key, release_task_lock
 from customer_applications.models import Document
@@ -42,6 +42,12 @@ def run_document_validation(document_id: int) -> None:
 
         doc_type = document.doc_type
         product = document.doc_application.product if document.doc_application else None
+
+        if not doc_type or not doc_type.ai_validation:
+            document.ai_validation_status = Document.AI_VALIDATION_NONE
+            document.ai_validation_result = None
+            document.save(update_fields=["ai_validation_status", "ai_validation_result", "updated_at"])
+            return
 
         positive_prompt = doc_type.validation_rule_ai_positive if doc_type else ""
         negative_prompt = doc_type.validation_rule_ai_negative if doc_type else ""
@@ -99,12 +105,21 @@ def run_document_validation(document_id: int) -> None:
                 positive_prompt=positive_prompt,
                 negative_prompt=negative_prompt,
                 product_prompt=product_prompt,
+                require_expiration_date=bool(doc_type.has_expiration_date),
             )
 
             is_valid = validation.get("valid", False)
             document.ai_validation_status = Document.AI_VALIDATION_VALID if is_valid else Document.AI_VALIDATION_INVALID
             document.ai_validation_result = validation
-            document.save(update_fields=["ai_validation_status", "ai_validation_result", "updated_at"])
+            update_fields = ["ai_validation_status", "ai_validation_result", "updated_at"]
+
+            extracted_expiration_date = extract_validation_expiration_date(validation)
+            if doc_type.has_expiration_date and extracted_expiration_date and not document.expiration_date:
+                document.expiration_date = extracted_expiration_date
+                update_fields.append("expiration_date")
+                update_fields.append("completed")
+
+            document.save(update_fields=update_fields)
 
             logger.info(
                 "Document %s validated: valid=%s (confidence=%.2f)",

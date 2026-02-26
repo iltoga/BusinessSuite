@@ -1,4 +1,3 @@
-from django.core.exceptions import ValidationError
 from django.db import models
 
 
@@ -10,7 +9,8 @@ class DocumentTypeManager(models.Manager):
 class DocumentType(models.Model):
     name = models.CharField(max_length=50, unique=True, db_index=True)
     description = models.CharField(max_length=500, blank=True)
-    has_ocr_check = models.BooleanField(default=False)
+    deprecated = models.BooleanField(default=False, db_index=True)
+    ai_validation = models.BooleanField(default=True)
     has_expiration_date = models.BooleanField(default=False)
     has_doc_number = models.BooleanField(default=False)
     has_file = models.BooleanField(default=False)
@@ -31,8 +31,13 @@ class DocumentType(models.Model):
     def clean(self):
         # This method is used to provide custom model validation,
         # and to modify attributes on your model if desired.
-        if self.has_ocr_check and not self.has_file:
-            raise ValidationError("If has_ocr_check is True, has_file should also be True.")
+        if self.ai_validation and not self.has_file:
+            self.has_file = True
+
+    def get_related_products(self):
+        from products.models.product import Product
+
+        return Product.objects.db_manager(self._state.db).filter_by_document_type_name(self.name)
 
     def save(self, *args, **kwargs):
         self.full_clean()

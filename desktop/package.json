@@ -9,6 +9,8 @@
   "scripts": {
     "dev": "DESKTOP_START_URL=http://localhost:4200 electron .",
     "start": "electron .",
+    "bootstrap:local": "node ./scripts/bootstrap-local-stack.js",
+    "doctor:local": "node ./scripts/doctor-local-stack.js",
     "dist": "electron-builder --config electron-builder.yml --publish never",
     "dist:mac": "electron-builder --config electron-builder.yml --mac dmg zip --publish never",
     "dist:win": "electron-builder --config electron-builder.yml --win nsis --publish never"

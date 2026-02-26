@@ -177,6 +177,9 @@ export class ApplicationDetailComponent implements OnInit {
     const docTypeHasNegative = !!doc.docType?.validationRuleAiNegative;
     return productHasPrompt || docTypeHasPositive || docTypeHasNegative;
   });
+  readonly isAiValidationEnabledForSelectedDocument = computed(() =>
+    Boolean(this.selectedDocument()?.docType?.aiValidation),
+  );
   readonly originSearchQuery = signal<string | null>(null);
   readonly isSuperuser = this.authService.isSuperuser;
   readonly isSavingMeta = signal(false);
@@ -499,7 +502,10 @@ export class ApplicationDetailComponent implements OnInit {
 
     const formValue = this.uploadForm.getRawValue();
     const shouldValidate =
-      this.validateWithAi() && this.hasAiValidationRules() && !!this.selectedFile();
+      this.isAiValidationEnabledForSelectedDocument() &&
+      this.validateWithAi() &&
+      this.hasAiValidationRules() &&
+      !!this.selectedFile();
 
     this.applicationsService
       .updateDocument(
@@ -650,11 +656,21 @@ export class ApplicationDetailComponent implements OnInit {
     status: string,
     result: Record<string, unknown>,
   ): void {
+    const extractedExpirationDate =
+      typeof result['extracted_expiration_date'] === 'string'
+        ? (result['extracted_expiration_date'] as string)
+        : null;
+
     // Update in localUploadedDocuments
     const docs = this.localUploadedDocuments();
     const idx = docs.findIndex((d) => d.id === documentId);
     if (idx >= 0) {
-      const updated = { ...docs[idx], aiValidationStatus: status, aiValidationResult: result };
+      const updated = {
+        ...docs[idx],
+        aiValidationStatus: status,
+        aiValidationResult: result,
+        expirationDate: docs[idx].expirationDate || extractedExpirationDate || null,
+      };
       const newDocs = [...docs];
       newDocs[idx] = updated;
       this.localUploadedDocuments.set(newDocs);
@@ -670,6 +686,7 @@ export class ApplicationDetailComponent implements OnInit {
           ...appDocs[appIdx],
           aiValidationStatus: status,
           aiValidationResult: result,
+          expirationDate: appDocs[appIdx].expirationDate || extractedExpirationDate || null,
         };
         this.application.set({ ...app, documents: appDocs });
       }
@@ -679,7 +696,7 @@ export class ApplicationDetailComponent implements OnInit {
   runOcr(): void {
     const document = this.selectedDocument();
     const file = this.selectedFile();
-    if (!document || !document.docType?.hasOcrCheck) {
+    if (!document || !document.docType?.aiValidation) {
       return;
     }
 
@@ -727,7 +744,7 @@ export class ApplicationDetailComponent implements OnInit {
     this.ocrPolling.set(true);
     this.ocrStatus.set('Queued');
 
-    this.applicationsService.startOcrCheck(file, document.docType.name).subscribe({
+    this.applicationsService.startDocumentOcr(file).subscribe({
       next: (response) => {
         const statusUrl =
           ('statusUrl' in response && response.statusUrl) ||
@@ -735,7 +752,7 @@ export class ApplicationDetailComponent implements OnInit {
         if (statusUrl) {
           this.pollOcrStatus(statusUrl, 0);
         } else {
-          this.handleOcrResult(response as OcrStatusResponse);
+          this.handleOcrResult(response as unknown as OcrStatusResponse);
         }
       },
       error: (error) => {
@@ -769,6 +786,11 @@ export class ApplicationDetailComponent implements OnInit {
   private buildOcrExtractedDataText(): string {
     const review = this.ocrReviewData();
     const metadata = this.ocrMetadata();
+    const directText = this.getDirectOcrText(review);
+
+    if (directText) {
+      return directText;
+    }
 
     const extracted: Record<string, unknown> = {};
     if (review) {
@@ -805,16 +827,35 @@ export class ApplicationDetailComponent implements OnInit {
 
   applyOcrData(): void {
     const data = this.ocrReviewData();
-    if (!data?.mrzData) {
+    if (!data) {
       this.ocrReviewOpen.set(false);
       return;
     }
 
-    this.uploadForm.patchValue({
-      docNumber: data.mrzData.number ?? '',
-      expirationDate: this.parseApiDate(data.mrzData.expirationDateYyyyMmDd),
-    });
-    this.ocrMetadata.set(data.mrzData ?? {});
+    const patchValue: {
+      docNumber?: string;
+      expirationDate?: Date | null;
+      details?: string;
+    } = {};
+
+    if (data.mrzData) {
+      patchValue.docNumber = data.mrzData.number ?? '';
+      patchValue.expirationDate = this.parseApiDate(data.mrzData.expirationDateYyyyMmDd);
+      this.ocrMetadata.set(data.mrzData ?? {});
+    }
+
+    const selected = this.selectedDocument();
+    if (selected?.docType?.hasDetails) {
+      const extractedDetails = this.buildOcrExtractedDataText();
+      if (extractedDetails && extractedDetails !== this.ocrNoDataText) {
+        const currentDetails = this.uploadForm.getRawValue().details ?? '';
+        patchValue.details = this.mergeOcrDetails(currentDetails, extractedDetails);
+      }
+    }
+
+    if (Object.keys(patchValue).length > 0) {
+      this.uploadForm.patchValue(patchValue);
+    }
     this.ocrReviewOpen.set(false);
   }
 
@@ -1530,8 +1571,8 @@ export class ApplicationDetailComponent implements OnInit {
   }
 
   private pollOcrStatus(statusUrl: string, attempt: number): void {
-    const maxAttempts = 90;
-    const intervalMs = 2000;
+    const maxAttempts = 180;
+    const intervalMs = 1000;
 
     if (attempt >= maxAttempts) {
       this.toast.error('OCR processing timed out');
@@ -1540,10 +1581,10 @@ export class ApplicationDetailComponent implements OnInit {
     }
 
     this.pollTimer = window.setTimeout(() => {
-      this.applicationsService.getOcrStatus(statusUrl).subscribe({
+      this.applicationsService.getDocumentOcrStatus(statusUrl).subscribe({
         next: (status) => {
           if (status.status === 'completed') {
-            this.handleOcrResult(status);
+            this.handleOcrResult(status as unknown as OcrStatusResponse);
             return;
           }
           if (status.status === 'failed') {
@@ -1570,13 +1611,66 @@ export class ApplicationDetailComponent implements OnInit {
     this.ocrPolling.set(false);
     this.ocrStatus.set('Completed');
     this.ocrReviewData.set(status);
+    this.maybePopulateDetailsFromOcr();
     const previewUrl = status.previewUrl ?? (status as { preview_url?: string }).preview_url;
     if (previewUrl) {
       this.ocrPreviewImage.set(previewUrl);
     } else if (status.b64ResizedImage) {
       this.ocrPreviewImage.set(`data:image/jpeg;base64,${status.b64ResizedImage}`);
     }
-    this.ocrReviewOpen.set(true);
+    if (status.mrzData) {
+      this.ocrReviewOpen.set(true);
+    } else {
+      this.ocrReviewOpen.set(false);
+    }
+  }
+
+  private getDirectOcrText(status: OcrStatusResponse | null): string | null {
+    if (!status) {
+      return null;
+    }
+    const textValue =
+      typeof status.text === 'string'
+        ? status.text
+        : typeof (status as { result_text?: string }).result_text === 'string'
+          ? (status as { result_text?: string }).result_text!
+          : null;
+    if (!textValue) {
+      return null;
+    }
+    const trimmed = textValue.trim();
+    return trimmed || null;
+  }
+
+  private mergeOcrDetails(currentDetails: string, extractedDetails: string): string {
+    const current = (currentDetails ?? '').trim();
+    const extracted = extractedDetails.trim();
+    if (!extracted) {
+      return currentDetails;
+    }
+    if (!current) {
+      return extracted;
+    }
+    if (current.includes(extracted)) {
+      return current;
+    }
+    return `${current}\n\n${extracted}`;
+  }
+
+  private maybePopulateDetailsFromOcr(): void {
+    const selected = this.selectedDocument();
+    if (!selected?.docType?.hasDetails) {
+      return;
+    }
+    const extractedDetails = this.buildOcrExtractedDataText();
+    if (!extractedDetails || extractedDetails === this.ocrNoDataText) {
+      return;
+    }
+    const currentDetails = this.uploadForm.getRawValue().details ?? '';
+    const merged = this.mergeOcrDetails(currentDetails, extractedDetails);
+    if (merged !== currentDetails) {
+      this.uploadForm.patchValue({ details: merged });
+    }
   }
 
   private replaceDocument(updated: ApplicationDocument): void {

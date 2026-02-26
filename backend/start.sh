@@ -3,13 +3,19 @@
 # Exit immediately if a command exits with a non-zero status
 set -e
 
-# 1. Load environment variables from .env if it exists (fallback for local/non-compose runs)
+# 1. Load environment variables from .env only outside Docker.
+# In containerized runs, Compose already injects env vars and should not be
+# overridden by repository-local .env values.
 if [ -f .env ]; then
-  echo "Loading variables from .env file..."
-  set -a
-  # shellcheck disable=SC1091
-  source .env
-  set +a
+  if [ -f "/.dockerenv" ]; then
+    echo "Skipping .env load inside Docker; using container environment variables."
+  else
+    echo "Loading variables from .env file..."
+    set -a
+    # shellcheck disable=SC1091
+    source .env
+    set +a
+  fi
 fi
 
 # 2. Safety Check for Required Variables

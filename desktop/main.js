@@ -16,14 +16,20 @@ const {
   ReminderFallbackPoller,
 } = require("./services/reminder-fallback-poller");
 const { TrayService } = require("./services/tray-service");
+const { DesktopRuntimeManager } = require("./services/runtime-manager");
+const { DesktopVaultService } = require("./services/vault-service");
 
 const DEFAULT_START_URL = "https://crm.revisbali.com";
+const DEFAULT_LOCAL_FRONTEND_URL = "http://127.0.0.1:14200";
+const DEFAULT_LOCAL_BACKEND_HEALTH_URL = "http://127.0.0.1:18000/api/app-config/";
+const DEFAULT_LOCAL_SYNC_STATE_URL = "http://127.0.0.1:18000/api/sync/state/";
 const APP_NAME = "Revis Bali CRM";
 const RENDERER_UNREAD_SYNC_TTL_MS = 20_000;
 const DEFAULT_REMINDER_POLL_INTERVAL_MS = 15_000;
 const INITIAL_UPDATE_CHECK_DELAY_MS = 10_000;
 const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000;
 const UPDATE_INSTALL_STATE_FILE_NAME = "desktop-update-install-state.json";
+const STARTUP_LOCAL_RUNTIME_WAIT_MS = 4_000;
 
 loadDesktopEnvFile();
 
@@ -39,15 +45,38 @@ const configuredLevel = String(
 ).toLowerCase();
 const currentLevel = levelPriority[configuredLevel] ?? levelPriority.info;
 
-const startUrl = resolveStartUrl(
+const remoteStartUrl = resolveStartUrl(
   process.env.DESKTOP_START_URL || DEFAULT_START_URL,
 );
-const allowedOrigin = normalizeOrigin(
-  process.env.DESKTOP_ALLOWED_ORIGIN || startUrl.origin,
+const localFrontendUrl = String(
+  process.env.DESKTOP_LOCAL_FRONTEND_URL || DEFAULT_LOCAL_FRONTEND_URL,
+).trim();
+const localBackendHealthUrl = String(
+  process.env.DESKTOP_LOCAL_BACKEND_HEALTH_URL ||
+    DEFAULT_LOCAL_BACKEND_HEALTH_URL,
+).trim();
+const localSyncStateUrl = String(
+  process.env.DESKTOP_LOCAL_SYNC_STATE_URL || DEFAULT_LOCAL_SYNC_STATE_URL,
+).trim();
+const localFirstEnabled = parseBooleanFlag(
+  process.env.DESKTOP_LOCAL_FIRST_ENABLED,
+  true,
 );
+const explicitAllowedOrigin = normalizeOrigin(
+  process.env.DESKTOP_ALLOWED_ORIGIN || "",
+);
+const allowedOrigins = new Set([remoteStartUrl.origin]);
+if (explicitAllowedOrigin) {
+  allowedOrigins.add(explicitAllowedOrigin);
+}
+const localFrontendOrigin = normalizeOrigin(localFrontendUrl);
+if (localFrontendOrigin) {
+  allowedOrigins.add(localFrontendOrigin);
+}
 const reminderPollIntervalMs = resolveReminderPollInterval(
   process.env.DESKTOP_REMINDER_POLL_INTERVAL_MS,
 );
+let activeAppOrigin = remoteStartUrl.origin;
 
 let isQuitting = false;
 let mainWindow = null;
@@ -69,6 +98,9 @@ let lastDownloadProgressPercent = -1;
 let latestDownloadedVersion = "";
 let updateInstallRestartTimeoutHandle = null;
 let macUpdatePreflightIssueCache;
+let runtimeManager = null;
+let vaultService = null;
+let localRuntimeStartInProgress = false;
 
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
@@ -168,6 +200,14 @@ function resolveReminderPollInterval(rawValue) {
   return Math.floor(parsed);
 }
 
+function parseBooleanFlag(rawValue, fallback = false) {
+  if (rawValue === undefined || rawValue === null || rawValue === "") {
+    return Boolean(fallback);
+  }
+  const normalized = String(rawValue).trim().toLowerCase();
+  return ["1", "true", "yes", "on"].includes(normalized);
+}
+
 function isAllowedUrl(rawUrl) {
   if (rawUrl === "about:blank") {
     return true;
@@ -175,7 +215,7 @@ function isAllowedUrl(rawUrl) {
 
   try {
     const parsed = new URL(rawUrl);
-    return parsed.origin === allowedOrigin;
+    return allowedOrigins.has(parsed.origin);
   } catch {
     return false;
   }
@@ -228,6 +268,145 @@ function shouldHideInsteadOfClose() {
 
 function getWindowIconPath() {
   return path.join(__dirname, "assets", "icons", "icon-256x256.png");
+}
+
+function buildRuntimeManager() {
+  const composeFileFromEnv = String(
+    process.env.DESKTOP_LOCAL_COMPOSE_FILE || "",
+  ).trim();
+  const composeFile = composeFileFromEnv
+    ? path.resolve(composeFileFromEnv)
+    : path.resolve(__dirname, "..", "docker-compose-desktop-stack.yml");
+  const localRuntimeDataPath = path.join(app.getPath("userData"), "local-runtime");
+  const localRuntimeDbPath = path.join(localRuntimeDataPath, "postgresql");
+
+  return new DesktopRuntimeManager({
+    projectRoot: path.resolve(__dirname, ".."),
+    composeFile,
+    projectName:
+      process.env.DESKTOP_LOCAL_COMPOSE_PROJECT || "revisbali-desktop-local",
+    localFrontendUrl,
+    localBackendHealthUrl,
+    localSyncStateUrl,
+    localDataPath: localRuntimeDataPath,
+    localDbPath: localRuntimeDbPath,
+    remoteSyncBaseUrl:
+      process.env.DESKTOP_REMOTE_SYNC_BASE_URL || remoteStartUrl.origin,
+    remoteSyncToken:
+      process.env.DESKTOP_REMOTE_SYNC_TOKEN || process.env.LOCAL_SYNC_REMOTE_TOKEN || "",
+    remoteSyncNodeId:
+      process.env.DESKTOP_REMOTE_SYNC_NODE_ID || process.env.LOCAL_SYNC_NODE_ID || "",
+    getMediaEncryptionKey: () => vaultService?.getMediaEncryptionKey() || null,
+    log: (level, message) => log(level, message),
+  });
+}
+
+function ensureRuntimeServices() {
+  if (!vaultService) {
+    vaultService = new DesktopVaultService({
+      userDataPath: app.getPath("userData"),
+      log: (level, message) => log(level, message),
+    });
+    vaultService.initialize({ initialVaultEpoch: 1 });
+  }
+
+  if (!runtimeManager) {
+    runtimeManager = buildRuntimeManager();
+  }
+}
+
+function updateActiveOrigin(rawUrl) {
+  const normalized = normalizeOrigin(rawUrl);
+  if (!normalized) {
+    return;
+  }
+  activeAppOrigin = normalized;
+  reminderPoller?.setBaseUrl(normalized);
+}
+
+async function startLocalRuntime({
+  waitForReady = true,
+  startupTimeoutMs = STARTUP_LOCAL_RUNTIME_WAIT_MS,
+} = {}) {
+  ensureRuntimeServices();
+  if (!runtimeManager) {
+    return { available: false, running: false, healthy: false, reason: "runtime_unavailable" };
+  }
+  if (localRuntimeStartInProgress) {
+    return runtimeManager.getStatus();
+  }
+
+  localRuntimeStartInProgress = true;
+  try {
+    const startPromise = runtimeManager.start();
+    if (!waitForReady) {
+      startPromise
+        .then((status) => {
+          log("info", "Local runtime background start finished", status);
+        })
+        .catch((error) => {
+          log("warn", `Local runtime background start failed: ${String(error)}`);
+        })
+        .finally(() => {
+          localRuntimeStartInProgress = false;
+        });
+      return runtimeManager.getStatus();
+    }
+
+    const status = await Promise.race([
+      startPromise,
+      new Promise((resolve) =>
+        setTimeout(
+          () =>
+            resolve({
+              ...runtimeManager.getStatus(),
+              reason: "startup_timeout",
+            }),
+          Math.max(1000, Number(startupTimeoutMs) || STARTUP_LOCAL_RUNTIME_WAIT_MS),
+        ),
+      ),
+    ]);
+    return status;
+  } catch (error) {
+    log("warn", `Unable to start local runtime: ${String(error)}`);
+    return runtimeManager.getStatus();
+  } finally {
+    if (waitForReady) {
+      localRuntimeStartInProgress = false;
+    }
+  }
+}
+
+async function resolvePreferredStartUrl() {
+  ensureRuntimeServices();
+
+  if (!localFirstEnabled || !runtimeManager) {
+    return remoteStartUrl.href;
+  }
+
+  try {
+    const existing = await runtimeManager.refreshStatus();
+    if (existing.running && existing.healthy) {
+      return runtimeManager.localFrontendUrl;
+    }
+
+    if (!vaultService?.getStatus()?.unlocked) {
+      void startLocalRuntime({ waitForReady: false });
+      return remoteStartUrl.href;
+    }
+
+    const started = await startLocalRuntime({
+      waitForReady: true,
+      startupTimeoutMs: STARTUP_LOCAL_RUNTIME_WAIT_MS,
+    });
+    if (started?.running && started?.healthy) {
+      return runtimeManager.localFrontendUrl;
+    }
+  } catch (error) {
+    log("warn", `Unable to resolve preferred startup URL: ${String(error)}`);
+  }
+
+  return remoteStartUrl.href;
 }
 
 function createWindow() {
@@ -283,13 +462,40 @@ function createWindow() {
 
   mainWindow.webContents.on(
     "did-fail-load",
-    (_event, errorCode, errorDescription) => {
+    async (_event, errorCode, errorDescription, failedUrl, isMainFrame) => {
       log(
         "error",
-        `Main window failed to load (code=${errorCode}): ${String(errorDescription)}`,
+        `Main window failed to load (code=${errorCode}): ${String(errorDescription)} url=${String(failedUrl || "")}`,
       );
+
+      if (!isMainFrame || !localFirstEnabled || !runtimeManager) {
+        return;
+      }
+
+      const failedOrigin = normalizeOrigin(failedUrl || "");
+      if (failedOrigin && failedOrigin === localFrontendOrigin) {
+        return;
+      }
+
+      const status = await startLocalRuntime({ waitForReady: true });
+      if (!status?.running || !status?.healthy) {
+        return;
+      }
+
+      try {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          await mainWindow.loadURL(runtimeManager.localFrontendUrl);
+          updateActiveOrigin(runtimeManager.localFrontendUrl);
+        }
+      } catch (error) {
+        log("error", `Fallback to local runtime URL failed: ${String(error)}`);
+      }
     },
   );
+
+  mainWindow.webContents.on("did-navigate", (_event, navigatedUrl) => {
+    updateActiveOrigin(navigatedUrl);
+  });
 
   mainWindow.webContents.on("did-finish-load", () => {
     void syncAuthTokenFromRenderer();
@@ -317,7 +523,16 @@ async function clearCacheAndLoadStartUrl(windowRef) {
   }
 
   try {
-    await windowRef.loadURL(startUrl.href);
+    const preferredUrl = await resolvePreferredStartUrl();
+    await windowRef.loadURL(preferredUrl);
+    updateActiveOrigin(preferredUrl);
+
+    if (
+      localFirstEnabled &&
+      normalizeOrigin(preferredUrl) !== localFrontendOrigin
+    ) {
+      void startLocalRuntime({ waitForReady: false });
+    }
   } catch (error) {
     log("error", `Unable to load start URL: ${String(error)}`);
   }
@@ -368,7 +583,7 @@ function configurePermissionHandlers(targetSession) {
         return false;
       }
 
-      return normalizeOrigin(requestingOrigin) === allowedOrigin;
+      return allowedOrigins.has(normalizeOrigin(requestingOrigin));
     },
   );
 }
@@ -633,7 +848,7 @@ function getDialogParentWindow() {
 
 function getManualDesktopUpdateFeedUrl() {
   try {
-    return new URL("/desktop-updates/", startUrl.origin).href;
+    return new URL("/desktop-updates/", remoteStartUrl.origin).href;
   } catch {
     return "";
   }
@@ -1486,7 +1701,7 @@ function buildServices() {
   });
 
   reminderPoller = new ReminderFallbackPoller({
-    baseUrl: allowedOrigin,
+    baseUrl: activeAppOrigin,
     intervalMs: reminderPollIntervalMs,
     request: getMainWindowSessionFetcher(),
     onUnreadCount: (count) => applyPolledUnreadCount(count),
@@ -1509,12 +1724,21 @@ function buildServices() {
 }
 
 function registerIpc() {
+  ensureRuntimeServices();
   ipcMain.removeAllListeners("desktop:auth-token");
   ipcMain.removeAllListeners("desktop:unread-count");
   ipcMain.removeAllListeners("desktop:push-receipt");
   ipcMain.removeAllListeners("desktop:push-reminder");
   ipcMain.removeHandler("desktop:launch-at-login:get");
   ipcMain.removeHandler("desktop:launch-at-login:set");
+  ipcMain.removeHandler("desktop:runtime:status:get");
+  ipcMain.removeHandler("desktop:runtime:start");
+  ipcMain.removeHandler("desktop:runtime:stop");
+  ipcMain.removeHandler("desktop:sync:status:get");
+  ipcMain.removeHandler("desktop:vault:status:get");
+  ipcMain.removeHandler("desktop:vault:unlock");
+  ipcMain.removeHandler("desktop:vault:lock");
+  ipcMain.removeHandler("desktop:vault:epoch:set");
 
   ipcMain.on("desktop:auth-token", (_event, token) => {
     const normalized =
@@ -1568,6 +1792,77 @@ function registerIpc() {
     trayService?.refreshMenu();
     return result;
   });
+
+  ipcMain.handle("desktop:runtime:status:get", async () => {
+    if (!runtimeManager) {
+      return { available: false, running: false, healthy: false, reason: "runtime_unavailable" };
+    }
+    return runtimeManager.refreshStatus();
+  });
+
+  ipcMain.handle("desktop:runtime:start", async () => {
+    const status = await startLocalRuntime({ waitForReady: true });
+    if (status?.running && status?.healthy && mainWindow && !mainWindow.isDestroyed()) {
+      try {
+        await mainWindow.loadURL(runtimeManager.localFrontendUrl);
+        updateActiveOrigin(runtimeManager.localFrontendUrl);
+      } catch (error) {
+        log("warn", `Unable to switch to local runtime URL: ${String(error)}`);
+      }
+    }
+    return status;
+  });
+
+  ipcMain.handle("desktop:runtime:stop", async () => {
+    if (!runtimeManager) {
+      return { available: false, running: false, healthy: false, reason: "runtime_unavailable" };
+    }
+    const status = await runtimeManager.stop();
+    return status;
+  });
+
+  ipcMain.handle("desktop:sync:status:get", async () => {
+    if (!runtimeManager) {
+      return { running: false, lastPushAt: null, lastPullAt: null, lastError: "runtime_unavailable" };
+    }
+    return runtimeManager.getSyncStatus();
+  });
+
+  ipcMain.handle("desktop:vault:status:get", () => {
+    if (!vaultService) {
+      return { initialized: false, unlocked: false, vaultEpoch: 1 };
+    }
+    return vaultService.getStatus();
+  });
+
+  ipcMain.handle("desktop:vault:unlock", async (_event, passphrase) => {
+    if (!vaultService) {
+      return { initialized: false, unlocked: false, vaultEpoch: 1 };
+    }
+    const status = vaultService.unlock(String(passphrase || ""));
+    if (localFirstEnabled && status.unlocked) {
+      void startLocalRuntime({ waitForReady: false });
+    }
+    return status;
+  });
+
+  ipcMain.handle("desktop:vault:lock", () => {
+    if (!vaultService) {
+      return { initialized: false, unlocked: false, vaultEpoch: 1 };
+    }
+    return vaultService.lock();
+  });
+
+  ipcMain.handle("desktop:vault:epoch:set", async (_event, rawEpoch) => {
+    if (!vaultService) {
+      return { initialized: false, unlocked: false, vaultEpoch: 1 };
+    }
+    const status = vaultService.applyVaultEpoch(Number(rawEpoch) || 1);
+    if (runtimeManager) {
+      await runtimeManager.resetLocalData();
+    }
+    return status;
+  });
 }
 
 if (gotSingleInstanceLock) {
@@ -1580,6 +1875,7 @@ if (gotSingleInstanceLock) {
       app.setAppUserModelId("com.revisbali.crm.desktop");
     }
 
+    ensureRuntimeServices();
     installApplicationMenu();
     createWindow();
     void notifyUpdateInstallResultIfPending();
@@ -1590,8 +1886,10 @@ if (gotSingleInstanceLock) {
 
     log("info", "Desktop process started", {
       appVersion: app.getVersion(),
-      startUrl: startUrl.href,
-      allowedOrigin,
+      remoteStartUrl: remoteStartUrl.href,
+      localFrontendUrl,
+      localFirstEnabled,
+      allowedOrigins: Array.from(allowedOrigins),
       reminderPollIntervalMs,
     });
   });

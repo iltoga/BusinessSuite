@@ -16,7 +16,7 @@ from typing import Any, cast
 
 from api.serializers.categorization_serializer import CategorizationApplySerializer, DocumentCategorizationJobSerializer
 from api.utils.sse_auth import sse_token_auth_required
-from core.services.ai_document_categorizer import AIDocumentCategorizer
+from core.services.ai_document_categorizer import AIDocumentCategorizer, extract_validation_expiration_date
 from core.services.logger_service import Logger
 from core.tasks.document_categorization import run_document_categorization_item
 from customer_applications.models import DocApplication, Document, DocumentCategorizationItem, DocumentCategorizationJob
@@ -369,6 +369,14 @@ def categorization_apply(request, job_id):
 
             # Update the Document
             document.file.name = saved_path
+            extracted_expiration_date = extract_validation_expiration_date(item.validation_result or {})
+            if (
+                document.doc_type.ai_validation
+                and document.doc_type.has_expiration_date
+                and extracted_expiration_date
+                and not document.expiration_date
+            ):
+                document.expiration_date = extracted_expiration_date
             document.updated_by = request.user
             document.save()  # This triggers auto-complete calculation
 

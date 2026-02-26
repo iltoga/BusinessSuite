@@ -25,6 +25,7 @@ export interface ProductCreateUpdate {
     validity?: number | null;
     documentsMinValidity?: number | null;
     validationPrompt?: string;
+    deprecated?: boolean;
     tasks?: Array<TaskNested>;
     requiredDocumentIds?: Array<number>;
     optionalDocumentIds?: Array<number>;
