@@ -3,12 +3,41 @@
 # Exit immediately if a command exits with a non-zero status
 set -e
 
-# 1. Load environment variables from .env only outside Docker.
-# In containerized runs, Compose already injects env vars and should not be
-# overridden by repository-local .env values.
+# 1. Load environment variables from .env.
+# - Outside Docker: source all vars from .env (existing behavior).
+# - Inside Docker: import ONLY vars that are currently missing so explicit
+#   Compose/container env values always win.
 if [ -f .env ]; then
   if [ -f "/.dockerenv" ]; then
-    echo "Skipping .env load inside Docker; using container environment variables."
+    echo "Docker runtime detected: importing missing variables from .env (without overriding existing env)."
+    while IFS= read -r line || [ -n "$line" ]; do
+      # Skip comments and empty lines
+      [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+      # Support optional `export KEY=VALUE` prefix
+      line="${line#export }"
+      # Keep only KEY=VALUE lines
+      [[ "$line" != *=* ]] && continue
+
+      key="${line%%=*}"
+      value="${line#*=}"
+
+      # Trim whitespace around key
+      key="$(echo "$key" | xargs)"
+      [[ -z "$key" ]] && continue
+
+      # If already present in environment, do not override
+      if [ -n "${!key+x}" ]; then
+        continue
+      fi
+
+      # Trim surrounding single/double quotes from value
+      value="${value#\"}"
+      value="${value%\"}"
+      value="${value#\'}"
+      value="${value%\'}"
+
+      export "$key=$value"
+    done < .env
   else
     echo "Loading variables from .env file..."
     set -a

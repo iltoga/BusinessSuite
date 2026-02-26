@@ -80,6 +80,8 @@ services:
 
   bs-core:
     container_name: bs-core
+    env_file:
+      - ./.env
     depends_on:
       - redis
       - db
@@ -146,6 +148,8 @@ services:
 
   bs-worker:
     container_name: bs-worker
+    env_file:
+      - ./.env
     depends_on:
       - db
       - bs-core
