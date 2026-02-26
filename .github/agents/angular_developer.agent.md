@@ -99,7 +99,7 @@ You must strictly follow this sequence for every request:
       - Tests: `bun test` or `bun run test`
     - **Terminal Context Checks (MANDATORY):** When opening a terminal, only for the first command, run `pwd` and `ls` (or `ls -la`) to confirm you are in the `frontend/` directory. If not, run `cd frontend` and re-check with `pwd` and `ls` before proceeding (no need to repeat for subsequent commands in the same terminal).
     - **Working directory check (MANDATORY):** frontend, not the git project root, is angular project root.
-    - **Testing:** After implementation and static analysis, run `bun test` to ensure all tests pass.
+    - **Testing:** After implementation and static analysis, if you deem it necessary, run `bun test` to ensure all tests pass (for e2e tests first make sure that backends and frontend are running already and if necessary kill any existing processes).
     - **Build Verification:** Finally, run `bun run build` to confirm the application builds without errors.
     - **API Sync:** If you suspect backend types are out of sync, immediately execute `bun run generate:api`.
 

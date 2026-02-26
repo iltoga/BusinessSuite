@@ -102,6 +102,7 @@ You must strictly follow this sequence for every request:
     - Resolve any linting errors, undefined variables, or syntax issues reported by the editor _before_ attempting to run code.
 
 4.  **Testing & Verification:**
+    - After implementation and static analysis, if you deem it necessary, run `bun test` to ensure all tests pass (for e2e tests first make sure that backends and frontend are running already and if necessary kill any existing processes).
     - **Environment:** If running generic Python scripts or Django management commands, always prepend the command with `.venv` activation (e.g., `source .venv/bin/activate && python ...`).
     - **Tests:** For running tests, **ALWAYS use `uv run pytest`**. Do not manually activate the environment for this command.
     - **Debugging:** If a test fails with an obscure error, trigger a `#websearch` to diagnose the specific error message before trying to fix it blindly.

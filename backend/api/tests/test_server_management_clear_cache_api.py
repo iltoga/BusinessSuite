@@ -46,9 +46,7 @@ class ServerManagementClearCacheApiTests(TestCase):
     @patch("api.views_admin._clear_cacheops_query_store")
     @patch("api.views_admin.caches")
     @patch("cache.namespace.namespace_manager.increment_user_version", return_value=7)
-    def test_user_clear_uses_namespace_invalidation_only(
-        self, increment_mock, caches_mock, clear_cacheops_mock
-    ):
+    def test_user_clear_uses_namespace_invalidation_only(self, increment_mock, caches_mock, clear_cacheops_mock):
         response = self.client.post("/api/server-management/clear-cache/?user_id=123")
 
         self.assertEqual(response.status_code, 200)
@@ -86,6 +84,8 @@ class ServerManagementClearCacheApiTests(TestCase):
             "cacheLocation": "redis://bs-redis:6379/1",
             "redisConfigured": True,
             "redisConnected": True,
+            "userCacheEnabled": True,
+            "probeSkipped": False,
             "writeReadDeleteOk": True,
             "probeLatencyMs": 2.4,
             "errors": [],
@@ -98,7 +98,9 @@ class ServerManagementClearCacheApiTests(TestCase):
         self.assertTrue(payload["ok"])
         self.assertTrue(payload["redisConnected"])
         self.assertTrue(payload["writeReadDeleteOk"])
-        cache_health_mock.assert_called_once()
+        self.assertTrue(payload["userCacheEnabled"])
+        self.assertFalse(payload["probeSkipped"])
+        cache_health_mock.assert_called_once_with(user_id=self.user.id)
 
     @patch("api.views_admin.services.get_cache_health_status", side_effect=RuntimeError("redis unreachable"))
     def test_cache_health_returns_500_when_probe_raises(self, _cache_health_mock):

@@ -56,7 +56,9 @@ interface CacheHealthResponse {
   cacheLocation: string;
   redisConfigured: boolean;
   redisConnected: boolean | null;
-  writeReadDeleteOk: boolean;
+  userCacheEnabled?: boolean;
+  probeSkipped?: boolean;
+  writeReadDeleteOk: boolean | null;
   probeLatencyMs: number;
   errors: string[];
 }
@@ -122,7 +124,7 @@ export class ServerManagementComponent implements OnInit {
   loadCacheStatus(): void {
     this.cacheLoading.set(true);
     this.http
-      .get<CacheStatusResponse>('/api/cache/status')
+      .get<CacheStatusResponse>('/api/cache/status/')
       .pipe(
         catchError(() => {
           this.toast.error('Failed to load cache status');
@@ -142,7 +144,7 @@ export class ServerManagementComponent implements OnInit {
       return;
     }
 
-    const endpoint = currentStatus.enabled ? '/api/cache/disable' : '/api/cache/enable';
+    const endpoint = currentStatus.enabled ? '/api/cache/disable/' : '/api/cache/enable/';
     this.cacheLoading.set(true);
 
     this.http
@@ -164,7 +166,7 @@ export class ServerManagementComponent implements OnInit {
   clearUserCache(): void {
     this.cacheLoading.set(true);
     this.http
-      .post<CacheClearResponse>('/api/cache/clear', {})
+      .post<CacheClearResponse>('/api/cache/clear/', {})
       .pipe(
         catchError(() => {
           this.toast.error('Failed to clear user cache');
@@ -198,7 +200,17 @@ export class ServerManagementComponent implements OnInit {
       .subscribe((response) => {
         this.cacheHealth.set(response);
         if (showToast) {
-          if (response.ok) {
+          const userCacheIsDisabled =
+            this.cacheStatus()?.enabled === false ||
+            response.userCacheEnabled === false ||
+            response.probeSkipped === true;
+
+          if (userCacheIsDisabled) {
+            this.toast.info(
+              response.message ||
+                'Cache is disabled for your user. Backend connectivity can still be healthy.',
+            );
+          } else if (response.ok) {
             this.toast.success(response.message);
           } else {
             this.toast.error(response.message);

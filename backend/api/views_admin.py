@@ -519,7 +519,7 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
     def cache_health(self, request):
         """Run a live cache round-trip and Redis connectivity probe."""
         try:
-            return Response(services.get_cache_health_status())
+            return Response(services.get_cache_health_status(user_id=request.user.id))
         except Exception as e:
             logger.error("Failed to run cache health check: %s", e, exc_info=True)
             return Response(

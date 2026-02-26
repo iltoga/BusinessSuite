@@ -161,9 +161,13 @@
           <div>
             <label class="text-sm font-medium text-muted-foreground">Write/Read/Delete Probe</label>
             <div class="mt-1">
-              <z-badge [zType]="probe.writeReadDeleteOk ? 'default' : 'destructive'">
-                {{ probe.writeReadDeleteOk ? 'Pass' : 'Fail' }}
-              </z-badge>
+              @if (probe.probeSkipped || probe.userCacheEnabled === false) {
+                <z-badge zType="secondary">Skipped (cache disabled)</z-badge>
+              } @else {
+                <z-badge [zType]="probe.writeReadDeleteOk ? 'default' : 'destructive'">
+                  {{ probe.writeReadDeleteOk ? 'Pass' : 'Fail' }}
+                </z-badge>
+              }
             </div>
           </div>
           <div>

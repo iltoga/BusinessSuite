@@ -15,8 +15,7 @@ from django.apps import apps
 from django.conf import settings
 from django.core.cache import caches
 from django.core.files import File
-from django.core.files.storage import FileSystemStorage
-from django.core.files.storage import default_storage
+from django.core.files.storage import FileSystemStorage, default_storage
 from django.core.management import call_command
 from django.db.models.fields.files import FileField
 from django.utils import timezone
@@ -1187,7 +1186,7 @@ def repair_media_paths():
     return repairs
 
 
-def get_cache_health_status() -> dict:
+def get_cache_health_status(user_id: int | None = None) -> dict:
     """
     Run a live cache probe against the configured default cache backend.
 
@@ -1219,31 +1218,52 @@ def get_cache_health_status() -> dict:
     probe_key = f"cache-health:{uuid.uuid4().hex}"
     probe_value = uuid.uuid4().hex
     probe_latency_ms = 0.0
-    write_read_delete_ok = False
-
-    start = time.perf_counter()
-    try:
-        default_cache.set(probe_key, probe_value, timeout=30)
-        cached_value = default_cache.get(probe_key)
-        write_read_delete_ok = cached_value == probe_value
-        if not write_read_delete_ok:
-            errors.append("Cache probe value mismatch after read.")
-    except Exception as exc:
-        errors.append(f"Cache write/read probe failed: {exc}")
-    finally:
-        probe_latency_ms = round((time.perf_counter() - start) * 1000, 2)
+    user_cache_enabled = True
+    probe_skipped = False
+    if user_id is not None:
         try:
-            default_cache.delete(probe_key)
-        except Exception as exc:
-            errors.append(f"Cache probe cleanup failed: {exc}")
+            from cache.namespace import namespace_manager
 
-    ok = write_read_delete_ok and (redis_connected is not False)
-    if ok:
-        message = "Cache probe succeeded."
-    elif not write_read_delete_ok:
-        message = "Cache probe failed."
+            user_cache_enabled = namespace_manager.is_cache_enabled(int(user_id))
+        except Exception as exc:
+            errors.append(f"Failed to read user cache status: {exc}")
+
+    write_read_delete_ok = False
+    probe_skipped = not user_cache_enabled
+    if not probe_skipped:
+        start = time.perf_counter()
+        try:
+            default_cache.set(probe_key, probe_value, timeout=30)
+            cached_value = default_cache.get(probe_key)
+            write_read_delete_ok = cached_value == probe_value
+            if not write_read_delete_ok:
+                errors.append("Cache probe value mismatch after read.")
+        except Exception as exc:
+            errors.append(f"Cache write/read probe failed: {exc}")
+        finally:
+            probe_latency_ms = round((time.perf_counter() - start) * 1000, 2)
+            try:
+                default_cache.delete(probe_key)
+            except Exception as exc:
+                errors.append(f"Cache probe cleanup failed: {exc}")
+
+    if probe_skipped:
+        if redis_connected is False:
+            ok = False
+            message = "Cache is disabled for your user. Redis connectivity check failed."
+        else:
+            ok = True
+            message = (
+                "Cache is disabled for your user. Backend connectivity is healthy; write/read/delete probe was skipped."
+            )
     else:
-        message = "Redis ping failed."
+        ok = write_read_delete_ok and (redis_connected is not False)
+        if ok:
+            message = "Cache probe succeeded."
+        elif not write_read_delete_ok:
+            message = "Cache probe failed."
+        else:
+            message = "Redis ping failed."
 
     return {
         "ok": ok,
@@ -1253,6 +1273,8 @@ def get_cache_health_status() -> dict:
         "cacheLocation": location,
         "redisConfigured": redis_configured,
         "redisConnected": redis_connected,
+        "userCacheEnabled": user_cache_enabled,
+        "probeSkipped": probe_skipped,
         "writeReadDeleteOk": write_read_delete_ok,
         "probeLatencyMs": probe_latency_ms,
         "errors": errors,
