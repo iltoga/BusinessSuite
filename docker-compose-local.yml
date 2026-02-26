@@ -66,6 +66,8 @@ services:
     container_name: bs-core
     profiles:
       - app
+    env_file:
+      - ./.env
     depends_on:
       - redis
       - db
@@ -121,6 +123,8 @@ services:
     container_name: bs-worker
     profiles:
       - app
+    env_file:
+      - ./.env
     depends_on:
       - db
       - bs-core
@@ -172,6 +176,8 @@ services:
     container_name: bs-frontend
     profiles:
       - app
+    env_file:
+      - ./.env
     depends_on:
       - bs-core
     image: bs-frontend:web

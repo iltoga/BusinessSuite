@@ -1007,12 +1007,20 @@ WHATSAPP_TEST_NUMBER = os.getenv("WHATSAPP_TEST_NUMBER", "")
 #
 # Web Push Notifications (Firebase Cloud Messaging) settings
 
+# Firebase renamed this value to `messagingSenderId` in web config.
+# Support both env names to avoid production misconfiguration when only
+# FCM_MESSAGING_SENDER_ID is provided.
 FCM_SENDER_ID = os.getenv("FCM_SENDER_ID", "").strip()
+FCM_MESSAGING_SENDER_ID = os.getenv("FCM_MESSAGING_SENDER_ID", "").strip()
+if not FCM_SENDER_ID:
+    FCM_SENDER_ID = FCM_MESSAGING_SENDER_ID
 FCM_VAPID_PUBLIC_KEY = os.getenv("FCM_VAPID_PUBLIC_KEY", "").strip()
 FCM_VAPID_PRIVATE_KEY = os.getenv("FCM_VAPID_PRIVATE_KEY", "").strip()
 
 # Legacy setting kept for backward compatibility. In modern Firebase docs this is called `messagingSenderId`.
 FCM_PROJECT_NUMBER = os.getenv("FCM_PROJECT_NUMBER", "").strip()
+if not FCM_PROJECT_NUMBER:
+    FCM_PROJECT_NUMBER = FCM_SENDER_ID
 FCM_PROJECT_ID = os.getenv("FCM_PROJECT_ID", "").strip()
 
 # Web app config exposed to Angular for Firebase SDK initialization.
