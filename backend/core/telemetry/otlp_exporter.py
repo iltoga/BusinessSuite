@@ -84,7 +84,7 @@ class OtlpTraceExporter:
         if self.enabled:
             self._start_worker()
         else:
-            self.logger.info(
+            self.logger.debug(
                 "OTLP tracing disabled: set OTEL_TRACES_EXPORTER=otlp and OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"
             )
 
