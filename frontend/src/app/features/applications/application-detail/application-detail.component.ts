@@ -1,6 +1,6 @@
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { CommonModule, formatDate, isPlatformBrowser } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpEventType } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -284,6 +284,7 @@ export class ApplicationDetailComponent implements OnInit {
   readonly categorizationResults = signal<CategorizationFileResult[]>([]);
   readonly categorizationComplete = signal(false);
   readonly categorizationStatusMessage = signal('');
+  readonly categorizationProgressPercentOverride = signal<number | null>(null);
   readonly isCategorizationApplying = signal(false);
   readonly categorizationFiles = signal<File[]>([]);
   private categorizationSub: Subscription | null = null;
@@ -1878,19 +1879,42 @@ export class ApplicationDetailComponent implements OnInit {
     this.categorizationComplete.set(false);
     this.categorizationResults.set([]);
     this.categorizationProcessedFiles.set(0);
-    this.categorizationStatusMessage.set('Uploading files...');
+    this.categorizationProgressPercentOverride.set(0);
+    this.categorizationTotalFiles.set(files.length);
+    this.categorizationStatusMessage.set(`Preparing upload (${files.length} file(s))...`);
 
-    this.categorizationService.uploadAndCategorize(app.id, files).subscribe({
+    this.categorizationService.createCategorizationJob(app.id, files.length).subscribe({
       next: (response) => {
         this.categorizationJobId.set(response.jobId);
-        this.categorizationTotalFiles.set(response.totalFiles);
-        this.categorizationStatusMessage.set('Processing...');
+        this.categorizationTotalFiles.set(response.totalFiles || files.length);
+        this.categorizationStatusMessage.set('Connecting to progress stream...');
         this.watchCategorizationJob(response.jobId);
+
+        this.categorizationService.uploadFilesToJob(response.jobId, files).subscribe({
+          next: (event) => {
+            if (event.type === HttpEventType.UploadProgress) {
+              const total = Number(event.total || 0);
+              const loaded = Number(event.loaded || 0);
+              if (total > 0) {
+                const percent = Math.max(0, Math.min(100, Math.round((loaded / total) * 100)));
+                this.categorizationProgressPercentOverride.set(percent);
+                this.categorizationStatusMessage.set(`Uploading files... ${percent}%`);
+              } else {
+                this.categorizationStatusMessage.set('Uploading files...');
+              }
+            } else if (event.type === HttpEventType.Response) {
+              this.categorizationStatusMessage.set('Upload complete. Starting AI processing...');
+            }
+          },
+          error: (error) => {
+            this.toast.error(extractServerErrorMessage(error) || 'Failed while uploading files');
+            this.dismissCategorization();
+          },
+        });
       },
       error: (error) => {
-        this.toast.error(extractServerErrorMessage(error) || 'Failed to start categorization');
-        this.isCategorizationActive.set(false);
-        this.categorizationStatusMessage.set('');
+        this.toast.error(extractServerErrorMessage(error) || 'Failed to initialize categorization');
+        this.dismissCategorization();
       },
     });
   }
@@ -1900,8 +1924,7 @@ export class ApplicationDetailComponent implements OnInit {
 
     this.categorizationSub = this.categorizationService.watchCategorizationJob(jobId).subscribe({
       next: (event: CategorizationSseEvent) => this.handleCategorizationEvent(event),
-      error: (error) => {
-        console.error('Categorization SSE error:', error);
+      error: () => {
         this.categorizationStatusMessage.set('Connection lost. Check results manually.');
         this.categorizationComplete.set(true);
       },
@@ -1917,7 +1940,115 @@ export class ApplicationDetailComponent implements OnInit {
   private handleCategorizationEvent(event: CategorizationSseEvent): void {
     switch (event.type) {
       case 'start':
+        this.categorizationProgressPercentOverride.set(0);
+        this.categorizationProcessedFiles.set(0);
         this.categorizationStatusMessage.set(event.data['message'] ?? 'Starting...');
+        break;
+
+      case 'progress': {
+        const totalFiles = Number(event.data['totalFiles'] ?? this.categorizationTotalFiles() ?? 0);
+        const processedFiles = Number(
+          event.data['processedFiles'] ?? this.categorizationProcessedFiles() ?? 0,
+        );
+        const overallPercent = Number(
+          event.data['overallPercent'] ?? this.categorizationProgressPercentOverride() ?? 0,
+        );
+
+        if (totalFiles > 0) {
+          this.categorizationTotalFiles.set(totalFiles);
+        }
+        if (processedFiles >= 0) {
+          this.categorizationProcessedFiles.set(processedFiles);
+        }
+        if (Number.isFinite(overallPercent)) {
+          this.categorizationProgressPercentOverride.set(
+            Math.max(0, Math.min(100, Math.round(overallPercent))),
+          );
+        }
+        this.categorizationStatusMessage.set(event.data['message'] ?? 'Processing...');
+        break;
+      }
+
+      case 'file_upload_start': {
+        const filename = event.data['filename'] ?? '';
+        if (!filename) {
+          break;
+        }
+        const current = [...this.categorizationResults()];
+        const idx = current.findIndex((r) => r.filename === filename);
+        const next: CategorizationFileResult = {
+          itemId: '',
+          filename,
+          status: 'uploading',
+          pipelineStage: 'uploading',
+          aiValidationEnabled: null,
+          documentType: null,
+          documentTypeId: null,
+          documentId: null,
+          confidence: 0,
+          reasoning: '',
+          error: null,
+          categorizationPass: 1,
+          validationStatus: null,
+          validationReasoning: null,
+          validationNegativeIssues: null,
+        };
+        if (idx >= 0) {
+          current[idx] = { ...current[idx], ...next };
+        } else {
+          current.push(next);
+        }
+        this.categorizationResults.set(current);
+        break;
+      }
+
+      case 'file_uploaded': {
+        const filename = event.data['filename'] ?? '';
+        if (!filename) {
+          break;
+        }
+        const current = [...this.categorizationResults()];
+        const idx = current.findIndex((r) => r.filename === filename);
+        if (idx >= 0) {
+          current[idx] = {
+            ...current[idx],
+            status: 'queued',
+            pipelineStage: 'uploaded',
+          };
+          this.categorizationResults.set(current);
+        }
+        break;
+      }
+
+      case 'upload_progress': {
+        const uploadedFiles = Number(event.data['uploadedFiles'] ?? 0);
+        const totalFiles = Number(event.data['totalFiles'] ?? this.categorizationTotalFiles() ?? 0);
+        const uploadedBytes = Number(event.data['uploadedBytes'] ?? 0);
+        const totalBytes = Number(event.data['totalBytes'] ?? 0);
+
+        if (totalFiles > 0) {
+          this.categorizationTotalFiles.set(totalFiles);
+          this.categorizationProcessedFiles.set(Math.min(uploadedFiles, totalFiles));
+        }
+
+        if (totalBytes > 0) {
+          const percent = Math.max(
+            0,
+            Math.min(100, Math.round((uploadedBytes / totalBytes) * 100)),
+          );
+          this.categorizationProgressPercentOverride.set(percent);
+        }
+
+        this.categorizationStatusMessage.set(
+          event.data['message'] ?? `Uploading files... ${uploadedFiles}/${totalFiles}`,
+        );
+        break;
+      }
+
+      case 'upload_complete':
+        this.categorizationStatusMessage.set(
+          event.data['message'] ?? 'Upload complete. Processing...',
+        );
         break;
 
       case 'file_start':
@@ -1935,6 +2066,8 @@ export class ApplicationDetailComponent implements OnInit {
                 itemId: '',
                 filename: event.data['filename']!,
                 status: 'processing',
+                pipelineStage: 'categorizing',
+                aiValidationEnabled: null,
                 documentType: null,
                 documentTypeId: null,
                 documentId: null,
@@ -1947,6 +2080,17 @@ export class ApplicationDetailComponent implements OnInit {
                 validationNegativeIssues: null,
               },
             ]);
+          } else {
+            const idx = current.findIndex((r) => r.filename === event.data['filename']);
+            if (idx >= 0) {
+              const updated = [...current];
+              updated[idx] = {
+                ...updated[idx],
+                status: 'processing',
+                pipelineStage: 'categorizing',
+              };
+              this.categorizationResults.set(updated);
+            }
           }
         }
         break;
@@ -1959,6 +2103,11 @@ export class ApplicationDetailComponent implements OnInit {
           itemId: '',
           filename: event.data['filename'] ?? '',
           status: 'categorized',
+          pipelineStage: 'categorized',
+          aiValidationEnabled:
+            typeof event.data['aiValidationEnabled'] === 'boolean'
+              ? event.data['aiValidationEnabled']
+              : null,
           documentType: event.data['documentType'] ?? null,
           documentTypeId: event.data['documentTypeId'] ?? null,
           documentId: event.data['documentId'] ?? null,
@@ -1988,6 +2137,8 @@ export class ApplicationDetailComponent implements OnInit {
           itemId: '',
           filename: event.data['filename'] ?? '',
           status: 'error',
+          pipelineStage: 'error',
+          aiValidationEnabled: null,
           documentType: null,
           documentTypeId: null,
           documentId: null,
@@ -2025,7 +2176,15 @@ export class ApplicationDetailComponent implements OnInit {
         const results = [...this.categorizationResults()];
         const idx = results.findIndex((r) => r.filename === event.data['filename']);
         if (idx >= 0) {
-          results[idx] = { ...results[idx], validationStatus: 'pending' };
+          results[idx] = {
+            ...results[idx],
+            validationStatus: 'pending',
+            pipelineStage: 'validating',
+            aiValidationEnabled:
+              typeof event.data['aiValidationEnabled'] === 'boolean'
+                ? event.data['aiValidationEnabled']
+                : results[idx].aiValidationEnabled,
+          };
           this.categorizationResults.set(results);
         }
         this.categorizationStatusMessage.set(event.data['message'] ?? 'Validating document...');
@@ -2041,6 +2200,11 @@ export class ApplicationDetailComponent implements OnInit {
             validationStatus:
               (event.data['validationStatus'] as CategorizationFileResult['validationStatus']) ??
               null,
+            pipelineStage: 'validated',
+            aiValidationEnabled:
+              typeof event.data['aiValidationEnabled'] === 'boolean'
+                ? event.data['aiValidationEnabled']
+                : results[idx].aiValidationEnabled,
             validationReasoning: event.data['validationReasoning'] ?? null,
             validationNegativeIssues: event.data['validationNegativeIssues'] ?? null,
           };
@@ -2051,6 +2215,7 @@ export class ApplicationDetailComponent implements OnInit {
 
       case 'complete': {
         this.categorizationComplete.set(true);
+        this.categorizationProgressPercentOverride.set(100);
         this.categorizationStatusMessage.set(event.data['message'] ?? 'Complete');
         // Update results with final data including itemIds
         if (event.data['results']) {
@@ -2060,6 +2225,17 @@ export class ApplicationDetailComponent implements OnInit {
             itemId: r.itemId,
             filename: r.filename,
             status: r.status as CategorizationFileResult['status'],
+            pipelineStage: (r.pipelineStage ??
+              (r.status as CategorizationFileResult['pipelineStage'])) as
+              | 'uploading'
+              | 'uploaded'
+              | 'categorizing'
+              | 'categorized'
+              | 'validating'
+              | 'validated'
+              | 'error',
+            aiValidationEnabled:
+              typeof r.aiValidationEnabled === 'boolean' ? r.aiValidationEnabled : null,
             documentType: r.documentType,
             documentTypeId: r.documentTypeId,
             documentId: r.documentId,
@@ -2153,6 +2329,7 @@ export class ApplicationDetailComponent implements OnInit {
     this.categorizationResults.set([]);
     this.categorizationComplete.set(false);
     this.categorizationStatusMessage.set('');
+    this.categorizationProgressPercentOverride.set(null);
     this.categorizationFiles.set([]);
   }
 }

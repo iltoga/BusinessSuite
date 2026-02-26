@@ -32,7 +32,9 @@ from .views_categorization import (
     categorization_apply,
     categorization_job_status,
     categorization_stream_sse,
+    categorization_upload_files,
     categorize_documents,
+    categorize_documents_init,
     document_validation_stream_sse,
     validate_document_category,
 )
@@ -207,6 +209,16 @@ urlpatterns = [
         "customer-applications/<int:application_id>/categorize-documents/",
         categorize_documents,
         name="api-categorize-documents",
+    ),
+    path(
+        "customer-applications/<int:application_id>/categorize-documents/init/",
+        categorize_documents_init,
+        name="api-categorize-documents-init",
+    ),
+    path(
+        "document-categorization/<uuid:job_id>/upload/",
+        categorization_upload_files,
+        name="api-categorization-upload-files",
     ),
     path(
         "document-categorization/stream/<uuid:job_id>/",

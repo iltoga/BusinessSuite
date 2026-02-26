@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpEvent } from '@angular/common/http';
 import { inject, Injectable, NgZone } from '@angular/core';
 import { Observable } from 'rxjs';
 
@@ -14,6 +14,15 @@ export interface CategorizationFileResult {
   itemId: string;
   filename: string;
   status: string;
+  pipelineStage?:
+    | 'uploading'
+    | 'uploaded'
+    | 'categorizing'
+    | 'categorized'
+    | 'validating'
+    | 'validated'
+    | 'error';
+  aiValidationEnabled?: boolean;
   documentType: string | null;
   documentTypeId: number | null;
   documentId: number | null;
@@ -45,6 +54,23 @@ export interface CategorizationSseEvent {
     validationReasoning?: string;
     validationNegativeIssues?: string[];
     validationConfidence?: number;
+    aiValidationEnabled?: boolean;
+    pipelineStage?:
+      | 'uploading'
+      | 'uploaded'
+      | 'categorizing'
+      | 'categorized'
+      | 'validating'
+      | 'validated'
+      | 'error';
+    uploadedFiles?: number;
+    totalFiles?: number;
+    processedFiles?: number;
+    uploadedBytes?: number;
+    totalBytes?: number;
+    currentFile?: string | null;
+    overallPercent?: number;
+    phase?: 'uploading' | 'processing' | 'completed' | string;
     summary?: {
       total: number;
       success: number;
@@ -92,23 +118,35 @@ export class DocumentCategorizationService {
   private readonly zone = inject(NgZone);
 
   /**
-   * Upload files and start AI categorization.
+   * Create categorization job first so frontend can subscribe to SSE before uploading files.
    */
-  uploadAndCategorize(
+  createCategorizationJob(
     applicationId: number,
-    files: File[],
+    totalFiles: number,
     model?: string,
     providerOrder?: string[],
   ): Observable<CategorizationStartResponse> {
+    return this.http.post<CategorizationStartResponse>(
+      `/api/customer-applications/${applicationId}/categorize-documents/init/`,
+      {
+        totalFiles,
+        model: model ?? null,
+        providerOrder: providerOrder ?? null,
+      },
+    );
+  }
+
+  /**
+   * Upload files into an existing categorization job.
+   */
+  uploadFilesToJob(jobId: string, files: File[]): Observable<HttpEvent<unknown>> {
     const formData = new FormData();
     files.forEach((file) => formData.append('files', file));
-    if (model) formData.append('model', model);
-    if (providerOrder) formData.append('providerOrder', providerOrder.join(','));
 
-    return this.http.post<CategorizationStartResponse>(
-      `/api/customer-applications/${applicationId}/categorize-documents/`,
-      formData,
-    );
+    return this.http.post(`/api/document-categorization/${jobId}/upload/`, formData, {
+      observe: 'events',
+      reportProgress: true,
+    });
   }
 
   /**

@@ -31,6 +31,266 @@ from rest_framework.response import Response
 logger = Logger.get_logger(__name__)
 
 
+class _ProgressTrackedUploadedFile:
+    """File wrapper that reports bytes read while delegating to Django UploadedFile."""
+
+    def __init__(self, wrapped_file, on_bytes_read):
+        self._wrapped_file = wrapped_file
+        self._on_bytes_read = on_bytes_read
+
+    def read(self, *args, **kwargs):
+        data = self._wrapped_file.read(*args, **kwargs)
+        if data:
+            self._on_bytes_read(len(data))
+        return data
+
+    def chunks(self, chunk_size=None):
+        for chunk in self._wrapped_file.chunks(chunk_size=chunk_size):
+            if chunk:
+                self._on_bytes_read(len(chunk))
+            yield chunk
+
+    def __getattr__(self, name):
+        return getattr(self._wrapped_file, name)
+
+
+def _parse_provider_order(raw_value: Any) -> list[str] | None:
+    if not raw_value:
+        return None
+    if isinstance(raw_value, str):
+        parsed = [p.strip() for p in raw_value.split(",") if p.strip()]
+        return parsed or None
+    if isinstance(raw_value, list):
+        parsed = [str(p).strip() for p in raw_value if str(p).strip()]
+        return parsed or None
+    return None
+
+
+def _normalize_total_files(raw_total_files: Any) -> int:
+    try:
+        total = int(raw_total_files)
+    except (TypeError, ValueError):
+        return 0
+    return max(0, total)
+
+
+def _clamp_ratio(value: float) -> float:
+    return max(0.0, min(1.0, float(value)))
+
+
+def _compute_overall_progress_percent(
+    *,
+    total_files: int,
+    uploaded_files: int,
+    uploaded_bytes: int,
+    total_bytes: int,
+    processed_files: int,
+) -> int:
+    total = max(0, int(total_files))
+    if total <= 0:
+        return 0
+
+    if total_bytes > 0:
+        upload_ratio = _clamp_ratio(uploaded_bytes / total_bytes)
+    else:
+        upload_ratio = _clamp_ratio(uploaded_files / total)
+
+    processing_ratio = _clamp_ratio(processed_files / total)
+    weighted = (0.4 * upload_ratio) + (0.6 * processing_ratio)
+    return int(round(_clamp_ratio(weighted) * 100))
+
+
+def _create_categorization_job(
+    *, doc_application: DocApplication, created_by, model: Any, provider_order: list[str] | None, total_files: int
+) -> DocumentCategorizationJob:
+    return DocumentCategorizationJob.objects.create(
+        doc_application=doc_application,
+        total_files=total_files,
+        request_params={
+            "model": model,
+            "provider_order": provider_order,
+        },
+        result={
+            "stage": "uploading",
+            "overall_progress_percent": 0,
+            "upload": {
+                "uploaded_files": 0,
+                "total_files": total_files,
+                "uploaded_bytes": 0,
+                "total_bytes": 0,
+                "current_file": None,
+                "complete": False,
+            },
+        },
+        created_by=created_by,
+    )
+
+
+def _update_upload_progress(
+    job: DocumentCategorizationJob,
+    *,
+    uploaded_files: int,
+    total_files: int,
+    uploaded_bytes: int,
+    total_bytes: int,
+    current_file: str | None,
+    complete: bool,
+) -> None:
+    overall_percent = _compute_overall_progress_percent(
+        total_files=total_files,
+        uploaded_files=uploaded_files,
+        uploaded_bytes=uploaded_bytes,
+        total_bytes=total_bytes,
+        processed_files=int(getattr(job, "processed_files", 0) or 0),
+    )
+
+    current_result = job.result if isinstance(job.result, dict) else {}
+    current_result["stage"] = "uploaded" if complete else "uploading"
+    current_result["upload"] = {
+        "uploaded_files": max(0, uploaded_files),
+        "total_files": max(0, total_files),
+        "uploaded_bytes": max(0, uploaded_bytes),
+        "total_bytes": max(0, total_bytes),
+        "current_file": current_file,
+        "complete": bool(complete),
+    }
+    current_result["overall_progress_percent"] = overall_percent
+    job.result = current_result
+    job.total_files = max(0, total_files)
+    job.save(update_fields=["result", "total_files", "updated_at"])
+
+
+def _upload_files_to_job(*, job: DocumentCategorizationJob, files: list) -> tuple[int, int]:
+    temp_dir = f"tmp/categorization/{job.id}"
+    dispatched_tasks = 0
+
+    total_files = max(job.total_files, len(files))
+    total_bytes = sum(int(getattr(uploaded_file, "size", 0) or 0) for uploaded_file in files)
+
+    uploaded_files = 0
+    uploaded_bytes = 0
+
+    _update_upload_progress(
+        job,
+        uploaded_files=uploaded_files,
+        total_files=total_files,
+        uploaded_bytes=uploaded_bytes,
+        total_bytes=total_bytes,
+        current_file=None,
+        complete=False,
+    )
+
+    last_saved_bytes = 0
+    last_saved_at = 0.0
+
+    def persist_progress(*, current_file: str | None, force: bool = False) -> None:
+        nonlocal last_saved_bytes, last_saved_at
+        now = time.monotonic()
+        bytes_delta = uploaded_bytes - last_saved_bytes
+        time_delta = now - last_saved_at
+        should_save = force or bytes_delta >= 256 * 1024 or time_delta >= 0.35
+        if not should_save:
+            return
+
+        _update_upload_progress(
+            job,
+            uploaded_files=uploaded_files,
+            total_files=total_files,
+            uploaded_bytes=uploaded_bytes,
+            total_bytes=total_bytes,
+            current_file=current_file,
+            complete=False,
+        )
+        last_saved_bytes = uploaded_bytes
+        last_saved_at = now
+
+    for idx, uploaded_file in enumerate(files):
+        safe_filename = os.path.basename(uploaded_file.name)
+        file_path = f"{temp_dir}/{safe_filename}"
+        before_file_bytes = uploaded_bytes
+
+        item = DocumentCategorizationItem.objects.create(
+            job=job,
+            sort_index=idx,
+            filename=safe_filename,
+            file_path="",
+            result={"stage": "uploading", "ai_validation_enabled": None},
+        )
+
+        def on_bytes_read(byte_count: int) -> None:
+            nonlocal uploaded_bytes
+            uploaded_bytes += int(byte_count or 0)
+            persist_progress(current_file=safe_filename)
+
+        tracked_file = _ProgressTrackedUploadedFile(uploaded_file, on_bytes_read)
+        saved_path = default_storage.save(file_path, tracked_file)
+
+        # Ensure each file contributes at least its declared size even if backend read pattern did not trigger callbacks.
+        declared_size = int(getattr(uploaded_file, "size", 0) or 0)
+        read_for_current_file = uploaded_bytes - before_file_bytes
+        if declared_size > 0 and read_for_current_file < declared_size:
+            uploaded_bytes += declared_size - read_for_current_file
+            uploaded_bytes = min(uploaded_bytes, total_bytes)
+
+        item.file_path = saved_path
+        item.result = {"stage": "uploaded", "ai_validation_enabled": None}
+        item.save(update_fields=["file_path", "result", "updated_at"])
+
+        run_document_categorization_item(str(item.id))
+        dispatched_tasks += 1
+
+        uploaded_files += 1
+        persist_progress(current_file=safe_filename, force=True)
+
+    _update_upload_progress(
+        job,
+        uploaded_files=uploaded_files,
+        total_files=total_files,
+        uploaded_bytes=total_bytes if total_bytes > 0 else uploaded_bytes,
+        total_bytes=total_bytes,
+        current_file=None,
+        complete=True,
+    )
+
+    return uploaded_files, dispatched_tasks
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def categorize_documents_init(request, application_id):
+    """Create a categorization job first so frontend can subscribe to SSE before file upload starts."""
+    try:
+        doc_application = DocApplication.objects.get(id=application_id)
+    except DocApplication.DoesNotExist:
+        return Response(
+            {"code": "not_found", "errors": {"detail": ["Application not found."]}},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    model = request.data.get("model")
+    provider_order_raw = request.data.get("providerOrder", request.data.get("provider_order"))
+    provider_order = _parse_provider_order(provider_order_raw)
+    total_files_raw = request.data.get("totalFiles", request.data.get("total_files"))
+    total_files = _normalize_total_files(total_files_raw)
+
+    job = _create_categorization_job(
+        doc_application=doc_application,
+        created_by=request.user,
+        model=model,
+        provider_order=provider_order,
+        total_files=total_files,
+    )
+
+    return Response(
+        {
+            "jobId": str(job.id),
+            "totalFiles": total_files,
+            "status": "queued",
+        },
+        status=status.HTTP_201_CREATED,
+    )
+
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 @parser_classes([MultiPartParser, FormParser])
@@ -55,48 +315,18 @@ def categorize_documents(request, application_id):
         )
 
     model = request.data.get("model")
-    provider_order_raw = request.data.get("providerOrder")
-    provider_order = None
-    if provider_order_raw:
-        if isinstance(provider_order_raw, str):
-            provider_order = [p.strip() for p in provider_order_raw.split(",") if p.strip()]
-        elif isinstance(provider_order_raw, list):
-            provider_order = provider_order_raw
+    provider_order_raw = request.data.get("providerOrder", request.data.get("provider_order"))
+    provider_order = _parse_provider_order(provider_order_raw)
 
-    # Create the job
-    job = DocumentCategorizationJob.objects.create(
+    job = _create_categorization_job(
         doc_application=doc_application,
-        total_files=len(files),
-        request_params={
-            "model": model,
-            "provider_order": provider_order,
-        },
         created_by=request.user,
+        model=model,
+        provider_order=provider_order,
+        total_files=len(files),
     )
 
-    # Save files and create items
-    temp_dir = f"tmp/categorization/{job.id}"
-    items = []
-
-    for idx, uploaded_file in enumerate(files):
-        # Sanitize filename
-        safe_filename = os.path.basename(uploaded_file.name)
-        file_path = f"{temp_dir}/{safe_filename}"
-
-        # Save to storage
-        saved_path = default_storage.save(file_path, uploaded_file)
-
-        item = DocumentCategorizationItem.objects.create(
-            job=job,
-            sort_index=idx,
-            filename=safe_filename,
-            file_path=saved_path,
-        )
-        items.append(item)
-
-    # Dispatch Huey tasks (one per file for parallel processing)
-    for item in items:
-        run_document_categorization_item(str(item.id))
+    _upload_files_to_job(job=job, files=files)
 
     return Response(
         {
@@ -105,6 +335,45 @@ def categorize_documents(request, application_id):
             "status": "queued",
         },
         status=status.HTTP_201_CREATED,
+    )
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser])
+def categorization_upload_files(request, job_id):
+    """Upload files into an existing categorization job and dispatch item tasks."""
+    try:
+        job = DocumentCategorizationJob.objects.select_related("doc_application").get(id=job_id)
+    except DocumentCategorizationJob.DoesNotExist:
+        return Response(
+            {"code": "not_found", "errors": {"detail": ["Job not found."]}},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    if not request.user.is_staff and job.created_by_id != request.user.id:
+        return Response(
+            {"code": "forbidden", "errors": {"detail": ["Permission denied."]}},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    files = request.FILES.getlist("files")
+    if not files:
+        return Response(
+            {"code": "validation_error", "errors": {"files": ["No files provided."]}},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    uploaded_files, dispatched_count = _upload_files_to_job(job=job, files=files)
+
+    return Response(
+        {
+            "jobId": str(job.id),
+            "uploadedFiles": uploaded_files,
+            "dispatchedTasks": dispatched_count,
+            "status": "processing",
+        },
+        status=status.HTTP_202_ACCEPTED,
     )
 
 
@@ -125,23 +394,135 @@ def categorization_stream_sse(request, job_id):
         sent_states = {}
         total_files = job.total_files
 
+        upload_state = {
+            "uploaded_bytes": -1,
+            "uploaded_files": -1,
+            "complete_sent": False,
+        }
+        unified_progress_state = {
+            "percent": -1,
+            "phase": "",
+            "message": "",
+        }
+
+        initial_result = job.result if isinstance(job.result, dict) else {}
+        initial_stage = initial_result.get("stage")
+        initial_upload = initial_result.get("upload") if isinstance(initial_result.get("upload"), dict) else {}
+        initial_total_files = int(initial_upload.get("total_files") or total_files or 0)
+
         yield _send_event(
             "start",
             {
                 "jobId": str(job.id),
-                "total": total_files,
-                "message": f"Starting categorization of {total_files} file(s)...",
+                "total": initial_total_files,
+                "message": (
+                    f"Uploading {initial_total_files} file(s)..."
+                    if initial_stage == "uploading"
+                    else f"Starting categorization of {initial_total_files} file(s)..."
+                ),
             },
         )
 
         while True:
             job.refresh_from_db()
+            total_files = job.total_files
+
+            job_result = job.result if isinstance(job.result, dict) else {}
+            upload_info = job_result.get("upload") if isinstance(job_result.get("upload"), dict) else {}
+
+            uploaded_files = int(upload_info.get("uploaded_files") or 0)
+            upload_total_files = int(upload_info.get("total_files") or total_files or 0)
+            uploaded_bytes = int(upload_info.get("uploaded_bytes") or 0)
+            total_bytes = int(upload_info.get("total_bytes") or 0)
+            current_file = upload_info.get("current_file")
+            upload_complete = bool(upload_info.get("complete"))
+
+            processing_complete = total_files > 0 and int(job.processed_files or 0) >= total_files
+            overall_percent = _compute_overall_progress_percent(
+                total_files=upload_total_files,
+                uploaded_files=uploaded_files,
+                uploaded_bytes=uploaded_bytes,
+                total_bytes=total_bytes,
+                processed_files=int(job.processed_files or 0),
+            )
+
+            if upload_complete and not processing_complete:
+                phase = "processing"
+                unified_message = (
+                    f"Processing files... {int(job.processed_files or 0)}/{max(upload_total_files, total_files)}"
+                )
+            elif processing_complete:
+                phase = "completed"
+                overall_percent = 100
+                unified_message = "Processing complete"
+            else:
+                phase = "uploading"
+                if total_bytes > 0:
+                    unified_message = f"Uploading files... {overall_percent}%"
+                else:
+                    unified_message = f"Uploading files... {uploaded_files}/{upload_total_files}"
+
+            if (
+                overall_percent != unified_progress_state["percent"]
+                or phase != unified_progress_state["phase"]
+                or unified_message != unified_progress_state["message"]
+            ):
+                yield _send_event(
+                    "progress",
+                    {
+                        "jobId": str(job.id),
+                        "phase": phase,
+                        "overallPercent": overall_percent,
+                        "uploadedFiles": uploaded_files,
+                        "totalFiles": upload_total_files,
+                        "processedFiles": int(job.processed_files or 0),
+                        "uploadedBytes": uploaded_bytes,
+                        "totalBytes": total_bytes,
+                        "message": unified_message,
+                    },
+                )
+                unified_progress_state["percent"] = overall_percent
+                unified_progress_state["phase"] = phase
+                unified_progress_state["message"] = unified_message
+
+            if uploaded_bytes != upload_state["uploaded_bytes"] or uploaded_files != upload_state["uploaded_files"]:
+                yield _send_event(
+                    "upload_progress",
+                    {
+                        "jobId": str(job.id),
+                        "uploadedFiles": uploaded_files,
+                        "totalFiles": upload_total_files,
+                        "uploadedBytes": uploaded_bytes,
+                        "totalBytes": total_bytes,
+                        "currentFile": current_file,
+                        "message": f"Uploading files... {uploaded_files}/{upload_total_files}",
+                    },
+                )
+                upload_state["uploaded_bytes"] = uploaded_bytes
+                upload_state["uploaded_files"] = uploaded_files
+
+            if upload_complete and not upload_state["complete_sent"]:
+                yield _send_event(
+                    "upload_complete",
+                    {
+                        "jobId": str(job.id),
+                        "uploadedFiles": uploaded_files,
+                        "totalFiles": upload_total_files,
+                        "uploadedBytes": uploaded_bytes,
+                        "totalBytes": total_bytes,
+                        "message": f"Upload complete: {uploaded_files}/{upload_total_files} file(s).",
+                    },
+                )
+                upload_state["complete_sent"] = True
+
             items = list(job.items.all().order_by("sort_index"))
 
             for item in items:
                 state = sent_states.get(
                     item.id,
                     {
+                        "upload_started": False,
+                        "upload_done": False,
                         "processing": False,
                         "pass2_sent": False,
                         "categorized_sent": False,
@@ -152,6 +533,28 @@ def categorization_stream_sse(request, job_id):
                 )
                 result = item.result or {}
                 stage = result.get("stage", "")
+
+                if stage == "uploading" and not state["upload_started"]:
+                    yield _send_event(
+                        "file_upload_start",
+                        {
+                            "index": item.sort_index,
+                            "filename": item.filename,
+                            "message": f"Uploading {item.filename}...",
+                        },
+                    )
+                    state["upload_started"] = True
+
+                if stage != "uploading" and not state["upload_done"]:
+                    yield _send_event(
+                        "file_uploaded",
+                        {
+                            "index": item.sort_index,
+                            "filename": item.filename,
+                            "message": f"Uploaded {item.filename}",
+                        },
+                    )
+                    state["upload_done"] = True
 
                 # Processing started
                 if item.status == DocumentCategorizationItem.STATUS_PROCESSING and not state["processing"]:
@@ -191,6 +594,7 @@ def categorization_stream_sse(request, job_id):
                             "confidence": item.confidence,
                             "reasoning": result.get("reasoning", ""),
                             "categorizationPass": pass_used,
+                            "aiValidationEnabled": bool(result.get("ai_validation_enabled")),
                             "message": f"✓ {item.filename} → {result.get('document_type', 'Unknown')}"
                             + (f" (pass {pass_used})" if pass_used > 1 else ""),
                         },
@@ -204,6 +608,7 @@ def categorization_stream_sse(request, job_id):
                         {
                             "index": item.sort_index,
                             "filename": item.filename,
+                            "aiValidationEnabled": bool(result.get("ai_validation_enabled")),
                             "message": f"🔍 Validating {item.filename}...",
                         },
                     )
@@ -220,6 +625,7 @@ def categorization_stream_sse(request, job_id):
                             "validationStatus": item.validation_status,
                             "validationReasoning": v_result.get("reasoning", ""),
                             "validationNegativeIssues": v_result.get("negative_issues", []),
+                            "aiValidationEnabled": bool(result.get("ai_validation_enabled")),
                             "validationConfidence": v_result.get("confidence", 0),
                             "message": f"{'✅' if item.validation_status == 'valid' else '⚠️'} "
                             f"{item.filename}: {item.validation_status}",
@@ -252,9 +658,13 @@ def categorization_stream_sse(request, job_id):
 
                 sent_states[item.id] = state
 
-            all_done = len(sent_states) >= total_files and all(s.get("done", False) for s in sent_states.values())
+            all_done = (
+                total_files > 0
+                and len(sent_states) >= total_files
+                and all(s.get("done", False) for s in sent_states.values())
+            )
 
-            if job.processed_files >= job.total_files and all_done:
+            if total_files > 0 and job.processed_files >= total_files and all_done:
                 # Build final results
                 results = []
                 for item in items:
@@ -272,6 +682,8 @@ def categorization_stream_sse(request, job_id):
                             "reasoning": item_result.get("reasoning", ""),
                             "categorizationPass": item_result.get("pass_used", 1),
                             "error": item.error_message or None,
+                            "pipelineStage": item_result.get("stage"),
+                            "aiValidationEnabled": bool(item_result.get("ai_validation_enabled")),
                             "validationStatus": item.validation_status or None,
                             "validationReasoning": v_result.get("reasoning", ""),
                             "validationNegativeIssues": v_result.get("negative_issues", []),

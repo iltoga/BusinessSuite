@@ -38,7 +38,9 @@ def run_document_categorization_item(item_id: str) -> None:
             job.save(update_fields=["status", "updated_at"])
 
         item.status = DocumentCategorizationItem.STATUS_PROCESSING
-        item.result = {"stage": "categorizing_pass_1"}
+        current_result = item.result if isinstance(item.result, dict) else {}
+        current_result.update({"stage": "categorizing_pass_1"})
+        item.result = current_result
         item.save(update_fields=["status", "result", "updated_at"])
 
         try:
@@ -78,12 +80,14 @@ def run_document_categorization_item(item_id: str) -> None:
                 doc_type = DocumentType.objects.get(id=doc_type_id)
                 item.document_type = doc_type
                 item.status = DocumentCategorizationItem.STATUS_CATEGORIZED
+                ai_validation_enabled = bool(doc_type.ai_validation)
 
                 # Try to match with an existing Document row in the application
                 _try_match_document(item, job.doc_application_id)
             else:
                 item.status = DocumentCategorizationItem.STATUS_ERROR
                 item.error_message = result.get("reasoning", "No matching document type found")
+                ai_validation_enabled = False
 
             item.confidence = result.get("confidence", 0)
             item.result = {
@@ -92,6 +96,7 @@ def run_document_categorization_item(item_id: str) -> None:
                 "confidence": result.get("confidence", 0),
                 "reasoning": result.get("reasoning", ""),
                 "pass_used": pass_used,
+                "ai_validation_enabled": ai_validation_enabled,
                 "stage": "categorized",
             }
             item.save(
@@ -120,6 +125,7 @@ def run_document_categorization_item(item_id: str) -> None:
             elif item.status == DocumentCategorizationItem.STATUS_CATEGORIZED:
                 current_result = item.result or {}
                 current_result["stage"] = "categorized"
+                current_result["ai_validation_enabled"] = False
                 item.result = current_result
                 item.validation_status = None
                 item.validation_result = None
@@ -135,6 +141,8 @@ def run_document_categorization_item(item_id: str) -> None:
                 "document_type": None,
                 "confidence": 0,
                 "reasoning": f"Error: {exc}",
+                "ai_validation_enabled": False,
+                "stage": "error",
             }
             item.save(update_fields=["status", "error_message", "traceback", "result", "updated_at"])
 
@@ -160,6 +168,7 @@ def _run_validation_step(
     # Signal validating stage for SSE
     current_result = item.result or {}
     current_result["stage"] = "validating"
+    current_result["ai_validation_enabled"] = True
     item.result = current_result
     item.save(update_fields=["result", "updated_at"])
 

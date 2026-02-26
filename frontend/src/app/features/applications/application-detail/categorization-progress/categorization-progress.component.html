@@ -75,13 +75,14 @@
               </div>
             </th>
             <th class="text-left py-1.5 pr-2">Detected Type</th>
+            <th class="text-left py-1.5 pr-2">Pipeline</th>
             <th class="text-left py-1.5 pr-2">Confidence</th>
             <th class="text-left py-1.5 pr-2">Status</th>
             <th class="text-left py-1.5">Validation</th>
           </tr>
         </thead>
         <tbody>
-          @for (result of results(); track (result.itemId || result.filename + '-' + $index)) {
+          @for (result of results(); track result.itemId || result.filename + '-' + $index) {
             <tr class="border-b last:border-0">
               <td class="py-1.5 pr-2">
                 <div class="flex items-center gap-2">
@@ -106,6 +107,9 @@
                   <span class="text-muted-foreground">—</span>
                 }
               </td>
+              <td class="py-1.5 pr-2 text-xs text-muted-foreground">
+                {{ getPipelineTrack(result) }}
+              </td>
               <td class="py-1.5 pr-2">
                 @if (result.confidence > 0) {
                   <z-badge [zType]="$any(getConfidenceBadgeType(result.confidence))">
@@ -124,6 +128,8 @@
                   >
                 } @else if (result.status === 'error') {
                   <z-badge zType="destructive">Error</z-badge>
+                } @else if (result.status === 'uploading') {
+                  <z-badge zType="secondary">Uploading</z-badge>
                 } @else if (result.status === 'processing') {
                   <z-badge zType="secondary">Processing</z-badge>
                 } @else {

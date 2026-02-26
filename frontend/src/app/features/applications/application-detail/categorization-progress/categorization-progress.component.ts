@@ -15,7 +15,16 @@ import { ZardButtonComponent } from '@/shared/components/button';
 export interface CategorizationFileResult {
   itemId: string;
   filename: string;
-  status: 'queued' | 'processing' | 'categorized' | 'error';
+  status: 'uploading' | 'queued' | 'processing' | 'categorized' | 'error';
+  pipelineStage:
+    | 'uploading'
+    | 'uploaded'
+    | 'categorizing'
+    | 'categorized'
+    | 'validating'
+    | 'validated'
+    | 'error';
+  aiValidationEnabled: boolean | null;
   documentType: string | null;
   documentTypeId: number | null;
   documentId: number | null;
@@ -43,6 +52,7 @@ export interface CategorizationApplyMapping {
 export class CategorizationProgressComponent {
   readonly totalFiles = input.required<number>();
   readonly processedFiles = input<number>(0);
+  readonly progressPercentOverride = input<number | null>(null);
   readonly results = input<CategorizationFileResult[]>([]);
   readonly isComplete = input<boolean>(false);
   readonly isApplying = input<boolean>(false);
@@ -54,6 +64,11 @@ export class CategorizationProgressComponent {
   readonly selectedResultKeys = signal<Set<string>>(new Set());
 
   readonly progressPercent = computed(() => {
+    const override = this.progressPercentOverride();
+    if (typeof override === 'number' && Number.isFinite(override)) {
+      return Math.max(0, Math.min(100, Math.round(override)));
+    }
+
     const total = this.totalFiles();
     if (total === 0) return 0;
     return Math.round((this.processedFiles() / total) * 100);
@@ -75,10 +90,6 @@ export class CategorizationProgressComponent {
 
   readonly invalidResults = computed(() =>
     this.results().filter((r) => r.validationStatus === 'invalid'),
-  );
-
-  readonly validatingResults = computed(() =>
-    this.results().filter((r) => r.validationStatus === 'pending'),
   );
 
   readonly canApply = computed(
@@ -193,6 +204,8 @@ export class CategorizationProgressComponent {
 
   getStatusIcon(status: string): string {
     switch (status) {
+      case 'uploading':
+        return '📤';
       case 'queued':
         return '⏳';
       case 'processing':
@@ -204,5 +217,35 @@ export class CategorizationProgressComponent {
       default:
         return '●';
     }
+  }
+
+  getPipelineTrack(result: CategorizationFileResult): string {
+    const upload = result.pipelineStage === 'uploading' ? 'Upload ⏳' : 'Upload ✓';
+
+    let categorize = 'Categorize …';
+    if (result.pipelineStage === 'categorizing' || result.status === 'processing') {
+      categorize = 'Categorize ⏳';
+    } else if (
+      result.pipelineStage === 'categorized' ||
+      result.pipelineStage === 'validating' ||
+      result.pipelineStage === 'validated'
+    ) {
+      categorize = 'Categorize ✓';
+    } else if (result.pipelineStage === 'error' && !result.documentType) {
+      categorize = 'Categorize ✗';
+    }
+
+    let validate = 'Validate …';
+    if (result.aiValidationEnabled === false) {
+      validate = 'Validate skipped';
+    } else if (result.pipelineStage === 'validating' || result.validationStatus === 'pending') {
+      validate = 'Validate ⏳';
+    } else if (result.validationStatus === 'valid') {
+      validate = 'Validate ✓';
+    } else if (result.validationStatus === 'invalid') {
+      validate = 'Validate ✗';
+    }
+
+    return `${upload} → ${categorize} → ${validate}`;
   }
 }

@@ -11003,7 +11003,13 @@ components:
           nullable: true
         file:
           type: string
-          format: uri
+          nullable: true
+          description: |-
+            Return file URL while allowing detail responses to skip expensive storage URL generation.
+
+            When `prefer_cached_file_url` is enabled in serializer context, use the persisted
+            `file_link` first and only fall back to storage-generated URLs if needed.
+          readOnly: true
         file_link:
           type: string
           readOnly: true
@@ -11081,6 +11087,7 @@ components:
       - doc_application
       - doc_type
       - extra_actions
+      - file
       - file_link
       - id
       - updated_at

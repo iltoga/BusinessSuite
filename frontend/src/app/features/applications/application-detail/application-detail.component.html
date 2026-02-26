@@ -360,11 +360,13 @@
           <app-categorization-progress
             [totalFiles]="categorizationTotalFiles()"
             [processedFiles]="categorizationProcessedFiles()"
+            [progressPercentOverride]="categorizationProgressPercentOverride()"
             [results]="categorizationResults()"
             [isComplete]="categorizationComplete()"
             [isApplying]="isCategorizationApplying()"
             [statusMessage]="categorizationStatusMessage()"
             (applyAll)="onApplyCategorization($event)"
+            (dismissSelected)="dismissSelectedCategorization($event)"
             (dismiss)="dismissCategorization()"
           />
         </div>

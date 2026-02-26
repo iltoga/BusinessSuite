@@ -18,7 +18,10 @@ export interface Document {
     docTypeId?: number;
     docNumber?: string;
     expirationDate?: string | null;
-    file?: string;
+    /**
+     * Return file URL while allowing detail responses to skip expensive storage URL generation.  When `prefer_cached_file_url` is enabled in serializer context, use the persisted `file_link` first and only fall back to storage-generated URLs if needed.
+     */
+    readonly file: string | null;
     readonly fileLink: string;
     details?: string;
     readonly completed: boolean;
