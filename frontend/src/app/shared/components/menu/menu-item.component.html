@@ -32,7 +32,9 @@
     [attr.aria-label]="menuItem.accessibility?.ariaLabel || menuItem.label"
     [attr.aria-haspopup]="hasChildren ? 'menu' : menuItem.accessibility?.ariaHasPopup || null"
     [attr.aria-expanded]="hasChildren ? expanded : null"
-    [attr.aria-controls]="hasChildren ? 'submenu-' + menuItem.id : menuItem.accessibility?.ariaControls || null"
+    [attr.aria-controls]="
+      hasChildren ? 'submenu-' + menuItem.id : menuItem.accessibility?.ariaControls || null
+    "
     (click)="hasChildren && menuItem.collapsible ? toggleExpanded($event) : runAction()"
   >
     @if (menuItem.icon) {
@@ -50,6 +52,7 @@
     class="submenu"
     role="menu"
     [id]="'submenu-' + menuItem.id"
+    [class.sidebar-submenu-scroll]="mode() === 'sidebar'"
     [class.overlay-submenu]="mode() === 'overlay'"
   >
     @for (child of menuItem.children; track child.id) {

@@ -8,20 +8,44 @@
   align-items: center;
   gap: 0.5rem;
   border-radius: 0.375rem;
+  border: 1px solid transparent;
   padding: 0.45rem 0.625rem;
-  color: hsl(var(--muted-foreground));
+  color: hsl(var(--foreground) / 0.82);
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color 140ms ease,
+    color 140ms ease,
+    border-color 140ms ease,
+    box-shadow 140ms ease;
 }
 
 .menu-entry:hover,
 .menu-entry:focus-visible {
-  background: hsl(var(--accent));
-  color: hsl(var(--accent-foreground));
+  background: hsl(var(--primary) / 0.1);
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--primary) / 0.28);
+  box-shadow: inset 0 0 0 1px hsl(var(--primary) / 0.08);
   outline: none;
 }
 
 .menu-entry-active {
   background: hsl(var(--accent));
   color: hsl(var(--accent-foreground));
+  border-color: hsl(var(--border));
+  box-shadow: inset 3px 0 0 hsl(var(--primary));
+  font-weight: 600;
+}
+
+.menu-entry-active:hover,
+.menu-entry-active:focus-visible {
+  background: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+}
+
+button.menu-entry:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .overlay-entry {
@@ -36,6 +60,20 @@
   margin-left: 1rem;
   display: grid;
   gap: 0.125rem;
+}
+
+.sidebar-submenu-scroll {
+  max-height: min(40dvh, 22rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.sidebar-submenu-scroll::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .overlay-submenu {
