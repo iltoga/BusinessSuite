@@ -120,8 +120,7 @@ class Product(models.Model):
         return DocumentType.objects.filter(name__in=doc_names, deprecated=True).exists()
 
     def sync_deprecated_status_from_documents(self) -> None:
-        if self.has_deprecated_document_types():
-            self.deprecated = True
+        self.deprecated = self.has_deprecated_document_types()
 
     def save(self, *args, **kwargs):
         # Preserve legacy creates where base_price is provided but retail_price is omitted.

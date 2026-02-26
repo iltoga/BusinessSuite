@@ -25,7 +25,7 @@ class LocalResilienceService:
 
         if settings_obj.enabled and not was_enabled:
             # Build initial changelog snapshot for first-time replica bootstrap.
-            bootstrap_snapshot(force=True)
+            bootstrap_snapshot(force=False)
 
         return settings_obj
 
