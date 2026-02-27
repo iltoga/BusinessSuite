@@ -17,17 +17,24 @@ export class MenuService {
     { id: 'dashboard', label: 'Dashboard', icon: 'layout-dashboard', route: '/dashboard' },
     { id: 'customers', label: 'Customers', icon: 'users', route: '/customers' },
     { id: 'applications', label: 'Applications', icon: 'folder', route: '/applications' },
-    {
-      id: 'products',
-      label: 'Products',
-      icon: 'archive',
-      route: '/products',
-      visible: () => this.authService.isAdminOrManager(),
-    },
     { id: 'invoices', label: 'Invoices', icon: 'file-text', route: '/invoices' },
     {
+      id: 'letters',
+      label: 'Letters',
+      icon: 'file-text',
+      collapsible: true,
+      accessibility: { ariaHasPopup: 'menu' },
+      children: [
+        {
+          id: 'letters-surat-permohonan',
+          label: 'Surat Permohonan',
+          route: '/letters/surat-permohonan',
+        },
+      ],
+    },
+    {
       id: 'utilities',
-      label: 'UTILS',
+      label: 'Utils',
       icon: 'sparkles',
       collapsible: true,
       accessibility: { ariaHasPopup: 'menu' },
@@ -63,20 +70,6 @@ export class MenuService {
         },
         { id: 'reports-product-demand', label: 'Product Demand', route: '/reports/product-demand' },
         { id: 'reports-ai-costing', label: 'AI Costing', route: '/reports/ai-costing' },
-      ],
-    },
-    {
-      id: 'letters',
-      label: 'Letters',
-      icon: 'file-text',
-      collapsible: true,
-      accessibility: { ariaHasPopup: 'menu' },
-      children: [
-        {
-          id: 'letters-surat-permohonan',
-          label: 'Surat Permohonan',
-          route: '/letters/surat-permohonan',
-        },
       ],
     },
     {
