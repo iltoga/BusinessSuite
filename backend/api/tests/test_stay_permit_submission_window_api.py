@@ -169,6 +169,20 @@ class StayPermitSubmissionWindowApiTests(TestCase):
         application.refresh_from_db()
         self.assertEqual(application.doc_date, date(2026, 3, 10))
 
+    def test_partial_update_without_doc_date_or_product_does_not_revalidate_window(self):
+        application = self._create_application_with_stay_permit_doc(date(2026, 3, 31))
+        self.product.application_window_days = 10
+        self.product.save(update_fields=["application_window_days"])
+
+        response = self.client.patch(
+            reverse("customer-applications-detail", kwargs={"pk": application.id}),
+            data=json.dumps({"notes": "Updated notes only"}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        application.refresh_from_db()
+        self.assertEqual(application.notes, "Updated notes only")
+
     def test_uses_earliest_expiration_when_multiple_stay_permits_exist(self):
         second_stay_doc_type = DocumentType.objects.create(
             name="KITAS",

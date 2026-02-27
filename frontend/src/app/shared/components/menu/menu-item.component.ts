@@ -37,10 +37,6 @@ export class MenuItemComponent {
     event.preventDefault();
     event.stopPropagation();
 
-    if (this.mode() === 'overlay') {
-      return;
-    }
-
     if (this.mode() === 'overlay' && this.depth() === 0) {
       this.menuService.toggleOverlayRootCollapse(this.item().id);
       return;

@@ -87,21 +87,20 @@ button.menu-entry:disabled {
   margin: 0 0 0 0.25rem;
 }
 
-.group:hover > .overlay-submenu,
-.is-expanded > .overlay-submenu {
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(-0.5rem);
-}
-
 .group:hover > .overlay-submenu {
   opacity: 1;
   visibility: visible;
   transform: translateY(0);
 }
 
+.is-expanded > .overlay-submenu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
 .is-expanded .overlay-chevron {
-  transform: rotate(0deg);
+  transform: rotate(90deg);
 }
 
 .group:hover .overlay-chevron {

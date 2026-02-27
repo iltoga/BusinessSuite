@@ -332,16 +332,20 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
         if product and getattr(product, "deprecated", False):
             raise serializers.ValidationError({"product": "Deprecated products cannot be used for applications."})
 
-        try:
-            StayPermitSubmissionWindowService().validate_doc_date(
-                product=product,
-                doc_date=doc_date,
-                application=self.instance,
-            )
-        except DjangoValidationError as exc:
-            if getattr(exc, "message_dict", None):
-                raise serializers.ValidationError(exc.message_dict)
-            raise serializers.ValidationError({"doc_date": exc.messages})
+        should_validate_submission_window = (
+            self.instance is None or "doc_date" in attrs or "product" in attrs
+        )
+        if should_validate_submission_window:
+            try:
+                StayPermitSubmissionWindowService().validate_doc_date(
+                    product=product,
+                    doc_date=doc_date,
+                    application=self.instance,
+                )
+            except DjangoValidationError as exc:
+                if getattr(exc, "message_dict", None):
+                    raise serializers.ValidationError(exc.message_dict)
+                raise serializers.ValidationError({"doc_date": exc.messages})
 
         if notify_customer_too:
             if not notify_customer_channel:
