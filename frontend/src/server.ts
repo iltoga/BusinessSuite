@@ -25,11 +25,52 @@ try {
 
 import express from 'express';
 import { randomBytes } from 'node:crypto';
-import { promises as fs } from 'node:fs';
+import { existsSync, promises as fs, readFileSync } from 'node:fs';
 import { request as httpRequest, type OutgoingHttpHeaders, type RequestOptions } from 'node:http';
 import { request as httpsRequest } from 'node:https';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { generateNonce } from './csp';
+
+function parseDotenvValue(rawValue: string): string {
+  const trimmed = rawValue.trim();
+  if (!trimmed) return '';
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1);
+  }
+  return trimmed;
+}
+
+function loadRuntimeEnvFiles(): void {
+  const envFileCandidates = [resolve(process.cwd(), '.env'), resolve(process.cwd(), '..', '.env')];
+
+  for (const envPath of envFileCandidates) {
+    if (!existsSync(envPath)) continue;
+
+    try {
+      const fileContent = readFileSync(envPath, 'utf8');
+      for (const rawLine of fileContent.split(/\r?\n/)) {
+        const line = rawLine.trim();
+        if (!line || line.startsWith('#')) continue;
+
+        const separatorIndex = line.indexOf('=');
+        if (separatorIndex <= 0) continue;
+
+        const key = line.slice(0, separatorIndex).trim();
+        if (!key || process.env[key] !== undefined) continue;
+
+        const value = parseDotenvValue(line.slice(separatorIndex + 1));
+        process.env[key] = value;
+      }
+    } catch (error) {
+      console.warn(`[SSR] Failed loading env file ${envPath}:`, error);
+    }
+  }
+}
+
+loadRuntimeEnvFiles();
 
 const browserDistFolder = join(import.meta.dirname, '../browser');
 
@@ -571,8 +612,10 @@ app.use(async (req, res, next) => {
         '';
     }
 
-    // Inject server-provided brand variables into HTML so the client can pick them up
-    if (typeof response.body === 'string' && contentType.includes('text/html')) {
+    // Inject server-provided brand variables into HTML so the client can pick them up.
+    // In dev-server SSR, response.body is commonly a stream, not a string.
+    if (contentType.includes('text/html')) {
+      const responseHtml = await response.text();
       // Logos are now loaded statically from assets/config.json; runtime injection removed.
       let runtimeTitle = process.env['APP_TITLE'] || 'BusinessSuite';
       try {
@@ -598,7 +641,7 @@ app.use(async (req, res, next) => {
       console.debug('[SSR] Resolved branding:', { title: runtimeTitle });
 
       // Prepare HTML with replaced title (done once)
-      const responseHtml = String(response.body).replace(
+      const responseHtmlWithTitle = String(responseHtml).replace(
         /<title>.*?<\/title>/i,
         `<title>${escapedTitle}</title>`,
       );
@@ -628,7 +671,10 @@ app.use(async (req, res, next) => {
         res.setHeader('X-CSP-Mode', cspMode);
 
         // Inject Angular root attribute so Angular uses the nonce without requiring index.html rewrites
-        let modifiedBody = responseHtml.replace(/<app(\s|>)/, `<app ngCspNonce="${nonce}"$1`);
+        let modifiedBody = responseHtmlWithTitle.replace(
+          /<app(\s|>)/,
+          `<app ngCspNonce="${nonce}"$1`,
+        );
 
         // Inject server config from .env into the page so the app picks it up immediately
         const mockAuthEnv = (process.env['MOCK_AUTH_ENABLED'] || 'False').trim();
@@ -668,12 +714,12 @@ app.use(async (req, res, next) => {
         })();</script>`;
         modifiedBody = modifiedBody.replace(/<head(\s|>)/i, `<head$1\n${brandScript}`);
 
-        // Build a modified response object (avoid mutating readonly properties)
-        const modifiedResponse = {
-          ...response,
+        // Build a proper Response object after HTML rewrite.
+        const modifiedResponse = new Response(modifiedBody, {
+          status: response.status,
+          statusText: response.statusText,
           headers: modifiedHeaders,
-          body: modifiedBody,
-        } as any;
+        });
 
         writeResponseToNodeResponse(modifiedResponse, res);
         return;
@@ -685,7 +731,7 @@ app.use(async (req, res, next) => {
           try{document.documentElement.classList.add('app-brand-ready')}catch(e){}
           try{document.title=${JSON.stringify(runtimeTitle)};}catch(e){}
         })();</script>`;
-        let modifiedBody = responseHtml.replace(/<head(\s|>)/i, `<head$1\n${brandScript}`);
+        let modifiedBody = responseHtmlWithTitle.replace(/<head(\s|>)/i, `<head$1\n${brandScript}`);
 
         // Inject server config from .env into the page
         const mockAuthEnv = (process.env['MOCK_AUTH_ENABLED'] || 'False').trim();
@@ -716,10 +762,11 @@ app.use(async (req, res, next) => {
         })();</script>`;
         modifiedBody = modifiedBody.replace(/<head(\s|>)/i, `<head$1\n${configScript}`);
 
-        const modifiedResponse = {
-          ...response,
-          body: modifiedBody,
-        } as any;
+        const modifiedResponse = new Response(modifiedBody, {
+          status: response.status,
+          statusText: response.statusText,
+          headers: new Headers(response.headers),
+        });
 
         writeResponseToNodeResponse(modifiedResponse, res);
         return;
