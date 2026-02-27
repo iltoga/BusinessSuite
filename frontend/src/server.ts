@@ -633,10 +633,28 @@ app.use(async (req, res, next) => {
         // Inject server config from .env into the page so the app picks it up immediately
         const mockAuthEnv = (process.env['MOCK_AUTH_ENABLED'] || 'False').trim();
         const appTitleEnv = process.env['APP_TITLE'] || 'BusinessSuite';
+        const fcmSenderIdEnv = (process.env['FCM_SENDER_ID'] || '').trim();
+        const fcmProjectNumberEnv = (process.env['FCM_PROJECT_NUMBER'] || '').trim();
+        const fcmVapidPublicKeyEnv = (process.env['FCM_VAPID_PUBLIC_KEY'] || '').trim();
+        const fcmProjectIdEnv = (process.env['FCM_PROJECT_ID'] || '').trim();
+        const fcmWebApiKeyEnv = (process.env['FCM_WEB_API_KEY'] || '').trim();
+        const fcmWebAppIdEnv = (process.env['FCM_WEB_APP_ID'] || '').trim();
+        const fcmWebAuthDomainEnv = (process.env['FCM_WEB_AUTH_DOMAIN'] || '').trim();
+        const fcmWebStorageBucketEnv = (process.env['FCM_WEB_STORAGE_BUCKET'] || '').trim();
+        const fcmWebMeasurementIdEnv = (process.env['FCM_WEB_MEASUREMENT_ID'] || '').trim();
         const configScript = `<script nonce="${nonce}">(function(){
           window.APP_CONFIG={
             MOCK_AUTH_ENABLED: ${JSON.stringify(mockAuthEnv)},
-            title: ${JSON.stringify(appTitleEnv)}
+            title: ${JSON.stringify(appTitleEnv)},
+            fcmSenderId: ${JSON.stringify(fcmSenderIdEnv)},
+            fcmProjectNumber: ${JSON.stringify(fcmProjectNumberEnv)},
+            fcmVapidPublicKey: ${JSON.stringify(fcmVapidPublicKeyEnv)},
+            fcmProjectId: ${JSON.stringify(fcmProjectIdEnv)},
+            fcmWebApiKey: ${JSON.stringify(fcmWebApiKeyEnv)},
+            fcmWebAppId: ${JSON.stringify(fcmWebAppIdEnv)},
+            fcmWebAuthDomain: ${JSON.stringify(fcmWebAuthDomainEnv)},
+            fcmWebStorageBucket: ${JSON.stringify(fcmWebStorageBucketEnv)},
+            fcmWebMeasurementId: ${JSON.stringify(fcmWebMeasurementIdEnv)}
           };
         })();</script>`;
         modifiedBody = modifiedBody.replace(/<head(\s|>)/i, `<head$1\n${configScript}`);
@@ -672,10 +690,28 @@ app.use(async (req, res, next) => {
         // Inject server config from .env into the page
         const mockAuthEnv = (process.env['MOCK_AUTH_ENABLED'] || 'False').trim();
         const appTitleEnv = process.env['APP_TITLE'] || 'BusinessSuite';
+        const fcmSenderIdEnv = (process.env['FCM_SENDER_ID'] || '').trim();
+        const fcmProjectNumberEnv = (process.env['FCM_PROJECT_NUMBER'] || '').trim();
+        const fcmVapidPublicKeyEnv = (process.env['FCM_VAPID_PUBLIC_KEY'] || '').trim();
+        const fcmProjectIdEnv = (process.env['FCM_PROJECT_ID'] || '').trim();
+        const fcmWebApiKeyEnv = (process.env['FCM_WEB_API_KEY'] || '').trim();
+        const fcmWebAppIdEnv = (process.env['FCM_WEB_APP_ID'] || '').trim();
+        const fcmWebAuthDomainEnv = (process.env['FCM_WEB_AUTH_DOMAIN'] || '').trim();
+        const fcmWebStorageBucketEnv = (process.env['FCM_WEB_STORAGE_BUCKET'] || '').trim();
+        const fcmWebMeasurementIdEnv = (process.env['FCM_WEB_MEASUREMENT_ID'] || '').trim();
         const configScript = `<script>(function(){
           window.APP_CONFIG={
             MOCK_AUTH_ENABLED: ${JSON.stringify(mockAuthEnv)},
-            title: ${JSON.stringify(appTitleEnv)}
+            title: ${JSON.stringify(appTitleEnv)},
+            fcmSenderId: ${JSON.stringify(fcmSenderIdEnv)},
+            fcmProjectNumber: ${JSON.stringify(fcmProjectNumberEnv)},
+            fcmVapidPublicKey: ${JSON.stringify(fcmVapidPublicKeyEnv)},
+            fcmProjectId: ${JSON.stringify(fcmProjectIdEnv)},
+            fcmWebApiKey: ${JSON.stringify(fcmWebApiKeyEnv)},
+            fcmWebAppId: ${JSON.stringify(fcmWebAppIdEnv)},
+            fcmWebAuthDomain: ${JSON.stringify(fcmWebAuthDomainEnv)},
+            fcmWebStorageBucket: ${JSON.stringify(fcmWebStorageBucketEnv)},
+            fcmWebMeasurementId: ${JSON.stringify(fcmWebMeasurementIdEnv)}
           };
         })();</script>`;
         modifiedBody = modifiedBody.replace(/<head(\s|>)/i, `<head$1\n${configScript}`);
@@ -701,7 +737,9 @@ app.use(async (req, res, next) => {
  * Start the server if this module is the main entry point, or it is ran via PM2.
  * The server listens on the port defined by the `PORT` environment variable, or defaults to 4000.
  */
-if (isMainModule(import.meta.url) || process.env['pm_id']) {
+const isBuildExecution = (process.env['NG_BUILD'] || '').toLowerCase() === 'true';
+
+if (!isBuildExecution && (isMainModule(import.meta.url) || process.env['pm_id'])) {
   const port = Number(process.env['PORT'] || 4000);
   const host = process.env['HOST'] || '0.0.0.0';
   // Capture the server instance so we can tune its EventEmitter listener limit.

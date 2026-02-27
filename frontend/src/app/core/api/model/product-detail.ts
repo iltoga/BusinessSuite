@@ -27,6 +27,7 @@ export interface ProductDetail {
     requiredDocuments?: string;
     optionalDocuments?: string;
     documentsMinValidity?: number | null;
+    applicationWindowDays?: number | null;
     validationPrompt?: string;
     deprecated?: boolean;
     readonly tasks: Array<TaskNested>;

@@ -42,6 +42,8 @@ class Product(models.Model):
     optional_documents = models.CharField(max_length=1024, blank=True)
     # Documents must be valid for this many days
     documents_min_validity = models.PositiveIntegerField(blank=True, null=True)
+    # Number of days before stay permit expiration when the next visa application can be submitted.
+    application_window_days = models.PositiveIntegerField(blank=True, null=True)
     # Optional AI system prompt injected during document validation for all applications using this product
     validation_prompt = models.TextField(blank=True)
     deprecated = models.BooleanField(default=False, db_index=True)

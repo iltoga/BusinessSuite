@@ -1,11 +1,17 @@
-<div class="overlay-titlebar app-drag-region">
-  <nav class="overlay-nav" role="menubar" (keydown)="onKeydown($event)">
-    <ul class="overlay-list" role="none">
-      @for (item of items(); track item.id) {
-        <li role="none">
-          <app-menu-item [item]="item" mode="overlay" />
-        </li>
-      }
-    </ul>
-  </nav>
+<div class="overlay-titlebar app-drag-region bg-card">
+  <div class="flex h-full min-h-14 items-center justify-between px-4 w-full">
+    <nav class="flex overlay-nav app-no-drag" role="menubar" (keydown)="onKeydown($event)">
+      <ul class="flex items-center gap-1" role="none">
+        @for (item of items(); track item.id) {
+          <li role="none">
+            <app-menu-item [item]="item" mode="overlay" />
+          </li>
+        }
+      </ul>
+    </nav>
+
+    <div class="ml-auto flex items-center gap-3 app-no-drag bg-transparent">
+      <ng-content />
+    </div>
+  </div>
 </div>

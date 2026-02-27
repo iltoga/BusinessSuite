@@ -12,6 +12,8 @@ class DocumentType(models.Model):
     deprecated = models.BooleanField(default=False, db_index=True)
     ai_validation = models.BooleanField(default=True)
     has_expiration_date = models.BooleanField(default=False)
+    expiring_threshold_days = models.PositiveIntegerField(blank=True, null=True)
+    is_stay_permit = models.BooleanField(default=False)
     has_doc_number = models.BooleanField(default=False)
     has_file = models.BooleanField(default=False)
     has_details = models.BooleanField(default=False)
@@ -31,6 +33,10 @@ class DocumentType(models.Model):
     def clean(self):
         # This method is used to provide custom model validation,
         # and to modify attributes on your model if desired.
+        if self.is_stay_permit and not self.has_expiration_date:
+            self.has_expiration_date = True
+        if not self.has_expiration_date:
+            self.expiring_threshold_days = None
         if self.ai_validation and not self.has_file:
             self.has_file = True
 

@@ -70,6 +70,16 @@ VALIDATION_SCHEMA = {
                 "Extracted document expiration date in YYYY-MM-DD format when requested, otherwise null."
             ),
         },
+        "extracted_doc_number": {
+            "type": ["string", "null"],
+            "description": "Extracted main document code/number when requested, otherwise null.",
+        },
+        "extracted_details_markdown": {
+            "type": ["string", "null"],
+            "description": (
+                "Extracted main document data formatted as markdown when requested, otherwise null."
+            ),
+        },
     },
     "required": [
         "valid",
@@ -78,6 +88,8 @@ VALIDATION_SCHEMA = {
         "negative_issues",
         "reasoning",
         "extracted_expiration_date",
+        "extracted_doc_number",
+        "extracted_details_markdown",
     ],
     "additionalProperties": False,
 }
@@ -98,6 +110,34 @@ def extract_validation_expiration_date(validation_result: dict) -> date | None:
     except ValueError:
         logger.warning("Invalid extracted_expiration_date format: %s", raw_value)
         return None
+
+
+def extract_validation_doc_number(validation_result: dict) -> str | None:
+    """Return normalized extracted document number from validation result, if present."""
+    raw_value = validation_result.get("extracted_doc_number")
+    if raw_value is None:
+        return None
+
+    if not isinstance(raw_value, str):
+        logger.warning("Invalid extracted_doc_number type: %s", type(raw_value).__name__)
+        return None
+
+    normalized = raw_value.strip()
+    return normalized or None
+
+
+def extract_validation_details_markdown(validation_result: dict) -> str | None:
+    """Return normalized markdown details from validation result, if present."""
+    raw_value = validation_result.get("extracted_details_markdown")
+    if raw_value is None:
+        return None
+
+    if not isinstance(raw_value, str):
+        logger.warning("Invalid extracted_details_markdown type: %s", type(raw_value).__name__)
+        return None
+
+    normalized = raw_value.strip()
+    return normalized or None
 
 
 def _build_system_prompt(document_types: list[dict]) -> str:
@@ -394,6 +434,8 @@ class AIDocumentCategorizer:
         negative_prompt: str,
         product_prompt: str = "",
         require_expiration_date: bool = False,
+        require_doc_number: bool = False,
+        require_details: bool = False,
         model: Optional[str] = None,
         provider_order: Optional[list[str]] = None,
     ) -> dict:
@@ -406,7 +448,10 @@ class AIDocumentCategorizer:
         Returns:
             Dict with 'valid' (bool), 'confidence' (float), 'positive_analysis' (str),
             'negative_issues' (list[str]), 'reasoning' (str), and
-            'extracted_expiration_date' (YYYY-MM-DD string or null).
+            extraction fields:
+            - 'extracted_expiration_date' (YYYY-MM-DD string or null)
+            - 'extracted_doc_number' (string or null)
+            - 'extracted_details_markdown' (markdown string or null)
         """
         if not positive_prompt and not negative_prompt and not product_prompt:
             return {
@@ -416,6 +461,8 @@ class AIDocumentCategorizer:
                 "negative_issues": [],
                 "reasoning": "Validation skipped — no AI validation prompts defined.",
                 "extracted_expiration_date": None,
+                "extracted_doc_number": None,
+                "extracted_details_markdown": None,
             }
 
         validator_model = model or getattr(settings, "DOCUMENT_VALIDATOR_MODEL", None)
@@ -451,13 +498,34 @@ class AIDocumentCategorizer:
             sections.append(
                 "Set 'extracted_expiration_date' to null unless expiration-date extraction is explicitly required."
             )
+        if require_doc_number:
+            sections.append(
+                "MANDATORY DOCUMENT NUMBER EXTRACTION:\n"
+                "- Extract the main document code/number/ID from the document.\n"
+                "- Return only the code value in 'extracted_doc_number'.\n"
+                "- If missing or unreadable, return null.\n"
+                "- Do not add labels, comments, or guessed values."
+            )
+        else:
+            sections.append("Set 'extracted_doc_number' to null unless document-number extraction is required.")
+        if require_details:
+            sections.append(
+                "MANDATORY DETAILS EXTRACTION:\n"
+                "- Extract only the main document data and return it as markdown in 'extracted_details_markdown'.\n"
+                "- Use concise markdown (headings and/or bullet points) containing only document facts.\n"
+                "- Do not add comments, explanations, warnings, or recommendations.\n"
+                "- If no reliable data can be extracted, return null."
+            )
+        else:
+            sections.append("Set 'extracted_details_markdown' to null unless details extraction is required.")
         sections.append(
             "Analyze the uploaded image/document against both sets of criteria.\n"
             "Return valid=true ONLY if the document reasonably meets the positive criteria "
             "AND has no major negative issues.\n"
             "List each specific negative issue found in 'negative_issues' (empty array if none).\n"
             "Provide an overall confidence score (0.0-1.0) and clear reasoning.\n"
-            "Always include 'extracted_expiration_date'."
+            "Always include 'extracted_expiration_date', 'extracted_doc_number', and "
+            "'extracted_details_markdown'."
         )
         system_prompt = "\n".join(sections)
         user_prompt = (

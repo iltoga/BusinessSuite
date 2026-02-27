@@ -84,6 +84,14 @@
   margin-bottom: 0.5rem;
 }
 
+.uploaded-doc-row-expired {
+  background: color-mix(in srgb, var(--destructive) 14%, var(--card));
+}
+
+.uploaded-doc-row-expiring {
+  background: color-mix(in srgb, var(--warning) 18%, var(--card));
+}
+
 @media (max-width: 767px) {
   .application-header-actions > * {
     flex: 1 1 calc(50% - 0.25rem);
@@ -120,6 +128,14 @@
     border-radius: 0.75rem;
     padding: 0.75rem;
     background: hsl(var(--card));
+  }
+
+  .app-uploaded-docs-table tbody tr.uploaded-doc-row-expired {
+    background: color-mix(in srgb, var(--destructive) 14%, var(--card));
+  }
+
+  .app-uploaded-docs-table tbody tr.uploaded-doc-row-expiring {
+    background: color-mix(in srgb, var(--warning) 18%, var(--card));
   }
 
   .app-detail-table tbody tr td {

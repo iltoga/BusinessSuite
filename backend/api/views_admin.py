@@ -15,11 +15,13 @@ from api.permissions import (
     is_superuser_or_admin_group,
 )
 from api.serializers.local_resilience_serializer import LocalResilienceSettingsSerializer
+from api.serializers.ui_settings_serializer import UiSettingsSerializer
 from api.utils.sse_auth import sse_token_auth_required
 from api.views import ApiErrorHandlingMixin
 from core.models.ai_request_usage import AIRequestUsage
-from core.services.local_resilience_service import LocalResilienceService
 from core.services.ai_usage_service import AIUsageFeature
+from core.services.local_resilience_service import LocalResilienceService
+from core.services.ui_settings_service import UiSettingsService
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.staticfiles import finders
@@ -33,8 +35,8 @@ from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serial
 from rest_framework import serializers, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.status import HTTP_400_BAD_REQUEST
 from rest_framework.response import Response
+from rest_framework.status import HTTP_400_BAD_REQUEST
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -595,6 +597,37 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             return Response({"ok": True, "results": results, "settings": settings_info})
         except Exception as e:
             return Response({"ok": False, "message": str(e)}, status=500)
+
+    @extend_schema(
+        summary="Get or update global UI settings",
+        request=OpenApiTypes.OBJECT,
+        responses={200: OpenApiTypes.OBJECT},
+    )
+    @action(detail=False, methods=["get", "patch"], url_path="ui-settings")
+    def ui_settings(self, request):
+        if request.method.lower() == "get":
+            return Response(UiSettingsSerializer(UiSettingsService.get_settings()).data)
+
+        raw_use_overlay_menu = request.data.get("use_overlay_menu", request.data.get("useOverlayMenu"))
+
+        parsed_use_overlay_menu = None
+        if raw_use_overlay_menu is not None:
+            if isinstance(raw_use_overlay_menu, bool):
+                parsed_use_overlay_menu = raw_use_overlay_menu
+            else:
+                normalized = str(raw_use_overlay_menu).strip().lower()
+                if normalized in {"1", "true", "yes", "on"}:
+                    parsed_use_overlay_menu = True
+                elif normalized in {"0", "false", "no", "off"}:
+                    parsed_use_overlay_menu = False
+                else:
+                    return Response({"detail": "Invalid 'useOverlayMenu' value"}, status=HTTP_400_BAD_REQUEST)
+
+        updated = UiSettingsService.update_settings(
+            use_overlay_menu=parsed_use_overlay_menu,
+            updated_by=request.user,
+        )
+        return Response(UiSettingsSerializer(updated).data)
 
     @extend_schema(summary="Repair media file paths", responses={200: OpenApiTypes.OBJECT})
     @action(detail=False, methods=["post"], url_path="media-repair")

@@ -27,6 +27,7 @@ export interface ApplicationProduct {
   requiredDocuments?: string | null;
   optionalDocuments?: string | null;
   documentsMinValidity?: number | null;
+  applicationWindowDays?: number | null;
   validationPrompt?: string | null;
 }
 
@@ -35,6 +36,8 @@ export interface DocumentTypeInfo {
   name: string;
   aiValidation: boolean;
   hasExpirationDate: boolean;
+  isStayPermit?: boolean;
+  expiringThresholdDays?: number | null;
   hasDocNumber: boolean;
   hasDetails: boolean;
   hasFile: boolean;

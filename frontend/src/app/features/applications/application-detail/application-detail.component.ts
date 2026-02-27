@@ -235,6 +235,42 @@ export class ApplicationDetailComponent implements OnInit {
 
     return taskName ? `Next Deadline (${taskName})` : 'Next Deadline: —';
   });
+  readonly stayPermitSubmissionWindow = computed(() => {
+    const app = this.application();
+    if (!app || app.product?.productType !== 'visa') {
+      return null;
+    }
+
+    const configuredStayPermitNames = this.getConfiguredStayPermitDocumentNames(app);
+    if (configuredStayPermitNames.size === 0) {
+      return null;
+    }
+
+    const candidateExpirations = (app.documents ?? [])
+      .filter((document) => Boolean(document.docType?.isStayPermit))
+      .filter((document) => configuredStayPermitNames.has(document.docType?.name ?? ''))
+      .map((document) => this.parseApiDate(document.expirationDate))
+      .filter((value): value is Date => Boolean(value));
+
+    if (candidateExpirations.length === 0) {
+      return null;
+    }
+
+    const sortedExpirations = [...candidateExpirations].sort((a, b) => a.getTime() - b.getTime());
+    const lastDate = sortedExpirations[0]!;
+    const windowDaysRaw = Number(app.product?.applicationWindowDays ?? 0);
+    const windowDays = Number.isFinite(windowDaysRaw) ? Math.max(0, windowDaysRaw) : 0;
+
+    const firstDate = new Date(lastDate.getFullYear(), lastDate.getMonth(), lastDate.getDate());
+    firstDate.setDate(firstDate.getDate() - windowDays);
+
+    return {
+      firstDate,
+      lastDate,
+      firstDateIso: this.formatDateForApi(firstDate),
+      lastDateIso: this.formatDateForApi(lastDate),
+    };
+  });
   readonly customerNotificationOptions = computed<ZardComboboxOption[]>(() => {
     const customer = this.application()?.customer;
     const options: ZardComboboxOption[] = [];
@@ -661,16 +697,28 @@ export class ApplicationDetailComponent implements OnInit {
       typeof result['extracted_expiration_date'] === 'string'
         ? (result['extracted_expiration_date'] as string)
         : null;
+    const extractedDocNumber =
+      typeof result['extracted_doc_number'] === 'string'
+        ? ((result['extracted_doc_number'] as string).trim() || null)
+        : null;
+    const extractedDetails =
+      typeof result['extracted_details_markdown'] === 'string'
+        ? ((result['extracted_details_markdown'] as string).trim() || null)
+        : null;
 
     // Update in localUploadedDocuments
     const docs = this.localUploadedDocuments();
     const idx = docs.findIndex((d) => d.id === documentId);
     if (idx >= 0) {
+      const existingDocNumber = (docs[idx].docNumber ?? '').trim();
+      const existingDetails = (docs[idx].details ?? '').trim();
       const updated = {
         ...docs[idx],
         aiValidationStatus: status,
         aiValidationResult: result,
         expirationDate: docs[idx].expirationDate || extractedExpirationDate || null,
+        docNumber: existingDocNumber ? docs[idx].docNumber : extractedDocNumber,
+        details: existingDetails ? docs[idx].details : extractedDetails,
       };
       const newDocs = [...docs];
       newDocs[idx] = updated;
@@ -683,14 +731,32 @@ export class ApplicationDetailComponent implements OnInit {
       const appDocs = [...(app.documents || [])];
       const appIdx = appDocs.findIndex((d) => d.id === documentId);
       if (appIdx >= 0) {
+        const existingDocNumber = (appDocs[appIdx].docNumber ?? '').trim();
+        const existingDetails = (appDocs[appIdx].details ?? '').trim();
         appDocs[appIdx] = {
           ...appDocs[appIdx],
           aiValidationStatus: status,
           aiValidationResult: result,
           expirationDate: appDocs[appIdx].expirationDate || extractedExpirationDate || null,
+          docNumber: existingDocNumber ? appDocs[appIdx].docNumber : extractedDocNumber,
+          details: existingDetails ? appDocs[appIdx].details : extractedDetails,
         };
         this.application.set({ ...app, documents: appDocs });
       }
+    }
+
+    const selected = this.selectedDocument();
+    if (selected?.id === documentId) {
+      const existingDocNumber = (selected.docNumber ?? '').trim();
+      const existingDetails = (selected.details ?? '').trim();
+      this.selectedDocument.set({
+        ...selected,
+        aiValidationStatus: status,
+        aiValidationResult: result,
+        expirationDate: selected.expirationDate || extractedExpirationDate || null,
+        docNumber: existingDocNumber ? selected.docNumber : extractedDocNumber,
+        details: existingDetails ? selected.details : extractedDetails,
+      });
     }
   }
 
@@ -1276,6 +1342,30 @@ export class ApplicationDetailComponent implements OnInit {
     return `Started after ${days} days`;
   }
 
+  getUploadedDocumentRowClass(doc: ApplicationDocument): Record<string, boolean> {
+    const expirationState = this.getDocumentExpirationState(doc);
+    return {
+      'uploaded-doc-row-expired': expirationState === 'expired',
+      'uploaded-doc-row-expiring': expirationState === 'expiring',
+    };
+  }
+
+  isDocumentAiValid(doc: ApplicationDocument): boolean {
+    return doc.aiValidationStatus === 'valid' && this.getDocumentExpirationState(doc) === 'ok';
+  }
+
+  isDocumentAiInvalid(doc: ApplicationDocument): boolean {
+    return doc.aiValidationStatus === 'invalid' || this.getDocumentExpirationState(doc) !== 'ok';
+  }
+
+  getDocumentValidationTooltip(doc: ApplicationDocument): string {
+    const expirationReason = this.getDocumentExpirationReason(doc);
+    if (expirationReason) {
+      return expirationReason;
+    }
+    return String(doc.aiValidationResult?.['reasoning'] ?? '');
+  }
+
   /**
    * Navigate back to the previous view that opened this page.
    * Strategy:
@@ -1330,6 +1420,20 @@ export class ApplicationDetailComponent implements OnInit {
       this.toast.error(this.dueDateLockedTooltip);
       return;
     }
+
+    if (field === 'docDate') {
+      const submissionWindow = this.stayPermitSubmissionWindow();
+      if (
+        submissionWindow &&
+        !this.isDateInRange(value, submissionWindow.firstDate, submissionWindow.lastDate)
+      ) {
+        this.toast.error(
+          `Application date must be between ${submissionWindow.firstDateIso} and ${submissionWindow.lastDateIso} (inclusive) based on stay permit expiration.`,
+        );
+        return;
+      }
+    }
+
     const iso = this.formatDateForApi(value);
     this.updateApplicationPartial(
       { [field]: iso } as any,
@@ -1656,6 +1760,90 @@ export class ApplicationDetailComponent implements OnInit {
       return current;
     }
     return `${current}\n\n${extracted}`;
+  }
+
+  private getConfiguredStayPermitDocumentNames(application: ApplicationDetail): Set<string> {
+    const parseNames = (value?: string | null): string[] =>
+      (value ?? '')
+        .split(',')
+        .map((item) => item.trim())
+        .filter((item) => item.length > 0);
+
+    return new Set([
+      ...parseNames(application.product?.requiredDocuments),
+      ...parseNames(application.product?.optionalDocuments),
+    ]);
+  }
+
+  private getDocumentExpirationState(doc: ApplicationDocument): 'ok' | 'expiring' | 'expired' {
+    const metadataState = String(doc.aiValidationResult?.['expiration_state'] ?? '').toLowerCase();
+    if (metadataState === 'expired' || metadataState === 'expiring' || metadataState === 'ok') {
+      return metadataState;
+    }
+
+    if (!doc.docType?.hasExpirationDate) {
+      return 'ok';
+    }
+
+    const expirationDate = this.parseApiDate(doc.expirationDate);
+    if (!expirationDate) {
+      return 'ok';
+    }
+
+    const today = new Date();
+    const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    if (expirationDate.getTime() < todayDate.getTime()) {
+      return 'expired';
+    }
+
+    const thresholdRaw = Number(doc.docType?.expiringThresholdDays ?? 0);
+    const thresholdDays = Number.isFinite(thresholdRaw) ? Math.max(0, thresholdRaw) : 0;
+    if (thresholdDays <= 0) {
+      return 'ok';
+    }
+
+    const thresholdDate = new Date(todayDate.getFullYear(), todayDate.getMonth(), todayDate.getDate());
+    thresholdDate.setDate(thresholdDate.getDate() + thresholdDays);
+    if (expirationDate.getTime() <= thresholdDate.getTime()) {
+      return 'expiring';
+    }
+
+    return 'ok';
+  }
+
+  private getDocumentExpirationReason(doc: ApplicationDocument): string {
+    const metadataReason = String(doc.aiValidationResult?.['expiration_reason'] ?? '').trim();
+    if (metadataReason) {
+      return metadataReason;
+    }
+
+    const expirationState = this.getDocumentExpirationState(doc);
+    if (expirationState === 'ok') {
+      return '';
+    }
+
+    const expirationDate = this.parseApiDate(doc.expirationDate);
+    if (!expirationDate) {
+      return '';
+    }
+
+    if (expirationState === 'expired') {
+      return `Document expired on ${this.formatDateForApi(expirationDate)}.`;
+    }
+
+    const thresholdRaw = Number(doc.docType?.expiringThresholdDays ?? 0);
+    const thresholdDays = Number.isFinite(thresholdRaw) ? Math.max(0, thresholdRaw) : 0;
+    return (
+      'Document is expiring soon: expiration date '
+      + `${this.formatDateForApi(expirationDate)} is within ${thresholdDays} days.`
+    );
+  }
+
+  private isDateInRange(value: Date, start: Date, end: Date): boolean {
+    const dateValue = new Date(value.getFullYear(), value.getMonth(), value.getDate()).getTime();
+    const startValue = new Date(start.getFullYear(), start.getMonth(), start.getDate()).getTime();
+    const endValue = new Date(end.getFullYear(), end.getMonth(), end.getDate()).getTime();
+    return dateValue >= startValue && dateValue <= endValue;
   }
 
   private maybePopulateDetailsFromOcr(): void {

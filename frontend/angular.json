@@ -3,7 +3,10 @@
   "version": 1,
   "cli": {
     "packageManager": "bun",
-    "analytics": false
+    "analytics": false,
+    "cache": {
+      "enabled": false
+    }
   },
   "newProjectRoot": "projects",
   "projects": {

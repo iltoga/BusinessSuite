@@ -135,6 +135,22 @@
               />
             </div>
 
+            <div class="md:col-span-6 space-y-2">
+              <label class="text-sm font-medium">{{ applicationWindowDaysLabel() }}</label>
+              <input
+                z-input
+                formControlName="applicationWindowDays"
+                type="number"
+                min="0"
+                [zStatus]="
+                  form.get('applicationWindowDays')?.invalid &&
+                  form.get('applicationWindowDays')?.touched
+                    ? 'error'
+                    : undefined
+                "
+              />
+            </div>
+
             <div class="md:col-span-12 space-y-2">
               <label class="text-sm font-medium">Description</label>
               <textarea

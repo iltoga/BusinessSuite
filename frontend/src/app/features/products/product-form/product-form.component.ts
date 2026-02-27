@@ -88,6 +88,7 @@ export class ProductFormComponent implements OnInit {
       productType: ['visa', Validators.required],
       validity: [null as number | null],
       documentsMinValidity: [null as number | null],
+      applicationWindowDays: [null as number | null, [Validators.min(0)]],
       validationPrompt: [''],
       requiredDocumentIds: [[] as number[]],
       optionalDocumentIds: [[] as number[]],
@@ -105,6 +106,7 @@ export class ProductFormComponent implements OnInit {
     productType: 'Product Type',
     validity: 'Validity',
     documentsMinValidity: 'Documents Min Validity',
+    applicationWindowDays: 'Application Window Days',
     validationPrompt: 'Validation Prompt',
     requiredDocumentIds: 'Required Documents',
     optionalDocumentIds: 'Optional Documents',
@@ -241,6 +243,12 @@ export class ProductFormComponent implements OnInit {
       : 'Documents min validity (days)';
   }
 
+  applicationWindowDaysLabel(): string {
+    return this.form.get('productType')?.value === 'visa'
+      ? 'Application window (days before stay permit expiry)'
+      : 'Application window (days)';
+  }
+
   save(): void {
     if (this.form.invalid || this.hasMultipleLastSteps()) {
       this.form.markAllAsTouched();
@@ -281,19 +289,20 @@ export class ProductFormComponent implements OnInit {
     this.isSaving.set(true);
     const rawValue = this.form.getRawValue();
 
-    // Ensure types match ProductCreateUpdate and map to snake_case for API
     const payload: ProductCreateUpdate = {
+      id: this.product()?.id ?? 0,
       name: rawValue.name ?? '',
       code: rawValue.code ?? '',
       description: rawValue.description ?? '',
-      product_type: rawValue.productType as any,
-      base_price: rawValue.basePrice !== null ? String(rawValue.basePrice) : null,
-      retail_price: rawValue.retailPrice !== null ? String(rawValue.retailPrice) : null,
+      productType: rawValue.productType as ProductCreateUpdate.ProductTypeEnum,
+      basePrice: rawValue.basePrice !== null ? String(rawValue.basePrice) : null,
+      retailPrice: rawValue.retailPrice !== null ? String(rawValue.retailPrice) : undefined,
       validity: rawValue.validity,
-      documents_min_validity: rawValue.documentsMinValidity,
-      validation_prompt: rawValue.validationPrompt ?? '',
-      required_document_ids: rawValue.requiredDocumentIds,
-      optional_document_ids: rawValue.optionalDocumentIds,
+      documentsMinValidity: rawValue.documentsMinValidity,
+      applicationWindowDays: rawValue.applicationWindowDays,
+      validationPrompt: rawValue.validationPrompt ?? '',
+      requiredDocumentIds: rawValue.requiredDocumentIds,
+      optionalDocumentIds: rawValue.optionalDocumentIds,
       tasks: (rawValue.tasks || []).map((t: any) => {
         const task: any = {
           step: t.step,
@@ -301,18 +310,18 @@ export class ProductFormComponent implements OnInit {
           description: t.description,
           cost: t.cost !== null ? String(t.cost) : '0',
           duration: t.duration,
-          add_task_to_calendar: t.addTaskToCalendar,
-          notify_customer: t.notifyCustomer,
-          duration_is_business_days: t.durationIsBusinessDays,
-          notify_days_before: t.notifyDaysBefore,
-          last_step: t.lastStep,
+          addTaskToCalendar: t.addTaskToCalendar,
+          notifyCustomer: t.notifyCustomer,
+          durationIsBusinessDays: t.durationIsBusinessDays,
+          notifyDaysBefore: t.notifyDaysBefore,
+          lastStep: t.lastStep,
         };
         if (t.id != null) {
           task.id = t.id;
         }
         return task;
       }),
-    } as any;
+    };
 
     if (this.isEditMode() && this.product()) {
       this.productsApi.productsUpdate(this.product()!.id, payload).subscribe({
@@ -373,6 +382,7 @@ export class ProductFormComponent implements OnInit {
           productType: product.productType ?? 'visa',
           validity: product.validity ?? null,
           documentsMinValidity: product.documentsMinValidity ?? null,
+          applicationWindowDays: product.applicationWindowDays ?? null,
           validationPrompt: product.validationPrompt ?? '',
           requiredDocumentIds: (product.requiredDocumentTypes ?? []).map(
             (doc: DocumentType) => doc.id,

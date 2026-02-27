@@ -345,6 +345,7 @@ GOOGLE_CALENDAR_ID = os.getenv("GOOGLE_CALENDAR_ID", "primary")
 GOOGLE_TASKLIST_ID = os.getenv("GOOGLE_TASKLIST_ID", "@default")
 GOOGLE_CALENDAR_TODO_COLOR_ID = os.getenv("GOOGLE_CALENDAR_TODO_COLOR_ID", "5")
 GOOGLE_CALENDAR_DONE_COLOR_ID = os.getenv("GOOGLE_CALENDAR_DONE_COLOR_ID", "10")
+GOOGLE_CALENDAR_VISA_WINDOW_COLOR_ID = os.getenv("GOOGLE_CALENDAR_VISA_WINDOW_COLOR_ID", "6")
 
 # Configure project locale path for translations (locale is at project root, one level up from BASE_DIR)
 LOCALE_PATHS = [os.path.join(BASE_DIR, "..", "locale")]

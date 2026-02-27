@@ -8,39 +8,14 @@
   align-items: center;
   gap: 0.5rem;
   border-radius: 0.375rem;
-  border: 1px solid transparent;
+  border: 0 !important;
   padding: 0.45rem 0.625rem;
   color: hsl(var(--foreground) / 0.82);
   text-decoration: none;
   cursor: pointer;
   transition:
     background-color 140ms ease,
-    color 140ms ease,
-    border-color 140ms ease,
-    box-shadow 140ms ease;
-}
-
-.menu-entry:hover,
-.menu-entry:focus-visible {
-  background: hsl(var(--primary) / 0.1);
-  color: hsl(var(--foreground));
-  border-color: hsl(var(--primary) / 0.28);
-  box-shadow: inset 0 0 0 1px hsl(var(--primary) / 0.08);
-  outline: none;
-}
-
-.menu-entry-active {
-  background: hsl(var(--accent));
-  color: hsl(var(--accent-foreground));
-  border-color: hsl(var(--border));
-  box-shadow: inset 3px 0 0 hsl(var(--primary));
-  font-weight: 600;
-}
-
-.menu-entry-active:hover,
-.menu-entry-active:focus-visible {
-  background: hsl(var(--accent));
-  color: hsl(var(--accent-foreground));
+    color 140ms ease;
 }
 
 button.menu-entry:disabled {
@@ -53,6 +28,10 @@ button.menu-entry:disabled {
   color: hsl(var(--foreground));
   padding-inline: 0.5rem;
   app-region: no-drag;
+}
+
+.overlay-chevron {
+  transition: transform 0.18s ease;
 }
 
 .submenu {
@@ -76,13 +55,55 @@ button.menu-entry:disabled {
   height: 0;
 }
 
+/* Desktop overlay flyout submenu */
 .overlay-submenu {
   margin: 0.25rem 0 0;
   padding: 0.25rem;
   min-width: 12rem;
+  border: 1px solid var(--border);
   border-radius: 0.5rem;
-  border: 1px solid hsl(var(--border));
-  background: hsl(var(--card));
+  background: var(--card);
+  backdrop-filter: none;
   position: absolute;
-  z-index: 60;
+  z-index: 240;
+  top: 100%;
+  left: 0;
+  max-height: min(70dvh, 28rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  box-shadow:
+    0 10px 15px -3px rgb(0 0 0 / 0.1),
+    0 4px 6px -4px rgb(0 0 0 / 0.1);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-0.5rem);
+  transition: all 0.2s ease-in-out;
+  display: grid;
+}
+
+.overlay-submenu-nested {
+  top: 0;
+  left: 100%;
+  margin: 0 0 0 0.25rem;
+}
+
+.group:hover > .overlay-submenu,
+.is-expanded > .overlay-submenu {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-0.5rem);
+}
+
+.group:hover > .overlay-submenu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.is-expanded .overlay-chevron {
+  transform: rotate(0deg);
+}
+
+.group:hover .overlay-chevron {
+  transform: rotate(90deg);
 }

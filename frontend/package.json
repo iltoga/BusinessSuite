@@ -7,7 +7,7 @@
     "start:lan": "ng serve --host 0.0.0.0 --port 4200 --ssl false --allowed-hosts --proxy-config proxy.conf.json",
     "start_public": "bun run start:lan",
     "serve:static": "bun server-static.js",
-    "build": "ng build --configuration production",
+    "build": "NG_BUILD=true ng build --configuration production",
     "watch": "ng build --watch --configuration development",
     "test": "vitest run",
     "test:watch": "vitest",

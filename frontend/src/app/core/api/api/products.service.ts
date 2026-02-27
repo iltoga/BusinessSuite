@@ -574,16 +574,17 @@ export class ProductsService extends BaseService {
      * @param requiredDocuments 
      * @param optionalDocuments 
      * @param documentsMinValidity 
+     * @param applicationWindowDays 
      * @param validationPrompt 
      * @param deprecated 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public productsImportStartCreate(id: number, name: string, code: string, createdAt: string, updatedAt: string, createdBy: string, updatedBy: string, description?: string, immigrationId?: string, basePrice?: string, retailPrice?: string, productType?: string, validity?: number, requiredDocuments?: string, optionalDocuments?: string, documentsMinValidity?: number, validationPrompt?: string, deprecated?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<Product>;
-    public productsImportStartCreate(id: number, name: string, code: string, createdAt: string, updatedAt: string, createdBy: string, updatedBy: string, description?: string, immigrationId?: string, basePrice?: string, retailPrice?: string, productType?: string, validity?: number, requiredDocuments?: string, optionalDocuments?: string, documentsMinValidity?: number, validationPrompt?: string, deprecated?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<Product>>;
-    public productsImportStartCreate(id: number, name: string, code: string, createdAt: string, updatedAt: string, createdBy: string, updatedBy: string, description?: string, immigrationId?: string, basePrice?: string, retailPrice?: string, productType?: string, validity?: number, requiredDocuments?: string, optionalDocuments?: string, documentsMinValidity?: number, validationPrompt?: string, deprecated?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<Product>>;
-    public productsImportStartCreate(id: number, name: string, code: string, createdAt: string, updatedAt: string, createdBy: string, updatedBy: string, description?: string, immigrationId?: string, basePrice?: string, retailPrice?: string, productType?: string, validity?: number, requiredDocuments?: string, optionalDocuments?: string, documentsMinValidity?: number, validationPrompt?: string, deprecated?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+    public productsImportStartCreate(id: number, name: string, code: string, createdAt: string, updatedAt: string, createdBy: string, updatedBy: string, description?: string, immigrationId?: string, basePrice?: string, retailPrice?: string, productType?: string, validity?: number, requiredDocuments?: string, optionalDocuments?: string, documentsMinValidity?: number, applicationWindowDays?: number, validationPrompt?: string, deprecated?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<Product>;
+    public productsImportStartCreate(id: number, name: string, code: string, createdAt: string, updatedAt: string, createdBy: string, updatedBy: string, description?: string, immigrationId?: string, basePrice?: string, retailPrice?: string, productType?: string, validity?: number, requiredDocuments?: string, optionalDocuments?: string, documentsMinValidity?: number, applicationWindowDays?: number, validationPrompt?: string, deprecated?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<Product>>;
+    public productsImportStartCreate(id: number, name: string, code: string, createdAt: string, updatedAt: string, createdBy: string, updatedBy: string, description?: string, immigrationId?: string, basePrice?: string, retailPrice?: string, productType?: string, validity?: number, requiredDocuments?: string, optionalDocuments?: string, documentsMinValidity?: number, applicationWindowDays?: number, validationPrompt?: string, deprecated?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<Product>>;
+    public productsImportStartCreate(id: number, name: string, code: string, createdAt: string, updatedAt: string, createdBy: string, updatedBy: string, description?: string, immigrationId?: string, basePrice?: string, retailPrice?: string, productType?: string, validity?: number, requiredDocuments?: string, optionalDocuments?: string, documentsMinValidity?: number, applicationWindowDays?: number, validationPrompt?: string, deprecated?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
         if (id === null || id === undefined) {
             throw new Error('Required parameter id was null or undefined when calling productsImportStartCreate.');
         }
@@ -676,6 +677,9 @@ export class ProductsService extends BaseService {
         }
         if (documentsMinValidity !== undefined) {
             localVarFormParams = localVarFormParams.append('documents_min_validity', <any>documentsMinValidity) as any || localVarFormParams;
+        }
+        if (applicationWindowDays !== undefined) {
+            localVarFormParams = localVarFormParams.append('application_window_days', <any>applicationWindowDays) as any || localVarFormParams;
         }
         if (validationPrompt !== undefined) {
             localVarFormParams = localVarFormParams.append('validation_prompt', <any>validationPrompt) as any || localVarFormParams;

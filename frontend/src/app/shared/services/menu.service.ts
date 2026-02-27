@@ -137,6 +137,32 @@ export class MenuService {
     this.collapsed.update((state) => ({ ...state, [id]: !state[id] }));
   }
 
+  toggleOverlayRootCollapse(id: string): void {
+    const rootCollapsibleIds = this.getRootCollapsibleIds();
+    this.collapsed.update((state) => {
+      const next = { ...state };
+      const willExpand = !!state[id];
+
+      for (const rootId of rootCollapsibleIds) {
+        next[rootId] = true;
+      }
+
+      next[id] = willExpand ? false : true;
+      return next;
+    });
+  }
+
+  collapseOverlayRootMenus(): void {
+    const rootCollapsibleIds = this.getRootCollapsibleIds();
+    this.collapsed.update((state) => {
+      const next = { ...state };
+      for (const rootId of rootCollapsibleIds) {
+        next[rootId] = true;
+      }
+      return next;
+    });
+  }
+
   isVisible(item: MenuItem): boolean {
     return this.resolveCondition(item.visible, true);
   }
@@ -159,6 +185,12 @@ export class MenuService {
         ...item,
         children: item.children ? this.filterVisible(item.children) : undefined,
       }));
+  }
+
+  private getRootCollapsibleIds(): string[] {
+    return this.menuItems()
+      .filter((item) => item.collapsible)
+      .map((item) => item.id);
   }
 
   private canAccessStaffAdminItems(): boolean {

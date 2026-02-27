@@ -57,19 +57,18 @@ except Exception:  # pragma: no cover
     AIRequestUsage = None
 
 try:
-    from .local_resilience import (
-        LocalResilienceSettings,
-        MediaManifestEntry,
-        SyncChangeLog,
-        SyncConflict,
-        SyncCursor,
-    )
+    from .local_resilience import LocalResilienceSettings, MediaManifestEntry, SyncChangeLog, SyncConflict, SyncCursor
 except Exception:  # pragma: no cover
     LocalResilienceSettings = None
     SyncChangeLog = None
     SyncCursor = None
     SyncConflict = None
     MediaManifestEntry = None
+
+try:
+    from .ui_settings import UiSettings
+except Exception:  # pragma: no cover
+    UiSettings = None
 
 __all__ = [
     "CountryCode",
@@ -88,4 +87,5 @@ __all__ = [
     "SyncCursor",
     "SyncConflict",
     "MediaManifestEntry",
+    "UiSettings",
 ]

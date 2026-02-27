@@ -1,5 +1,5 @@
 <div class="flex h-dvh min-h-0 bg-background text-foreground overflow-hidden">
-  @if (!isOverlayMode()) {
+  @if (!useOverlayMenu()) {
     <aside
       [class.-translate-x-full]="!sidebarOpen()"
       [ngClass]="
@@ -44,14 +44,16 @@
     ></div>
   }
 
-  <div class="flex min-w-0 flex-1 flex-col" [class.pt-9]="isOverlayMode()">
-    @if (isOverlayMode()) {
-      <app-menu-container />
-    }
-
-    <header class="flex h-16 items-center justify-between border-b bg-card px-3 sm:px-6">
-      <div class="flex items-center gap-3">
-        @if (!isOverlayMode()) {
+  <div class="flex min-w-0 flex-1 flex-col" [class.pt-14]="useOverlayMenu()">
+    @if (useOverlayMenu()) {
+      <app-menu-container>
+        <div menu-right-actions class="flex items-center gap-3">
+          <ng-container [ngTemplateOutlet]="topBarActions" />
+        </div>
+      </app-menu-container>
+    } @else {
+      <header class="flex h-16 items-center justify-between border-b bg-card px-3 sm:px-6">
+        <div class="flex items-center gap-3">
           <button
             type="button"
             class="mr-1 rounded p-2 hover:bg-accent sm:mr-2"
@@ -61,121 +63,120 @@
           >
             <z-icon [zType]="sidebarOpen() ? 'chevron-left' : 'panel-left'" />
           </button>
-        }
-        <div class="hidden text-sm font-medium sm:block">Welcome back</div>
-      </div>
+        </div>
 
-      <div class="flex items-center gap-3">
-        <app-theme-switcher></app-theme-switcher>
-
-        <button
-          z-dropdown
-          [zDropdownMenu]="userMenu"
-          z-button
-          variant="ghost"
-          class="relative h-9 w-9 p-0 hover:bg-accent rounded-full overflow-visible"
-          aria-label="Open user menu"
-          aria-haspopup="menu"
-        >
-          <z-avatar class="h-full w-full" [zSrc]="userAvatar()" [zFallback]="userInitials()" />
-          @if (reminderUnreadCount() > 0) {
-            <span
-              class="pointer-events-none absolute left-0 top-0 z-10 inline-flex min-w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground"
-            >
-              {{ reminderUnreadCountLabel() }}
-            </span>
-          }
-        </button>
-
-        <z-dropdown-menu-content #userMenu class="min-w-56 max-w-sm">
-          <div class="px-2 py-1.5 border-b mb-1">
-            <p class="text-sm font-semibold">{{ userFullName() }}</p>
-            <p class="text-xs text-muted-foreground break-all">{{ userEmail() }}</p>
-          </div>
-
-          <div class="px-1 py-1">
-            <div class="flex items-center gap-1">
-              <button
-                type="button"
-                z-dropdown-menu-item
-                class="min-w-0 flex-1 justify-between"
-                (click)="openReminderInbox()"
-              >
-                <span class="flex min-w-0 items-center">
-                  <z-icon zType="bell" class="mr-2 h-4 w-4" />
-                  <span class="truncate">Daily reminders</span>
-                </span>
-                @if (reminderUnreadCount() > 0) {
-                  <span
-                    class="inline-flex min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground"
-                  >
-                    {{ reminderUnreadCountLabel() }}
-                  </span>
-                }
-              </button>
-
-              <button
-                type="button"
-                z-dropdown-menu-item
-                class="h-8 px-2 text-[11px]"
-                [disabled]="!hasUnreadReminderItems()"
-                (click)="markAllMenuRemindersRead()"
-              >
-                Mark all read
-              </button>
-            </div>
-
-            @if (reminderInboxLoading()) {
-              <div class="px-2 py-2 text-xs text-muted-foreground">Loading today reminders...</div>
-            } @else if (unreadReminderItems().length === 0) {
-              <div class="px-2 py-2 text-xs text-muted-foreground">No unread reminders.</div>
-            } @else {
-              <div class="max-h-60 overflow-y-auto overflow-x-hidden">
-                @for (item of unreadReminderItems(); track item.id) {
-                  <button
-                    type="button"
-                    z-dropdown-menu-item
-                    class="h-auto w-full max-w-full items-start gap-2 py-2"
-                    (click)="openReminder(item)"
-                  >
-                    <span
-                      class="mt-1 inline-block h-2 w-2 rounded-full bg-destructive"
-                      [class.opacity-0]="!!item.readAt"
-                    ></span>
-                    <span class="flex min-w-0 max-w-full flex-1 flex-col overflow-hidden text-left">
-                      <span class="block max-w-full truncate text-xs font-medium" [title]="item.content">{{
-                        item.content
-                      }}</span>
-                      <span class="text-[11px] text-muted-foreground">
-                        {{ item.reminderTime | slice: 0 : 5 }} ({{ item.timezone }})
-                      </span>
-                    </span>
-                  </button>
-                }
-              </div>
-            }
-          </div>
-
-          <div class="my-1 border-t"></div>
-
-          <a routerLink="/profile" z-dropdown-menu-item>
-            <z-icon zType="user" class="mr-2 h-4 w-4" />
-            <span>Profile</span>
-          </a>
-          <button
-            (click)="logout()"
-            z-dropdown-menu-item
-            class="text-destructive focus:text-destructive"
-          >
-            <z-icon zType="log-out" class="mr-2 h-4 w-4" />
-            <span>Logout</span>
-          </button>
-        </z-dropdown-menu-content>
-      </div>
-    </header>
+        <div class="flex items-center gap-3">
+          <ng-container [ngTemplateOutlet]="topBarActions" />
+        </div>
+      </header>
+    }
 
     <main class="flex-1 overflow-y-auto p-3 sm:p-6">
       <router-outlet></router-outlet>
     </main>
   </div>
 </div>
+
+<ng-template #topBarActions>
+  <app-theme-switcher></app-theme-switcher>
+
+  <button
+    z-dropdown
+    [zDropdownMenu]="userMenu"
+    z-button
+    variant="ghost"
+    class="relative h-9 w-9 p-0 hover:bg-accent rounded-full overflow-visible"
+    aria-label="Open user menu"
+    aria-haspopup="menu"
+  >
+    <z-avatar class="h-full w-full" [zSrc]="userAvatar()" [zFallback]="userInitials()" />
+    @if (reminderUnreadCount() > 0) {
+      <span
+        class="pointer-events-none absolute left-0 top-0 z-10 inline-flex min-w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground"
+      >
+        {{ reminderUnreadCountLabel() }}
+      </span>
+    }
+  </button>
+
+  <z-dropdown-menu-content #userMenu class="min-w-56 max-w-sm">
+    <div class="px-2 py-1.5 border-b mb-1">
+      <p class="text-sm font-semibold">{{ userFullName() }}</p>
+      <p class="text-xs text-muted-foreground break-all">{{ userEmail() }}</p>
+    </div>
+
+    <div class="px-1 py-1">
+      <div class="flex items-center gap-1">
+        <button
+          type="button"
+          z-dropdown-menu-item
+          class="min-w-0 flex-1 justify-between"
+          (click)="openReminderInbox()"
+        >
+          <span class="flex min-w-0 items-center">
+            <z-icon zType="bell" class="mr-2 h-4 w-4" />
+            <span class="truncate">Daily reminders</span>
+          </span>
+          @if (reminderUnreadCount() > 0) {
+            <span
+              class="inline-flex min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground"
+            >
+              {{ reminderUnreadCountLabel() }}
+            </span>
+          }
+        </button>
+
+        <button
+          type="button"
+          z-dropdown-menu-item
+          class="h-8 px-2 text-[11px]"
+          [disabled]="!hasUnreadReminderItems()"
+          (click)="markAllMenuRemindersRead()"
+        >
+          Mark all read
+        </button>
+      </div>
+
+      @if (reminderInboxLoading()) {
+        <div class="px-2 py-2 text-xs text-muted-foreground">Loading today reminders...</div>
+      } @else if (unreadReminderItems().length === 0) {
+        <div class="px-2 py-2 text-xs text-muted-foreground">No unread reminders.</div>
+      } @else {
+        <div class="max-h-60 overflow-y-auto overflow-x-hidden">
+          @for (item of unreadReminderItems(); track item.id) {
+            <button
+              type="button"
+              z-dropdown-menu-item
+              class="h-auto w-full max-w-full items-start gap-2 py-2"
+              (click)="openReminder(item)"
+            >
+              <span
+                class="mt-1 inline-block h-2 w-2 rounded-full bg-destructive"
+                [class.opacity-0]="!!item.readAt"
+              ></span>
+              <span class="flex min-w-0 max-w-full flex-1 flex-col overflow-hidden text-left">
+                <span class="block max-w-full truncate text-xs font-medium" [title]="item.content">
+                  {{ item.content }}
+                </span>
+                <span class="text-[11px] text-muted-foreground">
+                  {{ item.reminderTime | slice: 0 : 5 }} ({{ item.timezone }})
+                </span>
+              </span>
+            </button>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="my-1 border-t"></div>
+
+    <a routerLink="/profile" z-dropdown-menu-item>
+      <z-icon zType="user" class="mr-2 h-4 w-4" />
+      <span>Profile</span>
+    </a>
+    <button (click)="logout()" z-dropdown-menu-item class="text-destructive focus:text-destructive">
+      <z-icon zType="log-out" class="mr-2 h-4 w-4" />
+      <span>Logout</span>
+    </button>
+  </z-dropdown-menu-content>
+</ng-template>

@@ -19,6 +19,7 @@ export interface AppConfig {
   fcmWebAuthDomain?: string;
   fcmWebStorageBucket?: string;
   fcmWebMeasurementId?: string;
+  useOverlayMenu?: boolean;
 }
 
 export const DEFAULT_APP_CONFIG: AppConfig = {
@@ -38,4 +39,5 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
   fcmWebAuthDomain: '',
   fcmWebStorageBucket: '',
   fcmWebMeasurementId: '',
+  useOverlayMenu: false,
 };

@@ -83,6 +83,16 @@ interface LocalResilienceSettingsResponse {
   } | null;
 }
 
+interface UiSettingsResponse {
+  useOverlayMenu: boolean;
+  updatedAt?: string;
+  updatedBy?: {
+    id: number;
+    username?: string | null;
+    email?: string | null;
+  } | null;
+}
+
 @Component({
   selector: 'app-server-management',
   standalone: true,
@@ -111,6 +121,9 @@ export class ServerManagementComponent implements OnInit {
   readonly localResilience = signal<LocalResilienceSettingsResponse | null>(null);
   readonly localResilienceLoading = signal(false);
   readonly localResilienceSaving = signal(false);
+  readonly uiSettings = signal<UiSettingsResponse | null>(null);
+  readonly uiSettingsLoading = signal(false);
+  readonly uiSettingsSaving = signal(false);
   readonly isDesktop = signal(false);
   readonly desktopRuntimeStatus = signal<DesktopRuntimeStatus | null>(null);
   readonly desktopSyncStatus = signal<DesktopSyncStatus | null>(null);
@@ -128,12 +141,11 @@ export class ServerManagementComponent implements OnInit {
   );
 
   ngOnInit(): void {
-    this.isDesktop.set(
-      isPlatformBrowser(this.platformId) && this.desktopBridge.isDesktop(),
-    );
+    this.isDesktop.set(isPlatformBrowser(this.platformId) && this.desktopBridge.isDesktop());
     this.loadCacheStatus();
     this.loadCacheHealth();
     this.loadLocalResilience();
+    this.loadUiSettings();
     void this.loadDesktopResilienceState();
   }
 
@@ -260,7 +272,9 @@ export class ServerManagementComponent implements OnInit {
       .subscribe((response) => {
         const normalized = this.normalizeLocalResilience(response);
         this.localResilience.set(normalized);
-        this.toast.success(normalized.enabled ? 'Local resilience enabled' : 'Local resilience disabled');
+        this.toast.success(
+          normalized.enabled ? 'Local resilience enabled' : 'Local resilience disabled',
+        );
       });
   }
 
@@ -383,6 +397,51 @@ export class ServerManagementComponent implements OnInit {
     }
   }
 
+  loadUiSettings(): void {
+    this.uiSettingsLoading.set(true);
+    this.http
+      .get<UiSettingsResponse>('/api/server-management/ui-settings/')
+      .pipe(
+        catchError(() => {
+          this.toast.error('Failed to load UI settings');
+          return EMPTY;
+        }),
+        finalize(() => this.uiSettingsLoading.set(false)),
+      )
+      .subscribe((response: any) => {
+        this.uiSettings.set(this.normalizeUiSettings(response));
+      });
+  }
+
+  toggleOverlayMenuPreference(): void {
+    const current = this.uiSettings();
+    if (!current || this.uiSettingsSaving()) {
+      return;
+    }
+
+    this.uiSettingsSaving.set(true);
+    this.http
+      .patch<UiSettingsResponse>('/api/server-management/ui-settings/', {
+        useOverlayMenu: !current.useOverlayMenu,
+      })
+      .pipe(
+        catchError(() => {
+          this.toast.error('Failed to update menu mode');
+          return EMPTY;
+        }),
+        finalize(() => this.uiSettingsSaving.set(false)),
+      )
+      .subscribe((response: any) => {
+        const normalized = this.normalizeUiSettings(response);
+        this.uiSettings.set(normalized);
+        this.toast.success(
+          normalized.useOverlayMenu
+            ? 'Overlay top menu enabled for web + PWA'
+            : 'Sidebar menu restored for web (PWA auto-overlay remains available)',
+        );
+      });
+  }
+
   loadCacheHealth(showToast = false): void {
     this.cacheHealthLoading.set(true);
     this.http
@@ -497,7 +556,9 @@ export class ServerManagementComponent implements OnInit {
   }
 
   getLocalDesktopModeLabel(mode: string | null | undefined): string {
-    const normalized = String(mode || '').trim().toLowerCase();
+    const normalized = String(mode || '')
+      .trim()
+      .toLowerCase();
     if (normalized === 'localprimary' || normalized === 'local_primary') {
       return 'Local Primary';
     }
@@ -513,6 +574,14 @@ export class ServerManagementComponent implements OnInit {
       encryptionRequired: Boolean(raw?.encryptionRequired ?? raw?.encryption_required ?? true),
       desktopMode: String(raw?.desktopMode ?? raw?.desktop_mode ?? 'localPrimary'),
       vaultEpoch: Number(raw?.vaultEpoch ?? raw?.vault_epoch ?? 1),
+      updatedAt: raw?.updatedAt ?? raw?.updated_at,
+      updatedBy: raw?.updatedBy ?? raw?.updated_by ?? null,
+    };
+  }
+
+  private normalizeUiSettings(raw: any): UiSettingsResponse {
+    return {
+      useOverlayMenu: Boolean(raw?.useOverlayMenu ?? raw?.use_overlay_menu ?? false),
       updatedAt: raw?.updatedAt ?? raw?.updated_at,
       updatedBy: raw?.updatedBy ?? raw?.updated_by ?? null,
     };

@@ -2,6 +2,7 @@ import os
 from logging import getLogger
 
 from core.utils.helpers import whitespaces_to_underscores
+from customer_applications.services.document_expiration_state_service import DocumentExpirationStateService
 from django.conf import settings
 from django.core.files.storage import default_storage
 from django.db import models, transaction
@@ -95,11 +96,8 @@ class Document(models.Model):
 
     @property
     def is_expiring(self):
-        """Returns True if the document is expiring within its minimum validity period."""
-        if self.expiration_date:
-            min_validity = self.doc_application.product.documents_min_validity
-            return bool(self.expiration_date < timezone.now().date() + timezone.timedelta(days=min_validity))
-        return False
+        """Returns True if the document expiration is within the configured threshold window."""
+        return DocumentExpirationStateService().evaluate(self).state == DocumentExpirationStateService.STATE_EXPIRING
 
     @property
     def updated_or_created_at(self):

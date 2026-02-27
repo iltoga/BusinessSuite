@@ -167,6 +167,12 @@ export class ProductDetailComponent implements OnInit {
     return type === 'visa' ? 'Passport min validity (days)' : 'Docs min validity (days)';
   }
 
+  applicationWindowDaysLabel(type?: string | null): string {
+    return type === 'visa'
+      ? 'Application window (days before stay permit expiry)'
+      : 'Application window (days)';
+  }
+
   retailPriceValue(): string | null {
     const product = this.product();
     return product?.retailPrice ?? product?.basePrice ?? null;

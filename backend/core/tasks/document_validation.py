@@ -9,14 +9,50 @@ progress to the frontend.
 
 import traceback as tb_module
 
-from core.services.ai_document_categorizer import AIDocumentCategorizer, extract_validation_expiration_date
+from core.services.ai_document_categorizer import (
+    AIDocumentCategorizer,
+    extract_validation_details_markdown,
+    extract_validation_doc_number,
+    extract_validation_expiration_date,
+)
 from core.services.logger_service import Logger
 from core.tasks.idempotency import acquire_task_lock, build_task_lock_key, release_task_lock
+from customer_applications.services.document_expiration_state_service import DocumentExpirationStateService
 from customer_applications.models import Document
 from django.core.files.storage import default_storage
 from huey.contrib.djhuey import db_task
 
 logger = Logger.get_logger(__name__)
+
+
+def _apply_expiration_metadata(document: Document, validation: dict) -> tuple[dict, bool]:
+    expiration_state = DocumentExpirationStateService().evaluate(document)
+    validation["expiration_state"] = expiration_state.state
+    validation["expiration_reason"] = expiration_state.reason
+    validation["expiration_threshold_days"] = expiration_state.threshold_days
+
+    if not expiration_state.is_invalid:
+        return validation, bool(validation.get("valid", False))
+
+    issues_raw = validation.get("negative_issues")
+    if isinstance(issues_raw, list):
+        issues = [str(issue).strip() for issue in issues_raw if str(issue).strip()]
+    elif issues_raw:
+        issues = [str(issues_raw).strip()]
+    else:
+        issues = []
+
+    if expiration_state.reason and expiration_state.reason not in issues:
+        issues.append(expiration_state.reason)
+
+    reasoning = str(validation.get("reasoning", "") or "").strip()
+    if expiration_state.reason and expiration_state.reason not in reasoning:
+        reasoning = f"{reasoning} {expiration_state.reason}".strip() if reasoning else expiration_state.reason
+
+    validation["negative_issues"] = issues
+    validation["reasoning"] = reasoning
+    validation["valid"] = False
+    return validation, False
 
 
 @db_task()
@@ -54,15 +90,21 @@ def run_document_validation(document_id: int) -> None:
         product_prompt = product.validation_prompt if product else ""
 
         if not positive_prompt and not negative_prompt and not product_prompt:
-            # Nothing to validate against — mark as skipped/valid
-            document.ai_validation_status = Document.AI_VALIDATION_VALID
-            document.ai_validation_result = {
+            validation = {
                 "valid": True,
                 "confidence": 1.0,
                 "positive_analysis": "No validation rules configured.",
                 "negative_issues": [],
                 "reasoning": "Validation skipped — no AI validation prompts defined.",
+                "extracted_expiration_date": None,
+                "extracted_doc_number": None,
+                "extracted_details_markdown": None,
             }
+            validation, is_valid = _apply_expiration_metadata(document, validation)
+            document.ai_validation_status = (
+                Document.AI_VALIDATION_VALID if is_valid else Document.AI_VALIDATION_INVALID
+            )
+            document.ai_validation_result = validation
             document.save(update_fields=["ai_validation_status", "ai_validation_result", "updated_at"])
             return
 
@@ -75,6 +117,9 @@ def run_document_validation(document_id: int) -> None:
                 "positive_analysis": "",
                 "negative_issues": ["Document has no file attached."],
                 "reasoning": "Cannot validate a document without a file.",
+                "extracted_expiration_date": None,
+                "extracted_doc_number": None,
+                "extracted_details_markdown": None,
             }
             document.save(update_fields=["ai_validation_status", "ai_validation_result", "updated_at"])
             return
@@ -91,6 +136,9 @@ def run_document_validation(document_id: int) -> None:
                 "positive_analysis": "",
                 "negative_issues": [f"Could not read file: {exc}"],
                 "reasoning": "File read error.",
+                "extracted_expiration_date": None,
+                "extracted_doc_number": None,
+                "extracted_details_markdown": None,
             }
             document.save(update_fields=["ai_validation_status", "ai_validation_result", "updated_at"])
             return
@@ -106,20 +154,33 @@ def run_document_validation(document_id: int) -> None:
                 negative_prompt=negative_prompt,
                 product_prompt=product_prompt,
                 require_expiration_date=bool(doc_type.has_expiration_date),
+                require_doc_number=bool(doc_type.has_doc_number),
+                require_details=bool(doc_type.has_details),
             )
 
-            is_valid = validation.get("valid", False)
-            document.ai_validation_status = Document.AI_VALIDATION_VALID if is_valid else Document.AI_VALIDATION_INVALID
-            document.ai_validation_result = validation
-            update_fields = ["ai_validation_status", "ai_validation_result", "updated_at"]
+            update_fields = {"updated_at"}
 
             extracted_expiration_date = extract_validation_expiration_date(validation)
             if doc_type.has_expiration_date and extracted_expiration_date and not document.expiration_date:
                 document.expiration_date = extracted_expiration_date
-                update_fields.append("expiration_date")
-                update_fields.append("completed")
+                update_fields.update({"expiration_date", "completed"})
 
-            document.save(update_fields=update_fields)
+            extracted_doc_number = extract_validation_doc_number(validation)
+            if doc_type.has_doc_number and extracted_doc_number and not (document.doc_number or "").strip():
+                document.doc_number = extracted_doc_number
+                update_fields.update({"doc_number", "completed"})
+
+            extracted_details_markdown = extract_validation_details_markdown(validation)
+            if doc_type.has_details and extracted_details_markdown and not (document.details or "").strip():
+                document.details = extracted_details_markdown
+                update_fields.update({"details", "completed"})
+
+            validation, is_valid = _apply_expiration_metadata(document, validation)
+            document.ai_validation_status = Document.AI_VALIDATION_VALID if is_valid else Document.AI_VALIDATION_INVALID
+            document.ai_validation_result = validation
+            update_fields.update({"ai_validation_status", "ai_validation_result"})
+
+            document.save(update_fields=list(update_fields))
 
             logger.info(
                 "Document %s validated: valid=%s (confidence=%.2f)",
@@ -138,6 +199,9 @@ def run_document_validation(document_id: int) -> None:
                 "positive_analysis": "",
                 "negative_issues": [f"Validation error: {exc}"],
                 "reasoning": f"Validation could not be completed: {exc}",
+                "extracted_expiration_date": None,
+                "extracted_doc_number": None,
+                "extracted_details_markdown": None,
             }
             document.save(update_fields=["ai_validation_status", "ai_validation_result", "updated_at"])
 

@@ -16,6 +16,8 @@ export interface DocumentType {
     deprecated?: boolean;
     aiValidation?: boolean;
     hasExpirationDate?: boolean;
+    expiringThresholdDays?: number | null;
+    isStayPermit?: boolean;
     hasDocNumber?: boolean;
     hasFile?: boolean;
     hasDetails?: boolean;

@@ -4,6 +4,10 @@ from api.serializers.customer_serializer import CustomerSerializer
 from api.serializers.doc_workflow_serializer import DocWorkflowSerializer, TaskSerializer
 from api.serializers.document_serializer import DocumentSerializer
 from api.serializers.product_serializer import ProductSerializer
+from customer_applications.services.stay_permit_submission_window_service import (
+    StayPermitSubmissionWindowService,
+)
+from django.core.exceptions import ValidationError as DjangoValidationError
 from customer_applications.models import DocApplication
 from invoices.models.invoice import InvoiceApplication
 from rest_framework import serializers
@@ -327,6 +331,17 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
 
         if product and getattr(product, "deprecated", False):
             raise serializers.ValidationError({"product": "Deprecated products cannot be used for applications."})
+
+        try:
+            StayPermitSubmissionWindowService().validate_doc_date(
+                product=product,
+                doc_date=doc_date,
+                application=self.instance,
+            )
+        except DjangoValidationError as exc:
+            if getattr(exc, "message_dict", None):
+                raise serializers.ValidationError(exc.message_dict)
+            raise serializers.ValidationError({"doc_date": exc.messages})
 
         if notify_customer_too:
             if not notify_customer_channel:

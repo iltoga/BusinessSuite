@@ -25,6 +25,7 @@ export interface Product {
     requiredDocuments?: string;
     optionalDocuments?: string;
     documentsMinValidity?: number | null;
+    applicationWindowDays?: number | null;
     validationPrompt?: string;
     deprecated?: boolean;
     readonly createdAt: string;
