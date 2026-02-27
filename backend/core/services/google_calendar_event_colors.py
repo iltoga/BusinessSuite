@@ -28,6 +28,11 @@ class GoogleCalendarEventColors:
         return cls.validate_color_id(configured, field_name="GOOGLE_CALENDAR_DONE_COLOR_ID")
 
     @classmethod
+    def visa_window_color_id(cls):
+        configured = getattr(settings, "GOOGLE_CALENDAR_VISA_WINDOW_COLOR_ID", "6")
+        return cls.validate_color_id(configured, field_name="GOOGLE_CALENDAR_VISA_WINDOW_COLOR_ID")
+
+    @classmethod
     def color_for_done_state(cls, done: bool):
         return cls.done_color_id() if done else cls.todo_color_id()
 

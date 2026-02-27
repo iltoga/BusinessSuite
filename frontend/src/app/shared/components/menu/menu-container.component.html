@@ -1,5 +1,7 @@
-@if (isOverlayMode()) {
-  <app-overlay-menu [items]="menuItems()" />
+@if (useOverlayMenu()) {
+  <app-overlay-menu [items]="menuItems()">
+    <ng-content />
+  </app-overlay-menu>
 } @else {
   <app-sidebar-menu [items]="menuItems()" />
 }

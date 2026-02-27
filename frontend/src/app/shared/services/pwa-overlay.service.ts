@@ -34,7 +34,9 @@ export class PwaOverlayService {
     window
       .matchMedia('(display-mode: window-controls-overlay)')
       .addEventListener('change', this.syncOverlayMode);
-    window.matchMedia('(display-mode: standalone)').addEventListener('change', this.syncOverlayMode);
+    window
+      .matchMedia('(display-mode: standalone)')
+      .addEventListener('change', this.syncOverlayMode);
   }
 
   private readonly syncOverlayMode = () => {
@@ -45,9 +47,6 @@ export class PwaOverlayService {
 
     const overlayMedia = window.matchMedia('(display-mode: window-controls-overlay)').matches;
     const standaloneMedia = window.matchMedia('(display-mode: standalone)').matches;
-    const displayModeInstalled = overlayMedia || standaloneMedia;
-    const overlayVisible = !!navigator.windowControlsOverlay?.visible;
-
-    this.overlayModeSubject.next(displayModeInstalled && !!navigator.windowControlsOverlay && overlayVisible);
+    this.overlayModeSubject.next(overlayMedia || standaloneMedia);
   };
 }

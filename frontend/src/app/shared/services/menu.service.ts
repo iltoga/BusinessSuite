@@ -17,17 +17,24 @@ export class MenuService {
     { id: 'dashboard', label: 'Dashboard', icon: 'layout-dashboard', route: '/dashboard' },
     { id: 'customers', label: 'Customers', icon: 'users', route: '/customers' },
     { id: 'applications', label: 'Applications', icon: 'folder', route: '/applications' },
-    {
-      id: 'products',
-      label: 'Products',
-      icon: 'archive',
-      route: '/products',
-      visible: () => this.authService.isAdminOrManager(),
-    },
     { id: 'invoices', label: 'Invoices', icon: 'file-text', route: '/invoices' },
     {
+      id: 'letters',
+      label: 'Letters',
+      icon: 'file-text',
+      collapsible: true,
+      accessibility: { ariaHasPopup: 'menu' },
+      children: [
+        {
+          id: 'letters-surat-permohonan',
+          label: 'Surat Permohonan',
+          route: '/letters/surat-permohonan',
+        },
+      ],
+    },
+    {
       id: 'utilities',
-      label: 'UTILS',
+      label: 'Utils',
       icon: 'sparkles',
       collapsible: true,
       accessibility: { ariaHasPopup: 'menu' },
@@ -63,20 +70,6 @@ export class MenuService {
         },
         { id: 'reports-product-demand', label: 'Product Demand', route: '/reports/product-demand' },
         { id: 'reports-ai-costing', label: 'AI Costing', route: '/reports/ai-costing' },
-      ],
-    },
-    {
-      id: 'letters',
-      label: 'Letters',
-      icon: 'file-text',
-      collapsible: true,
-      accessibility: { ariaHasPopup: 'menu' },
-      children: [
-        {
-          id: 'letters-surat-permohonan',
-          label: 'Surat Permohonan',
-          route: '/letters/surat-permohonan',
-        },
       ],
     },
     {
@@ -137,6 +130,32 @@ export class MenuService {
     this.collapsed.update((state) => ({ ...state, [id]: !state[id] }));
   }
 
+  toggleOverlayRootCollapse(id: string): void {
+    const rootCollapsibleIds = this.getRootCollapsibleIds();
+    this.collapsed.update((state) => {
+      const next = { ...state };
+      const willExpand = !!state[id];
+
+      for (const rootId of rootCollapsibleIds) {
+        next[rootId] = true;
+      }
+
+      next[id] = willExpand ? false : true;
+      return next;
+    });
+  }
+
+  collapseOverlayRootMenus(): void {
+    const rootCollapsibleIds = this.getRootCollapsibleIds();
+    this.collapsed.update((state) => {
+      const next = { ...state };
+      for (const rootId of rootCollapsibleIds) {
+        next[rootId] = true;
+      }
+      return next;
+    });
+  }
+
   isVisible(item: MenuItem): boolean {
     return this.resolveCondition(item.visible, true);
   }
@@ -159,6 +178,12 @@ export class MenuService {
         ...item,
         children: item.children ? this.filterVisible(item.children) : undefined,
       }));
+  }
+
+  private getRootCollapsibleIds(): string[] {
+    return this.menuItems()
+      .filter((item) => item.collapsible)
+      .map((item) => item.id);
   }
 
   private canAccessStaffAdminItems(): boolean {

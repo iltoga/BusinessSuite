@@ -5,6 +5,9 @@ from core.utils.dateutils import calculate_due_date
 from customer_applications.models import DocApplication
 from customer_applications.models.doc_workflow import DocWorkflow
 from customer_applications.models.document import Document
+from customer_applications.services.stay_permit_submission_window_service import (
+    StayPermitSubmissionWindowService,
+)
 from customers.models import Customer
 from products.models import Product
 from products.models.document_type import DocumentType
@@ -24,6 +27,12 @@ def create_quick_product(*, validated_data, user=None) -> Product:
 
 
 def create_quick_customer_application(*, customer, product, doc_date, notes, created_by) -> DocApplication:
+    StayPermitSubmissionWindowService().validate_doc_date(
+        product=product,
+        doc_date=doc_date,
+        application=None,
+    )
+
     with transaction.atomic():
         doc_app = DocApplication.objects.create(
             customer=customer,

@@ -4217,6 +4217,57 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/server-management/ui-settings/:
+    get:
+      operationId: serverManagementUiSettingsRetrieve
+      summary: Get or update global UI settings
+      tags:
+      - server-management
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+    patch:
+      operationId: serverManagementUiSettingsPartialUpdate
+      summary: Get or update global UI settings
+      tags:
+      - server-management
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+          '*/*':
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/sync/changes/pull/:
     get:
       operationId: syncChangesPullRetrieve
@@ -8852,6 +8903,57 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/v1/server-management/ui-settings/:
+    get:
+      operationId: v1ServerManagementUiSettingsRetrieve
+      summary: Get or update global UI settings
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+    patch:
+      operationId: v1ServerManagementUiSettingsPartialUpdate
+      summary: Get or update global UI settings
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+          '*/*':
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/sync/changes/pull/:
     get:
       operationId: v1SyncChangesPullRetrieve
@@ -11140,6 +11242,13 @@ components:
           type: boolean
         has_expiration_date:
           type: boolean
+        expiring_threshold_days:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        is_stay_permit:
+          type: boolean
         has_doc_number:
           type: boolean
         has_file:
@@ -11985,6 +12094,11 @@ components:
           maximum: 2147483647
           minimum: 0
           nullable: true
+        application_window_days:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
         validation_prompt:
           type: string
         deprecated:
@@ -12061,6 +12175,11 @@ components:
           maximum: 2147483647
           minimum: 0
           nullable: true
+        application_window_days:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
         validation_prompt:
           type: string
         deprecated:
@@ -12131,6 +12250,11 @@ components:
           type: string
           maxLength: 1024
         documents_min_validity:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          nullable: true
+        application_window_days:
           type: integer
           maximum: 2147483647
           minimum: 0

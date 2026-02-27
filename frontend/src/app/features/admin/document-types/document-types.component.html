@@ -97,6 +97,10 @@
             <span class="text-sm">Has Expiration Date</span>
           </label>
           <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" formControlName="isStayPermit" class="rounded" />
+            <span class="text-sm">Is Stay Permit</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" formControlName="hasDocNumber" class="rounded" />
             <span class="text-sm">Has Document Number</span>
           </label>
@@ -113,6 +117,26 @@
             <span class="text-sm">In Required Documents</span>
           </label>
         </div>
+
+        @if (documentTypeForm.get('hasExpirationDate')?.value) {
+          <div class="space-y-2">
+            <label class="text-sm font-medium" for="expiringThresholdDays"
+              >Expiring Threshold Days</label
+            >
+            <input
+              z-input
+              id="expiringThresholdDays"
+              formControlName="expiringThresholdDays"
+              type="number"
+              min="0"
+              placeholder="0"
+              class="max-w-xs"
+            />
+            <p class="text-xs text-muted-foreground">
+              Documents inside this threshold are considered expiring and invalid.
+            </p>
+          </div>
+        }
 
         <div class="mt-6 flex gap-2 justify-end">
           <button z-button type="button" variant="ghost" (click)="closeForm()">Cancel</button>

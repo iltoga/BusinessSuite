@@ -181,6 +181,8 @@ def _run_validation_step(
             negative_prompt=negative_prompt,
             product_prompt=product_prompt,
             require_expiration_date=bool(doc_type.has_expiration_date),
+            require_doc_number=bool(doc_type.has_doc_number),
+            require_details=bool(doc_type.has_details),
             provider_order=provider_order,
         )
 
@@ -203,6 +205,9 @@ def _run_validation_step(
             "positive_analysis": "",
             "negative_issues": [f"Validation error: {exc}"],
             "reasoning": f"Validation could not be completed: {exc}",
+            "extracted_expiration_date": None,
+            "extracted_doc_number": None,
+            "extracted_details_markdown": None,
         }
         current_result = item.result or {}
         current_result["stage"] = "validated"

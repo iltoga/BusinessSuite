@@ -2,6 +2,7 @@ import os
 from logging import getLogger
 
 from core.utils.helpers import whitespaces_to_underscores
+from customer_applications.services.document_expiration_state_service import DocumentExpirationStateService
 from django.conf import settings
 from django.core.files.storage import default_storage
 from django.db import models, transaction
@@ -95,11 +96,8 @@ class Document(models.Model):
 
     @property
     def is_expiring(self):
-        """Returns True if the document is expiring within its minimum validity period."""
-        if self.expiration_date:
-            min_validity = self.doc_application.product.documents_min_validity
-            return bool(self.expiration_date < timezone.now().date() + timezone.timedelta(days=min_validity))
-        return False
+        """Returns True if the document expiration is within the configured threshold window."""
+        return DocumentExpirationStateService().evaluate(self).state == DocumentExpirationStateService.STATE_EXPIRING
 
     @property
     def updated_or_created_at(self):
@@ -171,6 +169,62 @@ class Document(models.Model):
         super().save(*args, **kwargs)
 
 
+def _queue_visa_submission_window_sync(document: Document, *, operation: str) -> None:
+    doc_type = getattr(document, "doc_type", None)
+    if not doc_type and document.doc_type_id:
+        doc_type = DocumentType.objects.filter(pk=document.doc_type_id).only("is_stay_permit").first()
+    if not doc_type or not doc_type.is_stay_permit:
+        return
+
+    doc_application = getattr(document, "doc_application", None)
+    if not doc_application and document.doc_application_id:
+        doc_application = (
+            DocApplication.objects.select_related("product")
+            .filter(pk=document.doc_application_id)
+            .only("id", "product__product_type", "created_by_id", "updated_by_id")
+            .first()
+        )
+    if not doc_application:
+        return
+    if not getattr(doc_application, "product", None) or doc_application.product.product_type != "visa":
+        return
+
+    actor_user_id = (
+        document.updated_by_id
+        or document.created_by_id
+        or doc_application.updated_by_id
+        or doc_application.created_by_id
+    )
+    application_id = doc_application.id
+
+    def _queue_calendar_sync():
+        try:
+            from customer_applications.tasks import SYNC_ACTION_UPSERT, sync_application_calendar_task
+
+            sync_application_calendar_task(
+                application_id=application_id,
+                user_id=actor_user_id,
+                action=SYNC_ACTION_UPSERT,
+            )
+        except Exception as exc:
+            logger.warning(
+                "Failed to queue visa window sync after document %s for application #%s: %s",
+                operation,
+                application_id,
+                exc,
+            )
+
+    try:
+        transaction.on_commit(_queue_calendar_sync)
+    except Exception as exc:
+        logger.warning(
+            "Failed registering visa window sync on_commit after document %s for application #%s: %s",
+            operation,
+            application_id,
+            exc,
+        )
+
+
 @receiver(pre_delete, sender=Document)
 def pre_delete_document_storage_signal(sender, instance, **kwargs):
     # Keep storage paths before deleting DB row.
@@ -209,3 +263,9 @@ def update_doc_application_status_on_document_save(sender, instance, **kwargs):
     if doc_application and doc_application.status != DocApplication.STATUS_COMPLETED:
         # Recalculate status when documents change so the application leaves pending once requirements are met.
         doc_application.save()
+    _queue_visa_submission_window_sync(instance, operation="save")
+
+
+@receiver(post_delete, sender=Document)
+def queue_visa_submission_window_sync_on_document_delete(sender, instance, **kwargs):
+    _queue_visa_submission_window_sync(instance, operation="delete")

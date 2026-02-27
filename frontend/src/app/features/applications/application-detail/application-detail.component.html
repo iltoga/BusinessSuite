@@ -109,6 +109,17 @@
           </div>
         </div>
 
+        @if (stayPermitSubmissionWindow()) {
+          <div class="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
+            Visa submission window:
+            <span class="font-medium"
+              >{{ stayPermitSubmissionWindow()!.firstDateIso }} to
+              {{ stayPermitSubmissionWindow()!.lastDateIso }}</span
+            >
+            (inclusive).
+          </div>
+        }
+
         <div class="flex flex-wrap items-end gap-6">
           <div>
             <label class="flex items-center gap-2 text-sm">
@@ -400,7 +411,11 @@
             </thead>
             <tbody cdkDropList (cdkDropListDropped)="onDocumentDrop($event)">
               @for (doc of localUploadedDocuments(); track doc.id) {
-                <tr class="border-b bg-card uploaded-doc-row" cdkDrag>
+                <tr
+                  class="border-b bg-card uploaded-doc-row"
+                  [ngClass]="getUploadedDocumentRowClass(doc)"
+                  cdkDrag
+                >
                   <td class="py-3 px-2 uploaded-doc-sort-cell" data-label="Sort">
                     <div
                       class="cursor-move text-muted-foreground"
@@ -435,16 +450,16 @@
                     }
                   </td>
                   <td class="py-3" data-label="AI Check">
-                    @if (doc.aiValidationStatus === 'valid') {
+                    @if (isDocumentAiValid(doc)) {
                       <z-badge
                         zType="success"
-                        [zTooltip]="$any(doc.aiValidationResult?.['reasoning']) || ''"
+                        [zTooltip]="getDocumentValidationTooltip(doc)"
                         >✅ Valid</z-badge
                       >
-                    } @else if (doc.aiValidationStatus === 'invalid') {
+                    } @else if (isDocumentAiInvalid(doc)) {
                       <z-badge
                         zType="destructive"
-                        [zTooltip]="$any(doc.aiValidationResult?.['reasoning']) || ''"
+                        [zTooltip]="getDocumentValidationTooltip(doc)"
                         >⚠️ Invalid</z-badge
                       >
                     } @else if (

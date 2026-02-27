@@ -122,6 +122,8 @@ export class DocumentTypesComponent implements OnInit {
     aiValidation: [true],
     deprecated: [false],
     hasExpirationDate: [false],
+    expiringThresholdDays: [null as number | null, [Validators.min(0)]],
+    isStayPermit: [false],
     hasDocNumber: [false],
     hasFile: [false],
     hasDetails: [false],
@@ -129,6 +131,8 @@ export class DocumentTypesComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    this.bindStayPermitRule();
+    this.bindExpirationThresholdRule();
     if (typeof window !== 'undefined') {
       const state = (window as any).history.state ?? {};
       const openEditId = Number(state.openEditId ?? 0);
@@ -219,6 +223,8 @@ export class DocumentTypesComponent implements OnInit {
       aiValidation: true,
       deprecated: false,
       hasExpirationDate: false,
+      expiringThresholdDays: null,
+      isStayPermit: false,
       hasDocNumber: false,
       hasFile: false,
       hasDetails: false,
@@ -254,6 +260,8 @@ export class DocumentTypesComponent implements OnInit {
       aiValidation: documentType.aiValidation ?? true,
       deprecated: documentType.deprecated ?? false,
       hasExpirationDate: documentType.hasExpirationDate || false,
+      expiringThresholdDays: documentType.expiringThresholdDays ?? null,
+      isStayPermit: documentType.isStayPermit || false,
       hasDocNumber: documentType.hasDocNumber || false,
       hasFile: documentType.hasFile || false,
       hasDetails: documentType.hasDetails || false,
@@ -282,7 +290,7 @@ export class DocumentTypesComponent implements OnInit {
     if (this.documentTypeForm.invalid) return;
 
     this.isSaving.set(true);
-    const formValue = this.documentTypeForm.value;
+    const formValue = this.documentTypeForm.getRawValue();
     const documentTypeData: DocumentType = {
       id: this.editingDocumentType()?.id ?? 0,
       name: formValue.name!,
@@ -293,6 +301,8 @@ export class DocumentTypesComponent implements OnInit {
       aiValidation: formValue.aiValidation ?? true,
       deprecated: formValue.deprecated || false,
       hasExpirationDate: formValue.hasExpirationDate || false,
+      expiringThresholdDays: formValue.expiringThresholdDays ?? null,
+      isStayPermit: formValue.isStayPermit || false,
       hasDocNumber: formValue.hasDocNumber || false,
       hasFile: formValue.hasFile || false,
       hasDetails: formValue.hasDetails || false,
@@ -442,5 +452,61 @@ export class DocumentTypesComponent implements OnInit {
     this.showDeprecationConfirm.set(false);
     this.pendingDeprecationPayload.set(null);
     this.editingDocumentType.set(null);
+  }
+
+  private bindStayPermitRule(): void {
+    const isStayPermitControl = this.documentTypeForm.get('isStayPermit');
+    if (!isStayPermitControl) {
+      return;
+    }
+
+    this.syncStayPermitExpirationState(Boolean(isStayPermitControl.value));
+    isStayPermitControl.valueChanges.subscribe((isStayPermit) => {
+      this.syncStayPermitExpirationState(Boolean(isStayPermit));
+    });
+  }
+
+  private bindExpirationThresholdRule(): void {
+    const hasExpirationDateControl = this.documentTypeForm.get('hasExpirationDate');
+    if (!hasExpirationDateControl) {
+      return;
+    }
+
+    this.syncExpirationThresholdState(Boolean(hasExpirationDateControl.value));
+    hasExpirationDateControl.valueChanges.subscribe((hasExpirationDate) => {
+      this.syncExpirationThresholdState(Boolean(hasExpirationDate));
+    });
+  }
+
+  private syncExpirationThresholdState(hasExpirationDate: boolean): void {
+    const expiringThresholdControl = this.documentTypeForm.get('expiringThresholdDays');
+    if (!expiringThresholdControl) {
+      return;
+    }
+
+    if (hasExpirationDate) {
+      expiringThresholdControl.enable({ emitEvent: false });
+      return;
+    }
+
+    expiringThresholdControl.setValue(null, { emitEvent: false });
+    expiringThresholdControl.disable({ emitEvent: false });
+  }
+
+  private syncStayPermitExpirationState(isStayPermit: boolean): void {
+    const hasExpirationDateControl = this.documentTypeForm.get('hasExpirationDate');
+    if (!hasExpirationDateControl) {
+      return;
+    }
+
+    if (isStayPermit) {
+      hasExpirationDateControl.setValue(true, { emitEvent: false });
+      hasExpirationDateControl.disable({ emitEvent: false });
+      this.syncExpirationThresholdState(true);
+      return;
+    }
+
+    hasExpirationDateControl.enable({ emitEvent: false });
+    this.syncExpirationThresholdState(Boolean(hasExpirationDateControl.value));
   }
 }

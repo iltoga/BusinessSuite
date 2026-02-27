@@ -92,6 +92,18 @@
           </z-badge>
         </div>
         <div class="flag-item">
+          <span class="text-sm">Expiring Threshold Days</span>
+          <span class="text-sm font-medium">
+            {{ documentType()!.expiringThresholdDays ?? '0' }}
+          </span>
+        </div>
+        <div class="flag-item">
+          <span class="text-sm">Is Stay Permit</span>
+          <z-badge [zType]="badgeType(documentType()!.isStayPermit)">
+            {{ yesNo(documentType()!.isStayPermit) }}
+          </z-badge>
+        </div>
+        <div class="flag-item">
           <span class="text-sm">Has Document Number</span>
           <z-badge [zType]="badgeType(documentType()!.hasDocNumber)">
             {{ yesNo(documentType()!.hasDocNumber) }}

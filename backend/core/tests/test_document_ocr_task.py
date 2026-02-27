@@ -40,7 +40,8 @@ class DocumentOcrTaskTests(TestCase):
             self.assertEqual(file_path, "/tmp/fake.pdf")
             self.assertIsNotNone(progress_callback)
             for value in (45, 58, 73, 90):
-                progress_callback(value)
+                if progress_callback is not None:
+                    progress_callback(value)
                 progress_updates.append(value)
             return "Extracted OCR text"
 

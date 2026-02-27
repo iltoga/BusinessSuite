@@ -1,3 +1,4 @@
+from core.models.ui_settings import UiSettings
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
@@ -40,3 +41,33 @@ class PublicAppConfigTests(TestCase):
         payload = response.json()
         self.assertIn("MOCK_AUTH_ENABLED", payload)
         self.assertIs(payload["MOCK_AUTH_ENABLED"], True)
+
+    def test_public_app_config_returns_overlay_menu_setting(self):
+        settings_obj = UiSettings.get_solo()
+        settings_obj.use_overlay_menu = True
+        settings_obj.save(update_fields=["use_overlay_menu", "updated_at"])
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertIn("useOverlayMenu", payload)
+        self.assertIs(payload["useOverlayMenu"], True)
+
+    def test_public_app_config_does_not_expose_fcm_fields(self):
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        disallowed_keys = {
+            "fcmSenderId",
+            "fcmVapidPublicKey",
+            "fcmProjectId",
+            "fcmProjectNumber",
+            "fcmWebApiKey",
+            "fcmWebAppId",
+            "fcmWebAuthDomain",
+            "fcmWebStorageBucket",
+            "fcmWebMeasurementId",
+        }
+        self.assertTrue(disallowed_keys.isdisjoint(payload.keys()))

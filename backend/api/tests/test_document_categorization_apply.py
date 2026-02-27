@@ -40,6 +40,8 @@ class DocumentCategorizationApplyTests(TestCase):
             name="ITK Bulk",
             ai_validation=True,
             has_expiration_date=True,
+            has_doc_number=True,
+            has_details=True,
         )
         self.application = DocApplication.objects.create(
             customer=self.customer,
@@ -72,6 +74,8 @@ class DocumentCategorizationApplyTests(TestCase):
                 "negative_issues": [],
                 "reasoning": "Checks passed.",
                 "extracted_expiration_date": "2031-02-14",
+                "extracted_doc_number": "ITK-BULK-100",
+                "extracted_details_markdown": "## ITK\n- Permit Number: ITK-BULK-100",
             },
         )
 
@@ -107,3 +111,5 @@ class DocumentCategorizationApplyTests(TestCase):
 
         self.document.refresh_from_db()
         self.assertEqual(self.document.expiration_date, date(2031, 2, 14))
+        self.assertEqual(self.document.doc_number, "ITK-BULK-100")
+        self.assertEqual(self.document.details, "## ITK\n- Permit Number: ITK-BULK-100")

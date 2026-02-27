@@ -1,5 +1,5 @@
-import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { BreakpointObserver } from '@angular/cdk/layout';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import {
   AfterViewInit,
   ChangeDetectionStrategy,
@@ -16,6 +16,7 @@ import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router
 import { filter, map } from 'rxjs';
 
 import { AuthService } from '@/core/services/auth.service';
+import { ConfigService } from '@/core/services/config.service';
 import { ReminderDialogService } from '@/core/services/reminder-dialog.service';
 import {
   ReminderInboxService,
@@ -56,6 +57,9 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
   private readonly initialDesktopViewport = this.isBrowser
     ? window.matchMedia('(min-width: 1024px)').matches
     : true;
+  private readonly initialOverlayDesktopViewport = this.isBrowser
+    ? window.matchMedia('(min-width: 768px)').matches
+    : true;
 
   private readonly desktopSidebarExpanded = signal(true);
   private readonly mobileSidebarOpen = signal(false);
@@ -66,12 +70,20 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
   private reminderInboxService = inject(ReminderInboxService);
   private router = inject(Router);
   private overlayService = inject(PwaOverlayService);
+  private configService = inject(ConfigService);
 
   isOverlayMode = toSignal(this.overlayService.isOverlayMode$, { initialValue: false });
+  useOverlayMenu = computed(
+    () =>
+      this.isOverlayDesktopViewport() &&
+      (this.isOverlayMode() || Boolean(this.configService.config().useOverlayMenu)),
+  );
+  isOverlayDesktopViewport = toSignal(
+    this.breakpointObserver.observe('(min-width: 768px)').pipe(map((state) => state.matches)),
+    { initialValue: this.initialOverlayDesktopViewport },
+  );
   isDesktopViewport = toSignal(
-    this.breakpointObserver
-      .observe('(min-width: 1024px)')
-      .pipe(map((state) => state.matches)),
+    this.breakpointObserver.observe('(min-width: 1024px)').pipe(map((state) => state.matches)),
     { initialValue: this.initialDesktopViewport },
   );
   sidebarOpen = computed(() =>
@@ -171,7 +183,7 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
   }
 
   toggleSidebar() {
-    if (this.isOverlayMode()) return;
+    if (this.useOverlayMenu()) return;
     if (this.isDesktopViewport()) {
       this.desktopSidebarExpanded.update((v) => !v);
       return;

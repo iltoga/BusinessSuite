@@ -2,63 +2,75 @@
 @let hasChildren = !!menuItem.children?.length;
 @let expanded = isExpanded();
 
-@if (menuItem.route) {
-  <a
-    role="menuitem"
-    tabindex="0"
-    class="menu-button menu-entry"
-    [class.overlay-entry]="mode() === 'overlay'"
-    [routerLink]="menuItem.route"
-    routerLinkActive="menu-entry-active"
-    [routerLinkActiveOptions]="{ exact: !hasChildren }"
-    [attr.aria-label]="menuItem.accessibility?.ariaLabel || menuItem.label"
-    [attr.aria-haspopup]="hasChildren ? 'menu' : null"
-    [attr.aria-expanded]="hasChildren ? expanded : null"
-    [attr.aria-controls]="hasChildren ? 'submenu-' + menuItem.id : null"
-  >
-    @if (menuItem.icon) {
-      <z-icon [zType]="menuItem.icon" class="h-4 w-4" />
-    }
-    <span>{{ menuItem.label }}</span>
-  </a>
-} @else {
-  <button
-    type="button"
-    role="menuitem"
-    tabindex="0"
-    class="menu-button menu-entry"
-    [class.overlay-entry]="mode() === 'overlay'"
-    [disabled]="menuService.isDisabled(menuItem)"
-    [attr.aria-label]="menuItem.accessibility?.ariaLabel || menuItem.label"
-    [attr.aria-haspopup]="hasChildren ? 'menu' : menuItem.accessibility?.ariaHasPopup || null"
-    [attr.aria-expanded]="hasChildren ? expanded : null"
-    [attr.aria-controls]="
-      hasChildren ? 'submenu-' + menuItem.id : menuItem.accessibility?.ariaControls || null
-    "
-    (click)="hasChildren && menuItem.collapsible ? toggleExpanded($event) : runAction()"
-  >
-    @if (menuItem.icon) {
-      <z-icon [zType]="menuItem.icon" class="h-4 w-4" />
-    }
-    <span>{{ menuItem.label }}</span>
-    @if (hasChildren) {
-      <z-icon [zType]="expanded ? 'chevron-down' : 'chevron-right'" class="h-3 w-3 ml-auto" />
-    }
-  </button>
-}
+<div
+  [class.relative]="mode() === 'overlay'"
+  [class.group]="mode() === 'overlay'"
+  [class.is-expanded]="expanded"
+>
+  @if (menuItem.route) {
+    <a
+      role="menuitem"
+      tabindex="0"
+      class="menu-entry hover:bg-accent/60 focus-visible:bg-accent/60 hover:text-foreground focus-visible:text-foreground"
+      [class.overlay-entry]="mode() === 'overlay'"
+      [routerLink]="menuItem.route"
+      routerLinkActive="menu-entry-active bg-accent/80 text-foreground font-semibold"
+      [routerLinkActiveOptions]="{ exact: !hasChildren }"
+      ariaCurrentWhenActive="page"
+      [attr.aria-label]="menuItem.accessibility?.ariaLabel || menuItem.label"
+      [attr.aria-haspopup]="hasChildren ? 'menu' : null"
+      [attr.aria-expanded]="hasChildren ? expanded : null"
+      [attr.aria-controls]="hasChildren ? 'submenu-' + menuItem.id : null"
+    >
+      @if (menuItem.icon) {
+        <z-icon [zType]="menuItem.icon" class="h-4 w-4" />
+      }
+      <span>{{ menuItem.label }}</span>
+    </a>
+  } @else {
+    <button
+      type="button"
+      role="menuitem"
+      tabindex="0"
+      class="menu-entry hover:bg-accent/60 focus-visible:bg-accent/60 hover:text-foreground focus-visible:text-foreground"
+      [class.overlay-entry]="mode() === 'overlay'"
+      [disabled]="menuService.isDisabled(menuItem)"
+      [attr.aria-label]="menuItem.accessibility?.ariaLabel || menuItem.label"
+      [attr.aria-haspopup]="hasChildren ? 'menu' : menuItem.accessibility?.ariaHasPopup || null"
+      [attr.aria-expanded]="hasChildren ? expanded : null"
+      [attr.aria-controls]="
+        hasChildren ? 'submenu-' + menuItem.id : menuItem.accessibility?.ariaControls || null
+      "
+      (click)="hasChildren && menuItem.collapsible ? toggleExpanded($event) : runAction()"
+    >
+      @if (menuItem.icon) {
+        <z-icon [zType]="menuItem.icon" class="h-4 w-4" />
+      }
+      <span>{{ menuItem.label }}</span>
+      @if (hasChildren) {
+        @if (mode() === 'overlay') {
+          <z-icon zType="chevron-right" class="h-3 w-3 ml-auto overlay-chevron" />
+        } @else {
+          <z-icon [zType]="expanded ? 'chevron-down' : 'chevron-right'" class="h-3 w-3 ml-auto" />
+        }
+      }
+    </button>
+  }
 
-@if (hasChildren && expanded) {
-  <ul
-    class="submenu"
-    role="menu"
-    [id]="'submenu-' + menuItem.id"
-    [class.sidebar-submenu-scroll]="mode() === 'sidebar'"
-    [class.overlay-submenu]="mode() === 'overlay'"
-  >
-    @for (child of menuItem.children; track child.id) {
-      <li role="none">
-        <app-menu-item [item]="child" [depth]="depth() + 1" [mode]="mode()" />
-      </li>
-    }
-  </ul>
-}
+  @if (hasChildren && (mode() === 'overlay' || expanded)) {
+    <ul
+      class="submenu"
+      role="menu"
+      [id]="'submenu-' + menuItem.id"
+      [class.sidebar-submenu-scroll]="mode() === 'sidebar'"
+      [class.overlay-submenu]="mode() === 'overlay'"
+      [class.overlay-submenu-nested]="mode() === 'overlay' && depth() > 0"
+    >
+      @for (child of menuItem.children; track child.id) {
+        <li role="none">
+          <app-menu-item [item]="child" [depth]="depth() + 1" [mode]="mode()" />
+        </li>
+      }
+    </ul>
+  }
+</div>

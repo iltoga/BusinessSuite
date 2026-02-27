@@ -12,6 +12,8 @@ class DocumentTypeSerializer(serializers.ModelSerializer):
             "deprecated",
             "ai_validation",
             "has_expiration_date",
+            "expiring_threshold_days",
+            "is_stay_permit",
             "has_doc_number",
             "has_file",
             "has_details",

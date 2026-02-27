@@ -36,6 +36,12 @@ export class MenuItemComponent {
   toggleExpanded(event: Event): void {
     event.preventDefault();
     event.stopPropagation();
+
+    if (this.mode() === 'overlay' && this.depth() === 0) {
+      this.menuService.toggleOverlayRootCollapse(this.item().id);
+      return;
+    }
+
     this.menuService.toggleCollapse(this.item().id);
   }
 
