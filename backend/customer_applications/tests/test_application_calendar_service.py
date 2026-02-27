@@ -250,3 +250,125 @@ class VisaSubmissionWindowCalendarServiceTests(TestCase):
 
         self.assertIsNotNone(event)
         self.assertEqual(event.source, CalendarEvent.SOURCE_APPLICATION)
+
+
+@override_settings(CACHES=TEST_CACHES)
+class VisaSubmissionWindowDocumentSignalTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user("visa-window-doc-user", "visawindowdoc@example.com", "pass")
+        self.customer = Customer.objects.create(first_name="Signal", last_name="Tester")
+        self.stay_permit_doc_type = DocumentType.objects.create(
+            name="ITK Signal",
+            has_expiration_date=True,
+            is_stay_permit=True,
+            has_file=True,
+        )
+        self.regular_doc_type = DocumentType.objects.create(
+            name="Passport Signal",
+            has_expiration_date=True,
+            has_file=True,
+        )
+        self.visa_product = Product.objects.create(
+            name="Visa Product Signal",
+            code="VISA-SIGNAL",
+            product_type="visa",
+            required_documents="ITK Signal,Passport Signal",
+        )
+        self.other_product = Product.objects.create(
+            name="Other Product Signal",
+            code="OTHER-SIGNAL",
+            product_type="other",
+            required_documents="ITK Signal",
+        )
+        self.visa_application = DocApplication.objects.create(
+            customer=self.customer,
+            product=self.visa_product,
+            doc_date=date(2026, 1, 10),
+            created_by=self.user,
+        )
+        self.other_application = DocApplication.objects.create(
+            customer=self.customer,
+            product=self.other_product,
+            doc_date=date(2026, 1, 10),
+            created_by=self.user,
+        )
+
+    @patch("customer_applications.tasks.sync_application_calendar_task")
+    def test_stay_permit_save_queues_calendar_sync(self, sync_task_mock):
+        with self.captureOnCommitCallbacks(execute=True):
+            Document.objects.create(
+                doc_application=self.visa_application,
+                doc_type=self.stay_permit_doc_type,
+                expiration_date=date(2026, 2, 20),
+                required=True,
+                created_by=self.user,
+            )
+
+        sync_task_mock.assert_called_once()
+        kwargs = sync_task_mock.call_args.kwargs
+        self.assertEqual(kwargs["application_id"], self.visa_application.id)
+        self.assertEqual(kwargs["user_id"], self.user.id)
+        self.assertEqual(kwargs["action"], "upsert")
+
+    @patch("customer_applications.tasks.sync_application_calendar_task")
+    def test_stay_permit_expiration_update_queues_calendar_sync(self, sync_task_mock):
+        with self.captureOnCommitCallbacks(execute=True):
+            document = Document.objects.create(
+                doc_application=self.visa_application,
+                doc_type=self.stay_permit_doc_type,
+                expiration_date=date(2026, 2, 20),
+                required=True,
+                created_by=self.user,
+            )
+
+        sync_task_mock.reset_mock()
+
+        document.expiration_date = date(2026, 2, 15)
+        with self.captureOnCommitCallbacks(execute=True):
+            document.save(update_fields=["expiration_date", "updated_at"])
+
+        sync_task_mock.assert_called_once()
+        kwargs = sync_task_mock.call_args.kwargs
+        self.assertEqual(kwargs["application_id"], self.visa_application.id)
+        self.assertEqual(kwargs["action"], "upsert")
+
+    @patch("customer_applications.tasks.sync_application_calendar_task")
+    def test_stay_permit_delete_queues_calendar_sync(self, sync_task_mock):
+        with self.captureOnCommitCallbacks(execute=True):
+            document = Document.objects.create(
+                doc_application=self.visa_application,
+                doc_type=self.stay_permit_doc_type,
+                expiration_date=date(2026, 2, 20),
+                required=True,
+                created_by=self.user,
+            )
+
+        sync_task_mock.reset_mock()
+
+        with self.captureOnCommitCallbacks(execute=True):
+            document.delete()
+
+        sync_task_mock.assert_called_once()
+        kwargs = sync_task_mock.call_args.kwargs
+        self.assertEqual(kwargs["application_id"], self.visa_application.id)
+        self.assertEqual(kwargs["action"], "upsert")
+
+    @patch("customer_applications.tasks.sync_application_calendar_task")
+    def test_non_qualifying_documents_do_not_queue_calendar_sync(self, sync_task_mock):
+        with self.captureOnCommitCallbacks(execute=True):
+            Document.objects.create(
+                doc_application=self.visa_application,
+                doc_type=self.regular_doc_type,
+                expiration_date=date(2030, 1, 1),
+                required=True,
+                created_by=self.user,
+            )
+            Document.objects.create(
+                doc_application=self.other_application,
+                doc_type=self.stay_permit_doc_type,
+                expiration_date=date(2026, 2, 20),
+                required=True,
+                created_by=self.user,
+            )
+
+        sync_task_mock.assert_not_called()
