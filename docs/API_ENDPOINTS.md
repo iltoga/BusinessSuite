@@ -1,362 +1,252 @@
 # API Endpoints Documentation
 
-This document lists the main API endpoints exposed by the application in this repository, including their payload (input parameters/files) and a short description for each.
+This file summarizes the main API surface in `backend/api/urls.py` and related DRF viewsets.
 
-> **Note:** This list is kept in sync with the URL patterns in `api/urls.py` and the view actions in `api/views.py`. For the most complete and up-to-date list, consult the browsable API or the OpenAPI schema at `/api/schema/`.
-
----
-
-## Authentication ✅
-
-- **POST `/api/api-token-auth/`**
-  - **Input:** `{ "username": string, "password": string }`
-  - **Description:** Obtain a JWT token (custom TokenObtainPair-backed view).
-
-- **GET `/api/session-auth/`**
-  - **Input:** Session credentials (browser-based login)
-  - **Description:** Session-based auth endpoints exposed by DRF.
-
-- **GET `/api/mock-auth-config/`**
-  - **Input:** None
-  - **Description:** Return mock authentication claims when `MOCK_AUTH_ENABLED` is true (used by frontend dev mode).
+> For exact request/response schemas, always verify against:
+>
+> - OpenAPI: `/api/schema/`
+> - Swagger: `/api/schema/swagger-ui/`
 
 ---
 
-## API Schema & Docs 🔧
+## Authentication
 
-- **GET `/api/schema/`** — OpenAPI schema (drf-spectacular)
-- **GET `/api/schema/swagger-ui/`** — Swagger UI
-- **GET `/api/schema/redoc/`** — ReDoc UI
-
----
-
-## User Profile ✅
-
-- **GET `/api/user-profile/me/`**
-  - **Description:** Retrieve current user profile details.
-
-- **PATCH `/api/user-profile/update_profile/`**
-  - **Description:** Partially update user profile (email, first name, last name).
-
-- **POST `/api/user-profile/upload_avatar/`**
-  - **Input:** `avatar` (file)
-  - **Description:** Upload user profile image.
-
-- **POST `/api/user-profile/change_password/`**
-  - **Input:** `{ "old_password": string, "new_password": string }`
-  - **Description:** Change current user password.
-
-- **POST `/api/user-profile/logout/`**
-  - **Description:** Logout current user and record event in Django.
-
-## User Settings 🎛️
-
-- **GET `/api/user-settings/me/`**
-  - **Description:** Retrieve current user's settings (theme, dark_mode, preferences). Requires authentication.
-
-- **PATCH `/api/user-settings/me/`**
-  - **Input:** Partial `{ "theme": string, "dark_mode": boolean, "preferences": object }`
-  - **Description:** Partially update current user's settings (only applies to the authenticated user).
+- `POST /api/api-token-auth/` — obtain JWT pair via custom token view
+- `GET /api/session-auth/` — DRF session auth endpoints
+- `GET /api/mock-auth-config/` — mock auth claims/config (dev/testing mode)
 
 ---
 
-## Country Codes 🌐
+## Users & Settings
 
-- **GET `/api/country-codes/`**
-  - **Description:** List of ISO country codes used for nationality dropdowns (no pagination). Requires authentication.
+- `GET /api/user-profile/me/`
+- `PATCH /api/user-profile/update_profile/`
+- `POST /api/user-profile/upload_avatar/` (multipart)
+- `POST /api/user-profile/change_password/`
+- `POST /api/user-profile/logout/`
 
----
-
-## Customers 👥
-
-- **GET `/api/customers/`**
-  - **Input:** Query params: `q`/`search`, `hide_disabled` (true/false), `page`, `page_size`
-  - **Description:** Paginated list of customers.
-
-- **GET `/api/customers/search/?q=<query>`**
-  - **Description:** Compatibility search endpoint used by templates and frontend.
-
-- **GET `/api/customers/<id>/`**
-  - **Description:** Retrieve a single customer.
-
-- **POST `/api/customers/quick-create/`**
-  - **Input:** Minimal customer payload (see `CustomerQuickCreateSerializer`)
-  - **Description:** Create a customer quickly (returns a small payload for client-side use).
-
-- **POST `/api/customers/<id>/toggle-active/`**
-  - **Description:** Toggle `active` flag for a customer.
-
-- **POST `/api/customers/bulk-delete/`**
-  - **Permissions:** Superuser-only
-  - **Description:** Bulk delete customers by query.
+- `GET /api/user-settings/me/`
+- `PATCH /api/user-settings/me/`
 
 ---
 
-## Products 🧾
+## Reference Data
 
-- **GET `/api/products/`**
-  - **Input:** Query params: `search`, `product_type`
-  - **Description:** Paginated list of products.
-
-- **GET `/api/products/get_product_by_id/<product_id>/`**
-  - **Description:** Returns `product`, `required_documents`, and `optional_documents` (document type objects).
-
-- **GET `/api/products/get_products_by_product_type/<product_type>/`**
-  - **Description:** Return products of a specific `product_type`.
-
-- **POST `/api/products/quick-create/`**
-  - **Input:** Minimal product payload (see `ProductQuickCreateSerializer`)
-  - **Description:** Create a product quickly for client-side flows.
-
-- **GET `/api/products/<id>/can-delete/`**
-  - **Description:** Check whether a product can be deleted safely.
-
-- **POST `/api/products/bulk-delete/`**
-  - **Permissions:** Superuser-only
-  - **Description:** Bulk delete products by query.
+- `GET /api/country-codes/`
+- `GET /api/holidays/`, `POST /api/holidays/`, `PATCH /api/holidays/{id}/`, `DELETE /api/holidays/{id}/`
 
 ---
 
-## Document Types & Documents 📄
+## Customers
 
-- **GET `/api/document-types/`**
-  - **Description:** List document types.
+- `GET /api/customers/`
+- `POST /api/customers/`
+- `GET /api/customers/{id}/`
+- `PATCH /api/customers/{id}/`
+- `DELETE /api/customers/{id}/`
+- `GET /api/customers/search/?q=...`
+- `POST /api/customers/{id}/toggle-active/`
+- `GET /api/customers/{id}/uninvoiced-applications/`
+- `GET /api/customers/{id}/applications-history/`
+- `POST /api/customers/bulk-delete/` (superuser)
+- `POST /api/customers/quick-create/`
 
-- **GET `/api/document-types/<id>/can-delete/`**
-  - **Description:** Check whether a document type can be safely removed (ensures no products reference it).
+### Passport check flow (async)
 
-- **GET `/api/documents/`**, **POST `/api/documents/`**, **PATCH `/api/documents/<id>/`**
-  - **Description:** Standard CRUD for document records. Note: file uploads expect multipart form data.
-
-- **GET `/api/documents/<id>/download/`**
-  - **Description:** Stream/download the stored document file (authenticated).
-
-- **GET `/api/documents/<id>/print/`**
-  - **Description:** Return document print data including nested application/customer/product info.
-
-- **POST `/api/documents/merge-pdf/`**
-  - **Input:** JSON: `{ "document_ids": [1,2,3] }`
-  - **Description:** Merge completed document files into a single PDF and return it as a download.
-
-- **POST `/api/documents/<id>/actions/<action_name>/`**
-  - **Description:** Execute a registered document hook action (used by document type hooks).
+- `POST /api/customers/check-passport/` (multipart)
+  - Queues Huey task and returns `job_id`
+- Progress/result is consumed via async-job/SSE status endpoints.
 
 ---
 
-## Applications (Customer Applications) 🧭
+## Products
 
-- **GET `/api/customer-applications/`**
-  - **Description:** List and search customer applications.
+- `GET /api/products/`
+- `POST /api/products/`
+- `GET /api/products/{id}/`
+- `PATCH /api/products/{id}/`
+- `DELETE /api/products/{id}/`
+- `GET /api/products/get_product_by_id/{product_id}/`
+- `GET /api/products/get_products_by_product_type/{product_type}/`
+- `GET /api/products/{id}/can-delete/`
+- `POST /api/products/bulk-delete/` (superuser)
+- `POST /api/products/quick-create/`
 
-- **POST `/api/customer-applications/quick-create/`**
-  - **Input:** JSON per `CustomerApplicationQuickCreateSerializer`
-  - **Description:** Create a minimal application with associated workflows and documents.
+### Product import/export (async)
 
-- **POST `/api/customer-applications/<id>/advance-workflow/`**
-  - **Description:** Mark current workflow step as completed and create the next step.
-
-- **POST `/api/customer-applications/<id>/workflows/<workflow_id>/status/`**
-  - **Input:** `{ "status": "pending|completed|..." }`
-  - **Description:** Update a workflow step's status (validates document collection where needed).
-
-- **POST `/api/customer-applications/<id>/reopen/`**, **POST `/api/customer-applications/<id>/force-close/`**
-  - **Description:** Reopen a completed application or force-close (admin/permission checks apply).
-
----
-
-## Invoices & Invoice Actions 💳
-
-- **GET `/api/invoices/`**, **POST `/api/invoices/`**, **GET `/api/invoices/<id>/`**, **PATCH `/api/invoices/<id>/`**
-  - **Description:** Standard CRUD for invoices (list supports `search`, `hide_paid` query params).
-
-- **GET `/api/invoices/propose/?invoice_date=YYYY-MM-DD`**
-  - **Description:** Propose the next invoice number for a given year/date.
-
-- **GET `/api/invoices/get_customer_applications/<customer_id>/`**
-  - **Description:** Find applications for a customer suitable for invoicing (supports filters for excluding incomplete, statuses, etc.).
-
-- **GET `/api/invoices/get_invoice_application_due_amount/<invoice_application_id>/`**
-  - **Description:** Get due/paid/amount for a specific invoice application entry.
-
-- **GET `/api/invoices/<id>/download/?file_format=docx|pdf`**
-  - **Description:** Generate and return the invoice document (DOCX or converted PDF).
-
-- **POST `/api/invoices/<id>/download-async/`**
-  - **Input:** `{ "file_format": "pdf" }` (optional)
-  - **Description:** Queue invoice generation job and return job info with status/stream/download URLs.
-
-- **GET `/api/invoices/download-async/status/<job_id>/`**, **GET `/api/invoices/download-async/stream/<job_id>/`**, **GET `/api/invoices/download-async/file/<job_id>/`**
-  - **Description:** Status polling, SSE progress stream, and file download for async invoice generation jobs.
-
-- **POST `/api/invoices/<id>/mark-as-paid/`**
-  - **Input:** `{ "payment_type": string, "payment_date": "YYYY-MM-DD" }`
-  - **Description:** Mark an invoice as paid; may create payments for associated invoice applications.
-
-- **GET `/api/invoices/<id>/delete-preview/`**
-  - **Permissions:** Superuser-only
-  - **Description:** Preview impact of deleting an invoice (counts of related objects).
-
-- **POST `/api/invoices/<id>/force-delete/`**, **POST `/api/invoices/bulk-delete/`**
-  - **Permissions:** Superuser-only
-  - **Description:** Force delete or bulk delete invoices (with options to also delete applications).
+- `POST /api/products/export/start/`
+- `GET /api/products/export/download/{job_id}/`
+- `POST /api/products/import/start/` (multipart)
 
 ---
 
-## Invoice Import (AI-powered) 🤖
+## Document types
 
-- **GET `/api/invoices/import/config`**
-  - **Description:** Returns LLM provider configuration, supported file formats, and defaults (`currentProvider`, `currentModel`, `maxWorkers`).
-
-- **POST `/api/invoices/import/single`**
-  - **Input (multipart/form-data):** `file` (required), `llm_provider` (optional), `llm_model` (optional)
-  - **Description:** Import a single invoice file using AI parsing. Returns parsed data and possibly created `invoice` and `customer` references. Status codes vary (200 success, 409 duplicate, 400/500 on errors).
-
-- **POST `/api/invoices/import/batch`**
-  - **Input (multipart/form-data):** `files[]` (required), optional `paid_status[]`, `llm_provider`, `llm_model`
-  - **Description:** Create a background job and return an SSE stream response for live updates. Each file is queued for processing; client can also poll or stream the job using the job id.
-
-- **GET `/api/invoices/import/status/<job_id>`**
-  - **Description:** Poll a batch import job status summary (processed/imported/duplicates/errors counts).
-
-- **GET `/api/invoices/import/stream/<job_id>`**
-  - **Description:** SSE stream for real-time updates (events: `start`, `file_start`, `parsing`, `file_success`, `file_duplicate`, `file_error`, `complete`).
+- `GET /api/document-types/`
+- `POST /api/document-types/`
+- `PATCH /api/document-types/{id}/`
+- `DELETE /api/document-types/{id}/`
+- `GET /api/document-types/{id}/can-delete/`
+- `GET /api/document-types/{id}/deprecation-impact/`
 
 ---
 
-## OCR & Document OCR 🧾🔎
+## Customer applications
 
-- **POST `/api/ocr/check/`**
-  - **Input:** `file` (required), `doc_type` (required), optional `use_ai`, `save_session`, `img_preview`, `resize`, `width`.
-  - **Description:** Queue OCR job (MRZ/passport or other doc checks). Returns `job_id` and `status_url` to poll. Accepted file types: JPEG, PNG, TIFF, PDF.
+- `GET /api/customer-applications/`
+- `POST /api/customer-applications/`
+- `GET /api/customer-applications/{id}/`
+- `PATCH /api/customer-applications/{id}/`
+- `DELETE /api/customer-applications/{id}/`
+- `POST /api/customer-applications/bulk-delete/` (superuser)
+- `POST /api/customer-applications/quick-create/`
+- `POST /api/customer-applications/{id}/advance-workflow/`
+- `POST /api/customer-applications/{id}/reopen/`
+- `POST /api/customer-applications/{id}/force-close/`
+- `POST /api/customer-applications/{id}/workflows/{workflow_id}/status/`
+- `POST /api/customer-applications/{id}/workflows/{workflow_id}/due-date/`
+- `POST /api/customer-applications/{id}/workflows/{workflow_id}/rollback/`
 
-- **GET `/api/ocr/status/<job_id>/`**
-  - **Description:** Poll OCR job status and get `mrz_data` or errors when completed.
+### Calendar sync behavior note
 
-- **POST `/api/document-ocr/check/`**
-  - **Input:** `file` (PDF/Excel/Word)
-  - **Description:** Queue a general document OCR job (text extraction). Returns `job_id` and `status_url`.
+Application create/update/workflow transitions queue `sync_application_calendar_task` (Huey), which:
 
-- **GET `/api/document-ocr/status/<job_id>/`**
-  - **Description:** Poll document OCR job status and get extracted `text` on completion.
-
----
-
-## Payments 💸
-
-- **GET `/api/payments/`**
-  - **Query params:** `invoice_application_id` to filter payments for a specific invoice application.
-
-- **POST `/api/payments/`**
-  - **Input:** Payment payload (see `PaymentSerializer`), `invoice_application` is required.
+1. updates local `CalendarEvent` rows,
+2. triggers Google Calendar sync via calendar-event model signals.
 
 ---
 
-## Admin & Server Tools ⚙️
+## Documents
 
-- **GET `/api/backups/`**
-  - **Description:** List available backup files and metadata. **Permissions:** Superuser-only.
+- `GET /api/documents/`
+- `POST /api/documents/`
+- `PATCH /api/documents/{id}/`
+- `GET /api/documents/{id}/download/`
+- `GET /api/documents/{id}/print/`
+- `POST /api/documents/merge-pdf/`
+- `POST /api/documents/{id}/actions/{action_name}/`
 
-- **GET `/api/backups/download/<filename>/`**
-  - **Description:** Download a backup archive file. **Permissions:** Superuser-only.
+### Categorization / validation helpers
 
-- **POST `/api/backups/upload/`**
-  - **Input:** multipart/form-data with `backup_file` field
-  - **Description:** Upload a backup archive to the server. **Permissions:** Superuser-only.
-
-- **DELETE `/api/backups/delete-all/`**
-  - **Description:** Delete all backups from disk. **Permissions:** Superuser-only.
-
-- **GET `/api/backups/start/`** (SSE)
-  - **Query params:** `include_users` (0/1 or true/false)
-  - **Description:** Start a backup process and stream progress via Server-Sent Events (SSE). **Permissions:** Superuser-only.
-
-- **POST `/api/backups/restore/`** (SSE) — or legacy **GET** `/api/backups/restore/?file=<filename>`
-  - **Query params:** `file` (required), `include_users` (optional)
-  - **Description:** Restore a backup archive and stream progress via SSE. Can be invoked via HTTP POST (viewset action) or via legacy plain GET SSE view that accepts `file` as a query param. **Permissions:** Superuser-only.
-
-- **GET `/api/server-management/`**
-  - **Description:** Server management actions (superuser-only). Common actions include:
-    - **POST `/api/server-management/clear-cache/`** — Clear application cache.
-    - **GET `/api/server-management/media-diagnostic/`** — Run media files diagnostic.
-    - **POST `/api/server-management/media-repair/`** — Repair media file paths.
-
-- **GET `/api/dashboard-stats/`**
-  - **Description:** Basic dashboard stats (legacy/simple endpoint used by older frontends). Requires authentication.
+- `POST /api/customer-applications/{application_id}/categorize-documents/`
+- `POST /api/customer-applications/{application_id}/categorize-documents/init/`
+- `POST /api/document-categorization/{job_id}/upload/`
+- `GET /api/document-categorization/stream/{job_id}/` (SSE)
+- `POST /api/document-categorization/{job_id}/apply/`
+- `GET /api/document-categorization/{job_id}/status/`
+- `POST /api/documents/{document_id}/validate-category/`
+- `GET /api/documents/{document_id}/validation-stream/` (SSE)
 
 ---
 
-## Workflow Utilities & Cron
+## Invoices
 
-- **GET `/api/compute/doc_workflow_due_date/<task_id>/<start_date>/`**
-  - **Description:** Compute workflow due date for a task and start date.
+- `GET /api/invoices/`
+- `POST /api/invoices/`
+- `GET /api/invoices/{id}/`
+- `PATCH /api/invoices/{id}/`
+- `GET /api/invoices/propose/?invoice_date=YYYY-MM-DD`
+- `GET /api/invoices/get_customer_applications/{customer_id}/`
+- `GET /api/invoices/get_invoice_application_due_amount/{invoice_application_id}/`
+- `GET /api/invoices/{id}/download/?file_format=docx|pdf`
+- `POST /api/invoices/{id}/download-async/`
+- `GET /api/invoices/download-async/status/{job_id}/`
+- `GET /api/invoices/download-async/stream/{job_id}/` (SSE)
+- `GET /api/invoices/download-async/file/{job_id}/`
+- `POST /api/invoices/{id}/mark-as-paid/`
+- `GET /api/invoices/{id}/delete-preview/` (superuser)
+- `POST /api/invoices/{id}/force-delete/` (superuser)
+- `POST /api/invoices/bulk-delete/` (superuser)
 
-- **GET `/api/cron/exec_cron_jobs/`**
-  - **Description:** Trigger Huey cron job tasks (`run_full_backup_now`, `run_clear_cache_now`). Returns a queued status.
+### Invoice import
 
----
-
-## Calendar & Tasks 📅
-
-- **GET `/api/calendar/`**
-  - **Description:** List Google Calendar events (integration).
-  - **Actions:** `sync` (POST) to trigger synchronization.
-
-- **GET `/api/tasks/`**
-  - **Description:** List Google Tasks (integration).
-  - **Actions:** `sync` (POST) to trigger synchronization.
-
----
-
-## Notifications & Messaging 📨
-
-- **GET `/api/workflow-notifications/`**
-  - **Description:** List workflow notifications.
-  - **Actions:** `resend` (POST), `cancel` (POST).
-
-- **GET `/api/workflow-notifications/stream/`** (SSE)
-  - **Query params:** optional `token` (JWT/DRF token for `EventSource` authentication fallback).
-  - **Description:** Live Notification Center stream. Emits an initial snapshot event, then change events when workflow notifications created in the last 24 hours are created/updated/deleted.
-
-- **GET `/api/letters/`**
-  - **Description:** Manage letter templates and generation.
-
-- **POST `/api/push-notifications/register/`**, **POST `/api/push-notifications/unregister/`**
-  - **Description:** Register/unregister for push notifications.
-
-- **POST `/api/push-notifications/test/`**
-  - **Description:** Send a test notification to the current user's active devices.
-
-- **POST `/api/push-notifications/send-test/`**, **POST `/api/push-notifications/send-test-whatsapp/`**
-  - **Permissions:** Admin/Staff only.
-  - **Description:** Send test push or WhatsApp messages to specific users.
-
-- **POST `/api/notifications/whatsapp/webhook/`**
-  - **Description:** Webhook for WhatsApp Business API.
-  - **Local testing:** See `docs/whatsapp-webhook-tunnel-command.md` for the temporary ngrok callback switch command.
+- `GET /api/invoices/import/config`
+- `POST /api/invoices/import/single` (multipart)
+- `POST /api/invoices/import/batch` (multipart)
+- `GET /api/invoices/import/status/{job_id}`
+- `GET /api/invoices/import/stream/{job_id}` (SSE)
 
 ---
 
-## System & Config 🛠️
+## Payments
 
-- **GET `/api/app-config/`**
-  - **Description:** Public application configuration (feature flags, formats).
+- `GET /api/payments/`
+- `POST /api/payments/`
+- `GET /api/payments/{id}/`
+- `PATCH /api/payments/{id}/`
+- `DELETE /api/payments/{id}/`
 
-- **POST `/_observability/client-logs`**
-  - **Description:** Browser client-logs endpoint handled by the **Angular SSR** server — requests are rate-limited and deduped, and written to the frontend log (`backend/logs/frontend.log` or `/logs/frontend.log`). Not a Django `/api/` endpoint.
-
-- **GET `/api/async-jobs/`**
-  - **Description:** Monitor async job status (polling).
-
-- **GET `/api/async-jobs/status/<job_id>/`**
-  - **Description:** SSE stream for async job status updates.
+> On payment create/update/delete, invoice-application and invoice statuses are recalculated.
 
 ---
 
-## Notes & Authentication
+## OCR
 
-- Most endpoints require authentication (JWT or session). Some admin actions are restricted to superusers or users with specific permissions.
-- File uploads use multipart/form-data. For precise request/response schemas, consult the OpenAPI schema at `/api/schema/` or the browsable API.
+- `POST /api/ocr/check/`
+- `GET /api/ocr/status/{job_id}/`
+- `POST /api/document-ocr/check/`
+- `GET /api/document-ocr/status/{job_id}/`
 
 ---
 
-**For further details and the most current endpoint list, visit the `api/urls.py` and `api/views.py` files or the running OpenAPI schema at** `/api/schema/`.
+## Calendar, reminders, notifications
+
+- `GET /api/calendar/` (+ sync actions in viewset)
+- `GET /api/tasks/` (+ sync actions in viewset)
+- `GET /api/calendar-reminders/`
+- `POST /api/calendar-reminders/`
+- `GET /api/calendar-reminders/stream/` (SSE)
+- `GET /api/workflow-notifications/`
+- `POST /api/workflow-notifications/{id}/resend/`
+- `POST /api/workflow-notifications/{id}/cancel/`
+- `GET /api/workflow-notifications/stream/` (SSE)
+
+Push/webhook:
+
+- `POST /api/push-notifications/register/`
+- `POST /api/push-notifications/unregister/`
+- `POST /api/push-notifications/test/`
+- `POST /api/push-notifications/send-test/` (admin/staff)
+- `POST /api/push-notifications/send-test-whatsapp/` (admin/staff)
+- `GET|POST /api/notifications/whatsapp/webhook/`
+
+---
+
+## Reports
+
+- `GET /api/reports/`
+- `GET /api/reports/revenue/`
+- `GET /api/reports/kpi-dashboard/`
+- `GET /api/reports/invoice-status/`
+- `GET /api/reports/monthly-invoices/`
+- `GET /api/reports/cash-flow/`
+- `GET /api/reports/customer-ltv/`
+- `GET /api/reports/application-pipeline/`
+- `GET /api/reports/product-revenue/`
+- `GET /api/reports/product-demand/`
+- `GET /api/reports/ai-costing/`
+
+---
+
+## Admin tools & system
+
+- `GET /api/backups/`
+- `GET /api/backups/download/{filename}/`
+- `POST /api/backups/upload/`
+- `DELETE /api/backups/delete-all/`
+- `GET /api/backups/start/` (SSE)
+- `POST /api/backups/restore/` (SSE)
+- `GET /api/server-management/` (+ action endpoints)
+- `GET /api/dashboard-stats/`
+- `GET /api/async-jobs/`
+- `GET /api/async-jobs/status/{job_id}/` (SSE)
+- `GET|POST /api/cron/exec_cron_jobs/`
+- `GET /api/app-config/`
+
+---
+
+## Notes
+
+- Most endpoints require authentication.
+- Some actions are superuser-only or staff/admin-group restricted.
+- Many heavy operations are asynchronous and should be tracked via job status/SSE endpoints.
