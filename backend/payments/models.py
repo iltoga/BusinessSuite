@@ -1,3 +1,4 @@
+from customers.models import Customer
 from django.conf import settings
 from django.contrib.postgres.search import SearchVector, TrigramSimilarity
 from django.db import models
@@ -5,8 +6,6 @@ from django.db.models import Q
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 from django.utils import timezone
-
-from customers.models import Customer
 from invoices.models.invoice import InvoiceApplication
 
 
@@ -93,5 +92,31 @@ class Payment(models.Model):
 @receiver(post_delete, sender=Payment)
 @receiver(post_save, sender=Payment)
 def update_invoice_status(sender, instance, **kwargs):
-    instance.invoice_application.save()
-    instance.invoice_application.invoice.save()
+    try:
+        invoice_application = InvoiceApplication.objects.select_related("invoice").get(
+            pk=instance.invoice_application_id
+        )
+    except InvoiceApplication.DoesNotExist:
+        # Can happen during cascaded deletes when invoice_application is already gone.
+        return
+
+    invoice_application_status = invoice_application.calculate_payment_status()
+    if invoice_application.status != invoice_application_status:
+        invoice_application.status = invoice_application_status
+        invoice_application.save(update_fields=["status"])
+
+    invoice = invoice_application.invoice
+    previous_total_amount = invoice.total_amount
+    previous_status = invoice.status
+
+    invoice.total_amount = invoice.calculate_total_amount()
+    invoice.status = invoice.get_invoice_status()
+
+    fields_to_update = []
+    if previous_total_amount != invoice.total_amount:
+        fields_to_update.append("total_amount")
+    if previous_status != invoice.status:
+        fields_to_update.append("status")
+
+    if fields_to_update:
+        invoice.save(update_fields=fields_to_update)

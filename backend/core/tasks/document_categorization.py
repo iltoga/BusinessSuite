@@ -147,7 +147,7 @@ def run_document_categorization_item(item_id: str) -> None:
             item.save(update_fields=["status", "error_message", "traceback", "result", "updated_at"])
 
         finally:
-            _update_categorization_job_counts(item.job_id, item.status)
+            _update_categorization_job_counts(item.job_id)
 
     finally:
         release_task_lock(lock_key, lock_token)
@@ -234,25 +234,38 @@ def _try_match_document(item: DocumentCategorizationItem, doc_application_id: in
 
 
 @transaction.atomic
-def _update_categorization_job_counts(job_id, item_status: str) -> None:
-    """Atomically update parent job counters after an item completes."""
+def _update_categorization_job_counts(job_id) -> None:
+    """Atomically recompute parent job counters from item states."""
     job = DocumentCategorizationJob.objects.select_for_update().get(id=job_id)
-    job.processed_files += 1
 
-    if item_status == DocumentCategorizationItem.STATUS_CATEGORIZED:
-        job.success_count += 1
-    else:
-        job.error_count += 1
+    items = DocumentCategorizationItem.objects.filter(job_id=job_id)
+    items_count = items.count()
+    if job.total_files != items_count:
+        job.total_files = items_count
+
+    success_count = items.filter(status=DocumentCategorizationItem.STATUS_CATEGORIZED).count()
+    error_count = items.filter(status=DocumentCategorizationItem.STATUS_ERROR).count()
+    processed_files = success_count + error_count
+
+    job.success_count = success_count
+    job.error_count = error_count
+    job.processed_files = processed_files
 
     if job.total_files:
-        job.progress = int((job.processed_files / job.total_files) * 100)
+        job.progress = min(100, int((job.processed_files / job.total_files) * 100))
+    else:
+        job.progress = 100
 
-    if job.processed_files >= job.total_files:
-        job.status = DocumentCategorizationJob.STATUS_COMPLETED
+    if job.total_files == 0 or job.processed_files >= job.total_files:
+        if job.total_files > 0 and job.error_count == job.total_files:
+            job.status = DocumentCategorizationJob.STATUS_FAILED
+        else:
+            job.status = DocumentCategorizationJob.STATUS_COMPLETED
         job.progress = 100
 
     job.save(
         update_fields=[
+            "total_files",
             "processed_files",
             "success_count",
             "error_count",

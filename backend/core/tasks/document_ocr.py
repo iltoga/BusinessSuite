@@ -1,12 +1,11 @@
 import os
 import traceback
 
-from huey.contrib.djhuey import db_task
-
 from core.models import DocumentOCRJob
 from core.services.logger_service import Logger
 from core.tasks.idempotency import acquire_task_lock, build_task_lock_key, release_task_lock
 from core.utils.storage_helpers import get_local_file_path
+from huey.contrib.djhuey import db_task
 from invoices.services.document_parser import DocumentParser
 
 logger = Logger.get_logger(__name__)
@@ -28,9 +27,16 @@ def run_document_ocr_job(job_id: str) -> None:
             logger.error(f"DocumentOCRJob {job_id} not found")
             return
 
+        terminal_statuses = {DocumentOCRJob.STATUS_COMPLETED, DocumentOCRJob.STATUS_FAILED}
+        if job.status in terminal_statuses:
+            logger.info("Skipping document OCR job already in terminal state: job_id=%s status=%s", job_id, job.status)
+            return
+
         job.status = DocumentOCRJob.STATUS_PROCESSING
         job.progress = 5
-        job.save(update_fields=["status", "progress", "updated_at"])
+        job.error_message = ""
+        job.traceback = ""
+        job.save(update_fields=["status", "progress", "error_message", "traceback", "updated_at"])
 
         try:
             with get_local_file_path(job.file_path) as abs_path:
@@ -65,7 +71,11 @@ def run_document_ocr_job(job_id: str) -> None:
                 job.result_text = extracted_text or ""
                 job.status = DocumentOCRJob.STATUS_COMPLETED
                 job.progress = 100
-                job.save(update_fields=["status", "progress", "result_text", "updated_at"])
+                job.error_message = ""
+                job.traceback = ""
+                job.save(
+                    update_fields=["status", "progress", "result_text", "error_message", "traceback", "updated_at"]
+                )
                 logger.info(f"Document OCR job {job_id} completed")
 
         except Exception as exc:

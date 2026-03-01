@@ -32,6 +32,18 @@ def run_invoice_import_item(item_id: str) -> None:
 
         job = item.job
 
+        terminal_item_statuses = {
+            InvoiceImportItem.STATUS_IMPORTED,
+            InvoiceImportItem.STATUS_DUPLICATE,
+            InvoiceImportItem.STATUS_ERROR,
+        }
+        if item.status in terminal_item_statuses:
+            logger.info(
+                "Skipping invoice import item already in terminal state: item_id=%s status=%s", item_id, item.status
+            )
+            _update_invoice_import_job_counts(item.job_id)
+            return
+
         if job.status == InvoiceImportJob.STATUS_QUEUED:
             job.status = InvoiceImportJob.STATUS_PROCESSING
             job.updated_at = timezone.now()
@@ -39,7 +51,9 @@ def run_invoice_import_item(item_id: str) -> None:
 
         item.status = InvoiceImportItem.STATUS_PROCESSING
         item.result = {"stage": "queued"}
-        item.save(update_fields=["status", "result", "updated_at"])
+        item.error_message = ""
+        item.traceback = ""
+        item.save(update_fields=["status", "result", "error_message", "traceback", "updated_at"])
 
         try:
             file_name = os.path.basename(item.file_path)
@@ -57,7 +71,8 @@ def run_invoice_import_item(item_id: str) -> None:
                     "errors": [f"File type {file_ext} not supported"],
                 }
                 item.error_message = error_message
-                item.save(update_fields=["status", "result", "error_message", "updated_at"])
+                item.traceback = ""
+                item.save(update_fields=["status", "result", "error_message", "traceback", "updated_at"])
                 return
 
             with default_storage.open(item.file_path, "rb") as handle:
@@ -129,7 +144,11 @@ def run_invoice_import_item(item_id: str) -> None:
             item.invoice = result.invoice if result.invoice else None
             item.customer = result.customer if result.customer else None
             item.error_message = "" if result.success else result_data.get("message", "")
-            item.save(update_fields=["status", "result", "invoice", "customer", "error_message", "updated_at"])
+            if item.status != InvoiceImportItem.STATUS_ERROR:
+                item.traceback = ""
+            item.save(
+                update_fields=["status", "result", "invoice", "customer", "error_message", "traceback", "updated_at"]
+            )
 
         except Exception as exc:
             full_traceback = traceback.format_exc()
@@ -147,32 +166,45 @@ def run_invoice_import_item(item_id: str) -> None:
             item.save(update_fields=["status", "error_message", "traceback", "result", "updated_at"])
 
         finally:
-            _update_invoice_import_job_counts(item.job_id, item.status)
+            _update_invoice_import_job_counts(item.job_id)
     finally:
         release_task_lock(lock_key, lock_token)
 
 
 @transaction.atomic
-def _update_invoice_import_job_counts(job_id, item_status):
+def _update_invoice_import_job_counts(job_id):
     job = InvoiceImportJob.objects.select_for_update().get(id=job_id)
-    job.processed_files += 1
 
-    if item_status == InvoiceImportItem.STATUS_IMPORTED:
-        job.imported_count += 1
-    elif item_status == InvoiceImportItem.STATUS_DUPLICATE:
-        job.duplicate_count += 1
-    else:
-        job.error_count += 1
+    items = InvoiceImportItem.objects.filter(job_id=job_id)
+    items_count = items.count()
+    if job.total_files != items_count:
+        job.total_files = items_count
+    imported_count = items.filter(status=InvoiceImportItem.STATUS_IMPORTED).count()
+    duplicate_count = items.filter(status=InvoiceImportItem.STATUS_DUPLICATE).count()
+    error_count = items.filter(status=InvoiceImportItem.STATUS_ERROR).count()
+    processed_files = imported_count + duplicate_count + error_count
+
+    job.imported_count = imported_count
+    job.duplicate_count = duplicate_count
+    job.error_count = error_count
+    job.processed_files = processed_files
 
     if job.total_files:
-        job.progress = int((job.processed_files / job.total_files) * 100)
+        job.progress = min(100, int((job.processed_files / job.total_files) * 100))
+    else:
+        # Empty jobs should not remain stuck in processing
+        job.progress = 100
 
-    if job.processed_files >= job.total_files:
-        job.status = InvoiceImportJob.STATUS_COMPLETED
+    if job.total_files == 0 or job.processed_files >= job.total_files:
+        if job.total_files > 0 and job.error_count == job.total_files:
+            job.status = InvoiceImportJob.STATUS_FAILED
+        else:
+            job.status = InvoiceImportJob.STATUS_COMPLETED
         job.progress = 100
 
     job.save(
         update_fields=[
+            "total_files",
             "processed_files",
             "imported_count",
             "duplicate_count",

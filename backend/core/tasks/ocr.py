@@ -3,17 +3,16 @@ import os
 import traceback
 from io import BytesIO
 
-from django.core.files.storage import default_storage
-from django.core.files.uploadedfile import SimpleUploadedFile
-from huey.contrib.djhuey import db_task
-
 from core.models import OCRJob
 from core.services.ai_client import AIConnectionError
 from core.services.logger_service import Logger
-from core.tasks.idempotency import acquire_task_lock, build_task_lock_key, release_task_lock
 from core.services.ocr_preview_storage import upload_ocr_preview_bytes
+from core.tasks.idempotency import acquire_task_lock, build_task_lock_key, release_task_lock
 from core.utils.imgutils import convert_and_resize_image
 from core.utils.passport_ocr import extract_mrz_data, extract_passport_with_ai
+from django.core.files.storage import default_storage
+from django.core.files.uploadedfile import SimpleUploadedFile
+from huey.contrib.djhuey import db_task
 
 logger = Logger.get_logger(__name__)
 
@@ -34,9 +33,16 @@ def run_ocr_job(job_id: str, task=None) -> None:
             logger.error(f"OCRJob {job_id} not found")
             return
 
+        terminal_statuses = {OCRJob.STATUS_COMPLETED, OCRJob.STATUS_FAILED}
+        if job.status in terminal_statuses:
+            logger.info("Skipping OCR job already in terminal state: job_id=%s status=%s", job_id, job.status)
+            return
+
         job.status = OCRJob.STATUS_PROCESSING
         job.progress = 5
-        job.save(update_fields=["status", "progress", "updated_at"])
+        job.error_message = ""
+        job.traceback = ""
+        job.save(update_fields=["status", "progress", "error_message", "traceback", "updated_at"])
 
         logger.info(f"Processing file: {job.file_path}")
 
@@ -107,7 +113,9 @@ def run_ocr_job(job_id: str, task=None) -> None:
             job.result = response_data
             job.status = OCRJob.STATUS_COMPLETED
             job.progress = 100
-            job.save(update_fields=["status", "progress", "result", "updated_at"])
+            job.error_message = ""
+            job.traceback = ""
+            job.save(update_fields=["status", "progress", "result", "error_message", "traceback", "updated_at"])
             logger.info(f"OCR job {job_id} completed successfully")
 
         except AIConnectionError as exc:

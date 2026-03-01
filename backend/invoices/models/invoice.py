@@ -1,4 +1,6 @@
 # models.py
+from customer_applications.models.doc_application import DocApplication
+from customers.models import Customer
 from django.conf import settings
 from django.contrib.postgres.search import SearchVector, TrigramSimilarity
 from django.core.cache import cache
@@ -6,9 +8,6 @@ from django.db import models
 from django.db.models import Q, Sum
 from django.db.models.functions import Cast
 from django.utils import timezone
-
-from customer_applications.models.doc_application import DocApplication
-from customers.models import Customer
 
 
 class InvoiceQuerySet(models.QuerySet):
@@ -339,6 +338,9 @@ class Invoice(models.Model):
         if self.total_due_amount == 0:
             return Invoice.PAID
 
+        if self.total_due_amount > 0 and self.due_date < timezone.now().date():
+            return Invoice.OVERDUE
+
         if self.total_due_amount == self.total_amount:
             if self.sent:
                 return Invoice.PENDING_PAYMENT
@@ -346,9 +348,6 @@ class Invoice(models.Model):
 
         if self.total_due_amount < self.total_amount:
             return Invoice.PARTIAL_PAYMENT
-
-        if self.total_due_amount > 0 and self.due_date < timezone.now().date():
-            return Invoice.OVERDUE
 
         raise ValueError("Unable to determine invoice status")
 
@@ -469,7 +468,7 @@ class InvoiceApplication(models.Model):
             return InvoiceApplication.PAID
         if self.paid_amount > 0:
             return InvoiceApplication.PARTIAL_PAYMENT
-        if self.paid_amount == 0 and self.invoice.due_date > timezone.now().date():
+        if self.paid_amount == 0 and self.invoice.due_date < timezone.now().date():
             return InvoiceApplication.OVERDUE
         # set self.status to this status
         return InvoiceApplication.PENDING

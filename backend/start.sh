@@ -50,8 +50,16 @@ fi
 # 2. Safety Check for Required Variables
 if [[ -z "${SYSTEM_USER_PASSWORD}" || -z "${SYSTEM_USER_EMAIL}" ]]; then
   echo "Error: SYSTEM_USER_PASSWORD or SYSTEM_USER_EMAIL is not set."
-  echo "DEBUG: SYSTEM_USER_PASSWORD value: [${SYSTEM_USER_PASSWORD}]"
-  echo "DEBUG: SYSTEM_USER_EMAIL value: [${SYSTEM_USER_EMAIL}]"
+  if [[ -z "${SYSTEM_USER_PASSWORD}" ]]; then
+    echo "DEBUG: Missing required variable: SYSTEM_USER_PASSWORD"
+  else
+    echo "DEBUG: SYSTEM_USER_PASSWORD is set"
+  fi
+  if [[ -z "${SYSTEM_USER_EMAIL}" ]]; then
+    echo "DEBUG: Missing required variable: SYSTEM_USER_EMAIL"
+  else
+    echo "DEBUG: SYSTEM_USER_EMAIL is set"
+  fi
   echo "DEBUG: Current User: $(id)"
   echo "DEBUG: PWD: $PWD"
   echo "DEBUG: Directory listing of $PWD:"

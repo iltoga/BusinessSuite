@@ -2,14 +2,13 @@ import logging
 import os
 import traceback
 
+from core.services.logger_service import Logger
+from core.tasks.idempotency import acquire_task_lock, build_task_lock_key, release_task_lock
+from core.utils.pdf_converter import PDFConverter, PDFConverterError
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.utils.text import slugify
 from huey.contrib.djhuey import db_task
-
-from core.services.logger_service import Logger
-from core.tasks.idempotency import acquire_task_lock, build_task_lock_key, release_task_lock
-from core.utils.pdf_converter import PDFConverter, PDFConverterError
 from invoices.models import InvoiceDownloadJob
 from invoices.services.InvoiceService import InvoiceService
 
@@ -29,6 +28,10 @@ def run_invoice_download_job(job_id: str) -> None:
             job = InvoiceDownloadJob.objects.select_related("invoice", "invoice__customer").get(id=job_id)
         except InvoiceDownloadJob.DoesNotExist:
             logger.error(f"InvoiceDownloadJob {job_id} not found")
+            return
+
+        if job.status in {InvoiceDownloadJob.STATUS_COMPLETED, InvoiceDownloadJob.STATUS_FAILED}:
+            logger.info("Skipping invoice download job already finalized: job_id=%s status=%s", job_id, job.status)
             return
 
         job.status = InvoiceDownloadJob.STATUS_PROCESSING
@@ -72,16 +75,19 @@ def run_invoice_download_job(job_id: str) -> None:
 
             job.output_path = saved_path
             job.status = InvoiceDownloadJob.STATUS_COMPLETED
+            job.error_message = ""
+            job.traceback = ""
             job.progress = 100
-            job.save(update_fields=["output_path", "status", "progress", "updated_at"])
+            job.save(update_fields=["output_path", "status", "error_message", "traceback", "progress", "updated_at"])
 
         except Exception as exc:
             full_traceback = traceback.format_exc()
             logger.error(f"Invoice download job {job_id} failed: {str(exc)}\n{full_traceback}")
             job.status = InvoiceDownloadJob.STATUS_FAILED
+            job.output_path = ""
             job.error_message = str(exc)
             job.traceback = full_traceback
             job.progress = 100
-            job.save(update_fields=["status", "error_message", "traceback", "progress", "updated_at"])
+            job.save(update_fields=["status", "output_path", "error_message", "traceback", "progress", "updated_at"])
     finally:
         release_task_lock(lock_key, lock_token)

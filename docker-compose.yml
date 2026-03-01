@@ -70,8 +70,8 @@ services:
     networks:
       dockernet:
         ipv4_address: 192.168.2.62
-    ports:
-      - "6379:6379"
+    # ports:
+    #   - "6379:6379"
     deploy:
       resources:
         limits:
@@ -271,16 +271,16 @@ services:
       - --server.http.listen-addr=0.0.0.0:12345
       - --storage.path=/var/lib/alloy/data
       - /etc/alloy/config.alloy
-    ports:
-      - "12345:12345"
-      - "4318:4318"
+    # ports:
+    #   - "12345:12345"
+    #   - "4318:4318"
     networks:
       - dockernet
     deploy:
       resources:
         limits:
-          cpus: "0.30" # Max 30% of a single core
-          memory: 350M # Hard cap to protect VPS stability
+          cpus: "0.10"
+          memory: 128M
 
 networks:
   dockernet:
