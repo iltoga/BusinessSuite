@@ -8,7 +8,7 @@ This module provides utilities for testing the cache system including:
 - Redis operation mocking utilities
 
 Redis Database Allocation:
-- DB 0: Huey task queue
+- DB 0: PgQueuer task queue
 - DB 1: Django cache (default)
 - DB 2: Cacheops
 - DB 3: Benchmark system

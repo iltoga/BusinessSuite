@@ -17,7 +17,7 @@ We are migrating from local `FileSystemStorage` to Cloudflare R2 (S3).
    - **Configuration:** You must configure `django-storages` to sign URLs (`AWS_QUERYSTRING_AUTH = True`) so that private files (passports, invoices) are accessible to the frontend for a limited time (e.g., 1 hour) without making the bucket public.
 
 2. **Storage Utility (`backend/core/utils/storage_helpers.py`):**
-   - **Problem:** Background tasks (Huey) and OCR tools (Tesseract, PDF conversion) currently rely on `default_storage.path(file_name)`, which crashes on S3.
+   - **Problem:** Background tasks (PgQueuer) and OCR tools (Tesseract, PDF conversion) currently rely on `default_storage.path(file_name)`, which crashes on S3.
    - **Solution:** Implement a Context Manager named `get_local_file_path(file_reference)`.
      - **Logic:**
        - If storage is Local: Yield `file_reference.path`.

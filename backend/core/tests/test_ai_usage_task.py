@@ -6,7 +6,7 @@ from core.models.ai_request_usage import AIRequestUsage
 from core.tasks.ai_usage import capture_ai_usage_task
 
 
-def _run_huey_task(task, **kwargs):
+def _run_task(task, **kwargs):
     if hasattr(task, "call_local"):
         return task.call_local(**kwargs)
     if hasattr(task, "func"):
@@ -34,7 +34,7 @@ class AIUsageTaskTests(TestCase):
         }
         mock_get.return_value = response
 
-        result = _run_huey_task(
+        result = _run_task(
             capture_ai_usage_task,
             feature="Invoice Import AI Parser",
             provider="openrouter",
@@ -62,7 +62,7 @@ class AIUsageTaskTests(TestCase):
     def test_capture_ai_usage_task_records_fallback_usage_on_provider_error(self, mock_get):
         mock_get.side_effect = Exception("provider unavailable")
 
-        result = _run_huey_task(
+        result = _run_task(
             capture_ai_usage_task,
             feature="Invoice Import AI Parser",
             provider="openrouter",

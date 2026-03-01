@@ -44,7 +44,7 @@ export class CustomerApplicationsService extends BaseService {
     }
 
     /**
-     * Complete current workflow synchronously and queue calendar sync in Huey.
+     * Complete current workflow synchronously and queue calendar sync in PgQueuer.
      * @endpoint post /api/customer-applications/{id}/advance-workflow/
      * @param id A unique integer value identifying this doc application.
      * @param docApplicationSerializerWithRelations 
@@ -193,7 +193,7 @@ export class CustomerApplicationsService extends BaseService {
     }
 
     /**
-     * Create application synchronously and queue calendar sync in Huey.
+     * Create application synchronously and queue calendar sync in PgQueuer.
      * @endpoint post /api/customer-applications/
      * @param docApplicationCreateUpdate 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -266,7 +266,7 @@ export class CustomerApplicationsService extends BaseService {
     }
 
     /**
-     * Delete application synchronously and queue calendar cleanup in Huey.
+     * Delete application synchronously and queue calendar cleanup in PgQueuer.
      * @endpoint delete /api/customer-applications/{id}/
      * @param id A unique integer value identifying this doc application.
      * @param deleteInvoices 
@@ -738,7 +738,7 @@ export class CustomerApplicationsService extends BaseService {
     }
 
     /**
-     * Update application synchronously and queue calendar sync in Huey.
+     * Update application synchronously and queue calendar sync in PgQueuer.
      * @endpoint put /api/customer-applications/{id}/
      * @param id A unique integer value identifying this doc application.
      * @param docApplicationCreateUpdate 

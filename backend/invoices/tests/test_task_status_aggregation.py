@@ -16,7 +16,7 @@ from invoices.tasks.import_jobs import _update_invoice_import_job_counts, run_in
 User = get_user_model()
 
 
-def _run_huey_task(task, **kwargs):
+def _run_task(task, **kwargs):
     if hasattr(task, "call_local"):
         return task.call_local(**kwargs)
     if hasattr(task, "func"):
@@ -218,7 +218,7 @@ class InvoiceDocumentJobStatusAggregationTest(TestCase):
                 "invoices.tasks.document_jobs.default_storage.save", return_value="tmpfiles/invoice_documents/test.zip"
             ) as save_mock,
         ):
-            _run_huey_task(run_invoice_document_job, job_id=str(job.id))
+            _run_task(run_invoice_document_job, job_id=str(job.id))
 
         job.refresh_from_db()
         item = job.items.get()
@@ -282,7 +282,7 @@ class InvoiceDocumentJobStatusAggregationTest(TestCase):
                 return_value="tmpfiles/invoice_documents/mixed.zip",
             ) as save_mock,
         ):
-            _run_huey_task(run_invoice_document_job, job_id=str(job.id))
+            _run_task(run_invoice_document_job, job_id=str(job.id))
 
         job.refresh_from_db()
         self.assertEqual(job.status, InvoiceDocumentJob.STATUS_COMPLETED)
@@ -308,7 +308,7 @@ class InvoiceDocumentJobStatusAggregationTest(TestCase):
             patch("invoices.tasks.document_jobs.release_task_lock"),
             patch("invoices.tasks.document_jobs.default_storage.save") as save_mock,
         ):
-            _run_huey_task(run_invoice_document_job, job_id=str(job.id))
+            _run_task(run_invoice_document_job, job_id=str(job.id))
 
         job.refresh_from_db()
         save_mock.assert_not_called()
@@ -355,7 +355,7 @@ class InvoiceDocumentJobStatusAggregationTest(TestCase):
                 "invoices.tasks.document_jobs.default_storage.save", return_value="tmpfiles/invoice_documents/one.zip"
             ),
         ):
-            _run_huey_task(run_invoice_document_job, job_id=str(job.id))
+            _run_task(run_invoice_document_job, job_id=str(job.id))
 
         job.refresh_from_db()
         self.assertEqual(job.total_invoices, 1)
@@ -399,7 +399,7 @@ class InvoiceDocumentJobStatusAggregationTest(TestCase):
                 "invoices.tasks.document_jobs.default_storage.save", return_value="tmpfiles/invoice_documents/ok.zip"
             ),
         ):
-            _run_huey_task(run_invoice_document_job, job_id=str(job.id))
+            _run_task(run_invoice_document_job, job_id=str(job.id))
 
         item.refresh_from_db()
         self.assertEqual(item.status, InvoiceDocumentItem.STATUS_COMPLETED)
@@ -453,7 +453,7 @@ class InvoiceImportItemStateCleanupTest(TestCase):
             patch("invoices.tasks.import_jobs.default_storage.open", fake_open),
             patch("invoices.tasks.import_jobs.InvoiceImporter", FakeImporter),
         ):
-            _run_huey_task(run_invoice_import_item, item_id=str(item.id))
+            _run_task(run_invoice_import_item, item_id=str(item.id))
 
         item.refresh_from_db()
         self.assertEqual(item.status, InvoiceImportItem.STATUS_IMPORTED)

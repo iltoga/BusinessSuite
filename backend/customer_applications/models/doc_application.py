@@ -533,9 +533,9 @@ def pre_delete_doc_application_signal(sender, instance, **kwargs):
 
     def _queue_calendar_cleanup():
         try:
-            from customer_applications.tasks import SYNC_ACTION_DELETE, sync_application_calendar_task
+            from customer_applications.tasks import SYNC_ACTION_DELETE, enqueue_sync_application_calendar_task
 
-            sync_application_calendar_task(
+            enqueue_sync_application_calendar_task(
                 application_id=application_id,
                 user_id=actor_user_id,
                 action=SYNC_ACTION_DELETE,
@@ -557,9 +557,9 @@ def post_delete_doc_application_signal(sender, instance, **kwargs):
 
     def _queue_storage_cleanup():
         try:
-            from customer_applications.tasks import cleanup_application_storage_folder_task
+            from customer_applications.tasks import enqueue_cleanup_application_storage_folder_task
 
-            cleanup_application_storage_folder_task(folder_path=folder_path)
+            enqueue_cleanup_application_storage_folder_task(folder_path=folder_path)
         except Exception as exc:
             logger.warning(
                 "Failed to queue storage folder cleanup for application #%s: %s",

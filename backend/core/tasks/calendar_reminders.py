@@ -1,12 +1,13 @@
 import logging
 
 from django.conf import settings
-from huey import crontab
-from huey.contrib.djhuey import db_periodic_task, db_task
 
+from core.queue import enqueue_job
 from core.services.calendar_reminder_service import CalendarReminderService
 
 logger = logging.getLogger(__name__)
+
+ENTRYPOINT_DISPATCH_DUE_CALENDAR_REMINDERS_TASK = "core.dispatch_due_calendar_reminders"
 
 
 def _dispatch_due_calendar_reminders(*, limit: int | None = None) -> dict[str, int]:
@@ -30,14 +31,13 @@ def _dispatch_due_calendar_reminders(*, limit: int | None = None) -> dict[str, i
     return payload
 
 
-@db_task()
 def dispatch_due_calendar_reminders_task(*, limit: int | None = None) -> dict[str, int]:
     return _dispatch_due_calendar_reminders(limit=limit)
 
 
-@db_periodic_task(
-    crontab(minute="*/1"),
-    name="core.dispatch_due_calendar_reminders",
-)
-def dispatch_due_calendar_reminders_periodic_task() -> dict[str, int]:
-    return _dispatch_due_calendar_reminders()
+def enqueue_dispatch_due_calendar_reminders_task(*, limit: int | None = None) -> str | None:
+    return enqueue_job(
+        entrypoint=ENTRYPOINT_DISPATCH_DUE_CALENDAR_REMINDERS_TASK,
+        payload={"limit": limit},
+        run_local=dispatch_due_calendar_reminders_task,
+    )

@@ -102,10 +102,8 @@ class DesktopRuntimeManager {
       DESKTOP_APP_DOMAIN: process.env.DESKTOP_APP_DOMAIN || '127.0.0.1',
       DESKTOP_REDIS_HOST: process.env.DESKTOP_REDIS_HOST || process.env.DESKTOP_LOCAL_REDIS_HOST || 'redis',
       DESKTOP_REDIS_PORT: process.env.DESKTOP_REDIS_PORT || process.env.DESKTOP_LOCAL_REDIS_PORT || '6379',
-      DESKTOP_HUEY_REDIS_DB: process.env.DESKTOP_HUEY_REDIS_DB || process.env.DESKTOP_LOCAL_HUEY_REDIS_DB || '0',
       REDIS_HOST: process.env.DESKTOP_REDIS_HOST || process.env.DESKTOP_LOCAL_REDIS_HOST || 'redis',
       REDIS_PORT: process.env.DESKTOP_REDIS_PORT || process.env.DESKTOP_LOCAL_REDIS_PORT || '6379',
-      HUEY_REDIS_DB: process.env.DESKTOP_HUEY_REDIS_DB || process.env.DESKTOP_LOCAL_HUEY_REDIS_DB || '0',
       LOCAL_SYNC_ENABLED: process.env.LOCAL_SYNC_ENABLED || 'true',
       LOCAL_SYNC_NODE_ID:
         this.remoteSyncNodeId || process.env.LOCAL_SYNC_NODE_ID || 'desktop-local-node',

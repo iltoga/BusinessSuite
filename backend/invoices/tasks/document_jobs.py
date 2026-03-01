@@ -4,20 +4,20 @@ import traceback
 from io import BytesIO
 from zipfile import ZIP_DEFLATED, ZipFile
 
+from core.queue import enqueue_job
 from core.services.logger_service import Logger
 from core.tasks.idempotency import acquire_task_lock, build_task_lock_key, release_task_lock
 from core.utils.pdf_converter import PDFConverter, PDFConverterError
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.utils.text import slugify
-from huey.contrib.djhuey import db_task
 from invoices.models import InvoiceDocumentItem, InvoiceDocumentJob
 from invoices.services.InvoiceService import InvoiceService
 
 logger = Logger.get_logger(__name__)
+ENTRYPOINT_RUN_INVOICE_DOCUMENT_JOB = "invoices.run_invoice_document_job"
 
 
-@db_task()
 def run_invoice_document_job(job_id: str) -> None:
     lock_key = build_task_lock_key(namespace="invoice_document_job", item_id=str(job_id))
     lock_token = acquire_task_lock(lock_key)
@@ -181,3 +181,12 @@ def run_invoice_document_job(job_id: str) -> None:
             job.save(update_fields=["status", "output_path", "error_message", "traceback", "progress", "updated_at"])
     finally:
         release_task_lock(lock_key, lock_token)
+
+
+def enqueue_run_invoice_document_job(*, job_id: str, delay_seconds: int | float | None = None) -> str | None:
+    return enqueue_job(
+        entrypoint=ENTRYPOINT_RUN_INVOICE_DOCUMENT_JOB,
+        payload={"job_id": str(job_id)},
+        delay_seconds=delay_seconds,
+        run_local=run_invoice_document_job,
+    )

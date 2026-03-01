@@ -254,7 +254,7 @@ class ExpensiveAsyncEnqueueIdempotencyTests(TestCase):
     def tearDown(self):
         cache.clear()
 
-    @patch("products.tasks.run_product_export_job")
+    @patch("products.tasks.enqueue_run_product_export_job")
     def test_product_export_start_reuses_existing_inflight_job(self, enqueue_mock):
         first = self.client.post("/api/products/export/start/", {"search_query": "visa"}, format="json")
         self.assertEqual(first.status_code, 202)
@@ -284,7 +284,7 @@ class ExpensiveAsyncEnqueueIdempotencyTests(TestCase):
         self.assertEqual(cache.get(rate_limit_counter_key), 1)
 
     @patch("api.views.default_storage.save", return_value="tmpfiles/product_imports/mock.xlsx")
-    @patch("products.tasks.run_product_import_job")
+    @patch("products.tasks.enqueue_run_product_import_job")
     def test_product_import_start_reuses_existing_inflight_job(self, enqueue_mock, storage_save_mock):
         upload_one = SimpleUploadedFile(
             "products.xlsx",
@@ -311,7 +311,7 @@ class ExpensiveAsyncEnqueueIdempotencyTests(TestCase):
         enqueue_mock.assert_called_once()
         storage_save_mock.assert_called_once()
 
-    @patch("api.views.run_invoice_download_job")
+    @patch("api.views.enqueue_run_invoice_download_job")
     def test_invoice_download_async_reuses_existing_inflight_job(self, enqueue_mock):
         customer = Customer.objects.create(first_name="Download", last_name="Owner")
         invoice = Invoice.objects.create(
@@ -338,7 +338,7 @@ class ExpensiveAsyncEnqueueIdempotencyTests(TestCase):
 
     @patch("api.views.default_storage.url", return_value="/uploads/tmpfiles/passport.png")
     @patch("api.views.default_storage.save", return_value="tmpfiles/passport.png")
-    @patch("api.views.run_ocr_job")
+    @patch("api.views.enqueue_run_ocr_job")
     def test_passport_ocr_check_reuses_existing_inflight_job(self, enqueue_mock, storage_save_mock, storage_url_mock):
         passport_one = SimpleUploadedFile("passport.png", b"png-bytes", content_type="image/png")
         first = self.client.post("/api/ocr/check/", {"file": passport_one, "doc_type": "passport"}, format="multipart")
@@ -360,7 +360,7 @@ class ExpensiveAsyncEnqueueIdempotencyTests(TestCase):
 
     @patch("api.views.default_storage.url", return_value="/uploads/tmpfiles/document.pdf")
     @patch("api.views.default_storage.save", return_value="tmpfiles/document.pdf")
-    @patch("api.views.run_document_ocr_job")
+    @patch("api.views.enqueue_run_document_ocr_job")
     def test_document_ocr_check_reuses_existing_inflight_job(
         self, enqueue_mock, storage_save_mock, storage_url_mock
     ):
@@ -383,7 +383,7 @@ class ExpensiveAsyncEnqueueIdempotencyTests(TestCase):
         storage_url_mock.assert_called_once()
 
     @patch("api.views.default_storage.save", return_value="tmpfiles/invoice_imports/mock.pdf")
-    @patch("invoices.tasks.import_jobs.run_invoice_import_item")
+    @patch("invoices.tasks.import_jobs.enqueue_run_invoice_import_item")
     def test_invoice_import_batch_reuses_existing_inflight_job(self, enqueue_mock, storage_save_mock):
         file_one = SimpleUploadedFile("invoice-one.pdf", b"pdf-bytes", content_type="application/pdf")
         first = self.client.post(

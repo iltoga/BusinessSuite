@@ -1,6 +1,6 @@
 # Journey 01 — New Customer → Application Lifecycle → Invoice → Full Payment
 
-This journey documents the standard operational flow and aligns with current backend + Huey + frontend logic.
+This journey documents the standard operational flow and aligns with current backend + PgQueuer + frontend logic.
 
 ## Preconditions
 
@@ -29,7 +29,7 @@ This journey documents the standard operational flow and aligns with current bac
   - Due dates are computed from task durations (`calculate_due_date` logic).
 
 **Calendar note:**
-When the app is created/updated, backend queues `sync_application_calendar_task` (Huey). This updates local `CalendarEvent` and then queues Google Calendar sync.
+When the app is created/updated, backend queues `sync_application_calendar_task` (PgQueuer). This updates local `CalendarEvent` and then queues Google Calendar sync.
 
 ### 3) Upload required documents
 
@@ -50,7 +50,7 @@ When the app is created/updated, backend queues `sync_application_calendar_task`
 At this action, a calendar event is maintained in both:
 
 - local calendar mirror (`CalendarEvent` table), and
-- Google Calendar (asynchronously via Huey sync tasks).
+- Google Calendar (asynchronously via PgQueuer sync tasks).
 
 ### 5) Advance workflow to next step
 

@@ -914,7 +914,7 @@ export class V1Service extends BaseService {
     }
 
     /**
-     * Local-mirror calendar API.  CRUD operations update &#x60;CalendarEvent&#x60; records and signals queue asynchronous synchronization to Google Calendar through Huey tasks.
+     * Local-mirror calendar API.  CRUD operations update &#x60;CalendarEvent&#x60; records and signals queue asynchronous synchronization to Google Calendar through PgQueuer tasks.
      * @endpoint post /api/v1/calendar/
      * @param googleCalendarEvent 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -987,7 +987,7 @@ export class V1Service extends BaseService {
     }
 
     /**
-     * Local-mirror calendar API.  CRUD operations update &#x60;CalendarEvent&#x60; records and signals queue asynchronous synchronization to Google Calendar through Huey tasks.
+     * Local-mirror calendar API.  CRUD operations update &#x60;CalendarEvent&#x60; records and signals queue asynchronous synchronization to Google Calendar through PgQueuer tasks.
      * @endpoint delete /api/v1/calendar/{id}/
      * @param id 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -1047,7 +1047,7 @@ export class V1Service extends BaseService {
     }
 
     /**
-     * Local-mirror calendar API.  CRUD operations update &#x60;CalendarEvent&#x60; records and signals queue asynchronous synchronization to Google Calendar through Huey tasks.
+     * Local-mirror calendar API.  CRUD operations update &#x60;CalendarEvent&#x60; records and signals queue asynchronous synchronization to Google Calendar through PgQueuer tasks.
      * @endpoint get /api/v1/calendar/
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
@@ -1104,7 +1104,7 @@ export class V1Service extends BaseService {
     }
 
     /**
-     * Local-mirror calendar API.  CRUD operations update &#x60;CalendarEvent&#x60; records and signals queue asynchronous synchronization to Google Calendar through Huey tasks.
+     * Local-mirror calendar API.  CRUD operations update &#x60;CalendarEvent&#x60; records and signals queue asynchronous synchronization to Google Calendar through PgQueuer tasks.
      * @endpoint patch /api/v1/calendar/{id}/
      * @param id 
      * @param googleCalendarEvent 
@@ -2124,7 +2124,7 @@ export class V1Service extends BaseService {
     }
 
     /**
-     * Local-mirror calendar API.  CRUD operations update &#x60;CalendarEvent&#x60; records and signals queue asynchronous synchronization to Google Calendar through Huey tasks.
+     * Local-mirror calendar API.  CRUD operations update &#x60;CalendarEvent&#x60; records and signals queue asynchronous synchronization to Google Calendar through PgQueuer tasks.
      * @endpoint get /api/v1/calendar/{id}/
      * @param id 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -2185,7 +2185,7 @@ export class V1Service extends BaseService {
     }
 
     /**
-     * Local-mirror calendar API.  CRUD operations update &#x60;CalendarEvent&#x60; records and signals queue asynchronous synchronization to Google Calendar through Huey tasks.
+     * Local-mirror calendar API.  CRUD operations update &#x60;CalendarEvent&#x60; records and signals queue asynchronous synchronization to Google Calendar through PgQueuer tasks.
      * @endpoint put /api/v1/calendar/{id}/
      * @param id 
      * @param googleCalendarEvent 
@@ -2464,7 +2464,7 @@ export class V1Service extends BaseService {
     }
 
     /**
-     * Complete current workflow synchronously and queue calendar sync in Huey.
+     * Complete current workflow synchronously and queue calendar sync in PgQueuer.
      * @endpoint post /api/v1/customer-applications/{id}/advance-workflow/
      * @param id A unique integer value identifying this doc application.
      * @param docApplicationSerializerWithRelations 
@@ -2613,7 +2613,7 @@ export class V1Service extends BaseService {
     }
 
     /**
-     * Create application synchronously and queue calendar sync in Huey.
+     * Create application synchronously and queue calendar sync in PgQueuer.
      * @endpoint post /api/v1/customer-applications/
      * @param docApplicationCreateUpdate 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -2686,7 +2686,7 @@ export class V1Service extends BaseService {
     }
 
     /**
-     * Delete application synchronously and queue calendar cleanup in Huey.
+     * Delete application synchronously and queue calendar cleanup in PgQueuer.
      * @endpoint delete /api/v1/customer-applications/{id}/
      * @param id A unique integer value identifying this doc application.
      * @param deleteInvoices 
@@ -3158,7 +3158,7 @@ export class V1Service extends BaseService {
     }
 
     /**
-     * Update application synchronously and queue calendar sync in Huey.
+     * Update application synchronously and queue calendar sync in PgQueuer.
      * @endpoint put /api/v1/customer-applications/{id}/
      * @param id A unique integer value identifying this doc application.
      * @param docApplicationCreateUpdate 

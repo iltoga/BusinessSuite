@@ -8,7 +8,7 @@ from core.tasks.ocr import run_ocr_job
 from django.test import TestCase
 
 
-def _run_huey_task(task, **kwargs):
+def _run_task(task, **kwargs):
     if hasattr(task, "call_local"):
         return task.call_local(**kwargs)
     if hasattr(task, "func"):
@@ -48,7 +48,7 @@ class OcrTaskStateCleanupTests(TestCase):
         storage_open_mock.side_effect = _fake_open
         extract_mrz_data_mock.return_value = {"passport_no": "A1234567"}
 
-        _run_huey_task(run_ocr_job, job_id=str(job.id))
+        _run_task(run_ocr_job, job_id=str(job.id))
 
         job.refresh_from_db()
         self.assertEqual(job.status, OCRJob.STATUS_COMPLETED)
@@ -81,7 +81,7 @@ class OcrTaskStateCleanupTests(TestCase):
         extract_text_mock.return_value = "Extracted text"
         get_local_path_mock.side_effect = lambda _path: _fake_local_path("/tmp/document.pdf")
 
-        _run_huey_task(run_document_ocr_job, job_id=str(job.id))
+        _run_task(run_document_ocr_job, job_id=str(job.id))
 
         job.refresh_from_db()
         self.assertEqual(job.status, DocumentOCRJob.STATUS_COMPLETED)

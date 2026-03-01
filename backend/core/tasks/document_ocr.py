@@ -2,16 +2,24 @@ import os
 import traceback
 
 from core.models import DocumentOCRJob
+from core.queue import enqueue_job
 from core.services.logger_service import Logger
 from core.tasks.idempotency import acquire_task_lock, build_task_lock_key, release_task_lock
 from core.utils.storage_helpers import get_local_file_path
-from huey.contrib.djhuey import db_task
 from invoices.services.document_parser import DocumentParser
 
 logger = Logger.get_logger(__name__)
 
+ENTRYPOINT_RUN_DOCUMENT_OCR_JOB = "core.run_document_ocr_job"
 
-@db_task()
+def enqueue_run_document_ocr_job(*, job_id: str) -> str | None:
+    return enqueue_job(
+        entrypoint=ENTRYPOINT_RUN_DOCUMENT_OCR_JOB,
+        payload={"job_id": str(job_id)},
+        run_local=run_document_ocr_job,
+    )
+
+
 def run_document_ocr_job(job_id: str) -> None:
     lock_key = build_task_lock_key(namespace="document_ocr_job", item_id=str(job_id))
     lock_token = acquire_task_lock(lock_key)

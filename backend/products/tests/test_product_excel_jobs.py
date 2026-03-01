@@ -12,7 +12,7 @@ from products.models import Product
 from products.tasks.product_excel_jobs import run_product_export_job, run_product_import_job
 
 
-def _run_huey_task(task, **kwargs):
+def _run_task(task, **kwargs):
     if hasattr(task, "call_local"):
         return task.call_local(**kwargs)
     if hasattr(task, "func"):
@@ -45,7 +45,7 @@ class ProductExcelJobsTests(TestCase):
             patch("products.tasks.product_excel_jobs.acquire_task_lock", return_value="token-export"),
             patch("products.tasks.product_excel_jobs.release_task_lock"),
         ):
-            _run_huey_task(run_product_export_job, job_id=str(job.id), search_query="")
+            _run_task(run_product_export_job, job_id=str(job.id), search_query="")
 
         job.refresh_from_db()
         self.assertEqual(job.status, AsyncJob.STATUS_COMPLETED)
@@ -88,7 +88,7 @@ class ProductExcelJobsTests(TestCase):
             patch("products.tasks.product_excel_jobs.release_task_lock"),
             patch("products.tasks.product_excel_jobs._send_import_done_push"),
         ):
-            _run_huey_task(run_product_import_job, job_id=str(job.id), file_path=import_path)
+            _run_task(run_product_import_job, job_id=str(job.id), file_path=import_path)
 
         job.refresh_from_db()
         self.assertEqual(job.status, AsyncJob.STATUS_COMPLETED)

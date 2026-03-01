@@ -1,14 +1,65 @@
 import logging
 
 from core.models.calendar_event import CalendarEvent
+from core.queue import enqueue_job
 from core.utils.google_client import GoogleClient
 from django.utils import timezone
-from huey.contrib.djhuey import db_task
 
 logger = logging.getLogger(__name__)
 
 CALENDAR_SYNC_MAX_RETRIES = 3
 CALENDAR_SYNC_RETRY_DELAY_SECONDS = 15
+
+ENTRYPOINT_CREATE_GOOGLE_EVENT_TASK = "core.create_google_event_task"
+ENTRYPOINT_UPDATE_GOOGLE_EVENT_TASK = "core.update_google_event_task"
+ENTRYPOINT_DELETE_GOOGLE_EVENT_TASK = "core.delete_google_event_task"
+
+
+def enqueue_create_google_event_task(
+    *,
+    event_id: str,
+    retry_attempt: int = 0,
+    delay_seconds: int | float | None = None,
+) -> str | None:
+    return enqueue_job(
+        entrypoint=ENTRYPOINT_CREATE_GOOGLE_EVENT_TASK,
+        payload={"event_id": str(event_id), "retry_attempt": int(retry_attempt)},
+        delay_seconds=delay_seconds,
+        run_local=create_google_event_task,
+    )
+
+
+def enqueue_update_google_event_task(
+    *,
+    event_id: str,
+    retry_attempt: int = 0,
+    delay_seconds: int | float | None = None,
+) -> str | None:
+    return enqueue_job(
+        entrypoint=ENTRYPOINT_UPDATE_GOOGLE_EVENT_TASK,
+        payload={"event_id": str(event_id), "retry_attempt": int(retry_attempt)},
+        delay_seconds=delay_seconds,
+        run_local=update_google_event_task,
+    )
+
+
+def enqueue_delete_google_event_task(
+    *,
+    google_event_id: str,
+    google_calendar_id: str | None = None,
+    retry_attempt: int = 0,
+    delay_seconds: int | float | None = None,
+) -> str | None:
+    return enqueue_job(
+        entrypoint=ENTRYPOINT_DELETE_GOOGLE_EVENT_TASK,
+        payload={
+            "google_event_id": str(google_event_id),
+            "google_calendar_id": google_calendar_id,
+            "retry_attempt": int(retry_attempt),
+        },
+        delay_seconds=delay_seconds,
+        run_local=delete_google_event_task,
+    )
 
 
 def _is_google_not_found_error(exc: Exception) -> bool:
@@ -20,7 +71,11 @@ def _is_retryable_google_error(exc: Exception) -> bool:
     if _is_google_not_found_error(exc):
         return False
     message = str(exc).lower()
-    return "google calendar" in message or "httperror" in message or "failed to initialize google client" in message
+    return (
+        "google calendar" in message
+        or "httperror" in message
+        or "failed to initialize google client" in message
+    )
 
 
 def _create_missing_remote_event(*, client: GoogleClient, event: CalendarEvent, payload: dict, reason: str):
@@ -119,8 +174,7 @@ def _resolve_google_event_id_for_update(client: GoogleClient, event: CalendarEve
         return None
 
 
-@db_task(retries=CALENDAR_SYNC_MAX_RETRIES, retry_delay=CALENDAR_SYNC_RETRY_DELAY_SECONDS, context=True)
-def create_google_event_task(event_id: str, task=None):
+def create_google_event_task(event_id: str, retry_attempt: int = 0):
     event = CalendarEvent.objects.filter(pk=event_id).first()
     if not event:
         logger.error("calendar_create_sync_missing_event event_id=%s", event_id)
@@ -170,15 +224,22 @@ def create_google_event_task(event_id: str, task=None):
         )
         return {"status": "ok", "google_event_id": remote_event.get("id")}
     except Exception as exc:
-        if task and task.retries > 0 and _is_retryable_google_error(exc):
+        if retry_attempt < CALENDAR_SYNC_MAX_RETRIES and _is_retryable_google_error(exc):
+            retries_left = CALENDAR_SYNC_MAX_RETRIES - retry_attempt
             logger.error(
                 "calendar_create_sync_retrying event_id=%s retries_left=%s error_type=%s error=%s",
                 event_id,
-                task.retries,
+                retries_left,
                 type(exc).__name__,
                 str(exc),
             )
-            raise
+            enqueue_create_google_event_task(
+                event_id=event_id,
+                retry_attempt=retry_attempt + 1,
+                delay_seconds=CALENDAR_SYNC_RETRY_DELAY_SECONDS,
+            )
+            return {"status": "retrying", "retry_attempt": retry_attempt + 1}
+
         logger.error(
             "calendar_create_sync_failed_after_retries event_id=%s error_type=%s error=%s",
             event_id,
@@ -193,8 +254,7 @@ def create_google_event_task(event_id: str, task=None):
         return {"status": "failed", "error": str(exc)}
 
 
-@db_task(retries=CALENDAR_SYNC_MAX_RETRIES, retry_delay=CALENDAR_SYNC_RETRY_DELAY_SECONDS, context=True)
-def update_google_event_task(event_id: str, task=None):
+def update_google_event_task(event_id: str, retry_attempt: int = 0):
     event = CalendarEvent.objects.filter(pk=event_id).first()
     if not event:
         logger.error("calendar_update_sync_missing_event event_id=%s", event_id)
@@ -254,15 +314,22 @@ def update_google_event_task(event_id: str, task=None):
         )
         return {"status": "ok", "google_event_id": remote_event.get("id")}
     except Exception as exc:
-        if task and task.retries > 0 and _is_retryable_google_error(exc):
+        if retry_attempt < CALENDAR_SYNC_MAX_RETRIES and _is_retryable_google_error(exc):
+            retries_left = CALENDAR_SYNC_MAX_RETRIES - retry_attempt
             logger.error(
                 "calendar_update_sync_retrying event_id=%s retries_left=%s error_type=%s error=%s",
                 event_id,
-                task.retries,
+                retries_left,
                 type(exc).__name__,
                 str(exc),
             )
-            raise
+            enqueue_update_google_event_task(
+                event_id=event_id,
+                retry_attempt=retry_attempt + 1,
+                delay_seconds=CALENDAR_SYNC_RETRY_DELAY_SECONDS,
+            )
+            return {"status": "retrying", "retry_attempt": retry_attempt + 1}
+
         logger.error(
             "calendar_update_sync_failed_after_retries event_id=%s google_event_id=%s error_type=%s error=%s",
             event_id,
@@ -278,8 +345,11 @@ def update_google_event_task(event_id: str, task=None):
         return {"status": "failed", "error": str(exc)}
 
 
-@db_task(retries=CALENDAR_SYNC_MAX_RETRIES, retry_delay=CALENDAR_SYNC_RETRY_DELAY_SECONDS, context=True)
-def delete_google_event_task(google_event_id: str, google_calendar_id: str | None = None, task=None):
+def delete_google_event_task(
+    google_event_id: str,
+    google_calendar_id: str | None = None,
+    retry_attempt: int = 0,
+):
     if not google_event_id:
         logger.error("calendar_delete_sync_missing_google_event_id google_event_id=%s", google_event_id)
         return {"status": "skipped", "reason": "google_event_id_missing"}
@@ -318,16 +388,25 @@ def delete_google_event_task(google_event_id: str, google_calendar_id: str | Non
                 "google_calendar_id": google_calendar_id,
                 "reason": "remote_event_already_missing",
             }
-        if task and task.retries > 0 and _is_retryable_google_error(exc):
+
+        if retry_attempt < CALENDAR_SYNC_MAX_RETRIES and _is_retryable_google_error(exc):
+            retries_left = CALENDAR_SYNC_MAX_RETRIES - retry_attempt
             logger.error(
                 "calendar_delete_sync_retrying google_event_id=%s calendar_id=%s retries_left=%s error_type=%s error=%s",
                 google_event_id,
                 google_calendar_id,
-                task.retries,
+                retries_left,
                 type(exc).__name__,
                 str(exc),
             )
-            raise
+            enqueue_delete_google_event_task(
+                google_event_id=google_event_id,
+                google_calendar_id=google_calendar_id,
+                retry_attempt=retry_attempt + 1,
+                delay_seconds=CALENDAR_SYNC_RETRY_DELAY_SECONDS,
+            )
+            return {"status": "retrying", "retry_attempt": retry_attempt + 1}
+
         logger.error(
             "calendar_delete_sync_failed_after_retries google_event_id=%s error_type=%s error=%s",
             google_event_id,

@@ -1,19 +1,27 @@
 import traceback as tb_module
 
 from core.services.ai_document_categorizer import AIDocumentCategorizer, get_document_types_for_prompt
+from core.queue import enqueue_job
 from core.services.logger_service import Logger
 from core.tasks.idempotency import acquire_task_lock, build_task_lock_key, release_task_lock
 from customer_applications.models import DocumentCategorizationItem, DocumentCategorizationJob
 from django.core.files.storage import default_storage
 from django.db import transaction
 from django.utils import timezone
-from huey.contrib.djhuey import db_task
 from products.models.document_type import DocumentType
 
 logger = Logger.get_logger(__name__)
 
+ENTRYPOINT_RUN_DOCUMENT_CATEGORIZATION_ITEM = "core.run_document_categorization_item"
 
-@db_task()
+def enqueue_run_document_categorization_item(*, item_id: str) -> str | None:
+    return enqueue_job(
+        entrypoint=ENTRYPOINT_RUN_DOCUMENT_CATEGORIZATION_ITEM,
+        payload={"item_id": str(item_id)},
+        run_local=run_document_categorization_item,
+    )
+
+
 def run_document_categorization_item(item_id: str) -> None:
     """Categorize a single uploaded file using AI vision (two-pass) and validate."""
     lock_key = build_task_lock_key(namespace="doc_categorization_item", item_id=str(item_id))

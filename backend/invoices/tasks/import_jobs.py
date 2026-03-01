@@ -2,20 +2,20 @@ import logging
 import os
 import traceback
 
+from core.queue import enqueue_job
 from core.services.logger_service import Logger
 from core.tasks.idempotency import acquire_task_lock, build_task_lock_key, release_task_lock
 from django.core.files.storage import default_storage
 from django.db import transaction
 from django.utils import timezone
-from huey.contrib.djhuey import db_task
 from invoices.models import InvoiceImportItem, InvoiceImportJob
 from invoices.services.invoice_importer import InvoiceImporter
 from payments.models import Payment
 
 logger = Logger.get_logger(__name__)
+ENTRYPOINT_RUN_INVOICE_IMPORT_ITEM = "invoices.run_invoice_import_item"
 
 
-@db_task()
 def run_invoice_import_item(item_id: str) -> None:
     lock_key = build_task_lock_key(namespace="invoice_import_item", item_id=str(item_id))
     lock_token = acquire_task_lock(lock_key)
@@ -213,4 +213,13 @@ def _update_invoice_import_job_counts(job_id):
             "status",
             "updated_at",
         ]
+    )
+
+
+def enqueue_run_invoice_import_item(*, item_id: str, delay_seconds: int | float | None = None) -> str | None:
+    return enqueue_job(
+        entrypoint=ENTRYPOINT_RUN_INVOICE_IMPORT_ITEM,
+        payload={"item_id": str(item_id)},
+        delay_seconds=delay_seconds,
+        run_local=run_invoice_import_item,
     )

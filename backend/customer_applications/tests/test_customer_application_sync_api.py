@@ -74,7 +74,7 @@ class CustomerApplicationSyncApiTests(TestCase):
         )
 
     @patch("customer_applications.tasks.send_due_tomorrow_customer_notifications")
-    @patch("customer_applications.tasks.sync_application_calendar_task")
+    @patch("customer_applications.tasks.enqueue_sync_application_calendar_task")
     def test_create_is_synchronous_and_queues_calendar_sync(self, sync_task_mock, send_due_mock):
         payload = {
             "customer": self.customer.id,
@@ -106,7 +106,7 @@ class CustomerApplicationSyncApiTests(TestCase):
         send_due_mock.assert_not_called()
 
     @patch("customer_applications.tasks.send_due_tomorrow_customer_notifications")
-    @patch("customer_applications.tasks.sync_application_calendar_task")
+    @patch("customer_applications.tasks.enqueue_sync_application_calendar_task")
     def test_update_is_synchronous_and_queues_calendar_sync_with_previous_due_date(self, sync_task_mock, send_due_mock):
         application = DocApplication.objects.create(
             customer=self.customer,
@@ -135,7 +135,7 @@ class CustomerApplicationSyncApiTests(TestCase):
         self.assertEqual(kwargs["previous_due_date"], "2026-01-20")
         send_due_mock.assert_not_called()
 
-    @patch("customer_applications.tasks.sync_application_calendar_task")
+    @patch("customer_applications.tasks.enqueue_sync_application_calendar_task")
     def test_advance_workflow_is_synchronous_and_queues_calendar_sync(self, sync_task_mock):
         application = DocApplication.objects.create(
             customer=self.customer,

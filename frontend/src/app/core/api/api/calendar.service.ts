@@ -36,7 +36,7 @@ export class CalendarService extends BaseService {
     }
 
     /**
-     * Local-mirror calendar API.  CRUD operations update &#x60;CalendarEvent&#x60; records and signals queue asynchronous synchronization to Google Calendar through Huey tasks.
+     * Local-mirror calendar API.  CRUD operations update &#x60;CalendarEvent&#x60; records and signals queue asynchronous synchronization to Google Calendar through PgQueuer tasks.
      * @endpoint post /api/calendar/
      * @param googleCalendarEvent 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -109,7 +109,7 @@ export class CalendarService extends BaseService {
     }
 
     /**
-     * Local-mirror calendar API.  CRUD operations update &#x60;CalendarEvent&#x60; records and signals queue asynchronous synchronization to Google Calendar through Huey tasks.
+     * Local-mirror calendar API.  CRUD operations update &#x60;CalendarEvent&#x60; records and signals queue asynchronous synchronization to Google Calendar through PgQueuer tasks.
      * @endpoint delete /api/calendar/{id}/
      * @param id 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -169,7 +169,7 @@ export class CalendarService extends BaseService {
     }
 
     /**
-     * Local-mirror calendar API.  CRUD operations update &#x60;CalendarEvent&#x60; records and signals queue asynchronous synchronization to Google Calendar through Huey tasks.
+     * Local-mirror calendar API.  CRUD operations update &#x60;CalendarEvent&#x60; records and signals queue asynchronous synchronization to Google Calendar through PgQueuer tasks.
      * @endpoint get /api/calendar/
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
@@ -226,7 +226,7 @@ export class CalendarService extends BaseService {
     }
 
     /**
-     * Local-mirror calendar API.  CRUD operations update &#x60;CalendarEvent&#x60; records and signals queue asynchronous synchronization to Google Calendar through Huey tasks.
+     * Local-mirror calendar API.  CRUD operations update &#x60;CalendarEvent&#x60; records and signals queue asynchronous synchronization to Google Calendar through PgQueuer tasks.
      * @endpoint patch /api/calendar/{id}/
      * @param id 
      * @param googleCalendarEvent 
@@ -303,7 +303,7 @@ export class CalendarService extends BaseService {
     }
 
     /**
-     * Local-mirror calendar API.  CRUD operations update &#x60;CalendarEvent&#x60; records and signals queue asynchronous synchronization to Google Calendar through Huey tasks.
+     * Local-mirror calendar API.  CRUD operations update &#x60;CalendarEvent&#x60; records and signals queue asynchronous synchronization to Google Calendar through PgQueuer tasks.
      * @endpoint get /api/calendar/{id}/
      * @param id 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -364,7 +364,7 @@ export class CalendarService extends BaseService {
     }
 
     /**
-     * Local-mirror calendar API.  CRUD operations update &#x60;CalendarEvent&#x60; records and signals queue asynchronous synchronization to Google Calendar through Huey tasks.
+     * Local-mirror calendar API.  CRUD operations update &#x60;CalendarEvent&#x60; records and signals queue asynchronous synchronization to Google Calendar through PgQueuer tasks.
      * @endpoint put /api/calendar/{id}/
      * @param id 
      * @param googleCalendarEvent 

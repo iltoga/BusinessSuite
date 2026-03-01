@@ -1,17 +1,21 @@
 import datetime
 import uuid
-from typing import Iterable, Tuple
+from typing import Callable
 
 import requests
 from django.conf import settings
 from django.core.cache import cache
 from django.core.management import call_command
-from huey import crontab
-from huey.contrib.djhuey import db_periodic_task, db_task
 
+from core.queue import enqueue_job
 from core.services.logger_service import Logger
 
 logger = Logger.get_logger(__name__)
+
+ENTRYPOINT_RUN_FULL_BACKUP_NOW = "core.run_full_backup_now"
+ENTRYPOINT_RUN_CLEAR_CACHE_NOW = "core.run_clear_cache_now"
+ENTRYPOINT_RUN_AUDITLOG_PRUNE_NOW = "core.run_auditlog_prune_now"
+ENTRYPOINT_RUN_OPENROUTER_HEALTH_CHECK_NOW = "core.run_openrouter_health_check_now"
 
 FULL_BACKUP_ENQUEUE_LOCK_KEY = "cron:full_backup:enqueue_lock"
 FULL_BACKUP_RUN_LOCK_KEY = "cron:full_backup:run_lock"
@@ -19,7 +23,7 @@ CLEAR_CACHE_ENQUEUE_LOCK_KEY = "cron:clear_cache:enqueue_lock"
 CLEAR_CACHE_RUN_LOCK_KEY = "cron:clear_cache:run_lock"
 
 
-def _parse_time(value: str) -> Tuple[int, int]:
+def _parse_time(value: str) -> tuple[int, int]:
     parts = value.split(":")
     if len(parts) != 2:
         raise ValueError(f"Invalid time format '{value}'. Expected HH:MM.")
@@ -73,14 +77,20 @@ def reset_privileged_cron_job_locks() -> None:
     )
 
 
-def _enqueue_task_once(*, task, task_name: str, enqueue_lock_key: str, lock_ttl_seconds: int) -> bool:
+def _enqueue_task_once(
+    *,
+    enqueue_callable: Callable[[], str | None],
+    task_name: str,
+    enqueue_lock_key: str,
+    lock_ttl_seconds: int,
+) -> bool:
     token = _acquire_cache_lock(enqueue_lock_key, lock_ttl_seconds)
     if not token:
         logger.info("%s trigger ignored: task already queued/running", task_name)
         return False
 
     try:
-        task.delay()
+        enqueue_callable()
         logger.info("%s enqueued", task_name)
         return True
     except Exception:
@@ -147,19 +157,35 @@ def _perform_clear_cache_locked() -> bool:
     )
 
 
-@db_task()
 def run_full_backup_now() -> None:
     _perform_full_backup_locked()
 
 
-@db_task()
 def run_clear_cache_now() -> None:
     _perform_clear_cache_locked()
 
 
+def enqueue_run_full_backup_now(*, delay_seconds: int | float | None = None) -> str | None:
+    return enqueue_job(
+        entrypoint=ENTRYPOINT_RUN_FULL_BACKUP_NOW,
+        payload={},
+        delay_seconds=delay_seconds,
+        run_local=run_full_backup_now,
+    )
+
+
+def enqueue_run_clear_cache_now(*, delay_seconds: int | float | None = None) -> str | None:
+    return enqueue_job(
+        entrypoint=ENTRYPOINT_RUN_CLEAR_CACHE_NOW,
+        payload={},
+        delay_seconds=delay_seconds,
+        run_local=run_clear_cache_now,
+    )
+
+
 def enqueue_full_backup_now() -> bool:
     return _enqueue_task_once(
-        task=run_full_backup_now,
+        enqueue_callable=enqueue_run_full_backup_now,
         task_name="FullBackupJob",
         enqueue_lock_key=FULL_BACKUP_ENQUEUE_LOCK_KEY,
         lock_ttl_seconds=_full_backup_lock_ttl_seconds(),
@@ -168,56 +194,39 @@ def enqueue_full_backup_now() -> bool:
 
 def enqueue_clear_cache_now() -> bool:
     return _enqueue_task_once(
-        task=run_clear_cache_now,
+        enqueue_callable=enqueue_run_clear_cache_now,
         task_name="ClearCacheJob",
         enqueue_lock_key=CLEAR_CACHE_ENQUEUE_LOCK_KEY,
         lock_ttl_seconds=_clear_cache_lock_ttl_seconds(),
     )
 
 
-@db_task()
 def run_auditlog_prune_now() -> None:
     """Immediate task to prune auditlog DB entries older than configured retention."""
     _perform_prune_auditlog()
 
 
-@db_task()
+def enqueue_run_auditlog_prune_now(*, delay_seconds: int | float | None = None) -> str | None:
+    return enqueue_job(
+        entrypoint=ENTRYPOINT_RUN_AUDITLOG_PRUNE_NOW,
+        payload={},
+        delay_seconds=delay_seconds,
+        run_local=run_auditlog_prune_now,
+    )
+
+
 def run_openrouter_health_check_now() -> None:
     """Immediate task to run OpenRouter API health check."""
     _perform_openrouter_health_check()
 
 
-def _register_full_backup() -> None:
-    schedule = getattr(settings, "FULL_BACKUP_SCHEDULE", "02:00")
-    try:
-        hour, minute = _parse_time(schedule)
-    except ValueError as exc:
-        logger.error(str(exc))
-        return
-
-    @db_periodic_task(crontab(hour=hour, minute=minute), name="core.full_backup_daily")
-    def _full_backup_daily() -> None:
-        _perform_full_backup_locked()
-
-    globals()["_full_backup_daily"] = _full_backup_daily
-
-
-def _register_clear_cache() -> None:
-    schedules: Iterable[str] = getattr(settings, "CLEAR_CACHE_SCHEDULE", ["03:00"])
-    for schedule in schedules:
-        try:
-            hour, minute = _parse_time(schedule)
-        except ValueError as exc:
-            logger.error(str(exc))
-            continue
-
-        task_name = f"core.clear_cache_{hour:02d}{minute:02d}"
-
-        @db_periodic_task(crontab(hour=hour, minute=minute), name=task_name)
-        def _clear_cache_scheduled() -> None:
-            _perform_clear_cache_locked()
-
-        globals()[f"_clear_cache_{hour:02d}{minute:02d}"] = _clear_cache_scheduled
+def enqueue_run_openrouter_health_check_now(*, delay_seconds: int | float | None = None) -> str | None:
+    return enqueue_job(
+        entrypoint=ENTRYPOINT_RUN_OPENROUTER_HEALTH_CHECK_NOW,
+        payload={},
+        delay_seconds=delay_seconds,
+        run_local=run_openrouter_health_check_now,
+    )
 
 
 def _perform_prune_auditlog() -> None:
@@ -237,25 +246,6 @@ def _perform_prune_auditlog() -> None:
         logger.info("Pruned auditlog LogEntry objects before %s", cutoff_date.isoformat())
     except Exception as exc:
         logger.error("Failed to prune auditlog entries: %s", str(exc), exc_info=True)
-
-
-def _register_auditlog_prune() -> None:
-    schedule = getattr(settings, "AUDITLOG_RETENTION_SCHEDULE", "04:00")
-    if not schedule:
-        # Explicitly disabled
-        return
-
-    try:
-        hour, minute = _parse_time(schedule)
-    except ValueError as exc:
-        logger.error(str(exc))
-        return
-
-    @db_periodic_task(crontab(hour=hour, minute=minute), name="core.auditlog_prune_daily")
-    def _auditlog_prune_daily() -> None:
-        _perform_prune_auditlog()
-
-    globals()["_auditlog_prune_daily"] = _auditlog_prune_daily
 
 
 def _perform_openrouter_health_check() -> bool:
@@ -342,27 +332,3 @@ def _perform_openrouter_health_check() -> bool:
         min_remaining,
     )
     return True
-
-
-def _register_openrouter_health_check() -> None:
-    if not getattr(settings, "OPENROUTER_HEALTHCHECK_ENABLED", True):
-        return
-
-    minute_expr = getattr(settings, "OPENROUTER_HEALTHCHECK_CRON_MINUTE", "*/5")
-    try:
-        schedule = crontab(minute=minute_expr)
-    except Exception as exc:
-        logger.error("Invalid OPENROUTER_HEALTHCHECK_CRON_MINUTE '%s': %s", minute_expr, str(exc))
-        return
-
-    @db_periodic_task(schedule, name="core.openrouter_health_check")
-    def _openrouter_health_check_periodic() -> None:
-        _perform_openrouter_health_check()
-
-    globals()["_openrouter_health_check_periodic"] = _openrouter_health_check_periodic
-
-
-_register_full_backup()
-_register_clear_cache()
-_register_auditlog_prune()
-_register_openrouter_health_check()

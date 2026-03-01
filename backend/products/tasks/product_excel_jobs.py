@@ -5,6 +5,7 @@ from decimal import Decimal, InvalidOperation
 from io import BytesIO
 
 from core.models import AsyncJob
+from core.queue import enqueue_job
 from core.services.logger_service import Logger
 from core.services.push_notifications import PushNotificationService
 from core.tasks.idempotency import acquire_task_lock, build_task_lock_key, release_task_lock
@@ -13,13 +14,14 @@ from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.db import transaction
 from django.utils import timezone
-from huey.contrib.djhuey import db_task
 from openpyxl import Workbook, load_workbook
 from api.serializers.product_serializer import ProductCreateUpdateSerializer
 from products.models import Product
 
 logger = Logger.get_logger(__name__)
 User = get_user_model()
+ENTRYPOINT_RUN_PRODUCT_EXPORT_JOB = "products.run_product_export_job"
+ENTRYPOINT_RUN_PRODUCT_IMPORT_JOB = "products.run_product_import_job"
 
 EXPORT_COLUMNS: list[tuple[str, str]] = [
     ("code", "Code"),
@@ -115,7 +117,6 @@ def _send_import_done_push(user, result: dict) -> None:
         logger.exception("Failed to send product import push notification to user #%s", getattr(user, "id", None))
 
 
-@db_task()
 def run_product_export_job(job_id: str, user_id: int | None = None, search_query: str = "") -> None:
     lock_key = build_task_lock_key(namespace="products_export_job", item_id=str(job_id))
     lock_token = acquire_task_lock(lock_key)
@@ -186,7 +187,6 @@ def run_product_export_job(job_id: str, user_id: int | None = None, search_query
         release_task_lock(lock_key, lock_token)
 
 
-@db_task()
 def run_product_import_job(job_id: str, user_id: int | None = None, file_path: str = "") -> None:
     lock_key = build_task_lock_key(namespace="products_import_job", item_id=str(job_id))
     lock_token = acquire_task_lock(lock_key)
@@ -342,3 +342,41 @@ def run_product_import_job(job_id: str, user_id: int | None = None, file_path: s
                     logger.warning("Could not remove temporary import file: %s", file_path, exc_info=True)
     finally:
         release_task_lock(lock_key, lock_token)
+
+
+def enqueue_run_product_export_job(
+    *,
+    job_id: str,
+    user_id: int | None = None,
+    search_query: str = "",
+    delay_seconds: int | float | None = None,
+) -> str | None:
+    return enqueue_job(
+        entrypoint=ENTRYPOINT_RUN_PRODUCT_EXPORT_JOB,
+        payload={
+            "job_id": str(job_id),
+            "user_id": user_id,
+            "search_query": search_query,
+        },
+        delay_seconds=delay_seconds,
+        run_local=run_product_export_job,
+    )
+
+
+def enqueue_run_product_import_job(
+    *,
+    job_id: str,
+    user_id: int | None = None,
+    file_path: str = "",
+    delay_seconds: int | float | None = None,
+) -> str | None:
+    return enqueue_job(
+        entrypoint=ENTRYPOINT_RUN_PRODUCT_IMPORT_JOB,
+        payload={
+            "job_id": str(job_id),
+            "user_id": user_id,
+            "file_path": file_path,
+        },
+        delay_seconds=delay_seconds,
+        run_local=run_product_import_job,
+    )

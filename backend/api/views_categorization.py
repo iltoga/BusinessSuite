@@ -23,7 +23,7 @@ from core.services.ai_document_categorizer import (
     extract_validation_expiration_date,
 )
 from core.services.logger_service import Logger
-from core.tasks.document_categorization import run_document_categorization_item
+from core.tasks.document_categorization import enqueue_run_document_categorization_item
 from customer_applications.models import DocApplication, Document, DocumentCategorizationItem, DocumentCategorizationJob
 from django.core.files.storage import default_storage
 from django.http import JsonResponse, StreamingHttpResponse
@@ -241,7 +241,7 @@ def _upload_files_to_job(*, job: DocumentCategorizationJob, files: list) -> tupl
         item.result = {"stage": "uploaded", "ai_validation_enabled": None}
         item.save(update_fields=["file_path", "result", "updated_at"])
 
-        run_document_categorization_item(str(item.id))
+        enqueue_run_document_categorization_item(item_id=str(item.id))
         dispatched_tasks += 1
 
         uploaded_files += 1
@@ -302,7 +302,7 @@ def categorize_documents_init(request, application_id):
 def categorize_documents(request, application_id):
     """
     Upload multiple files and start AI categorization.
-    Files are saved to temp storage and Huey tasks are dispatched in parallel.
+    Files are saved to temp storage and queue tasks are dispatched in parallel.
     """
     try:
         doc_application = DocApplication.objects.get(id=application_id)

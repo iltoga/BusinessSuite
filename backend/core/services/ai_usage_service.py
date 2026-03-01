@@ -82,9 +82,9 @@ class AIUsageService:
         request_id = cls._read(response, "id") if response is not None else None
         usage_data = cls._extract_usage(response) if response is not None else {}
         try:
-            from core.tasks.ai_usage import capture_ai_usage_task
+            from core.tasks.ai_usage import enqueue_capture_ai_usage_task
 
-            capture_ai_usage_task(
+            enqueue_capture_ai_usage_task(
                 feature=feature or AIUsageFeature.UNKNOWN,
                 provider=provider or "unknown",
                 model=model or "unknown",

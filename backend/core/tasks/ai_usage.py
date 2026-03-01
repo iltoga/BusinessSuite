@@ -4,13 +4,14 @@ from decimal import Decimal
 from typing import Any
 
 import requests
+from core.queue import enqueue_job
 from django.conf import settings
-from huey.contrib.djhuey import db_task
 
 from core.services.ai_usage_service import AIUsageService
 from core.services.logger_service import Logger
 
 logger = Logger.get_logger(__name__)
+ENTRYPOINT_CAPTURE_AI_USAGE_TASK = "core.capture_ai_usage_task"
 
 
 def _to_decimal(value: Any) -> Decimal | None:
@@ -108,7 +109,6 @@ def _fetch_openrouter_generation_data(request_id: str) -> dict[str, Any]:
     raise RuntimeError("OpenRouter generation endpoint did not return usable data.")
 
 
-@db_task()
 def capture_ai_usage_task(
     *,
     feature: str,
@@ -176,3 +176,32 @@ def capture_ai_usage_task(
             str(exc),
         )
         return {"status": "failed", "error": str(exc)}
+
+
+def enqueue_capture_ai_usage_task(
+    *,
+    feature: str,
+    provider: str,
+    model: str,
+    request_type: str = "chat.completions",
+    request_id: str | None = None,
+    usage_data: dict[str, Any] | None = None,
+    success: bool = True,
+    error_type: str = "",
+    latency_ms: int | None = None,
+) -> str | None:
+    return enqueue_job(
+        entrypoint=ENTRYPOINT_CAPTURE_AI_USAGE_TASK,
+        payload={
+            "feature": feature,
+            "provider": provider,
+            "model": model,
+            "request_type": request_type,
+            "request_id": request_id,
+            "usage_data": usage_data,
+            "success": bool(success),
+            "error_type": error_type,
+            "latency_ms": latency_ms,
+        },
+        run_local=capture_ai_usage_task,
+    )

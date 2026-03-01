@@ -15,7 +15,7 @@ BusinessSuite is a Django + Angular ERP/CRM used by visa/document service agenci
   - Reopen and **force-close** application flows (permission-guarded).
 - 📅 **Deadline Calendar Integration**
   - Local calendar mirror (`CalendarEvent`) for application deadlines.
-  - Automatic Google Calendar sync via Huey background tasks.
+  - Automatic Google Calendar sync via PgQueuer background tasks.
   - Optional visa submission window events (for eligible stay-permit products).
 - 🧾 **Invoices**
   - Create/edit invoices, link customer applications, generate DOCX/PDF output (sync or async job flow).
@@ -24,7 +24,7 @@ BusinessSuite is a Django + Angular ERP/CRM used by visa/document service agenci
   - Record single payments or full-payment batches across invoice applications.
   - Auto-recalculate `invoice_application` and `invoice` statuses.
 - 🛂 **Passport Check Utility**
-  - Async OCR/uploadability check via Huey (`/api/customers/check-passport/`).
+  - Async OCR/uploadability check via PgQueuer (`/api/customers/check-passport/`).
   - Prompts to update existing customer or create a new customer prefilled from extracted passport fields.
 - 📊 **Reports & Admin Tools**
   - KPI dashboards and finance/application pipeline reports.
@@ -34,7 +34,7 @@ BusinessSuite is a Django + Angular ERP/CRM used by visa/document service agenci
 
 - **Backend:** Django + Django REST Framework, PostgreSQL
 - **Frontend:** Angular 19 standalone SPA (signals + OnPush), Bun, generated OpenAPI clients
-- **Queue/Async:** Huey + Redis
+- **Queue/Async:** PgQueuer + PostgreSQL
 - **Storage:** Django `default_storage` abstraction (local/cloud-compatible)
 - **Observability:** structured logs, Loki/Grafana integrations, audit logging options
 
@@ -42,7 +42,7 @@ BusinessSuite is a Django + Angular ERP/CRM used by visa/document service agenci
 
 - API endpoints are under `backend/api/` and are consumed by the Angular app in `frontend/`.
 - Business logic is primarily in model/service layers (not in templates/components).
-- Heavy/async operations (OCR, invoice async generation, calendar sync, notifications) run through Huey tasks.
+- Heavy/async operations (OCR, invoice async generation, calendar sync, notifications) run through PgQueuer tasks.
 - Calendar behavior:
   - Local event row is created/updated/deleted first.
   - Google sync is then queued asynchronously by model signals.
@@ -85,7 +85,7 @@ Use local docker compose for dependencies (Postgres/Redis/observability stack), 
 ### 4) Run services
 
 - Backend Django server (`backend/manage.py runserver`)
-- Huey worker (`backend/manage.py run_huey`)
+- PgQueuer worker (`pgq run business_suite.pgqueue:factory`)
 - Frontend Angular app (`frontend` Bun start script)
 
 > In VS Code, use the preconfigured tasks (`Start All Services`) to launch backend + worker + frontend together.

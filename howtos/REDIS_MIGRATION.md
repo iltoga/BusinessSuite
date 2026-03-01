@@ -1,11 +1,11 @@
-# Redis Migration (Cache + Huey Broker)
+# Redis Migration (Cache + PgQueuer Broker)
 
 This document describes the memcached -> Redis cutover for RevisBaliCRM.
 
 ## Scope
 
 - Django production cache backend: `PyMemcacheCache` -> `django_redis.cache.RedisCache`
-- Huey broker in non-test environments: SQL-backed Huey -> Redis-backed Huey
+- PgQueuer broker in non-test environments: SQL-backed PgQueuer -> Redis-backed PgQueuer
 - Compose services: remove `memcached`, add `redis`
 - Redis container naming: `bs-redis` (service name remains `redis`)
 
@@ -16,18 +16,18 @@ Set these values in `.env`:
 - `REDIS_URL=redis://localhost:6379/1` for host-run local dev, or `redis://bs-redis:6379/1` for containerized app services
 - `REDIS_HOST=localhost` for host-run local dev, or `bs-redis` for containerized app services
 - `REDIS_PORT=6379`
-- `HUEY_REDIS_DB=0`
+- `PGQUEUE_CHANNEL=0`
 - `CACHE_KEY_PREFIX=revisbali`
 
 ## Local Development (docker-compose-local.yml)
 
-In local development, only infrastructure runs in containers. Backend, Huey worker, and frontend run on host.
+In local development, only infrastructure runs in containers. Backend, PgQueuer worker, and frontend run on host.
 
 1. Start infra:
    - `docker compose -f docker-compose-local.yml up -d db redis bs-loki bs-grafana bs-alloy`
 2. Run app processes on host:
    - backend: `cd backend && DJANGO_SETTINGS_MODULE=business_suite.settings ../.venv/bin/python manage.py runserver`
-   - worker: `cd backend && DJANGO_SETTINGS_MODULE=business_suite.settings ../.venv/bin/python manage.py run_huey`
+   - worker: `cd backend && DJANGO_SETTINGS_MODULE=business_suite.settings ../.venv/bin/pgq run business_suite.pgqueue:factory`
    - frontend: run your local frontend command (host Node/NVM)
 3. Local smoke checks:
    - `docker compose -f docker-compose-local.yml ps`

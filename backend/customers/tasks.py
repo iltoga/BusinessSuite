@@ -1,14 +1,14 @@
 import logging
 
 from core.models.async_job import AsyncJob
+from core.queue import enqueue_job
 from core.services.passport_uploadability_service import PassportUploadabilityService
 from django.core.files.storage import default_storage
-from huey.contrib.djhuey import db_task
 
 logger = logging.getLogger(__name__)
+ENTRYPOINT_CHECK_PASSPORT_UPLOADABILITY_TASK = "customers.check_passport_uploadability"
 
 
-@db_task()
 def check_passport_uploadability_task(job_id: str, file_path: str, method: str):
     """
     Task to check passport uploadability asynchronously.
@@ -73,3 +73,18 @@ def check_passport_uploadability_task(job_id: str, file_path: str, method: str):
             job.fail(str(e))
         except:
             pass
+
+
+def enqueue_check_passport_uploadability_task(
+    *,
+    job_id: str,
+    file_path: str,
+    method: str,
+    delay_seconds: int | float | None = None,
+) -> str | None:
+    return enqueue_job(
+        entrypoint=ENTRYPOINT_CHECK_PASSPORT_UPLOADABILITY_TASK,
+        payload={"job_id": str(job_id), "file_path": file_path, "method": method},
+        delay_seconds=delay_seconds,
+        run_local=check_passport_uploadability_task,
+    )

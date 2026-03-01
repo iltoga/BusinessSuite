@@ -50,7 +50,7 @@ class ApplicationCalendarServiceTests(TestCase):
         )
 
     def test_sync_creates_local_calendar_event_with_pinned_application_id(self):
-        with patch("core.signals_calendar.create_google_event_task") as create_sync_mock:
+        with patch("core.signals_calendar.enqueue_create_google_event_task") as create_sync_mock:
             with self.captureOnCommitCallbacks(execute=True):
                 event = ApplicationCalendarService().sync_next_task_deadline(self.application)
 
@@ -70,8 +70,8 @@ class ApplicationCalendarServiceTests(TestCase):
 
     def test_sync_updates_existing_calendar_event_when_due_date_changes(self):
         with (
-            patch("core.signals_calendar.create_google_event_task") as create_sync_mock,
-            patch("core.signals_calendar.update_google_event_task") as update_sync_mock,
+            patch("core.signals_calendar.enqueue_create_google_event_task") as create_sync_mock,
+            patch("core.signals_calendar.enqueue_update_google_event_task") as update_sync_mock,
         ):
             with self.captureOnCommitCallbacks(execute=True):
                 old_event = ApplicationCalendarService().sync_next_task_deadline(self.application)
@@ -97,7 +97,7 @@ class ApplicationCalendarServiceTests(TestCase):
         self.assertEqual(self.application.calendar_event_id, updated_event.id)
 
     def test_sync_keeps_existing_events_when_no_next_calendar_task(self):
-        with patch("core.signals_calendar.create_google_event_task"):
+        with patch("core.signals_calendar.enqueue_create_google_event_task"):
             with self.captureOnCommitCallbacks(execute=True):
                 old_event = ApplicationCalendarService().sync_next_task_deadline(self.application)
 
@@ -111,7 +111,7 @@ class ApplicationCalendarServiceTests(TestCase):
         self.application.refresh_from_db()
         self.assertIsNone(self.application.calendar_event_id)
 
-    @patch("customer_applications.tasks.sync_application_calendar_task")
+    @patch("customer_applications.tasks.enqueue_sync_application_calendar_task")
     def test_delete_signal_queues_calendar_cleanup_task(self, sync_task_mock):
         application_id = self.application.id
         self.application.calendar_event_id = "local-app-100"
@@ -189,7 +189,7 @@ class VisaSubmissionWindowCalendarServiceTests(TestCase):
         ).first()
 
     def test_sync_creates_visa_submission_window_event(self):
-        with patch("core.signals_calendar.create_google_event_task"):
+        with patch("core.signals_calendar.enqueue_create_google_event_task"):
             with self.captureOnCommitCallbacks(execute=True):
                 ApplicationCalendarService().sync_next_task_deadline(self.application)
 
@@ -201,8 +201,8 @@ class VisaSubmissionWindowCalendarServiceTests(TestCase):
         self.assertEqual(visa_event.notifications, {})
 
     def test_sync_updates_existing_visa_submission_window_event(self):
-        with patch("core.signals_calendar.create_google_event_task"), patch(
-            "core.signals_calendar.update_google_event_task"
+        with patch("core.signals_calendar.enqueue_create_google_event_task"), patch(
+            "core.signals_calendar.enqueue_update_google_event_task"
         ):
             with self.captureOnCommitCallbacks(execute=True):
                 ApplicationCalendarService().sync_next_task_deadline(self.application)
@@ -224,7 +224,7 @@ class VisaSubmissionWindowCalendarServiceTests(TestCase):
         self.assertEqual(updated_event.end_date.isoformat(), "2026-02-11")
 
     def test_sync_removes_visa_submission_window_event_when_calendar_disabled(self):
-        with patch("core.signals_calendar.create_google_event_task"):
+        with patch("core.signals_calendar.enqueue_create_google_event_task"):
             with self.captureOnCommitCallbacks(execute=True):
                 ApplicationCalendarService().sync_next_task_deadline(self.application)
 
@@ -238,7 +238,7 @@ class VisaSubmissionWindowCalendarServiceTests(TestCase):
 
     def test_sync_logs_and_continues_when_visa_window_subsync_fails(self):
         with (
-            patch("core.signals_calendar.create_google_event_task"),
+            patch("core.signals_calendar.enqueue_create_google_event_task"),
             patch(
                 "customer_applications.services.application_calendar_service.ApplicationCalendarService._get_visa_submission_window_event",
                 side_effect=RuntimeError("boom"),
@@ -293,7 +293,7 @@ class VisaSubmissionWindowDocumentSignalTests(TestCase):
             created_by=self.user,
         )
 
-    @patch("customer_applications.tasks.sync_application_calendar_task")
+    @patch("customer_applications.tasks.enqueue_sync_application_calendar_task")
     def test_stay_permit_save_queues_calendar_sync(self, sync_task_mock):
         with self.captureOnCommitCallbacks(execute=True):
             Document.objects.create(
@@ -310,7 +310,7 @@ class VisaSubmissionWindowDocumentSignalTests(TestCase):
         self.assertEqual(kwargs["user_id"], self.user.id)
         self.assertEqual(kwargs["action"], "upsert")
 
-    @patch("customer_applications.tasks.sync_application_calendar_task")
+    @patch("customer_applications.tasks.enqueue_sync_application_calendar_task")
     def test_stay_permit_expiration_update_queues_calendar_sync(self, sync_task_mock):
         with self.captureOnCommitCallbacks(execute=True):
             document = Document.objects.create(
@@ -332,7 +332,7 @@ class VisaSubmissionWindowDocumentSignalTests(TestCase):
         self.assertEqual(kwargs["application_id"], self.visa_application.id)
         self.assertEqual(kwargs["action"], "upsert")
 
-    @patch("customer_applications.tasks.sync_application_calendar_task")
+    @patch("customer_applications.tasks.enqueue_sync_application_calendar_task")
     def test_stay_permit_delete_queues_calendar_sync(self, sync_task_mock):
         with self.captureOnCommitCallbacks(execute=True):
             document = Document.objects.create(
@@ -353,7 +353,7 @@ class VisaSubmissionWindowDocumentSignalTests(TestCase):
         self.assertEqual(kwargs["application_id"], self.visa_application.id)
         self.assertEqual(kwargs["action"], "upsert")
 
-    @patch("customer_applications.tasks.sync_application_calendar_task")
+    @patch("customer_applications.tasks.enqueue_sync_application_calendar_task")
     def test_non_qualifying_documents_do_not_queue_calendar_sync(self, sync_task_mock):
         with self.captureOnCommitCallbacks(execute=True):
             Document.objects.create(

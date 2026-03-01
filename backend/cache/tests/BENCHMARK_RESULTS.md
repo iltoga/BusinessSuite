@@ -167,7 +167,7 @@ The hybrid cache system benchmark was executed with production-like data to vali
 ✅ **No Impact on Existing Cache Patterns**
 
 The benchmark uses a separate Redis database (DB 3) to ensure complete isolation from:
-- **DB 0:** Huey task queue
+- **DB 0:** PgQueuer task queue
 - **DB 1:** Django cache (Meta tokens, cron locks, invoice sequences)
 - **DB 2:** Cacheops query cache
 

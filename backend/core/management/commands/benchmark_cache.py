@@ -11,13 +11,13 @@ This command provides production-safe cache performance measurement with the fol
 
 Safety Guarantees (Requirement 10.4):
 - Uses read-only queries (no data modification)
-- Uses Redis database 3 for benchmarking (separate from cache DB 1, cacheops DB 2, Huey default)
+- Uses Redis database 3 for benchmarking (separate from cache DB 1 and cacheops DB 2)
 - Uses transaction rollback for any writes
 - Configurable query limits to prevent resource exhaustion
 - Dry-run mode for testing without execution
 
 Redis Database Allocation:
-- Database 0 (default): Huey task queue
+- Database 0 (default): reserved/unused by cache benchmark
 - Database 1: Django cache
 - Database 2: Cacheops query cache
 - Database 3: Benchmark system (isolated)

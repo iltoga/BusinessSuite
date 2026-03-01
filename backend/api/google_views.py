@@ -40,7 +40,7 @@ class GoogleCalendarViewSet(viewsets.ViewSet):
     """Local-mirror calendar API.
 
     CRUD operations update `CalendarEvent` records and signals queue asynchronous
-    synchronization to Google Calendar through Huey tasks.
+    synchronization to Google Calendar through PgQueuer tasks.
     """
 
     LOCAL_EVENT_ID_PREFIX = "local-app-"
@@ -98,13 +98,13 @@ class GoogleCalendarViewSet(viewsets.ViewSet):
         previous_due_date=None,
         start_date=None,
     ):
-        from customer_applications.tasks import SYNC_ACTION_UPSERT, sync_application_calendar_task
+        from customer_applications.tasks import SYNC_ACTION_UPSERT, enqueue_sync_application_calendar_task
 
         previous_due_date_value = previous_due_date.isoformat() if previous_due_date else None
         start_date_value = start_date.isoformat() if start_date else None
 
         transaction.on_commit(
-            lambda: sync_application_calendar_task(
+            lambda: enqueue_sync_application_calendar_task(
                 application_id=application_id,
                 user_id=user_id,
                 action=SYNC_ACTION_UPSERT,

@@ -93,9 +93,9 @@ from core.services.ocr_preview_storage import get_ocr_preview_url
 from core.services.push_notifications import FcmConfigurationError, PushNotificationService
 from core.services.quick_create import create_quick_customer, create_quick_customer_application, create_quick_product
 from core.tasks.cron_jobs import enqueue_clear_cache_now, enqueue_full_backup_now
-from core.tasks.document_ocr import run_document_ocr_job
-from core.tasks.document_validation import run_document_validation
-from core.tasks.ocr import run_ocr_job
+from core.tasks.document_ocr import enqueue_run_document_ocr_job
+from core.tasks.document_validation import enqueue_run_document_validation
+from core.tasks.ocr import enqueue_run_ocr_job
 from core.utils.dateutils import calculate_due_date
 from core.utils.pdf_converter import PDFConverter, PDFConverterError
 from customer_applications.models import DocApplication, Document, DocWorkflow, WorkflowNotification
@@ -105,7 +105,7 @@ from customer_applications.services.workflow_notification_stream import (
     get_workflow_notification_stream_last_event,
 )
 from customers.models import Customer
-from customers.tasks import check_passport_uploadability_task
+from customers.tasks import enqueue_check_passport_uploadability_task
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth import logout as django_logout
@@ -137,7 +137,7 @@ from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_sche
 from invoices.models import InvoiceDownloadJob
 from invoices.models.invoice import Invoice, InvoiceApplication
 from invoices.services.InvoiceService import InvoiceService
-from invoices.tasks.download_jobs import run_invoice_download_job
+from invoices.tasks.download_jobs import enqueue_run_invoice_download_job
 from letters.services.LetterService import LetterService
 from payments.models import Payment
 from products.models import Product
@@ -818,7 +818,7 @@ class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         )
 
         # Enqueue task
-        check_passport_uploadability_task(str(job.id), saved_path, method)
+        enqueue_check_passport_uploadability_task(job_id=str(job.id), file_path=saved_path, method=method)
 
         return Response({"job_id": str(job.id)}, status=status.HTTP_202_ACCEPTED)
 
@@ -973,7 +973,7 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         throttle_classes=[AnonRateThrottle, UserRateThrottle, ScopedRateThrottle],
     )
     def export_start(self, request):
-        from products.tasks import run_product_export_job
+        from products.tasks import enqueue_run_product_export_job
 
         namespace = "products_export_excel"
         query = (
@@ -1077,7 +1077,11 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                 created_by=request.user,
             )
 
-            run_product_export_job(str(job.id), request.user.id if request.user else None, query)
+            enqueue_run_product_export_job(
+                job_id=str(job.id),
+                user_id=request.user.id if request.user else None,
+                search_query=query,
+            )
         finally:
             release_enqueue_guard(lock_key, lock_token)
 
@@ -1126,7 +1130,7 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         throttle_classes=[AnonRateThrottle, UserRateThrottle, ScopedRateThrottle],
     )
     def import_start(self, request):
-        from products.tasks import run_product_import_job
+        from products.tasks import enqueue_run_product_import_job
 
         namespace = "products_import_excel"
         uploaded = request.FILES.get("file")
@@ -1239,7 +1243,11 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             input_path = os.path.join("tmpfiles", "product_imports", str(job.id), safe_name)
             saved_path = default_storage.save(input_path, uploaded)
 
-            run_product_import_job(str(job.id), request.user.id if request.user else None, saved_path)
+            enqueue_run_product_import_job(
+                job_id=str(job.id),
+                user_id=request.user.id if request.user else None,
+                file_path=saved_path,
+            )
         finally:
             release_enqueue_guard(lock_key, lock_token)
 
@@ -1655,7 +1663,7 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                 request_params={"format": format_type},
             )
 
-            run_invoice_download_job(str(job.id))
+            enqueue_run_invoice_download_job(job_id=str(job.id))
         finally:
             release_enqueue_guard(lock_key, lock_token)
 
@@ -2129,7 +2137,7 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         """Process multiple uploaded invoice files with real-time progress streaming."""
         from django.utils.text import get_valid_filename
         from invoices.models import InvoiceImportItem, InvoiceImportJob
-        from invoices.tasks.import_jobs import run_invoice_import_item
+        from invoices.tasks.import_jobs import enqueue_run_invoice_import_item
 
         namespace = "invoice_import_batch"
         files = request.FILES.getlist("files")
@@ -2244,7 +2252,7 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                     is_paid=is_paid,
                     status=InvoiceImportItem.STATUS_QUEUED,
                 )
-                run_invoice_import_item(str(item.id))
+                enqueue_run_invoice_import_item(item_id=str(item.id))
         finally:
             release_enqueue_guard(lock_key, lock_token)
 
@@ -2317,7 +2325,7 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         return response
 
     def _stream_import_job(self, job_id, request=None):
-        """Stream SSE updates for a running Huey import job."""
+        """Stream SSE updates for a running background import job."""
         from invoices.models import InvoiceImportJob
 
         sent_states = {}
@@ -2587,13 +2595,13 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         previous_due_date=None,
         start_date=None,
     ):
-        from customer_applications.tasks import SYNC_ACTION_UPSERT, sync_application_calendar_task
+        from customer_applications.tasks import SYNC_ACTION_UPSERT, enqueue_sync_application_calendar_task
 
         previous_due_date_value = previous_due_date.isoformat() if previous_due_date else None
         start_date_value = start_date.isoformat() if start_date else None
 
         transaction.on_commit(
-            lambda: sync_application_calendar_task(
+            lambda: enqueue_sync_application_calendar_task(
                 application_id=application_id,
                 user_id=user_id,
                 action=SYNC_ACTION_UPSERT,
@@ -2628,7 +2636,7 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
     @extend_schema(responses={201: DocApplicationDetailSerializer})
     def create(self, request, *args, **kwargs):
-        """Create application synchronously and queue calendar sync in Huey."""
+        """Create application synchronously and queue calendar sync in PgQueuer."""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         application = serializer.save()
@@ -2639,7 +2647,7 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
     @extend_schema(responses={200: DocApplicationDetailSerializer})
     def update(self, request, *args, **kwargs):
-        """Update application synchronously and queue calendar sync in Huey."""
+        """Update application synchronously and queue calendar sync in PgQueuer."""
         partial = kwargs.pop("partial", False)
         instance = self.get_object()
         previous_due_date = instance.due_date
@@ -2669,7 +2677,7 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="advance-workflow")
     @extend_schema(responses={200: DocApplicationDetailSerializer})
     def advance_workflow(self, request, pk=None):
-        """Complete current workflow synchronously and queue calendar sync in Huey."""
+        """Complete current workflow synchronously and queue calendar sync in PgQueuer."""
         from customer_applications.services.application_lifecycle_service import ApplicationLifecycleService
 
         try:
@@ -2698,7 +2706,7 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         responses={204: OpenApiTypes.NONE},
     )
     def destroy(self, request, *args, **kwargs):
-        """Delete application synchronously and queue calendar cleanup in Huey."""
+        """Delete application synchronously and queue calendar cleanup in PgQueuer."""
         from customer_applications.services.application_lifecycle_service import ApplicationLifecycleService
 
         try:
@@ -2951,7 +2959,7 @@ class DocumentViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                 document.ai_validation_status = Document.AI_VALIDATION_PENDING
                 document.ai_validation_result = None
                 document.save(update_fields=["ai_validation_status", "ai_validation_result", "updated_at"])
-                run_document_validation(document.id)
+                enqueue_run_document_validation(document_id=document.id)
                 # Re-serialize to include pending validation status
                 response.data = self.get_serializer(document).data
             elif document.doc_type and not document.doc_type.ai_validation:
@@ -3308,7 +3316,7 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                     "width": width,
                 },
             )
-            run_ocr_job(str(job.id))
+            enqueue_run_ocr_job(job_id=str(job.id))
 
             status_url = request.build_absolute_uri(reverse("api-ocr-status", kwargs={"job_id": str(job.id)}))
             return Response(
@@ -3541,7 +3549,7 @@ class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                 created_by=request.user,
                 request_params={"file_type": file_type},
             )
-            run_document_ocr_job(str(job.id))
+            enqueue_run_document_ocr_job(job_id=str(job.id))
 
             status_url = request.build_absolute_uri(reverse("api-document-ocr-status", kwargs={"job_id": str(job.id)}))
             return Response(
@@ -3645,7 +3653,7 @@ class DashboardStatsView(ApiErrorHandlingMixin, viewsets.ViewSet):
 @throttle_classes([ScopedRateThrottle])
 def exec_cron_jobs(request):
     """
-    Execute cron jobs via Huey
+    Execute cron jobs via PgQueuer
     """
     request.throttle_scope = "cron"
     full_backup_queued = enqueue_full_backup_now()

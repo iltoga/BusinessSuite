@@ -151,7 +151,7 @@ The system uses multiple Redis databases for isolation:
 
 | Database | Purpose | Configuration |
 |----------|---------|---------------|
-| DB 0 | Huey task queue | Default Huey configuration |
+| DB 0 | PgQueuer task queue | Default PgQueuer configuration |
 | DB 1 | Django cache (default) | `REDIS_URL` environment variable |
 | DB 2 | Cacheops ORM cache | Auto-configured from `REDIS_URL` |
 | DB 15 | Test database | Used during test runs only |
@@ -994,7 +994,7 @@ CACHE_KEY_PREFIX=revisbali
 ```
 
 ### Redis Databases
-- DB 0: Huey task queue
+- DB 0: PgQueuer task queue
 - DB 1: Django cache
 - DB 2: Cacheops
 - DB 15: Tests

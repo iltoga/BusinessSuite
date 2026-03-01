@@ -6,7 +6,7 @@ from core.models.calendar_event import CalendarEvent
 from core.tasks.calendar_sync import create_google_event_task, delete_google_event_task, update_google_event_task
 
 
-def _run_huey_task(task, **kwargs):
+def _run_task(task, **kwargs):
     if hasattr(task, "call_local"):
         return task.call_local(**kwargs)
     if hasattr(task, "func"):
@@ -27,7 +27,7 @@ def test_create_google_event_task_updates_sync_metadata():
     with patch("core.tasks.calendar_sync.GoogleClient") as google_client_cls:
         google_client_cls.return_value.create_event.return_value = {"id": "google-evt-1"}
 
-        result = _run_huey_task(create_google_event_task, event_id=event.id)
+        result = _run_task(create_google_event_task, event_id=event.id)
 
     assert result["status"] == "ok"
     event.refresh_from_db()
@@ -50,7 +50,7 @@ def test_update_google_event_task_updates_existing_google_event():
     with patch("core.tasks.calendar_sync.GoogleClient") as google_client_cls:
         google_client_cls.return_value.update_event.return_value = {"id": "google-evt-existing"}
 
-        result = _run_huey_task(update_google_event_task, event_id=event.id)
+        result = _run_task(update_google_event_task, event_id=event.id)
 
     assert result["status"] == "ok"
     google_client_cls.return_value.update_event.assert_called_once()
@@ -63,7 +63,7 @@ def test_update_google_event_task_updates_existing_google_event():
 def test_delete_google_event_task_logs_critical_on_error():
     with patch("core.tasks.calendar_sync.GoogleClient") as google_client_cls:
         google_client_cls.return_value.delete_event.side_effect = RuntimeError("delete failed")
-        result = _run_huey_task(delete_google_event_task, google_event_id="google-delete-id")
+        result = _run_task(delete_google_event_task, google_event_id="google-delete-id")
 
     assert result["status"] == "failed"
     google_client_cls.return_value.delete_event.assert_called_once_with(event_id="google-delete-id")

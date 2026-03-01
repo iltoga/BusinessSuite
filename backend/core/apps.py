@@ -15,14 +15,14 @@ class CoreConfig(AppConfig):
         # before removing the package entirely.
         pass
 
-        # Ensure Huey tasks are registered and we register our own signals after the patch
+        # Ensure task modules are registered and we register our own signals after the patch
         # so that our signal handlers integrate with the patched behavior.
         # Register our signal forwarder (if present)
         import core.signals  # noqa: F401
         import core.signals_calendar  # noqa: F401
         import core.signals_calendar_reminder  # noqa: F401
         import core.sync_signals  # noqa: F401
-        import core.telemetry.huey_tracing  # noqa: F401
+        import core.telemetry.pgqueue_tracing  # noqa: F401
         from core.tasks import (  # noqa: F401
             ai_usage,
             calendar_reminders,

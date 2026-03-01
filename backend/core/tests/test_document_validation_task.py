@@ -11,7 +11,7 @@ from products.models import Product
 from products.models.document_type import DocumentType
 
 
-def _run_huey_task(task, **kwargs):
+def _run_task(task, **kwargs):
     if hasattr(task, "call_local"):
         return task.call_local(**kwargs)
     if hasattr(task, "func"):
@@ -69,7 +69,7 @@ class DocumentValidationTaskTests(TestCase):
             "extracted_details_markdown": "## ITK\n- Permit Number: ITK-2030-7788",
         }
 
-        _run_huey_task(run_document_validation, document_id=self.document.id)
+        _run_task(run_document_validation, document_id=self.document.id)
 
         self.document.refresh_from_db()
         self.assertEqual(self.document.ai_validation_status, Document.AI_VALIDATION_VALID)
@@ -115,7 +115,7 @@ class DocumentValidationTaskTests(TestCase):
             "extracted_details_markdown": "## New Details",
         }
 
-        _run_huey_task(run_document_validation, document_id=self.document.id)
+        _run_task(run_document_validation, document_id=self.document.id)
 
         self.document.refresh_from_db()
         self.assertEqual(self.document.expiration_date, date(2029, 6, 1))
@@ -148,7 +148,7 @@ class DocumentValidationTaskTests(TestCase):
             "extracted_details_markdown": None,
         }
 
-        _run_huey_task(run_document_validation, document_id=self.document.id)
+        _run_task(run_document_validation, document_id=self.document.id)
 
         self.document.refresh_from_db()
         self.assertEqual(self.document.ai_validation_status, Document.AI_VALIDATION_INVALID)
@@ -184,7 +184,7 @@ class DocumentValidationTaskTests(TestCase):
             "extracted_details_markdown": None,
         }
 
-        _run_huey_task(run_document_validation, document_id=self.document.id)
+        _run_task(run_document_validation, document_id=self.document.id)
 
         self.document.refresh_from_db()
         self.assertEqual(self.document.ai_validation_status, Document.AI_VALIDATION_INVALID)
@@ -220,7 +220,7 @@ class DocumentValidationTaskTests(TestCase):
             "extracted_details_markdown": None,
         }
 
-        _run_huey_task(run_document_validation, document_id=self.document.id)
+        _run_task(run_document_validation, document_id=self.document.id)
 
         self.document.refresh_from_db()
         self.assertEqual(self.document.ai_validation_status, Document.AI_VALIDATION_VALID)

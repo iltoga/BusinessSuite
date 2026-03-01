@@ -199,9 +199,9 @@ def _queue_visa_submission_window_sync(document: Document, *, operation: str) ->
 
     def _queue_calendar_sync():
         try:
-            from customer_applications.tasks import SYNC_ACTION_UPSERT, sync_application_calendar_task
+            from customer_applications.tasks import SYNC_ACTION_UPSERT, enqueue_sync_application_calendar_task
 
-            sync_application_calendar_task(
+            enqueue_sync_application_calendar_task(
                 application_id=application_id,
                 user_id=actor_user_id,
                 action=SYNC_ACTION_UPSERT,
@@ -244,9 +244,9 @@ def post_delete_document_storage_signal(sender, instance, **kwargs):
 
     def _queue_storage_cleanup():
         try:
-            from customer_applications.tasks import cleanup_document_storage_task
+            from customer_applications.tasks import enqueue_cleanup_document_storage_task
 
-            cleanup_document_storage_task(file_path=file_path, folder_path=folder_path or None)
+            enqueue_cleanup_document_storage_task(file_path=file_path, folder_path=folder_path or None)
         except Exception as exc:
             # Do not block document deletion when queueing storage cleanup fails.
             logger.warning("Failed to queue storage cleanup for document #%s: %s", document_id, exc)

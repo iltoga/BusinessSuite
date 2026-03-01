@@ -26,7 +26,7 @@ Current approach:
 - Verify logs are emitted:
   - backend startup logs
   - API request/error logs
-  - Huey worker task logs
+  - PgQueuer worker task logs
 - Verify collector can read the configured sources.
 
 ## If you need direct push again

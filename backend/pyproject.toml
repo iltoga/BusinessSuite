@@ -12,8 +12,6 @@ dependencies = [
     "whitenoise>=6.11.0",
     "gunicorn>=23.0.0",
     "setuptools>=80.9.0",
-    "huey>=2.5.3",
-    "peewee",
     "djangorestframework>=3.16.1",
     "djangorestframework-simplejwt>=5.5.1",
     "drf-spectacular>=0.27.0",
@@ -31,6 +29,7 @@ dependencies = [
     "django-dbbackup>=5.1.0",
     "django-cleanup>=9.0.0",
     "requests>=2.32.5",
+    "psycopg[binary]>=3.2.10",
     "psycopg2-binary>=2.9.11",
     "redis>=6.4.0",
     "docx-mailmerge>=0.5.0",
@@ -46,6 +45,7 @@ dependencies = [
     "google-auth>=2.48.0",
     "google-api-python-client>=2.189.0",
     "pytest>=9.0.2",
+    "pgqueuer>=0.25.3",
 ]
 
 [build-system]

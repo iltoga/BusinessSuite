@@ -14,7 +14,7 @@ Create a customer from passport OCR, then create invoice-ready applications dire
 
 - UI route: `/utils/passport-check`
 - API start: `POST /api/customers/check-passport/` (multipart)
-- Processing: async Huey task (`check_passport_uploadability_task`) with progress updates.
+- Processing: async PgQueuer task (`check_passport_uploadability_task`) with progress updates.
 
 ### 2) Upload passport and validate
 

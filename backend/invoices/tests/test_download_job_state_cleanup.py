@@ -12,7 +12,7 @@ from invoices.tasks.download_jobs import run_invoice_download_job
 User = get_user_model()
 
 
-def _run_huey_task(task, **kwargs):
+def _run_task(task, **kwargs):
     if hasattr(task, "call_local"):
         return task.call_local(**kwargs)
     if hasattr(task, "func"):
@@ -63,7 +63,7 @@ class InvoiceDownloadJobStateCleanupTest(TestCase):
                 return_value="tmpfiles/invoice_downloads/success.docx",
             ),
         ):
-            _run_huey_task(run_invoice_download_job, job_id=str(job.id))
+            _run_task(run_invoice_download_job, job_id=str(job.id))
 
         job.refresh_from_db()
         self.assertEqual(job.status, InvoiceDownloadJob.STATUS_COMPLETED)
@@ -99,7 +99,7 @@ class InvoiceDownloadJobStateCleanupTest(TestCase):
             patch("invoices.tasks.download_jobs.release_task_lock"),
             patch("invoices.tasks.download_jobs.InvoiceService", FailingInvoiceService),
         ):
-            _run_huey_task(run_invoice_download_job, job_id=str(job.id))
+            _run_task(run_invoice_download_job, job_id=str(job.id))
 
         job.refresh_from_db()
         self.assertEqual(job.status, InvoiceDownloadJob.STATUS_FAILED)

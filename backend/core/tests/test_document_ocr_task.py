@@ -7,7 +7,7 @@ from core.models import DocumentOCRJob
 from core.tasks.document_ocr import run_document_ocr_job
 
 
-def _run_huey_task(task, **kwargs):
+def _run_task(task, **kwargs):
     if hasattr(task, "call_local"):
         return task.call_local(**kwargs)
     if hasattr(task, "func"):
@@ -55,7 +55,7 @@ class DocumentOcrTaskTests(TestCase):
             file_url="/uploads/tmp/document-ocr.pdf",
         )
 
-        _run_huey_task(run_document_ocr_job, job_id=str(job.id))
+        _run_task(run_document_ocr_job, job_id=str(job.id))
 
         job.refresh_from_db()
         self.assertEqual(job.status, DocumentOCRJob.STATUS_COMPLETED)

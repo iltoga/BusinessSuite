@@ -1718,7 +1718,7 @@ CACHE_DEFAULT_TIMEOUT=300
 ```
 
 ### Redis Databases
-- DB 0: Huey task queue
+- DB 0: PgQueuer task queue
 - DB 1: Django cache (default)
 - DB 2: Cacheops ORM cache
 - DB 3: Benchmark system

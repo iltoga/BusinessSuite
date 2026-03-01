@@ -6,7 +6,7 @@ from django.db import models
 
 class AsyncJob(models.Model):
     """
-    Generic model to track asynchronous tasks (Huey jobs).
+    Generic model to track asynchronous background tasks.
     Allows frontend to track progress and receive results via SSE.
     """
 

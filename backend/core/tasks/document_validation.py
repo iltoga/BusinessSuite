@@ -1,5 +1,5 @@
 """
-Huey task for AI validation of a single uploaded document.
+Background task for AI validation of a single uploaded document.
 
 Triggered after a document file is uploaded/updated when the user
 opts in to AI validation. Updates Document.ai_validation_status
@@ -15,14 +15,16 @@ from core.services.ai_document_categorizer import (
     extract_validation_doc_number,
     extract_validation_expiration_date,
 )
+from core.queue import enqueue_job
 from core.services.logger_service import Logger
 from core.tasks.idempotency import acquire_task_lock, build_task_lock_key, release_task_lock
 from customer_applications.services.document_expiration_state_service import DocumentExpirationStateService
 from customer_applications.models import Document
 from django.core.files.storage import default_storage
-from huey.contrib.djhuey import db_task
 
 logger = Logger.get_logger(__name__)
+
+ENTRYPOINT_RUN_DOCUMENT_VALIDATION = "core.run_document_validation"
 
 
 def _apply_expiration_metadata(document: Document, validation: dict) -> tuple[dict, bool]:
@@ -55,7 +57,14 @@ def _apply_expiration_metadata(document: Document, validation: dict) -> tuple[di
     return validation, False
 
 
-@db_task()
+def enqueue_run_document_validation(*, document_id: int) -> str | None:
+    return enqueue_job(
+        entrypoint=ENTRYPOINT_RUN_DOCUMENT_VALIDATION,
+        payload={"document_id": int(document_id)},
+        run_local=run_document_validation,
+    )
+
+
 def run_document_validation(document_id: int) -> None:
     """Validate a single document file against its document-type and product prompts."""
     lock_key = build_task_lock_key(namespace="doc_upload_validation", item_id=str(document_id))

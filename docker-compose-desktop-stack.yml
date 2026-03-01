@@ -91,7 +91,6 @@ services:
       SESSION_COOKIE_DOMAIN: ""
       REDIS_HOST: ${DESKTOP_REDIS_HOST:-redis}
       REDIS_PORT: ${DESKTOP_REDIS_PORT:-6379}
-      HUEY_REDIS_DB: ${DESKTOP_HUEY_REDIS_DB:-0}
       COMPONENT: backend
       MEDIA_ROOT: /media
       MEDIA_URL: /media/
@@ -158,7 +157,6 @@ services:
       SESSION_COOKIE_DOMAIN: ""
       REDIS_HOST: ${DESKTOP_REDIS_HOST:-redis}
       REDIS_PORT: ${DESKTOP_REDIS_PORT:-6379}
-      HUEY_REDIS_DB: ${DESKTOP_HUEY_REDIS_DB:-0}
       COMPONENT: task_worker
       MEDIA_ROOT: /media
       MEDIA_URL: /media/
@@ -196,7 +194,7 @@ services:
       - type: bind
         source: ${DATA_PATH}/backups
         target: /backups
-    command: python manage.py run_huey
+    command: pgq run business_suite.pgqueue:factory
 
   bs-frontend:
     profiles:

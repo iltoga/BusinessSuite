@@ -4,6 +4,7 @@ import traceback
 from io import BytesIO
 
 from core.models import OCRJob
+from core.queue import enqueue_job
 from core.services.ai_client import AIConnectionError
 from core.services.logger_service import Logger
 from core.services.ocr_preview_storage import upload_ocr_preview_bytes
@@ -12,13 +13,23 @@ from core.utils.imgutils import convert_and_resize_image
 from core.utils.passport_ocr import extract_mrz_data, extract_passport_with_ai
 from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import SimpleUploadedFile
-from huey.contrib.djhuey import db_task
 
 logger = Logger.get_logger(__name__)
 
+OCR_MAX_RETRIES = 2
+OCR_RETRY_DELAY_SECONDS = 10
+ENTRYPOINT_RUN_OCR_JOB = "core.run_ocr_job"
 
-@db_task(retries=2, retry_delay=10, context=True)
-def run_ocr_job(job_id: str, task=None) -> None:
+def enqueue_run_ocr_job(*, job_id: str, retry_attempt: int = 0, delay_seconds: int | float | None = None) -> str | None:
+    return enqueue_job(
+        entrypoint=ENTRYPOINT_RUN_OCR_JOB,
+        payload={"job_id": str(job_id), "retry_attempt": int(retry_attempt)},
+        delay_seconds=delay_seconds,
+        run_local=run_ocr_job,
+    )
+
+
+def run_ocr_job(job_id: str, retry_attempt: int = 0) -> None:
     lock_key = build_task_lock_key(namespace="ocr_job", item_id=str(job_id))
     lock_token = acquire_task_lock(lock_key)
     if not lock_token:
@@ -26,7 +37,7 @@ def run_ocr_job(job_id: str, task=None) -> None:
         return
 
     try:
-        logger.info(f"Starting OCR job {job_id} (retries remaining: {task.retries if task else 'N/A'})")
+        logger.info("Starting OCR job %s (retry_attempt=%s)", job_id, retry_attempt)
         try:
             job = OCRJob.objects.get(id=job_id)
         except OCRJob.DoesNotExist:
@@ -119,13 +130,22 @@ def run_ocr_job(job_id: str, task=None) -> None:
             logger.info(f"OCR job {job_id} completed successfully")
 
         except AIConnectionError as exc:
-            if task and task.retries > 0:
+            if retry_attempt < OCR_MAX_RETRIES:
+                retries_left = OCR_MAX_RETRIES - retry_attempt
                 logger.warning(
-                    f"OCR job {job_id} encountered AI connection error. Retrying in 10s... ({task.retries} left)"
+                    "OCR job %s encountered AI connection error. Retrying in %ss... (%s left)",
+                    job_id,
+                    OCR_RETRY_DELAY_SECONDS,
+                    retries_left,
                 )
-                job.error_message = f"AI connection error, retrying... ({task.retries} left)"
+                job.error_message = f"AI connection error, retrying... ({retries_left} left)"
                 job.save(update_fields=["error_message", "updated_at"])
-                raise exc  # Re-raise to trigger Huey retry
+                enqueue_run_ocr_job(
+                    job_id=job_id,
+                    retry_attempt=retry_attempt + 1,
+                    delay_seconds=OCR_RETRY_DELAY_SECONDS,
+                )
+                return
 
             logger.error(f"OCR job {job_id} failed after retries: {str(exc)}")
             job.status = OCRJob.STATUS_FAILED

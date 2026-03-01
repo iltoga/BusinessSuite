@@ -1,7 +1,11 @@
 import logging
 
 from core.models.calendar_event import CalendarEvent
-from core.tasks.calendar_sync import create_google_event_task, delete_google_event_task, update_google_event_task
+from core.tasks.calendar_sync import (
+    enqueue_create_google_event_task,
+    enqueue_delete_google_event_task,
+    enqueue_update_google_event_task,
+)
 from django.db import transaction
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
@@ -23,9 +27,9 @@ def queue_calendar_event_sync(sender, instance: CalendarEvent, created: bool, ra
             instance.google_calendar_id,
         )
         if created:
-            create_google_event_task(event_id=instance.pk)
+            enqueue_create_google_event_task(event_id=str(instance.pk))
         else:
-            update_google_event_task(event_id=instance.pk)
+            enqueue_update_google_event_task(event_id=str(instance.pk))
 
     try:
         transaction.on_commit(_enqueue)
@@ -56,7 +60,7 @@ def queue_calendar_event_delete(sender, instance: CalendarEvent, **kwargs):
             google_event_id,
             google_calendar_id,
         )
-        delete_google_event_task(**delete_kwargs)
+        enqueue_delete_google_event_task(**delete_kwargs)
 
     try:
         transaction.on_commit(_enqueue)

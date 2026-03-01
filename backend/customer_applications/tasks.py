@@ -4,13 +4,12 @@ import posixpath
 from datetime import datetime, time, timedelta
 
 from customer_applications.models import DocApplication
+from core.queue import enqueue_job
 from django.contrib.auth import get_user_model
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage, default_storage
 from django.db import IntegrityError, transaction
 from django.utils import timezone
-from huey import crontab
-from huey.contrib.djhuey import db_periodic_task, db_task
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -18,6 +17,13 @@ logger = logging.getLogger(__name__)
 SYNC_ACTION_UPSERT = "upsert"
 SYNC_ACTION_DELETE = "delete"
 WHATSAPP_POLL_UNSUPPORTED_MARKER = "Meta poll unsupported: waiting for webhook status updates."
+ENTRYPOINT_CLEANUP_DOCUMENT_STORAGE_TASK = "customer_applications.cleanup_document_storage"
+ENTRYPOINT_CLEANUP_APPLICATION_STORAGE_FOLDER_TASK = "customer_applications.cleanup_application_storage_folder"
+ENTRYPOINT_SYNC_APPLICATION_CALENDAR_TASK = "customer_applications.sync_application_calendar"
+ENTRYPOINT_POLL_WHATSAPP_DELIVERY_STATUSES_TASK = "customer_applications.poll_whatsapp_delivery_statuses"
+ENTRYPOINT_SEND_DUE_TOMORROW_CUSTOMER_NOTIFICATIONS_TASK = (
+    "customer_applications.send_due_tomorrow_customer_notifications"
+)
 
 
 def _normalize_storage_prefix(path: str | None) -> str:
@@ -130,7 +136,6 @@ def _delete_storage_prefix_tree(folder_path: str | None) -> None:
         _delete_empty_storage_folder(current)
 
 
-@db_task()
 def cleanup_document_storage_task(*, file_path: str, folder_path: str | None = None) -> None:
     """Delete a document object from storage, then remove its folder when empty."""
     normalized_file_path = str(file_path or "").strip()
@@ -150,7 +155,6 @@ def cleanup_document_storage_task(*, file_path: str, folder_path: str | None = N
         )
 
 
-@db_task()
 def cleanup_application_storage_folder_task(*, folder_path: str) -> None:
     """Delete all storage objects for one application folder."""
     normalized_folder_path = _normalize_storage_prefix(folder_path)
@@ -194,7 +198,10 @@ def schedule_whatsapp_status_poll(*, notification_id: int, delay_seconds: int = 
         return
 
     def _enqueue():
-        poll_whatsapp_delivery_statuses_task.schedule(kwargs={"notification_ids": [notification_id]}, delay=delay_seconds)
+        enqueue_poll_whatsapp_delivery_statuses_task(
+            notification_ids=[notification_id],
+            delay_seconds=delay_seconds,
+        )
 
     try:
         transaction.on_commit(_enqueue)
@@ -263,7 +270,6 @@ def _notify_calendar_sync_failure(user, *, application, action, error_message):
         logger.exception("Failed to push calendar sync error notification to user #%s", getattr(user, "id", None))
 
 
-@db_task()
 def sync_application_calendar_task(
     *,
     application_id: int,
@@ -629,25 +635,87 @@ def poll_whatsapp_delivery_statuses(*, notification_ids=None, limit=None):
     return {"checked": checked, "updated": updated, "skipped": skipped, "failed": failed}
 
 
-@db_task()
 def poll_whatsapp_delivery_statuses_task(*, notification_ids=None, limit=None):
     return poll_whatsapp_delivery_statuses(notification_ids=notification_ids, limit=limit)
 
 
-@db_periodic_task(
-    crontab(minute="*/5"),
-    name="customer_applications.poll_whatsapp_delivery_statuses",
-)
-def poll_whatsapp_delivery_statuses_periodic_task():
-    return poll_whatsapp_delivery_statuses()
-
-
-@db_periodic_task(
-    crontab(
-        hour=getattr(settings, "CUSTOMER_NOTIFICATIONS_DAILY_HOUR", 8),
-        minute=getattr(settings, "CUSTOMER_NOTIFICATIONS_DAILY_MINUTE", 0),
-    ),
-    name="customer_applications.send_due_tomorrow_customer_notifications",
-)
 def send_due_tomorrow_customer_notifications_task():
     return send_due_tomorrow_customer_notifications()
+
+
+def enqueue_cleanup_document_storage_task(
+    *,
+    file_path: str,
+    folder_path: str | None = None,
+    delay_seconds: int | float | None = None,
+) -> str | None:
+    return enqueue_job(
+        entrypoint=ENTRYPOINT_CLEANUP_DOCUMENT_STORAGE_TASK,
+        payload={"file_path": file_path, "folder_path": folder_path},
+        delay_seconds=delay_seconds,
+        run_local=cleanup_document_storage_task,
+    )
+
+
+def enqueue_cleanup_application_storage_folder_task(
+    *,
+    folder_path: str,
+    delay_seconds: int | float | None = None,
+) -> str | None:
+    return enqueue_job(
+        entrypoint=ENTRYPOINT_CLEANUP_APPLICATION_STORAGE_FOLDER_TASK,
+        payload={"folder_path": folder_path},
+        delay_seconds=delay_seconds,
+        run_local=cleanup_application_storage_folder_task,
+    )
+
+
+def enqueue_sync_application_calendar_task(
+    *,
+    application_id: int,
+    user_id: int | None = None,
+    action: str = SYNC_ACTION_UPSERT,
+    previous_due_date: str | None = None,
+    start_date: str | None = None,
+    known_event_ids: list[str] | None = None,
+    delay_seconds: int | float | None = None,
+) -> str | None:
+    return enqueue_job(
+        entrypoint=ENTRYPOINT_SYNC_APPLICATION_CALENDAR_TASK,
+        payload={
+            "application_id": int(application_id),
+            "user_id": user_id,
+            "action": action,
+            "previous_due_date": previous_due_date,
+            "start_date": start_date,
+            "known_event_ids": known_event_ids,
+        },
+        delay_seconds=delay_seconds,
+        run_local=sync_application_calendar_task,
+    )
+
+
+def enqueue_poll_whatsapp_delivery_statuses_task(
+    *,
+    notification_ids=None,
+    limit=None,
+    delay_seconds: int | float | None = None,
+) -> str | None:
+    return enqueue_job(
+        entrypoint=ENTRYPOINT_POLL_WHATSAPP_DELIVERY_STATUSES_TASK,
+        payload={"notification_ids": notification_ids, "limit": limit},
+        delay_seconds=delay_seconds,
+        run_local=poll_whatsapp_delivery_statuses_task,
+    )
+
+
+def enqueue_send_due_tomorrow_customer_notifications_task(
+    *,
+    delay_seconds: int | float | None = None,
+) -> str | None:
+    return enqueue_job(
+        entrypoint=ENTRYPOINT_SEND_DUE_TOMORROW_CUSTOMER_NOTIFICATIONS_TASK,
+        payload={},
+        delay_seconds=delay_seconds,
+        run_local=send_due_tomorrow_customer_notifications_task,
+    )

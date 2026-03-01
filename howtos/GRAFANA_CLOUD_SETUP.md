@@ -207,7 +207,7 @@ services:
         target: /staticfiles
       - le-certs:/etc/letsencrypt
     restart: unless-stopped
-    command: python manage.py run_huey
+    command: pgq run business_suite.pgqueue:factory
 
   bs-frontend:
     container_name: bs-frontend

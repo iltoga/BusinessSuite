@@ -8,7 +8,7 @@ from invoices.tasks.download_jobs import run_invoice_download_job
 from invoices.tasks.import_jobs import run_invoice_import_item
 
 
-def _run_huey_task(task, **kwargs):
+def _run_task(task, **kwargs):
     if hasattr(task, "call_local"):
         return task.call_local(**kwargs)
     if hasattr(task, "func"):
@@ -22,7 +22,7 @@ class InvoiceTaskRuntimeIdempotencyTests(SimpleTestCase):
             patch("invoices.tasks.download_jobs.acquire_task_lock", return_value=None),
             patch("invoices.tasks.download_jobs.InvoiceDownloadJob.objects.select_related") as select_related_mock,
         ):
-            _run_huey_task(run_invoice_download_job, job_id="job-300")
+            _run_task(run_invoice_download_job, job_id="job-300")
 
         select_related_mock.assert_not_called()
 
@@ -35,7 +35,7 @@ class InvoiceTaskRuntimeIdempotencyTests(SimpleTestCase):
                 side_effect=InvoiceDownloadJob.DoesNotExist,
             ),
         ):
-            _run_huey_task(run_invoice_download_job, job_id="job-300")
+            _run_task(run_invoice_download_job, job_id="job-300")
 
         release_lock_mock.assert_called_once_with("tasks:idempotency:invoice_download_job:job-300", "token-1")
 
@@ -44,7 +44,7 @@ class InvoiceTaskRuntimeIdempotencyTests(SimpleTestCase):
             patch("invoices.tasks.import_jobs.acquire_task_lock", return_value=None),
             patch("invoices.tasks.import_jobs.InvoiceImportItem.objects.select_related") as select_related_mock,
         ):
-            _run_huey_task(run_invoice_import_item, item_id="item-400")
+            _run_task(run_invoice_import_item, item_id="item-400")
 
         select_related_mock.assert_not_called()
 
@@ -57,7 +57,7 @@ class InvoiceTaskRuntimeIdempotencyTests(SimpleTestCase):
                 side_effect=InvoiceImportItem.DoesNotExist,
             ),
         ):
-            _run_huey_task(run_invoice_import_item, item_id="item-400")
+            _run_task(run_invoice_import_item, item_id="item-400")
 
         release_lock_mock.assert_called_once_with("tasks:idempotency:invoice_import_item:item-400", "token-2")
 
@@ -76,7 +76,7 @@ class InvoiceTaskRuntimeIdempotencyTests(SimpleTestCase):
             patch("invoices.tasks.import_jobs.InvoiceImportItem.objects.select_related") as select_related_mock,
         ):
             select_related_mock.return_value.get.return_value = item
-            _run_huey_task(run_invoice_import_item, item_id="item-401")
+            _run_task(run_invoice_import_item, item_id="item-401")
 
         update_counts_mock.assert_called_once_with("job-import-1")
         release_lock_mock.assert_called_once_with("tasks:idempotency:invoice_import_item:item-401", "token-2a")
@@ -93,7 +93,7 @@ class InvoiceTaskRuntimeIdempotencyTests(SimpleTestCase):
             patch("invoices.tasks.download_jobs.InvoiceDownloadJob.objects.select_related") as select_related_mock,
         ):
             select_related_mock.return_value.get.return_value = job
-            _run_huey_task(run_invoice_download_job, job_id="job-301")
+            _run_task(run_invoice_download_job, job_id="job-301")
 
         release_lock_mock.assert_called_once_with("tasks:idempotency:invoice_download_job:job-301", "token-1a")
 
@@ -102,7 +102,7 @@ class InvoiceTaskRuntimeIdempotencyTests(SimpleTestCase):
             patch("invoices.tasks.document_jobs.acquire_task_lock", return_value=None),
             patch("invoices.tasks.document_jobs.InvoiceDocumentJob.objects.get") as get_job_mock,
         ):
-            _run_huey_task(run_invoice_document_job, job_id="job-500")
+            _run_task(run_invoice_document_job, job_id="job-500")
 
         get_job_mock.assert_not_called()
 
@@ -115,7 +115,7 @@ class InvoiceTaskRuntimeIdempotencyTests(SimpleTestCase):
                 side_effect=InvoiceDocumentJob.DoesNotExist,
             ),
         ):
-            _run_huey_task(run_invoice_document_job, job_id="job-500")
+            _run_task(run_invoice_document_job, job_id="job-500")
 
         release_lock_mock.assert_called_once_with("tasks:idempotency:invoice_document_job:job-500", "token-3")
 
@@ -130,6 +130,6 @@ class InvoiceTaskRuntimeIdempotencyTests(SimpleTestCase):
             patch("invoices.tasks.document_jobs.release_task_lock") as release_lock_mock,
             patch("invoices.tasks.document_jobs.InvoiceDocumentJob.objects.get", return_value=job),
         ):
-            _run_huey_task(run_invoice_document_job, job_id="job-501")
+            _run_task(run_invoice_document_job, job_id="job-501")
 
         release_lock_mock.assert_called_once_with("tasks:idempotency:invoice_document_job:job-501", "token-3a")

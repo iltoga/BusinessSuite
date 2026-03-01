@@ -89,7 +89,6 @@ services:
       DB_PASS: ${DB_PASS}
       REDIS_HOST: bs-redis
       REDIS_PORT: 6379
-      HUEY_REDIS_DB: ${HUEY_REDIS_DB:-0}
       COMPONENT: backend
       MEDIA_ROOT: /media
       MEDIA_URL: /media/
@@ -141,7 +140,6 @@ services:
       DB_PASS: ${DB_PASS}
       REDIS_HOST: bs-redis
       REDIS_PORT: 6379
-      HUEY_REDIS_DB: ${HUEY_REDIS_DB:-0}
       COMPONENT: task_worker
       MEDIA_ROOT: /media
       MEDIA_URL: /media/
@@ -170,7 +168,7 @@ services:
       - type: bind
         source: ${DATA_PATH}/staticfiles
         target: /staticfiles
-    command: python manage.py run_huey
+    command: pgq run business_suite.pgqueue:factory
 
   bs-frontend:
     container_name: bs-frontend

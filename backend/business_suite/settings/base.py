@@ -16,7 +16,6 @@ import os
 import socket
 import sys
 from datetime import timedelta
-from importlib import import_module
 from pathlib import Path
 
 from business_suite.settings.cache_backends import build_prod_redis_caches
@@ -202,7 +201,6 @@ INSTALLED_APPS = [
     "storages",
     "admin_tools",
     "django_cleanup.apps.CleanupConfig",
-    "huey.contrib.djhuey",
 ]
 
 MIDDLEWARE = [
@@ -264,7 +262,7 @@ WSGI_APPLICATION = "business_suite.wsgi.application"
 # }
 # Use an in-memory SQLite DB when running tests to avoid requiring Postgres.
 # Do not infer testing from PYTEST_CURRENT_TEST alone, as leaked shell env can
-# incorrectly force non-test processes (e.g. run_huey) into test mode.
+# incorrectly force non-test processes into test mode.
 _DJANGO_TESTING_ENV = os.getenv("DJANGO_TESTING")
 if _DJANGO_TESTING_ENV is not None:
     TESTING = _parse_bool(_DJANGO_TESTING_ENV)
@@ -588,7 +586,7 @@ SESSION_SAVE_EVERY_REQUEST = True
 
 CACHES = build_prod_redis_caches()
 
-# Cacheops Configuration - uses Redis database 2 (Huey uses default DB 0, Django cache uses DB 1)
+# Cacheops Configuration - uses Redis database 2 (Django cache uses DB 1)
 # Parse REDIS_URL and replace the database number with 2 for cacheops
 _redis_url = os.getenv("REDIS_URL", "redis://redis:6379/1")
 # Replace the database number in the URL (e.g., /1 -> /2)
@@ -654,79 +652,9 @@ CSP_ENABLED = _parse_bool(os.getenv("CSP_ENABLED", "False"))
 CSP_MODE = os.getenv("CSP_MODE", "report-only")  # report-only|enforce
 
 
-def _default_huey_workers() -> str:
-    component = (os.getenv("COMPONENT") or "").strip().lower()
-    if component == "task_worker" or "run_huey" in sys.argv:
-        return "4"
-    return "2"
-
-
-_HUEY_WORKERS = int(os.getenv("HUEY_WORKERS", _default_huey_workers()))
-_HUEY_INITIAL_DELAY = float(os.getenv("HUEY_INITIAL_DELAY", "0.05"))
-_HUEY_BACKOFF = float(os.getenv("HUEY_BACKOFF", "1.05"))
-_HUEY_MAX_DELAY = float(os.getenv("HUEY_MAX_DELAY", "1.0"))
-_HUEY_BLOCKING = _parse_bool(os.getenv("HUEY_BLOCKING", "True"))
-_HUEY_READ_TIMEOUT = float(os.getenv("HUEY_READ_TIMEOUT", "1"))
-
-
-def _build_huey_settings(testing: bool) -> dict:
-    if testing:
-        from peewee import SqliteDatabase
-
-        huey_database = SqliteDatabase(":memory:")
-        return {
-            "huey_class": "huey.contrib.sql_huey.SqlHuey",
-            "name": "business_suite",
-            "results": True,
-            "immediate": False,
-            "database": huey_database,
-            "consumer": {
-                "workers": _HUEY_WORKERS,
-                "worker_type": os.getenv("HUEY_WORKER_TYPE", "thread"),
-                # SqlHuey is polling-based; tighter bounds reduce idle pickup latency.
-                "initial_delay": _HUEY_INITIAL_DELAY,
-                "backoff": _HUEY_BACKOFF,
-                "max_delay": _HUEY_MAX_DELAY,
-                "scheduler_interval": 1,
-                "check_worker_health": True,
-                "health_check_interval": 1,
-            },
-        }
-
-    # Prefer the explicit contrib path when available, but support newer Huey
-    # versions that expose RedisHuey at package root.
-    redis_huey_class = "huey.contrib.redis_huey.RedisHuey"
-    try:
-        import_module("huey.contrib.redis_huey")
-    except ModuleNotFoundError:
-        redis_huey_class = "huey.RedisHuey"
-
-    # production / non-testing Huey -> Redis
-    return {
-        "huey_class": redis_huey_class,
-        "name": "business_suite",
-        "immediate": False,
-        "blocking": _HUEY_BLOCKING,
-        "connection": {
-            "host": _resolved_redis_host(),
-            "port": int(os.getenv("REDIS_PORT", "6379")),
-            "db": int(os.getenv("HUEY_REDIS_DB", "0")),
-            "read_timeout": _HUEY_READ_TIMEOUT,
-        },
-        "consumer": {
-            "workers": _HUEY_WORKERS,
-            "worker_type": os.getenv("HUEY_WORKER_TYPE", "thread"),
-            "initial_delay": _HUEY_INITIAL_DELAY,
-            "backoff": _HUEY_BACKOFF,
-            "max_delay": _HUEY_MAX_DELAY,
-            "scheduler_interval": 1,
-            "check_worker_health": True,
-            "health_check_interval": 1,
-        },
-    }
-
-
-HUEY = _build_huey_settings(TESTING)
+PGQUEUE_CHANNEL = os.getenv("PGQUEUE_CHANNEL", "ch_pgqueuer")
+PGQUEUE_BATCH_SIZE = int(os.getenv("PGQUEUE_BATCH_SIZE", "10"))
+PGQUEUE_DEQUEUE_TIMEOUT_SECONDS = float(os.getenv("PGQUEUE_DEQUEUE_TIMEOUT_SECONDS", "30"))
 
 # select2
 SELECT2_CACHE_BACKEND = "select2"
@@ -820,7 +748,7 @@ CUSTOMER_NOTIFICATIONS_DAILY_HOUR = int(os.getenv("CUSTOMER_NOTIFICATIONS_DAILY_
 CUSTOMER_NOTIFICATIONS_DAILY_MINUTE = int(os.getenv("CUSTOMER_NOTIFICATIONS_DAILY_MINUTE", "0"))
 
 # Calendar reminder push dispatch settings.
-# Huey periodic task checks reminders every minute and processes at most this many rows per run.
+# Scheduled queue job checks reminders every minute and processes at most this many rows per run.
 CALENDAR_REMINDER_DISPATCH_LIMIT = int(os.getenv("CALENDAR_REMINDER_DISPATCH_LIMIT", "200"))
 
 # Local-first synchronization settings (desktop replica mode).
@@ -852,11 +780,11 @@ else:
     if "auditlog.middleware.AuditlogMiddleware" in MIDDLEWARE:
         MIDDLEWARE.remove("auditlog.middleware.AuditlogMiddleware")
 
-# Determine if we are running as backend or task_worker
-# Default to 'backend' unless 'run_huey' is in command line or COMPONENT is set.
+# Determine if we are running as backend or task_worker.
+# Default to 'backend' unless a queue worker command is detected or COMPONENT is set.
 COMPONENT = os.getenv("COMPONENT")
 if not COMPONENT:
-    if "run_huey" in sys.argv:
+    if "pgq" in sys.argv:
         COMPONENT = "task_worker"
     else:
         COMPONENT = "backend"
@@ -919,7 +847,7 @@ LOGGING = {
             "level": "ERROR",
             "propagate": False,
         },
-        "huey": {
+        "pgqueuer": {
             "handlers": ["console", PRIMARY_HANDLER],
             "level": "INFO",
             "propagate": False,

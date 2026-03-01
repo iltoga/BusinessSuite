@@ -50,7 +50,7 @@ class StorageCleanupOnDeleteTests(TestCase):
 
         with (
             patch("django.db.transaction.on_commit", side_effect=lambda callback: callback()),
-            patch("customer_applications.tasks.cleanup_document_storage_task") as cleanup_mock,
+            patch("customer_applications.tasks.enqueue_cleanup_document_storage_task") as cleanup_mock,
         ):
             document.delete()
 
@@ -66,9 +66,9 @@ class StorageCleanupOnDeleteTests(TestCase):
 
         with (
             patch("django.db.transaction.on_commit", side_effect=lambda callback: callback()),
-            patch("customer_applications.tasks.sync_application_calendar_task"),
-            patch("customer_applications.tasks.cleanup_application_storage_folder_task") as folder_cleanup_mock,
-            patch("customer_applications.tasks.cleanup_document_storage_task"),
+            patch("customer_applications.tasks.enqueue_sync_application_calendar_task"),
+            patch("customer_applications.tasks.enqueue_cleanup_application_storage_folder_task") as folder_cleanup_mock,
+            patch("customer_applications.tasks.enqueue_cleanup_document_storage_task"),
         ):
             application.delete()
 

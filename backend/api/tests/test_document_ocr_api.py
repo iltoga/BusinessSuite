@@ -22,7 +22,7 @@ class DocumentOcrApiTests(TestCase):
 
     @patch("api.views.default_storage.url", return_value="/uploads/tmpfiles/document.png")
     @patch("api.views.default_storage.save", return_value="tmpfiles/document.png")
-    @patch("api.views.run_document_ocr_job")
+    @patch("api.views.enqueue_run_document_ocr_job")
     def test_document_ocr_check_accepts_image_files(self, enqueue_mock, _storage_save_mock, _storage_url_mock):
         image_file = SimpleUploadedFile("document.png", b"png-bytes", content_type="image/png")
 

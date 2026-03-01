@@ -54,7 +54,7 @@ This file summarizes the main API surface in `backend/api/urls.py` and related D
 ### Passport check flow (async)
 
 - `POST /api/customers/check-passport/` (multipart)
-  - Queues Huey task and returns `job_id`
+  - Queues PgQueuer task and returns `job_id`
 - Progress/result is consumed via async-job/SSE status endpoints.
 
 ---
@@ -109,7 +109,7 @@ This file summarizes the main API surface in `backend/api/urls.py` and related D
 
 ### Calendar sync behavior note
 
-Application create/update/workflow transitions queue `sync_application_calendar_task` (Huey), which:
+Application create/update/workflow transitions queue `sync_application_calendar_task` (PgQueuer), which:
 
 1. updates local `CalendarEvent` rows,
 2. triggers Google Calendar sync via calendar-event model signals.

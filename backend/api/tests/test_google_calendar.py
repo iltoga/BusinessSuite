@@ -30,9 +30,9 @@ class TestGoogleCalendarAPI:
         self.client.force_authenticate(user=user)
 
         with (
-            patch("core.signals_calendar.create_google_event_task") as create_sync_mock,
-            patch("core.signals_calendar.update_google_event_task") as update_sync_mock,
-            patch("core.signals_calendar.delete_google_event_task") as delete_sync_mock,
+            patch("core.signals_calendar.enqueue_create_google_event_task") as create_sync_mock,
+            patch("core.signals_calendar.enqueue_update_google_event_task") as update_sync_mock,
+            patch("core.signals_calendar.enqueue_delete_google_event_task") as delete_sync_mock,
             patch("django.db.transaction.on_commit", side_effect=lambda callback: callback()),
         ):
             resp = self.client.post("/api/calendar/", payload, format="json")
@@ -203,7 +203,7 @@ class TestGoogleCalendarAPI:
         )
 
         with (
-            patch("core.signals_calendar.update_google_event_task") as update_sync_mock,
+            patch("core.signals_calendar.enqueue_update_google_event_task") as update_sync_mock,
             patch("django.db.transaction.on_commit", side_effect=lambda callback: callback()),
         ):
             resp = self.client.patch("/api/calendar/evt-1/", {"done": True}, format="json")
@@ -319,9 +319,9 @@ class TestGoogleCalendarAPI:
         workflow.save()
 
         with (
-            patch("customer_applications.tasks.sync_application_calendar_task") as sync_mock,
+            patch("customer_applications.tasks.enqueue_sync_application_calendar_task") as sync_mock,
             patch("django.db.transaction.on_commit", side_effect=lambda callback: callback()),
-            patch("core.signals_calendar.update_google_event_task") as update_sync_mock,
+            patch("core.signals_calendar.enqueue_update_google_event_task") as update_sync_mock,
         ):
             resp = self.client.patch("/api/calendar/evt-app-1/", {"done": True}, format="json")
 
@@ -397,9 +397,9 @@ class TestGoogleCalendarAPI:
         )
 
         with (
-            patch("customer_applications.tasks.sync_application_calendar_task") as sync_mock,
+            patch("customer_applications.tasks.enqueue_sync_application_calendar_task") as sync_mock,
             patch("django.db.transaction.on_commit", side_effect=lambda callback: callback()),
-            patch("core.signals_calendar.update_google_event_task") as update_sync_mock,
+            patch("core.signals_calendar.enqueue_update_google_event_task") as update_sync_mock,
         ):
             resp = self.client.patch("/api/calendar/evt-overdue-1/", {"done": True}, format="json")
 
