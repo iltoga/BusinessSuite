@@ -19,6 +19,7 @@ import { AuthService } from '@/core/services/auth.service';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
+import { ZardCardComponent } from '@/shared/components/card';
 import {
   ColumnConfig,
   ColumnFilterChangeEvent,
@@ -58,6 +59,7 @@ const DEFAULT_TIMEZONE = 'Asia/Makassar';
     CommonModule,
     ReactiveFormsModule,
     ZardButtonComponent,
+    ZardCardComponent,
     DataTableComponent,
     PaginationControlsComponent,
     SearchToolbarComponent,

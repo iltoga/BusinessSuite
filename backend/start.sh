@@ -47,31 +47,11 @@ if [ -f .env ]; then
   fi
 fi
 
-# 2. Safety Check for Required Variables
-if [[ -z "${SYSTEM_USER_PASSWORD}" || -z "${SYSTEM_USER_EMAIL}" ]]; then
-  echo "Error: SYSTEM_USER_PASSWORD or SYSTEM_USER_EMAIL is not set."
-  if [[ -z "${SYSTEM_USER_PASSWORD}" ]]; then
-    echo "DEBUG: Missing required variable: SYSTEM_USER_PASSWORD"
-  else
-    echo "DEBUG: SYSTEM_USER_PASSWORD is set"
-  fi
-  if [[ -z "${SYSTEM_USER_EMAIL}" ]]; then
-    echo "DEBUG: Missing required variable: SYSTEM_USER_EMAIL"
-  else
-    echo "DEBUG: SYSTEM_USER_EMAIL is set"
-  fi
-  echo "DEBUG: Current User: $(id)"
-  echo "DEBUG: PWD: $PWD"
-  echo "DEBUG: Directory listing of $PWD:"
-  ls -la
-  if [ -f .env ]; then
-    echo "DEBUG: .env file FOUND in $PWD"
-    echo "DEBUG: .env keys present:"
-    grep -o '^[A-Z_]*' .env | sort | xargs
-  else
-    echo "DEBUG: .env file NOT FOUND in $PWD"
-  fi
-  exit 1
+# 2. Startup sanity checks
+# SYSTEM_USER_* variables are only required by scripts/init_db.sh (optional one-off seeding).
+# They should not block normal web startup.
+if [[ -z "${SYSTEM_USER_PASSWORD:-}" || -z "${SYSTEM_USER_EMAIL:-}" ]]; then
+  echo "Warning: SYSTEM_USER_PASSWORD or SYSTEM_USER_EMAIL is not set; skipping system-user validation during web startup."
 fi
 
 # 3. Wait for Database (Optional but highly recommended for Docker)

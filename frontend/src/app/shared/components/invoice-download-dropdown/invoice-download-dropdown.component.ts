@@ -129,18 +129,89 @@ export class InvoiceDownloadDropdownComponent {
   private async generatePdfBlob(
     onProgress: (progress: number) => void,
   ): Promise<{ blob: Blob; filename: string }> {
-    const payload = await firstValueFrom(
-      this.invoicesService.invoicesDownloadAsyncCreate(this.invoiceId(), { format: 'pdf' }),
-    );
-    const streamUrl = payload?.['stream_url'] || payload?.['streamUrl'];
-    const downloadUrl = payload?.['download_url'] || payload?.['downloadUrl'];
-
-    if (!streamUrl) {
-      throw new Error('Missing stream URL in PDF generation response');
+    try {
+      // Prefer direct PDF download to avoid hard dependency on background workers.
+      return await this.fetchSyncPdfBlob(onProgress);
+    } catch (syncErr) {
+      console.warn('Direct PDF download failed, attempting async flow', syncErr);
     }
 
-    const finalUrl = await this.streamDownloadProgress(streamUrl, downloadUrl, onProgress);
-    return this.fetchFile(finalUrl);
+    try {
+      const payload = await firstValueFrom(
+        this.invoicesService.invoicesDownloadAsyncCreate(this.invoiceId(), { format: 'pdf' }),
+      );
+      const jobId = payload?.['job_id'] || payload?.['jobId'];
+      const streamUrl = payload?.['stream_url'] || payload?.['streamUrl'];
+      const downloadUrl = payload?.['download_url'] || payload?.['downloadUrl'];
+      let finalUrl: string;
+
+      if (jobId) {
+        finalUrl = await this.pollDownloadStatus(jobId, downloadUrl, onProgress);
+      } else if (streamUrl) {
+        finalUrl = await this.streamDownloadProgress(streamUrl, downloadUrl, onProgress);
+      } else {
+        throw new Error('Missing stream URL and job ID in PDF generation response');
+      }
+
+      return this.fetchFile(finalUrl);
+    } catch (err) {
+      console.error('Async PDF flow failed', err);
+      throw err;
+    }
+  }
+
+  private async pollDownloadStatus(
+    jobId: string,
+    downloadUrl: string | undefined,
+    onProgress: (progress: number) => void,
+  ): Promise<string> {
+    const timeoutMs = 120 * 1000;
+    const queuedStallMs = 12 * 1000;
+    const startedAt = Date.now();
+    let queuedSince: number | null = null;
+
+    while (Date.now() - startedAt < timeoutMs) {
+      const statusPayload = await firstValueFrom(this.invoicesService.invoicesDownloadAsyncStatusRetrieve(jobId));
+      const progress = typeof statusPayload?.['progress'] === 'number' ? statusPayload['progress'] : 0;
+      const statusValue = (statusPayload?.['status'] || '').toString().toLowerCase();
+      onProgress(progress);
+
+      if (statusValue === 'queued' && progress <= 0) {
+        if (queuedSince === null) {
+          queuedSince = Date.now();
+        } else if (Date.now() - queuedSince >= queuedStallMs) {
+          throw new Error('Async queue stalled at 0%');
+        }
+      } else {
+        queuedSince = null;
+      }
+
+      if (statusValue === 'completed') {
+        const finalUrl =
+          statusPayload?.['download_url'] || statusPayload?.['downloadUrl'] || downloadUrl;
+        if (!finalUrl) {
+          throw new Error('PDF generation completed without a download URL');
+        }
+        return finalUrl;
+      }
+
+      if (statusValue === 'failed') {
+        throw new Error(statusPayload?.['error'] || 'PDF generation failed');
+      }
+
+      await this.sleep(1000);
+    }
+
+    throw new Error('PDF generation timed out while waiting for job completion');
+  }
+
+  private async fetchSyncPdfBlob(
+    onProgress: (progress: number) => void,
+  ): Promise<{ blob: Blob; filename: string }> {
+    onProgress(5);
+    const blob = await firstValueFrom(this.invoicesService.invoicesDownloadRetrieve(this.invoiceId(), 'pdf'));
+    onProgress(100);
+    return { blob, filename: this.defaultPdfFilename() };
   }
 
   private async streamDownloadProgress(
@@ -298,5 +369,11 @@ export class InvoiceDownloadDropdownComponent {
 
   private defaultPdfFilename(): string {
     return `${this.invoiceNumber()}_${this.customerName()}.pdf`.replace(/\s+/g, '_');
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => {
+      setTimeout(resolve, ms);
+    });
   }
 }

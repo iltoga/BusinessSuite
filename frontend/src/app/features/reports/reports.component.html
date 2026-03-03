@@ -10,10 +10,14 @@
     <a
       *ngFor="let report of reportList()"
       [routerLink]="['/reports', report.url.replace('report-', '')]"
-      class="block rounded-lg border bg-card p-4 transition hover:border-primary"
+      class="group block"
     >
-      <div class="font-medium">{{ report.name }}</div>
-      <p class="text-sm text-muted-foreground mt-1">{{ report.description }}</p>
+      <z-card
+        class="rounded-lg border bg-card py-0 gap-0 transition group-hover:border-primary [&_[data-slot=card-content]]:p-4"
+      >
+        <div class="font-medium">{{ report.name }}</div>
+        <p class="text-sm text-muted-foreground mt-1">{{ report.description }}</p>
+      </z-card>
     </a>
   </div>
 
@@ -186,8 +190,10 @@
         </z-card>
       </div>
 
-      <div class="rounded-lg border bg-card overflow-auto">
-        <table class="w-full text-sm">
+      <z-card
+        class="rounded-lg border bg-card overflow-auto py-0 gap-0 [&_[data-slot=card-content]]:px-0"
+      >
+        <table z-table class="w-full text-sm">
           <thead class="bg-muted/50">
             <tr>
               <th class="p-2 text-left">Feature</th>
@@ -209,10 +215,12 @@
             </tr>
           </tbody>
         </table>
-      </div>
+      </z-card>
 
-      <div class="rounded-lg border bg-card overflow-auto">
-        <table class="w-full text-sm">
+      <z-card
+        class="rounded-lg border bg-card overflow-auto py-0 gap-0 [&_[data-slot=card-content]]:px-0"
+      >
+        <table z-table class="w-full text-sm">
           <thead class="bg-muted/50">
             <tr>
               <th class="p-2 text-left">Model</th>
@@ -234,7 +242,7 @@
             </tr>
           </tbody>
         </table>
-      </div>
+      </z-card>
     </section>
 
     <div class="grid gap-6 md:grid-cols-2" *ngIf="slug() === 'revenue'">
@@ -390,8 +398,10 @@
         ></z-card>
       </div>
 
-      <div class="rounded-lg border bg-card overflow-auto">
-        <table class="w-full text-sm">
+      <z-card
+        class="rounded-lg border bg-card overflow-auto py-0 gap-0 [&_[data-slot=card-content]]:px-0"
+      >
+        <table z-table class="w-full text-sm">
           <thead class="bg-muted/50">
             <tr>
               <th class="p-2 text-left">Product</th>
@@ -415,10 +425,12 @@
             </tr>
           </tbody>
         </table>
-      </div>
+      </z-card>
 
-      <div class="rounded-lg border bg-card overflow-auto">
-        <table class="w-full text-sm">
+      <z-card
+        class="rounded-lg border bg-card overflow-auto py-0 gap-0 [&_[data-slot=card-content]]:px-0"
+      >
+        <table z-table class="w-full text-sm">
           <thead class="bg-muted/50">
             <tr>
               <th class="p-2 text-left">Invoice</th>
@@ -440,7 +452,7 @@
             </tr>
           </tbody>
         </table>
-      </div>
+      </z-card>
     </ng-container>
 
     <div class="grid gap-6 md:grid-cols-2" *ngIf="slug() === 'cash-flow'">
@@ -500,8 +512,11 @@
       ></z-card>
     </div>
 
-    <div *ngIf="slug() === 'monthly-invoices'" class="rounded-lg border bg-card overflow-auto">
-      <table class="w-full text-sm">
+    <z-card
+      *ngIf="slug() === 'monthly-invoices'"
+      class="rounded-lg border bg-card overflow-auto py-0 gap-0 [&_[data-slot=card-content]]:px-0"
+    >
+      <table z-table class="w-full text-sm">
         <thead class="bg-muted/50">
           <tr>
             <th class="p-2 text-left">Invoice</th>
@@ -521,6 +536,6 @@
           </tr>
         </tbody>
       </table>
-    </div>
+    </z-card>
   </ng-container>
 </div>

@@ -1,5 +1,7 @@
 <!-- Progress header -->
-<div class="rounded-lg border bg-card p-4 space-y-4">
+<z-card
+  class="rounded-lg border bg-card py-0 gap-0 [&_[data-slot=card-content]]:p-4 [&_[data-slot=card-content]]:space-y-4"
+>
   <div class="flex items-center justify-between">
     <h4 class="text-sm font-semibold">AI Document Categorization</h4>
     @if (isComplete()) {
@@ -57,7 +59,7 @@
   <!-- File results table -->
   @if (results().length > 0) {
     <div class="overflow-x-auto">
-      <table class="w-full text-sm border-collapse">
+      <table z-table class="w-full text-sm border-collapse">
         <thead>
           <tr class="border-b text-xs text-muted-foreground">
             <th class="text-left py-1.5 pr-2">
@@ -173,7 +175,7 @@
       </button>
       <button z-button zType="default" zSize="sm" [disabled]="!canApply()" (click)="onApplyAll()">
         @if (isApplying()) {
-          <span class="mr-1 inline-block animate-spin">⏳</span>
+          <z-icon zType="loader-circle" class="mr-1 h-3.5 w-3.5 app-circle-spinner" />
           Applying...
         } @else {
           {{ applyLabel() }}
@@ -181,4 +183,4 @@
       </button>
     </div>
   }
-</div>
+</z-card>

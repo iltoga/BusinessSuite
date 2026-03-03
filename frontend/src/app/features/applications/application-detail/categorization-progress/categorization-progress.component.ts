@@ -11,6 +11,9 @@ import {
 
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
+import { ZardCardComponent } from '@/shared/components/card';
+import { ZardIconComponent } from '@/shared/components/icon';
+import { ZardTableComponent } from '@/shared/components/table';
 import { ZardTooltipImports } from '@/shared/components/tooltip';
 
 export interface CategorizationFileResult {
@@ -46,7 +49,15 @@ export interface CategorizationApplyMapping {
 @Component({
   selector: 'app-categorization-progress',
   standalone: true,
-  imports: [CommonModule, ZardBadgeComponent, ZardButtonComponent, ...ZardTooltipImports],
+  imports: [
+    CommonModule,
+    ZardBadgeComponent,
+    ZardButtonComponent,
+    ZardCardComponent,
+    ZardIconComponent,
+    ZardTableComponent,
+    ...ZardTooltipImports,
+  ],
   templateUrl: './categorization-progress.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

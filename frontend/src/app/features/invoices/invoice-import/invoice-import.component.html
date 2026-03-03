@@ -44,7 +44,7 @@
       @if (isImporting()) {
         <div class="rounded-lg bg-primary/10 border border-primary/20 p-6">
           <div class="flex items-center gap-4">
-            <z-icon zType="loader-circle" class="h-6 w-6 animate-spin text-primary" />
+            <z-icon zType="loader-circle" class="h-6 w-6 app-circle-spinner text-primary" />
             <div>
               <div class="font-semibold text-primary">{{ importProgress() }}</div>
               <div class="text-sm text-primary/70">
@@ -57,7 +57,9 @@
 
       <!-- File List -->
       @if (hasFiles()) {
-        <div class="bg-card rounded-lg border shadow-sm overflow-hidden">
+        <z-card
+          class="bg-card rounded-lg border shadow-sm overflow-hidden py-0 gap-0 [&_[data-slot=card-content]]:px-0"
+        >
           <div class="p-4 border-b bg-muted/30 flex items-center justify-between">
             <h3 class="font-semibold">Files to Import ({{ files().length }})</h3>
             @if (!isImporting() && !showResults()) {
@@ -108,7 +110,7 @@
                   <z-badge [zType]="getStatusBadgeVariant(item.status)">
                     <div class="flex items-center gap-1">
                       @if (item.status === 'processing' || item.status === 'parsing') {
-                        <z-icon zType="loader-circle" class="h-3 w-3 animate-spin" />
+                        <z-icon zType="loader-circle" class="h-3 w-3 app-circle-spinner" />
                       }
                       {{ item.statusMessage }}
                     </div>
@@ -152,12 +154,12 @@
               </div>
             }
           </div>
-        </div>
+        </z-card>
       }
 
       <!-- Results Summary -->
       @if (showResults()) {
-        <div class="bg-card rounded-lg border shadow-sm p-6">
+        <z-card class="bg-card rounded-lg border shadow-sm py-0 gap-0 [&_[data-slot=card-content]]:p-6">
           <h3 class="text-lg font-semibold mb-6">Import Summary</h3>
           <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div
@@ -202,14 +204,16 @@
             <z-button zType="secondary" (click)="goBack()"> Return to Invoice List </z-button>
             <z-button zType="default" (click)="clearFiles()"> Import More Files </z-button>
           </div>
-        </div>
+        </z-card>
       }
     </div>
 
     <!-- Sidebar / Config -->
     <div class="space-y-6">
       <!-- Config -->
-      <div class="bg-card rounded-lg border shadow-sm p-6 space-y-6">
+      <z-card
+        class="bg-card rounded-lg border shadow-sm py-0 gap-0 [&_[data-slot=card-content]]:p-6 [&_[data-slot=card-content]]:space-y-6"
+      >
         <h3 class="font-semibold text-lg flex items-center gap-2">
           <z-icon zType="settings" class="h-5 w-5" />
           Import Settings
@@ -267,7 +271,7 @@
             [zDisabled]="!canImport()"
           >
             @if (isImporting()) {
-              <z-icon zType="loader-circle" class="h-4 w-4 animate-spin mr-2" />
+              <z-icon zType="loader-circle" class="h-4 w-4 app-circle-spinner mr-2" />
               Processing Import...
             } @else {
               <z-icon zType="play" class="mr-2 h-4 w-4" />
@@ -275,7 +279,7 @@
             }
           </z-button>
         </div>
-      </div>
+      </z-card>
 
       <!-- Instructions Card -->
       <div class="bg-primary/5 rounded-lg border border-primary/10 p-6 space-y-4">

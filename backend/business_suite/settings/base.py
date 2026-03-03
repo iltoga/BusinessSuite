@@ -744,6 +744,7 @@ DRAMATIQ_RESULTS_REDIS_URL = _normalize_redis_url(os.getenv("DRAMATIQ_RESULTS_RE
 DRAMATIQ_WORKERS = int(os.getenv("DRAMATIQ_WORKERS", _default_dramatiq_workers()))
 DRAMATIQ_THREADS = int(os.getenv("DRAMATIQ_THREADS", "8"))
 DRAMATIQ_PROCESSES = int(os.getenv("DRAMATIQ_PROCESSES", "1"))
+DRAMATIQ_INVOICE_DOC_QUEUE = os.getenv("DRAMATIQ_INVOICE_DOC_QUEUE", "realtime").strip() or "realtime"
 DRAMATIQ_SCHEDULER_LOCK_KEY = os.getenv("DRAMATIQ_SCHEDULER_LOCK_KEY", "dramatiq:scheduler:lock")
 DRAMATIQ_SCHEDULER_LOCK_TTL_SECONDS = int(os.getenv("DRAMATIQ_SCHEDULER_LOCK_TTL_SECONDS", "30"))
 

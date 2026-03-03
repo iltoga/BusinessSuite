@@ -5,12 +5,21 @@ import type { ChartData } from 'chart.js';
 import { BaseChartDirective } from 'ng2-charts';
 
 import { ReportsService } from '@/core/services/reports.service';
+import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
+import { ZardTableComponent } from '@/shared/components/table';
 
 @Component({
   selector: 'app-reports',
   standalone: true,
-  imports: [CommonModule, RouterLink, BaseChartDirective, ZardCardComponent],
+  imports: [
+    CommonModule,
+    RouterLink,
+    BaseChartDirective,
+    ZardButtonComponent,
+    ZardCardComponent,
+    ZardTableComponent,
+  ],
   templateUrl: './reports.component.html',
   styleUrls: ['./reports.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

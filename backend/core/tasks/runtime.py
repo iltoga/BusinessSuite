@@ -14,6 +14,7 @@ QUEUE_REALTIME = "realtime"
 QUEUE_DEFAULT = "default"
 QUEUE_SCHEDULED = "scheduled"
 QUEUE_LOW = "low"
+QUEUE_DOC_CONVERSION = "doc_conversion"
 
 
 @dataclass(frozen=True)

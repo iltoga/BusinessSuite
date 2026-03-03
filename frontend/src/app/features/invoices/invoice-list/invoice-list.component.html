@@ -15,7 +15,7 @@
     </div>
   </div>
 
-  <div class="bg-card rounded-lg border shadow-sm">
+  <z-card class="bg-card rounded-lg border shadow-sm py-0 gap-0 **:data-[slot=card-content]:px-0">
     <div class="border-b p-3 sm:p-4">
       <app-search-toolbar
         [query]="query()"
@@ -76,7 +76,7 @@
         (pageChange)="onPageChange($event)"
       />
     </div>
-  </div>
+  </z-card>
 </div>
 
 <ng-template #numberTemplate let-row>
@@ -151,14 +151,17 @@
 </ng-template>
 
 <ng-template #actionsTemplate let-row>
-  <div class="flex items-center gap-2">
-    <app-invoice-download-dropdown
-      [invoiceId]="row.id"
-      [invoiceNumber]="(row.invoiceNoDisplay || row.invoiceNo || '—').toString()"
-      [customerName]="row.customer?.fullNameWithCompany || row.customer?.fullName || '—'"
-      zType="secondary"
-      zSize="sm"
-    />
+  <div class="flex items-center justify-end gap-2">
+    @if (showDownloadMenu()) {
+      <app-invoice-download-dropdown
+        [invoiceId]="row.id"
+        [invoiceNumber]="(row.invoiceNoDisplay || row.invoiceNo || '—').toString()"
+        [customerName]="row.customer?.fullNameWithCompany || row.customer?.fullName || '—'"
+        zType="secondary"
+        zSize="sm"
+      />
+    }
+
     <div class="flex items-center justify-end">
       <button
         z-dropdown
@@ -173,8 +176,9 @@
         aria-label="Row actions"
         aria-haspopup="menu"
       >
-        <z-icon zType="ellipsis-horizontal" />
+        <z-icon zType="ellipsis-vertical" />
       </button>
+
       <z-dropdown-menu-content #rowActionsMenu class="z-50 min-w-48">
         @for (action of actions(); track action.label) {
           @if (!action.isVisible || action.isVisible(row)) {
@@ -185,7 +189,7 @@
               (click)="action.action(row); $event.stopPropagation()"
             >
               <z-icon [zType]="action.icon" class="mr-2 h-4 w-4 stroke-current" />
-              <span [innerHTML]="action.label | shortcutHighlight"></span>
+              <span [innerHTML]="action.label | shortcutHighlight: action.shortcut"></span>
             </button>
           }
         }

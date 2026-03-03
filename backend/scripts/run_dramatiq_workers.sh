@@ -5,6 +5,8 @@ HIGH_PROCESSES="${DRAMATIQ_HIGH_PROCESSES:-1}"
 HIGH_THREADS="${DRAMATIQ_HIGH_THREADS:-8}"
 LOW_PROCESSES="${DRAMATIQ_LOW_PROCESSES:-1}"
 LOW_THREADS="${DRAMATIQ_LOW_THREADS:-2}"
+DOC_PROCESSES="${DRAMATIQ_DOC_PROCESSES:-1}"
+DOC_THREADS="${DRAMATIQ_DOC_THREADS:-1}"
 DRAMATIQ_BIN="${DRAMATIQ_BIN:-/opt/venv/bin/dramatiq}"
 
 if [ ! -x "${DRAMATIQ_BIN}" ]; then
@@ -24,8 +26,14 @@ PID_HIGH=$!
   --threads "${LOW_THREADS}" &
 PID_LOW=$!
 
+"${DRAMATIQ_BIN}" business_suite.dramatiq \
+  --queues doc_conversion \
+  --processes "${DOC_PROCESSES}" \
+  --threads "${DOC_THREADS}" &
+PID_DOC=$!
+
 cleanup() {
-  kill "${PID_HIGH}" "${PID_LOW}" 2>/dev/null || true
+  kill "${PID_HIGH}" "${PID_LOW}" "${PID_DOC}" 2>/dev/null || true
 }
 
 trap cleanup INT TERM
@@ -34,16 +42,27 @@ while true; do
   if ! kill -0 "${PID_HIGH}" 2>/dev/null; then
     wait "${PID_HIGH}" || STATUS=$?
     STATUS="${STATUS:-1}"
-    kill "${PID_LOW}" 2>/dev/null || true
+    kill "${PID_LOW}" "${PID_DOC}" 2>/dev/null || true
     wait "${PID_LOW}" 2>/dev/null || true
+    wait "${PID_DOC}" 2>/dev/null || true
     exit "${STATUS}"
   fi
 
   if ! kill -0 "${PID_LOW}" 2>/dev/null; then
     wait "${PID_LOW}" || STATUS=$?
     STATUS="${STATUS:-1}"
-    kill "${PID_HIGH}" 2>/dev/null || true
+    kill "${PID_HIGH}" "${PID_DOC}" 2>/dev/null || true
     wait "${PID_HIGH}" 2>/dev/null || true
+    wait "${PID_DOC}" 2>/dev/null || true
+    exit "${STATUS}"
+  fi
+
+  if ! kill -0 "${PID_DOC}" 2>/dev/null; then
+    wait "${PID_DOC}" || STATUS=$?
+    STATUS="${STATUS:-1}"
+    kill "${PID_HIGH}" "${PID_LOW}" 2>/dev/null || true
+    wait "${PID_HIGH}" 2>/dev/null || true
+    wait "${PID_LOW}" 2>/dev/null || true
     exit "${STATUS}"
   fi
 

@@ -328,7 +328,7 @@
               [disabled]="isMerging()"
             >
               @if (isMerging()) {
-                <span class="mr-2 inline-block animate-spin">⏳</span>
+                <z-icon zType="loader-circle" class="mr-2 h-4 w-4 app-circle-spinner" />
                 Merging...
               } @else {
                 Merge & Download PDF ({{ selectedDocumentIds().size }})
@@ -466,7 +466,7 @@
                       <z-badge zType="outline"
                         ><z-icon
                           zType="loader-circle"
-                          class="inline-block mr-1 h-3.5 w-3.5 animate-spin text-muted-foreground"
+                          class="mr-1 h-3.5 w-3.5 text-muted-foreground app-circle-spinner"
                         />
                         Checking…</z-badge
                       >
@@ -681,7 +681,7 @@
                 }
                 {{ action.label }}
                 @if (actionLoading() === action.name) {
-                  <span class="ml-2 inline-block animate-spin">⏳</span>
+                  <z-icon zType="loader-circle" class="ml-2 h-4 w-4 app-circle-spinner" />
                 }
               </button>
             }
@@ -715,7 +715,7 @@
               <span class="inline-flex items-center gap-1">
                 <z-icon
                   zType="loader-circle"
-                  class="inline-block h-4 w-4 animate-spin text-muted-foreground"
+                  class="h-4 w-4 text-muted-foreground app-circle-spinner"
                 />
                 AI validation in progress…
               </span>

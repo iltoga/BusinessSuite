@@ -1,10 +1,11 @@
-import logging
 import os
 import traceback
+from time import perf_counter
 
 from core.services.logger_service import Logger
 from core.tasks.idempotency import acquire_task_lock, build_task_lock_key, release_task_lock
 from core.utils.pdf_converter import PDFConverter, PDFConverterError
+from django.conf import settings
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.utils.text import slugify
@@ -13,9 +14,10 @@ from invoices.models import InvoiceDownloadJob
 from invoices.services.InvoiceService import InvoiceService
 
 logger = Logger.get_logger(__name__)
+INVOICE_DOC_QUEUE = str(getattr(settings, "DRAMATIQ_INVOICE_DOC_QUEUE", QUEUE_REALTIME) or QUEUE_REALTIME).strip()
 
 
-@db_task(queue=QUEUE_REALTIME)
+@db_task(queue=INVOICE_DOC_QUEUE)
 def run_invoice_download_job(job_id: str) -> None:
     lock_key = build_task_lock_key(namespace="invoice_download_job", item_id=str(job_id))
     lock_token = acquire_task_lock(lock_key)
@@ -41,6 +43,7 @@ def run_invoice_download_job(job_id: str) -> None:
         try:
             invoice = job.invoice
             service = InvoiceService(invoice)
+            started_at = perf_counter()
 
             if invoice.total_paid_amount == 0 or invoice.is_payment_complete:
                 data, line_items = service.generate_invoice_data()
@@ -48,6 +51,7 @@ def run_invoice_download_job(job_id: str) -> None:
             else:
                 data, line_items, payments = service.generate_partial_invoice_data()
                 doc_buffer = service.generate_invoice_document(data, line_items, payments)
+            docx_generated_at = perf_counter()
 
             job.progress = 60
             job.save(update_fields=["progress", "updated_at"])
@@ -65,6 +69,7 @@ def run_invoice_download_job(job_id: str) -> None:
             else:
                 output_bytes = doc_buffer.getvalue()
                 extension = "docx"
+            conversion_completed_at = perf_counter()
 
             job.progress = 85
             job.save(update_fields=["progress", "updated_at"])
@@ -72,6 +77,7 @@ def run_invoice_download_job(job_id: str) -> None:
             output_name = f"{safe_name}.{extension}"
             output_path = os.path.join("tmpfiles", "invoice_downloads", str(job.id), output_name)
             saved_path = default_storage.save(output_path, ContentFile(output_bytes))
+            saved_at = perf_counter()
 
             job.output_path = saved_path
             job.status = InvoiceDownloadJob.STATUS_COMPLETED
@@ -79,6 +85,16 @@ def run_invoice_download_job(job_id: str) -> None:
             job.traceback = ""
             job.progress = 100
             job.save(update_fields=["output_path", "status", "error_message", "traceback", "progress", "updated_at"])
+
+            logger.info(
+                "Invoice download timings job_id=%s format=%s docx_ms=%.1f convert_ms=%.1f store_ms=%.1f total_ms=%.1f",
+                job_id,
+                job.format_type,
+                (docx_generated_at - started_at) * 1000,
+                (conversion_completed_at - docx_generated_at) * 1000,
+                (saved_at - conversion_completed_at) * 1000,
+                (saved_at - started_at) * 1000,
+            )
 
         except Exception as exc:
             full_traceback = traceback.format_exc()
