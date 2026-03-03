@@ -15,6 +15,8 @@ class PublicAppConfigTests(TestCase):
         payload = response.json()
         self.assertIn("dateFormat", payload)
         self.assertIsInstance(payload["dateFormat"], str)
+        self.assertIn("baseCurrency", payload)
+        self.assertIsInstance(payload["baseCurrency"], str)
 
     @override_settings(DATE_FORMAT_JS="yyyy-MM-dd")
     def test_public_app_config_uses_settings_date_format(self):
@@ -23,6 +25,14 @@ class PublicAppConfigTests(TestCase):
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         self.assertEqual(payload["dateFormat"], "yyyy-MM-dd")
+
+    @override_settings(BASE_CURRENCY="USD")
+    def test_public_app_config_uses_settings_base_currency(self):
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["baseCurrency"], "USD")
 
     @override_settings(MOCK_AUTH_ENABLED=False)
     def test_public_app_config_returns_mock_auth_disabled_flag(self):

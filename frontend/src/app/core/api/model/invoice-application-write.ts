@@ -11,7 +11,8 @@
 
 export interface InvoiceApplicationWrite { 
     id?: number;
-    customerApplication: number;
+    product?: number | null;
+    customerApplication?: number | null;
     amount: string;
 }
 

@@ -53,7 +53,9 @@ services:
       - "300"
       - "10"
       - "--appendonly"
-      - "no"
+      - "yes"
+      - "--appendfsync"
+      - "everysec"
       - "--maxmemory"
       - "200mb"
       - "--maxmemory-policy"
@@ -76,15 +78,17 @@ services:
       resources:
         limits:
           memory: 256M
-          cpus: "0.5"
+          cpus: "1"
 
   bs-core:
     container_name: bs-core
     env_file:
       - ./.env
     depends_on:
-      - redis
-      - db
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     image: bs-app:web
     build:
       context: ./backend/
@@ -94,15 +98,16 @@ services:
       dockernet:
         ipv4_address: 192.168.2.60
     environment:
-      DB_HOST: ${DB_HOST}
+      DB_HOST: ${DOCKER_DB_HOST:-db}
       DB_PORT: ${DB_PORT}
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASS: ${DB_PASS}
-      REDIS_HOST: ${REDIS_HOST:-bs-redis}
-      REDIS_PORT: ${REDIS_PORT:-6379}
-      REDIS_URL: ${REDIS_URL:-redis://bs-redis:6379/1}
-      HUEY_REDIS_DB: ${HUEY_REDIS_DB:-0}
+      REDIS_HOST: ${DOCKER_REDIS_HOST:-bs-redis}
+      REDIS_PORT: ${DOCKER_REDIS_PORT:-6379}
+      REDIS_URL: ${DOCKER_REDIS_URL:-redis://bs-redis:6379/1}
+      DRAMATIQ_REDIS_DB: ${DRAMATIQ_REDIS_DB:-0}
+      DRAMATIQ_REDIS_URL: ${DOCKER_DRAMATIQ_REDIS_URL:-redis://bs-redis:6379/0}
       COMPONENT: backend
       MEDIA_ROOT: /media
       MEDIA_URL: /media/
@@ -145,31 +150,45 @@ services:
         target: /backups
       - le-certs:/etc/letsencrypt
     restart: unless-stopped
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - 'python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen(''http://127.0.0.1:8000/api/app-config/'', timeout=3).status < 500 else 1)"'
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
 
   bs-worker:
     container_name: bs-worker
     env_file:
       - ./.env
     depends_on:
-      - db
-      - bs-core
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      bs-core:
+        condition: service_healthy
     image: bs-app:web
     networks:
       dockernet:
         ipv4_address: 192.168.2.63
     environment:
-      DB_HOST: ${DB_HOST}
+      DB_HOST: ${DOCKER_DB_HOST:-db}
       DB_PORT: ${DB_PORT}
       DB_NAME: ${DB_NAME}
       DB_USER: ${DB_USER}
       DB_PASS: ${DB_PASS}
-      REDIS_HOST: bs-redis
-      REDIS_PORT: 6379
-      HUEY_REDIS_DB: ${HUEY_REDIS_DB:-0}
-      HUEY_WORKERS: ${HUEY_WORKERS:-4}
-      HUEY_BLOCKING: ${HUEY_BLOCKING:-true}
-      HUEY_READ_TIMEOUT: ${HUEY_READ_TIMEOUT:-1}
+      REDIS_HOST: ${DOCKER_REDIS_HOST:-bs-redis}
+      REDIS_PORT: ${DOCKER_REDIS_PORT:-6379}
+      REDIS_URL: ${DOCKER_REDIS_URL:-redis://bs-redis:6379/1}
+      DRAMATIQ_REDIS_DB: ${DRAMATIQ_REDIS_DB:-0}
+      DRAMATIQ_REDIS_URL: ${DOCKER_DRAMATIQ_REDIS_URL:-redis://bs-redis:6379/0}
+      DRAMATIQ_HIGH_THREADS: ${DRAMATIQ_HIGH_THREADS:-8}
+      DRAMATIQ_LOW_THREADS: ${DRAMATIQ_LOW_THREADS:-2}
+      DRAMATIQ_HIGH_PROCESSES: ${DRAMATIQ_HIGH_PROCESSES:-1}
+      DRAMATIQ_LOW_PROCESSES: ${DRAMATIQ_LOW_PROCESSES:-1}
       COMPONENT: task_worker
       MEDIA_ROOT: /media
       MEDIA_URL: /media/
@@ -210,7 +229,74 @@ services:
         target: /backups
       - le-certs:/etc/letsencrypt
     restart: unless-stopped
-    command: python manage.py run_huey
+    init: true
+    command:
+      - /bin/sh
+      - -lc
+      - exec /bin/sh /usr/src/app/scripts/run_dramatiq_workers.sh
+
+  bs-scheduler:
+    container_name: bs-scheduler
+    env_file:
+      - ./.env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      bs-core:
+        condition: service_healthy
+    image: bs-app:web
+    networks:
+      dockernet:
+        ipv4_address: 192.168.2.64
+    environment:
+      DB_HOST: ${DOCKER_DB_HOST:-db}
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
+      REDIS_HOST: ${DOCKER_REDIS_HOST:-bs-redis}
+      REDIS_PORT: ${DOCKER_REDIS_PORT:-6379}
+      REDIS_URL: ${DOCKER_REDIS_URL:-redis://bs-redis:6379/1}
+      DRAMATIQ_REDIS_DB: ${DRAMATIQ_REDIS_DB:-0}
+      DRAMATIQ_REDIS_URL: ${DOCKER_DRAMATIQ_REDIS_URL:-redis://bs-redis:6379/0}
+      COMPONENT: scheduler
+      MEDIA_ROOT: /media
+      MEDIA_URL: /media/
+      BACKUPS_ROOT: /backups
+      OTEL_SERVICE_NAME: bs-scheduler
+      OTEL_TRACES_EXPORTER: ${OTEL_TRACES_EXPORTER_WORKER:-none}
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://bs-alloy:4318/v1/traces
+      OTEL_PROPAGATORS: tracecontext,baggage
+      OTEL_RESOURCE_ATTRIBUTES: "deployment.environment=production,service.namespace=revisbali"
+      LOCAL_MEDIA_ENCRYPTION_ENABLED: ${LOCAL_MEDIA_ENCRYPTION_ENABLED:-false}
+      LOCAL_MEDIA_ENCRYPTION_KEY: ${LOCAL_MEDIA_ENCRYPTION_KEY:-}
+    volumes:
+      - ./.env:/usr/src/app/.env:ro
+      - type: bind
+        source: ./backend
+        target: /usr/src/app
+      - type: bind
+        source: ${DATA_PATH}/media
+        target: /media
+      - type: bind
+        source: ${DATA_PATH}/db
+        target: /db
+      - type: bind
+        source: ${DATA_PATH}/logs
+        target: /logs
+      - type: bind
+        source: ${DATA_PATH}/staticfiles
+        target: /staticfiles
+      - type: bind
+        source: ~/revisbali/crm/backups
+        target: /backups
+      - le-certs:/etc/letsencrypt
+    restart: unless-stopped
+    init: true
+    command: /opt/venv/bin/python manage.py run_dramatiq_scheduler
 
   bs-frontend:
     container_name: bs-frontend
@@ -279,7 +365,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.10"
+          cpus: "0.30"
           memory: 128M
 
 networks:

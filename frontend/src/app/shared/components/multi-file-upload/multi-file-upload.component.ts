@@ -12,6 +12,8 @@ import {
 
 import { ZardButtonComponent } from '@/shared/components/button';
 
+import { ZardIconComponent } from '@/shared/components/icon/icon.component';
+
 export interface SelectedFile {
   file: File;
   name: string;
@@ -22,7 +24,7 @@ export interface SelectedFile {
 @Component({
   selector: 'app-multi-file-upload',
   standalone: true,
-  imports: [CommonModule, ZardButtonComponent],
+  imports: [CommonModule, ZardButtonComponent, ZardIconComponent],
   templateUrl: './multi-file-upload.component.html',
   styleUrls: ['./multi-file-upload.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

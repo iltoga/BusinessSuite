@@ -29,6 +29,7 @@ def public_app_config(request):
             "useOverlayMenu": use_overlay_menu,
             "title": global_settings.get("SITE_NAME", "BusinessSuite"),
             "dateFormat": getattr(settings, "DATE_FORMAT_JS", "dd-MM-yyyy"),
+            "baseCurrency": getattr(settings, "BASE_CURRENCY", "IDR"),
             "calendarTodoColorId": GoogleCalendarEventColors.todo_color_id(),
             "calendarDoneColorId": GoogleCalendarEventColors.done_color_id(),
             "logoFilename": global_settings.get("LOGO_FILENAME", "logo_transparent.png"),

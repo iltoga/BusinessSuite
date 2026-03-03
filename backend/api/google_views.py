@@ -40,7 +40,7 @@ class GoogleCalendarViewSet(viewsets.ViewSet):
     """Local-mirror calendar API.
 
     CRUD operations update `CalendarEvent` records and signals queue asynchronous
-    synchronization to Google Calendar through Huey tasks.
+    synchronization to Google Calendar through Dramatiq tasks.
     """
 
     LOCAL_EVENT_ID_PREFIX = "local-app-"

@@ -21,7 +21,7 @@ import {
   type TemplateRef,
 } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { catchError, of, switchMap } from 'rxjs';
+import { catchError, map, of, switchMap } from 'rxjs';
 
 @Component({
   selector: 'app-quick-application-modal',
@@ -132,8 +132,8 @@ export class QuickApplicationModalComponent {
       documentTypes: [], // No documents for quick add
     };
 
-    // 1. Create Application
-    // 2. Force Close it
+    // 1. Create application
+    // 2. Force close only when still needed
     // 3. Emit saved event
     this.applicationsApi
       .customerApplicationsCreate(payload as any)
@@ -144,7 +144,7 @@ export class QuickApplicationModalComponent {
               const status = String(detail?.status ?? '').toLowerCase();
               const canForceClose = detail?.canForceClose !== false;
               if (status === 'completed' || !canForceClose) {
-                return of(detail);
+                return of({ application: detail, forceClosed: false });
               }
 
               // Prepare a minimal payload for force-close that matches the expected serializer
@@ -157,23 +157,29 @@ export class QuickApplicationModalComponent {
               return this.applicationsApi
                 .customerApplicationsForceCloseCreate(detail.id, forceClosePayload)
                 .pipe(
+                  map((forceClosedDetail: any) => ({
+                    application: forceClosedDetail ?? detail,
+                    forceClosed: true,
+                  })),
                   catchError((error) => {
                     const message = extractServerErrorMessage(error)?.toLowerCase() ?? '';
                     if (message.includes('already completed')) {
-                      return of(detail);
+                      return of({ application: detail, forceClosed: false });
                     }
                     throw error;
                   }),
                 );
             }),
-            catchError(() => of(newApp)),
+            catchError(() => of({ application: newApp, forceClosed: false })),
           );
         }),
       )
       .subscribe({
-        next: (finalApp: any) => {
-          this.toast.success('Application created and force-closed');
-          this.saved.emit(finalApp);
+        next: (result: { application: any; forceClosed: boolean }) => {
+          this.toast.success(
+            result.forceClosed ? 'Application created and force-closed' : 'Application created',
+          );
+          this.saved.emit(result.application);
           this.isSaving.set(false);
           this.close();
         },

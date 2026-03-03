@@ -1,5 +1,5 @@
 """
-Huey task for AI validation of a single uploaded document.
+Dramatiq task for AI validation of a single uploaded document.
 
 Triggered after a document file is uploaded/updated when the user
 opts in to AI validation. Updates Document.ai_validation_status
@@ -15,12 +15,13 @@ from core.services.ai_document_categorizer import (
     extract_validation_doc_number,
     extract_validation_expiration_date,
 )
+from core.services.ai_client import get_ai_user_message, is_ai_timeout_exception
 from core.services.logger_service import Logger
 from core.tasks.idempotency import acquire_task_lock, build_task_lock_key, release_task_lock
 from customer_applications.services.document_expiration_state_service import DocumentExpirationStateService
 from customer_applications.models import Document
 from django.core.files.storage import default_storage
-from huey.contrib.djhuey import db_task
+from core.tasks.runtime import QUEUE_REALTIME, db_task
 
 logger = Logger.get_logger(__name__)
 
@@ -55,7 +56,7 @@ def _apply_expiration_metadata(document: Document, validation: dict) -> tuple[di
     return validation, False
 
 
-@db_task()
+@db_task(queue=QUEUE_REALTIME)
 def run_document_validation(document_id: int) -> None:
     """Validate a single document file against its document-type and product prompts."""
     lock_key = build_task_lock_key(namespace="doc_upload_validation", item_id=str(document_id))
@@ -192,16 +193,18 @@ def run_document_validation(document_id: int) -> None:
         except Exception as exc:
             full_tb = tb_module.format_exc()
             logger.error("AI validation failed for document %s: %s\n%s", document_id, exc, full_tb)
+            user_message = get_ai_user_message(exc)
             document.ai_validation_status = Document.AI_VALIDATION_ERROR
             document.ai_validation_result = {
                 "valid": False,
                 "confidence": 0,
                 "positive_analysis": "",
-                "negative_issues": [f"Validation error: {exc}"],
-                "reasoning": f"Validation could not be completed: {exc}",
+                "negative_issues": [user_message],
+                "reasoning": user_message,
                 "extracted_expiration_date": None,
                 "extracted_doc_number": None,
                 "extracted_details_markdown": None,
+                "error_type": "timeout" if is_ai_timeout_exception(exc) else "provider_error",
             }
             document.save(update_fields=["ai_validation_status", "ai_validation_result", "updated_at"])
 

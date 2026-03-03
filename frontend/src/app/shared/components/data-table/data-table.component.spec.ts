@@ -127,6 +127,23 @@ describe('DataTableComponent (keyboard shortcuts)', () => {
     expect(dt.selectedRow()).toBe(host.data[0]);
   });
 
+  it('focusFirstRowIfNone should keep the previously selected row by id after data reload', () => {
+    host.data = [{ id: 1 }, { id: 2 }];
+    fixture.detectChanges();
+
+    const debug = fixture.debugElement.query(By.directive(DataTableComponent));
+    dt = debug.componentInstance as DataTableComponent<any>;
+
+    dt.selectedRow.set(host.data[1]);
+
+    host.data = [{ id: 1 }, { id: 2 }];
+    fixture.detectChanges();
+
+    dt.focusFirstRowIfNone();
+
+    expect((dt.selectedRow() as any)?.id).toBe(2);
+  });
+
   it('handleRowNavigationKeydown should navigate on Arrow keys', async () => {
     host.data = [{ id: 1 }, { id: 2 }, { id: 3 }];
     fixture.detectChanges();

@@ -1,19 +1,20 @@
 import traceback as tb_module
 
 from core.services.ai_document_categorizer import AIDocumentCategorizer, get_document_types_for_prompt
+from core.services.ai_client import get_ai_user_message, is_ai_timeout_exception
 from core.services.logger_service import Logger
 from core.tasks.idempotency import acquire_task_lock, build_task_lock_key, release_task_lock
 from customer_applications.models import DocumentCategorizationItem, DocumentCategorizationJob
 from django.core.files.storage import default_storage
 from django.db import transaction
 from django.utils import timezone
-from huey.contrib.djhuey import db_task
+from core.tasks.runtime import QUEUE_REALTIME, db_task
 from products.models.document_type import DocumentType
 
 logger = Logger.get_logger(__name__)
 
 
-@db_task()
+@db_task(queue=QUEUE_REALTIME)
 def run_document_categorization_item(item_id: str) -> None:
     """Categorize a single uploaded file using AI vision (two-pass) and validate."""
     lock_key = build_task_lock_key(namespace="doc_categorization_item", item_id=str(item_id))
@@ -80,14 +81,16 @@ def run_document_categorization_item(item_id: str) -> None:
                 doc_type = DocumentType.objects.get(id=doc_type_id)
                 item.document_type = doc_type
                 item.status = DocumentCategorizationItem.STATUS_CATEGORIZED
-                ai_validation_enabled = bool(doc_type.ai_validation)
 
                 # Try to match with an existing Document row in the application
                 _try_match_document(item, job.doc_application_id)
+                has_slot = item.document_id is not None
+                ai_validation_enabled = bool(doc_type.ai_validation and has_slot)
             else:
                 item.status = DocumentCategorizationItem.STATUS_ERROR
                 item.error_message = result.get("reasoning", "No matching document type found")
                 ai_validation_enabled = False
+                has_slot = False
 
             item.confidence = result.get("confidence", 0)
             item.result = {
@@ -112,7 +115,7 @@ def run_document_categorization_item(item_id: str) -> None:
             )
 
             # --- Validation step (only if categorization succeeded) ---
-            if item.status == DocumentCategorizationItem.STATUS_CATEGORIZED and doc_type_id and doc_type.ai_validation:
+            if item.status == DocumentCategorizationItem.STATUS_CATEGORIZED and doc_type_id and ai_validation_enabled:
                 from customer_applications.models.doc_application import DocApplication as _DocApp
 
                 product_prompt = (
@@ -126,8 +129,15 @@ def run_document_categorization_item(item_id: str) -> None:
                 current_result = item.result or {}
                 current_result["stage"] = "categorized"
                 current_result["ai_validation_enabled"] = False
+                if not has_slot:
+                    current_result["validation_skipped_reason"] = "no_slot"
+                elif doc_type_id and not bool(doc_type.ai_validation):
+                    current_result["validation_skipped_reason"] = "doc_type_ai_validation_disabled"
+                else:
+                    current_result["validation_skipped_reason"] = "validation_not_applicable"
                 item.result = current_result
-                item.validation_status = None
+                # Keep DB-compatible empty status when AI validation is skipped.
+                item.validation_status = ""
                 item.validation_result = None
                 item.save(update_fields=["result", "validation_status", "validation_result", "updated_at"])
 
@@ -197,20 +207,24 @@ def _run_validation_step(
         item.save(update_fields=["validation_status", "validation_result", "result", "updated_at"])
 
     except Exception as exc:
-        logger.error("Document validation failed for %s: %s", item.filename, exc, exc_info=True)
-        item.validation_status = "invalid"
-        item.validation_result = {
-            "valid": False,
-            "confidence": 0,
-            "positive_analysis": "",
-            "negative_issues": [f"Validation error: {exc}"],
-            "reasoning": f"Validation could not be completed: {exc}",
-            "extracted_expiration_date": None,
-            "extracted_doc_number": None,
-            "extracted_details_markdown": None,
-        }
+        user_message = get_ai_user_message(exc)
+        logger.error(
+            "Document validation failed for %s: %s (timeout=%s)",
+            item.filename,
+            exc,
+            is_ai_timeout_exception(exc),
+            exc_info=True,
+        )
+        # Skip AI validation on provider/timeout failures so uploads stay unblocked.
+        item.validation_status = ""
+        item.validation_result = None
         current_result = item.result or {}
-        current_result["stage"] = "validated"
+        current_result["stage"] = "categorized"
+        current_result["ai_validation_enabled"] = False
+        current_result["validation_skipped_reason"] = (
+            "ai_timeout" if is_ai_timeout_exception(exc) else "ai_provider_error"
+        )
+        current_result["validation_skipped_message"] = user_message
         item.result = current_result
         item.save(update_fields=["validation_status", "validation_result", "result", "updated_at"])
 

@@ -56,53 +56,74 @@
 
     <z-card class="p-6">
       <div class="flex items-center justify-between">
-        <h2 class="text-lg font-semibold">Invoice Applications</h2>
-        <div class="flex items-center gap-2">
-          <z-button
-            zType="secondary"
-            zSize="sm"
-            (click)="addLineItem()"
-            [zDisabled]="!form.get('customer')?.value"
-          >
-            Add Application
-          </z-button>
-          <z-button
-            zType="outline"
-            zSize="sm"
-            (click)="openQuickAppModal()"
-            [zDisabled]="!form.get('customer')?.value"
-          >
-            Create & Add Application
-          </z-button>
-        </div>
+        <h2 class="text-lg font-semibold">Invoice Products</h2>
+        <z-button
+          zType="secondary"
+          zSize="sm"
+          (click)="addLineItem()"
+          [zDisabled]="!form.get('customer')?.value"
+        >
+          Add Product
+        </z-button>
       </div>
 
       <div class="mt-4 space-y-4" formArrayName="invoiceApplications">
         @for (group of invoiceApplications.controls; track group; let i = $index) {
-          <div [formGroupName]="i" class="grid gap-3 rounded-lg border p-4 md:grid-cols-3">
+          <div [formGroupName]="i" class="grid gap-3 rounded-lg border p-4 md:grid-cols-4">
             <div class="md:col-span-2">
-              <label class="text-sm font-medium">Application</label>
-              <select
-                class="mt-1 w-full rounded border border-input bg-background px-3 py-2 text-sm"
-                formControlName="customerApplication"
-              >
-                <option [ngValue]="null">Select application...</option>
-                @for (
-                  app of availableApplications(group.get('customerApplication')?.value);
-                  track app.id
-                ) {
-                  <option [ngValue]="app.id">
-                    {{ app.product.code }} - {{ app.product.name }} ({{ app.customer.fullName }})
-                  </option>
-                }
-              </select>
+              <label class="text-sm font-medium">Product</label>
+              <z-combobox
+                class="mt-1"
+                [value]="toComboboxValue(group.get('product')?.value)"
+                [options]="billableProductOptions()"
+                [placeholder]="'Select product...'"
+                [searchPlaceholder]="'Search products...'"
+                [emptyText]="'No billable products found.'"
+                [disabled]="isLineLocked(group)"
+                [zWidth]="'full'"
+                (zValueChange)="onLineProductComboboxChange(group, $event)"
+              />
             </div>
+
+            <div>
+              <label class="text-sm font-medium">Linked Application</label>
+              <z-combobox
+                class="mt-1"
+                [value]="toComboboxValue(group.get('customerApplication')?.value)"
+                [options]="availablePendingApplicationOptionsForLine(group)"
+                [placeholder]="'No linked application'"
+                [searchPlaceholder]="'Search applications...'"
+                [emptyText]="'No pending applications for this product.'"
+                [disabled]="isLineLocked(group)"
+                [zWidth]="'full'"
+                (zValueChange)="onLineCustomerApplicationComboboxChange(group, $event)"
+              />
+              <div class="mt-1 text-xs text-muted-foreground">
+                @if (selectedProductPendingCount(group) > 0) {
+                  Pending applications for product: {{ selectedProductPendingCount(group) }}
+                } @else {
+                  Product-only line (no linked application)
+                }
+              </div>
+            </div>
+
             <div>
               <label class="text-sm font-medium">Amount</label>
               <input z-input type="number" formControlName="amount" class="mt-1 w-full" />
             </div>
-            <div class="flex items-center justify-end md:col-span-3">
-              <z-button zType="destructive" zSize="sm" (click)="removeLineItem(i)">
+
+            <div class="flex items-center justify-between md:col-span-4">
+              <div class="text-xs text-muted-foreground">
+                @if (isLineLocked(group)) {
+                  Source application line is locked.
+                }
+              </div>
+              <z-button
+                zType="destructive"
+                zSize="sm"
+                (click)="removeLineItem(i)"
+                [zDisabled]="isLineLocked(group) || invoiceApplications.length <= 1"
+              >
                 Remove
               </z-button>
             </div>
@@ -110,25 +131,14 @@
         }
       </div>
 
-      <div class="mt-4 text-sm text-muted-foreground">
-        Total: {{ formatCurrency(totalAmount()) }}
-      </div>
+      <div class="mt-4 text-sm text-muted-foreground">Total: {{ formatCurrency(totalAmount()) }}</div>
     </z-card>
 
     <div class="flex items-center gap-3">
       <z-button zType="default" (click)="save()" [zDisabled]="isSaving()">
         {{ isEditMode() ? 'Update Invoice' : 'Create Invoice' }}
       </z-button>
-      <a routerLink="/invoices">
-        <z-button zType="ghost">Cancel</z-button>
-      </a>
+      <button type="button" z-button zType="ghost" (click)="goBack()">Cancel</button>
     </div>
   </form>
 </div>
-
-<app-quick-application-modal
-  [isOpen]="isQuickAppModalOpen()"
-  [customerId]="form.get('customer')?.value"
-  (saved)="onQuickAppSaved($event)"
-  (closed)="isQuickAppModalOpen.set(false)"
-/>

@@ -7,8 +7,7 @@ from core.models.local_resilience import LocalResilienceSettings, SyncChangeLog,
 from core.services.sync_service import get_local_node_id, ingest_remote_changes
 from django.conf import settings
 from django.utils import timezone
-from huey import crontab
-from huey.contrib.djhuey import db_periodic_task, db_task
+from core.tasks.runtime import QUEUE_LOW, QUEUE_SCHEDULED, crontab, db_periodic_task, db_task
 
 logger = logging.getLogger(__name__)
 
@@ -133,7 +132,7 @@ def _pull_once(*, limit: int) -> dict[str, int]:
     }
 
 
-@db_task()
+@db_task(queue=QUEUE_LOW)
 def push_local_changes_task(*, limit: int | None = None) -> dict[str, int]:
     effective_limit = int(limit if limit is not None else getattr(settings, "LOCAL_SYNC_PUSH_LIMIT", 200))
     try:
@@ -148,7 +147,7 @@ def push_local_changes_task(*, limit: int | None = None) -> dict[str, int]:
         return {"pushed": 0, "skipped": 0}
 
 
-@db_task()
+@db_task(queue=QUEUE_LOW)
 def pull_remote_changes_task(*, limit: int | None = None) -> dict[str, int]:
     effective_limit = int(limit if limit is not None else getattr(settings, "LOCAL_SYNC_PULL_LIMIT", 200))
     try:
@@ -163,25 +162,23 @@ def pull_remote_changes_task(*, limit: int | None = None) -> dict[str, int]:
         return {"accepted": 0, "conflicts": 0, "skipped": 0}
 
 
-@db_periodic_task(crontab(minute="*/1"), name="core.sync_push_periodic")
-def sync_push_periodic_task() -> dict[str, int]:
+@db_periodic_task(crontab(minute="*/1"), name="core.sync_push_periodic", queue=QUEUE_SCHEDULED)
+def sync_push_periodic_task() -> None:
     try:
-        return _push_once(limit=int(getattr(settings, "LOCAL_SYNC_PUSH_LIMIT", 200)))
+        _push_once(limit=int(getattr(settings, "LOCAL_SYNC_PUSH_LIMIT", 200)))
     except Exception as exc:
         cursor = _cursor()
         cursor.last_error = f"push:{type(exc).__name__}:{exc}"
         cursor.save(update_fields=["last_error", "updated_at"])
         logger.warning("Local sync periodic push failed: %s", exc)
-        return {"pushed": 0, "skipped": 0}
 
 
-@db_periodic_task(crontab(minute="*/1"), name="core.sync_pull_periodic")
-def sync_pull_periodic_task() -> dict[str, int]:
+@db_periodic_task(crontab(minute="*/1"), name="core.sync_pull_periodic", queue=QUEUE_SCHEDULED)
+def sync_pull_periodic_task() -> None:
     try:
-        return _pull_once(limit=int(getattr(settings, "LOCAL_SYNC_PULL_LIMIT", 200)))
+        _pull_once(limit=int(getattr(settings, "LOCAL_SYNC_PULL_LIMIT", 200)))
     except Exception as exc:
         cursor = _cursor()
         cursor.last_error = f"pull:{type(exc).__name__}:{exc}"
         cursor.save(update_fields=["last_error", "updated_at"])
         logger.warning("Local sync periodic pull failed: %s", exc)
-        return {"accepted": 0, "conflicts": 0, "skipped": 0}

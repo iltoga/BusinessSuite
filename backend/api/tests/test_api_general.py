@@ -15,9 +15,11 @@ from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 from invoices.models import Invoice, InvoiceApplication
+from payments.models import Payment
 from PIL import Image
-from products.models import Product
+from products.models import Product, Task
 from products.models.document_type import DocumentType
+from rest_framework.test import APIRequestFactory, force_authenticate
 
 
 class CustomerQuickCreateAPITestCase(TestCase):
@@ -199,6 +201,13 @@ class CustomerListAPITestCase(TestCase):
     def test_uninvoiced_applications_endpoint(self):
         customer = Customer.objects.create(customer_type="person", first_name="Nina", last_name="Stone")
         product = Product.objects.create(name="KITAS", code="KITAS-1", product_type="visa")
+        Task.objects.create(
+            product=product,
+            step=1,
+            name="Collect docs",
+            duration=3,
+            duration_is_business_days=False,
+        )
 
         ready_app = DocApplication.objects.create(
             customer=customer,
@@ -236,6 +245,7 @@ class CustomerListAPITestCase(TestCase):
         )
         InvoiceApplication.objects.create(
             invoice=invoice,
+            product=invoiced_app.product,
             customer_application=invoiced_app,
             amount="100.00",
         )
@@ -445,6 +455,63 @@ class CustomerApplicationDetailAPITestCase(TestCase):
         self.assertEqual(self.document.doc_number, "B987654")
         run_validation_mock.assert_not_called()
 
+    def test_document_update_multipart_save_anyway_persists_file_and_marks_completed(self):
+        file_payload = SimpleUploadedFile("bank-statement.png", b"fake-image", content_type="image/png")
+        from api.views import DocumentViewSet
+
+        request = APIRequestFactory().patch(
+            f"/api/documents/{self.document.pk}/",
+            {
+                "file": file_payload,
+                "ai_validation_status_override": Document.AI_VALIDATION_INVALID,
+                "ai_validation_result_override": json.dumps(
+                    {
+                        "valid": False,
+                        "negative_issues": ["Sample/template statement"],
+                    }
+                ),
+            },
+            format="multipart",
+        )
+        force_authenticate(request, user=self.user)
+        response = DocumentViewSet.as_view({"patch": "partial_update"})(request, pk=self.document.pk)
+
+        self.assertEqual(response.status_code, 200)
+        self.document.refresh_from_db()
+        self.assertTrue(bool(self.document.file))
+        self.assertTrue(self.document.completed)
+        self.assertEqual(self.document.ai_validation_status, Document.AI_VALIDATION_INVALID)
+
+    def test_document_update_valid_override_clears_ai_result_payload(self):
+        self.document.ai_validation_status = Document.AI_VALIDATION_INVALID
+        self.document.ai_validation_result = {"reasoning": "Previous invalid reason"}
+        self.document.save(update_fields=["ai_validation_status", "ai_validation_result", "updated_at"])
+
+        file_payload = SimpleUploadedFile("passport.png", b"fake-image", content_type="image/png")
+        from api.views import DocumentViewSet
+
+        request = APIRequestFactory().patch(
+            f"/api/documents/{self.document.pk}/",
+            {
+                "file": file_payload,
+                "ai_validation_status_override": Document.AI_VALIDATION_VALID,
+                "ai_validation_result_override": json.dumps(
+                    {
+                        "valid": True,
+                        "reasoning": "Looks good",
+                    }
+                ),
+            },
+            format="multipart",
+        )
+        force_authenticate(request, user=self.user)
+        response = DocumentViewSet.as_view({"patch": "partial_update"})(request, pk=self.document.pk)
+
+        self.assertEqual(response.status_code, 200)
+        self.document.refresh_from_db()
+        self.assertEqual(self.document.ai_validation_status, Document.AI_VALIDATION_VALID)
+        self.assertIsNone(self.document.ai_validation_result)
+
     def test_application_detail_documents_ordering(self):
         # Create a product with specific document order
         product = Product.objects.create(
@@ -538,6 +605,47 @@ class CustomerApplicationDetailAPITestCase(TestCase):
             f"GET {url} exceeded query budget: {len(queries)} queries",
         )
 
+    def test_customer_application_list_excludes_invoice_only_products(self):
+        invoice_only_product = Product.objects.create(
+            name="Invoice Only Product",
+            code="INV-ONLY-APP-LIST",
+            product_type="other",
+        )
+        hidden_app = DocApplication.objects.create(
+            customer=self.customer,
+            product=invoice_only_product,
+            doc_date=timezone.now().date(),
+            created_by=self.user,
+        )
+
+        response = self.client.get(reverse("customer-applications-list"))
+        self.assertEqual(response.status_code, 200)
+        ids = {item["id"] for item in response.json().get("results", [])}
+        self.assertNotIn(hidden_app.id, ids)
+
+    def test_create_customer_application_rejects_invoice_only_product(self):
+        invoice_only_product = Product.objects.create(
+            name="Invoice Only Product",
+            code="INV-ONLY-APP-CREATE",
+            product_type="other",
+        )
+        payload = {
+            "customer": self.customer.id,
+            "product": invoice_only_product.id,
+            "doc_date": timezone.now().date().isoformat(),
+            "notes": "Should fail",
+            "document_types": [],
+        }
+        response = self.client.post(
+            reverse("customer-applications-list"),
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
+        body = response.json()
+        self.assertIn("errors", body)
+        self.assertTrue("product" in body["errors"] or "productId" in body["errors"])
+
 
 class ProductApiTestCase(TestCase):
     def setUp(self):
@@ -598,6 +706,99 @@ class ProductApiTestCase(TestCase):
         inv = Invoice.objects.get(pk=data["id"])
         self.assertEqual(inv.customer_id, customer.id)
         self.assertEqual(inv.invoice_applications.count(), 1)
+        self.assertEqual(inv.invoice_applications.first().product_id, product.id)
+
+    def test_create_invoice_via_api_with_product_only_line(self):
+        self.client.force_login(self.user)
+        customer = Customer.objects.create(customer_type="person", first_name="Product", last_name="Only", active=True)
+        product = Product.objects.create(name="Bank Fee", code="BANK-FEE-1", product_type="other")
+
+        payload = {
+            "customer": customer.id,
+            "invoice_date": timezone.now().date().isoformat(),
+            "due_date": timezone.now().date().isoformat(),
+            "invoice_applications": [{"product": product.id, "amount": "250000.00"}],
+        }
+
+        response = self.client.post(reverse("invoices-list"), data=json.dumps(payload), content_type="application/json")
+        self.assertIn(response.status_code, (200, 201))
+        invoice = Invoice.objects.get(pk=response.json()["id"])
+        line = invoice.invoice_applications.first()
+        self.assertIsNotNone(line)
+        self.assertEqual(line.product_id, product.id)
+        self.assertIsNone(line.customer_application_id)
+
+    def test_create_invoice_legacy_customer_application_payload_derives_product(self):
+        self.client.force_login(self.user)
+        customer = Customer.objects.create(customer_type="person", first_name="Legacy", last_name="Payload", active=True)
+        product = Product.objects.create(
+            name="Legacy Workflow Product",
+            code="LEGACY-WF-1",
+            product_type="visa",
+            required_documents="Passport",
+        )
+        application = DocApplication.objects.create(
+            customer=customer,
+            product=product,
+            doc_date=timezone.now().date(),
+            created_by=self.user,
+        )
+
+        payload = {
+            "customer": customer.id,
+            "invoice_date": timezone.now().date().isoformat(),
+            "due_date": timezone.now().date().isoformat(),
+            # Backward compatibility payload without explicit `product`.
+            "invoice_applications": [{"customer_application": application.id, "amount": "1000.00"}],
+        }
+        response = self.client.post(reverse("invoices-list"), data=json.dumps(payload), content_type="application/json")
+        self.assertIn(response.status_code, (200, 201))
+
+        invoice = Invoice.objects.get(pk=response.json()["id"])
+        line = invoice.invoice_applications.first()
+        self.assertIsNotNone(line)
+        self.assertEqual(line.customer_application_id, application.id)
+        self.assertEqual(line.product_id, product.id)
+
+    def test_from_application_prefill_allows_non_completed_when_uninvoiced(self):
+        self.client.force_login(self.user)
+        customer = Customer.objects.create(customer_type="person", first_name="Prefill", last_name="Check", active=True)
+        product = Product.objects.create(
+            name="Prefill Product",
+            code="PREFILL-1",
+            product_type="visa",
+            required_documents="Passport",
+        )
+        application = DocApplication.objects.create(
+            customer=customer,
+            product=product,
+            doc_date=timezone.now().date(),
+            created_by=self.user,
+        )
+
+        url = f"/api/invoices/from_application_prefill/{application.id}/"
+        pending_response = self.client.get(url)
+        self.assertEqual(pending_response.status_code, 200)
+        payload = pending_response.json()
+        self.assertEqual(payload["customer"]["id"], customer.id)
+        self.assertEqual(payload["invoiceApplication"]["product"], product.id)
+        self.assertEqual(payload["invoiceApplication"]["customerApplication"], application.id)
+
+        invoice = Invoice.objects.create(
+            customer=customer,
+            invoice_date=timezone.now().date(),
+            due_date=timezone.now().date(),
+            created_by=self.user,
+        )
+        InvoiceApplication.objects.create(
+            invoice=invoice,
+            product=product,
+            customer_application=application,
+            amount="1000.00",
+        )
+
+        invoiced_response = self.client.get(url)
+        self.assertEqual(invoiced_response.status_code, 400)
 
     def test_product_create_with_tasks_and_documents(self):
         url = reverse("products-list")
@@ -737,6 +938,140 @@ class ProductApiTestCase(TestCase):
         # Accept either snake_case or camelCase keys
         self.assertTrue("can_delete" in payload or "canDelete" in payload)
 
+    def test_product_delete_preview_includes_related_records(self):
+        customer = Customer.objects.create(customer_type="person", first_name="Preview", last_name="Customer")
+        product = Product.objects.create(name="Preview Product", code="PREVIEW-1", product_type="visa")
+        Task.objects.create(
+            product=product,
+            step=1,
+            name="Preview Task",
+            duration=1,
+            duration_is_business_days=True,
+        )
+        application = DocApplication.objects.create(
+            customer=customer,
+            product=product,
+            doc_date=timezone.now().date(),
+            created_by=self.user,
+        )
+        invoice = Invoice.objects.create(
+            customer=customer,
+            invoice_date=timezone.now().date(),
+            due_date=timezone.now().date(),
+            created_by=self.user,
+        )
+        invoice_line = InvoiceApplication.objects.create(
+            invoice=invoice,
+            product=product,
+            customer_application=application,
+            amount="150.00",
+        )
+        Payment.objects.create(
+            invoice_application=invoice_line,
+            from_customer=customer,
+            amount="150.00",
+            created_by=self.user,
+        )
+
+        response = self.client.get(reverse("products-delete-preview", kwargs={"pk": product.id}))
+        self.assertEqual(response.status_code, 200)
+
+        payload = response.json()
+        can_delete = payload.get("can_delete", payload.get("canDelete"))
+        requires_force = payload.get("requires_force_delete", payload.get("requiresForceDelete"))
+        related_counts = payload.get("related_counts", payload.get("relatedCounts", {}))
+        related_records = payload.get("related_records", payload.get("relatedRecords", {}))
+
+        self.assertFalse(can_delete)
+        self.assertTrue(requires_force)
+        self.assertEqual(related_counts.get("tasks"), 1)
+        self.assertEqual(related_counts.get("applications"), 1)
+        self.assertEqual(
+            related_counts.get("invoice_applications", related_counts.get("invoiceApplications")),
+            1,
+        )
+        self.assertEqual(related_counts.get("payments"), 1)
+
+        applications = related_records.get("applications", [])
+        invoice_lines = related_records.get("invoice_applications", related_records.get("invoiceApplications", []))
+        self.assertTrue(any(item.get("id") == application.id for item in applications))
+        self.assertTrue(any(item.get("id") == invoice_line.id for item in invoice_lines))
+
+    def test_product_force_delete_requires_confirmation(self):
+        product = Product.objects.create(name="Force Guard", code="FORCE-GUARD-1", product_type="other")
+        response = self.client.post(
+            reverse("products-force-delete", kwargs={"pk": product.id}),
+            data=json.dumps({}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertTrue(Product.objects.filter(id=product.id).exists())
+
+    def test_product_force_delete_removes_invoice_lines_and_refreshes_invoice_totals(self):
+        customer = Customer.objects.create(customer_type="person", first_name="Force", last_name="Delete")
+        target_product = Product.objects.create(name="Delete Me", code="DEL-ME-1", product_type="visa")
+        keep_product = Product.objects.create(name="Keep Me", code="KEEP-ME-1", product_type="other")
+
+        Task.objects.create(
+            product=target_product,
+            step=1,
+            name="Cleanup Task",
+            duration=1,
+            duration_is_business_days=True,
+        )
+        target_application = DocApplication.objects.create(
+            customer=customer,
+            product=target_product,
+            doc_date=timezone.now().date(),
+            created_by=self.user,
+        )
+        invoice = Invoice.objects.create(
+            customer=customer,
+            invoice_date=timezone.now().date(),
+            due_date=timezone.now().date(),
+            created_by=self.user,
+        )
+        target_line = InvoiceApplication.objects.create(
+            invoice=invoice,
+            product=target_product,
+            customer_application=target_application,
+            amount="100.00",
+        )
+        keep_line = InvoiceApplication.objects.create(
+            invoice=invoice,
+            product=keep_product,
+            amount="250.00",
+        )
+        Payment.objects.create(
+            invoice_application=target_line,
+            from_customer=customer,
+            amount="100.00",
+            created_by=self.user,
+        )
+
+        response = self.client.post(
+            reverse("products-force-delete", kwargs={"pk": target_product.id}),
+            data=json.dumps({"forceDeleteConfirmed": True}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["deleted"])
+        self.assertEqual(
+            payload.get("deleted_invoice_applications", payload.get("deletedInvoiceApplications")),
+            1,
+        )
+        self.assertEqual(payload.get("deleted_payments", payload.get("deletedPayments")), 1)
+
+        self.assertFalse(Product.objects.filter(id=target_product.id).exists())
+        self.assertFalse(Task.objects.filter(product_id=target_product.id).exists())
+        self.assertFalse(DocApplication.objects.filter(id=target_application.id).exists())
+        self.assertFalse(InvoiceApplication.objects.filter(id=target_line.id).exists())
+        self.assertTrue(InvoiceApplication.objects.filter(id=keep_line.id).exists())
+
+        invoice.refresh_from_db()
+        self.assertEqual(str(invoice.total_amount), "250.00")
+
     def test_product_search_includes_description(self):
         """Ensure the API search endpoint also matches text found in the product description."""
         # Create a product with a distinctive word in the description
@@ -754,6 +1089,31 @@ class ProductApiTestCase(TestCase):
         results = data.get("results", [])
         self.assertGreater(len(results), 0)
         self.assertTrue(any(item.get("code") == "DESC-1" for item in results))
+
+    def test_product_bulk_delete_matches_description_query(self):
+        Product.objects.create(
+            name="Description Bulk Target",
+            code="DESC-BULK-1",
+            product_type="visa",
+            description="Contains unique delete phrase qwerty-desc-bulk",
+        )
+        Product.objects.create(
+            name="Description Bulk Keep",
+            code="DESC-BULK-2",
+            product_type="visa",
+            description="Different text",
+        )
+
+        response = self.client.post(
+            reverse("products-bulk-delete"),
+            data=json.dumps({"searchQuery": "qwerty-desc-bulk"}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload.get("deleted_count", payload.get("deletedCount")), 1)
+        self.assertFalse(Product.objects.filter(code="DESC-BULK-1").exists())
+        self.assertTrue(Product.objects.filter(code="DESC-BULK-2").exists())
 
     def test_document_type_deprecation_requires_confirmation_and_cascades_products(self):
         document_type = DocumentType.objects.create(name="KITAS Sponsor Letter")

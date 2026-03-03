@@ -7,3 +7,11 @@ ngx-extended-pdf-viewer {
   height: 100%;
   width: 100%;
 }
+
+/* Prevent horizontal overflow in the embedded viewer container */
+:host ::ng-deep .ngx-extended-pdf-viewer,
+:host ::ng-deep .pdfViewer,
+:host ::ng-deep #viewerContainer,
+:host ::ng-deep #outerContainer {
+  max-width: 100%;
+}

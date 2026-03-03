@@ -574,6 +574,18 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
     }
 
     this.isSubmitting.set(true);
+    const sourceState = (history.state as any) || {};
+    const detailState: Record<string, unknown> = {
+      from: sourceState.from ?? 'applications',
+      focusId: sourceState.focusId ?? null,
+      searchQuery: sourceState.searchQuery ?? null,
+      returnUrl: sourceState.returnUrl,
+      customerId: sourceState.customerId,
+    };
+    const sourcePage = Number(sourceState.page);
+    if (Number.isFinite(sourcePage) && sourcePage > 0) {
+      detailState['page'] = Math.floor(sourcePage);
+    }
 
     const docDateStr = this.toApiDate(this.form.value.docDate);
 
@@ -601,7 +613,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
           next: (application) => {
             this.toast.success('Application updated');
             const id = application?.id ?? this.applicationId();
-            this.router.navigate(['/applications', id]);
+            this.router.navigate(['/applications', id], { state: detailState });
             this.isSubmitting.set(false);
           },
           error: (error) => {
@@ -639,9 +651,16 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
           this.toast.success('Application created');
           const id = application?.id;
           if (id) {
-            this.router.navigate(['/applications', id]);
+            this.router.navigate(['/applications', id], { state: detailState });
           } else {
-            this.router.navigate(['/applications']);
+            this.router.navigate(['/applications'], {
+              state: {
+                focusTable: true,
+                searchQuery: sourceState.searchQuery ?? null,
+                page:
+                  Number.isFinite(sourcePage) && sourcePage > 0 ? Math.floor(sourcePage) : undefined,
+              },
+            });
           }
           this.isSubmitting.set(false);
         },
@@ -687,6 +706,10 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
     // Preserve searchQuery from the original navigation state so the list restores the search box
     if (st?.searchQuery) {
       focusState['searchQuery'] = st.searchQuery;
+    }
+    const page = Number(st?.page);
+    if (Number.isFinite(page) && page > 0) {
+      focusState['page'] = Math.floor(page);
     }
 
     // If source list is known, go back there with focus

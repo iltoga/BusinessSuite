@@ -123,7 +123,7 @@ export class CustomerDetailComponent implements OnInit {
     // E --> Edit
     if (event.key === 'E' && !event.ctrlKey && !event.altKey && !event.metaKey) {
       event.preventDefault();
-      this.router.navigate(['/customers', customer.id, 'edit']);
+      this.onEdit();
     }
 
     // D --> Delete (only for superusers)
@@ -148,12 +148,14 @@ export class CustomerDetailComponent implements OnInit {
           focusTable: true,
           focusId: customer ? customer.id : undefined,
           searchQuery: this.originSearchQuery(),
+          page: this.originPage() ?? undefined,
         },
       });
     }
   }
 
   readonly originSearchQuery = signal<string | null>(null);
+  readonly originPage = signal<number | null>(null);
 
   constructor() {
     effect(() => {
@@ -170,11 +172,19 @@ export class CustomerDetailComponent implements OnInit {
     // capture searchQuery if navigated from a list
     const st = this.isBrowser ? (window as any).history.state || {} : {};
     this.originSearchQuery.set(st.searchQuery ?? null);
+    const page = Number(st.page);
+    if (Number.isFinite(page) && page > 0) {
+      this.originPage.set(Math.floor(page));
+    }
 
     if (!id) {
       this.toast.error('Customer not found');
       this.router.navigate(['/customers'], {
-        state: { focusTable: true, searchQuery: this.originSearchQuery() },
+        state: {
+          focusTable: true,
+          searchQuery: this.originSearchQuery(),
+          page: this.originPage() ?? undefined,
+        },
       });
       return;
     }
@@ -203,6 +213,19 @@ export class CustomerDetailComponent implements OnInit {
     });
   }
 
+  onEdit(): void {
+    const customer = this.customer();
+    if (!customer) return;
+    this.router.navigate(['/customers', customer.id, 'edit'], {
+      state: {
+        from: 'customers',
+        focusId: customer.id,
+        searchQuery: this.originSearchQuery(),
+        page: this.originPage() ?? undefined,
+      },
+    });
+  }
+
   onDelete(): void {
     const customer = this.customer();
     if (!customer) return;
@@ -215,7 +238,12 @@ export class CustomerDetailComponent implements OnInit {
       next: () => {
         this.toast.success('Customer deleted');
         this.router.navigate(['/customers'], {
-          state: { focusTable: true, focusId: customer.id, searchQuery: this.originSearchQuery() },
+          state: {
+            focusTable: true,
+            focusId: customer.id,
+            searchQuery: this.originSearchQuery(),
+            page: this.originPage() ?? undefined,
+          },
         });
       },
       error: (error) => {
@@ -236,6 +264,7 @@ export class CustomerDetailComponent implements OnInit {
   onCreateInvoice(applicationId: number): void {
     this.router.navigate(['/invoices', 'new'], {
       queryParams: { applicationId },
+      state: this.invoiceNavigationState(),
     });
   }
 
@@ -292,6 +321,7 @@ export class CustomerDetailComponent implements OnInit {
         customerId: customer.id,
         returnUrl: `/customers/${customer.id}`,
         searchQuery: this.originSearchQuery(),
+        page: this.originPage() ?? undefined,
       },
     });
   }
@@ -306,6 +336,7 @@ export class CustomerDetailComponent implements OnInit {
       customerId: customer.id,
       returnUrl: `/customers/${customer.id}`,
       searchQuery: this.originSearchQuery(),
+      page: this.originPage() ?? undefined,
     };
   }
 

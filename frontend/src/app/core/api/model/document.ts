@@ -23,6 +23,7 @@ export interface Document {
      */
     readonly file: string | null;
     readonly fileLink: string;
+    readonly thumbnailLink: string;
     details?: string;
     readonly completed: boolean;
     metadata?: any | null;
@@ -33,6 +34,11 @@ export interface Document {
      */
     readonly aiValidationStatus: Document.AiValidationStatusEnum;
     readonly aiValidationResult: any | null;
+    /**
+     * * `` -  * `valid` - valid * `invalid` - invalid * `error` - error
+     */
+    aiValidationStatusOverride?: Document.AiValidationStatusOverrideEnum;
+    aiValidationResultOverride?: any | null;
     readonly createdAt: string;
     readonly updatedAt: string;
     readonly createdBy: number;
@@ -57,6 +63,13 @@ export namespace Document {
         Error: 'error'
     } as const;
     export type AiValidationStatusEnum = typeof AiValidationStatusEnum[keyof typeof AiValidationStatusEnum];
+    export const AiValidationStatusOverrideEnum = {
+        Empty: '',
+        Valid: 'valid',
+        Invalid: 'invalid',
+        Error: 'error'
+    } as const;
+    export type AiValidationStatusOverrideEnum = typeof AiValidationStatusOverrideEnum[keyof typeof AiValidationStatusOverrideEnum];
 }
 
 

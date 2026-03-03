@@ -2,9 +2,11 @@ from rest_framework import serializers
 
 from api.serializers.customer_serializer import CustomerSerializer
 from api.serializers.doc_application_serializer import DocApplicationInvoiceSerializer
+from api.serializers.product_serializer import ProductSerializer
 from customer_applications.models import DocApplication
 from invoices.models.invoice import Invoice, InvoiceApplication
 from payments.models import Payment
+from products.models import Product
 
 
 class PaymentSerializer(serializers.ModelSerializer):
@@ -26,7 +28,8 @@ class PaymentSerializer(serializers.ModelSerializer):
 
 
 class InvoiceApplicationSummarySerializer(serializers.ModelSerializer):
-    customer_application = DocApplicationInvoiceSerializer(read_only=True)
+    product = ProductSerializer(read_only=True)
+    customer_application = DocApplicationInvoiceSerializer(read_only=True, allow_null=True)
     paid_amount = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
     due_amount = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
 
@@ -34,6 +37,7 @@ class InvoiceApplicationSummarySerializer(serializers.ModelSerializer):
         model = InvoiceApplication
         fields = [
             "id",
+            "product",
             "customer_application",
             "amount",
             "status",
@@ -43,7 +47,8 @@ class InvoiceApplicationSummarySerializer(serializers.ModelSerializer):
 
 
 class InvoiceApplicationDetailSerializer(serializers.ModelSerializer):
-    customer_application = DocApplicationInvoiceSerializer(read_only=True)
+    product = ProductSerializer(read_only=True)
+    customer_application = DocApplicationInvoiceSerializer(read_only=True, allow_null=True)
     payments = PaymentSerializer(many=True, read_only=True)
     paid_amount = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
     due_amount = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
@@ -52,6 +57,7 @@ class InvoiceApplicationDetailSerializer(serializers.ModelSerializer):
         model = InvoiceApplication
         fields = [
             "id",
+            "product",
             "customer_application",
             "amount",
             "status",
@@ -141,8 +147,22 @@ class InvoiceDetailSerializer(serializers.ModelSerializer):
 
 class InvoiceApplicationWriteSerializer(serializers.Serializer):
     id = serializers.IntegerField(required=False)
-    customer_application = serializers.PrimaryKeyRelatedField(queryset=DocApplication.objects.all())
+    product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all(), required=False, allow_null=True)
+    customer_application = serializers.PrimaryKeyRelatedField(
+        queryset=DocApplication.objects.all(),
+        required=False,
+        allow_null=True,
+    )
     amount = serializers.DecimalField(max_digits=10, decimal_places=2)
+
+    def validate(self, attrs):
+        product = attrs.get("product")
+        customer_application = attrs.get("customer_application")
+        if not product and not customer_application:
+            raise serializers.ValidationError("Each invoice line must include a product or customer application.")
+        if customer_application and product and customer_application.product_id != product.id:
+            raise serializers.ValidationError("Invoice line product must match the customer application product.")
+        return attrs
 
 
 class InvoiceCreateUpdateSerializer(serializers.ModelSerializer):
@@ -165,7 +185,7 @@ class InvoiceCreateUpdateSerializer(serializers.ModelSerializer):
         extra_kwargs = {"invoice_no": {"required": False, "allow_null": True}}
 
     def validate_invoice_applications(self, value):
-        customer_ids = [item.get("customer_application") for item in value]
+        customer_ids = [item.get("customer_application") for item in value if item.get("customer_application")]
         if len(customer_ids) != len(set(customer_ids)):
             raise serializers.ValidationError("Each customer application can only appear once in an invoice.")
         return value

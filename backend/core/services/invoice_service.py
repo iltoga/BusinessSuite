@@ -6,31 +6,93 @@ from decimal import Decimal
 from typing import Iterable
 
 from customer_applications.models import DocApplication
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 from invoices.models.invoice import Invoice, InvoiceApplication
 from payments.models import Payment
+from products.models import Product
 from rest_framework.exceptions import ValidationError
 
 
 @dataclass(frozen=True)
 class InvoiceApplicationPayload:
-    customer_application_id: int
+    product_id: int | None
+    customer_application_id: int | None
     amount: Decimal
     invoice_application_id: int | None = None
 
 
+def _normalize_id(value):
+    return value.id if hasattr(value, "id") else value
+
+
+def _extract_constraint_name(exc: Exception) -> str | None:
+    cause = getattr(exc, "__cause__", None)
+    diag = getattr(cause, "diag", None)
+    constraint_name = getattr(diag, "constraint_name", None) if diag else None
+    if not constraint_name:
+        return None
+    return str(constraint_name).strip() or None
+
+
+def _is_invoice_no_unique_conflict(exc: Exception) -> bool:
+    if not isinstance(exc, IntegrityError):
+        return False
+
+    constraint_name = (_extract_constraint_name(exc) or "").lower()
+    if constraint_name and "invoice_no" in constraint_name:
+        return True
+
+    message = str(exc).lower()
+    return "invoice_no" in message and ("unique" in message or "duplicate" in message)
+
+
+def sync_paid_invoice_applications(*, invoice: Invoice, user=None) -> int:
+    """Mark linked customer applications as completed when invoice is fully paid.
+
+    Kept as an explicit service-layer side effect so it can be invoked from
+    transactional write flows (invoice/payment operations) without embedding
+    cross-model mutations in ``Invoice.save()``.
+    """
+    if not invoice or invoice.status != Invoice.PAID:
+        return 0
+
+    updated = 0
+    linked_applications = (
+        DocApplication.objects.filter(invoice_applications__invoice=invoice)
+        .exclude(status=DocApplication.STATUS_COMPLETED)
+        .distinct()
+    )
+    for application in linked_applications:
+        application.status = DocApplication.STATUS_COMPLETED
+        if user and getattr(user, "is_authenticated", False):
+            application.updated_by = user
+        application.save(skip_status_calculation=True)
+        updated += 1
+    return updated
+
+
 def _build_payloads(raw_items: Iterable[dict]) -> list[InvoiceApplicationPayload]:
+    items = list(raw_items)
+    app_ids = [
+        _normalize_id(item.get("customer_application"))
+        for item in items
+        if _normalize_id(item.get("customer_application"))
+    ]
+    app_product_map = {
+        app_id: product_id
+        for app_id, product_id in DocApplication.objects.filter(id__in=app_ids).values_list("id", "product_id")
+    }
+
     payloads: list[InvoiceApplicationPayload] = []
-    for item in raw_items:
-        customer_application = item.get("customer_application")
-        customer_application_id = (
-            customer_application.id if hasattr(customer_application, "id") else customer_application
-        )
+    for item in items:
+        customer_application_id = _normalize_id(item.get("customer_application"))
+        product_id = _normalize_id(item.get("product")) or app_product_map.get(customer_application_id)
         payloads.append(
             InvoiceApplicationPayload(
                 invoice_application_id=item.get("id"),
                 customer_application_id=customer_application_id,
+                product_id=product_id,
                 amount=Decimal(str(item.get("amount"))),
             )
         )
@@ -38,7 +100,7 @@ def _build_payloads(raw_items: Iterable[dict]) -> list[InvoiceApplicationPayload
 
 
 def _validate_application_ids(payloads: list[InvoiceApplicationPayload]) -> None:
-    ids = [payload.customer_application_id for payload in payloads]
+    ids = [payload.customer_application_id for payload in payloads if payload.customer_application_id]
     if len(ids) != len(set(ids)):
         raise ValidationError("Each customer application can only appear once in an invoice.")
 
@@ -46,17 +108,59 @@ def _validate_application_ids(payloads: list[InvoiceApplicationPayload]) -> None
 def _validate_application_availability(
     *,
     payloads: list[InvoiceApplicationPayload],
+    customer_id: int,
     current_invoice: Invoice | None = None,
 ) -> None:
-    application_ids = [payload.customer_application_id for payload in payloads]
+    if any(payload.product_id is None for payload in payloads):
+        raise ValidationError({"invoice_applications": ["Each invoice line must include a product."]})
+
+    product_ids = [payload.product_id for payload in payloads if payload.product_id]
+    existing_products = Product.objects.filter(id__in=product_ids)
+    existing_product_map = {product.id: product for product in existing_products}
+    missing_products = sorted({product_id for product_id in product_ids if product_id not in existing_product_map})
+    if missing_products:
+        raise ValidationError({"invoice_applications": [f"Unknown product id(s): {', '.join(map(str, missing_products))}."]})
+
+    deprecated_products = [product for product in existing_product_map.values() if product.deprecated]
+    if deprecated_products:
+        raise ValidationError(
+            {
+                "invoice_applications": [
+                    "Cannot create/update invoice with deprecated products."
+                ]
+            }
+        )
+
+    application_ids = [payload.customer_application_id for payload in payloads if payload.customer_application_id]
+    if not application_ids:
+        return
+
     existing = InvoiceApplication.objects.filter(customer_application_id__in=application_ids)
     if current_invoice:
         existing = existing.exclude(invoice=current_invoice)
     if existing.exists():
         raise ValidationError({"invoice_applications": ["One or more customer applications are already invoiced."]})
 
-    deprecated_product_apps = DocApplication.objects.filter(
-        id__in=application_ids,
+    applications = DocApplication.objects.filter(id__in=application_ids).select_related("product", "customer")
+    app_map = {application.id: application for application in applications}
+    missing_apps = sorted({app_id for app_id in application_ids if app_id not in app_map})
+    if missing_apps:
+        raise ValidationError(
+            {"invoice_applications": [f"Unknown customer application id(s): {', '.join(map(str, missing_apps))}."]}
+        )
+
+    for payload in payloads:
+        if not payload.customer_application_id:
+            continue
+        application = app_map[payload.customer_application_id]
+        if application.customer_id != customer_id:
+            raise ValidationError({"invoice_applications": ["Customer application customer must match invoice customer."]})
+        if payload.product_id and application.product_id != payload.product_id:
+            raise ValidationError(
+                {"invoice_applications": ["Customer application product must match the invoice line product."]}
+            )
+
+    deprecated_product_apps = applications.filter(
         product__deprecated=True,
     )
     if deprecated_product_apps.exists():
@@ -64,11 +168,28 @@ def _validate_application_availability(
             {"invoice_applications": ["Cannot create/update invoice with applications linked to deprecated products."]}
         )
 
+    non_workflow_product_apps = applications.filter(product__uses_customer_app_workflow=False)
+    if non_workflow_product_apps.exists():
+        raise ValidationError(
+            {
+                "invoice_applications": [
+                    "Customer applications linked to invoice-only products are not billable here. "
+                    "Use a product-only invoice line instead."
+                ]
+            }
+        )
+
 
 def create_invoice(*, data: dict, user) -> Invoice:
     payloads = _build_payloads(data.pop("invoice_applications", []))
     _validate_application_ids(payloads)
-    _validate_application_availability(payloads=payloads)
+
+    customer = data.get("customer")
+    customer_id = customer.id if hasattr(customer, "id") else customer
+    if not customer_id:
+        raise ValidationError({"customer": ["Customer is required."]})
+
+    _validate_application_availability(payloads=payloads, customer_id=customer_id)
 
     invoice_date = data.get("invoice_date")
     if isinstance(invoice_date, str):
@@ -90,13 +211,11 @@ def create_invoice(*, data: dict, user) -> Invoice:
                 invoice = Invoice.objects.create(created_by=user, **data)
                 _sync_invoice_applications(invoice=invoice, payloads=payloads, user=user)
                 invoice.save()
+                sync_paid_invoice_applications(invoice=invoice, user=user)
                 return invoice
         except Exception as exc:
-            # Handle duplicate invoice_no integrity errors specifically
-            from django.db import IntegrityError
-
-            # detect unique constraint violation on invoice_no
-            if isinstance(exc, IntegrityError) and "invoices_invoice_invoice_no_key" in str(exc):
+            # Handle duplicate invoice_no integrity errors specifically.
+            if _is_invoice_no_unique_conflict(exc):
                 attempts += 1
                 if attempts >= max_attempts:
                     raise ValidationError({"invoice_no": ["Invoice number already exists."]})
@@ -123,7 +242,7 @@ def create_invoice(*, data: dict, user) -> Invoice:
 def update_invoice(*, invoice: Invoice, data: dict, user) -> Invoice:
     payloads = _build_payloads(data.pop("invoice_applications", []))
     _validate_application_ids(payloads)
-    _validate_application_availability(payloads=payloads, current_invoice=invoice)
+    _validate_application_availability(payloads=payloads, customer_id=invoice.customer_id, current_invoice=invoice)
 
     if data.get("customer") and data["customer"].id != invoice.customer_id:
         raise ValidationError("Customer cannot be changed for an existing invoice.")
@@ -136,6 +255,7 @@ def update_invoice(*, invoice: Invoice, data: dict, user) -> Invoice:
 
         _sync_invoice_applications(invoice=invoice, payloads=payloads, user=user)
         invoice.save()
+        sync_paid_invoice_applications(invoice=invoice, user=user)
         return invoice
 
 
@@ -147,12 +267,14 @@ def _sync_invoice_applications(*, invoice: Invoice, payloads: list[InvoiceApplic
         if payload.invoice_application_id and payload.invoice_application_id in existing:
             invoice_app = existing[payload.invoice_application_id]
             invoice_app.customer_application_id = payload.customer_application_id
+            invoice_app.product_id = payload.product_id
             invoice_app.amount = payload.amount
             invoice_app.save()
             seen_ids.add(invoice_app.id)
         else:
             invoice_app = InvoiceApplication.objects.create(
                 invoice=invoice,
+                product_id=payload.product_id,
                 customer_application_id=payload.customer_application_id,
                 amount=payload.amount,
             )
@@ -168,7 +290,10 @@ def mark_invoice_as_paid(*, invoice: Invoice, payment_type: str, payment_date: d
     created: list[Payment] = []
 
     with transaction.atomic():
-        unpaid_apps = [app for app in invoice.invoice_applications.all() if app.due_amount > 0]
+        # Prefetch existing payments once to avoid per-line aggregate queries when
+        # evaluating due_amount for each invoice application.
+        invoice_applications = list(invoice.invoice_applications.prefetch_related("payments").all())
+        unpaid_apps = [app for app in invoice_applications if app.due_amount > 0]
         if not unpaid_apps:
             return created
 
@@ -181,6 +306,8 @@ def mark_invoice_as_paid(*, invoice: Invoice, payment_type: str, payment_date: d
                 user=user,
             )
             created.append(payment)
+        invoice.refresh_from_db(fields=["status"])
+        sync_paid_invoice_applications(invoice=invoice, user=user)
     return created
 
 

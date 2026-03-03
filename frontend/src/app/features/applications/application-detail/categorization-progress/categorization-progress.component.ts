@@ -11,6 +11,7 @@ import {
 
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
+import { ZardTooltipImports } from '@/shared/components/tooltip';
 
 export interface CategorizationFileResult {
   itemId: string;
@@ -45,7 +46,7 @@ export interface CategorizationApplyMapping {
 @Component({
   selector: 'app-categorization-progress',
   standalone: true,
-  imports: [CommonModule, ZardBadgeComponent, ZardButtonComponent],
+  imports: [CommonModule, ZardBadgeComponent, ZardButtonComponent, ...ZardTooltipImports],
   templateUrl: './categorization-progress.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -75,7 +76,7 @@ export class CategorizationProgressComponent {
   });
 
   readonly categorizedResults = computed(() =>
-    this.results().filter((r) => r.status === 'categorized' && r.documentId),
+    this.results().filter((r) => r.status === 'categorized' && r.documentId && r.itemId),
   );
 
   readonly unmatchedResults = computed(() =>
@@ -170,10 +171,12 @@ export class CategorizationProgressComponent {
   }
 
   onApplyAll(): void {
-    const mappings = this.categorizedResults().map((r) => ({
-      itemId: r.itemId,
-      documentId: r.documentId!,
-    }));
+    const mappings = this.categorizedResults()
+      .filter((result) => result.itemId.trim().length > 0)
+      .map((r) => ({
+        itemId: r.itemId,
+        documentId: r.documentId!,
+      }));
     if (mappings.length > 0) {
       this.applyAll.emit(mappings);
     }

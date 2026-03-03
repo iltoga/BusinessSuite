@@ -3,12 +3,28 @@ import logging
 from core.models.async_job import AsyncJob
 from core.services.passport_uploadability_service import PassportUploadabilityService
 from django.core.files.storage import default_storage
-from huey.contrib.djhuey import db_task
+from core.tasks.runtime import QUEUE_REALTIME, db_task
+from customers.services import PassportCustomerMatchService
 
 logger = logging.getLogger(__name__)
 
 
-@db_task()
+def _build_customer_match_payload(passport_data: dict | None) -> dict:
+    try:
+        return PassportCustomerMatchService().match(passport_data)
+    except Exception as exc:
+        logger.exception("Failed to match passport data with existing customers: %s", exc)
+        return {
+            "status": "error",
+            "message": "Customer matching failed.",
+            "passport_number": None,
+            "exact_matches": [],
+            "similar_matches": [],
+            "recommended_action": "none",
+        }
+
+
+@db_task(queue=QUEUE_REALTIME)
 def check_passport_uploadability_task(job_id: str, file_path: str, method: str):
     """
     Task to check passport uploadability asynchronously.
@@ -34,7 +50,9 @@ def check_passport_uploadability_task(job_id: str, file_path: str, method: str):
 
         result = service.check_passport(file_content, method=method, progress_callback=progress_callback)
 
-        job.update_progress(95, "Verification completed, preparing results...")
+        job.update_progress(95, "Verification completed, searching existing customers...")
+        customer_match = _build_customer_match_payload(result.passport_data)
+        job.update_progress(98, "Preparing final response...")
 
         # Clean up the temporary file
         try:
@@ -49,6 +67,7 @@ def check_passport_uploadability_task(job_id: str, file_path: str, method: str):
                     "method_used": result.method_used,
                     "model_used": result.model_used,
                     "passport_data": result.passport_data,
+                    "customer_match": customer_match,
                 },
                 message="Passport verified successfully.",
             )
@@ -60,6 +79,9 @@ def check_passport_uploadability_task(job_id: str, file_path: str, method: str):
                     "model_used": result.model_used,
                     "rejection_code": result.rejection_code,
                     "rejection_reason": result.rejection_reason,
+                    "rejection_reasons": result.rejection_reasons or ([] if not result.rejection_reason else [result.rejection_reason]),
+                    "passport_data": result.passport_data,
+                    "customer_match": customer_match,
                 },
                 message="Passport verification failed.",
             )

@@ -24,6 +24,7 @@ export interface DocumentType {
     validationRuleRegex?: string;
     validationRuleAiPositive?: string;
     validationRuleAiNegative?: string;
+    aiStructuredOutput?: string;
     isInRequiredDocuments?: boolean;
 }
 

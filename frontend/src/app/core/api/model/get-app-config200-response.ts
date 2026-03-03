@@ -13,6 +13,7 @@ export interface GetAppConfig200Response {
     mOCKAUTHENABLED: GetAppConfig200Response.MOCKAUTHENABLEDEnum;
     theme: GetAppConfig200Response.ThemeEnum;
     dateFormat?: string;
+    baseCurrency?: string;
     title?: string;
     logoFilename?: string;
     logoInvertedFilename?: string;

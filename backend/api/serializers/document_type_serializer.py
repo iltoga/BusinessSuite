@@ -20,5 +20,6 @@ class DocumentTypeSerializer(serializers.ModelSerializer):
             "validation_rule_regex",
             "validation_rule_ai_positive",
             "validation_rule_ai_negative",
+            "ai_structured_output",
             "is_in_required_documents",
         ]

@@ -2,6 +2,7 @@ from decimal import Decimal
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.validators import RegexValidator
 from django.db import models
 
 
@@ -22,6 +23,13 @@ class ProductManager(models.Manager):
         return [product for product in candidates if product.has_document_type(document_type_name)]
 
 
+def default_product_currency() -> str:
+    configured = str(getattr(settings, "BASE_CURRENCY", "IDR") or "IDR").strip().upper()
+    if configured.isalpha() and 2 <= len(configured) <= 3:
+        return configured
+    return "IDR"
+
+
 class Product(models.Model):
     PRODUCT_TYPE_CHOICES = [
         ("visa", "Visa"),
@@ -34,6 +42,16 @@ class Product(models.Model):
     immigration_id = models.UUIDField(blank=True, null=True, db_index=True)
     base_price = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True, default=0.00)
     retail_price = models.DecimalField(max_digits=12, decimal_places=2, blank=True, default=0.00)
+    currency = models.CharField(
+        max_length=3,
+        default=default_product_currency,
+        validators=[
+            RegexValidator(
+                regex=r"^[A-Za-z]{2,3}$",
+                message="Currency must be a 2 or 3-letter code (e.g. IDR, USD, EUR).",
+            )
+        ],
+    )
     product_type = models.CharField(max_length=50, choices=PRODUCT_TYPE_CHOICES, default="other", db_index=True)
     # Validity in days
     validity = models.PositiveIntegerField(blank=True, null=True)
@@ -47,6 +65,7 @@ class Product(models.Model):
     # Optional AI system prompt injected during document validation for all applications using this product
     validation_prompt = models.TextField(blank=True)
     deprecated = models.BooleanField(default=False, db_index=True)
+    uses_customer_app_workflow = models.BooleanField(default=False, db_index=True)
 
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True, db_index=True)
@@ -88,6 +107,7 @@ class Product(models.Model):
             "name": self.name,
             "base_price": self.base_price,
             "retail_price": self.retail_price,
+            "currency": self.currency,
             "product_type": self.product_type,
         }
 
@@ -113,6 +133,22 @@ class Product(models.Model):
     def has_document_type(self, document_type_name: str) -> bool:
         return document_type_name in self.all_document_names
 
+    @property
+    def has_configured_documents(self) -> bool:
+        return bool(self.required_document_names or self.optional_document_names)
+
+    @property
+    def has_configured_tasks(self) -> bool:
+        if not self.pk:
+            return False
+        product_cache = getattr(self, "_prefetched_objects_cache", None) or {}
+        if "tasks" in product_cache:
+            return bool(product_cache["tasks"])
+        return self.tasks.exists()
+
+    def recompute_uses_customer_app_workflow(self) -> bool:
+        return bool(self.has_configured_documents or self.has_configured_tasks)
+
     def has_deprecated_document_types(self) -> bool:
         from products.models.document_type import DocumentType
 
@@ -122,7 +158,30 @@ class Product(models.Model):
         return DocumentType.objects.filter(name__in=doc_names, deprecated=True).exists()
 
     def sync_deprecated_status_from_documents(self) -> None:
-        self.deprecated = self.has_deprecated_document_types()
+        has_deprecated_documents = self.has_deprecated_document_types()
+        if has_deprecated_documents:
+            self.deprecated = True
+            return
+
+        # Keep explicit/manual deprecated toggles, but automatically clear
+        # only when the previous deprecated state was document-driven.
+        if self._state.adding or not self.pk:
+            return
+        try:
+            previous = Product.objects.only(
+                "id",
+                "deprecated",
+                "required_documents",
+                "optional_documents",
+            ).get(pk=self.pk)
+        except Product.DoesNotExist:
+            return
+
+        if self.deprecated != previous.deprecated:
+            return
+
+        if previous.deprecated and previous.has_deprecated_document_types():
+            self.deprecated = False
 
     def save(self, *args, **kwargs):
         # Preserve legacy creates where base_price is provided but retail_price is omitted.
@@ -134,15 +193,19 @@ class Product(models.Model):
             self.retail_price = self.base_price
         elif self.retail_price is None:
             self.retail_price = self.base_price if self.base_price is not None else Decimal("0.00")
+        if self.currency:
+            self.currency = str(self.currency).strip().upper()
+        else:
+            self.currency = default_product_currency()
         self.sync_deprecated_status_from_documents()
+        self.uses_customer_app_workflow = self.recompute_uses_customer_app_workflow()
         super().save(*args, **kwargs)
 
     def can_be_deleted(self):
-        # Block deletion if related invoices exist
-        if (
-            hasattr(self, "doc_applications")
-            and self.doc_applications.filter(invoice_applications__isnull=False).exists()
-        ):
+        # Block deletion if directly referenced by invoice lines or by linked applications.
+        if hasattr(self, "invoice_applications") and self.invoice_applications.exists():
+            return False, "Cannot delete product: related invoices exist."
+        if hasattr(self, "doc_applications") and self.doc_applications.filter(invoice_applications__isnull=False).exists():
             return False, "Cannot delete product: related invoices exist."
         # Alert if related applications/workflows exist
         if hasattr(self, "doc_applications") and self.doc_applications.exists():

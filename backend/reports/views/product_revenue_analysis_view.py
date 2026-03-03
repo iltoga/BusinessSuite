@@ -7,7 +7,7 @@ from django.utils import timezone
 from django.views.generic import TemplateView
 
 from customer_applications.models import DocApplication
-from invoices.models.invoice import Invoice
+from invoices.models.invoice import Invoice, InvoiceApplication
 from products.models import Product
 from reports.utils import format_currency, get_month_list
 
@@ -32,8 +32,8 @@ class ProductRevenueAnalysisView(LoginRequiredMixin, TemplateView):
         products = (
             Product.objects.annotate(
                 application_count=Count("doc_applications", distinct=True),
-                invoiced_application_count=Count("doc_applications__invoice_applications", distinct=True),
-                total_revenue=Coalesce(Sum("doc_applications__invoice_applications__amount"), zero_value),
+                invoiced_application_count=Count("invoice_applications", distinct=True),
+                total_revenue=Coalesce(Sum("invoice_applications__amount"), zero_value),
                 unit_profit=product_unit_profit_expression,
             )
             .order_by("-total_revenue", "name")
@@ -116,11 +116,6 @@ class ProductRevenueAnalysisView(LoginRequiredMixin, TemplateView):
         monthly_trends = []
         monthly_profit_trends = []
 
-        monthly_profit_expression = ExpressionWrapper(
-            Coalesce(F("product__retail_price"), zero_value) - Coalesce(F("product__base_price"), zero_value),
-            output_field=money_field,
-        )
-
         for month_data in months:
             month_start = month_data["date"]
             if month_start.month == 12:
@@ -131,8 +126,11 @@ class ProductRevenueAnalysisView(LoginRequiredMixin, TemplateView):
             trends = {"label": month_data["label"]}
             for product in top_products:
                 revenue = (
-                    DocApplication.objects.filter(product=product, doc_date__gte=month_start, doc_date__lt=month_end)
-                    .aggregate(total=Coalesce(Sum("invoice_applications__amount"), zero_value))
+                    InvoiceApplication.objects.filter(
+                        product=product,
+                        invoice__invoice_date__gte=month_start,
+                        invoice__invoice_date__lt=month_end,
+                    ).aggregate(total=Coalesce(Sum("amount"), zero_value))
                     .get("total")
                     or Decimal("0.00")
                 )
@@ -140,8 +138,21 @@ class ProductRevenueAnalysisView(LoginRequiredMixin, TemplateView):
             monthly_trends.append(trends)
 
             month_profit = (
-                DocApplication.objects.filter(doc_date__gte=month_start, doc_date__lt=month_end)
-                .aggregate(total=Coalesce(Sum(monthly_profit_expression), zero_value))
+                InvoiceApplication.objects.filter(
+                    invoice__invoice_date__gte=month_start,
+                    invoice__invoice_date__lt=month_end,
+                ).aggregate(
+                    total=Coalesce(
+                        Sum(
+                            ExpressionWrapper(
+                                Coalesce(F("product__retail_price"), zero_value)
+                                - Coalesce(F("product__base_price"), zero_value),
+                                output_field=money_field,
+                            )
+                        ),
+                        zero_value,
+                    )
+                )
                 .get("total")
                 or Decimal("0.00")
             )
@@ -154,8 +165,8 @@ class ProductRevenueAnalysisView(LoginRequiredMixin, TemplateView):
             )
 
         invoice_profit_expression = ExpressionWrapper(
-            Coalesce(F("invoice_applications__customer_application__product__retail_price"), zero_value)
-            - Coalesce(F("invoice_applications__customer_application__product__base_price"), zero_value),
+            Coalesce(F("invoice_applications__product__retail_price"), zero_value)
+            - Coalesce(F("invoice_applications__product__base_price"), zero_value),
             output_field=money_field,
         )
 

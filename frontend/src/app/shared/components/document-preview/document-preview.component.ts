@@ -22,6 +22,7 @@ import type {
 import { ZardIconComponent } from '@/shared/components/icon';
 import { ImageMagnifierComponent } from '@/shared/components/image-magnifier';
 import { ZardPopoverComponent, ZardPopoverDirective } from '@/shared/components/popover';
+import { inferPreviewTypeFromUrl } from '@/shared/utils/document-preview-source';
 import { sanitizeResourceUrl } from '@/shared/utils/resource-url-sanitizer';
 
 @Component({
@@ -46,6 +47,7 @@ export class DocumentPreviewComponent {
 
   documentId = input.required<number>();
   fileLink = input<string | null | undefined>(null);
+  thumbnailLink = input<string | null | undefined>(null);
   label = input<string>('Preview');
   zType = input<ZardButtonTypeVariants>('outline');
   zSize = input<ZardButtonSizeVariants>('sm');
@@ -70,25 +72,32 @@ export class DocumentPreviewComponent {
   private viewerCompRef: any | null = null;
   private viewerUrl: string | null = null;
 
-  protected readonly fileName = computed(() => this.fileLink()?.split('/').pop() || 'Document');
-  protected readonly isPdf = computed(() => {
-    const link = this.fileLink()?.toLowerCase() || '';
-    const mime = this.previewMime();
-    return link.endsWith('.pdf') || mime === 'application/pdf';
+  protected readonly fileName = computed(() => this.extractFileName(this.fileLink()));
+  protected readonly resolvedFileType = computed<'image' | 'pdf' | 'unknown'>(() => {
+    const fromMime = this.inferTypeFromMime(this.previewMime());
+    if (fromMime !== 'unknown') {
+      return fromMime;
+    }
+    return inferPreviewTypeFromUrl(this.fileLink());
   });
+  protected readonly isPdf = computed(() => this.resolvedFileType() === 'pdf');
 
-  protected readonly isImage = computed(() => {
-    const link = this.fileLink()?.toLowerCase() || '';
+  protected readonly isImage = computed(() => this.resolvedFileType() === 'image');
+
+  protected readonly isPdfImage = computed(() => {
     const mime = this.previewMime();
     if (mime?.startsWith('image/')) {
       return true;
     }
-    return /\.(png|jpe?g)$/i.test(link);
-  });
-
-  protected readonly isPdfImage = computed(() => {
     const url = this.previewUrl();
-    return !!url && url.startsWith('data:image');
+    if (!url) {
+      return false;
+    }
+    const normalized = url.toLowerCase();
+    if (normalized.startsWith('data:image')) {
+      return true;
+    }
+    return /\.(png|jpe?g|webp|gif|bmp|avif)(?:$|[?#])/i.test(normalized);
   });
 
   protected readonly popoverClasses = computed(() => {
@@ -214,6 +223,13 @@ export class DocumentPreviewComponent {
 
   private loadPreview(): void {
     this.isLoading.set(true);
+    this.cleanup();
+
+    if (this.tryUseThumbnailLink()) {
+      this.isLoading.set(false);
+      return;
+    }
+
     this.documentsService.downloadDocumentFile(this.documentId()).subscribe({
       next: async (blob) => {
         this.cleanup();
@@ -243,6 +259,35 @@ export class DocumentPreviewComponent {
         this.previewMime.set(null);
       },
     });
+  }
+
+  private tryUseThumbnailLink(): boolean {
+    // For PDF originals, prefer fetching the source PDF so full preview can open
+    // the real document instead of a static image thumbnail.
+    if (inferPreviewTypeFromUrl(this.fileLink()) === 'pdf') {
+      return false;
+    }
+
+    const thumbnail = this.thumbnailLink();
+    if (!thumbnail) {
+      return false;
+    }
+    if (this.isLikelyExpiringStorageUrl(thumbnail)) {
+      return false;
+    }
+
+    const imageMime = this.guessImageMimeFromUrl(thumbnail);
+    if (!imageMime) {
+      return false;
+    }
+
+    if (!this.setPreviewResourceUrl(thumbnail)) {
+      return false;
+    }
+
+    this.previewMime.set(imageMime);
+    this.previewBlob.set(null);
+    return true;
   }
 
   private async openViewer(): Promise<void> {
@@ -321,6 +366,95 @@ export class DocumentPreviewComponent {
     this.previewUrl.set(url);
     this.sanitizedPreview.set(safeUrl);
     return true;
+  }
+
+  private guessImageMimeFromUrl(url: string): string | null {
+    const normalized = (url || '').toLowerCase();
+    if (normalized.startsWith('data:image')) {
+      return 'image/*';
+    }
+    if (normalized.includes('.png')) {
+      return 'image/png';
+    }
+    if (normalized.includes('.jpg') || normalized.includes('.jpeg')) {
+      return 'image/jpeg';
+    }
+    if (normalized.includes('.webp')) {
+      return 'image/webp';
+    }
+    if (normalized.includes('.gif')) {
+      return 'image/gif';
+    }
+    if (normalized.includes('.bmp')) {
+      return 'image/bmp';
+    }
+    if (normalized.includes('.avif')) {
+      return 'image/avif';
+    }
+    return null;
+  }
+
+  private inferTypeFromMime(mime: string | null): 'image' | 'pdf' | 'unknown' {
+    const normalized = (mime || '').toLowerCase();
+    if (normalized === 'application/pdf') {
+      return 'pdf';
+    }
+    if (normalized.startsWith('image/')) {
+      return 'image';
+    }
+    return 'unknown';
+  }
+
+  private extractFileName(url: string | null | undefined): string {
+    const value = (url || '').trim();
+    if (!value) {
+      return 'Document';
+    }
+
+    try {
+      const parsed = new URL(value);
+      const segment = parsed.pathname.split('/').filter(Boolean).pop() || '';
+      if (segment) {
+        return this.decodeSafely(segment);
+      }
+    } catch {
+      // Fall back to simple parsing below for non-standard URL values.
+    }
+
+    const fallback = value.split('?')[0]?.split('#')[0]?.split('/').pop() || '';
+    return fallback ? this.decodeSafely(fallback) : 'Document';
+  }
+
+  private decodeSafely(value: string): string {
+    try {
+      return decodeURIComponent(value);
+    } catch {
+      return value;
+    }
+  }
+
+  private isLikelyExpiringStorageUrl(url: string): boolean {
+    const trimmed = (url || '').trim();
+    if (!trimmed || trimmed.startsWith('blob:') || trimmed.startsWith('data:')) {
+      return false;
+    }
+
+    const lower = trimmed.toLowerCase();
+    if (
+      lower.includes('x-amz-') ||
+      lower.includes('signature=') ||
+      lower.includes('expires=') ||
+      lower.includes('token=')
+    ) {
+      return true;
+    }
+
+    try {
+      const parsed = new URL(trimmed);
+      return parsed.searchParams.size > 0;
+    } catch {
+      return false;
+    }
   }
 
   private async generatePdfThumbnail(blob: Blob): Promise<string | null> {

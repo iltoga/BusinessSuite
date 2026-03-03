@@ -1,5 +1,8 @@
 from django.db import models
 from django.core.exceptions import ValidationError
+from django.db.models.signals import post_delete, post_save
+from django.dispatch import receiver
+
 from products.models.product import Product
 
 class Task(models.Model):
@@ -44,3 +47,25 @@ class Task(models.Model):
             if other_last_steps.exists():
                 # add error to the field
                 raise ValidationError(f"Each product can only have one last step. The other last step is {other_last_steps[0].step}.")
+
+
+def _sync_product_workflow_flag(product_id: int | None) -> None:
+    if not product_id:
+        return
+    product = Product.objects.filter(id=product_id).first()
+    if not product:
+        return
+    desired = product.recompute_uses_customer_app_workflow()
+    if product.uses_customer_app_workflow != desired:
+        product.uses_customer_app_workflow = desired
+        product.save(update_fields=["uses_customer_app_workflow", "updated_at"])
+
+
+@receiver(post_save, sender=Task)
+def task_post_save_sync_product_workflow_flag(sender, instance, **kwargs):
+    _sync_product_workflow_flag(instance.product_id)
+
+
+@receiver(post_delete, sender=Task)
+def task_post_delete_sync_product_workflow_flag(sender, instance, **kwargs):
+    _sync_product_workflow_flag(instance.product_id)

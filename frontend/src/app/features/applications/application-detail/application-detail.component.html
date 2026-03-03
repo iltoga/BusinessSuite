@@ -178,9 +178,10 @@
           ></textarea>
         </div>
       </div>
-    </z-card>
+      </z-card>
 
-    <z-card class="p-4 sm:p-6">
+    @if (hasConfiguredDocuments()) {
+      <z-card class="p-4 sm:p-6">
       <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
         <h3 class="text-lg font-semibold">Tasks Timeline</h3>
         <div class="flex flex-wrap gap-2">
@@ -313,7 +314,7 @@
           }
         </ol>
       }
-    </z-card>
+      </z-card>
 
     <z-card class="p-4 sm:p-6">
       <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
@@ -451,15 +452,11 @@
                   </td>
                   <td class="py-3" data-label="AI Check">
                     @if (isDocumentAiValid(doc)) {
-                      <z-badge
-                        zType="success"
-                        [zTooltip]="getDocumentValidationTooltip(doc)"
+                      <z-badge zType="success" [zTooltip]="getDocumentValidationTooltip(doc)"
                         >✅ Valid</z-badge
                       >
                     } @else if (isDocumentAiInvalid(doc)) {
-                      <z-badge
-                        zType="destructive"
-                        [zTooltip]="getDocumentValidationTooltip(doc)"
+                      <z-badge zType="destructive" [zTooltip]="getDocumentValidationTooltip(doc)"
                         >⚠️ Invalid</z-badge
                       >
                     } @else if (
@@ -467,26 +464,11 @@
                       doc.aiValidationStatus === 'validating'
                     ) {
                       <z-badge zType="outline"
-                        ><svg
+                        ><z-icon
+                          zType="loader-circle"
                           class="inline-block mr-1 h-3.5 w-3.5 animate-spin text-muted-foreground"
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                        >
-                          <circle
-                            class="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            stroke-width="4"
-                          ></circle>
-                          <path
-                            class="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                          ></path></svg
-                        >Checking…</z-badge
+                        />
+                        Checking…</z-badge
                       >
                     } @else if (doc.aiValidationStatus === 'error') {
                       <z-badge zType="destructive">Error</z-badge>
@@ -502,6 +484,7 @@
                       <app-document-preview
                         [documentId]="doc.id"
                         [fileLink]="doc.fileLink"
+                        [thumbnailLink]="doc.thumbnailLink"
                         [centerInViewport]="true"
                         zType="default"
                         zSize="default"
@@ -560,8 +543,8 @@
       }
     </z-card>
 
-    @if (optionalDocuments().length > 0) {
-      <z-card class="p-4 sm:p-6">
+      @if (optionalDocuments().length > 0) {
+        <z-card class="p-4 sm:p-6">
         <div class="mb-4 flex items-center justify-between">
           <h3 class="text-lg font-semibold">Optional Documents</h3>
         </div>
@@ -589,20 +572,30 @@
             </tbody>
           </table>
         </div>
-      </z-card>
+        </z-card>
+      }
     }
   </div>
 }
 
 @if (isAddDocumentDialogOpen()) {
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+  <div class="app-modal-overlay fixed inset-0 z-1200 flex justify-center bg-black/50 p-4">
     <div class="w-full max-w-lg rounded-lg bg-card p-6 shadow-lg">
       <div class="flex items-start justify-between">
         <div>
           <h3 class="text-lg font-semibold">Add Document</h3>
           <p class="text-sm text-muted-foreground">Select the document type you want to add.</p>
         </div>
-        <button z-button zType="ghost" zSize="sm" (click)="closeAddDocumentDialog()">x</button>
+        <button
+          z-button
+          zType="ghost"
+          zSize="sm"
+          class="h-8 w-8 rounded-full p-0"
+          (click)="closeAddDocumentDialog()"
+          aria-label="Close add document dialog"
+        >
+          <z-icon zType="circle-x" class="h-5 w-5" />
+        </button>
       </div>
 
       <div class="mt-6 space-y-4">
@@ -632,14 +625,23 @@
 }
 
 @if (isUploadOpen() && selectedDocument()) {
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+  <div class="app-modal-overlay fixed inset-0 z-1200 flex justify-center bg-black/50 p-4">
     <div class="app-upload-dialog rounded-lg bg-card p-6 shadow-lg">
       <div class="flex items-start justify-between">
         <div>
           <h3 class="text-lg font-semibold">Upload {{ selectedDocument()!.docType.name }}</h3>
           <p class="text-sm text-muted-foreground">Attach file and update document details.</p>
         </div>
-        <button z-button zType="ghost" zSize="sm" (click)="closeUpload()">Close</button>
+        <button
+          z-button
+          zType="ghost"
+          zSize="sm"
+          class="h-8 w-8 rounded-full p-0"
+          (click)="closeUpload()"
+          aria-label="Close upload dialog"
+        >
+          <z-icon zType="circle-x" class="h-5 w-5" />
+        </button>
       </div>
 
       <form class="app-upload-dialog-form mt-6 space-y-4" [formGroup]="uploadForm">
@@ -652,8 +654,8 @@
           [previewUrl]="inlinePreviewUrl()"
           [previewType]="inlinePreviewType()"
           [previewLoading]="inlinePreviewLoading()"
-          [previewHeight]="'6rem'"
-          [previewWidth]="'10rem'"
+          [previewHeight]="'18rem'"
+          [previewWidth]="'min(30rem, 100%)'"
           [showMagnifierToggle]="false"
           (fileSelected)="onFileSelected($event)"
           (cleared)="onFileCleared()"
@@ -671,7 +673,11 @@
                 [disabled]="actionLoading() !== null"
               >
                 @if (action.icon) {
-                  <i [class]="action.icon + ' mr-1'"></i>
+                  <z-icon
+                    *ngIf="mapIcon(action.icon)"
+                    [zType]="mapIcon(action.icon)"
+                    class="mr-1"
+                  />
                 }
                 {{ action.label }}
                 @if (actionLoading() === action.name) {
@@ -707,26 +713,10 @@
           <div class="text-sm text-muted-foreground">
             @if (aiValidationInProgress()) {
               <span class="inline-flex items-center gap-1">
-                <svg
+                <z-icon
+                  zType="loader-circle"
                   class="inline-block h-4 w-4 animate-spin text-muted-foreground"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    class="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    stroke-width="4"
-                  ></circle>
-                  <path
-                    class="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                  ></path>
-                </svg>
+                />
                 AI validation in progress…
               </span>
             } @else if (ocrPolling()) {
@@ -736,15 +726,13 @@
             }
           </div>
           <div class="flex items-center gap-2">
-            @if (
-              isAiValidationEnabledForSelectedDocument() && hasAiValidationRules() && selectedFile()
-            ) {
+            @if (isAiValidationEnabledForSelectedDocument()) {
               <label class="flex items-center gap-1.5 text-sm cursor-pointer select-none">
                 <input
                   type="checkbox"
                   class="h-4 w-4 rounded border-border"
                   [checked]="validateWithAi()"
-                  (change)="validateWithAi.set($any($event.target).checked)"
+                  (change)="onValidateWithAiChanged($any($event.target).checked)"
                   [disabled]="isSaving() || aiValidationInProgress()"
                 />
                 Validate with AI
@@ -753,6 +741,7 @@
             <app-document-preview
               [documentId]="selectedDocument()!.id"
               [fileLink]="selectedDocument()!.fileLink"
+              [thumbnailLink]="selectedDocument()!.thumbnailLink"
               [centerInViewport]="true"
               zType="outline"
               zSize="sm"
@@ -782,12 +771,38 @@
             >
               @if (aiValidationInProgress()) {
                 Validating…
+              } @else if (shouldShowSaveAnyway()) {
+                Save Anyway
               } @else {
                 Save
               }
             </button>
           </div>
         </div>
+
+        @if (shouldShowSaveAnyway()) {
+          <div class="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm">
+            <div class="font-medium text-destructive">
+              AI pre-validation did not pass for this file.
+            </div>
+            <div class="mt-1 text-muted-foreground">
+              {{
+                preUploadValidationReason() ||
+                  'This file does not satisfy the AI validation checks.'
+              }}
+            </div>
+            @if (preUploadValidationIssues().length > 0) {
+              <ul class="mt-2 list-disc space-y-1 pl-4 text-xs text-muted-foreground">
+                @for (issue of preUploadValidationIssues(); track issue) {
+                  <li>{{ issue }}</li>
+                }
+              </ul>
+            }
+            <div class="mt-2 text-xs text-muted-foreground">
+              You can still upload this document by pressing <strong>Save Anyway</strong>.
+            </div>
+          </div>
+        }
 
         @if (ocrPreviewImage() || ocrHasExtractedData()) {
           <div class="rounded-md border bg-muted/5 p-3">
@@ -826,7 +841,7 @@
 }
 
 @if (ocrReviewOpen() && ocrReviewData()) {
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+  <div class="app-modal-overlay fixed inset-0 z-1200 flex justify-center bg-black/50 p-4">
     <div class="w-full max-w-lg rounded-lg bg-card p-6 shadow-lg">
       <div class="flex items-start justify-between">
         <div>
@@ -835,7 +850,16 @@
             Review extracted data before applying to the document.
           </p>
         </div>
-        <button z-button zType="ghost" zSize="sm" (click)="dismissOcrReview()">Close</button>
+        <button
+          z-button
+          zType="ghost"
+          zSize="sm"
+          class="h-8 w-8 rounded-full p-0"
+          (click)="dismissOcrReview()"
+          aria-label="Close OCR review dialog"
+        >
+          <z-icon zType="circle-x" class="h-5 w-5" />
+        </button>
       </div>
 
       <div class="mt-4 space-y-3 text-sm">
@@ -861,6 +885,49 @@
       <div class="mt-6 flex justify-end gap-2">
         <button z-button zType="outline" (click)="dismissOcrReview()">Dismiss</button>
         <button z-button zType="default" (click)="applyOcrData()">Apply Data</button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (ocrExtractedDataDialogOpen()) {
+  <div class="app-modal-overlay fixed inset-0 z-1200 flex justify-center bg-black/50 p-4">
+    <div class="w-full max-w-2xl rounded-lg bg-card p-6 shadow-lg">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <h3 class="text-lg font-semibold">OCR Extracted Data</h3>
+          <p class="text-sm text-muted-foreground">
+            This document does not have a details field. Copy the extracted data for manual use.
+          </p>
+        </div>
+        <button
+          z-button
+          zType="ghost"
+          zSize="sm"
+          class="h-8 w-8 rounded-full p-0"
+          (click)="dismissOcrExtractedDataDialog()"
+          aria-label="Close OCR extracted data dialog"
+        >
+          <z-icon zType="circle-x" class="h-5 w-5" />
+        </button>
+      </div>
+
+      <div class="mt-4">
+        <textarea
+          z-input
+          readonly
+          rows="14"
+          class="w-full min-h-64 font-mono text-xs leading-5"
+          [value]="ocrExtractedDataDialogText()"
+        ></textarea>
+      </div>
+
+      <div class="mt-6 flex justify-end gap-2">
+        <button z-button zType="outline" (click)="copyOcrExtractedData()">Copy</button>
+        <button z-button zType="default" (click)="dismissOcrExtractedDataDialog()">
+          <z-icon zType="circle-x" class="h-4 w-4" />
+          Close
+        </button>
       </div>
     </div>
   </div>

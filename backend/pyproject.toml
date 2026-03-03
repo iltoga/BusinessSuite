@@ -12,8 +12,6 @@ dependencies = [
     "whitenoise>=6.11.0",
     "gunicorn>=23.0.0",
     "setuptools>=80.9.0",
-    "huey>=2.5.3",
-    "peewee",
     "djangorestframework>=3.16.1",
     "djangorestframework-simplejwt>=5.5.1",
     "drf-spectacular>=0.27.0",
@@ -46,6 +44,9 @@ dependencies = [
     "google-auth>=2.48.0",
     "google-api-python-client>=2.189.0",
     "pytest>=9.0.2",
+    "dramatiq[redis]>=2.0.1",
+    "django-http-compression>=1.2.0",
+    "groq>=1.0.0",
 ]
 
 [build-system]

@@ -19,6 +19,7 @@ export interface ProductDetail {
     immigrationId?: string | null;
     basePrice?: string | null;
     retailPrice?: string;
+    currency?: string;
     /**
      * * `visa` - Visa * `other` - Other
      */
@@ -30,6 +31,7 @@ export interface ProductDetail {
     applicationWindowDays?: number | null;
     validationPrompt?: string;
     deprecated?: boolean;
+    usesCustomerAppWorkflow?: boolean;
     readonly tasks: Array<TaskNested>;
     readonly requiredDocumentTypes: Array<DocumentType>;
     readonly optionalDocumentTypes: Array<DocumentType>;

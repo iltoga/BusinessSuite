@@ -3,7 +3,7 @@
     <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">Products</h1>
     <a
       routerLink="/products/new"
-      [state]="{ from: 'products', searchQuery: query() }"
+      [state]="{ from: 'products', searchQuery: query(), page: page() }"
       [contextHelp]="'/products/new'"
     >
       <z-button zType="default" zSize="default">New Product</z-button>
@@ -101,7 +101,7 @@
 <ng-template #nameTemplate let-row>
   <a
     [routerLink]="['/products', row.id]"
-    [state]="{ from: 'products', focusId: row.id, searchQuery: query() }"
+    [state]="{ from: 'products', focusId: row.id, searchQuery: query(), page: page() }"
     class="font-medium hover:underline"
   >
     {{ row.name }}
@@ -149,15 +149,15 @@
 </ng-template>
 
 <ng-template #priceTemplate let-row>
-  <span>{{ formatBasePrice(row.basePrice) }}</span>
+  <span>{{ formatBasePrice(row.basePrice, row) }}</span>
 </ng-template>
 
 <ng-template #retailPriceTemplate let-row>
-  <span>{{ formatCurrency(retailPriceValue(row)) }}</span>
+  <span>{{ formatCurrency(retailPriceValue(row), resolveCurrency(row)) }}</span>
 </ng-template>
 
 <ng-template #profitTemplate let-row>
-  <span>{{ formatCurrency(unitProfitValue(row)) }}</span>
+  <span>{{ formatCurrency(unitProfitValue(row), resolveCurrency(row)) }}</span>
 </ng-template>
 
 <ng-template #createdAtTemplate let-row>
@@ -173,15 +173,11 @@
   </div>
 </ng-template>
 
-<app-confirm-dialog
-  [isOpen]="confirmOpen()"
-  [title]="'Delete product'"
-  [message]="confirmMessage()"
-  [destructive]="true"
-  confirmText="Delete"
-  cancelText="Cancel"
-  (confirmed)="confirmDelete()"
-  (cancelled)="cancelDelete()"
+<app-product-delete-dialog
+  [isOpen]="productDeleteOpen()"
+  [data]="productDeleteData()"
+  (confirmed)="onProductDeleteConfirmed($event)"
+  (cancelled)="onProductDeleteCancelled()"
 />
 
 <app-bulk-delete-dialog

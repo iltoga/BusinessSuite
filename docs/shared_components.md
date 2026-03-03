@@ -28,6 +28,7 @@ Base path: `frontend/src/app/shared/components/`
 | ConfirmDialog           | `app-confirm-dialog`            | `confirm-dialog/`                            | Generic confirmation dialog.                                         |
 | BulkDeleteDialog        | `app-bulk-delete-dialog`        | `bulk-delete-dialog/`                        | Bulk-delete confirmation with payload/result contract.               |
 | InvoiceDeleteDialog     | `app-invoice-delete-dialog`     | `invoice-delete-dialog/`                     | Invoice-specific delete confirmation flow.                           |
+| ProductDeleteDialog     | `app-product-delete-dialog`     | `product-delete-dialog/`                     | Product delete preview + optional force-delete confirmation dialog.  |
 | ApplicationDeleteDialog | `app-application-delete-dialog` | `application-delete-dialog/`                 | Application delete confirmation.                                     |
 | CustomerSelect          | `app-customer-select`           | `customer-select/`                           | Async customer search/select control.                                |
 | ProductSelect           | `app-product-select`            | `product-select/`                            | Product selection control.                                           |
@@ -42,6 +43,7 @@ Base path: `frontend/src/app/shared/components/`
 | ExpiryBadge             | `app-expiry-badge`              | `expiry-badge/`                              | Date-based status badge (expiring/expired).                          |
 | DashboardWidget         | `app-dashboard-widget`          | `dashboard-widget/`                          | Reusable widget container for dashboard stats/charts.                |
 | FormErrorSummary        | `app-form-error-summary`        | `form-error-summary/`                        | Consolidates form validation errors into a summary block.            |
+| JsonFieldMappingEditor  | `app-json-field-mapping-editor` | `json-field-mapping-editor/`                 | Reusable JSON `{field_name, description}` table editor (CVA).        |
 | HelpDrawer              | `z-help-drawer`                 | `help-drawer/`                               | Global contextual help + hotkeys drawer.                             |
 | CalendarIntegration     | `app-calendar-integration`      | `calendar/calendar-integration.component.ts` | Calendar integration panel and sync UX.                              |
 | Calendar                | `z-calendar`                    | `calendar/calendar.component.ts`             | Reusable calendar view primitives (grid/navigation/types).           |

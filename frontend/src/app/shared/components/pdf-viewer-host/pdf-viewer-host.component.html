@@ -1,46 +1,110 @@
-<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-  <div class="bg-white rounded shadow-lg w-full max-w-4xl h-[90vh] overflow-hidden relative">
-    <div class="absolute top-2 right-2 z-50 flex gap-2">
+<div class="fixed inset-0 z-[1200] flex items-center justify-center bg-black/70 p-2 sm:p-4">
+  <div
+    class="flex h-full max-h-[calc(100vh-1rem)] w-full max-w-[96vw] flex-col overflow-hidden rounded-lg border border-border bg-card shadow-2xl sm:max-h-[calc(100vh-2rem)] xl:max-w-[1400px]"
+  >
+    <div
+      class="relative flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-card px-3 py-2 pr-12"
+    >
+      <div class="text-sm font-medium text-foreground">Print Preview</div>
+      <div class="flex flex-wrap items-center gap-2">
+        @if (showDownloadButton) {
+          <z-button
+            zType="secondary"
+            zSize="sm"
+            type="button"
+            (click)="download()"
+            [zDisabled]="isBusy || !src"
+            aria-label="Download PDF"
+          >
+            <z-icon zType="download" />
+            Download PDF
+          </z-button>
+        }
+        <z-button
+          zType="outline"
+          zSize="sm"
+          type="button"
+          (click)="print()"
+          [zDisabled]="isBusy || !src"
+          aria-label="Print PDF"
+        >
+          <z-icon zType="printer" />
+          Print
+        </z-button>
+      </div>
       <button
         z-button
-        zType="outline"
-        class="h-7"
-        type="button"
-        (click)="print()"
-        aria-label="Print PDF"
-      >
-        Print
-      </button>
-
-      <button
-        class="bg-white border rounded px-3 py-1 text-sm h-7"
+        zType="secondary"
+        zSize="sm"
+        class="absolute right-2 top-2 h-8 w-8 rounded-full p-0"
         type="button"
         (click)="close()"
         aria-label="Close PDF preview"
       >
-        Close
+        <z-icon zType="circle-x" class="h-5 w-5" />
       </button>
     </div>
 
-    <div *ngIf="src" class="h-full">
-      <ngx-extended-pdf-viewer
-        [src]="src"
-        [height]="'100%'"
-        [showToolbar]="false"
-        [showSidebarButton]="false"
-        [showOpenFileButton]="false"
-        [showPrintButton]="false"
-        [showDownloadButton]="false"
-        [replaceBrowserPrint]="false"
-        (after-load-complete)="onAfterLoadComplete($event)"
-        (progress)="onProgress($event)"
-        (pdfLoaded)="onAfterLoadComplete($event)"
-        (error)="onLoadFailed($event)"
-      ></ngx-extended-pdf-viewer>
+    <div class="relative min-h-0 flex-1 overflow-hidden bg-muted/15">
+      <div *ngIf="isBusy" class="h-full w-full p-6 sm:p-10">
+        <div class="mx-auto flex h-full max-w-4xl flex-col space-y-4">
+          <z-skeleton class="h-7 w-40" />
+          <z-skeleton class="h-4 w-64" />
+          <z-skeleton class="h-full min-h-[18rem] w-full rounded-md border border-border" />
+        </div>
+      </div>
 
-      <div *ngIf="loadError" class="absolute inset-0 flex items-center justify-center p-6">
-        <div class="rounded bg-red-50 border border-red-200 p-4 text-sm text-red-900">
-          {{ loadError }} <a class="underline" target="_blank" [href]="href">Open in new tab</a>
+      <div *ngIf="!isBusy && src" class="h-full min-h-0 min-w-0">
+        <ngx-extended-pdf-viewer
+          [src]="src"
+          [height]="'100%'"
+          [showToolbar]="false"
+          [showSidebarButton]="false"
+          [sidebarVisible]="false"
+          [showSecondaryToolbarButton]="false"
+          [showOpenFileButton]="false"
+          [showPrintButton]="false"
+          [showDownloadButton]="false"
+          [replaceBrowserPrint]="false"
+          (after-load-complete)="onAfterLoadComplete($event)"
+          (progress)="onProgress($event)"
+          (pdfLoaded)="onAfterLoadComplete($event)"
+          (error)="onLoadFailed($event)"
+        ></ngx-extended-pdf-viewer>
+
+        <div
+          *ngIf="isLoading && !(loadError || errorMessage)"
+          class="absolute inset-0 flex items-center justify-center bg-background/80 p-6"
+        >
+          <div class="w-full max-w-2xl space-y-3">
+            <z-skeleton class="h-6 w-44" />
+            <z-skeleton class="h-[55vh] w-full rounded-md border border-border" />
+          </div>
+        </div>
+
+        <div
+          *ngIf="loadError || errorMessage"
+          class="absolute inset-0 flex items-center justify-center bg-background/70 p-6"
+        >
+          <div
+            class="rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-foreground"
+          >
+            {{ errorMessage || loadError }}
+            <a class="ml-1 underline underline-offset-2" target="_blank" [href]="href"
+              >Open in new tab</a
+            >
+          </div>
+        </div>
+      </div>
+
+      <div
+        *ngIf="!isBusy && !src && errorMessage"
+        class="flex h-full w-full items-center justify-center p-6"
+      >
+        <div
+          class="rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-foreground"
+        >
+          {{ errorMessage }}
         </div>
       </div>
     </div>

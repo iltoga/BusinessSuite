@@ -125,6 +125,7 @@ $PYTHON_BIN manage.py compilemessages || echo "Warning: compilemessages skipped 
 echo "Starting Gunicorn..."
 exec gunicorn business_suite.wsgi:application \
   --bind 0.0.0.0:8000 \
+  --no-control-socket \
   --workers 4 \
   --threads 2 \
   --worker-class gthread \

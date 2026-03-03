@@ -22,6 +22,7 @@ import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
+import { ZardTooltipImports } from '@/shared/components/tooltip';
 
 interface MediaDiagnosticResult {
   model: string;
@@ -96,7 +97,13 @@ interface UiSettingsResponse {
 @Component({
   selector: 'app-server-management',
   standalone: true,
-  imports: [CommonModule, ZardCardComponent, ZardButtonComponent, ZardBadgeComponent],
+  imports: [
+    CommonModule,
+    ZardCardComponent,
+    ZardButtonComponent,
+    ZardBadgeComponent,
+    ...ZardTooltipImports,
+  ],
   templateUrl: './server-management.component.html',
   styleUrls: ['./server-management.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

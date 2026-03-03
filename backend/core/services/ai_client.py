@@ -21,10 +21,37 @@ from openai import OpenAI
 logger = Logger.get_logger(__name__)
 
 
-class AIConnectionError(Exception):
-    """Exception raised when a connection error occurs with the AI provider."""
+GENERIC_AI_PROVIDER_ERROR = "AI provider error"
+GENERIC_AI_SLOW_RESPONSE = "AI slow response"
 
-    pass
+
+class AIConnectionError(Exception):
+    """Exception raised when a connection/provider error occurs with the AI provider."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        error_code: str = "provider_error",
+        is_timeout: bool = False,
+    ):
+        super().__init__(message)
+        self.error_code = error_code
+        self.is_timeout = is_timeout
+
+
+def is_ai_timeout_exception(exc: BaseException) -> bool:
+    """Return True when an exception represents an AI timeout."""
+    return isinstance(exc, AIConnectionError) and bool(getattr(exc, "is_timeout", False))
+
+
+def get_ai_user_message(exc: BaseException) -> str:
+    """Map provider exceptions to safe user-facing messages."""
+    if is_ai_timeout_exception(exc):
+        return GENERIC_AI_SLOW_RESPONSE
+    if isinstance(exc, AIConnectionError):
+        return str(exc) or GENERIC_AI_PROVIDER_ERROR
+    return GENERIC_AI_PROVIDER_ERROR
 
 
 class AIClient:
@@ -169,9 +196,17 @@ class AIClient:
                 error_type="APITimeoutError",
                 started_at=started_at,
             )
-            msg = f"{self.provider_name} API Timeout Error: The request timed out after {self.timeout}s. This often happens with large images or during peak usage. Details: {str(e)}"
-            logger.error(msg)
-            raise AIConnectionError(msg)
+            logger.error(
+                "%s timeout after %.1fs. details=%s",
+                self.provider_name,
+                self.timeout,
+                str(e),
+            )
+            raise AIConnectionError(
+                GENERIC_AI_SLOW_RESPONSE,
+                error_code="timeout",
+                is_timeout=True,
+            ) from e
         except openai.APIConnectionError as e:
             self._record_usage(
                 feature_name=feature_name,
@@ -180,11 +215,13 @@ class AIClient:
                 error_type="APIConnectionError",
                 started_at=started_at,
             )
-            msg = f"{self.provider_name} API Connection Error: Could not connect to the server. Check your internet connection or proxy settings. Original error: {str(e)}"
-            if e.__cause__:
-                msg += f" (Cause: {str(e.__cause__)})"
-            logger.error(msg)
-            raise AIConnectionError(msg)
+            logger.error(
+                "%s connection error: %s (cause=%s)",
+                self.provider_name,
+                str(e),
+                str(e.__cause__) if e.__cause__ else "",
+            )
+            raise AIConnectionError(GENERIC_AI_PROVIDER_ERROR, error_code="connection_error") from e
         except openai.RateLimitError as e:
             self._record_usage(
                 feature_name=feature_name,
@@ -193,9 +230,8 @@ class AIClient:
                 error_type="RateLimitError",
                 started_at=started_at,
             )
-            msg = f"{self.provider_name} API Rate Limit Error: You have exceeded your rate limit or quota. Details: {str(e)}"
-            logger.error(msg)
-            raise Exception(msg)
+            logger.error("%s rate limit error: %s", self.provider_name, str(e))
+            raise AIConnectionError(GENERIC_AI_PROVIDER_ERROR, error_code="rate_limit") from e
         except openai.AuthenticationError as e:
             self._record_usage(
                 feature_name=feature_name,
@@ -204,11 +240,8 @@ class AIClient:
                 error_type="AuthenticationError",
                 started_at=started_at,
             )
-            msg = (
-                f"{self.provider_name} API Authentication Error: Your API key is invalid or expired. Details: {str(e)}"
-            )
-            logger.error(msg)
-            raise Exception(msg)
+            logger.error("%s authentication error: %s", self.provider_name, str(e))
+            raise AIConnectionError(GENERIC_AI_PROVIDER_ERROR, error_code="auth_error") from e
         except openai.BadRequestError as e:
             self._record_usage(
                 feature_name=feature_name,
@@ -217,9 +250,8 @@ class AIClient:
                 error_type="BadRequestError",
                 started_at=started_at,
             )
-            msg = f"{self.provider_name} API Bad Request: The request was invalid (e.g., malformed parameters, image too large, or invalid model). Details: {str(e)}"
-            logger.error(msg)
-            raise Exception(msg)
+            logger.error("%s bad request error: %s", self.provider_name, str(e))
+            raise AIConnectionError(GENERIC_AI_PROVIDER_ERROR, error_code="bad_request") from e
         except openai.NotFoundError as e:
             self._record_usage(
                 feature_name=feature_name,
@@ -228,9 +260,8 @@ class AIClient:
                 error_type="NotFoundError",
                 started_at=started_at,
             )
-            msg = f"{self.provider_name} API Not Found: The requested resource (model or endpoint) was not found. Details: {str(e)}"
-            logger.error(msg)
-            raise Exception(msg)
+            logger.error("%s not found error: %s", self.provider_name, str(e))
+            raise AIConnectionError(GENERIC_AI_PROVIDER_ERROR, error_code="not_found") from e
         except openai.InternalServerError as e:
             self._record_usage(
                 feature_name=feature_name,
@@ -239,9 +270,8 @@ class AIClient:
                 error_type="InternalServerError",
                 started_at=started_at,
             )
-            msg = f"{self.provider_name} API Internal Server Error: The {self.provider_name} service is currently experiencing issues. Details: {str(e)}"
-            logger.error(msg)
-            raise Exception(msg)
+            logger.error("%s internal server error: %s", self.provider_name, str(e))
+            raise AIConnectionError(GENERIC_AI_PROVIDER_ERROR, error_code="internal_server") from e
         except openai.APIStatusError as e:
             self._record_usage(
                 feature_name=feature_name,
@@ -250,9 +280,13 @@ class AIClient:
                 error_type="APIStatusError",
                 started_at=started_at,
             )
-            msg = f"{self.provider_name} API Status Error (HTTP {e.status_code}): An error occurred with status code {e.status_code}. Details: {str(e)}"
-            logger.error(msg)
-            raise Exception(msg)
+            logger.error(
+                "%s API status error http=%s details=%s",
+                self.provider_name,
+                getattr(e, "status_code", "unknown"),
+                str(e),
+            )
+            raise AIConnectionError(GENERIC_AI_PROVIDER_ERROR, error_code="status_error") from e
         except Exception as e:
             self._record_usage(
                 feature_name=feature_name,
@@ -261,9 +295,8 @@ class AIClient:
                 error_type=type(e).__name__,
                 started_at=started_at,
             )
-            msg = f"Unexpected error in {self.provider_name} AI Client: {str(e)}"
-            logger.error(msg)
-            raise Exception(msg)
+            logger.error("Unexpected %s client error: %s", self.provider_name, str(e), exc_info=True)
+            raise AIConnectionError(GENERIC_AI_PROVIDER_ERROR, error_code="unexpected_error") from e
 
     def _record_usage(
         self,
@@ -292,6 +325,7 @@ class AIClient:
         schema_name: str = "response",
         temperature: float = 0.1,
         strict: bool = True,
+        retry_on_invalid_json: bool = True,
         **kwargs,
     ) -> dict:
         """
@@ -326,6 +360,7 @@ class AIClient:
             messages=messages,
             temperature=temperature,
             response_format=response_format,
+            retry_on_invalid_json=retry_on_invalid_json,
             **kwargs,
         )
 
@@ -333,6 +368,7 @@ class AIClient:
         self,
         messages: list,
         temperature: float = 0.3,
+        retry_on_invalid_json: bool = True,
         **kwargs,
     ) -> dict:
         """
@@ -350,6 +386,7 @@ class AIClient:
             messages=messages,
             temperature=temperature,
             response_format={"type": "json_object"},
+            retry_on_invalid_json=retry_on_invalid_json,
             **kwargs,
         )
 
@@ -358,6 +395,7 @@ class AIClient:
         messages: list,
         temperature: float,
         response_format: dict,
+        retry_on_invalid_json: bool = True,
         **kwargs,
     ) -> dict:
         """
@@ -375,6 +413,10 @@ class AIClient:
         try:
             return self._parse_json_dict(response_text)
         except ValueError as first_exc:
+            if not retry_on_invalid_json:
+                raise ValueError(
+                    f"Invalid JSON response from {self.provider_name}: {first_exc}"
+                ) from first_exc
             logger.warning(
                 "Received malformed JSON from %s. Retrying once with corrective prompt. Error: %s",
                 self.provider_name,

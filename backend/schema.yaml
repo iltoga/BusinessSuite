@@ -221,7 +221,7 @@ paths:
   /api/backups/restore/:
     post:
       operationId: backupsRestoreCreate
-      description: Trigger SSE restore stream.
+      description: Trigger stream-backed SSE restore execution.
       summary: Restore from backup
       parameters:
       - in: query
@@ -232,6 +232,12 @@ paths:
         name: include_users
         schema:
           type: boolean
+      - in: query
+        name: replay
+        schema:
+          type: boolean
+        description: Set true to replay existing stream events without enqueuing a
+          new restore job.
       tags:
       - backups
       security:
@@ -248,13 +254,19 @@ paths:
   /api/backups/start/:
     get:
       operationId: backupsStartRetrieve
-      description: Trigger SSE backup stream.
+      description: Trigger stream-backed SSE backup execution.
       summary: Start backup process
       parameters:
       - in: query
         name: include_users
         schema:
           type: boolean
+      - in: query
+        name: replay
+        schema:
+          type: boolean
+        description: Set true to replay existing stream events without enqueuing a
+          new backup job.
       tags:
       - backups
       security:
@@ -300,7 +312,7 @@ paths:
         Local-mirror calendar API.
 
         CRUD operations update `CalendarEvent` records and signals queue asynchronous
-        synchronization to Google Calendar through Huey tasks.
+        synchronization to Google Calendar through Dramatiq tasks.
       tags:
       - calendar
       security:
@@ -321,7 +333,7 @@ paths:
         Local-mirror calendar API.
 
         CRUD operations update `CalendarEvent` records and signals queue asynchronous
-        synchronization to Google Calendar through Huey tasks.
+        synchronization to Google Calendar through Dramatiq tasks.
       tags:
       - calendar
       requestBody:
@@ -733,7 +745,7 @@ paths:
         Local-mirror calendar API.
 
         CRUD operations update `CalendarEvent` records and signals queue asynchronous
-        synchronization to Google Calendar through Huey tasks.
+        synchronization to Google Calendar through Dramatiq tasks.
       parameters:
       - in: path
         name: id
@@ -758,7 +770,7 @@ paths:
         Local-mirror calendar API.
 
         CRUD operations update `CalendarEvent` records and signals queue asynchronous
-        synchronization to Google Calendar through Huey tasks.
+        synchronization to Google Calendar through Dramatiq tasks.
       parameters:
       - in: path
         name: id
@@ -798,7 +810,7 @@ paths:
         Local-mirror calendar API.
 
         CRUD operations update `CalendarEvent` records and signals queue asynchronous
-        synchronization to Google Calendar through Huey tasks.
+        synchronization to Google Calendar through Dramatiq tasks.
       parameters:
       - in: path
         name: id
@@ -838,7 +850,7 @@ paths:
         Local-mirror calendar API.
 
         CRUD operations update `CalendarEvent` records and signals queue asynchronous
-        synchronization to Google Calendar through Huey tasks.
+        synchronization to Google Calendar through Dramatiq tasks.
       parameters:
       - in: path
         name: id
@@ -969,7 +981,7 @@ paths:
           description: ''
     post:
       operationId: customerApplicationsCreate
-      description: Create application synchronously and queue calendar sync in Huey.
+      description: Create application synchronously and queue calendar sync in Dramatiq.
       tags:
       - customer-applications
       requestBody:
@@ -1021,7 +1033,7 @@ paths:
           description: ''
     put:
       operationId: customerApplicationsUpdate
-      description: Update application synchronously and queue calendar sync in Huey.
+      description: Update application synchronously and queue calendar sync in Dramatiq.
       parameters:
       - in: path
         name: id
@@ -1095,7 +1107,7 @@ paths:
     delete:
       operationId: customerApplicationsDestroy
       description: Delete application synchronously and queue calendar cleanup in
-        Huey.
+        Dramatiq.
       parameters:
       - in: query
         name: deleteInvoices
@@ -1123,7 +1135,7 @@ paths:
     post:
       operationId: customerApplicationsAdvanceWorkflowCreate
       description: Complete current workflow synchronously and queue calendar sync
-        in Huey.
+        in Dramatiq.
       parameters:
       - in: path
         name: id
@@ -1848,6 +1860,11 @@ paths:
         description: A search term.
         schema:
           type: string
+      - in: query
+        name: uses_customer_app_workflow
+        schema:
+          type: boolean
+        description: Filter products by workflow-enabled flag.
       tags:
       - document-types
       security:
@@ -2940,6 +2957,56 @@ paths:
               schema:
                 $ref: '#/components/schemas/InvoiceList'
           description: ''
+  /api/invoices/from_application_prefill/{applicationId}/:
+    get:
+      operationId: invoicesFromApplicationPrefillRetrieve
+      parameters:
+      - in: path
+        name: applicationId
+        schema:
+          type: integer
+        required: true
+      tags:
+      - invoices
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/invoices/get_billable_products/{customerId}/:
+    get:
+      operationId: invoicesGetBillableProductsRetrieve
+      parameters:
+      - in: query
+        name: current_invoice_id
+        schema:
+          type: integer
+        description: Include already linked applications for this invoice in pending
+          groups.
+      - in: path
+        name: customerId
+        schema:
+          type: integer
+        required: true
+      tags:
+      - invoices
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/invoices/get_customer_applications/{customerId}/:
     get:
       operationId: invoicesGetCustomerApplicationsList
@@ -3465,6 +3532,11 @@ paths:
         description: A search term.
         schema:
           type: string
+      - in: query
+        name: uses_customer_app_workflow
+        schema:
+          type: boolean
+        description: Filter products by whether they use customer-application workflows.
       tags:
       - products
       security:
@@ -3639,6 +3711,70 @@ paths:
               schema:
                 $ref: '#/components/schemas/Product'
           description: ''
+  /api/products/{id}/delete-preview/:
+    get:
+      operationId: productsDeletePreviewRetrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this product.
+        required: true
+      tags:
+      - products
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/products/{id}/force-delete/:
+    post:
+      operationId: productsForceDeleteCreate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this product.
+        required: true
+      tags:
+      - products
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+          '*/*':
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/products/bulk-delete/:
     post:
       operationId: productsBulkDeleteCreate
@@ -3677,6 +3813,7 @@ paths:
         name: jobId
         schema:
           type: string
+          format: uuid
         required: true
       tags:
       - products
@@ -4907,7 +5044,7 @@ paths:
   /api/v1/backups/restore/:
     post:
       operationId: v1BackupsRestoreCreate
-      description: Trigger SSE restore stream.
+      description: Trigger stream-backed SSE restore execution.
       summary: Restore from backup
       parameters:
       - in: query
@@ -4918,6 +5055,12 @@ paths:
         name: include_users
         schema:
           type: boolean
+      - in: query
+        name: replay
+        schema:
+          type: boolean
+        description: Set true to replay existing stream events without enqueuing a
+          new restore job.
       tags:
       - v1
       security:
@@ -4934,13 +5077,19 @@ paths:
   /api/v1/backups/start/:
     get:
       operationId: v1BackupsStartRetrieve
-      description: Trigger SSE backup stream.
+      description: Trigger stream-backed SSE backup execution.
       summary: Start backup process
       parameters:
       - in: query
         name: include_users
         schema:
           type: boolean
+      - in: query
+        name: replay
+        schema:
+          type: boolean
+        description: Set true to replay existing stream events without enqueuing a
+          new backup job.
       tags:
       - v1
       security:
@@ -4986,7 +5135,7 @@ paths:
         Local-mirror calendar API.
 
         CRUD operations update `CalendarEvent` records and signals queue asynchronous
-        synchronization to Google Calendar through Huey tasks.
+        synchronization to Google Calendar through Dramatiq tasks.
       tags:
       - v1
       security:
@@ -5007,7 +5156,7 @@ paths:
         Local-mirror calendar API.
 
         CRUD operations update `CalendarEvent` records and signals queue asynchronous
-        synchronization to Google Calendar through Huey tasks.
+        synchronization to Google Calendar through Dramatiq tasks.
       tags:
       - v1
       requestBody:
@@ -5419,7 +5568,7 @@ paths:
         Local-mirror calendar API.
 
         CRUD operations update `CalendarEvent` records and signals queue asynchronous
-        synchronization to Google Calendar through Huey tasks.
+        synchronization to Google Calendar through Dramatiq tasks.
       parameters:
       - in: path
         name: id
@@ -5444,7 +5593,7 @@ paths:
         Local-mirror calendar API.
 
         CRUD operations update `CalendarEvent` records and signals queue asynchronous
-        synchronization to Google Calendar through Huey tasks.
+        synchronization to Google Calendar through Dramatiq tasks.
       parameters:
       - in: path
         name: id
@@ -5484,7 +5633,7 @@ paths:
         Local-mirror calendar API.
 
         CRUD operations update `CalendarEvent` records and signals queue asynchronous
-        synchronization to Google Calendar through Huey tasks.
+        synchronization to Google Calendar through Dramatiq tasks.
       parameters:
       - in: path
         name: id
@@ -5524,7 +5673,7 @@ paths:
         Local-mirror calendar API.
 
         CRUD operations update `CalendarEvent` records and signals queue asynchronous
-        synchronization to Google Calendar through Huey tasks.
+        synchronization to Google Calendar through Dramatiq tasks.
       parameters:
       - in: path
         name: id
@@ -5655,7 +5804,7 @@ paths:
           description: ''
     post:
       operationId: v1CustomerApplicationsCreate
-      description: Create application synchronously and queue calendar sync in Huey.
+      description: Create application synchronously and queue calendar sync in Dramatiq.
       tags:
       - v1
       requestBody:
@@ -5707,7 +5856,7 @@ paths:
           description: ''
     put:
       operationId: v1CustomerApplicationsUpdate
-      description: Update application synchronously and queue calendar sync in Huey.
+      description: Update application synchronously and queue calendar sync in Dramatiq.
       parameters:
       - in: path
         name: id
@@ -5781,7 +5930,7 @@ paths:
     delete:
       operationId: v1CustomerApplicationsDestroy
       description: Delete application synchronously and queue calendar cleanup in
-        Huey.
+        Dramatiq.
       parameters:
       - in: query
         name: deleteInvoices
@@ -5809,7 +5958,7 @@ paths:
     post:
       operationId: v1CustomerApplicationsAdvanceWorkflowCreate
       description: Complete current workflow synchronously and queue calendar sync
-        in Huey.
+        in Dramatiq.
       parameters:
       - in: path
         name: id
@@ -6534,6 +6683,11 @@ paths:
         description: A search term.
         schema:
           type: string
+      - in: query
+        name: uses_customer_app_workflow
+        schema:
+          type: boolean
+        description: Filter products by workflow-enabled flag.
       tags:
       - v1
       security:
@@ -7626,6 +7780,56 @@ paths:
               schema:
                 $ref: '#/components/schemas/InvoiceList'
           description: ''
+  /api/v1/invoices/from_application_prefill/{applicationId}/:
+    get:
+      operationId: v1InvoicesFromApplicationPrefillRetrieve
+      parameters:
+      - in: path
+        name: applicationId
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/invoices/get_billable_products/{customerId}/:
+    get:
+      operationId: v1InvoicesGetBillableProductsRetrieve
+      parameters:
+      - in: query
+        name: current_invoice_id
+        schema:
+          type: integer
+        description: Include already linked applications for this invoice in pending
+          groups.
+      - in: path
+        name: customerId
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/invoices/get_customer_applications/{customerId}/:
     get:
       operationId: v1InvoicesGetCustomerApplicationsList
@@ -8151,6 +8355,11 @@ paths:
         description: A search term.
         schema:
           type: string
+      - in: query
+        name: uses_customer_app_workflow
+        schema:
+          type: boolean
+        description: Filter products by whether they use customer-application workflows.
       tags:
       - v1
       security:
@@ -8325,6 +8534,70 @@ paths:
               schema:
                 $ref: '#/components/schemas/Product'
           description: ''
+  /api/v1/products/{id}/delete-preview/:
+    get:
+      operationId: v1ProductsDeletePreviewRetrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this product.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/products/{id}/force-delete/:
+    post:
+      operationId: v1ProductsForceDeleteCreate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this product.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+          '*/*':
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/products/bulk-delete/:
     post:
       operationId: v1ProductsBulkDeleteCreate
@@ -8363,6 +8636,7 @@ paths:
         name: jobId
         schema:
           type: string
+          format: uuid
         required: true
       tags:
       - v1
@@ -9886,6 +10160,9 @@ paths:
                   dateFormat:
                     type: string
                     example: dd-MM-yyyy
+                  baseCurrency:
+                    type: string
+                    example: IDR
                   title:
                     type: string
                     example: BusinessSuite (Mock)
@@ -11115,6 +11392,9 @@ components:
         file_link:
           type: string
           readOnly: true
+        thumbnail_link:
+          type: string
+          readOnly: true
         details:
           type: string
         completed:
@@ -11147,6 +11427,20 @@ components:
           readOnly: true
         ai_validation_result:
           readOnly: true
+          nullable: true
+        ai_validation_status_override:
+          enum:
+          - ''
+          - valid
+          - invalid
+          - error
+          type: string
+          description: "* `` - \n* `valid` - valid\n* `invalid` - invalid\n* `error`
+            - error"
+          x-spec-enum-id: d9048f465c57f55e
+          writeOnly: true
+        ai_validation_result_override:
+          writeOnly: true
           nullable: true
         created_at:
           type: string
@@ -11192,6 +11486,7 @@ components:
       - file
       - file_link
       - id
+      - thumbnail_link
       - updated_at
       - updated_by
       - updated_by_username
@@ -11261,6 +11556,8 @@ components:
         validation_rule_ai_positive:
           type: string
         validation_rule_ai_negative:
+          type: string
+        ai_structured_output:
           type: string
         is_in_required_documents:
           type: boolean
@@ -11391,10 +11688,15 @@ components:
         id:
           type: integer
           readOnly: true
+        product:
+          allOf:
+          - $ref: '#/components/schemas/Product'
+          readOnly: true
         customer_application:
           allOf:
           - $ref: '#/components/schemas/DocApplicationInvoice'
           readOnly: true
+          nullable: true
         amount:
           type: string
           format: decimal
@@ -11442,16 +11744,22 @@ components:
       - id
       - paid_amount
       - payments
+      - product
     InvoiceApplicationSummary:
       type: object
       properties:
         id:
           type: integer
           readOnly: true
+        product:
+          allOf:
+          - $ref: '#/components/schemas/Product'
+          readOnly: true
         customer_application:
           allOf:
           - $ref: '#/components/schemas/DocApplicationInvoice'
           readOnly: true
+          nullable: true
         amount:
           type: string
           format: decimal
@@ -11493,20 +11801,24 @@ components:
       - due_amount
       - id
       - paid_amount
+      - product
     InvoiceApplicationWrite:
       type: object
       properties:
         id:
           type: integer
+        product:
+          type: integer
+          nullable: true
         customer_application:
           type: integer
+          nullable: true
         amount:
           type: string
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
       required:
       - amount
-      - customer_application
     InvoiceCreateUpdate:
       type: object
       properties:
@@ -12069,6 +12381,10 @@ components:
           type: string
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        currency:
+          type: string
+          pattern: ^[A-Za-z]{2,3}$
+          maxLength: 3
         product_type:
           enum:
           - visa
@@ -12102,6 +12418,8 @@ components:
         validation_prompt:
           type: string
         deprecated:
+          type: boolean
+        uses_customer_app_workflow:
           type: boolean
         created_at:
           type: string
@@ -12156,6 +12474,10 @@ components:
           type: string
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        currency:
+          type: string
+          pattern: ^[A-Za-z]{2,3}$
+          maxLength: 3
         product_type:
           enum:
           - visa
@@ -12229,6 +12551,10 @@ components:
           type: string
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        currency:
+          type: string
+          pattern: ^[A-Za-z]{2,3}$
+          maxLength: 3
         product_type:
           enum:
           - visa
@@ -12262,6 +12588,8 @@ components:
         validation_prompt:
           type: string
         deprecated:
+          type: boolean
+        uses_customer_app_workflow:
           type: boolean
         tasks:
           type: array

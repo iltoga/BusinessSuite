@@ -55,8 +55,11 @@ class CalendarSyncFailurePushTests(TestCase):
             previous_due_date=self.application.due_date.isoformat(),
         )
 
-        self.assertEqual(result["status"], "failed")
-        self.assertIn("Google Calendar temporary outage", result["error"])
+        # result may not be a dict, so use getattr if needed
+        status = result["status"] if isinstance(result, dict) else getattr(result, "status", None)
+        error = result["error"] if isinstance(result, dict) else getattr(result, "error", None)
+        self.assertEqual(status, "failed")
+        self.assertIn("Google Calendar temporary outage", error)
         push_mock.assert_called_once()
         kwargs = push_mock.call_args.kwargs
         self.assertEqual(kwargs["user"], self.user)

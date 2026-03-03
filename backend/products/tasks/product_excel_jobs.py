@@ -13,7 +13,7 @@ from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.db import transaction
 from django.utils import timezone
-from huey.contrib.djhuey import db_task
+from core.tasks.runtime import QUEUE_REALTIME, db_task
 from openpyxl import Workbook, load_workbook
 from api.serializers.product_serializer import ProductCreateUpdateSerializer
 from products.models import Product
@@ -27,6 +27,7 @@ EXPORT_COLUMNS: list[tuple[str, str]] = [
     ("description", "Description"),
     ("base_price", "Base Price"),
     ("retail_price", "Retail Price"),
+    ("currency", "Currency"),
 ]
 
 
@@ -90,6 +91,15 @@ def _to_decimal_or_none(value, *, field_label: str) -> Decimal | None:
         raise ValueError(f"Invalid {field_label}: {raw}")
 
 
+def _normalize_currency_or_none(value) -> str | None:
+    raw = _safe_str(value).upper()
+    if raw == "":
+        return None
+    if not raw.isalpha() or len(raw) < 2 or len(raw) > 3:
+        raise ValueError(f"Invalid currency: {raw}")
+    return raw
+
+
 def _send_import_done_push(user, result: dict) -> None:
     if not user:
         return
@@ -115,7 +125,7 @@ def _send_import_done_push(user, result: dict) -> None:
         logger.exception("Failed to send product import push notification to user #%s", getattr(user, "id", None))
 
 
-@db_task()
+@db_task(queue=QUEUE_REALTIME)
 def run_product_export_job(job_id: str, user_id: int | None = None, search_query: str = "") -> None:
     lock_key = build_task_lock_key(namespace="products_export_job", item_id=str(job_id))
     lock_token = acquire_task_lock(lock_key)
@@ -155,6 +165,7 @@ def run_product_export_job(job_id: str, user_id: int | None = None, search_query
                             product.description or "",
                             product.base_price if product.base_price is not None else Decimal("0.00"),
                             retail_price if retail_price is not None else Decimal("0.00"),
+                            product.currency,
                         ]
                     )
                     if index == total or index % 10 == 0:
@@ -186,7 +197,7 @@ def run_product_export_job(job_id: str, user_id: int | None = None, search_query
         release_task_lock(lock_key, lock_token)
 
 
-@db_task()
+@db_task(queue=QUEUE_REALTIME)
 def run_product_import_job(job_id: str, user_id: int | None = None, file_path: str = "") -> None:
     lock_key = build_task_lock_key(namespace="products_import_job", item_id=str(job_id))
     lock_token = acquire_task_lock(lock_key)
@@ -267,6 +278,10 @@ def run_product_import_job(job_id: str, user_id: int | None = None, file_path: s
                         retail_price = _to_decimal_or_none(mapped.get("retail_price"), field_label="retail_price")
                         if retail_price is not None:
                             product_payload["retail_price"] = str(retail_price)
+                    if "currency" in mapped:
+                        currency = _normalize_currency_or_none(mapped.get("currency"))
+                        if currency is not None:
+                            product_payload["currency"] = currency
 
                     # Explicitly ignore tasks/system/unrecognized columns from custom files.
                     for key in list(mapped.keys()):
@@ -298,6 +313,8 @@ def run_product_import_job(job_id: str, user_id: int | None = None, file_path: s
                                 create_payload["base_price"] = product_payload["base_price"]
                             if "retail_price" in product_payload:
                                 create_payload["retail_price"] = product_payload["retail_price"]
+                            if "currency" in product_payload:
+                                create_payload["currency"] = product_payload["currency"]
                             serializer = ProductCreateUpdateSerializer(
                                 data=create_payload,
                                 context={"request": None},

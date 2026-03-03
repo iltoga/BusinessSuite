@@ -48,6 +48,21 @@ export class SearchToolbarComponent implements AfterViewInit, OnDestroy {
 
   /** Handle keys on search input specifically */
   handleInputKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Escape' || event.key === 'Esc') {
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (this.debounceHandle) {
+        clearTimeout(this.debounceHandle);
+        this.debounceHandle = undefined;
+      }
+
+      // Clear immediately and notify parent list components to reload without search filters.
+      this.searchValue.set('');
+      this.queryChange.emit('');
+      return;
+    }
+
     if (event.key === 'Tab') {
       event.preventDefault();
       event.stopPropagation();
@@ -143,10 +158,9 @@ export class SearchToolbarComponent implements AfterViewInit, OnDestroy {
 
   private _globalKeyHandler(event: KeyboardEvent): void {
     if (!this.isBrowser) return;
-
-    // Shift+S for Search (accept lowercase too)
-    if ((event.key || '').toUpperCase() !== 'S') return;
     if (event.altKey || event.ctrlKey || event.metaKey) return;
+
+    const key = (event.key || '').toUpperCase();
 
     const active = document.activeElement as HTMLElement | null;
     const tag = active?.tagName ?? '';
@@ -155,6 +169,18 @@ export class SearchToolbarComponent implements AfterViewInit, OnDestroy {
       tag === 'TEXTAREA' ||
       (active && (active as HTMLElement).isContentEditable);
     if (isEditable) return;
+
+    // Shift+T for table focus in list views.
+    // This intentionally reuses the same behavior as pressing Enter in the search input.
+    if (event.shiftKey && key === 'T') {
+      event.preventDefault();
+      event.stopPropagation();
+      this.tabOut.emit();
+      return;
+    }
+
+    // Shift+S / S for Search (accept lowercase too)
+    if (key !== 'S') return;
 
     event.preventDefault();
     event.stopPropagation();

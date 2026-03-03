@@ -44,6 +44,8 @@ export interface DocumentOcrStatusResponse {
   status: string;
   progress?: number;
   text?: string;
+  structuredData?: Record<string, string | null>;
+  structured_data?: Record<string, string | null>;
   error?: string;
 }
 
@@ -91,10 +93,17 @@ export class OcrService {
 
   startDocumentOcr(
     file: File,
+    options?: { documentId?: number; docTypeId?: number },
   ): Observable<OcrQueuedResponse | DocumentOcrStatusResponse> {
     const headers = this.buildHeaders();
     const formData = new FormData();
     formData.append('file', file);
+    if (typeof options?.documentId === 'number') {
+      formData.append('document_id', String(options.documentId));
+    }
+    if (typeof options?.docTypeId === 'number') {
+      formData.append('doc_type_id', String(options.docTypeId));
+    }
 
     return this.http.post<OcrQueuedResponse | DocumentOcrStatusResponse>(
       '/api/document-ocr/check/',

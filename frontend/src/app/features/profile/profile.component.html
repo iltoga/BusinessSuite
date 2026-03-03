@@ -1,4 +1,4 @@
-<div class="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+<div class="mx-auto max-w-5xl space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500 lg:space-y-5">
   <div class="flex items-center justify-between">
     <div>
       <h1 class="text-3xl font-bold tracking-tight">User Profile</h1>
@@ -6,17 +6,17 @@
     </div>
   </div>
 
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+  <div class="grid grid-cols-1 items-start gap-5 md:grid-cols-[18rem_minmax(0,1fr)] lg:gap-6">
     <!-- Sidebar/Avatar Card -->
-    <div class="space-y-6">
+    <div class="space-y-4 lg:space-y-5">
       <z-card class="overflow-hidden border-none shadow-md bg-card">
-        <div class="h-24 bg-linear-to-r from-primary/10 to-primary/30"></div>
-        <div class="px-6 pb-6 text-center -mt-12">
+        <div class="h-20 bg-linear-to-r from-primary/10 to-primary/30"></div>
+        <div class="px-5 pb-5 text-center -mt-10">
           <div class="relative inline-block group cursor-pointer" (click)="avatarInput.click()">
             <z-avatar
               [zSrc]="profile()?.avatar ?? undefined"
               [zFallback]="userInitials()"
-              class="h-24 w-24 border-4 border-card shadow-lg text-2xl font-bold transition-opacity group-hover:opacity-80"
+              class="h-20 w-20 border-4 border-card shadow-lg text-xl font-bold transition-opacity group-hover:opacity-80"
             />
             <div
               class="absolute bottom-0 right-0 p-1.5 bg-primary text-primary-foreground rounded-full shadow-sm"
@@ -31,11 +31,11 @@
               (change)="onAvatarSelected($event)"
             />
           </div>
-          <div class="mt-4">
-            <h2 class="text-xl font-bold">{{ profile()?.fullName }}</h2>
+          <div class="mt-3">
+            <h2 class="text-lg font-bold">{{ profile()?.fullName }}</h2>
             <z-badge variant="secondary" class="mt-1">{{ profile()?.role }}</z-badge>
           </div>
-          <div class="mt-6 flex flex-col gap-2 text-sm text-muted-foreground">
+          <div class="mt-4 flex flex-col gap-2 text-sm text-muted-foreground">
             <div class="flex items-center gap-2 justify-center">
               <z-icon zType="mail" class="h-4 w-4" />
               <span>{{ profile()?.email }}</span>
@@ -50,27 +50,18 @@
         </div>
       </z-card>
 
-      <z-card class="p-4 space-y-4">
+      <z-card class="space-y-5 p-4">
         <h3 class="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
           Quick Actions
         </h3>
 
-        <!-- Theme selector moved here -->
         <div class="space-y-2">
           <label class="text-sm font-medium">Theme</label>
-          <select
-            class="w-full border border-input rounded-md px-3 py-1.5 text-sm bg-background"
-            [value]="currentTheme()"
-            (change)="onThemeChange($event)"
-          >
-            <option
-              *ngFor="let theme of availableThemes"
-              [value]="theme"
-              [selected]="currentTheme() === theme"
-            >
+          <z-select class="w-full" [zValue]="currentTheme()" (zValueChange)="onThemeChange($event)">
+            <z-select-item *ngFor="let theme of availableThemes" [zValue]="theme">
               {{ formatThemeName(theme) }}
-            </option>
-          </select>
+            </z-select-item>
+          </z-select>
         </div>
 
         @if (isDesktopApp()) {
@@ -89,44 +80,42 @@
           </div>
         }
 
-        <button
-          z-button
-          variant="outline"
-          class="w-full justify-start text-destructive hover:bg-destructive/5 hover:text-destructive"
-          (click)="openChangePasswordModal()"
-        >
-          <z-icon zType="key" class="mr-2 h-4 w-4" />
-          Change Password
-        </button>
+        <div class="border-t border-border/80 pt-2">
+          <button
+            z-button
+            zType="outline"
+            class="w-full justify-start text-destructive hover:bg-destructive/5 hover:text-destructive"
+            (click)="openChangePasswordModal()"
+          >
+            <z-icon zType="key" class="mr-2 h-4 w-4" />
+            Change Password
+          </button>
+        </div>
       </z-card>
     </div>
 
     <!-- Main Settings Area -->
-    <div class="md:col-span-2 space-y-6">
+    <div class="space-y-4 lg:space-y-5">
       <z-card class="shadow-sm">
-        <div class="p-6 border-b">
-          <h3 class="text-lg font-medium">General Information</h3>
-          <p class="text-sm text-muted-foreground">Update your personal details below.</p>
-        </div>
-        <div class="p-6">
-          <form [formGroup]="profileForm" (ngSubmit)="onUpdateProfile()" class="space-y-6">
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div class="space-y-2">
+        <div class="p-5 sm:p-6">
+          <div class="mb-4 space-y-1">
+            <h3 class="text-lg font-medium">General Information</h3>
+            <p class="text-sm text-muted-foreground">Update your personal details below.</p>
+          </div>
+
+          <form [formGroup]="profileForm" (ngSubmit)="onUpdateProfile()" class="space-y-4">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div class="space-y-1.5">
                 <label for="firstName" class="text-sm font-medium">First Name</label>
-                <input
-                  z-input
-                  id="firstName"
-                  formControlName="firstName"
-                  placeholder="First Name"
-                />
+                <input z-input id="firstName" formControlName="firstName" placeholder="First Name" />
               </div>
-              <div class="space-y-2">
+              <div class="space-y-1.5">
                 <label for="lastName" class="text-sm font-medium">Last Name</label>
                 <input z-input id="lastName" formControlName="lastName" placeholder="Last Name" />
               </div>
             </div>
 
-            <div class="space-y-2">
+            <div class="space-y-1.5">
               <label for="email" class="text-sm font-medium">Email Address</label>
               <input
                 z-input
@@ -140,7 +129,7 @@
               </p>
             </div>
 
-            <div class="flex justify-end pt-4">
+            <div class="flex justify-end pt-2">
               <button
                 z-button
                 type="submit"
@@ -151,28 +140,26 @@
               </button>
             </div>
           </form>
-        </div>
-      </z-card>
 
-      <z-card class="shadow-sm border-destructive/20">
-        <div class="p-6">
-          <h3 class="text-lg font-medium text-destructive">Danger Zone</h3>
-          <p class="text-sm text-muted-foreground">Sensitive account actions.</p>
-          <div
-            class="mt-4 p-4 border rounded-md border-destructive/10 bg-destructive/5 flex items-center justify-between"
-          >
-            <div>
-              <p class="font-medium">Logout from all devices</p>
-              <p class="text-xs text-muted-foreground">Force all active sessions to expire.</p>
-            </div>
-            <button
-              z-button
-              variant="outline"
-              size="sm"
-              class="text-destructive border-destructive hover:bg-destructive hover:text-white"
+          <div class="mt-5 border-t border-border/80 pt-5">
+            <h3 class="text-base font-medium text-destructive">Danger Zone</h3>
+            <p class="text-sm text-muted-foreground">Sensitive account actions.</p>
+            <div
+              class="mt-3 flex flex-col gap-3 rounded-md border border-destructive/10 bg-destructive/5 p-3 sm:flex-row sm:items-center sm:justify-between"
             >
-              Logout All
-            </button>
+              <div>
+                <p class="font-medium">Logout from all devices</p>
+                <p class="text-xs text-muted-foreground">Force all active sessions to expire.</p>
+              </div>
+              <button
+                z-button
+                zType="outline"
+                zSize="sm"
+                class="text-destructive border-destructive hover:bg-destructive hover:text-white"
+              >
+                Logout All
+              </button>
+            </div>
           </div>
         </div>
       </z-card>
@@ -208,7 +195,7 @@
     </div>
 
     <div class="mt-6 flex gap-2 justify-end">
-      <button z-button type="button" variant="ghost" (click)="closeChangePasswordModal()">
+      <button z-button type="button" zType="ghost" (click)="closeChangePasswordModal()">
         Cancel
       </button>
       <button

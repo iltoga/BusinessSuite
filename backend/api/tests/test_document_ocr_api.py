@@ -5,6 +5,8 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
+from core.models import DocumentOCRJob
+
 
 @override_settings(
     CACHES={
@@ -32,3 +34,20 @@ class DocumentOcrApiTests(TestCase):
         self.assertTrue(response.data["queued"])
         self.assertEqual(response.data["status"], "queued")
         enqueue_mock.assert_called_once()
+
+    def test_document_ocr_status_returns_structured_payload_when_result_text_is_json(self):
+        job = DocumentOCRJob.objects.create(
+            status=DocumentOCRJob.STATUS_COMPLETED,
+            progress=100,
+            file_path="tmpfiles/document.png",
+            file_url="/uploads/tmpfiles/document.png",
+            result_text='{"permit_number":"ITK-77","holder_name":"John Doe"}',
+            created_by=self.user,
+        )
+
+        response = self.client.get(f"/api/document-ocr/status/{job.id}/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["status"], "completed")
+        self.assertEqual(response.data["structured_data"]["permit_number"], "ITK-77")
+        self.assertEqual(response.data["structuredData"]["holder_name"], "John Doe")

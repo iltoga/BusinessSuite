@@ -7,7 +7,7 @@ from core.tasks.idempotency import acquire_task_lock, build_task_lock_key, relea
 from django.core.files.storage import default_storage
 from django.db import transaction
 from django.utils import timezone
-from huey.contrib.djhuey import db_task
+from core.tasks.runtime import QUEUE_REALTIME, db_task
 from invoices.models import InvoiceImportItem, InvoiceImportJob
 from invoices.services.invoice_importer import InvoiceImporter
 from payments.models import Payment
@@ -15,7 +15,7 @@ from payments.models import Payment
 logger = Logger.get_logger(__name__)
 
 
-@db_task()
+@db_task(queue=QUEUE_REALTIME)
 def run_invoice_import_item(item_id: str) -> None:
     lock_key = build_task_lock_key(namespace="invoice_import_item", item_id=str(item_id))
     lock_token = acquire_task_lock(lock_key)

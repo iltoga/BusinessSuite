@@ -8,14 +8,14 @@ from core.utils.pdf_converter import PDFConverter, PDFConverterError
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.utils.text import slugify
-from huey.contrib.djhuey import db_task
+from core.tasks.runtime import QUEUE_REALTIME, db_task
 from invoices.models import InvoiceDownloadJob
 from invoices.services.InvoiceService import InvoiceService
 
 logger = Logger.get_logger(__name__)
 
 
-@db_task()
+@db_task(queue=QUEUE_REALTIME)
 def run_invoice_download_job(job_id: str) -> None:
     lock_key = build_task_lock_key(namespace="invoice_download_job", item_id=str(job_id))
     lock_token = acquire_task_lock(lock_key)

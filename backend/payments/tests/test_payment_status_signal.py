@@ -34,6 +34,7 @@ class PaymentStatusSignalTest(TestCase):
         )
         self.invoice_application = InvoiceApplication.objects.create(
             invoice=self.invoice,
+            product=self.product,
             customer_application=self.application,
             amount=Decimal("100.00"),
         )

@@ -5,21 +5,24 @@
   [zType]="zType()"
   [zSize]="zSize()"
   [zLoading]="loading()"
+  aria-label="Download options"
   type="button"
 >
-  <z-icon zType="download" class="mr-2" />
-  Download
-  <z-icon zType="chevron-down" class="ml-2" />
+  <z-icon zType="download" />
 </button>
 
 <z-dropdown-menu-content #menu>
   <button z-dropdown-menu-item (click)="download('docx')">
-    <z-icon zType="file-text" class="mr-2" />
+    <z-icon zType="file-text" class="mr-1" />
     Download DOCX
   </button>
   <button z-dropdown-menu-item (click)="download('pdf')">
-    <z-icon zType="file-code" class="mr-2" />
+    <z-icon zType="file-code" class="mr-1" />
     Download PDF
+  </button>
+  <button z-dropdown-menu-item (click)="openPrintPreview()">
+    <z-icon zType="eye" class="mr-1" />
+    <span><span class="font-semibold">P</span>rint Preview</span>
   </button>
 </z-dropdown-menu-content>
 
@@ -33,4 +36,16 @@
       <div class="h-2 rounded-full bg-primary" [style.width.%]="progress()"></div>
     </div>
   </div>
+}
+
+@if (printPreviewOpen()) {
+  <app-pdf-viewer-host
+    [src]="printPreviewBlob()"
+    [isBusy]="printPreviewLoading()"
+    [errorMessage]="printPreviewError()"
+    [showDownloadButton]="true"
+    [downloadFileName]="printPreviewFilename()"
+    (downloadRequested)="downloadPreviewPdf()"
+    (closed)="closePrintPreview()"
+  />
 }

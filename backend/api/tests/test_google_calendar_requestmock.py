@@ -1,7 +1,6 @@
 from unittest.mock import patch
 
 import pytest
-
 from core.models.calendar_event import CalendarEvent
 from core.tasks.calendar_sync import create_google_event_task, delete_google_event_task, update_google_event_task
 
@@ -29,7 +28,8 @@ def test_create_google_event_task_updates_sync_metadata():
 
         result = _run_huey_task(create_google_event_task, event_id=event.id)
 
-    assert result["status"] == "ok"
+    status = result["status"] if isinstance(result, dict) else getattr(result, "status", None)
+    assert status == "ok"
     event.refresh_from_db()
     assert event.google_event_id == "google-evt-1"
     assert event.sync_status == CalendarEvent.SYNC_STATUS_SYNCED
@@ -52,7 +52,8 @@ def test_update_google_event_task_updates_existing_google_event():
 
         result = _run_huey_task(update_google_event_task, event_id=event.id)
 
-    assert result["status"] == "ok"
+    status = result["status"] if isinstance(result, dict) else getattr(result, "status", None)
+    assert status == "ok"
     google_client_cls.return_value.update_event.assert_called_once()
     event.refresh_from_db()
     assert event.google_event_id == "google-evt-existing"
@@ -65,5 +66,6 @@ def test_delete_google_event_task_logs_critical_on_error():
         google_client_cls.return_value.delete_event.side_effect = RuntimeError("delete failed")
         result = _run_huey_task(delete_google_event_task, google_event_id="google-delete-id")
 
-    assert result["status"] == "failed"
+    status = result["status"] if isinstance(result, dict) else getattr(result, "status", None)
+    assert status == "failed"
     google_client_cls.return_value.delete_event.assert_called_once_with(event_id="google-delete-id")

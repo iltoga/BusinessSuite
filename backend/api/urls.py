@@ -147,6 +147,11 @@ urlpatterns = [
         name="api-customer-applications",
     ),
     path(
+        "invoices/get_billable_products/<int:customer_id>/",
+        views.InvoiceViewSet.as_view({"get": "get_billable_products"}),
+        name="api-billable-products",
+    ),
+    path(
         "invoices/get_invoice_application_due_amount/<int:invoice_application_id>/",
         views.InvoiceViewSet.as_view({"get": "get_invoice_application_due_amount"}),
         name="api-invoice-application-due-amount",

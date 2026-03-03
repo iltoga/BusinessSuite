@@ -24,7 +24,15 @@ class PushNotificationService:
     """Reusable user-oriented push notifications service."""
 
     def __init__(self, client: FcmClient | None = None):
-        self.client = client or FcmClient()
+        # Lazily initialize the FCM client so call sites can safely instantiate
+        # the service in environments where credentials are intentionally absent
+        # (for example in tests that mock send_to_user).
+        self._client = client
+
+    def _get_client(self) -> FcmClient:
+        if self._client is None:
+            self._client = FcmClient()
+        return self._client
 
     def send_to_user(
         self,
@@ -37,10 +45,11 @@ class PushNotificationService:
     ) -> PushNotificationResult:
         subscriptions = WebPushSubscription.objects.filter(user=user, is_active=True).order_by("-updated_at")
         result = PushNotificationResult()
+        client = self._get_client()
 
         for subscription in subscriptions:
             try:
-                self.client.send_to_token(
+                client.send_to_token(
                     token=subscription.token,
                     title=title,
                     body=body,

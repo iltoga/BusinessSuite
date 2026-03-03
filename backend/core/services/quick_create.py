@@ -27,6 +27,11 @@ def create_quick_product(*, validated_data, user=None) -> Product:
 
 
 def create_quick_customer_application(*, customer, product, doc_date, notes, created_by) -> DocApplication:
+    if not getattr(product, "uses_customer_app_workflow", False):
+        from rest_framework.exceptions import ValidationError
+
+        raise ValidationError("Selected product is invoice-only and cannot create a customer application.")
+
     StayPermitSubmissionWindowService().validate_doc_date(
         product=product,
         doc_date=doc_date,

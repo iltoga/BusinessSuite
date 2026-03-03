@@ -8,6 +8,7 @@ from django.db import models
 from django.db.models import Q, Sum
 from django.db.models.functions import Cast
 from django.utils import timezone
+from products.models import Product
 
 
 class InvoiceQuerySet(models.QuerySet):
@@ -186,28 +187,11 @@ class Invoice(models.Model):
     def delete(self, force=False, *args, **kwargs):
         """
         Delete an invoice. By default, invoices cannot be deleted.
-        Only superusers can force delete invoices, which will cascade delete
-        related InvoiceApplications, CustomerApplications, and Payments.
+        Only force-deletes are allowed; cascades remove line items and payments.
         """
         if not force:
             raise Exception("You can't delete an invoice.")
-
-        # Collect customer applications before deleting invoice
-        customer_applications = set()
-        for inv_app in self.invoice_applications.all():
-            customer_applications.add(inv_app.customer_application)
-
-        # Delete the invoice (cascade will delete InvoiceApplications and Payments)
         super().delete(*args, **kwargs)
-
-        # Delete the customer applications
-        for customer_app in customer_applications:
-            try:
-                customer_app.delete()
-            except Exception:
-                # Customer application might be linked to other invoices or protected
-                # Continue deleting others if one fails
-                pass
 
     def save(self, *args, **kwargs):
         if not self.invoice_no:
@@ -218,17 +202,6 @@ class Invoice(models.Model):
         super().save(*args, **kwargs)
 
         self._sync_invoice_sequence_cache()
-
-        # If invoice is paid, set all related DocApplications to completed
-        from customer_applications.models.doc_application import DocApplication
-
-        if self.status == Invoice.PAID:
-            invoice_apps = self.invoice_applications.select_related("customer_application").all()
-            for inv_app in invoice_apps:
-                doc_app = inv_app.customer_application
-                if doc_app.status != DocApplication.STATUS_COMPLETED:
-                    doc_app.status = DocApplication.STATUS_COMPLETED
-                    doc_app.save(skip_status_calculation=True)
 
     def __str__(self):
         inv_no = f"{self.invoice_no_display}" if self.invoice_no else "New"
@@ -413,8 +386,17 @@ class InvoiceApplication(models.Model):
     ]
 
     invoice = models.ForeignKey(Invoice, related_name="invoice_applications", on_delete=models.CASCADE)
+    product = models.ForeignKey(
+        Product,
+        related_name="invoice_applications",
+        on_delete=models.PROTECT,
+    )
     customer_application = models.ForeignKey(
-        DocApplication, related_name="invoice_applications", on_delete=models.CASCADE
+        DocApplication,
+        related_name="invoice_applications",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
     )
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(choices=PAYMENT_STATUS_CHOICES, default=PENDING, max_length=20, db_index=True)
@@ -422,6 +404,9 @@ class InvoiceApplication(models.Model):
 
     class Meta:
         ordering = ("-id",)
+        indexes = [
+            models.Index(fields=["invoice", "product"], name="invoiceapp_inv_prod_idx"),
+        ]
         constraints = [
             models.UniqueConstraint(fields=["customer_application", "invoice"], name="unique_invoice_application")
         ]
@@ -474,7 +459,8 @@ class InvoiceApplication(models.Model):
         return InvoiceApplication.PENDING
 
     def __str__(self):
-        return f"{self.invoice.invoice_no_display} - {self.customer_application}"
+        application_label = str(self.customer_application) if self.customer_application else self.product.code
+        return f"{self.invoice.invoice_no_display} - {application_label}"
 
     def save(self, *args, **kwargs):
         self.status = self.calculate_payment_status()

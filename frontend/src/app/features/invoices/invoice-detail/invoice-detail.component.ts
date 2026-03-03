@@ -8,9 +8,10 @@ import {
   computed,
   inject,
   signal,
+  viewChild,
   type OnInit,
 } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 
 import {
   InvoicesService,
@@ -41,7 +42,6 @@ import { PaymentModalComponent } from '../payment-modal/payment-modal.component'
   standalone: true,
   imports: [
     CommonModule,
-    RouterLink,
     ZardBadgeComponent,
     ZardButtonComponent,
     ZardCardComponent,
@@ -71,6 +71,7 @@ export class InvoiceDetailComponent implements OnInit {
   readonly invoice = signal<InvoiceDetail | null>(null);
   readonly isLoading = signal(false);
   readonly originSearchQuery = signal<string | null>(null);
+  readonly originPage = signal<number | null>(null);
   readonly paymentModalOpen = signal(false);
   readonly selectedApplication = signal<InvoiceApplicationDetail | null>(null);
   readonly selectedApplications = signal<InvoiceApplicationDetail[]>([]);
@@ -78,6 +79,7 @@ export class InvoiceDetailComponent implements OnInit {
   readonly paymentDeleteOpen = signal(false);
   readonly paymentToDelete = signal<Payment | null>(null);
   readonly isDeletingPayment = signal(false);
+  private readonly downloadDropdown = viewChild(InvoiceDownloadDropdownComponent);
 
   readonly totalDue = computed(() => this.invoice()?.totalDueAmount ?? 0);
   readonly dueApplications = computed(() =>
@@ -104,6 +106,9 @@ export class InvoiceDetailComponent implements OnInit {
       focusId: invoice?.id,
       searchQuery: this.originSearchQuery(),
     };
+    if (this.originPage()) {
+      focusState['page'] = this.originPage();
+    }
 
     if (st?.from === 'applications') {
       this.router.navigate(['/applications'], { state: focusState });
@@ -114,6 +119,7 @@ export class InvoiceDetailComponent implements OnInit {
       this.router.navigateByUrl(st.returnUrl, {
         state: {
           searchQuery: st.searchQuery ?? this.originSearchQuery(),
+          page: st.page ?? this.originPage() ?? null,
         },
       });
       return;
@@ -123,6 +129,7 @@ export class InvoiceDetailComponent implements OnInit {
       this.router.navigate(['/customers', st.customerId], {
         state: {
           searchQuery: st.searchQuery ?? this.originSearchQuery(),
+          page: st.page ?? this.originPage() ?? null,
         },
       });
       return;
@@ -140,6 +147,7 @@ export class InvoiceDetailComponent implements OnInit {
       (activeElement instanceof HTMLElement && activeElement.isContentEditable);
 
     if (isInput) return;
+    if (event.repeat) return;
 
     const invoice = this.invoice();
     if (!invoice) return;
@@ -147,15 +155,7 @@ export class InvoiceDetailComponent implements OnInit {
     // E --> Edit
     if (event.key === 'E' && !event.ctrlKey && !event.altKey && !event.metaKey) {
       event.preventDefault();
-      this.router.navigate(['/invoices', invoice.id, 'edit'], {
-        state: {
-          from: history.state?.from,
-          customerId: history.state?.customerId,
-          returnUrl: history.state?.returnUrl,
-          focusId: invoice.id,
-          searchQuery: this.originSearchQuery(),
-        },
-      });
+      this.navigateToEdit(invoice.id);
     }
 
     // B or Left Arrow --> Back to list
@@ -167,6 +167,18 @@ export class InvoiceDetailComponent implements OnInit {
     ) {
       event.preventDefault();
       this.goBack();
+      return;
+    }
+
+    // P --> Print Preview from invoice download control
+    if (event.key.toLowerCase() === 'p' && !event.ctrlKey && !event.altKey && !event.metaKey) {
+      const dropdown = this.downloadDropdown();
+      if (!dropdown) {
+        return;
+      }
+
+      event.preventDefault();
+      dropdown.openPrintPreview();
     }
   }
 
@@ -175,24 +187,44 @@ export class InvoiceDetailComponent implements OnInit {
   }
 
   getApplicationProductCode(app: InvoiceApplicationDetail): string {
-    const customerApplication = app.customerApplication as unknown as {
-      product?: { code?: string | null } | null;
-    };
-    return customerApplication?.product?.code ?? '—';
+    const lineProduct = app.product as { code?: string | null } | null;
+    const customerApplication = app.customerApplication as
+      | { product?: { code?: string | null } | null }
+      | null;
+    return lineProduct?.code ?? customerApplication?.product?.code ?? '—';
   }
 
   getApplicationProductName(app: InvoiceApplicationDetail): string {
-    const customerApplication = app.customerApplication as unknown as {
-      product?: { name?: string | null } | null;
-    };
-    return customerApplication?.product?.name ?? '—';
+    const lineProduct = app.product as { name?: string | null } | null;
+    const customerApplication = app.customerApplication as
+      | { product?: { name?: string | null } | null }
+      | null;
+    return lineProduct?.name ?? customerApplication?.product?.name ?? '—';
   }
 
   getApplicationCustomerName(app: InvoiceApplicationDetail): string {
-    const customerApplication = app.customerApplication as unknown as {
-      customer?: { fullName?: string | null } | null;
-    };
-    return customerApplication?.customer?.fullName ?? '—';
+    const customerApplication = app.customerApplication as
+      | { customer?: { fullName?: string | null } | null }
+      | null;
+    return customerApplication?.customer?.fullName ?? 'Unlinked line item';
+  }
+
+  openLinkedApplication(applicationId: number): void {
+    const invoiceId = this.invoice()?.id;
+    if (!invoiceId || !applicationId) {
+      return;
+    }
+
+    const returnUrl = this.router.url.startsWith('/') ? this.router.url : `/invoices/${invoiceId}`;
+    this.router.navigate(['/applications', applicationId], {
+      state: {
+        from: 'invoices',
+        returnUrl,
+        searchQuery: this.originSearchQuery(),
+        page: this.originPage() ?? undefined,
+        focusId: applicationId,
+      },
+    });
   }
 
   ngOnInit(): void {
@@ -201,6 +233,10 @@ export class InvoiceDetailComponent implements OnInit {
     }
     const st = (window as any).history.state || {};
     this.originSearchQuery.set(st.searchQuery ?? null);
+    const page = Number(st.page);
+    if (Number.isFinite(page) && page > 0) {
+      this.originPage.set(Math.floor(page));
+    }
 
     const idParam = this.route.snapshot.paramMap.get('id');
     if (idParam) {
@@ -213,6 +249,19 @@ export class InvoiceDetailComponent implements OnInit {
     this.selectedApplications.set([]);
     this.selectedPayment.set(null);
     this.paymentModalOpen.set(true);
+  }
+
+  navigateToEdit(invoiceId: number): void {
+    this.router.navigate(['/invoices', invoiceId, 'edit'], {
+      state: {
+        from: history.state?.from,
+        customerId: history.state?.customerId,
+        returnUrl: history.state?.returnUrl,
+        focusId: invoiceId,
+        searchQuery: this.originSearchQuery(),
+        page: this.originPage() ?? undefined,
+      },
+    });
   }
 
   openFullPaymentModal(): void {

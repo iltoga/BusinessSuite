@@ -18,6 +18,7 @@ export interface ProductCreateUpdate {
     immigrationId?: string | null;
     basePrice?: string | null;
     retailPrice?: string;
+    currency?: string;
     /**
      * * `visa` - Visa * `other` - Other
      */

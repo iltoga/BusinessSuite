@@ -1,5 +1,5 @@
 """
-Custom management command to enqueue scheduled jobs via Huey.
+Custom management command to enqueue scheduled jobs via Dramatiq.
 This command queues the same jobs that are scheduled periodically.
 """
 
@@ -14,7 +14,7 @@ logger = Logger.get_logger(__name__)
 
 
 class Command(BaseCommand):
-    help = "Queue scheduled jobs manually via Huey"
+    help = "Queue scheduled jobs manually via Dramatiq"
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -32,8 +32,6 @@ class Command(BaseCommand):
             run_auditlog_prune_now,
             run_openrouter_health_check_now,
         )
-
-        force = options.get("force", False)
 
         cron_jobs = [
             ("FullBackupJob", enqueue_full_backup_now),

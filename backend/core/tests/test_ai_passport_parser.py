@@ -224,7 +224,65 @@ class AIPassportParserTestCase(TestCase):
         result = parser.parse_passport_image(fake_image_bytes, filename="passport.jpeg")
 
         self.assertFalse(result.success)
-        self.assertIn("API Error", result.error_message)
+        self.assertIn("AI provider error", result.error_message)
+
+    @override_settings(
+        OPENROUTER_API_KEY="test-key",
+        LLM_PROVIDER="openrouter",
+    )
+    @patch(OPENAI_PATCH_TARGET)
+    def test_validate_passport_image_two_shot_success(self, mock_openai):
+        parser = AIPassportParser()
+
+        pass_one = {
+            "parameter_checks": {
+                "mrz_two_lines_present_and_readable": {"valid": True, "reason": "Both MRZ lines readable."},
+            },
+            "overall_summary": "All checks passed.",
+        }
+        pass_two = {
+            "is_valid": True,
+            "passport_data": {
+                "first_name": "Mario",
+                "last_name": "Rossi",
+                "full_name": "Mario Rossi",
+                "nationality": "ITA",
+                "nationality_code": "ITA",
+                "gender": "M",
+                "date_of_birth": "1985-03-15",
+                "birth_place": "Rome",
+                "passport_number": "YA1234567",
+                "passport_issue_date": "2020-01-10",
+                "passport_expiration_date": "2030-01-09",
+                "issuing_country": "Italy",
+                "issuing_country_code": "ITA",
+                "issuing_authority": "Ministry of Interior",
+                "height_cm": 175,
+                "eye_color": "Brown",
+                "address_abroad": None,
+                "document_type": "P",
+                "confidence_score": 0.92,
+                "full_page_visible": True,
+                "all_corners_visible": True,
+                "mrz_fully_visible": True,
+                "has_cropped_or_cutoff": False,
+                "is_blurry": False,
+            },
+            "ordered_failures": [],
+            "summary": "Passport is valid.",
+        }
+
+        with patch.object(parser.ai_client, "chat_completion_json", side_effect=[pass_one, pass_two]) as mock_json:
+            result = parser.validate_passport_image_two_shot(
+                b"\x89PNG\r\n\x1a\n" + b"\x00" * 100,
+                filename="passport.jpeg",
+                analysis_context={"deterministic_quality": {"is_good_quality": True}},
+            )
+
+        self.assertTrue(result.success)
+        self.assertEqual(result.passport_data.passport_number, "YA1234567")
+        self.assertTrue(result.decision["is_valid"])
+        self.assertEqual(mock_json.call_count, 2)
 
     def test_passport_schema_structure(self):
         """Test that the passport schema has the correct structure."""

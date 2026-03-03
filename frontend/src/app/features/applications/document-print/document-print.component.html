@@ -7,38 +7,12 @@
     <!-- Print controls - hidden when printing -->
     <div class="print:hidden flex items-center justify-between mb-8">
       <button z-button zType="ghost" (click)="goBack()">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          class="h-4 w-4 mr-2"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M10 19l-7-7m0 0l7-7m-7 7h18"
-          />
-        </svg>
+        <z-icon zType="arrow-left" class="h-4 w-4 mr-2" />
         Back to Application
       </button>
 
       <button z-button zType="default" (click)="print()">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          class="h-4 w-4 mr-2"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
-          />
-        </svg>
+        <z-icon zType="printer" class="h-4 w-4 mr-2" />
         Print Document
       </button>
     </div>
@@ -107,26 +81,12 @@
               <div>
                 @if (document()!.completed) {
                   <span class="inline-flex items-center text-green-600 font-medium">
-                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M5 13l4 4L19 7"
-                      ></path>
-                    </svg>
+                    <z-icon zType="check" class="w-4 h-4 mr-1" />
                     Completed
                   </span>
                 } @else {
                   <span class="inline-flex items-center text-yellow-600 font-medium">
-                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                      ></path>
-                    </svg>
+                    <z-icon zType="clock" class="w-4 h-4 mr-1" />
                     Pending
                   </span>
                 }

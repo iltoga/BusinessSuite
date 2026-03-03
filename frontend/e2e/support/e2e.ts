@@ -3,6 +3,7 @@ import { expect, test as base } from '@playwright/test';
 const DEFAULT_APP_CONFIG = {
   MOCK_AUTH_ENABLED: 'True',
   title: 'RevisBali CRM',
+  baseCurrency: 'IDR',
 };
 
 const DEFAULT_MOCK_AUTH_CONFIG = {
@@ -29,7 +30,7 @@ export const test = base.extend<{
         try {
           localStorage.setItem('auth_token', 'mock-token');
           localStorage.setItem('auth_refresh_token', 'mock-refresh');
-          (window as any).APP_CONFIG = { MOCK_AUTH_ENABLED: 'True' };
+          (window as any).APP_CONFIG = { MOCK_AUTH_ENABLED: 'True', baseCurrency: 'IDR' };
         } catch {
           // Ignore storage errors in non-browser contexts.
         }

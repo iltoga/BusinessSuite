@@ -39,24 +39,27 @@
         [style.width]="previewWidth()"
       >
         @if (showPreviewSkeleton()) {
-          <div class="absolute inset-0 animate-pulse p-4">
-            <div class="h-full w-full rounded-md bg-muted/60"></div>
+          <div class="preview-skeleton-overlay">
+            <div class="preview-skeleton-block"></div>
           </div>
         }
-        <div class="flex h-full items-center justify-center">
+        <div class="flex h-full w-full items-center justify-center">
           @if (showPreview()) {
             @if (previewType() === 'image') {
               <app-image-magnifier
+                class="h-full w-full"
                 [src]="previewUrl()"
                 alt="Selected file preview"
-                [imageClass]="'h-full max-h-full w-auto max-w-full object-contain p-2'"
-                [wrapperClass]="'max-w-full'"
+                [imageClass]="previewImageClass()"
+                [wrapperClass]="'flex h-full w-full items-center justify-center'"
                 [enabledByDefault]="magnifierEnabledByDefault()"
-                [showToggle]="showMagnifierToggle()"
+                [showToggle]="showMagnifierToggle() && !showImageLoadingSkeleton()"
                 [toggleClass]="'h-9 w-9 bg-background/90 border border-border shadow-sm'"
+                (imageLoaded)="onPreviewImageLoaded()"
+                (imageError)="onPreviewImageError()"
               />
             } @else if (previewType() === 'pdf') {
-              <iframe [src]="sanitizedPreview()" class="h-full w-full border-0"></iframe>
+              <iframe [src]="sanitizedPreview()" class="block h-full w-full border-0"></iframe>
             }
           } @else if (!previewLoading()) {
             <div class="px-3 text-xs text-muted-foreground">Preview not available.</div>

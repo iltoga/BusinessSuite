@@ -123,7 +123,7 @@
                 } @else if (result.status === 'categorized') {
                   <z-badge
                     zType="warning"
-                    title="Recognized, but no document slot for this type in the application"
+                    [zTooltip]="'Recognized, but no document slot for this type in the application'"
                     >No Slot</z-badge
                   >
                 } @else if (result.status === 'error') {
@@ -140,7 +140,7 @@
                 @if (result.validationStatus === 'valid') {
                   <z-badge zType="success">Valid</z-badge>
                 } @else if (result.validationStatus === 'invalid') {
-                  <z-badge zType="destructive" [title]="result.validationReasoning ?? ''"
+                  <z-badge zType="destructive" [zTooltip]="result.validationReasoning ?? ''"
                     >Invalid</z-badge
                   >
                 } @else if (result.validationStatus === 'pending') {

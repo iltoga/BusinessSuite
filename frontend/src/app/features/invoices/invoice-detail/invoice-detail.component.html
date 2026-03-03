@@ -32,9 +32,7 @@
           zType="secondary"
           zSize="sm"
         />
-        <a [routerLink]="['/invoices', invoice()!.id, 'edit']">
-          <z-button zType="warning">Edit</z-button>
-        </a>
+        <z-button zType="warning" (click)="navigateToEdit(invoice()!.id)">Edit</z-button>
         <z-button zType="ghost" (click)="goBack()">Back</z-button>
       </div>
     </div>
@@ -87,7 +85,7 @@
 
     <z-card class="p-4 sm:p-6">
       <div class="flex flex-wrap items-center justify-between gap-3">
-        <h2 class="text-lg font-semibold">Applications</h2>
+        <h2 class="text-lg font-semibold">Invoice Lines</h2>
         @if (hasMultipleDueApplications()) {
           <z-button zType="warning" zSize="sm" (click)="openFullPaymentModal()">
             Add Full Payment
@@ -97,35 +95,49 @@
       <div class="mt-4 space-y-4">
         @for (app of invoice()!.invoiceApplications; track app.id) {
           <div class="invoice-application-card rounded-lg border p-4">
-            <div class="flex flex-wrap items-center justify-between gap-3">
-              <div>
+            <div class="invoice-application-summary">
+              <div class="invoice-application-identity">
                 <div class="font-medium">
                   {{ getApplicationProductCode(app) }} - {{ getApplicationProductName(app) }}
                 </div>
                 <div class="text-xs text-muted-foreground">
                   {{ getApplicationCustomerName(app) }}
+                  @if (app.customerApplication?.id) {
+                    ·
+                    <button
+                      type="button"
+                      class="invoice-linked-app-link"
+                      (click)="openLinkedApplication(app.customerApplication!.id)"
+                    >
+                      Linked app #{{ app.customerApplication?.id }}
+                    </button>
+                  }
                 </div>
               </div>
-              <div class="invoice-application-metrics flex flex-wrap items-center gap-4">
-                <div>
+              <div class="invoice-application-metrics">
+                <div class="invoice-application-metric">
                   <div class="text-xs text-muted-foreground">Amount</div>
                   <div class="font-medium">{{ formatCurrency(app.amount) }}</div>
                 </div>
-                <div>
+                <div class="invoice-application-metric">
                   <div class="text-xs text-muted-foreground">Paid</div>
                   <div class="font-medium">{{ formatCurrency(app.paidAmount) }}</div>
                 </div>
-                <div>
+                <div class="invoice-application-metric">
                   <div class="text-xs text-muted-foreground">Due</div>
                   <div class="font-medium">{{ formatCurrency(app.dueAmount) }}</div>
                 </div>
-                <z-badge [zType]="paymentStatusVariant(app.status)">{{ app.status }}</z-badge>
+                <z-badge class="invoice-application-status" [zType]="paymentStatusVariant(app.status)">
+                  {{ app.status }}
+                </z-badge>
               </div>
-              @if (hasDue(app)) {
-                <z-button zType="success" zSize="sm" (click)="openPaymentModal(app)">
-                  Add Payment
-                </z-button>
-              }
+              <div class="invoice-application-action">
+                @if (hasDue(app)) {
+                  <z-button zType="success" zSize="sm" (click)="openPaymentModal(app)">
+                    Add Payment
+                  </z-button>
+                }
+              </div>
             </div>
 
             <div class="mt-4">

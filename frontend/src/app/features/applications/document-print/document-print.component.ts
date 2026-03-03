@@ -15,6 +15,7 @@ import { ConfigService } from '@/core/services/config.service';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
+import { ZardIconComponent } from '@/shared/components/icon';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 import { sanitizeResourceUrl } from '@/shared/utils/resource-url-sanitizer';
 
@@ -44,7 +45,14 @@ interface DocumentPrintData {
 @Component({
   selector: 'app-document-print',
   standalone: true,
-  imports: [CommonModule, ZardBadgeComponent, ZardButtonComponent, ZardCardComponent, AppDatePipe],
+  imports: [
+    CommonModule,
+    ZardBadgeComponent,
+    ZardButtonComponent,
+    ZardCardComponent,
+    ZardIconComponent,
+    AppDatePipe,
+  ],
   templateUrl: './document-print.component.html',
   styleUrls: ['./document-print.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

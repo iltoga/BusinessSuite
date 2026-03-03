@@ -5,16 +5,16 @@ Endpoints for AI-powered document classification:
 - POST /api/customer-applications/{id}/categorize-documents/ — upload & categorize multiple files
 - GET /api/document-categorization/stream/{job_id}/ — SSE progress streaming
 - POST /api/document-categorization/{job_id}/apply/ — apply confirmed mappings
-- POST /api/documents/{id}/validate-category/ — single-file type validation
+- POST /api/documents/{id}/validate-category/ — single-file pre-upload AI validation
 """
 
-import json
 import os
 import time
 import traceback as tb_module
-from typing import Any, cast
+from typing import Any, Generator, cast
 
 from api.serializers.categorization_serializer import CategorizationApplySerializer, DocumentCategorizationJobSerializer
+from api.utils.redis_sse import iter_replay_and_live_events
 from api.utils.sse_auth import sse_token_auth_required
 from core.services.ai_document_categorizer import (
     AIDocumentCategorizer,
@@ -22,7 +22,9 @@ from core.services.ai_document_categorizer import (
     extract_validation_doc_number,
     extract_validation_expiration_date,
 )
+from core.services.ai_client import get_ai_user_message, is_ai_timeout_exception
 from core.services.logger_service import Logger
+from core.services.redis_streams import format_sse_event, resolve_last_event_id, stream_file_key, stream_job_key
 from core.tasks.document_categorization import run_document_categorization_item
 from customer_applications.models import DocApplication, Document, DocumentCategorizationItem, DocumentCategorizationJob
 from django.core.files.storage import default_storage
@@ -57,6 +59,28 @@ class _ProgressTrackedUploadedFile:
 
     def __getattr__(self, name):
         return getattr(self._wrapped_file, name)
+
+
+def _sync_ai_validation_from_categorization_item(document: Document, item: DocumentCategorizationItem) -> None:
+    """Copy per-item AI validation outcome onto the target document for UI AI Check badges."""
+    if not document.doc_type or not document.doc_type.ai_validation:
+        document.ai_validation_status = Document.AI_VALIDATION_NONE
+        document.ai_validation_result = None
+        return
+
+    raw_status = (item.validation_status or "").strip().lower()
+    allowed_statuses = {
+        Document.AI_VALIDATION_VALID,
+        Document.AI_VALIDATION_INVALID,
+        Document.AI_VALIDATION_ERROR,
+    }
+    if raw_status in allowed_statuses:
+        document.ai_validation_status = raw_status
+        document.ai_validation_result = item.validation_result if item.validation_result is not None else None
+        return
+
+    document.ai_validation_status = Document.AI_VALIDATION_NONE
+    document.ai_validation_result = None
 
 
 def _parse_provider_order(raw_value: Any) -> list[str] | None:
@@ -168,6 +192,7 @@ def _update_upload_progress(
 def _upload_files_to_job(*, job: DocumentCategorizationJob, files: list) -> tuple[int, int]:
     temp_dir = f"tmp/categorization/{job.id}"
     dispatched_tasks = 0
+    item_ids_to_dispatch: list[str] = []
 
     total_files = max(job.total_files, len(files))
     total_bytes = sum(int(getattr(uploaded_file, "size", 0) or 0) for uploaded_file in files)
@@ -240,9 +265,7 @@ def _upload_files_to_job(*, job: DocumentCategorizationJob, files: list) -> tupl
         item.file_path = saved_path
         item.result = {"stage": "uploaded", "ai_validation_enabled": None}
         item.save(update_fields=["file_path", "result", "updated_at"])
-
-        run_document_categorization_item(str(item.id))
-        dispatched_tasks += 1
+        item_ids_to_dispatch.append(str(item.id))
 
         uploaded_files += 1
         persist_progress(current_file=safe_filename, force=True)
@@ -256,6 +279,12 @@ def _upload_files_to_job(*, job: DocumentCategorizationJob, files: list) -> tupl
         current_file=None,
         complete=True,
     )
+
+    # Enqueue one independent worker task per file after upload has completed.
+    # This ensures multi-upload processing starts in parallel with isolated item workflows.
+    for item_id in item_ids_to_dispatch:
+        run_document_categorization_item.delay(item_id)
+        dispatched_tasks += 1
 
     return uploaded_files, dispatched_tasks
 
@@ -302,7 +331,7 @@ def categorize_documents_init(request, application_id):
 def categorize_documents(request, application_id):
     """
     Upload multiple files and start AI categorization.
-    Files are saved to temp storage and Huey tasks are dispatched in parallel.
+    Files are saved to temp storage and Dramatiq tasks are dispatched in parallel.
     """
     try:
         doc_application = DocApplication.objects.get(id=application_id)
@@ -395,6 +424,9 @@ def categorization_stream_sse(request, job_id):
     if not request.user.is_staff and job.created_by_id != request.user.id:
         return JsonResponse({"error": "Forbidden"}, status=403)
 
+    replay_cursor = resolve_last_event_id(request)
+    stream_key = stream_job_key(job.id)
+
     def event_stream():
         sent_states = {}
         total_files = job.total_files
@@ -428,7 +460,12 @@ def categorization_stream_sse(request, job_id):
             },
         )
 
-        while True:
+        def _collect_updates(
+            *,
+            event_id: str | None = None,
+            changed_item_ids: set[int] | None = None,
+        ) -> tuple[list[str], bool]:
+            messages: list[str] = []
             job.refresh_from_db()
             total_files = job.total_files
 
@@ -472,55 +509,69 @@ def categorization_stream_sse(request, job_id):
                 or phase != unified_progress_state["phase"]
                 or unified_message != unified_progress_state["message"]
             ):
-                yield _send_event(
-                    "progress",
-                    {
-                        "jobId": str(job.id),
-                        "phase": phase,
-                        "overallPercent": overall_percent,
-                        "uploadedFiles": uploaded_files,
-                        "totalFiles": upload_total_files,
-                        "processedFiles": int(job.processed_files or 0),
-                        "uploadedBytes": uploaded_bytes,
-                        "totalBytes": total_bytes,
-                        "message": unified_message,
-                    },
+                messages.append(
+                    _send_event(
+                        "progress",
+                        {
+                            "jobId": str(job.id),
+                            "phase": phase,
+                            "overallPercent": overall_percent,
+                            "uploadedFiles": uploaded_files,
+                            "totalFiles": upload_total_files,
+                            "processedFiles": int(job.processed_files or 0),
+                            "uploadedBytes": uploaded_bytes,
+                            "totalBytes": total_bytes,
+                            "message": unified_message,
+                        },
+                        event_id=event_id,
+                    )
                 )
                 unified_progress_state["percent"] = overall_percent
                 unified_progress_state["phase"] = phase
                 unified_progress_state["message"] = unified_message
 
             if uploaded_bytes != upload_state["uploaded_bytes"] or uploaded_files != upload_state["uploaded_files"]:
-                yield _send_event(
-                    "upload_progress",
-                    {
-                        "jobId": str(job.id),
-                        "uploadedFiles": uploaded_files,
-                        "totalFiles": upload_total_files,
-                        "uploadedBytes": uploaded_bytes,
-                        "totalBytes": total_bytes,
-                        "currentFile": current_file,
-                        "message": f"Uploading files... {uploaded_files}/{upload_total_files}",
-                    },
+                messages.append(
+                    _send_event(
+                        "upload_progress",
+                        {
+                            "jobId": str(job.id),
+                            "uploadedFiles": uploaded_files,
+                            "totalFiles": upload_total_files,
+                            "uploadedBytes": uploaded_bytes,
+                            "totalBytes": total_bytes,
+                            "currentFile": current_file,
+                            "message": f"Uploading files... {uploaded_files}/{upload_total_files}",
+                        },
+                        event_id=event_id,
+                    )
                 )
                 upload_state["uploaded_bytes"] = uploaded_bytes
                 upload_state["uploaded_files"] = uploaded_files
 
             if upload_complete and not upload_state["complete_sent"]:
-                yield _send_event(
-                    "upload_complete",
-                    {
-                        "jobId": str(job.id),
-                        "uploadedFiles": uploaded_files,
-                        "totalFiles": upload_total_files,
-                        "uploadedBytes": uploaded_bytes,
-                        "totalBytes": total_bytes,
-                        "message": f"Upload complete: {uploaded_files}/{upload_total_files} file(s).",
-                    },
+                messages.append(
+                    _send_event(
+                        "upload_complete",
+                        {
+                            "jobId": str(job.id),
+                            "uploadedFiles": uploaded_files,
+                            "totalFiles": upload_total_files,
+                            "uploadedBytes": uploaded_bytes,
+                            "totalBytes": total_bytes,
+                            "message": f"Upload complete: {uploaded_files}/{upload_total_files} file(s).",
+                        },
+                        event_id=event_id,
+                    )
                 )
                 upload_state["complete_sent"] = True
 
-            items = list(job.items.all().order_by("sort_index"))
+            if changed_item_ids is None:
+                items = list(job.items.all().order_by("sort_index"))
+            elif changed_item_ids:
+                items = list(job.items.filter(id__in=changed_item_ids).order_by("sort_index"))
+            else:
+                items = []
 
             for item in items:
                 state = sent_states.get(
@@ -540,115 +591,140 @@ def categorization_stream_sse(request, job_id):
                 stage = result.get("stage", "")
 
                 if stage == "uploading" and not state["upload_started"]:
-                    yield _send_event(
-                        "file_upload_start",
-                        {
-                            "index": item.sort_index,
-                            "filename": item.filename,
-                            "message": f"Uploading {item.filename}...",
-                        },
+                    messages.append(
+                        _send_event(
+                            "file_upload_start",
+                            {
+                                "index": item.sort_index,
+                                "filename": item.filename,
+                                "message": f"Uploading {item.filename}...",
+                            },
+                            event_id=event_id,
+                        )
                     )
                     state["upload_started"] = True
 
                 if stage != "uploading" and not state["upload_done"]:
-                    yield _send_event(
-                        "file_uploaded",
-                        {
-                            "index": item.sort_index,
-                            "filename": item.filename,
-                            "message": f"Uploaded {item.filename}",
-                        },
+                    messages.append(
+                        _send_event(
+                            "file_uploaded",
+                            {
+                                "index": item.sort_index,
+                                "filename": item.filename,
+                                "message": f"Uploaded {item.filename}",
+                            },
+                            event_id=event_id,
+                        )
                     )
                     state["upload_done"] = True
 
                 # Processing started
                 if item.status == DocumentCategorizationItem.STATUS_PROCESSING and not state["processing"]:
-                    yield _send_event(
-                        "file_start",
-                        {
-                            "index": item.sort_index,
-                            "filename": item.filename,
-                            "message": f"Categorizing {item.filename}...",
-                        },
+                    messages.append(
+                        _send_event(
+                            "file_start",
+                            {
+                                "index": item.sort_index,
+                                "filename": item.filename,
+                                "message": f"Categorizing {item.filename}...",
+                            },
+                            event_id=event_id,
+                        )
                     )
                     state["processing"] = True
 
                 # Pass 2 fallback triggered
                 if stage == "categorizing_pass_2" and not state["pass2_sent"]:
-                    yield _send_event(
-                        "file_categorizing_pass2",
-                        {
-                            "index": item.sort_index,
-                            "filename": item.filename,
-                            "message": f"🔄 Retrying {item.filename} with higher-tier model...",
-                        },
+                    messages.append(
+                        _send_event(
+                            "file_categorizing_pass2",
+                            {
+                                "index": item.sort_index,
+                                "filename": item.filename,
+                                "message": f"🔄 Retrying {item.filename} with higher-tier model...",
+                            },
+                            event_id=event_id,
+                        )
                     )
                     state["pass2_sent"] = True
 
                 # Categorized (but may still be validating)
                 if item.status == DocumentCategorizationItem.STATUS_CATEGORIZED and not state["categorized_sent"]:
                     pass_used = result.get("pass_used", 1)
-                    yield _send_event(
-                        "file_categorized",
-                        {
-                            "index": item.sort_index,
-                            "filename": item.filename,
-                            "documentType": result.get("document_type"),
-                            "documentTypeId": result.get("document_type_id"),
-                            "documentId": item.document_id,
-                            "confidence": item.confidence,
-                            "reasoning": result.get("reasoning", ""),
-                            "categorizationPass": pass_used,
-                            "aiValidationEnabled": bool(result.get("ai_validation_enabled")),
-                            "message": f"✓ {item.filename} → {result.get('document_type', 'Unknown')}"
-                            + (f" (pass {pass_used})" if pass_used > 1 else ""),
-                        },
+                    messages.append(
+                        _send_event(
+                            "file_categorized",
+                            {
+                                "itemId": str(item.id),
+                                "index": item.sort_index,
+                                "filename": item.filename,
+                                "documentType": result.get("document_type"),
+                                "documentTypeId": result.get("document_type_id"),
+                                "documentId": item.document_id,
+                                "confidence": item.confidence,
+                                "reasoning": result.get("reasoning", ""),
+                                "categorizationPass": pass_used,
+                                "aiValidationEnabled": bool(result.get("ai_validation_enabled")),
+                                "message": f"✓ {item.filename} → {result.get('document_type', 'Unknown')}"
+                                + (f" (pass {pass_used})" if pass_used > 1 else ""),
+                            },
+                            event_id=event_id,
+                        )
                     )
                     state["categorized_sent"] = True
 
                 # Validating in progress
                 if stage == "validating" and not state["validating_sent"]:
-                    yield _send_event(
-                        "file_validating",
-                        {
-                            "index": item.sort_index,
-                            "filename": item.filename,
-                            "aiValidationEnabled": bool(result.get("ai_validation_enabled")),
-                            "message": f"🔍 Validating {item.filename}...",
-                        },
+                    messages.append(
+                        _send_event(
+                            "file_validating",
+                            {
+                                "index": item.sort_index,
+                                "filename": item.filename,
+                                "aiValidationEnabled": bool(result.get("ai_validation_enabled")),
+                                "message": f"🔍 Validating {item.filename}...",
+                            },
+                            event_id=event_id,
+                        )
                     )
                     state["validating_sent"] = True
 
                 # Validation complete
                 if item.validation_status and not state["validated_sent"]:
                     v_result = item.validation_result or {}
-                    yield _send_event(
-                        "file_validated",
-                        {
-                            "index": item.sort_index,
-                            "filename": item.filename,
-                            "validationStatus": item.validation_status,
-                            "validationReasoning": v_result.get("reasoning", ""),
-                            "validationNegativeIssues": v_result.get("negative_issues", []),
-                            "aiValidationEnabled": bool(result.get("ai_validation_enabled")),
-                            "validationConfidence": v_result.get("confidence", 0),
-                            "message": f"{'✅' if item.validation_status == 'valid' else '⚠️'} "
-                            f"{item.filename}: {item.validation_status}",
-                        },
+                    messages.append(
+                        _send_event(
+                            "file_validated",
+                            {
+                                "index": item.sort_index,
+                                "filename": item.filename,
+                                "validationStatus": item.validation_status,
+                                "validationReasoning": v_result.get("reasoning", ""),
+                                "validationNegativeIssues": v_result.get("negative_issues", []),
+                                "aiValidationEnabled": bool(result.get("ai_validation_enabled")),
+                                "validationConfidence": v_result.get("confidence", 0),
+                                "message": f"{'✅' if item.validation_status == 'valid' else '⚠️'} "
+                                f"{item.filename}: {item.validation_status}",
+                            },
+                            event_id=event_id,
+                        )
                     )
                     state["validated_sent"] = True
 
                 # Mark done: error items are done immediately; categorized items
                 # are done after validation completes (or if no validation will happen)
                 if item.status == DocumentCategorizationItem.STATUS_ERROR and not state["done"]:
-                    yield _send_event(
-                        "file_error",
-                        {
-                            "index": item.sort_index,
-                            "filename": item.filename,
-                            "message": f"✗ {item.filename}: {item.error_message or 'Unknown error'}",
-                            "error": item.error_message or "Unknown error",
-                        },
+                    messages.append(
+                        _send_event(
+                            "file_error",
+                            {
+                                "index": item.sort_index,
+                                "filename": item.filename,
+                                "message": f"✗ {item.filename}: {item.error_message or 'Unknown error'}",
+                                "error": item.error_message or "Unknown error",
+                            },
+                            event_id=event_id,
+                        )
                     )
                     state["done"] = True
 
@@ -670,9 +746,10 @@ def categorization_stream_sse(request, job_id):
             )
 
             if total_files > 0 and job.processed_files >= total_files and all_done:
+                summary_items = items if changed_item_ids is None else list(job.items.all().order_by("sort_index"))
                 # Build final results
                 results = []
-                for item in items:
+                for item in summary_items:
                     item_result = item.result or {}
                     v_result = item.validation_result or {}
                     results.append(
@@ -695,23 +772,102 @@ def categorization_stream_sse(request, job_id):
                         }
                     )
 
-                yield _send_event(
-                    "complete",
-                    {
-                        "message": f"Categorization complete: {job.success_count} categorized, "
-                        f"{job.error_count} errors",
-                        "summary": {
-                            "total": job.total_files,
-                            "success": job.success_count,
-                            "errors": job.error_count,
+                messages.append(
+                    _send_event(
+                        "complete",
+                        {
+                            "message": f"Categorization complete: {job.success_count} categorized, "
+                            f"{job.error_count} errors",
+                            "summary": {
+                                "total": job.total_files,
+                                "success": job.success_count,
+                                "errors": job.error_count,
+                            },
+                            "results": results,
                         },
-                        "results": results,
-                    },
+                        event_id=event_id,
+                    )
                 )
-                break
+                return messages, True
+            return messages, False
 
-            yield ": keep-alive\n\n"
-            time.sleep(0.5)
+        def _parse_changed_item_id(stream_event) -> int | None:
+            if stream_event.event != "categorization_item_changed":
+                return None
+            payload = stream_event.payload if isinstance(stream_event.payload, dict) else {}
+            raw_item_id = payload.get("itemId")
+            try:
+                return int(raw_item_id)
+            except (TypeError, ValueError):
+                return None
+
+        messages, done = _collect_updates()
+        for message in messages:
+            yield message
+        if done:
+            return
+
+        refresh_interval_seconds = 0.35
+        full_refresh_interval_seconds = 3.0
+        last_refresh_at = time.monotonic()
+        last_full_refresh_at = time.monotonic()
+        pending_event_id: str | None = None
+        pending_item_ids: set[int] = set()
+        force_full_refresh = False
+
+        for stream_event in iter_replay_and_live_events(stream_key=stream_key, last_event_id=replay_cursor):
+            if stream_event is None:
+                if pending_event_id is not None:
+                    should_full_refresh = force_full_refresh or (
+                        time.monotonic() - last_full_refresh_at >= full_refresh_interval_seconds
+                    )
+                    changed_ids = None if should_full_refresh else set(pending_item_ids)
+                    messages, done = _collect_updates(event_id=pending_event_id, changed_item_ids=changed_ids)
+                    pending_event_id = None
+                    pending_item_ids.clear()
+                    force_full_refresh = False
+                    if changed_ids is None:
+                        last_full_refresh_at = time.monotonic()
+                    last_refresh_at = time.monotonic()
+                    for message in messages:
+                        yield message
+                    if done:
+                        return
+                yield ": keep-alive\n\n"
+                continue
+
+            pending_event_id = stream_event.id
+            changed_item_id = _parse_changed_item_id(stream_event)
+            if changed_item_id is not None:
+                pending_item_ids.add(changed_item_id)
+            elif stream_event.event != "categorization_job_changed":
+                force_full_refresh = True
+            now = time.monotonic()
+            if (now - last_refresh_at) < refresh_interval_seconds and stream_event.event != "categorization_job_changed":
+                continue
+
+            should_full_refresh = force_full_refresh or (now - last_full_refresh_at >= full_refresh_interval_seconds)
+            changed_ids = None if should_full_refresh else set(pending_item_ids)
+            messages, done = _collect_updates(event_id=pending_event_id, changed_item_ids=changed_ids)
+            pending_event_id = None
+            pending_item_ids.clear()
+            force_full_refresh = False
+            if changed_ids is None:
+                last_full_refresh_at = now
+            last_refresh_at = now
+            for message in messages:
+                yield message
+            if done:
+                return
+
+        if pending_event_id is not None:
+            should_full_refresh = force_full_refresh or (time.monotonic() - last_full_refresh_at >= full_refresh_interval_seconds)
+            changed_ids = None if should_full_refresh else set(pending_item_ids)
+            messages, done = _collect_updates(event_id=pending_event_id, changed_item_ids=changed_ids)
+            for message in messages:
+                yield message
+            if done:
+                return
 
     response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
     response["Cache-Control"] = "no-cache"
@@ -811,6 +967,7 @@ def categorization_apply(request, job_id):
                 and not (document.details or "").strip()
             ):
                 document.details = extracted_details_markdown
+            _sync_ai_validation_from_categorization_item(document=document, item=item)
             document.updated_by = request.user
             document.save()  # This triggers auto-complete calculation
 
@@ -854,9 +1011,9 @@ def categorization_apply(request, job_id):
 @permission_classes([IsAuthenticated])
 @parser_classes([MultiPartParser, FormParser])
 def validate_document_category(request, document_id):
-    """Validate that a single uploaded file matches its expected DocumentType."""
+    """Run pre-upload AI validation for a file against the target DocumentType rules."""
     try:
-        document = Document.objects.select_related("doc_type").get(id=document_id)
+        document = Document.objects.select_related("doc_type", "doc_application__product").get(id=document_id)
     except Document.DoesNotExist:
         return Response(
             {"code": "not_found", "errors": {"detail": ["Document not found."]}},
@@ -871,19 +1028,65 @@ def validate_document_category(request, document_id):
         )
 
     try:
+        doc_type = document.doc_type
         file_bytes = file.read()
-        categorizer = AIDocumentCategorizer()
-        result = categorizer.validate_file_matches_type(
+        product_prompt = (
+            document.doc_application.product.validation_prompt
+            if document.doc_application and document.doc_application.product
+            else ""
+        )
+
+        validation_result = AIDocumentCategorizer.validate_document(
             file_bytes=file_bytes,
             filename=file.name,
-            expected_type_name=document.doc_type.name,
+            doc_type_name=doc_type.name,
+            positive_prompt=doc_type.validation_rule_ai_positive or "",
+            negative_prompt=doc_type.validation_rule_ai_negative or "",
+            product_prompt=product_prompt or "",
+            require_expiration_date=bool(doc_type.has_expiration_date),
+            require_doc_number=bool(doc_type.has_doc_number),
+            require_details=bool(doc_type.has_details),
         )
-        return Response(result)
+        validation_status = "valid" if validation_result.get("valid") else "invalid"
+        response_payload = {
+            # Backward-compatible fields from the previous endpoint contract.
+            "matches": validation_status == "valid",
+            "expected_type": doc_type.name,
+            "detected_type": doc_type.name,
+            "confidence": validation_result.get("confidence", 0),
+            "reasoning": validation_result.get("reasoning", ""),
+            "document_type_id": doc_type.id,
+            # New pre-validation fields used by single Upload/Update flow.
+            "validation_status": validation_status,
+            "validation_result": validation_result,
+            "ai_validation_enabled": bool(doc_type.ai_validation),
+        }
+        return Response(response_payload)
     except Exception as exc:
         logger.error("Document validation error: %s", exc, exc_info=True)
+        user_message = get_ai_user_message(exc)
         return Response(
-            {"code": "server_error", "errors": {"detail": [str(exc)]}},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            {
+                "matches": False,
+                "expected_type": doc_type.name,
+                "detected_type": doc_type.name,
+                "confidence": 0,
+                "reasoning": user_message,
+                "document_type_id": doc_type.id,
+                "validation_status": "error",
+                "validation_result": {
+                    "valid": False,
+                    "confidence": 0,
+                    "positive_analysis": "",
+                    "negative_issues": [user_message],
+                    "reasoning": user_message,
+                    "extracted_expiration_date": None,
+                    "extracted_doc_number": None,
+                    "extracted_details_markdown": None,
+                    "error_type": "timeout" if is_ai_timeout_exception(exc) else "provider_error",
+                },
+                "ai_validation_enabled": bool(doc_type.ai_validation),
+            }
         )
 
 
@@ -909,9 +1112,9 @@ def categorization_job_status(request, job_id):
     return Response(serializer.data)
 
 
-def _send_event(event_type: str, data: dict) -> str:
+def _send_event(event_type: str, data: dict, *, event_id: str | None = None) -> str:
     """Format an SSE event."""
-    return f"event: {event_type}\ndata: {json.dumps(data)}\n\n"
+    return format_sse_event(event=event_type, data=data, event_id=event_id)
 
 
 @sse_token_auth_required
@@ -921,6 +1124,9 @@ def document_validation_stream_sse(request, document_id):
         document = Document.objects.select_related("doc_type").get(id=document_id)
     except Document.DoesNotExist:
         return JsonResponse({"error": "Document not found"}, status=404)
+
+    replay_cursor = resolve_last_event_id(request)
+    stream_key = stream_file_key(document.id)
 
     def event_stream():
         yield _send_event(
@@ -932,9 +1138,9 @@ def document_validation_stream_sse(request, document_id):
         )
 
         last_status = None
-        max_polls = 120  # 60 seconds at 0.5s intervals
 
-        for _ in range(max_polls):
+        def _emit_status(*, event_id: str | None = None) -> Generator[str, None, bool]:
+            nonlocal last_status
             document.refresh_from_db()
             current_status = document.ai_validation_status
 
@@ -946,6 +1152,7 @@ def document_validation_stream_sse(request, document_id):
                             "documentId": document.id,
                             "message": f"🔍 Validating {document.doc_type.name}...",
                         },
+                        event_id=event_id,
                     )
 
                 elif current_status in (
@@ -963,22 +1170,29 @@ def document_validation_stream_sse(request, document_id):
                             "message": f"{'✅' if current_status == 'valid' else '⚠️'} "
                             f"{document.doc_type.name}: {current_status}",
                         },
+                        event_id=event_id,
                     )
-                    return
+                    return True
 
                 last_status = current_status
 
-            yield ": keep-alive\n\n"
-            time.sleep(0.5)
+            return current_status in (
+                Document.AI_VALIDATION_VALID,
+                Document.AI_VALIDATION_INVALID,
+                Document.AI_VALIDATION_ERROR,
+            )
 
-        # Timeout
-        yield _send_event(
-            "timeout",
-            {
-                "documentId": document.id,
-                "message": "Validation timed out.",
-            },
-        )
+        done = yield from _emit_status()
+        if done:
+            return
+
+        for stream_event in iter_replay_and_live_events(stream_key=stream_key, last_event_id=replay_cursor):
+            if stream_event is None:
+                yield ": keep-alive\n\n"
+                continue
+            done = yield from _emit_status(event_id=stream_event.id)
+            if done:
+                return
 
     response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
     response["Cache-Control"] = "no-cache"

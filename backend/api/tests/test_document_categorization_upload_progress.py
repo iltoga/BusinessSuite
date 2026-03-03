@@ -84,4 +84,4 @@ class DocumentCategorizationUploadProgressTests(TestCase):
         self.assertEqual(job.result.get("overall_progress_percent"), 40)
 
         self.assertEqual(DocumentCategorizationItem.objects.filter(job=job).count(), 2)
-        self.assertEqual(run_task_mock.call_count, 2)
+        self.assertEqual(run_task_mock.delay.call_count, 2)

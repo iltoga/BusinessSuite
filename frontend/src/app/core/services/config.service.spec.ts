@@ -34,12 +34,18 @@ describe('ConfigService', () => {
     const promise = service.loadConfig();
     const req = httpMock.expectOne('/api/app-config/');
     expect(req.request.method).toBe('GET');
-    req.flush({ MOCK_AUTH_ENABLED: false, title: 'Backend', useOverlayMenu: true });
+    req.flush({
+      MOCK_AUTH_ENABLED: false,
+      title: 'Backend',
+      useOverlayMenu: true,
+      baseCurrency: 'USD',
+    });
     await promise;
 
     expect(service.settings.MOCK_AUTH_ENABLED).toBe(false);
     expect(service.settings.title).toBe('Backend');
     expect(service.settings.useOverlayMenu).toBe(true);
+    expect(service.settings.baseCurrency).toBe('USD');
   });
 
   it('keeps injected config if backend app-config request fails', async () => {
@@ -53,6 +59,7 @@ describe('ConfigService', () => {
 
     expect(service.settings.MOCK_AUTH_ENABLED).toBe('False');
     expect(service.settings.title).toBe('Injected');
+    expect(service.settings.baseCurrency).toBe('IDR');
   });
 
   it('preserves SSR-injected FCM config when backend app-config omits FCM keys', async () => {

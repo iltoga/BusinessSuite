@@ -279,8 +279,15 @@ export class DataTableComponent<T = Record<string, any>> implements AfterViewIni
     if (!data || data.length === 0) return;
 
     // If a row is already selected, focus it. Otherwise focus the first one.
+    // On data reload the row object reference can change, so fall back to id matching.
     const selected = this.selectedRow();
-    const index = selected ? data.indexOf(selected) : -1;
+    let index = selected ? data.indexOf(selected) : -1;
+    if (index === -1 && selected && typeof selected === 'object' && 'id' in (selected as any)) {
+      const selectedId = (selected as any).id;
+      index = data.findIndex(
+        (row: any) => row && (row.id === selectedId || row.id === Number(selectedId)),
+      );
+    }
     this.focusRowByIndex(index !== -1 ? index : 0);
   }
 

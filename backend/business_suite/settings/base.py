@@ -16,8 +16,8 @@ import os
 import socket
 import sys
 from datetime import timedelta
-from importlib import import_module
 from pathlib import Path
+from urllib.parse import urlparse, urlunparse
 
 from business_suite.settings.cache_backends import build_prod_redis_caches
 from dotenv import load_dotenv
@@ -92,6 +92,13 @@ def _parse_list(value, default=None):
     return [item for item in items if item]
 
 
+def _normalize_currency_code(value, default: str = "IDR") -> str:
+    raw = str(value or "").strip().upper()
+    if raw.isalpha() and 2 <= len(raw) <= 3:
+        return raw
+    return default
+
+
 def _resolved_db_host():
     host = (os.getenv("DB_HOST") or "").strip()
     if not host:
@@ -104,17 +111,58 @@ def _resolved_db_host():
     return host
 
 
+def _running_in_docker() -> bool:
+    return os.path.exists("/.dockerenv")
+
+
 def _resolved_redis_host():
-    host = (os.getenv("REDIS_HOST") or "").strip()
-    if host:
-        return host
+    host = (os.getenv("REDIS_HOST") or "").strip().strip('"').strip("'")
 
-    # Host-run local development should connect via the published port.
-    if not os.path.exists("/.dockerenv"):
-        return "localhost"
+    if not host:
+        # Host-run local development should connect via the published port.
+        host = "localhost" if not _running_in_docker() else "bs-redis"
 
-    # Inside Docker, use the Redis container name configured in compose.
-    return "bs-redis"
+    # Inside Docker, localhost points to this container, not Redis.
+    if _running_in_docker() and host in {"localhost", "127.0.0.1", "::1"}:
+        return "bs-redis"
+    return host
+
+
+def _normalize_redis_url(redis_url: str) -> str:
+    text = str(redis_url or "").strip()
+    if not text:
+        return text
+
+    parsed = urlparse(text)
+    host = parsed.hostname or ""
+    if not (_running_in_docker() and host in {"localhost", "127.0.0.1", "::1"}):
+        return text
+
+    resolved_host = _resolved_redis_host()
+    netloc = ""
+    if parsed.username is not None:
+        netloc += parsed.username
+        if parsed.password is not None:
+            netloc += f":{parsed.password}"
+        netloc += "@"
+    netloc += resolved_host
+    if parsed.port is not None:
+        netloc += f":{parsed.port}"
+
+    return urlunparse(parsed._replace(netloc=netloc))
+
+
+def _resolved_redis_url(*, default_db: int = 1) -> str:
+    redis_url = _normalize_redis_url(os.getenv("REDIS_URL", ""))
+    if redis_url:
+        return redis_url
+
+    raw_port = (os.getenv("REDIS_PORT") or "6379").strip().strip('"').strip("'")
+    try:
+        port = int(raw_port)
+    except (TypeError, ValueError):
+        port = 6379
+    return f"redis://{_resolved_redis_host()}:{port}/{int(default_db)}"
 
 
 MOCK_AUTH_ENABLED = _parse_bool(os.getenv("MOCK_AUTH_ENABLED", "False"))
@@ -140,6 +188,9 @@ GLOBAL_SETTINGS = {
 # Uses Angular DatePipe tokens (e.g. dd-MM-yyyy, yyyy-MM-dd, dd/MM/yyyy).
 DATE_FORMAT_JS = os.getenv("DATE_FORMAT_JS", "dd-MM-yyyy")
 
+# Base currency exposed to Angular via /api/app-config/ and used as Product default.
+BASE_CURRENCY = _normalize_currency_code(os.getenv("BASE_CURRENCY", "IDR"))
+
 # Legacy Django template views have been removed; always redirect to admin after login.
 LOGIN_REDIRECT_URL = "/admin/"
 
@@ -160,6 +211,7 @@ APP_DOMAIN = os.getenv("APP_DOMAIN")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DJANGO_DEBUG", "False") == "True"
+ENABLE_DEBUG_TOOLBAR = DEBUG and _parse_bool(os.getenv("ENABLE_DEBUG_TOOLBAR", "True"))
 
 ALLOWED_HOSTS = [
     "localhost",
@@ -196,18 +248,18 @@ INSTALLED_APPS = [
     "rest_framework.authtoken",
     "nested_admin",
     "django.contrib.humanize",
-    "debug_toolbar",
     "waffle",
     "dbbackup",
     "storages",
     "admin_tools",
     "django_cleanup.apps.CleanupConfig",
-    "huey.contrib.djhuey",
 ]
+if ENABLE_DEBUG_TOOLBAR:
+    INSTALLED_APPS.append("debug_toolbar")
 
 MIDDLEWARE = [
-    "debug_toolbar.middleware.DebugToolbarMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    # HTTP compression is handled at the reverse proxy (nginx) layer.
     # CORS middleware should be as high as possible so CORS headers are applied
     # to all responses (see django-cors-headers docs).
     "corsheaders.middleware.CorsMiddleware",
@@ -226,6 +278,8 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "core.middleware.performance_logger.PerformanceLoggingMiddleware",
 ]
+if ENABLE_DEBUG_TOOLBAR:
+    MIDDLEWARE.insert(0, "debug_toolbar.middleware.DebugToolbarMiddleware")
 
 ROOT_URLCONF = "business_suite.urls"
 
@@ -264,7 +318,7 @@ WSGI_APPLICATION = "business_suite.wsgi.application"
 # }
 # Use an in-memory SQLite DB when running tests to avoid requiring Postgres.
 # Do not infer testing from PYTEST_CURRENT_TEST alone, as leaked shell env can
-# incorrectly force non-test processes (e.g. run_huey) into test mode.
+# incorrectly force non-test processes into test mode.
 _DJANGO_TESTING_ENV = os.getenv("DJANGO_TESTING")
 if _DJANGO_TESTING_ENV is not None:
     TESTING = _parse_bool(_DJANGO_TESTING_ENV)
@@ -576,7 +630,7 @@ LOGGING_MODELS = (
     "customer_applications",
 )
 
-SESSION_SAVE_EVERY_REQUEST = True
+SESSION_SAVE_EVERY_REQUEST = _parse_bool(os.getenv("SESSION_SAVE_EVERY_REQUEST", "False"))
 
 # This is for the debug toolbar when using docker
 # https://docs.djangoproject.com/en/3.2/ref/settings/#internal-ips
@@ -586,11 +640,26 @@ SESSION_SAVE_EVERY_REQUEST = True
 #     INTERNAL_IPS = [ip[: ip.rfind(".")] + ".1" for ip in ips] + ["127.0.0.1", "10.0.2.2"]
 
 
-CACHES = build_prod_redis_caches()
+CACHES = build_prod_redis_caches(redis_url=_resolved_redis_url(default_db=1))
+if TESTING:
+    # Keep tests hermetic and independent from external Redis availability.
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "business-suite-test-cache",
+            "TIMEOUT": 300,
+        },
+        "select2": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "business-suite-test-select2-cache",
+            "TIMEOUT": 300,
+        },
+    }
 
-# Cacheops Configuration - uses Redis database 2 (Huey uses default DB 0, Django cache uses DB 1)
+# Cacheops Configuration - uses Redis database 2
+# (Dramatiq broker/streams default DB 0, Django cache DB 1).
 # Parse REDIS_URL and replace the database number with 2 for cacheops
-_redis_url = os.getenv("REDIS_URL", "redis://redis:6379/1")
+_redis_url = _resolved_redis_url(default_db=1)
 # Replace the database number in the URL (e.g., /1 -> /2)
 if _redis_url.rfind("/") > _redis_url.rfind(":"):
     # URL has a database number, replace it
@@ -648,85 +717,39 @@ CACHEOPS = {
 
 # Graceful fallback to database on cache errors
 CACHEOPS_DEGRADE_ON_FAILURE = True
+if TESTING:
+    # Disable cacheops Redis I/O during tests.
+    CACHEOPS_ENABLED = False
 
 # Content Security Policy support: generate per-request nonces and expose mode
 CSP_ENABLED = _parse_bool(os.getenv("CSP_ENABLED", "False"))
 CSP_MODE = os.getenv("CSP_MODE", "report-only")  # report-only|enforce
 
 
-def _default_huey_workers() -> str:
+def _default_dramatiq_workers() -> str:
     component = (os.getenv("COMPONENT") or "").strip().lower()
-    if component == "task_worker" or "run_huey" in sys.argv:
+    if component == "task_worker" or "dramatiq" in " ".join(sys.argv):
         return "4"
     return "2"
 
 
-_HUEY_WORKERS = int(os.getenv("HUEY_WORKERS", _default_huey_workers()))
-_HUEY_INITIAL_DELAY = float(os.getenv("HUEY_INITIAL_DELAY", "0.05"))
-_HUEY_BACKOFF = float(os.getenv("HUEY_BACKOFF", "1.05"))
-_HUEY_MAX_DELAY = float(os.getenv("HUEY_MAX_DELAY", "1.0"))
-_HUEY_BLOCKING = _parse_bool(os.getenv("HUEY_BLOCKING", "True"))
-_HUEY_READ_TIMEOUT = float(os.getenv("HUEY_READ_TIMEOUT", "1"))
+DRAMATIQ_NAMESPACE = os.getenv("DRAMATIQ_NAMESPACE", "dramatiq:queue")
+DRAMATIQ_REDIS_DB = int(os.getenv("DRAMATIQ_REDIS_DB", "0"))
+DRAMATIQ_REDIS_URL = _normalize_redis_url(os.getenv("DRAMATIQ_REDIS_URL", ""))
+DRAMATIQ_RESULTS_ENABLED = _parse_bool(os.getenv("DRAMATIQ_RESULTS_ENABLED", "True"))
+DRAMATIQ_RESULTS_STORE_RESULTS = _parse_bool(os.getenv("DRAMATIQ_RESULTS_STORE_RESULTS", "True"))
+DRAMATIQ_RESULTS_TTL_MS = int(os.getenv("DRAMATIQ_RESULTS_TTL_MS", "300000"))
+DRAMATIQ_RESULTS_NAMESPACE = os.getenv("DRAMATIQ_RESULTS_NAMESPACE", "dramatiq:results")
+DRAMATIQ_RESULTS_REDIS_URL = _normalize_redis_url(os.getenv("DRAMATIQ_RESULTS_REDIS_URL", ""))
+DRAMATIQ_WORKERS = int(os.getenv("DRAMATIQ_WORKERS", _default_dramatiq_workers()))
+DRAMATIQ_THREADS = int(os.getenv("DRAMATIQ_THREADS", "8"))
+DRAMATIQ_PROCESSES = int(os.getenv("DRAMATIQ_PROCESSES", "1"))
+DRAMATIQ_SCHEDULER_LOCK_KEY = os.getenv("DRAMATIQ_SCHEDULER_LOCK_KEY", "dramatiq:scheduler:lock")
+DRAMATIQ_SCHEDULER_LOCK_TTL_SECONDS = int(os.getenv("DRAMATIQ_SCHEDULER_LOCK_TTL_SECONDS", "30"))
 
-
-def _build_huey_settings(testing: bool) -> dict:
-    if testing:
-        from peewee import SqliteDatabase
-
-        huey_database = SqliteDatabase(":memory:")
-        return {
-            "huey_class": "huey.contrib.sql_huey.SqlHuey",
-            "name": "business_suite",
-            "results": True,
-            "immediate": False,
-            "database": huey_database,
-            "consumer": {
-                "workers": _HUEY_WORKERS,
-                "worker_type": os.getenv("HUEY_WORKER_TYPE", "thread"),
-                # SqlHuey is polling-based; tighter bounds reduce idle pickup latency.
-                "initial_delay": _HUEY_INITIAL_DELAY,
-                "backoff": _HUEY_BACKOFF,
-                "max_delay": _HUEY_MAX_DELAY,
-                "scheduler_interval": 1,
-                "check_worker_health": True,
-                "health_check_interval": 1,
-            },
-        }
-
-    # Prefer the explicit contrib path when available, but support newer Huey
-    # versions that expose RedisHuey at package root.
-    redis_huey_class = "huey.contrib.redis_huey.RedisHuey"
-    try:
-        import_module("huey.contrib.redis_huey")
-    except ModuleNotFoundError:
-        redis_huey_class = "huey.RedisHuey"
-
-    # production / non-testing Huey -> Redis
-    return {
-        "huey_class": redis_huey_class,
-        "name": "business_suite",
-        "immediate": False,
-        "blocking": _HUEY_BLOCKING,
-        "connection": {
-            "host": _resolved_redis_host(),
-            "port": int(os.getenv("REDIS_PORT", "6379")),
-            "db": int(os.getenv("HUEY_REDIS_DB", "0")),
-            "read_timeout": _HUEY_READ_TIMEOUT,
-        },
-        "consumer": {
-            "workers": _HUEY_WORKERS,
-            "worker_type": os.getenv("HUEY_WORKER_TYPE", "thread"),
-            "initial_delay": _HUEY_INITIAL_DELAY,
-            "backoff": _HUEY_BACKOFF,
-            "max_delay": _HUEY_MAX_DELAY,
-            "scheduler_interval": 1,
-            "check_worker_health": True,
-            "health_check_interval": 1,
-        },
-    }
-
-
-HUEY = _build_huey_settings(TESTING)
+# Redis Streams controls for replayable SSE/event persistence.
+STREAM_MAXLEN = int(os.getenv("STREAM_MAXLEN", "10000"))
+STREAM_TTL_SECONDS = int(os.getenv("STREAM_TTL_SECONDS", str(7 * 24 * 60 * 60)))
 
 # select2
 SELECT2_CACHE_BACKEND = "select2"
@@ -820,7 +843,7 @@ CUSTOMER_NOTIFICATIONS_DAILY_HOUR = int(os.getenv("CUSTOMER_NOTIFICATIONS_DAILY_
 CUSTOMER_NOTIFICATIONS_DAILY_MINUTE = int(os.getenv("CUSTOMER_NOTIFICATIONS_DAILY_MINUTE", "0"))
 
 # Calendar reminder push dispatch settings.
-# Huey periodic task checks reminders every minute and processes at most this many rows per run.
+# Periodic reminder task checks reminders every minute and processes at most this many rows per run.
 CALENDAR_REMINDER_DISPATCH_LIMIT = int(os.getenv("CALENDAR_REMINDER_DISPATCH_LIMIT", "200"))
 
 # Local-first synchronization settings (desktop replica mode).
@@ -852,17 +875,23 @@ else:
     if "auditlog.middleware.AuditlogMiddleware" in MIDDLEWARE:
         MIDDLEWARE.remove("auditlog.middleware.AuditlogMiddleware")
 
-# Determine if we are running as backend or task_worker
-# Default to 'backend' unless 'run_huey' is in command line or COMPONENT is set.
+# Determine if we are running as backend, task worker, or scheduler.
 COMPONENT = os.getenv("COMPONENT")
 if not COMPONENT:
-    if "run_huey" in sys.argv:
+    command_line = " ".join(sys.argv)
+    if "dramatiq" in command_line:
         COMPONENT = "task_worker"
+    elif "run_dramatiq_scheduler" in command_line:
+        COMPONENT = "scheduler"
     else:
         COMPONENT = "backend"
 
 # Define the primary handler for this component
-PRIMARY_HANDLER = "backend_file" if COMPONENT == "backend" else "task_worker_file"
+PRIMARY_HANDLER = "backend_file"
+if COMPONENT == "task_worker":
+    PRIMARY_HANDLER = "task_worker_file"
+elif COMPONENT == "scheduler":
+    PRIMARY_HANDLER = "scheduler_file"
 
 LOGGING = {
     "version": 1,
@@ -903,6 +932,14 @@ LOGGING = {
             "backupCount": 10,
             "formatter": "verbose",
         },
+        "scheduler_file": {
+            "level": "INFO",
+            "class": "concurrent_log_handler.ConcurrentRotatingFileHandler",
+            "filename": os.path.join(LOG_DIR, "scheduler.log"),
+            "maxBytes": 10 * 1024 * 1024,
+            "backupCount": 10,
+            "formatter": "verbose",
+        },
     },
     "root": {
         "handlers": ["console", PRIMARY_HANDLER],
@@ -919,7 +956,7 @@ LOGGING = {
             "level": "ERROR",
             "propagate": False,
         },
-        "huey": {
+        "dramatiq": {
             "handlers": ["console", PRIMARY_HANDLER],
             "level": "INFO",
             "propagate": False,
@@ -959,7 +996,7 @@ LOGGING = {
 # scrape container stdout/stderr or log files (e.g., `logs/`) to collect logs. If you
 # want additional loggers to forward audit events to the file-based fallback handler,
 # add "fail_safe_audit" to their handler lists here.
-CURRENCY = "IDR"
+CURRENCY = BASE_CURRENCY
 CURRENCY_SYMBOL = "Rp"
 CURRENCY_DECIMAL_PLACES = 0
 
@@ -978,12 +1015,18 @@ OPENROUTER_HEALTHCHECK_MIN_CREDIT_REMAINING = float(os.getenv("OPENROUTER_HEALTH
 # LLM Provider: "openrouter" for multi-provider access, "openai" for direct OpenAI API
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openrouter")
 LLM_DEFAULT_MODEL = os.getenv("LLM_DEFAULT_MODEL", "google/gemini-2.5-flash-lite")
-# Dedicated model for document categorization; falls back to global LLM default when unset.
+# Dedicated model for document categorization; must support image input.
+# Falls back to global LLM default when unset.
 DOCUMENT_CATEGORIZER_MODEL = os.getenv("DOCUMENT_CATEGORIZER_MODEL", LLM_DEFAULT_MODEL)
 # Higher-tier model used as fallback when the primary categorizer fails to classify.
 DOCUMENT_CATEGORIZER_MODEL_HIGH = os.getenv("DOCUMENT_CATEGORIZER_MODEL_HIGH", "google/gemini-3-flash-preview")
-# Dedicated model for document validation (positive/negative prompt analysis).
-DOCUMENT_VALIDATOR_MODEL = os.getenv("DOCUMENT_VALIDATOR_MODEL", "google/gemini-3-flash-preview")
+# Dedicated model for document validation (positive/negative prompt analysis); must support image input.
+# Falls back to global LLM default when unset.
+DOCUMENT_VALIDATOR_MODEL = os.getenv("DOCUMENT_VALIDATOR_MODEL", LLM_DEFAULT_MODEL)
+# Per-request timeout (seconds) for document categorization AI calls.
+DOCUMENT_CATEGORIZATION_TIMEOUT = float(os.getenv("DOCUMENT_CATEGORIZATION_TIMEOUT", "30"))
+# Per-request timeout (seconds) for document validation AI calls.
+DOCUMENT_VALIDATION_TIMEOUT = float(os.getenv("DOCUMENT_VALIDATION_TIMEOUT", "30"))
 
 NOTIFICATION_FROM_EMAIL = os.getenv("NOTIFICATION_FROM_EMAIL", "dewi@revisbali.com")
 GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD")

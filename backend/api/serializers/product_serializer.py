@@ -1,5 +1,6 @@
 from api.serializers.document_type_serializer import DocumentTypeSerializer
 from drf_spectacular.utils import extend_schema_field
+from django.db import transaction
 from products.models import Product
 from products.models.document_type import DocumentType
 from products.models.task import Task
@@ -73,6 +74,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "immigration_id",
             "base_price",
             "retail_price",
+            "currency",
             "product_type",
             "validity",
             "required_documents",
@@ -81,6 +83,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "application_window_days",
             "validation_prompt",
             "deprecated",
+            "uses_customer_app_workflow",
             "created_at",
             "updated_at",
             "created_by",
@@ -105,6 +108,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "immigration_id",
             "base_price",
             "retail_price",
+            "currency",
             "product_type",
             "validity",
             "required_documents",
@@ -113,6 +117,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "application_window_days",
             "validation_prompt",
             "deprecated",
+            "uses_customer_app_workflow",
             "tasks",
             "required_document_types",
             "optional_document_types",
@@ -148,6 +153,7 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
             "immigration_id",
             "base_price",
             "retail_price",
+            "currency",
             "product_type",
             "validity",
             "documents_min_validity",
@@ -158,6 +164,11 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
             "required_document_ids",
             "optional_document_ids",
         ]
+
+    def validate_currency(self, value):
+        if value is None:
+            return value
+        return str(value).strip().upper()
 
     def validate(self, attrs):
         base_price = attrs.get("base_price")
@@ -215,57 +226,59 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
         validated_data["required_documents"] = required_documents
         validated_data["optional_documents"] = optional_documents
 
-        product = Product.objects.create(**validated_data)
-        for task_data in tasks_data:
-            task_data.pop("id", None)  # Remove potentially null ID for new tasks
-            task = Task(product=product, **task_data)
-            task.full_clean()
-            task.save()
-        return product
+        with transaction.atomic():
+            product = Product.objects.create(**validated_data)
+            for task_data in tasks_data:
+                task_data.pop("id", None)  # Remove potentially null ID for new tasks
+                task = Task(product=product, **task_data)
+                task.full_clean()
+                task.save()
+            return product
 
     def update(self, instance, validated_data):
         tasks_data = validated_data.pop("tasks", None)
         required_ids = validated_data.pop("required_document_ids", None)
         optional_ids = validated_data.pop("optional_document_ids", None)
 
-        if required_ids is not None:
-            _validate_not_deprecated_document_ids(required_ids, "required_document_ids")
-            instance.required_documents = _ordered_document_names(required_ids)
-        if optional_ids is not None:
-            _validate_not_deprecated_document_ids(optional_ids, "optional_document_ids")
-            instance.optional_documents = _ordered_document_names(optional_ids)
+        with transaction.atomic():
+            if required_ids is not None:
+                _validate_not_deprecated_document_ids(required_ids, "required_document_ids")
+                instance.required_documents = _ordered_document_names(required_ids)
+            if optional_ids is not None:
+                _validate_not_deprecated_document_ids(optional_ids, "optional_document_ids")
+                instance.optional_documents = _ordered_document_names(optional_ids)
 
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        instance.save()
+            for attr, value in validated_data.items():
+                setattr(instance, attr, value)
+            instance.save()
 
-        if tasks_data is not None:
-            existing_tasks = {task.id: task for task in instance.tasks.all()}
-            updated_ids = set()
+            if tasks_data is not None:
+                existing_tasks = {task.id: task for task in instance.tasks.all()}
+                updated_ids = set()
 
-            for task_data in tasks_data:
-                task_id = task_data.pop("id", None)
-                if task_id and task_id in existing_tasks:
-                    task = existing_tasks[task_id]
-                    # If incoming task sets last_step to True, clear last_step on other tasks first
-                    if task_data.get("last_step"):
-                        Task.objects.filter(product=instance).exclude(id=task_id).update(last_step=False)
-                    for attr, value in task_data.items():
-                        setattr(task, attr, value)
-                    task.full_clean()
-                    task.save()
-                    updated_ids.add(task_id)
-                else:
-                    # If creating a new last_step, clear other last steps first
-                    if task_data.get("last_step"):
-                        Task.objects.filter(product=instance).update(last_step=False)
-                    task = Task(product=instance, **task_data)
-                    task.full_clean()
-                    task.save()
-                    updated_ids.add(task.id)
+                for task_data in tasks_data:
+                    task_id = task_data.pop("id", None)
+                    if task_id and task_id in existing_tasks:
+                        task = existing_tasks[task_id]
+                        # If incoming task sets last_step to True, clear last_step on other tasks first
+                        if task_data.get("last_step"):
+                            Task.objects.filter(product=instance).exclude(id=task_id).update(last_step=False)
+                        for attr, value in task_data.items():
+                            setattr(task, attr, value)
+                        task.full_clean()
+                        task.save()
+                        updated_ids.add(task_id)
+                    else:
+                        # If creating a new last_step, clear other last steps first
+                        if task_data.get("last_step"):
+                            Task.objects.filter(product=instance).update(last_step=False)
+                        task = Task(product=instance, **task_data)
+                        task.full_clean()
+                        task.save()
+                        updated_ids.add(task.id)
 
-            tasks_to_delete = [task_id for task_id in existing_tasks.keys() if task_id not in updated_ids]
-            if tasks_to_delete:
-                Task.objects.filter(id__in=tasks_to_delete, product=instance).delete()
+                tasks_to_delete = [task_id for task_id in existing_tasks.keys() if task_id not in updated_ids]
+                if tasks_to_delete:
+                    Task.objects.filter(id__in=tasks_to_delete, product=instance).delete()
 
-        return instance
+            return instance

@@ -3,13 +3,14 @@
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
     <div class="space-y-1">
       <div class="flex items-center gap-2 text-muted-foreground mb-2">
-        <a
-          routerLink="/customers"
+        <button
+          type="button"
           class="flex items-center hover:text-foreground transition-colors"
+          (click)="onCancel()"
         >
           <z-icon zType="arrow-left" class="h-4 w-4" />
           <span class="text-xs font-medium uppercase tracking-wider">Back to list</span>
-        </a>
+        </button>
       </div>
       <h1 class="text-3xl font-extrabold tracking-tight">
         {{ isEditMode() ? 'Edit Customer' : 'New Customer' }}
@@ -56,13 +57,26 @@
               [accept]="'image/*,application/pdf'"
               [disabled]="ocrProcessing()"
               [fileName]="passportFile()?.name ?? null"
-              [previewUrl]="passportFilePreviewUrl()"
-              [previewType]="passportFilePreviewType()"
+              [previewUrl]="activePassportPreviewUrl()"
+              [previewType]="activePassportPreviewType()"
               [magnifierEnabledByDefault]="true"
               [helperText]="'Supported: JPG, PNG, PDF'"
               (fileSelected)="onPassportFileSelected($event)"
               (cleared)="onPassportFileCleared()"
             ></app-file-upload>
+
+            @if (hasExistingPassportFile()) {
+              <p class="text-xs text-muted-foreground">
+                Current file on record:
+                <a
+                  [href]="customer()?.passportFile"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-primary hover:underline"
+                  >{{ existingPassportFileName() || 'Open passport file' }}</a
+                >
+              </p>
+            }
 
             <div class="flex flex-wrap gap-3">
               <button

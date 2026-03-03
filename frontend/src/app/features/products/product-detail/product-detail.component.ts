@@ -11,7 +11,7 @@ import {
   type OnInit,
   type TemplateRef,
 } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 
 import {
   ProductsService,
@@ -39,7 +39,6 @@ import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
   standalone: true,
   imports: [
     CommonModule,
-    RouterLink,
     ZardButtonComponent,
     ZardCardComponent,
     ZardBadgeComponent,
@@ -80,6 +79,7 @@ export class ProductDetailComponent implements OnInit {
   readonly product = signal<ProductDetail | null>(null);
   readonly isLoading = signal(false);
   readonly originSearchQuery = signal<string | null>(null);
+  readonly originPage = signal<number | null>(null);
 
   readonly requiredDocuments = computed<DocumentType[]>(
     () => this.product()?.requiredDocumentTypes ?? [],
@@ -87,12 +87,16 @@ export class ProductDetailComponent implements OnInit {
   readonly optionalDocuments = computed<DocumentType[]>(
     () => this.product()?.optionalDocumentTypes ?? [],
   );
+  readonly hasAnyDocuments = computed(
+    () => this.requiredDocuments().length > 0 || this.optionalDocuments().length > 0,
+  );
   readonly validationPrompt = computed(() => (this.product()?.validationPrompt ?? '').trim());
 
   readonly tasks = computed(() => {
     const items = this.product()?.tasks ?? [];
     return [...items].sort((a, b) => (a.step ?? 0) - (b.step ?? 0));
   });
+  readonly hasTasks = computed(() => this.tasks().length > 0);
 
   readonly taskColumns = computed<ColumnConfig<TaskNested>[]>(() => [
     { key: 'step', header: 'Step' },
@@ -120,9 +124,7 @@ export class ProductDetailComponent implements OnInit {
     // E --> Edit
     if (event.key === 'E' && !event.ctrlKey && !event.altKey && !event.metaKey) {
       event.preventDefault();
-      this.router.navigate(['/products', product.id, 'edit'], {
-        state: { from: 'products', focusId: product.id, searchQuery: this.originSearchQuery() },
-      });
+      this.navigateToEdit(product.id);
     }
 
     // B or Left Arrow --> Back to list
@@ -133,13 +135,7 @@ export class ProductDetailComponent implements OnInit {
       !event.metaKey
     ) {
       event.preventDefault();
-      this.router.navigate(['/products'], {
-        state: {
-          focusTable: true,
-          focusId: product.id,
-          searchQuery: this.originSearchQuery(),
-        },
-      });
+      this.navigateToList(product.id);
     }
   }
 
@@ -149,6 +145,10 @@ export class ProductDetailComponent implements OnInit {
     }
     const st = (window as any).history.state || {};
     this.originSearchQuery.set(st.searchQuery ?? null);
+    const page = Number(st.page);
+    if (Number.isFinite(page) && page > 0) {
+      this.originPage.set(Math.floor(page));
+    }
     const idParam = this.route.snapshot.paramMap.get('id');
     if (!idParam) {
       return;
@@ -173,6 +173,34 @@ export class ProductDetailComponent implements OnInit {
       : 'Application window (days)';
   }
 
+  currencyCode(): string {
+    const currency = String(this.product()?.currency ?? 'IDR').trim().toUpperCase();
+    if (!currency || currency.length < 2 || currency.length > 3) {
+      return 'IDR';
+    }
+    return currency;
+  }
+
+  formatCurrency(value?: string | number | null): string {
+    if (value === null || value === undefined || value === '') {
+      return '—';
+    }
+    const n = Number(value);
+    if (Number.isNaN(n)) {
+      return String(value);
+    }
+    const currency = this.currencyCode();
+    try {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency,
+        maximumFractionDigits: 2,
+      }).format(n);
+    } catch {
+      return `${currency} ${n.toLocaleString('en-US')}`;
+    }
+  }
+
   retailPriceValue(): string | null {
     const product = this.product();
     return product?.retailPrice ?? product?.basePrice ?? null;
@@ -186,6 +214,30 @@ export class ProductDetailComponent implements OnInit {
       return 0;
     }
     return retail - base;
+  }
+
+  navigateToEdit(productId: number): void {
+    const state: Record<string, unknown> = {
+      from: 'products',
+      focusId: productId,
+      searchQuery: this.originSearchQuery(),
+    };
+    if (this.originPage()) {
+      state['page'] = this.originPage();
+    }
+    this.router.navigate(['/products', productId, 'edit'], { state });
+  }
+
+  navigateToList(productId?: number): void {
+    const state: Record<string, unknown> = {
+      focusTable: true,
+      focusId: productId,
+      searchQuery: this.originSearchQuery(),
+    };
+    if (this.originPage()) {
+      state['page'] = this.originPage();
+    }
+    this.router.navigate(['/products'], { state });
   }
 
   private loadProduct(id: number): void {

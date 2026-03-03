@@ -26,7 +26,7 @@ import { sanitizeUntrustedHtml } from '@/shared/utils/html-content-sanitizer';
         </div>
         <div>
           <button type="button" z-button zType="ghost" zSize="sm" (click)="help.close()">
-            <z-icon zType="x"></z-icon>
+            <z-icon zType="circle-x" class="h-5 w-5"></z-icon>
           </button>
         </div>
       </div>

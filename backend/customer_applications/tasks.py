@@ -9,8 +9,14 @@ from django.conf import settings
 from django.core.files.storage import FileSystemStorage, default_storage
 from django.db import IntegrityError, transaction
 from django.utils import timezone
-from huey import crontab
-from huey.contrib.djhuey import db_periodic_task, db_task
+from core.tasks.runtime import (
+    QUEUE_DEFAULT,
+    QUEUE_LOW,
+    QUEUE_SCHEDULED,
+    crontab,
+    db_periodic_task,
+    db_task,
+)
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -130,7 +136,7 @@ def _delete_storage_prefix_tree(folder_path: str | None) -> None:
         _delete_empty_storage_folder(current)
 
 
-@db_task()
+@db_task(queue=QUEUE_LOW)
 def cleanup_document_storage_task(*, file_path: str, folder_path: str | None = None) -> None:
     """Delete a document object from storage, then remove its folder when empty."""
     normalized_file_path = str(file_path or "").strip()
@@ -150,7 +156,7 @@ def cleanup_document_storage_task(*, file_path: str, folder_path: str | None = N
         )
 
 
-@db_task()
+@db_task(queue=QUEUE_LOW)
 def cleanup_application_storage_folder_task(*, folder_path: str) -> None:
     """Delete all storage objects for one application folder."""
     normalized_folder_path = _normalize_storage_prefix(folder_path)
@@ -213,6 +219,7 @@ def _build_manual_calendar_copy(application):
     due_date = application.due_date or application.calculate_next_calendar_due_date(start_date=application.doc_date)
     task_name = task.name if task else "Follow-up"
     reminder_days_before = task.notify_days_before if task else 0
+    due_date_value = due_date.isoformat() if hasattr(due_date, "isoformat") else None
 
     summary = f"[Application #{application.id}] {application.customer.full_name} - {task_name}"
     description = (
@@ -224,14 +231,14 @@ def _build_manual_calendar_copy(application):
     )
     copy_text = (
         f"Summary: {summary}\n"
-        f"Due date: {due_date}\n"
+        f"Due date: {due_date_value or '-'}\n"
         f"Reminder days before: {reminder_days_before}\n"
         f"Description:\n{description}"
     )
     return {
         "applicationId": application.id,
         "summary": summary,
-        "dueDate": due_date.isoformat() if hasattr(due_date, "isoformat") else str(due_date),
+        "dueDate": due_date_value,
         "reminderDaysBefore": reminder_days_before,
         "description": description,
         "copyText": copy_text,
@@ -263,7 +270,7 @@ def _notify_calendar_sync_failure(user, *, application, action, error_message):
         logger.exception("Failed to push calendar sync error notification to user #%s", getattr(user, "id", None))
 
 
-@db_task()
+@db_task(queue=QUEUE_DEFAULT)
 def sync_application_calendar_task(
     *,
     application_id: int,
@@ -629,7 +636,7 @@ def poll_whatsapp_delivery_statuses(*, notification_ids=None, limit=None):
     return {"checked": checked, "updated": updated, "skipped": skipped, "failed": failed}
 
 
-@db_task()
+@db_task(queue=QUEUE_SCHEDULED)
 def poll_whatsapp_delivery_statuses_task(*, notification_ids=None, limit=None):
     return poll_whatsapp_delivery_statuses(notification_ids=notification_ids, limit=limit)
 
@@ -637,9 +644,10 @@ def poll_whatsapp_delivery_statuses_task(*, notification_ids=None, limit=None):
 @db_periodic_task(
     crontab(minute="*/5"),
     name="customer_applications.poll_whatsapp_delivery_statuses",
+    queue=QUEUE_SCHEDULED,
 )
 def poll_whatsapp_delivery_statuses_periodic_task():
-    return poll_whatsapp_delivery_statuses()
+    poll_whatsapp_delivery_statuses()
 
 
 @db_periodic_task(
@@ -648,6 +656,7 @@ def poll_whatsapp_delivery_statuses_periodic_task():
         minute=getattr(settings, "CUSTOMER_NOTIFICATIONS_DAILY_MINUTE", 0),
     ),
     name="customer_applications.send_due_tomorrow_customer_notifications",
+    queue=QUEUE_SCHEDULED,
 )
 def send_due_tomorrow_customer_notifications_task():
-    return send_due_tomorrow_customer_notifications()
+    send_due_tomorrow_customer_notifications()

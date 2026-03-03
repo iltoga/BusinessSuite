@@ -6,11 +6,15 @@
         target="_blank"
         rel="noopener noreferrer"
         class="image-magnifier-link"
+        [style.width]="resolvedSquareSize()"
+        [style.height]="resolvedSquareSize()"
       >
         <img
           [src]="resolvedSrc()"
           [alt]="alt()"
           [class]="resolvedImageClass()"
+          (load)="onImageLoad()"
+          (error)="onImageError()"
           (mouseenter)="onImageMouseEnter()"
           (mouseleave)="onImageMouseLeave()"
           (mousemove)="onImageMouseMove($event)"
@@ -26,13 +30,42 @@
           [style.background-size.%]="zoom() * 100"
           [style.background-position]="magnifierBgX() + '% ' + magnifierBgY() + '%'"
         ></div>
+
+        @if (showToggle()) {
+          <button
+            type="button"
+            z-button
+            zType="ghost"
+            zSize="sm"
+            [class]="resolvedToggleClass()"
+            [attr.aria-label]="
+              magnifierEnabled()
+                ? 'Disable image magnifier lens on hover'
+                : 'Enable image magnifier lens on hover'
+            "
+            [attr.title]="
+              magnifierEnabled()
+                ? 'Disable image magnifier lens on hover'
+                : 'Enable image magnifier lens on hover'
+            "
+            (click)="$event.preventDefault(); toggleMagnifier()"
+          >
+            <z-icon [zType]="magnifierEnabled() ? 'zoom-out' : 'zoom-in'" class="h-4 w-4" />
+          </button>
+        }
       </a>
     } @else {
-      <div class="image-magnifier-link">
+      <div
+        class="image-magnifier-link"
+        [style.width]="resolvedSquareSize()"
+        [style.height]="resolvedSquareSize()"
+      >
         <img
           [src]="resolvedSrc()"
           [alt]="alt()"
           [class]="resolvedImageClass()"
+          (load)="onImageLoad()"
+          (error)="onImageError()"
           (mouseenter)="onImageMouseEnter()"
           (mouseleave)="onImageMouseLeave()"
           (mousemove)="onImageMouseMove($event)"
@@ -48,30 +81,30 @@
           [style.background-size.%]="zoom() * 100"
           [style.background-position]="magnifierBgX() + '% ' + magnifierBgY() + '%'"
         ></div>
-      </div>
-    }
 
-    @if (showToggle()) {
-      <button
-        type="button"
-        z-button
-        zType="ghost"
-        zSize="sm"
-        [class]="resolvedToggleClass()"
-        [attr.aria-label]="
-          magnifierEnabled()
-            ? 'Disable image magnifier lens on hover'
-            : 'Enable image magnifier lens on hover'
-        "
-        [attr.title]="
-          magnifierEnabled()
-            ? 'Disable image magnifier lens on hover'
-            : 'Enable image magnifier lens on hover'
-        "
-        (click)="toggleMagnifier()"
-      >
-        <z-icon [zType]="magnifierEnabled() ? 'zoom-out' : 'zoom-in'" class="h-4 w-4" />
-      </button>
+        @if (showToggle()) {
+          <button
+            type="button"
+            z-button
+            zType="ghost"
+            zSize="sm"
+            [class]="resolvedToggleClass()"
+            [attr.aria-label]="
+              magnifierEnabled()
+                ? 'Disable image magnifier lens on hover'
+                : 'Enable image magnifier lens on hover'
+            "
+            [attr.title]="
+              magnifierEnabled()
+                ? 'Disable image magnifier lens on hover'
+                : 'Enable image magnifier lens on hover'
+            "
+            (click)="toggleMagnifier()"
+          >
+            <z-icon [zType]="magnifierEnabled() ? 'zoom-out' : 'zoom-in'" class="h-4 w-4" />
+          </button>
+        }
+      </div>
     }
   </div>
 }

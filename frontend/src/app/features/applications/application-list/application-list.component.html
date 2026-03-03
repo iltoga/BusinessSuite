@@ -3,7 +3,7 @@
     <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">Applications</h1>
     <a
       [routerLink]="'/applications/new'"
-      [state]="{ from: 'applications', searchQuery: query() }"
+      [state]="{ from: 'applications', searchQuery: query(), page: page() }"
       [contextHelp]="'/applications/new'"
     >
       <z-button zType="default" zSize="default">New Application</z-button>

@@ -43,6 +43,7 @@ export interface DocumentTypeInfo {
   hasFile: boolean;
   validationRuleAiPositive?: string | null;
   validationRuleAiNegative?: string | null;
+  aiStructuredOutput?: string | null;
 }
 
 export interface DocumentAction {
@@ -58,6 +59,7 @@ export interface ApplicationDocument {
   docNumber?: string | null;
   expirationDate?: string | null;
   fileLink?: string | null;
+  thumbnailLink?: string | null;
   details?: string | null;
   completed: boolean;
   metadata?: Record<string, unknown> | null;
@@ -139,6 +141,8 @@ export interface OcrStatusResponse {
   status: string;
   progress?: number;
   text?: string;
+  structuredData?: Record<string, string | null>;
+  structured_data?: Record<string, string | null>;
   error?: string;
   mrzData?: {
     number?: string;
@@ -232,6 +236,8 @@ export class ApplicationsService {
     },
     file?: File | null,
     validateWithAi?: boolean,
+    aiValidationStatusOverride?: '' | 'valid' | 'invalid' | 'error',
+    aiValidationResultOverride?: Record<string, unknown> | null,
   ): Observable<UploadState> {
     // Use DocumentsService wrapper that supports multipart uploads with progress
     return this.documentsService
@@ -242,6 +248,8 @@ export class ApplicationsService {
         metadata: payload.metadata ?? undefined,
         file: file ?? undefined,
         validateWithAi,
+        aiValidationStatusOverride,
+        aiValidationResultOverride,
       })
       .pipe(
         map((event: HttpEvent<ApplicationDocument>) => {
@@ -257,8 +265,11 @@ export class ApplicationsService {
       );
   }
 
-  startDocumentOcr(file: File): Observable<ServiceOcrQueuedResponse | DocumentOcrStatusResponse> {
-    return this.ocrService.startDocumentOcr(file);
+  startDocumentOcr(
+    file: File,
+    options?: { documentId?: number; docTypeId?: number },
+  ): Observable<ServiceOcrQueuedResponse | DocumentOcrStatusResponse> {
+    return this.ocrService.startDocumentOcr(file, options);
   }
 
   getDocumentOcrStatus(statusUrl: string): Observable<DocumentOcrStatusResponse> {

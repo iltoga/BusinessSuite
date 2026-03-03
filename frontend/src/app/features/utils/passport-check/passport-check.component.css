@@ -25,3 +25,11 @@
   background-position: center;
   background-repeat: no-repeat;
 }
+
+.match-panel {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--background) 90%, var(--primary) 10%),
+    var(--background)
+  );
+}

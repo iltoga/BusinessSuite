@@ -9,7 +9,7 @@ import logging
 from dataclasses import dataclass, field
 from io import BytesIO
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Callable, Optional, Union
 
 from core.services.ai_client import AIClient
 from core.services.ai_usage_service import AIUsageFeature
@@ -64,7 +64,6 @@ class PassportData:
     full_page_visible: Optional[bool] = None
     all_corners_visible: Optional[bool] = None
     mrz_fully_visible: Optional[bool] = None
-    has_cropped_or_cutoff: Optional[bool] = None
     is_blurry: Optional[bool] = None
 
 
@@ -74,6 +73,19 @@ class AIPassportResult:
 
     passport_data: PassportData
     raw_response: dict = field(default_factory=dict)
+    success: bool = False
+    error_message: Optional[str] = None
+
+
+@dataclass
+class AIPassportValidationResult:
+    """Two-shot AI validation result."""
+
+    passport_data: PassportData
+    parameter_checks: dict[str, Any] = field(default_factory=dict)
+    decision: dict[str, Any] = field(default_factory=dict)
+    raw_pass_one: dict[str, Any] = field(default_factory=dict)
+    raw_pass_two: dict[str, Any] = field(default_factory=dict)
     success: bool = False
     error_message: Optional[str] = None
 
@@ -110,7 +122,6 @@ class AIPassportParser:
             "full_page_visible": {"type": "boolean"},
             "all_corners_visible": {"type": "boolean"},
             "mrz_fully_visible": {"type": "boolean"},
-            "has_cropped_or_cutoff": {"type": "boolean"},
             "is_blurry": {"type": "boolean"},
         },
         "required": [
@@ -136,9 +147,61 @@ class AIPassportParser:
             "full_page_visible",
             "all_corners_visible",
             "mrz_fully_visible",
-            "has_cropped_or_cutoff",
             "is_blurry",
         ],
+        "additionalProperties": False,
+    }
+
+    VALIDATION_CHECK_ITEM_SCHEMA = {
+        "type": "object",
+        "properties": {
+            "valid": {"type": "boolean"},
+            "reason": {"type": "string"},
+        },
+        "required": ["valid", "reason"],
+        "additionalProperties": False,
+    }
+
+    VALIDATION_PASS_ONE_SCHEMA = {
+        "type": "object",
+        "properties": {
+            "parameter_checks": {
+                "type": "object",
+                "properties": {
+                    "mrz_two_lines_present_and_readable": VALIDATION_CHECK_ITEM_SCHEMA,
+                },
+                "required": [
+                    "mrz_two_lines_present_and_readable",
+                ],
+                "additionalProperties": False,
+            },
+            "overall_summary": {"type": "string"},
+        },
+        "required": ["parameter_checks", "overall_summary"],
+        "additionalProperties": False,
+    }
+
+    VALIDATION_PASS_TWO_SCHEMA = {
+        "type": "object",
+        "properties": {
+            "is_valid": {"type": "boolean"},
+            "passport_data": PASSPORT_SCHEMA,
+            "ordered_failures": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "parameter": {"type": "string"},
+                        "reason": {"type": "string"},
+                        "importance": {"type": "string", "enum": ["critical", "major", "minor"]},
+                    },
+                    "required": ["parameter", "reason", "importance"],
+                    "additionalProperties": False,
+                },
+            },
+            "summary": {"type": "string"},
+        },
+        "required": ["is_valid", "passport_data", "ordered_failures", "summary"],
         "additionalProperties": False,
     }
 
@@ -194,6 +257,123 @@ class AIPassportParser:
         """Get whether using OpenRouter for backward compatibility."""
         return self.ai_client.use_openrouter
 
+    def validate_passport_image_two_shot(
+        self,
+        file_content: Union[bytes, UploadedFile],
+        filename: str = "",
+        analysis_context: Optional[dict[str, Any]] = None,
+        stage_callback: Optional[Callable[[str], None]] = None,
+    ) -> AIPassportValidationResult:
+        """
+        Two-shot AI validation pipeline:
+        1) Image-based parameter analysis with deterministic context
+        2) Lab-style decision synthesis from structured parameter output
+        """
+        try:
+            image_bytes, normalized_filename = self._prepare_vision_input(file_content=file_content, filename=filename)
+
+            if stage_callback:
+                try:
+                    stage_callback("ai_pass_1")
+                except Exception:
+                    logger.debug("Validation stage callback failed for ai_pass_1", exc_info=True)
+
+            pass_one_prompt = self._build_validation_pass_one_prompt(analysis_context=analysis_context)
+            pass_one_messages = self.ai_client.build_vision_message(
+                prompt=pass_one_prompt,
+                image_bytes=image_bytes,
+                filename=normalized_filename,
+                system_prompt=self.SYSTEM_PROMPT,
+            )
+            pass_one = self.ai_client.chat_completion_json(
+                messages=pass_one_messages,
+                json_schema=self.VALIDATION_PASS_ONE_SCHEMA,
+                schema_name="passport_validation_pass_one",
+            )
+
+            parameter_checks = pass_one.get("parameter_checks") or {}
+
+            if stage_callback:
+                try:
+                    stage_callback("ai_pass_2")
+                except Exception:
+                    logger.debug("Validation stage callback failed for ai_pass_2", exc_info=True)
+
+            pass_two_prompt = self._build_validation_pass_two_prompt(
+                pass_one_result=pass_one,
+                analysis_context=analysis_context,
+            )
+            pass_two_messages = self.ai_client.build_vision_message(
+                prompt=pass_two_prompt,
+                image_bytes=image_bytes,
+                filename=normalized_filename,
+                system_prompt=(
+                    "You are a strict passport validation decision engine. "
+                    "Use deterministic context and pass-one structured checks as primary inputs, "
+                    "then return deterministic JSON output."
+                ),
+            )
+            pass_two = self.ai_client.chat_completion_json(
+                messages=pass_two_messages,
+                json_schema=self.VALIDATION_PASS_TWO_SCHEMA,
+                schema_name="passport_validation_pass_two",
+                temperature=0.0,
+            )
+            passport_data_payload = pass_two.get("passport_data") or {}
+            passport_data = self._passport_data_from_dict(passport_data_payload)
+
+            return AIPassportValidationResult(
+                passport_data=passport_data,
+                parameter_checks=parameter_checks,
+                decision=pass_two,
+                raw_pass_one=pass_one,
+                raw_pass_two=pass_two,
+                success=True,
+                error_message=None,
+            )
+        except Exception as exc:
+            return AIPassportValidationResult(
+                passport_data=PassportData(),
+                parameter_checks={},
+                decision={},
+                raw_pass_one={},
+                raw_pass_two={},
+                success=False,
+                error_message=str(exc),
+            )
+
+    def _prepare_vision_input(self, file_content: Union[bytes, UploadedFile], filename: str = "") -> tuple[bytes, str]:
+        """
+        Normalize input into a vision-compatible image byte stream and filename.
+        """
+        file_bytes, detected_filename = AIClient.read_file_bytes(file_content)
+        normalized_filename = filename or detected_filename
+        file_type = AIClient.get_file_extension(normalized_filename)
+
+        if file_type and file_type not in self.SUPPORTED_TYPES:
+            raise ValueError(f"Unsupported file type: {file_type}. Supported: {', '.join(self.SUPPORTED_TYPES)}")
+
+        if file_type == "pdf":
+            pil_img, _ = convert_and_resize_image(
+                BytesIO(file_bytes),
+                "application/pdf",
+                return_encoded=False,
+                resize=False,
+                dpi=300,
+            )
+            png_buffer = BytesIO()
+            pil_img.save(png_buffer, format="PNG", compress_level=1, optimize=False)
+            file_bytes = png_buffer.getvalue()
+
+            original_path = Path(normalized_filename) if normalized_filename else Path("passport.pdf")
+            normalized_filename = str(original_path.with_suffix(".png"))
+            file_type = "png"
+
+        if file_type and file_type not in self.VISION_IMAGE_TYPES:
+            raise ValueError(f"Unsupported file type: {file_type}. Supported: {', '.join(self.SUPPORTED_TYPES)}")
+
+        return file_bytes, normalized_filename
+
     def parse_passport_image(
         self,
         file_content: Union[bytes, UploadedFile],
@@ -211,60 +391,9 @@ class AIPassportParser:
             AIPassportResult with extracted passport data
         """
         try:
-            # Read file bytes
-            file_bytes, detected_filename = AIClient.read_file_bytes(file_content)
-            filename = filename or detected_filename
-
-            # Detect and validate file type
+            file_bytes, filename = self._prepare_vision_input(file_content=file_content, filename=filename)
             file_type = AIClient.get_file_extension(filename)
-
-            if file_type and file_type not in self.SUPPORTED_TYPES:
-                return AIPassportResult(
-                    passport_data=PassportData(),
-                    success=False,
-                    error_message=(
-                        f"Unsupported file type: {file_type}. " f"Supported: {', '.join(self.SUPPORTED_TYPES)}"
-                    ),
-                )
-
-            # If a PDF is provided, convert the first page to PNG bytes for the vision model.
-            # This keeps downstream logic (mime type, image_url payload) strictly image-based.
-            if file_type == "pdf":
-                try:
-                    # Use high DPI (300) for maximum quality OCR/vision parsing
-                    pil_img, _ = convert_and_resize_image(
-                        BytesIO(file_bytes),
-                        "application/pdf",
-                        return_encoded=False,
-                        resize=False,
-                        dpi=300,
-                    )
-                    png_buffer = BytesIO()
-                    # Save with lossless compression to preserve quality
-                    pil_img.save(png_buffer, format="PNG", compress_level=1, optimize=False)
-                    file_bytes = png_buffer.getvalue()
-
-                    # Replace extension so mime type becomes image/png.
-                    original_path = Path(filename) if filename else Path("passport.pdf")
-                    filename = str(original_path.with_suffix(".png"))
-                    file_type = "png"
-                except Exception as e:
-                    return AIPassportResult(
-                        passport_data=PassportData(),
-                        success=False,
-                        error_message=f"Failed to convert PDF to image for AI parsing: {e}",
-                    )
-
-            if file_type and file_type not in self.VISION_IMAGE_TYPES:
-                return AIPassportResult(
-                    passport_data=PassportData(),
-                    success=False,
-                    error_message=(
-                        f"Unsupported file type: {file_type}. " f"Supported: {', '.join(self.SUPPORTED_TYPES)}"
-                    ),
-                )
-
-            logger.info(f"AI parsing passport image: {filename} " f"(type: {file_type}, model: {self.ai_client.model})")
+            logger.info(f"AI parsing passport image: {filename} (type: {file_type}, model: {self.ai_client.model})")
 
             return self._parse_with_vision(file_bytes, filename, analysis_context=analysis_context)
 
@@ -412,29 +541,28 @@ DETERMINISTIC CONTEXT (authoritative hints from non-AI checks):
 
 When deterministic context indicates low image quality, blur, glare, or failed MRZ checks,
 be conservative: lower confidence and mark quality flags strictly (is_blurry=true, mrz_fully_visible=false when appropriate).
-CRITICAL OVERRIDE: If deterministic_quality.mrz_cutoff_suspected is true, you MUST set:
-- mrz_fully_visible = false
-- has_cropped_or_cutoff = true
-- confidence_score <= 0.30
+Use deterministic context as a strong prior, but always confirm with the image itself.
+When deterministic checks indicate quality is acceptable, avoid failing brightness/blur unless visually obvious.
+Always prioritize MRZ-zone completeness/readability and text clarity.
 """
 
-        return """Extract passport data from this image. Return JSON.
+        return (
+            """Extract passport data from this image. Return JSON.
 
 RULES:
-0. FULL PAGE VISIBILITY (CRITICAL): The full passport biodata page must be clearly visible, including all 4 page edges/corners and full MRZ area. If any edge/corner/MRZ part is cut, cropped, or outside the frame, treat image as NOT uploadable.
-1. NAMES: Format as title case - first letter of each word capital, rest lowercase. Names can be multiple words (e.g., "John Paul", "Stefano Giulio Mario"). Capitalize each word in the name.
+0. Focus on readability and extraction reliability. Do not reject solely because page edges/corners are not fully framed.
+1. NAMES: Format as title case - first letter of each word capital, rest lowercase. Names can be multiple words (e.g., "John Paul", "Steven March Julius"). Capitalize each word in the name.
 2. DATES: Always use YYYY-MM-DD format (example: 1986-12-19)
 3. NATIONALITY: Use 3-letter code like ITA, USA, DEU, FRA, GBR
 4. GENDER: Use M or F
 5. EYE COLOR: Translate to English (Brown, Blue, Green, Hazel, Gray, Black)
 6. ISSUING COUNTRY: Use English name (Italy, Germany, France)
 7. If field not visible: use null
-8. If the passport page is cropped/cut/not fully visible, set confidence_score to 0.0-0.30 and set critical fields (passport_number, passport_expiration_date, first_name, last_name) to null when uncertain.
+8. Set critical fields (passport_number, passport_expiration_date, first_name, last_name) to null when uncertain.
 9. Set quality flags strictly:
-    - full_page_visible = true only if full page is visible
-    - all_corners_visible = true only if all 4 corners are visible
+    - full_page_visible = best-effort informational flag only
+    - all_corners_visible = best-effort informational flag only
     - mrz_fully_visible = true only if full MRZ lines (two lines at bottom of passport) are fully visible and clrearly readable
-    - has_cropped_or_cutoff = true if any part is cut/cropped
     - is_blurry = true if text/details are blurry ("Blurry" if cv2.Laplacian(image, cv2.CV_64F).var() < threshold else "Sharp")
 
 FIELDS TO EXTRACT:
@@ -460,7 +588,6 @@ FIELDS TO EXTRACT:
 - full_page_visible: true/false
 - all_corners_visible: true/false
 - mrz_fully_visible: true/false
-- has_cropped_or_cutoff: true/false
 - is_blurry: true/false
 
 EXAMPLE OUTPUT:
@@ -487,14 +614,72 @@ EXAMPLE OUTPUT:
     "full_page_visible": true,
     "all_corners_visible": true,
     "mrz_fully_visible": true,
-    "has_cropped_or_cutoff": false,
     "is_blurry": false
 }
-""" + context_block
+"""
+            + context_block
+        )
 
-    def _convert_to_result(self, parsed_data: dict) -> AIPassportResult:
-        """Convert parsed JSON data to structured result objects."""
+    def _build_validation_pass_one_prompt(self, analysis_context: Optional[dict[str, Any]] = None) -> str:
+        context_block = ""
+        if analysis_context:
+            try:
+                context_json = json.dumps(analysis_context, ensure_ascii=False, default=str)
+            except Exception:
+                context_json = str(analysis_context)
+            context_block = f"""
 
+DETERMINISTIC CONTEXT:
+{context_json}
+"""
+
+        return (
+            "Validate this passport image and return ONLY the structured checks below. "
+            "Each parameter must have valid=true/false and a short reason in case of failure. "
+            "Checks to evaluate (and only these checks): both MRZ lines appear present and readable. "
+            "Use exactly this parameter key: mrz_two_lines_present_and_readable. "
+            "Do not evaluate crop/cutoff/corner/full-page visibility in this pass. "
+            "Do not invent document-specific assumptions." + context_block
+        )
+
+    def _build_validation_pass_two_prompt(
+        self,
+        pass_one_result: dict[str, Any],
+        analysis_context: Optional[dict[str, Any]] = None,
+    ) -> str:
+        try:
+            pass_one_json = json.dumps(pass_one_result, ensure_ascii=False, default=str)
+        except Exception:
+            pass_one_json = str(pass_one_result)
+
+        context_json = "{}"
+        if analysis_context:
+            try:
+                context_json = json.dumps(analysis_context, ensure_ascii=False, default=str)
+            except Exception:
+                context_json = str(analysis_context)
+
+        return f"""
+Use the structured validation data below to make a final lab-style decision and extract passport data.
+Rules:
+- Pass-one checks are the primary structural gate for MRZ visibility/readability.
+- Deterministic OpenCV context is authoritative for photometric quality metrics (brightness/blur/glare).
+- If deterministic context says quality is good, do not fail only for mild brightness/blur/glare claims.
+- Do not reject based on page cutoff/cropping/corners/full-page visibility.
+- If one or more critical parameters fail, output is_valid=false.
+- Order failures by importance: critical first, then major, then minor.
+- Keep reasons specific and concise.
+- Return passport_data with best-effort extraction from the image; use null where uncertain.
+
+DETERMINISTIC_CONTEXT:
+{context_json}
+
+PASS_ONE_RESULT:
+{pass_one_json}
+"""
+
+    @staticmethod
+    def _passport_data_from_dict(parsed_data: dict[str, Any]) -> PassportData:
         def _to_bool(value) -> Optional[bool]:
             if isinstance(value, bool):
                 return value
@@ -506,12 +691,7 @@ EXAMPLE OUTPUT:
                     return False
             return None
 
-        # Log the raw parsed JSON returned by the vision API for debugging
-        try:
-            logger.info("AI parsed passport data: %s", json.dumps(parsed_data, ensure_ascii=False, default=str))
-        except Exception:
-            logger.debug("Failed to stringify AI parsed passport data for logging.")
-        passport_data = PassportData(
+        return PassportData(
             first_name=parsed_data.get("first_name"),
             last_name=parsed_data.get("last_name"),
             full_name=parsed_data.get("full_name"),
@@ -534,9 +714,18 @@ EXAMPLE OUTPUT:
             full_page_visible=_to_bool(parsed_data.get("full_page_visible")),
             all_corners_visible=_to_bool(parsed_data.get("all_corners_visible")),
             mrz_fully_visible=_to_bool(parsed_data.get("mrz_fully_visible")),
-            has_cropped_or_cutoff=_to_bool(parsed_data.get("has_cropped_or_cutoff")),
             is_blurry=_to_bool(parsed_data.get("is_blurry")),
         )
+
+    def _convert_to_result(self, parsed_data: dict) -> AIPassportResult:
+        """Convert parsed JSON data to structured result objects."""
+
+        # Log the raw parsed JSON returned by the vision API for debugging
+        try:
+            logger.info("AI parsed passport data: %s", json.dumps(parsed_data, ensure_ascii=False, default=str))
+        except Exception:
+            logger.debug("Failed to stringify AI parsed passport data for logging.")
+        passport_data = self._passport_data_from_dict(parsed_data)
 
         return AIPassportResult(
             passport_data=passport_data,

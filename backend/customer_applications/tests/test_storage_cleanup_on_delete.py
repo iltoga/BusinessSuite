@@ -35,18 +35,26 @@ class StorageCleanupOnDeleteTests(TestCase):
             created_by=self.user,
         )
 
-    def _create_document(self, application, filename="passport.pdf"):
-        return Document.objects.create(
+    def _create_document(self, application, filename="passport.pdf", thumbnail_filename=None):
+        document = Document.objects.create(
             doc_application=application,
             doc_type=self.doc_type,
             file=f"{application.upload_folder}/{filename}",
             required=True,
             created_by=self.user,
         )
+        if thumbnail_filename:
+            thumbnail_path = f"{application.upload_folder}/thumbnails/{thumbnail_filename}"
+            Document.objects.filter(pk=document.pk).update(
+                thumbnail=thumbnail_path,
+                thumbnail_link=f"/media/{thumbnail_path}",
+            )
+            document.refresh_from_db()
+        return document
 
     def test_document_delete_queues_async_storage_cleanup(self):
         application = self._create_application()
-        document = self._create_document(application)
+        document = self._create_document(application, thumbnail_filename="passport-thumb.jpg")
 
         with (
             patch("django.db.transaction.on_commit", side_effect=lambda callback: callback()),
@@ -54,9 +62,17 @@ class StorageCleanupOnDeleteTests(TestCase):
         ):
             document.delete()
 
-        cleanup_mock.assert_called_once_with(
-            file_path=f"{application.upload_folder}/passport.pdf",
-            folder_path=application.upload_folder,
+        cleanup_mock.assert_has_calls(
+            [
+                call(
+                    file_path=f"{application.upload_folder}/passport.pdf",
+                    folder_path=application.upload_folder,
+                ),
+                call(
+                    file_path=f"{application.upload_folder}/thumbnails/passport-thumb.jpg",
+                    folder_path=f"{application.upload_folder}/thumbnails",
+                ),
+            ]
         )
 
     def test_application_delete_cascades_documents_and_queues_folder_cleanup(self):
