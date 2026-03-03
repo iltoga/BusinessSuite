@@ -8,6 +8,7 @@ import {
   computed,
   inject,
   signal,
+  viewChild,
   type OnInit,
 } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -78,6 +79,7 @@ export class InvoiceDetailComponent implements OnInit {
   readonly paymentDeleteOpen = signal(false);
   readonly paymentToDelete = signal<Payment | null>(null);
   readonly isDeletingPayment = signal(false);
+  private readonly downloadDropdown = viewChild(InvoiceDownloadDropdownComponent);
 
   readonly totalDue = computed(() => this.invoice()?.totalDueAmount ?? 0);
   readonly dueApplications = computed(() =>
@@ -140,6 +142,7 @@ export class InvoiceDetailComponent implements OnInit {
       (activeElement instanceof HTMLElement && activeElement.isContentEditable);
 
     if (isInput) return;
+    if (event.repeat) return;
 
     const invoice = this.invoice();
     if (!invoice) return;
@@ -167,6 +170,18 @@ export class InvoiceDetailComponent implements OnInit {
     ) {
       event.preventDefault();
       this.goBack();
+      return;
+    }
+
+    // P --> Print Preview from invoice download control
+    if (event.key.toLowerCase() === 'p' && !event.ctrlKey && !event.altKey && !event.metaKey) {
+      const dropdown = this.downloadDropdown();
+      if (!dropdown) {
+        return;
+      }
+
+      event.preventDefault();
+      dropdown.openPrintPreview();
     }
   }
 

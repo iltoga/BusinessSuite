@@ -234,6 +234,20 @@ class RestoreFixtureSanitizationUnitTests(SimpleTestCase):
 
             self.assertFalse(outside_path.exists())
 
+    def test_extract_archive_rejects_special_member_types(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            archive_path = Path(tmpdir) / "special-type.tar.gz"
+            with tarfile.open(archive_path, "w:gz") as tar:
+                fifo_member = tarfile.TarInfo(name="pipe-entry")
+                fifo_member.type = tarfile.FIFOTYPE
+                tar.addfile(fifo_member)
+
+            extract_target = Path(tmpdir) / "extract"
+            extract_target.mkdir(parents=True, exist_ok=True)
+
+            with self.assertRaises(RuntimeError):
+                services._extract_archive_to_dir(str(archive_path), str(extract_target), "gz")
+
 
 class RestoreCompatibilityTests(TestCase):
     def test_restore_tar_zst_falls_back_when_native_zst_mode_unavailable(self):

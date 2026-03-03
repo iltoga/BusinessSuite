@@ -2352,10 +2352,19 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             },
         )
 
-        def _collect_updates(*, event_id: str | None = None) -> tuple[list[str], bool]:
+        def _collect_updates(
+            *,
+            event_id: str | None = None,
+            changed_item_ids: set[int] | None = None,
+        ) -> tuple[list[str], bool]:
             messages: list[str] = []
             job.refresh_from_db()
-            items = list(job.items.all().order_by("sort_index"))
+            if changed_item_ids is None:
+                items = list(job.items.all().order_by("sort_index"))
+            elif changed_item_ids:
+                items = list(job.items.filter(id__in=changed_item_ids).order_by("sort_index"))
+            else:
+                items = []
 
             for item in items:
                 from invoices.models import InvoiceImportItem
@@ -2431,8 +2440,13 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
                 sent_states[item.id] = state
 
-            if job.processed_files >= job.total_files and all(state["done"] for state in sent_states.values()):
-                summary = self._build_import_summary(job, items)
+            if (
+                job.processed_files >= job.total_files
+                and len(sent_states) >= job.total_files
+                and all(state["done"] for state in sent_states.values())
+            ):
+                summary_items = items if changed_item_ids is None else list(job.items.all().order_by("sort_index"))
+                summary = self._build_import_summary(job, summary_items)
                 messages.append(
                     self._send_import_event(
                         "complete",
@@ -2447,6 +2461,16 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                 return messages, True
             return messages, False
 
+        def _parse_changed_item_id(stream_event) -> int | None:
+            if stream_event.event != "invoice_import_item_changed":
+                return None
+            payload = stream_event.payload if isinstance(stream_event.payload, dict) else {}
+            raw_item_id = payload.get("itemId")
+            try:
+                return int(raw_item_id)
+            except (TypeError, ValueError):
+                return None
+
         initial_messages, done = _collect_updates()
         for message in initial_messages:
             yield message
@@ -2454,14 +2478,26 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             return
 
         refresh_interval_seconds = 0.35
+        full_refresh_interval_seconds = 3.0
         last_refresh_at = time.monotonic()
+        last_full_refresh_at = time.monotonic()
         pending_event_id: str | None = None
+        pending_item_ids: set[int] = set()
+        force_full_refresh = False
 
         for stream_event in iter_replay_and_live_events(stream_key=stream_key, last_event_id=last_event_id):
             if stream_event is None:
                 if pending_event_id is not None:
-                    messages, done = _collect_updates(event_id=pending_event_id)
+                    should_full_refresh = force_full_refresh or (
+                        time.monotonic() - last_full_refresh_at >= full_refresh_interval_seconds
+                    )
+                    changed_ids = None if should_full_refresh else set(pending_item_ids)
+                    messages, done = _collect_updates(event_id=pending_event_id, changed_item_ids=changed_ids)
                     pending_event_id = None
+                    pending_item_ids.clear()
+                    force_full_refresh = False
+                    if changed_ids is None:
+                        last_full_refresh_at = time.monotonic()
                     last_refresh_at = time.monotonic()
                     for message in messages:
                         yield message
@@ -2471,12 +2507,23 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                 continue
 
             pending_event_id = stream_event.id
+            changed_item_id = _parse_changed_item_id(stream_event)
+            if changed_item_id is not None:
+                pending_item_ids.add(changed_item_id)
+            elif stream_event.event != "invoice_import_job_changed":
+                force_full_refresh = True
             now = time.monotonic()
             if (now - last_refresh_at) < refresh_interval_seconds and stream_event.event != "invoice_import_job_changed":
                 continue
 
-            messages, done = _collect_updates(event_id=pending_event_id)
+            should_full_refresh = force_full_refresh or (now - last_full_refresh_at >= full_refresh_interval_seconds)
+            changed_ids = None if should_full_refresh else set(pending_item_ids)
+            messages, done = _collect_updates(event_id=pending_event_id, changed_item_ids=changed_ids)
             pending_event_id = None
+            pending_item_ids.clear()
+            force_full_refresh = False
+            if changed_ids is None:
+                last_full_refresh_at = now
             last_refresh_at = now
             for message in messages:
                 yield message
@@ -2484,7 +2531,9 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                 return
 
         if pending_event_id is not None:
-            messages, done = _collect_updates(event_id=pending_event_id)
+            should_full_refresh = force_full_refresh or (time.monotonic() - last_full_refresh_at >= full_refresh_interval_seconds)
+            changed_ids = None if should_full_refresh else set(pending_item_ids)
+            messages, done = _collect_updates(event_id=pending_event_id, changed_item_ids=changed_ids)
             for message in messages:
                 yield message
             if done:

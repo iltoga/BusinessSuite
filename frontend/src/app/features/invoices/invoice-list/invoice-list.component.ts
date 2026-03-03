@@ -8,6 +8,7 @@ import {
   inject,
   signal,
   viewChild,
+  viewChildren,
   type OnInit,
   type TemplateRef,
 } from '@angular/core';
@@ -109,6 +110,7 @@ export class InvoiceListComponent implements OnInit {
 
   // Access the data table for focus management
   private readonly dataTable = viewChild.required(DataTableComponent);
+  private readonly rowDownloadDropdowns = viewChildren(InvoiceDownloadDropdownComponent);
 
   readonly invoices = signal<InvoiceList[]>([]);
   readonly isLoading = signal(false);
@@ -215,6 +217,7 @@ export class InvoiceListComponent implements OnInit {
       (activeElement instanceof HTMLElement && activeElement.isContentEditable);
 
     if (isInput) return;
+    if (event.repeat) return;
 
     // Shift+N for New Invoice
     if (event.key === 'N' && !event.ctrlKey && !event.altKey && !event.metaKey) {
@@ -222,6 +225,23 @@ export class InvoiceListComponent implements OnInit {
       this.router.navigate(['/invoices', 'new'], {
         state: { from: 'invoices', searchQuery: this.query() },
       });
+      return;
+    }
+
+    // P --> Print Preview on selected row
+    if (event.key.toLowerCase() === 'p' && !event.ctrlKey && !event.altKey && !event.metaKey) {
+      const selected = this.dataTable().selectedRow();
+      if (!selected) {
+        return;
+      }
+
+      const dropdown = this.rowDownloadDropdowns().find((item) => item.invoiceId() === selected.id);
+      if (!dropdown) {
+        return;
+      }
+
+      event.preventDefault();
+      dropdown.openPrintPreview();
     }
   }
 

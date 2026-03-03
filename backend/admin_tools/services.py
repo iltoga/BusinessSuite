@@ -83,6 +83,8 @@ def _safe_extract_tar(tar: tarfile.TarFile, destination_dir: str) -> None:
         # Prevent symlink/hardlink path tricks during restore extraction.
         if member.issym() or member.islnk():
             raise RuntimeError(f"Unsafe backup archive link entry detected: {member_name!r}")
+        if not (member.isdir() or member.isfile()):
+            raise RuntimeError(f"Unsafe backup archive member type detected: {member_name!r}")
 
     tar.extractall(path=destination_abs)
 
@@ -768,7 +770,7 @@ def backup_all(include_users=False):
     Returns a generator of progress messages. Final yielding is the path.
     """
     ensure_backups_dir()
-    ts = datetime.datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+    ts = datetime.datetime.now(datetime.UTC).strftime("%Y%m%d-%H%M%S")
     suffix = "_with_users" if include_users else ""
     use_zst_archive = _supports_tarfile_zstd_write()
     archive_ext = "tar.zst" if use_zst_archive else "tar.gz"

@@ -584,7 +584,16 @@
           <h3 class="text-lg font-semibold">Add Document</h3>
           <p class="text-sm text-muted-foreground">Select the document type you want to add.</p>
         </div>
-        <button z-button zType="ghost" zSize="sm" (click)="closeAddDocumentDialog()">x</button>
+        <button
+          z-button
+          zType="ghost"
+          zSize="sm"
+          class="h-8 w-8 rounded-full p-0"
+          (click)="closeAddDocumentDialog()"
+          aria-label="Close add document dialog"
+        >
+          <z-icon zType="circle-x" class="h-5 w-5" />
+        </button>
       </div>
 
       <div class="mt-6 space-y-4">
@@ -621,7 +630,16 @@
           <h3 class="text-lg font-semibold">Upload {{ selectedDocument()!.docType.name }}</h3>
           <p class="text-sm text-muted-foreground">Attach file and update document details.</p>
         </div>
-        <button z-button zType="ghost" zSize="sm" (click)="closeUpload()">Close</button>
+        <button
+          z-button
+          zType="ghost"
+          zSize="sm"
+          class="h-8 w-8 rounded-full p-0"
+          (click)="closeUpload()"
+          aria-label="Close upload dialog"
+        >
+          <z-icon zType="circle-x" class="h-5 w-5" />
+        </button>
       </div>
 
       <form class="app-upload-dialog-form mt-6 space-y-4" [formGroup]="uploadForm">
@@ -830,7 +848,16 @@
             Review extracted data before applying to the document.
           </p>
         </div>
-        <button z-button zType="ghost" zSize="sm" (click)="dismissOcrReview()">Close</button>
+        <button
+          z-button
+          zType="ghost"
+          zSize="sm"
+          class="h-8 w-8 rounded-full p-0"
+          (click)="dismissOcrReview()"
+          aria-label="Close OCR review dialog"
+        >
+          <z-icon zType="circle-x" class="h-5 w-5" />
+        </button>
       </div>
 
       <div class="mt-4 space-y-3 text-sm">
@@ -871,8 +898,15 @@
             This document does not have a details field. Copy the extracted data for manual use.
           </p>
         </div>
-        <button z-button zType="ghost" zSize="sm" (click)="dismissOcrExtractedDataDialog()">
-          x
+        <button
+          z-button
+          zType="ghost"
+          zSize="sm"
+          class="h-8 w-8 rounded-full p-0"
+          (click)="dismissOcrExtractedDataDialog()"
+          aria-label="Close OCR extracted data dialog"
+        >
+          <z-icon zType="circle-x" class="h-5 w-5" />
         </button>
       </div>
 
@@ -888,7 +922,10 @@
 
       <div class="mt-6 flex justify-end gap-2">
         <button z-button zType="outline" (click)="copyOcrExtractedData()">Copy</button>
-        <button z-button zType="default" (click)="dismissOcrExtractedDataDialog()">Close</button>
+        <button z-button zType="default" (click)="dismissOcrExtractedDataDialog()">
+          <z-icon zType="circle-x" class="h-4 w-4" />
+          Close
+        </button>
       </div>
     </div>
   </div>

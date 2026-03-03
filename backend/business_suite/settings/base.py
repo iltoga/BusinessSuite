@@ -629,6 +629,20 @@ SESSION_SAVE_EVERY_REQUEST = True
 
 
 CACHES = build_prod_redis_caches(redis_url=_resolved_redis_url(default_db=1))
+if TESTING:
+    # Keep tests hermetic and independent from external Redis availability.
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "business-suite-test-cache",
+            "TIMEOUT": 300,
+        },
+        "select2": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "business-suite-test-select2-cache",
+            "TIMEOUT": 300,
+        },
+    }
 
 # Cacheops Configuration - uses Redis database 2
 # (Dramatiq broker/streams default DB 0, Django cache DB 1).
@@ -691,6 +705,9 @@ CACHEOPS = {
 
 # Graceful fallback to database on cache errors
 CACHEOPS_DEGRADE_ON_FAILURE = True
+if TESTING:
+    # Disable cacheops Redis I/O during tests.
+    CACHEOPS_ENABLED = False
 
 # Content Security Policy support: generate per-request nonces and expose mode
 CSP_ENABLED = _parse_bool(os.getenv("CSP_ENABLED", "False"))

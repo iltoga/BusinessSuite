@@ -60,7 +60,10 @@ export interface JobProgressData {
 
     <div class="flex justify-end pt-4 border-t -mx-6 px-6">
       @if (isFinished()) {
-        <z-button variant="primary" (click)="close()">Close</z-button>
+        <z-button variant="primary" (click)="close()">
+          <z-icon zType="circle-x" class="h-4 w-4"></z-icon>
+          Close
+        </z-button>
       }
     </div>
   `,

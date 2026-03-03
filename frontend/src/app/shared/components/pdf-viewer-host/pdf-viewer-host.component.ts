@@ -3,6 +3,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   EventEmitter,
+  HostListener,
   Input,
   OnChanges,
   Output,
@@ -70,6 +71,12 @@ export class PdfViewerHostComponent implements OnChanges {
   close(): void {
     this.destroyBlobUrl();
     this.closed.emit();
+  }
+
+  @HostListener('document:keydown.escape', ['$event'])
+  onEscape(event: Event): void {
+    event.preventDefault();
+    this.close();
   }
 
   get href(): string {

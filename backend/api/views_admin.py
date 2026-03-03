@@ -93,11 +93,12 @@ def _stream_admin_events(
     *,
     user_id: int,
     replay_cursor: str | None,
+    start_new: bool,
     accepted_events: set[str],
     enqueue_callback,
 ):
     def event_stream():
-        if not replay_cursor:
+        if start_new:
             try:
                 enqueue_callback()
             except Exception as exc:
@@ -133,10 +134,12 @@ def backup_start_sse(request):
         return JsonResponse({"error": SUPERUSER_OR_ADMIN_PERMISSION_REQUIRED_ERROR}, status=403)
 
     include_users = _as_bool(_query_param(request, "include_users", "0"))
-    replay_cursor = resolve_last_event_id(request)
+    replay_mode = _as_bool(_query_param(request, "replay", "0"))
+    replay_cursor = resolve_last_event_id(request) if replay_mode else None
     return _stream_admin_events(
         user_id=request.user.id,
         replay_cursor=replay_cursor,
+        start_new=not replay_mode,
         accepted_events={"backup_started", "backup_message", "backup_finished", "backup_failed"},
         enqueue_callback=lambda: admin_tasks.run_backup_stream.delay(
             user_id=request.user.id,
@@ -156,10 +159,12 @@ def backup_restore_sse(request):
         return JsonResponse({"error": "Missing file parameter"}, status=400)
 
     include_users = _as_bool(_query_param(request, "include_users", "0"))
-    replay_cursor = resolve_last_event_id(request)
+    replay_mode = _as_bool(_query_param(request, "replay", "0"))
+    replay_cursor = resolve_last_event_id(request) if replay_mode else None
     return _stream_admin_events(
         user_id=request.user.id,
         replay_cursor=replay_cursor,
+        start_new=not replay_mode,
         accepted_events={"restore_started", "restore_progress", "restore_message", "restore_finished", "restore_failed"},
         enqueue_callback=lambda: admin_tasks.run_restore_stream.delay(
             user_id=request.user.id,
@@ -350,17 +355,27 @@ class BackupsViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
 
     @extend_schema(
         summary="Start backup process",
-        parameters=[OpenApiParameter("include_users", OpenApiTypes.BOOL, location=OpenApiParameter.QUERY)],
+        parameters=[
+            OpenApiParameter("include_users", OpenApiTypes.BOOL, location=OpenApiParameter.QUERY),
+            OpenApiParameter(
+                "replay",
+                OpenApiTypes.BOOL,
+                location=OpenApiParameter.QUERY,
+                description="Set true to replay existing stream events without enqueuing a new backup job.",
+            ),
+        ],
         responses={200: OpenApiTypes.OBJECT},
     )
     @action(detail=False, methods=["get"], url_path="start")
     def start_backup(self, request):
         """Trigger stream-backed SSE backup execution."""
         include_users = _as_bool(_query_param(request, "include_users", "0"))
-        replay_cursor = resolve_last_event_id(request)
+        replay_mode = _as_bool(_query_param(request, "replay", "0"))
+        replay_cursor = resolve_last_event_id(request) if replay_mode else None
         return _stream_admin_events(
             user_id=request.user.id,
             replay_cursor=replay_cursor,
+            start_new=not replay_mode,
             accepted_events={"backup_started", "backup_message", "backup_finished", "backup_failed"},
             enqueue_callback=lambda: admin_tasks.run_backup_stream.delay(
                 user_id=request.user.id,
@@ -439,6 +454,12 @@ class BackupsViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
         parameters=[
             OpenApiParameter("file", OpenApiTypes.STR, location=OpenApiParameter.QUERY),
             OpenApiParameter("include_users", OpenApiTypes.BOOL, location=OpenApiParameter.QUERY),
+            OpenApiParameter(
+                "replay",
+                OpenApiTypes.BOOL,
+                location=OpenApiParameter.QUERY,
+                description="Set true to replay existing stream events without enqueuing a new restore job.",
+            ),
         ],
         responses={200: OpenApiTypes.OBJECT},
     )
@@ -450,10 +471,12 @@ class BackupsViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             return Response({"error": "Missing file parameter"}, status=400)
 
         include_users = _as_bool(_query_param(request, "include_users", "0"))
-        replay_cursor = resolve_last_event_id(request)
+        replay_mode = _as_bool(_query_param(request, "replay", "0"))
+        replay_cursor = resolve_last_event_id(request) if replay_mode else None
         return _stream_admin_events(
             user_id=request.user.id,
             replay_cursor=replay_cursor,
+            start_new=not replay_mode,
             accepted_events={"restore_started", "restore_progress", "restore_message", "restore_finished", "restore_failed"},
             enqueue_callback=lambda: admin_tasks.run_restore_stream.delay(
                 user_id=request.user.id,

@@ -72,19 +72,27 @@ export class ZardSheetOptions<T, U> {
         class="absolute top-1 right-1 cursor-pointer"
         (click)="onCloseClick()"
       >
-        <z-icon zType="x" />
+        <z-icon zType="circle-x" class="h-5 w-5" />
       </button>
     }
 
     @if (config.zTitle || config.zDescription) {
       <header data-slot="sheet-header" class="flex flex-col gap-1.5 p-4">
         @if (config.zTitle) {
-          <h4 data-testid="z-title" data-slot="sheet-title" class="text-lg leading-none font-semibold tracking-tight">
+          <h4
+            data-testid="z-title"
+            data-slot="sheet-title"
+            class="text-lg leading-none font-semibold tracking-tight"
+          >
             {{ config.zTitle }}
           </h4>
 
           @if (config.zDescription) {
-            <p data-testid="z-description" data-slot="sheet-description" class="text-muted-foreground text-sm">
+            <p
+              data-testid="z-description"
+              data-slot="sheet-description"
+              class="text-muted-foreground text-sm"
+            >
               {{ config.zDescription }}
             </p>
           }
