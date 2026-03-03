@@ -219,6 +219,7 @@ def _build_manual_calendar_copy(application):
     due_date = application.due_date or application.calculate_next_calendar_due_date(start_date=application.doc_date)
     task_name = task.name if task else "Follow-up"
     reminder_days_before = task.notify_days_before if task else 0
+    due_date_value = due_date.isoformat() if hasattr(due_date, "isoformat") else None
 
     summary = f"[Application #{application.id}] {application.customer.full_name} - {task_name}"
     description = (
@@ -230,14 +231,14 @@ def _build_manual_calendar_copy(application):
     )
     copy_text = (
         f"Summary: {summary}\n"
-        f"Due date: {due_date}\n"
+        f"Due date: {due_date_value or '-'}\n"
         f"Reminder days before: {reminder_days_before}\n"
         f"Description:\n{description}"
     )
     return {
         "applicationId": application.id,
         "summary": summary,
-        "dueDate": due_date.isoformat() if hasattr(due_date, "isoformat") else str(due_date),
+        "dueDate": due_date_value,
         "reminderDaysBefore": reminder_days_before,
         "description": description,
         "copyText": copy_text,

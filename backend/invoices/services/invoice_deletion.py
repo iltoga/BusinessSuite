@@ -6,7 +6,8 @@ from typing import Iterable
 from django.db import transaction
 
 from customer_applications.models import DocApplication
-from invoices.models.invoice import Invoice
+from invoices.models.invoice import Invoice, InvoiceApplication
+from payments.models import Payment
 
 
 @dataclass(frozen=True)
@@ -18,8 +19,13 @@ class InvoiceDeletePreview:
 
 def build_invoice_delete_preview(invoice: Invoice) -> InvoiceDeletePreview:
     invoice_applications_count = invoice.invoice_applications.count()
-    customer_applications_count = invoice.invoice_applications.values("customer_application").distinct().count()
-    payments_count = sum(inv_app.payments.count() for inv_app in invoice.invoice_applications.all())
+    customer_applications_count = (
+        invoice.invoice_applications.filter(customer_application__isnull=False)
+        .values("customer_application")
+        .distinct()
+        .count()
+    )
+    payments_count = Payment.objects.filter(invoice_application__invoice=invoice).count()
 
     return InvoiceDeletePreview(
         invoice_applications_count=invoice_applications_count,
@@ -30,8 +36,13 @@ def build_invoice_delete_preview(invoice: Invoice) -> InvoiceDeletePreview:
 
 def force_delete_invoice(invoice: Invoice, delete_customer_apps: bool) -> dict[str, int]:
     invoice_apps_count = invoice.invoice_applications.count()
-    customer_apps_count = invoice.invoice_applications.values("customer_application").distinct().count()
-    payments_count = sum(inv_app.payments.count() for inv_app in invoice.invoice_applications.all())
+    customer_apps_count = (
+        invoice.invoice_applications.filter(customer_application__isnull=False)
+        .values("customer_application")
+        .distinct()
+        .count()
+    )
+    payments_count = Payment.objects.filter(invoice_application__invoice=invoice).count()
 
     doc_app_ids = _collect_doc_application_ids(invoice) if delete_customer_apps else set()
 
@@ -73,17 +84,18 @@ def bulk_delete_invoices(
 
 
 def _collect_doc_application_ids(invoice: Invoice) -> set[int]:
-    doc_app_ids: set[int] = set()
-    for inv_app in invoice.invoice_applications.all():
-        if inv_app.customer_application_id:
-            doc_app_ids.add(inv_app.customer_application_id)
-    return doc_app_ids
+    return set(
+        invoice.invoice_applications.exclude(customer_application_id__isnull=True).values_list(
+            "customer_application_id",
+            flat=True,
+        )
+    )
 
 
 def _collect_doc_application_ids_for_invoices(invoices: Iterable[Invoice]) -> set[int]:
-    doc_app_ids: set[int] = set()
-    for invoice in invoices:
-        for inv_app in invoice.invoice_applications.all():
-            if inv_app.customer_application_id:
-                doc_app_ids.add(inv_app.customer_application_id)
-    return doc_app_ids
+    return set(
+        InvoiceApplication.objects.filter(invoice__in=invoices)
+        .exclude(customer_application_id__isnull=True)
+        .values_list("customer_application_id", flat=True)
+        .distinct()
+    )

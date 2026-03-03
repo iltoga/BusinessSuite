@@ -190,24 +190,26 @@ export class InvoiceDetailComponent implements OnInit {
   }
 
   getApplicationProductCode(app: InvoiceApplicationDetail): string {
-    const customerApplication = app.customerApplication as unknown as {
-      product?: { code?: string | null } | null;
-    };
-    return customerApplication?.product?.code ?? '—';
+    const lineProduct = app.product as { code?: string | null } | null;
+    const customerApplication = app.customerApplication as
+      | { product?: { code?: string | null } | null }
+      | null;
+    return lineProduct?.code ?? customerApplication?.product?.code ?? '—';
   }
 
   getApplicationProductName(app: InvoiceApplicationDetail): string {
-    const customerApplication = app.customerApplication as unknown as {
-      product?: { name?: string | null } | null;
-    };
-    return customerApplication?.product?.name ?? '—';
+    const lineProduct = app.product as { name?: string | null } | null;
+    const customerApplication = app.customerApplication as
+      | { product?: { name?: string | null } | null }
+      | null;
+    return lineProduct?.name ?? customerApplication?.product?.name ?? '—';
   }
 
   getApplicationCustomerName(app: InvoiceApplicationDetail): string {
-    const customerApplication = app.customerApplication as unknown as {
-      customer?: { fullName?: string | null } | null;
-    };
-    return customerApplication?.customer?.fullName ?? '—';
+    const customerApplication = app.customerApplication as
+      | { customer?: { fullName?: string | null } | null }
+      | null;
+    return customerApplication?.customer?.fullName ?? 'Unlinked line item';
   }
 
   ngOnInit(): void {

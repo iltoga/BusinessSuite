@@ -189,7 +189,7 @@ test.describe('Application task timeline workflow', () => {
           ].join('.'),
         );
         localStorage.setItem('auth_refresh_token', 'mock-refresh');
-        (window as any).APP_CONFIG = { MOCK_AUTH_ENABLED: 'True' };
+        (window as any).APP_CONFIG = { MOCK_AUTH_ENABLED: 'True', baseCurrency: 'IDR' };
       } catch (e) {
         // ignore
       }
@@ -209,14 +209,14 @@ test.describe('Application task timeline workflow', () => {
       route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ MOCK_AUTH_ENABLED: 'True' }),
+        body: JSON.stringify({ MOCK_AUTH_ENABLED: 'True', baseCurrency: 'IDR' }),
       }),
     );
     await page.route('**/api/app-config', (route) =>
       route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ MOCK_AUTH_ENABLED: 'True' }),
+        body: JSON.stringify({ MOCK_AUTH_ENABLED: 'True', baseCurrency: 'IDR' }),
       }),
     );
     await page.route('**/api/mock-auth-config/', (route) =>

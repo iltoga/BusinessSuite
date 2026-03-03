@@ -19,6 +19,7 @@ import {
   type ProductCreateUpdate,
   type ProductDetail,
 } from '@/core/api';
+import { ConfigService } from '@/core/services/config.service';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
@@ -57,6 +58,7 @@ export class ProductFormComponent implements OnInit {
   private router = inject(Router);
   private productsApi = inject(ProductsService);
   private documentTypesApi = inject(DocumentTypesService);
+  private configService = inject(ConfigService);
   private toast = inject(GlobalToastService);
   private platformId = inject(PLATFORM_ID);
 
@@ -85,6 +87,15 @@ export class ProductFormComponent implements OnInit {
       description: [''],
       basePrice: [0, [Validators.min(0)]],
       retailPrice: [0, [Validators.min(0)]],
+      currency: [
+        this.configService.settings.baseCurrency ?? 'IDR',
+        [
+          Validators.required,
+          Validators.minLength(2),
+          Validators.maxLength(3),
+          Validators.pattern(/^[A-Za-z]{2,3}$/),
+        ],
+      ],
       productType: ['visa', Validators.required],
       validity: [null as number | null],
       documentsMinValidity: [null as number | null],
@@ -103,6 +114,7 @@ export class ProductFormComponent implements OnInit {
     description: 'Description',
     basePrice: 'Base Price',
     retailPrice: 'Retail Price',
+    currency: 'Currency',
     productType: 'Product Type',
     validity: 'Validity',
     documentsMinValidity: 'Documents Min Validity',
@@ -182,6 +194,12 @@ export class ProductFormComponent implements OnInit {
 
   onOptionalDocsChange(ids: number[]): void {
     this.form.get('optionalDocumentIds')?.setValue(ids);
+  }
+
+  normalizeCurrency(): void {
+    const control = this.form.get('currency');
+    const raw = String(control?.value ?? '').trim().toUpperCase();
+    control?.setValue(raw, { emitEvent: false });
   }
 
   addTask(task?: Partial<ProductTask>): void {
@@ -297,6 +315,7 @@ export class ProductFormComponent implements OnInit {
       productType: rawValue.productType as ProductCreateUpdate.ProductTypeEnum,
       basePrice: rawValue.basePrice !== null ? String(rawValue.basePrice) : null,
       retailPrice: rawValue.retailPrice !== null ? String(rawValue.retailPrice) : undefined,
+      currency: String(rawValue.currency ?? '').trim().toUpperCase() || undefined,
       validity: rawValue.validity,
       documentsMinValidity: rawValue.documentsMinValidity,
       applicationWindowDays: rawValue.applicationWindowDays,
@@ -379,6 +398,7 @@ export class ProductFormComponent implements OnInit {
           retailPrice: product.retailPrice
             ? Number(product.retailPrice)
             : Number(product.basePrice ?? 0),
+          currency: product.currency ?? this.configService.settings.baseCurrency ?? 'IDR',
           productType: product.productType ?? 'visa',
           validity: product.validity ?? null,
           documentsMinValidity: product.documentsMinValidity ?? null,

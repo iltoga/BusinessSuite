@@ -409,6 +409,7 @@ class InvoiceImporter:
                     # Step 3: Create InvoiceApplication linking DocApplication to invoice
                     InvoiceApplication.objects.create(
                         invoice=invoice,
+                        product=product,
                         customer_application=doc_application,
                         amount=unit_amount,  # Use unit price, not total amount
                         status=InvoiceApplication.PENDING,

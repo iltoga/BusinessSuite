@@ -19,6 +19,13 @@ export class MenuService {
     { id: 'applications', label: 'Applications', icon: 'folder', route: '/applications' },
     { id: 'invoices', label: 'Invoices', icon: 'file-text', route: '/invoices' },
     {
+      id: 'products',
+      label: 'Products',
+      icon: 'folder',
+      route: '/products',
+      visible: () => this.authService.isAdminOrManager(),
+    },
+    {
       id: 'letters',
       label: 'Letters',
       icon: 'file-text',

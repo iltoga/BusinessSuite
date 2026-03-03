@@ -286,14 +286,15 @@ export class BackupsService extends BaseService {
      * @endpoint post /api/backups/restore/
      * @param file 
      * @param includeUsers 
+     * @param replay Set true to replay existing stream events without enqueuing a new restore job.
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public backupsRestoreCreate(file?: string, includeUsers?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<{ [key: string]: any; }>;
-    public backupsRestoreCreate(file?: string, includeUsers?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<{ [key: string]: any; }>>;
-    public backupsRestoreCreate(file?: string, includeUsers?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<{ [key: string]: any; }>>;
-    public backupsRestoreCreate(file?: string, includeUsers?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+    public backupsRestoreCreate(file?: string, includeUsers?: boolean, replay?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<{ [key: string]: any; }>;
+    public backupsRestoreCreate(file?: string, includeUsers?: boolean, replay?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<{ [key: string]: any; }>>;
+    public backupsRestoreCreate(file?: string, includeUsers?: boolean, replay?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<{ [key: string]: any; }>>;
+    public backupsRestoreCreate(file?: string, includeUsers?: boolean, replay?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
 
         let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
@@ -310,6 +311,15 @@ export class BackupsService extends BaseService {
             localVarQueryParameters,
             'include_users',
             <any>includeUsers,
+            QueryParamStyle.Form,
+            true,
+        );
+
+
+        localVarQueryParameters = this.addToHttpParams(
+            localVarQueryParameters,
+            'replay',
+            <any>replay,
             QueryParamStyle.Form,
             true,
         );
@@ -424,14 +434,15 @@ export class BackupsService extends BaseService {
      * Trigger stream-backed SSE backup execution.
      * @endpoint get /api/backups/start/
      * @param includeUsers 
+     * @param replay Set true to replay existing stream events without enqueuing a new backup job.
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public backupsStartRetrieve(includeUsers?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<{ [key: string]: any; }>;
-    public backupsStartRetrieve(includeUsers?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<{ [key: string]: any; }>>;
-    public backupsStartRetrieve(includeUsers?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<{ [key: string]: any; }>>;
-    public backupsStartRetrieve(includeUsers?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+    public backupsStartRetrieve(includeUsers?: boolean, replay?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<{ [key: string]: any; }>;
+    public backupsStartRetrieve(includeUsers?: boolean, replay?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<{ [key: string]: any; }>>;
+    public backupsStartRetrieve(includeUsers?: boolean, replay?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<{ [key: string]: any; }>>;
+    public backupsStartRetrieve(includeUsers?: boolean, replay?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
 
         let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
@@ -439,6 +450,15 @@ export class BackupsService extends BaseService {
             localVarQueryParameters,
             'include_users',
             <any>includeUsers,
+            QueryParamStyle.Form,
+            true,
+        );
+
+
+        localVarQueryParameters = this.addToHttpParams(
+            localVarQueryParameters,
+            'replay',
+            <any>replay,
             QueryParamStyle.Form,
             true,
         );

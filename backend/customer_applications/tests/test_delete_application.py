@@ -28,7 +28,12 @@ class ApplicationDeletionTests(TestCase):
         invoice = Invoice.objects.create(
             customer=self.customer, due_date=date(2026, 2, 1), invoice_date=date(2026, 1, 1)
         )
-        InvoiceApplication.objects.create(invoice=invoice, customer_application=app, amount=100)
+        InvoiceApplication.objects.create(
+            invoice=invoice,
+            product=app.product,
+            customer_application=app,
+            amount=100,
+        )
         return app, invoice
 
     def test_non_superuser_cannot_delete_application_with_invoice_via_api(self):
@@ -40,28 +45,38 @@ class ApplicationDeletionTests(TestCase):
         self.assertTrue(DocApplication.objects.filter(pk=app.pk).exists())
         self.assertTrue(Invoice.objects.filter(pk=invoice.pk).exists())
 
-    def test_superuser_can_delete_application_and_cascade_delete_invoice_via_api(self):
+    def test_superuser_can_delete_application_and_keep_invoice_lines_via_api(self):
         app, invoice = self._create_application_with_invoice()
         self.client.force_authenticate(self.superuser)
         url = f"/api/customer-applications/{app.id}/?deleteInvoices=true"
         resp = self.client.delete(url)
         self.assertEqual(resp.status_code, 204)
         self.assertFalse(DocApplication.objects.filter(pk=app.pk).exists())
-        self.assertFalse(Invoice.objects.filter(pk=invoice.pk).exists())
+        self.assertTrue(Invoice.objects.filter(pk=invoice.pk).exists())
+        invoice_line = InvoiceApplication.objects.get(invoice=invoice)
+        self.assertIsNone(invoice_line.customer_application)
+        self.assertEqual(invoice_line.product_id, self.product.id)
 
-    def test_superuser_deleting_application_updates_invoice_with_other_apps(self):
-        # Invoice with two applications: deleting one app should keep invoice and recalc
+    def test_superuser_deleting_application_preserves_invoice_totals_for_product_lines(self):
+        # Invoice with two lines: deleting one linked application should keep invoice and totals.
         app1, invoice = self._create_application_with_invoice()
         app2 = DocApplication.objects.create(
             customer=self.customer, product=self.product, doc_date="2026-01-02", created_by=self.superuser
         )
-        InvoiceApplication.objects.create(invoice=invoice, customer_application=app2, amount=50)
+        InvoiceApplication.objects.create(
+            invoice=invoice,
+            product=app2.product,
+            customer_application=app2,
+            amount=50,
+        )
 
         self.client.force_authenticate(self.superuser)
         url = f"/api/customer-applications/{app1.id}/?deleteInvoices=true"
         resp = self.client.delete(url)
         self.assertEqual(resp.status_code, 204)
         self.assertFalse(DocApplication.objects.filter(pk=app1.pk).exists())
-        # invoice should still exist and total_amount should have been recalculated to 50
+        # Invoice remains and keeps both product line amounts (one linked, one unlinked).
         invoice.refresh_from_db()
-        self.assertEqual(invoice.total_amount, 50)
+        self.assertEqual(invoice.total_amount, 150)
+        self.assertEqual(invoice.invoice_applications.filter(customer_application__isnull=True).count(), 1)
+        self.assertEqual(invoice.invoice_applications.filter(customer_application=app2).count(), 1)

@@ -569,6 +569,7 @@ export class ProductsService extends BaseService {
      * @param immigrationId 
      * @param basePrice 
      * @param retailPrice 
+     * @param currency 
      * @param productType * &#x60;visa&#x60; - Visa * &#x60;other&#x60; - Other
      * @param validity 
      * @param requiredDocuments 
@@ -577,14 +578,15 @@ export class ProductsService extends BaseService {
      * @param applicationWindowDays 
      * @param validationPrompt 
      * @param deprecated 
+     * @param usesCustomerAppWorkflow 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public productsImportStartCreate(id: number, name: string, code: string, createdAt: string, updatedAt: string, createdBy: string, updatedBy: string, description?: string, immigrationId?: string, basePrice?: string, retailPrice?: string, productType?: string, validity?: number, requiredDocuments?: string, optionalDocuments?: string, documentsMinValidity?: number, applicationWindowDays?: number, validationPrompt?: string, deprecated?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<Product>;
-    public productsImportStartCreate(id: number, name: string, code: string, createdAt: string, updatedAt: string, createdBy: string, updatedBy: string, description?: string, immigrationId?: string, basePrice?: string, retailPrice?: string, productType?: string, validity?: number, requiredDocuments?: string, optionalDocuments?: string, documentsMinValidity?: number, applicationWindowDays?: number, validationPrompt?: string, deprecated?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<Product>>;
-    public productsImportStartCreate(id: number, name: string, code: string, createdAt: string, updatedAt: string, createdBy: string, updatedBy: string, description?: string, immigrationId?: string, basePrice?: string, retailPrice?: string, productType?: string, validity?: number, requiredDocuments?: string, optionalDocuments?: string, documentsMinValidity?: number, applicationWindowDays?: number, validationPrompt?: string, deprecated?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<Product>>;
-    public productsImportStartCreate(id: number, name: string, code: string, createdAt: string, updatedAt: string, createdBy: string, updatedBy: string, description?: string, immigrationId?: string, basePrice?: string, retailPrice?: string, productType?: string, validity?: number, requiredDocuments?: string, optionalDocuments?: string, documentsMinValidity?: number, applicationWindowDays?: number, validationPrompt?: string, deprecated?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+    public productsImportStartCreate(id: number, name: string, code: string, createdAt: string, updatedAt: string, createdBy: string, updatedBy: string, description?: string, immigrationId?: string, basePrice?: string, retailPrice?: string, currency?: string, productType?: string, validity?: number, requiredDocuments?: string, optionalDocuments?: string, documentsMinValidity?: number, applicationWindowDays?: number, validationPrompt?: string, deprecated?: boolean, usesCustomerAppWorkflow?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<Product>;
+    public productsImportStartCreate(id: number, name: string, code: string, createdAt: string, updatedAt: string, createdBy: string, updatedBy: string, description?: string, immigrationId?: string, basePrice?: string, retailPrice?: string, currency?: string, productType?: string, validity?: number, requiredDocuments?: string, optionalDocuments?: string, documentsMinValidity?: number, applicationWindowDays?: number, validationPrompt?: string, deprecated?: boolean, usesCustomerAppWorkflow?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<Product>>;
+    public productsImportStartCreate(id: number, name: string, code: string, createdAt: string, updatedAt: string, createdBy: string, updatedBy: string, description?: string, immigrationId?: string, basePrice?: string, retailPrice?: string, currency?: string, productType?: string, validity?: number, requiredDocuments?: string, optionalDocuments?: string, documentsMinValidity?: number, applicationWindowDays?: number, validationPrompt?: string, deprecated?: boolean, usesCustomerAppWorkflow?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<Product>>;
+    public productsImportStartCreate(id: number, name: string, code: string, createdAt: string, updatedAt: string, createdBy: string, updatedBy: string, description?: string, immigrationId?: string, basePrice?: string, retailPrice?: string, currency?: string, productType?: string, validity?: number, requiredDocuments?: string, optionalDocuments?: string, documentsMinValidity?: number, applicationWindowDays?: number, validationPrompt?: string, deprecated?: boolean, usesCustomerAppWorkflow?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
         if (id === null || id === undefined) {
             throw new Error('Required parameter id was null or undefined when calling productsImportStartCreate.');
         }
@@ -663,6 +665,9 @@ export class ProductsService extends BaseService {
         if (retailPrice !== undefined) {
             localVarFormParams = localVarFormParams.append('retail_price', <any>retailPrice) as any || localVarFormParams;
         }
+        if (currency !== undefined) {
+            localVarFormParams = localVarFormParams.append('currency', <any>currency) as any || localVarFormParams;
+        }
         if (productType !== undefined) {
             localVarFormParams = localVarFormParams.append('product_type', <any>productType) as any || localVarFormParams;
         }
@@ -686,6 +691,9 @@ export class ProductsService extends BaseService {
         }
         if (deprecated !== undefined) {
             localVarFormParams = localVarFormParams.append('deprecated', <any>deprecated) as any || localVarFormParams;
+        }
+        if (usesCustomerAppWorkflow !== undefined) {
+            localVarFormParams = localVarFormParams.append('uses_customer_app_workflow', <any>usesCustomerAppWorkflow) as any || localVarFormParams;
         }
         if (createdAt !== undefined) {
             localVarFormParams = localVarFormParams.append('created_at', <any>createdAt) as any || localVarFormParams;
@@ -735,14 +743,15 @@ export class ProductsService extends BaseService {
      * @param page A page number within the paginated result set.
      * @param pageSize Number of results to return per page.
      * @param search A search term.
+     * @param usesCustomerAppWorkflow Filter products by whether they use customer-application workflows.
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public productsList(deprecated?: boolean, hideDeprecated?: boolean, ordering?: string, page?: number, pageSize?: number, search?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<PaginatedProductList>;
-    public productsList(deprecated?: boolean, hideDeprecated?: boolean, ordering?: string, page?: number, pageSize?: number, search?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<PaginatedProductList>>;
-    public productsList(deprecated?: boolean, hideDeprecated?: boolean, ordering?: string, page?: number, pageSize?: number, search?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<PaginatedProductList>>;
-    public productsList(deprecated?: boolean, hideDeprecated?: boolean, ordering?: string, page?: number, pageSize?: number, search?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+    public productsList(deprecated?: boolean, hideDeprecated?: boolean, ordering?: string, page?: number, pageSize?: number, search?: string, usesCustomerAppWorkflow?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<PaginatedProductList>;
+    public productsList(deprecated?: boolean, hideDeprecated?: boolean, ordering?: string, page?: number, pageSize?: number, search?: string, usesCustomerAppWorkflow?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<PaginatedProductList>>;
+    public productsList(deprecated?: boolean, hideDeprecated?: boolean, ordering?: string, page?: number, pageSize?: number, search?: string, usesCustomerAppWorkflow?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<PaginatedProductList>>;
+    public productsList(deprecated?: boolean, hideDeprecated?: boolean, ordering?: string, page?: number, pageSize?: number, search?: string, usesCustomerAppWorkflow?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
 
         let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
@@ -795,6 +804,15 @@ export class ProductsService extends BaseService {
             localVarQueryParameters,
             'search',
             <any>search,
+            QueryParamStyle.Form,
+            true,
+        );
+
+
+        localVarQueryParameters = this.addToHttpParams(
+            localVarQueryParameters,
+            'uses_customer_app_workflow',
+            <any>usesCustomerAppWorkflow,
             QueryParamStyle.Form,
             true,
         );

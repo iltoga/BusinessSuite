@@ -155,6 +155,32 @@ class DocApplication(models.Model):
     def __str__(self):
         return self.product.name + " - " + self.customer.full_name + f" #{self.pk}"
 
+    @staticmethod
+    def _split_document_names(value: str | None) -> list[str]:
+        if not value:
+            return []
+        return [name.strip() for name in value.split(",") if name and name.strip()]
+
+    @property
+    def has_configured_documents(self) -> bool:
+        product = self.product
+        if not product:
+            return False
+        return bool(
+            self._split_document_names(getattr(product, "required_documents", ""))
+            or self._split_document_names(getattr(product, "optional_documents", ""))
+        )
+
+    @property
+    def has_configured_tasks(self) -> bool:
+        product = self.product
+        if not product:
+            return False
+        product_cache = getattr(product, "_prefetched_objects_cache", None) or {}
+        if "tasks" in product_cache:
+            return bool(product_cache["tasks"])
+        return product.tasks.exists()
+
     @property
     def application_type(self):
         """Returns the product type for backward compatibility."""
@@ -278,7 +304,7 @@ class DocApplication(models.Model):
     def calculate_next_calendar_due_date(self, start_date=None):
         task = self.get_next_calendar_task()
         if not task:
-            return self.doc_date
+            return None if not self.has_configured_tasks else self.doc_date
         base_date = start_date or timezone.localdate()
         return calculate_due_date(base_date, task.duration, task.duration_is_business_days)
 
@@ -297,15 +323,17 @@ class DocApplication(models.Model):
                                    Useful when status is set explicitly (e.g., from invoice payment or re-open).
         """
         self.updated_at = timezone.now()
-        if not self.due_date:
+        if not self.has_configured_tasks:
+            self.due_date = None
+        elif not self.due_date:
             self.due_date = self.calculate_application_due_date()
 
         # Skip all automatic status calculation when explicitly requested
         if not skip_status_calculation:
             if self.pk:
                 self.status = self._get_application_status()
-            # For brand-new applications, keep legacy behavior when no required documents exist yet.
-            elif self.product and (not self.product.required_documents or not self.product.required_documents.strip()):
+            # For brand-new applications, auto-complete only for truly taskless/documentless products.
+            elif not self.has_configured_documents and not self.has_configured_tasks:
                 self.status = self.STATUS_COMPLETED
         super().save(*args, **kwargs)
 
@@ -315,6 +343,9 @@ class DocApplication(models.Model):
         """
         if self.workflows.filter(status=self.STATUS_REJECTED).exists():
             return self.STATUS_REJECTED
+
+        if not self.has_configured_documents and not self.has_configured_tasks:
+            return self.STATUS_COMPLETED
 
         current_workflow = self.current_workflow
         if current_workflow and current_workflow.status == self.STATUS_COMPLETED and current_workflow.is_workflow_completed:
@@ -341,6 +372,8 @@ class DocApplication(models.Model):
             start_date = self.current_workflow.due_date
             tasks = self.product.tasks.filter(step__gt=self.current_workflow.task.step)
         else:
+            if not self.has_configured_tasks:
+                return None
             start_date = self.doc_date
             tasks = self.product.tasks.all()
 

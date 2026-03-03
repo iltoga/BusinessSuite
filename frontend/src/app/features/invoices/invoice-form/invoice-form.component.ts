@@ -13,14 +13,14 @@ import {
 } from '@angular/core';
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { map } from 'rxjs';
 
 import {
-  CustomerApplicationsService,
   InvoicesService,
   type DocApplicationInvoice,
   type InvoiceCreateUpdate,
   type InvoiceDetail,
-  type PaginatedDocApplicationInvoiceList,
+  type Product,
 } from '@/core/api';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardButtonComponent } from '@/shared/components/button';
@@ -30,7 +30,21 @@ import { ZardDateInputComponent } from '@/shared/components/date-input';
 import { FormErrorSummaryComponent } from '@/shared/components/form-error-summary/form-error-summary.component';
 import { ZardInputDirective } from '@/shared/components/input';
 import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/utils/form-errors';
-import { QuickApplicationModalComponent } from '../../applications/quick-application-modal/quick-application-modal.component';
+
+interface BillableProductRow {
+  product: Product;
+  pendingApplications: DocApplicationInvoice[];
+  pendingApplicationsCount: number;
+  hasPendingApplications: boolean;
+}
+
+interface InvoiceLineInitial {
+  id?: number;
+  product?: number | null;
+  customerApplication?: number | null;
+  amount?: number;
+  locked?: boolean;
+}
 
 @Component({
   selector: 'app-invoice-form',
@@ -45,29 +59,30 @@ import { QuickApplicationModalComponent } from '../../applications/quick-applica
     ZardDateInputComponent,
     CustomerSelectComponent,
     FormErrorSummaryComponent,
-    QuickApplicationModalComponent,
   ],
   templateUrl: './invoice-form.component.html',
   styleUrls: ['./invoice-form.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class InvoiceFormComponent implements OnInit {
-  private fb = inject(FormBuilder);
-  private route = inject(ActivatedRoute);
-  private router = inject(Router);
-  private invoicesApi = inject(InvoicesService);
-  private applicationsApi = inject(CustomerApplicationsService);
-  private toast = inject(GlobalToastService);
-  private platformId = inject(PLATFORM_ID);
-  private http = inject(HttpClient);
-  private cdr = inject(ChangeDetectorRef);
+  private readonly fb = inject(FormBuilder);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly invoicesApi = inject(InvoicesService);
+  private readonly toast = inject(GlobalToastService);
+  private readonly platformId = inject(PLATFORM_ID);
+  private readonly http = inject(HttpClient);
+  private readonly cdr = inject(ChangeDetectorRef);
+
+  private nextLineKey = 1;
 
   readonly isLoading = signal(false);
   readonly isSaving = signal(false);
   readonly isEditMode = signal(false);
   readonly invoice = signal<InvoiceDetail | null>(null);
-  readonly customerApplications = signal<DocApplicationInvoice[]>([]);
-  readonly isQuickAppModalOpen = signal(false);
+  readonly billableProducts = signal<BillableProductRow[]>([]);
+  readonly sourceApplicationId = signal<number | null>(null);
+  readonly lockCustomerFromSource = signal(false);
 
   readonly form = this.fb.group({
     customer: [null as number | null, Validators.required],
@@ -86,29 +101,27 @@ export class InvoiceFormComponent implements OnInit {
     dueDate: 'Due Date (Payment)',
     notes: 'Notes',
     sent: 'Sent',
-    invoiceApplications: 'Invoice Applications',
-    invoiceApplicationsCustomerApplication: 'Application',
+    invoiceApplications: 'Invoice Products',
+    invoiceApplicationsProduct: 'Product',
+    invoiceApplicationsCustomerApplication: 'Linked Application',
     invoiceApplicationsAmount: 'Amount',
   };
 
-  readonly totalAmount = computed(() => {
-    const items = this.invoiceApplications.controls;
-    return items.reduce((sum, group) => {
+  readonly totalAmount = computed(() =>
+    this.invoiceApplications.controls.reduce((sum, group) => {
       const amount = Number(group.get('amount')?.value ?? 0);
       return sum + (Number.isNaN(amount) ? 0 : amount);
-    }, 0);
-  });
+    }, 0),
+  );
 
   @HostListener('window:keydown', ['$event'])
   handleGlobalKeydown(event: KeyboardEvent): void {
-    // Esc --> Cancel
     if (event.key === 'Escape') {
       event.preventDefault();
       this.goBack();
       return;
     }
 
-    // cmd+s (mac) or ctrl+s (windows/linux) --> save
     const isSaveKey = (event.ctrlKey || event.metaKey) && (event.key === 's' || event.key === 'S');
     if (isSaveKey) {
       event.preventDefault();
@@ -124,7 +137,6 @@ export class InvoiceFormComponent implements OnInit {
 
     if (isInput) return;
 
-    // B or Left Arrow --> Back to list
     if (
       (event.key === 'B' || event.key === 'ArrowLeft') &&
       !event.ctrlKey &&
@@ -138,6 +150,52 @@ export class InvoiceFormComponent implements OnInit {
 
   get invoiceApplications(): FormArray<FormGroup> {
     return this.form.get('invoiceApplications') as FormArray<FormGroup>;
+  }
+
+  ngOnInit(): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    const idParam = this.route.snapshot.paramMap.get('id');
+    const applicationId = this.route.snapshot.queryParamMap.get('applicationId');
+
+    if (idParam) {
+      this.isEditMode.set(true);
+      this.loadInvoice(Number(idParam));
+      return;
+    }
+
+    if (applicationId) {
+      this.loadFromApplication(Number(applicationId));
+    } else {
+      this.addLineItem({}, { manual: false, skipAutoExpand: true });
+    }
+
+    this.proposeInvoiceNo(this.form.get('invoiceDate')?.value);
+    this.form.get('invoiceDate')?.valueChanges.subscribe((value) => {
+      if (this.isEditMode()) return;
+      const invoiceNoCtrl = this.form.get('invoiceNo');
+      if (invoiceNoCtrl && !invoiceNoCtrl.dirty) {
+        this.proposeInvoiceNo(value);
+      }
+    });
+
+    this.form.get('customer')?.valueChanges.subscribe((value) => {
+      if (this.isEditMode() || this.lockCustomerFromSource()) {
+        return;
+      }
+      if (!value) {
+        this.billableProducts.set([]);
+        this.invoiceApplications.clear();
+        this.addLineItem({}, { manual: false, skipAutoExpand: true });
+        return;
+      }
+
+      this.invoiceApplications.clear();
+      this.addLineItem({}, { manual: false, skipAutoExpand: true });
+      this.loadBillableProducts(value);
+    });
   }
 
   goBack(): void {
@@ -179,136 +237,90 @@ export class InvoiceFormComponent implements OnInit {
     this.router.navigate(['/invoices'], { state: focusState });
   }
 
-  ngOnInit(): void {
-    if (!isPlatformBrowser(this.platformId)) {
-      return;
-    }
-
-    const idParam = this.route.snapshot.paramMap.get('id');
-    const applicationId = this.route.snapshot.queryParamMap.get('applicationId');
-
-    if (idParam) {
-      this.isEditMode.set(true);
-      this.loadInvoice(Number(idParam));
-    } else {
-      if (applicationId) {
-        this.loadFromApplication(Number(applicationId));
-      } else {
-        this.addLineItem({});
-      }
-
-      // For new invoices, propose an invoice number based on invoice date
-      this.proposeInvoiceNo(this.form.get('invoiceDate')?.value);
-
-      this.form.get('invoiceDate')?.valueChanges.subscribe((value) => {
-        // Only propose when creating, and don't overwrite if user already edited invoiceNo
-        if (this.isEditMode()) return;
-        const invoiceNoCtrl = this.form.get('invoiceNo');
-        if (invoiceNoCtrl && !invoiceNoCtrl.dirty) {
-          this.proposeInvoiceNo(value);
-        }
-      });
-    }
-
-    const customerId = this.form.get('customer')?.value;
-    if (customerId) {
-      this.loadCustomerApplications(customerId);
-    }
-
-    this.form.get('customer')?.valueChanges.subscribe((value) => {
-      if (this.isEditMode()) {
-        return;
-      }
-      if (value) {
-        this.loadCustomerApplications(value);
-      } else {
-        this.customerApplications.set([]);
-      }
-    });
-  }
-
-  addLineItem(initial?: { id?: number; customerApplication?: number; amount?: number }): void {
-    // If user is trying to add a new empty row without selecting a customer, prompt them
-    if (!initial && !this.form.get('customer')?.value) {
+  addLineItem(
+    initial: InvoiceLineInitial = {},
+    options: { manual?: boolean; skipAutoExpand?: boolean } = {},
+  ): void {
+    const manual = options.manual ?? true;
+    if (manual && !this.form.get('customer')?.value) {
       this.toast.error('Please select a customer first.');
       return;
     }
 
+    const lineKey = this.nextLineKey++;
     const group = this.fb.group({
-      id: [initial?.id ?? null],
-      customerApplication: [initial?.customerApplication ?? null, Validators.required],
-      amount: [initial?.amount ?? 0, [Validators.required, Validators.min(0)]],
+      id: [initial.id ?? null],
+      lineKey: [lineKey],
+      locked: [!!initial.locked],
+      product: [initial.product ?? null, Validators.required],
+      customerApplication: [initial.customerApplication ?? null],
+      amount: [initial.amount ?? 0, [Validators.required, Validators.min(0)]],
+    });
+
+    group.get('product')?.valueChanges.subscribe((value) => {
+      this.onLineProductChanged(group, value, !(options.skipAutoExpand ?? false));
     });
 
     group.get('customerApplication')?.valueChanges.subscribe((value) => {
-      if (!value) {
-        return;
-      }
-      const app = this.customerApplications().find((item) => item.id === value);
-      const price = this.resolveApplicationPrice(app);
-      group.get('amount')?.setValue(Number.isNaN(price) ? 0 : price, { emitEvent: false });
+      this.onLineApplicationChanged(group, value);
     });
 
     this.invoiceApplications.push(group);
 
-    // After adding, if there's exactly one available application for this customer, auto-select it
-    const customerId = this.form.get('customer')?.value;
-    if (customerId && !initial) {
-      const available = this.availableApplications(null);
-      if (available.length === 1) {
-        const app = available[0];
-        group.get('customerApplication')?.setValue(app.id);
-        const price = this.resolveApplicationPrice(app);
-        group.get('amount')?.setValue(Number.isNaN(price) ? 0 : price, { emitEvent: false });
-        this.cdr.markForCheck();
+    if (initial.locked) {
+      group.get('product')?.disable({ emitEvent: false });
+      group.get('customerApplication')?.disable({ emitEvent: false });
+    }
+
+    if (initial.product && initial.customerApplication) {
+      const app = this.findPendingApplicationById(initial.customerApplication);
+      if (app) {
+        group.get('amount')?.setValue(this.resolveApplicationPrice(app), { emitEvent: false });
       }
+    } else if (initial.product && initial.amount === undefined) {
+      group.get('amount')?.setValue(this.resolveProductPrice(initial.product), { emitEvent: false });
     }
-  }
-
-  openQuickAppModal(): void {
-    const customerId = this.form.get('customer')?.value;
-    if (!customerId) {
-      this.toast.error('Please select a customer first.');
-      return;
-    }
-    this.isQuickAppModalOpen.set(true);
-  }
-
-  onQuickAppSaved(newApp: any): void {
-    this.isQuickAppModalOpen.set(false);
-
-    // Add to customerApplications list so it can be selected in the form
-    this.customerApplications.update((apps) => [...apps, newApp]);
-
-    // Find first empty row or add new one
-    let targetGroup: FormGroup | null = null;
-    for (let i = 0; i < this.invoiceApplications.length; i++) {
-      const g = this.invoiceApplications.at(i);
-      if (!g.get('customerApplication')?.value) {
-        targetGroup = g;
-        break;
-      }
-    }
-
-    if (targetGroup) {
-      targetGroup.get('customerApplication')?.setValue(newApp.id);
-      const price = this.resolveApplicationPrice(newApp);
-      targetGroup.get('amount')?.setValue(Number.isNaN(price) ? 0 : price, { emitEvent: false });
-    } else {
-      this.addLineItem({
-        customerApplication: newApp.id,
-        amount: this.resolveApplicationPrice(newApp),
-      });
-    }
-
-    this.cdr.markForCheck();
   }
 
   removeLineItem(index: number): void {
-    if (this.invoiceApplications.length <= 1) {
+    const group = this.invoiceApplications.at(index);
+    if (!group || this.isLineLocked(group) || this.invoiceApplications.length <= 1) {
       return;
     }
     this.invoiceApplications.removeAt(index);
+  }
+
+  isLineLocked(group: FormGroup): boolean {
+    return !!group.get('locked')?.value;
+  }
+
+  selectedProductPendingCount(group: FormGroup): number {
+    const productId = Number(group.get('product')?.value ?? 0);
+    if (!productId) {
+      return 0;
+    }
+    const row = this.findBillableProduct(productId);
+    return row?.pendingApplicationsCount ?? 0;
+  }
+
+  availablePendingApplicationsForLine(group: FormGroup): DocApplicationInvoice[] {
+    const productId = Number(group.get('product')?.value ?? 0);
+    if (!productId) {
+      return [];
+    }
+
+    const lineKey = Number(group.get('lineKey')?.value ?? 0);
+    const selectedIds = this.selectedCustomerApplicationIds(lineKey);
+    const selectedCurrentId = Number(group.get('customerApplication')?.value ?? 0) || null;
+
+    const row = this.findBillableProduct(productId);
+    if (!row) {
+      return [];
+    }
+
+    return row.pendingApplications.filter(
+      (app) => !selectedIds.has(app.id) || (selectedCurrentId !== null && app.id === selectedCurrentId),
+    );
   }
 
   save(): void {
@@ -329,7 +341,8 @@ export class InvoiceFormComponent implements OnInit {
       sent: raw.sent ?? false,
       invoiceApplications: (raw.invoiceApplications ?? []).map((item: any) => ({
         id: item.id ?? undefined,
-        customerApplication: item.customerApplication,
+        product: item.product,
+        customerApplication: item.customerApplication ?? null,
         amount: String(item.amount ?? 0),
       })),
     } as InvoiceCreateUpdate;
@@ -394,71 +407,185 @@ export class InvoiceFormComponent implements OnInit {
     }).format(value);
   }
 
-  availableApplications(selectedId?: number | null): DocApplicationInvoice[] {
-    const selected = new Set(
-      this.invoiceApplications.controls
-        .map((group) => group.get('customerApplication')?.value)
-        .filter((value) => value !== null && value !== undefined),
-    );
+  getBillableProductLabel(row: BillableProductRow): string {
+    const prefix = row.hasPendingApplications ? `[Pending ${row.pendingApplicationsCount}] ` : '';
+    return `${prefix}${row.product.code} - ${row.product.name}`;
+  }
 
-    return this.customerApplications().filter(
-      (item) => !selected.has(item.id) || item.id === selectedId,
-    );
+  private selectedCustomerApplicationIds(excludeLineKey?: number): Set<number> {
+    const selected = new Set<number>();
+    for (const line of this.invoiceApplications.getRawValue() as any[]) {
+      const lineKey = Number(line.lineKey ?? 0);
+      if (excludeLineKey && lineKey === excludeLineKey) {
+        continue;
+      }
+      const appId = Number(line.customerApplication ?? 0);
+      if (appId) {
+        selected.add(appId);
+      }
+    }
+    return selected;
+  }
+
+  private onLineProductChanged(group: FormGroup, rawProductId: unknown, allowAutoExpand: boolean): void {
+    const productId = Number(rawProductId ?? 0);
+    if (!productId) {
+      group.get('customerApplication')?.setValue(null, { emitEvent: false });
+      group.get('amount')?.setValue(0, { emitEvent: false });
+      return;
+    }
+
+    const currentAppId = Number(group.get('customerApplication')?.value ?? 0) || null;
+
+    if (allowAutoExpand && !currentAppId) {
+      const availablePending = this.availablePendingApplicationsForLine(group);
+      if (availablePending.length > 0) {
+        const [first, ...rest] = availablePending;
+        group.get('customerApplication')?.setValue(first.id, { emitEvent: false });
+        group.get('amount')?.setValue(this.resolveApplicationPrice(first), { emitEvent: false });
+
+        for (const pendingApp of rest) {
+          this.addLineItem(
+            {
+              product: productId,
+              customerApplication: pendingApp.id,
+              amount: this.resolveApplicationPrice(pendingApp),
+            },
+            { manual: false, skipAutoExpand: true },
+          );
+        }
+        this.cdr.markForCheck();
+        return;
+      }
+    }
+
+    if (currentAppId) {
+      const selectedApp = this.findPendingApplicationById(currentAppId);
+      if (!selectedApp || selectedApp.product?.id !== productId) {
+        group.get('customerApplication')?.setValue(null, { emitEvent: false });
+        group.get('amount')?.setValue(this.resolveProductPrice(productId), { emitEvent: false });
+        return;
+      }
+
+      group.get('amount')?.setValue(this.resolveApplicationPrice(selectedApp), { emitEvent: false });
+      return;
+    }
+
+    group.get('amount')?.setValue(this.resolveProductPrice(productId), { emitEvent: false });
+  }
+
+  private onLineApplicationChanged(group: FormGroup, rawApplicationId: unknown): void {
+    const applicationId = Number(rawApplicationId ?? 0);
+    if (!applicationId) {
+      const productId = Number(group.get('product')?.value ?? 0);
+      group.get('amount')?.setValue(this.resolveProductPrice(productId), { emitEvent: false });
+      return;
+    }
+
+    const application = this.findPendingApplicationById(applicationId);
+    if (!application) {
+      return;
+    }
+
+    const applicationProductId = application.product?.id;
+    if (applicationProductId && group.get('product')?.value !== applicationProductId) {
+      group.get('product')?.setValue(applicationProductId, { emitEvent: false });
+    }
+    group.get('amount')?.setValue(this.resolveApplicationPrice(application), { emitEvent: false });
+  }
+
+  private findBillableProduct(productId: number): BillableProductRow | undefined {
+    return this.billableProducts().find((row) => row.product.id === productId);
+  }
+
+  private findPendingApplicationById(applicationId: number): DocApplicationInvoice | undefined {
+    for (const row of this.billableProducts()) {
+      const app = row.pendingApplications.find((candidate) => candidate.id === applicationId);
+      if (app) {
+        return app;
+      }
+    }
+    return undefined;
+  }
+
+  private resolveProductPrice(productId: number | null | undefined): number {
+    if (!productId) {
+      return 0;
+    }
+    const row = this.findBillableProduct(productId);
+    return this.resolveProductPriceFromProduct(row?.product);
+  }
+
+  private resolveProductPriceFromProduct(product: Product | null | undefined): number {
+    if (!product) {
+      return 0;
+    }
+    const retail = (product as any).retailPrice ?? (product as any).retail_price;
+    const base = (product as any).basePrice ?? (product as any).base_price;
+    const price = Number(retail ?? base ?? 0);
+    return Number.isNaN(price) ? 0 : price;
+  }
+
+  private resolveApplicationPrice(app: DocApplicationInvoice): number {
+    return this.resolveProductPriceFromProduct(app.product as Product);
   }
 
   private loadFromApplication(applicationId: number): void {
     this.isLoading.set(true);
-    this.applicationsApi.customerApplicationsRetrieve(applicationId).subscribe({
-      next: (app) => {
-        const customerId = app.customer?.id;
-        if (customerId) {
-          this.form.get('customer')?.setValue(customerId, { emitEvent: false });
-          this.form.get('customer')?.disable();
 
-          this.invoicesApi
-            .invoicesGetCustomerApplicationsList(customerId, undefined, false, undefined, true)
-            .subscribe({
-              next: (response: PaginatedDocApplicationInvoiceList) => {
-                let results = response.results ?? [];
+    this.invoicesApi.invoicesFromApplicationPrefillRetrieve(applicationId).subscribe({
+      next: (response) => {
+        const payload = (response ?? null) as Record<string, any> | null;
+        const customerId = payload?.['customer']?.id ?? null;
+        const sourceLine = payload?.['invoiceApplication'] ?? payload?.['invoice_application'] ?? null;
+        const sourceApplicationId = sourceLine?.['customerApplication'] ?? sourceLine?.['customer_application'] ?? null;
+        const sourceProductId = sourceLine?.['product'] ?? null;
 
-                // Ensure the application that opened this view is present in the list
-                if (!results.some((r) => r.id === app.id)) {
-                  // Insert the current application at the beginning so it appears in the combobox
-                  results = [app, ...results];
-                }
-
-                this.customerApplications.set(results);
-
-                this.invoiceApplications.clear();
-                const amount = this.resolveApplicationPrice(app);
-                this.addLineItem({
-                  customerApplication: app.id,
-                  amount: Number.isNaN(amount) ? 0 : amount,
-                });
-
-                // Disable the "Application" combobox in the first row so user cannot change it
-                const firstGroup = this.invoiceApplications.at(0);
-                firstGroup.get('customerApplication')?.disable({ emitEvent: false });
-
-                // Ensure OnPush view is updated
-                this.cdr.markForCheck();
-
-                this.isLoading.set(false);
-              },
-              error: () => {
-                this.toast.error('Failed to load billable applications');
-                this.isLoading.set(false);
-              },
-            });
-        } else {
+        if (!customerId || !sourceProductId || !sourceApplicationId) {
+          this.toast.error('Invalid source application prefill payload.');
+          this.addLineItem({}, { manual: false, skipAutoExpand: true });
           this.isLoading.set(false);
-          this.addLineItem({});
+          return;
         }
+
+        this.sourceApplicationId.set(Number(sourceApplicationId));
+        this.lockCustomerFromSource.set(true);
+        this.form.get('customer')?.setValue(customerId, { emitEvent: false });
+        this.form.get('customer')?.disable({ emitEvent: false });
+
+        this.fetchBillableProducts(customerId).subscribe({
+          next: (rows) => {
+            this.billableProducts.set(rows);
+            this.invoiceApplications.clear();
+            this.addLineItem(
+              {
+                product: Number(sourceProductId),
+                customerApplication: Number(sourceApplicationId),
+                amount: Number(sourceLine['amount'] ?? 0),
+                locked: true,
+              },
+              { manual: false, skipAutoExpand: true },
+            );
+            this.isLoading.set(false);
+            this.cdr.markForCheck();
+          },
+          error: (error) => {
+            const message = extractServerErrorMessage(error);
+            this.toast.error(
+              message ? `Failed to load billable products: ${message}` : 'Failed to load billable products',
+            );
+            this.invoiceApplications.clear();
+            this.addLineItem({}, { manual: false, skipAutoExpand: true });
+            this.isLoading.set(false);
+          },
+        });
       },
-      error: () => {
-        this.toast.error('Failed to load application');
+      error: (error) => {
+        const message = extractServerErrorMessage(error);
+        this.toast.error(message ? `Failed to load source application: ${message}` : 'Failed to load source application');
+        this.invoiceApplications.clear();
+        this.addLineItem({}, { manual: false, skipAutoExpand: true });
         this.isLoading.set(false);
-        this.addLineItem({});
       },
     });
   }
@@ -477,68 +604,112 @@ export class InvoiceFormComponent implements OnInit {
           sent: invoice.sent ?? false,
         });
 
-        this.form.get('customer')?.disable();
-        this.form.get('invoiceNo')?.disable();
+        this.form.get('customer')?.disable({ emitEvent: false });
+        this.form.get('invoiceNo')?.disable({ emitEvent: false });
 
-        this.invoiceApplications.clear();
-        (invoice.invoiceApplications ?? []).forEach((item) => {
-          this.addLineItem({
-            id: item.id,
-            customerApplication: item.customerApplication?.id,
-            amount: Number(item.amount ?? 0),
-          });
+        const customerId = invoice.customer?.id;
+        if (!customerId) {
+          this.invoiceApplications.clear();
+          this.addLineItem({}, { manual: false, skipAutoExpand: true });
+          this.isLoading.set(false);
+          return;
+        }
+
+        this.fetchBillableProducts(customerId, invoice.id).subscribe({
+          next: (rows) => {
+            this.billableProducts.set(rows);
+            this.invoiceApplications.clear();
+
+            for (const item of invoice.invoiceApplications ?? []) {
+              const productId = item.product?.id ?? item.customerApplication?.product?.id ?? null;
+              this.addLineItem(
+                {
+                  id: item.id,
+                  product: productId,
+                  customerApplication: item.customerApplication?.id ?? null,
+                  amount: Number(item.amount ?? 0),
+                },
+                { manual: false, skipAutoExpand: true },
+              );
+            }
+
+            if ((invoice.invoiceApplications ?? []).length === 0) {
+              this.addLineItem({}, { manual: false, skipAutoExpand: true });
+            }
+
+            this.isLoading.set(false);
+            this.cdr.markForCheck();
+          },
+          error: (error) => {
+            const message = extractServerErrorMessage(error);
+            this.toast.error(
+              message ? `Failed to load billable products: ${message}` : 'Failed to load billable products',
+            );
+            this.invoiceApplications.clear();
+            this.addLineItem({}, { manual: false, skipAutoExpand: true });
+            this.isLoading.set(false);
+          },
         });
-
-        if ((invoice.invoiceApplications ?? []).length === 0) {
-          this.addLineItem({});
-        }
-
-        if (invoice.customer?.id) {
-          this.loadCustomerApplications(invoice.customer.id, invoice.id);
-        }
-
-        this.isLoading.set(false);
       },
-      error: () => {
-        this.toast.error('Failed to load invoice');
+      error: (error) => {
+        const message = extractServerErrorMessage(error);
+        this.toast.error(message ? `Failed to load invoice: ${message}` : 'Failed to load invoice');
         this.isLoading.set(false);
       },
     });
   }
 
-  private loadCustomerApplications(customerId: number, currentInvoiceId?: number): void {
-    this.invoicesApi
-      .invoicesGetCustomerApplicationsList(customerId, currentInvoiceId, false, undefined, true)
-      .subscribe({
-        next: (response: PaginatedDocApplicationInvoiceList) => {
-          const results = response.results ?? [];
-          this.customerApplications.set(results);
+  private loadBillableProducts(customerId: number, currentInvoiceId?: number): void {
+    this.fetchBillableProducts(customerId, currentInvoiceId).subscribe({
+      next: (rows) => {
+        this.billableProducts.set(rows);
+        this.cdr.markForCheck();
+      },
+      error: (error) => {
+        const message = extractServerErrorMessage(error);
+        this.toast.error(
+          message ? `Failed to load billable products: ${message}` : 'Failed to load billable products',
+        );
+      },
+    });
+  }
 
-          // Try to auto-select an application in any empty invoice application row if only one available
-          for (let i = 0; i < this.invoiceApplications.length; i++) {
-            const group = this.invoiceApplications.at(i);
-            const currentVal = group.get('customerApplication')?.value;
-            if (currentVal) continue;
-            const available = this.availableApplications(null).filter((a) =>
-              results.some((r) => r.id === a.id),
-            );
-            if (available.length === 1) {
-              const app = available[0];
-              group.get('customerApplication')?.setValue(app.id);
-              const price = this.resolveApplicationPrice(app);
-              group.get('amount')?.setValue(Number.isNaN(price) ? 0 : price, { emitEvent: false });
-              this.cdr.markForCheck();
-              // continue trying to fill other empty rows if more single options appear
-            } else {
-              // If multiple available, don't auto-select for this row
-              break;
-            }
-          }
-        },
-        error: () => {
-          this.toast.error('Failed to load customer applications');
-        },
-      });
+  private fetchBillableProducts(customerId: number, currentInvoiceId?: number) {
+    return this.invoicesApi
+      .invoicesGetBillableProductsRetrieve(customerId, currentInvoiceId)
+      .pipe(map((rows) => this.normalizeBillableRows(rows)));
+  }
+
+  private normalizeBillableRows(rows: unknown): BillableProductRow[] {
+    const list = Array.isArray(rows) ? rows : Array.isArray((rows as any)?.results) ? (rows as any).results : [];
+    return list
+      .map((row: any) => {
+        const product = (row?.product ?? null) as Product | null;
+        if (!product || typeof product.id !== 'number') {
+          return null;
+        }
+
+        const pendingApplications = (row?.pendingApplications ??
+          row?.pending_applications ??
+          []) as DocApplicationInvoice[];
+        const pendingApplicationsCount = Number(
+          row?.pendingApplicationsCount ?? row?.pending_applications_count ?? pendingApplications.length,
+        );
+        const hasPendingApplications =
+          row?.hasPendingApplications ??
+          row?.has_pending_applications ??
+          pendingApplicationsCount > 0;
+
+        return {
+          product,
+          pendingApplications: Array.isArray(pendingApplications) ? pendingApplications : [],
+          pendingApplicationsCount: Number.isFinite(pendingApplicationsCount)
+            ? pendingApplicationsCount
+            : 0,
+          hasPendingApplications: Boolean(hasPendingApplications),
+        } as BillableProductRow;
+      })
+      .filter((row: BillableProductRow | null): row is BillableProductRow => row !== null);
   }
 
   private toIsoDate(value: Date | string | null): string | null {
@@ -557,20 +728,11 @@ export class InvoiceFormComponent implements OnInit {
     return `${year}-${month}-${day}`;
   }
 
-  private resolveApplicationPrice(app: any): number {
-    const product = app?.product ?? {};
-    const retail = product.retailPrice ?? product.retail_price;
-    const base = product.basePrice ?? product.base_price;
-    const price = Number(retail ?? base ?? 0);
-    return Number.isNaN(price) ? 0 : price;
-  }
-
   private proposeInvoiceNo(invoiceDate?: Date | string | null): void {
     if (!invoiceDate) return;
     const date = invoiceDate instanceof Date ? invoiceDate : new Date(invoiceDate);
     if (Number.isNaN(date.getTime())) return;
 
-    // Use local date to avoid timezone shift issues with toISOString()
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
@@ -582,18 +744,16 @@ export class InvoiceFormComponent implements OnInit {
       next: (res) => {
         const ctrl = this.form.get('invoiceNo');
         if (ctrl && !ctrl.dirty) {
-          // The backend uses djangorestframework-camel-case, so invoice_no becomes invoiceNo
           const proposedNo = res.invoiceNo || res.invoice_no;
           if (proposedNo) {
             ctrl.setValue(proposedNo, { emitEvent: false });
-            // mark pristine so future proposals still overwrite unless user edits
             ctrl.markAsPristine();
             this.cdr.markForCheck();
           }
         }
       },
       error: () => {
-        // non-fatal — proposal failed, leave invoiceNo empty
+        // Non-blocking helper.
       },
     });
   }

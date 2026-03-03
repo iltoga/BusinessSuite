@@ -120,3 +120,8 @@ def update_invoice_status(sender, instance, **kwargs):
 
     if fields_to_update:
         invoice.save(update_fields=fields_to_update)
+
+    if invoice.status == invoice.PAID:
+        from core.services.invoice_service import sync_paid_invoice_applications
+
+        sync_paid_invoice_applications(invoice=invoice, user=instance.updated_by or instance.created_by)

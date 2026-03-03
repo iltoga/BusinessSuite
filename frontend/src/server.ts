@@ -679,6 +679,7 @@ app.use(async (req, res, next) => {
         // Inject server config from .env into the page so the app picks it up immediately
         const mockAuthEnv = (process.env['MOCK_AUTH_ENABLED'] || 'False').trim();
         const appTitleEnv = process.env['APP_TITLE'] || 'BusinessSuite';
+        const baseCurrencyEnv = ((process.env['BASE_CURRENCY'] || 'IDR').trim() || 'IDR').toUpperCase();
         const fcmSenderIdEnv = (process.env['FCM_SENDER_ID'] || '').trim();
         const fcmProjectNumberEnv = (process.env['FCM_PROJECT_NUMBER'] || '').trim();
         const fcmVapidPublicKeyEnv = (process.env['FCM_VAPID_PUBLIC_KEY'] || '').trim();
@@ -692,6 +693,7 @@ app.use(async (req, res, next) => {
           window.APP_CONFIG={
             MOCK_AUTH_ENABLED: ${JSON.stringify(mockAuthEnv)},
             title: ${JSON.stringify(appTitleEnv)},
+            baseCurrency: ${JSON.stringify(baseCurrencyEnv)},
             fcmSenderId: ${JSON.stringify(fcmSenderIdEnv)},
             fcmProjectNumber: ${JSON.stringify(fcmProjectNumberEnv)},
             fcmVapidPublicKey: ${JSON.stringify(fcmVapidPublicKeyEnv)},
@@ -736,6 +738,7 @@ app.use(async (req, res, next) => {
         // Inject server config from .env into the page
         const mockAuthEnv = (process.env['MOCK_AUTH_ENABLED'] || 'False').trim();
         const appTitleEnv = process.env['APP_TITLE'] || 'BusinessSuite';
+        const baseCurrencyEnv = ((process.env['BASE_CURRENCY'] || 'IDR').trim() || 'IDR').toUpperCase();
         const fcmSenderIdEnv = (process.env['FCM_SENDER_ID'] || '').trim();
         const fcmProjectNumberEnv = (process.env['FCM_PROJECT_NUMBER'] || '').trim();
         const fcmVapidPublicKeyEnv = (process.env['FCM_VAPID_PUBLIC_KEY'] || '').trim();
@@ -749,6 +752,7 @@ app.use(async (req, res, next) => {
           window.APP_CONFIG={
             MOCK_AUTH_ENABLED: ${JSON.stringify(mockAuthEnv)},
             title: ${JSON.stringify(appTitleEnv)},
+            baseCurrency: ${JSON.stringify(baseCurrencyEnv)},
             fcmSenderId: ${JSON.stringify(fcmSenderIdEnv)},
             fcmProjectNumber: ${JSON.stringify(fcmProjectNumberEnv)},
             fcmVapidPublicKey: ${JSON.stringify(fcmVapidPublicKeyEnv)},

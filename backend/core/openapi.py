@@ -122,6 +122,7 @@ def postprocess_add_mock_paths(result, generator, **kwargs):
                                         "MOCK_AUTH_ENABLED": {"type": "string", "enum": ["True"]},
                                         "theme": {"type": "string", "enum": ["neutral"]},
                                         "dateFormat": {"type": "string", "example": "dd-MM-yyyy"},
+                                        "baseCurrency": {"type": "string", "example": "IDR"},
                                         "title": {"type": "string", "example": "BusinessSuite (Mock)"},
                                         "logoFilename": {"type": "string", "example": "logo_transparent.png"},
                                         "logoInvertedFilename": {

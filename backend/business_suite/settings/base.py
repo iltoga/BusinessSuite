@@ -92,6 +92,13 @@ def _parse_list(value, default=None):
     return [item for item in items if item]
 
 
+def _normalize_currency_code(value, default: str = "IDR") -> str:
+    raw = str(value or "").strip().upper()
+    if raw.isalpha() and 2 <= len(raw) <= 3:
+        return raw
+    return default
+
+
 def _resolved_db_host():
     host = (os.getenv("DB_HOST") or "").strip()
     if not host:
@@ -181,6 +188,9 @@ GLOBAL_SETTINGS = {
 # Uses Angular DatePipe tokens (e.g. dd-MM-yyyy, yyyy-MM-dd, dd/MM/yyyy).
 DATE_FORMAT_JS = os.getenv("DATE_FORMAT_JS", "dd-MM-yyyy")
 
+# Base currency exposed to Angular via /api/app-config/ and used as Product default.
+BASE_CURRENCY = _normalize_currency_code(os.getenv("BASE_CURRENCY", "IDR"))
+
 # Legacy Django template views have been removed; always redirect to admin after login.
 LOGIN_REDIRECT_URL = "/admin/"
 
@@ -201,6 +211,7 @@ APP_DOMAIN = os.getenv("APP_DOMAIN")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DJANGO_DEBUG", "False") == "True"
+ENABLE_DEBUG_TOOLBAR = DEBUG and _parse_bool(os.getenv("ENABLE_DEBUG_TOOLBAR", "True"))
 
 ALLOWED_HOSTS = [
     "localhost",
@@ -219,7 +230,6 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "django_http_compression",
     "django.contrib.postgres",
     "cacheops",  # Django-cacheops for automatic ORM query caching
     "core.apps.CoreConfig",
@@ -238,18 +248,18 @@ INSTALLED_APPS = [
     "rest_framework.authtoken",
     "nested_admin",
     "django.contrib.humanize",
-    "debug_toolbar",
     "waffle",
     "dbbackup",
     "storages",
     "admin_tools",
     "django_cleanup.apps.CleanupConfig",
 ]
+if ENABLE_DEBUG_TOOLBAR:
+    INSTALLED_APPS.append("debug_toolbar")
 
 MIDDLEWARE = [
-    "debug_toolbar.middleware.DebugToolbarMiddleware",
     "django.middleware.security.SecurityMiddleware",
-    "django_http_compression.middleware.HttpCompressionMiddleware",
+    # HTTP compression is handled at the reverse proxy (nginx) layer.
     # CORS middleware should be as high as possible so CORS headers are applied
     # to all responses (see django-cors-headers docs).
     "corsheaders.middleware.CorsMiddleware",
@@ -268,6 +278,8 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "core.middleware.performance_logger.PerformanceLoggingMiddleware",
 ]
+if ENABLE_DEBUG_TOOLBAR:
+    MIDDLEWARE.insert(0, "debug_toolbar.middleware.DebugToolbarMiddleware")
 
 ROOT_URLCONF = "business_suite.urls"
 
@@ -618,7 +630,7 @@ LOGGING_MODELS = (
     "customer_applications",
 )
 
-SESSION_SAVE_EVERY_REQUEST = True
+SESSION_SAVE_EVERY_REQUEST = _parse_bool(os.getenv("SESSION_SAVE_EVERY_REQUEST", "False"))
 
 # This is for the debug toolbar when using docker
 # https://docs.djangoproject.com/en/3.2/ref/settings/#internal-ips
@@ -984,7 +996,7 @@ LOGGING = {
 # scrape container stdout/stderr or log files (e.g., `logs/`) to collect logs. If you
 # want additional loggers to forward audit events to the file-based fallback handler,
 # add "fail_safe_audit" to their handler lists here.
-CURRENCY = "IDR"
+CURRENCY = BASE_CURRENCY
 CURRENCY_SYMBOL = "Rp"
 CURRENCY_DECIMAL_PLACES = 0
 

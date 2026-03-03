@@ -49,10 +49,16 @@ class InvoiceService:
         for item in self.invoice.invoice_applications.all():
             # Match the 'Items' column from the Invoice List view:
             # "<product.code> - <customer_application.notes or customer.full_name>"
-            prod_code = str(item.customer_application.product.code)
-            prod_description = self._normalize_multiline_text(str(item.customer_application.product.description))
-            notes = item.customer_application.notes
-            customer_name = str(item.customer_application.customer.full_name)
+            product = item.product
+            customer_application = item.customer_application
+            prod_code = str(product.code)
+            prod_description = self._normalize_multiline_text(str(product.description))
+            notes = customer_application.notes if customer_application else ""
+            customer_name = (
+                str(customer_application.customer.full_name)
+                if customer_application and customer_application.customer
+                else str(self.invoice.customer.full_name)
+            )
             if notes:
                 notes_text = self._normalize_multiline_text(str(notes))
                 description = f"{prod_description} - {notes_text}"
@@ -81,7 +87,7 @@ class InvoiceService:
             for payment in item.payments.all():
                 payments.append(
                     {
-                        "payment_invoice_application": str(payment.invoice_application.customer_application.product),
+                        "payment_invoice_application": str(payment.invoice_application.product),
                         "payment_date": formatutils.as_date_str(payment.payment_date),
                         "payment_type": payment.get_payment_type_display(),
                         "payment_amount": formatutils.as_currency(payment.amount),

@@ -149,15 +149,15 @@
 </ng-template>
 
 <ng-template #priceTemplate let-row>
-  <span>{{ formatBasePrice(row.basePrice) }}</span>
+  <span>{{ formatBasePrice(row.basePrice, row) }}</span>
 </ng-template>
 
 <ng-template #retailPriceTemplate let-row>
-  <span>{{ formatCurrency(retailPriceValue(row)) }}</span>
+  <span>{{ formatCurrency(retailPriceValue(row), resolveCurrency(row)) }}</span>
 </ng-template>
 
 <ng-template #profitTemplate let-row>
-  <span>{{ formatCurrency(unitProfitValue(row)) }}</span>
+  <span>{{ formatCurrency(unitProfitValue(row), resolveCurrency(row)) }}</span>
 </ng-template>
 
 <ng-template #createdAtTemplate let-row>

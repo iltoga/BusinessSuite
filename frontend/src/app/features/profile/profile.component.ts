@@ -27,6 +27,7 @@ import { ZardCheckboxComponent } from '@/shared/components/checkbox';
 import { ZardDialogService } from '@/shared/components/dialog';
 import { ZardIconComponent } from '@/shared/components/icon';
 import { ZardInputDirective } from '@/shared/components/input';
+import { ZardSelectImports } from '@/shared/components/select';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 
 @Component({
@@ -42,6 +43,7 @@ import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
     ZardBadgeComponent,
     ZardCheckboxComponent,
     ZardIconComponent,
+    ...ZardSelectImports,
     AppDatePipe,
   ],
   templateUrl: './profile.component.html',
@@ -258,9 +260,9 @@ export class ProfileComponent implements OnInit {
       });
   }
 
-  onThemeChange(event: Event): void {
-    const select = event.target as HTMLSelectElement;
-    const theme = (select.value as any) || (this.currentTheme() as any);
+  onThemeChange(value: string | string[]): void {
+    const themeValue = Array.isArray(value) ? value[0] : value;
+    const theme = (themeValue as any) || (this.currentTheme() as any);
 
     // Optimistic UI update
     this.themeService.setTheme(theme as any);
@@ -271,7 +273,7 @@ export class ProfileComponent implements OnInit {
         next: () => {
           this.toast.success('Theme updated');
         },
-        error: (err) => {
+        error: () => {
           this.toast.error('Failed to save theme');
         },
       });

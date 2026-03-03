@@ -31,13 +31,14 @@
     </div>
   } @else if (product()) {
     <div class="grid gap-6 lg:grid-cols-3">
-      <z-card class="p-5 lg:col-span-2">
+      <z-card class="p-5" [ngClass]="hasAnyDocuments() ? 'lg:col-span-2' : 'lg:col-span-3'">
         <div class="flex flex-col gap-4">
           <div class="flex flex-wrap items-center gap-3">
             <z-badge zType="secondary">{{ productTypeLabel(product()?.productType) }}</z-badge>
-            <span class="base-price-chip">Base price: {{ product()?.basePrice ?? '—' }}</span>
-            <span class="base-price-chip">Retail price: {{ retailPriceValue() ?? '—' }}</span>
-            <span class="base-price-chip">Unit profit: {{ unitProfitValue() }}</span>
+            <span class="base-price-chip">Currency: {{ currencyCode() }}</span>
+            <span class="base-price-chip">Base price: {{ formatCurrency(product()?.basePrice) }}</span>
+            <span class="base-price-chip">Retail price: {{ formatCurrency(retailPriceValue()) }}</span>
+            <span class="base-price-chip">Unit profit: {{ formatCurrency(unitProfitValue()) }}</span>
           </div>
           <div class="text-sm text-muted-foreground">
             {{ product()?.description || 'No description provided.' }}
@@ -93,40 +94,44 @@
         </div>
       </z-card>
 
-      <z-card class="p-5">
-        <div class="flex flex-col gap-4">
-          <div>
-            <p class="text-xs uppercase text-muted-foreground">Required documents</p>
-            <div class="mt-2 flex flex-wrap gap-2">
-              @if (requiredDocuments().length === 0) {
-                <span class="text-sm text-muted-foreground">—</span>
-              } @else {
-                @for (doc of requiredDocuments(); track doc.id) {
-                  <z-badge zType="outline">{{ doc.name }}</z-badge>
+      @if (hasAnyDocuments()) {
+        <z-card class="p-5">
+          <div class="flex flex-col gap-4">
+            <div>
+              <p class="text-xs uppercase text-muted-foreground">Required documents</p>
+              <div class="mt-2 flex flex-wrap gap-2">
+                @if (requiredDocuments().length === 0) {
+                  <span class="text-sm text-muted-foreground">—</span>
+                } @else {
+                  @for (doc of requiredDocuments(); track doc.id) {
+                    <z-badge zType="outline">{{ doc.name }}</z-badge>
+                  }
                 }
-              }
+              </div>
+            </div>
+            <div>
+              <p class="text-xs uppercase text-muted-foreground">Optional documents</p>
+              <div class="mt-2 flex flex-wrap gap-2">
+                @if (optionalDocuments().length === 0) {
+                  <span class="text-sm text-muted-foreground">—</span>
+                } @else {
+                  @for (doc of optionalDocuments(); track doc.id) {
+                    <z-badge zType="outline">{{ doc.name }}</z-badge>
+                  }
+                }
+              </div>
             </div>
           </div>
-          <div>
-            <p class="text-xs uppercase text-muted-foreground">Optional documents</p>
-            <div class="mt-2 flex flex-wrap gap-2">
-              @if (optionalDocuments().length === 0) {
-                <span class="text-sm text-muted-foreground">—</span>
-              } @else {
-                @for (doc of optionalDocuments(); track doc.id) {
-                  <z-badge zType="outline">{{ doc.name }}</z-badge>
-                }
-              }
-            </div>
-          </div>
-        </div>
-      </z-card>
+        </z-card>
+      }
     </div>
 
-    <z-card class="p-5">
-      <h2 class="text-lg font-semibold mb-4">Tasks</h2>
-      <app-data-table [columns]="taskColumns()" [data]="tasks()" />
-    </z-card>
+    @if (hasTasks()) {
+      <z-card class="p-5">
+        <h2 class="text-lg font-semibold mb-4">Tasks</h2>
+        <app-data-table [columns]="taskColumns()" [data]="tasks()" />
+      </z-card>
+    }
   } @else {
     <div class="text-muted-foreground">Product not found.</div>
   }

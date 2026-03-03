@@ -37,6 +37,7 @@ class ProductExcelJobsTests(TestCase):
             description="Export description",
             base_price=Decimal("1500000.00"),
             retail_price=Decimal("1800000.00"),
+            currency="IDR",
         )
         job = AsyncJob.objects.create(task_name="products_export_excel", status=AsyncJob.STATUS_PENDING)
 
@@ -60,20 +61,21 @@ class ProductExcelJobsTests(TestCase):
         sheet = workbook.active
         rows = list(sheet.iter_rows(values_only=True))
 
-        self.assertEqual(rows[0], ("Code", "Name", "Description", "Base Price", "Retail Price"))
+        self.assertEqual(rows[0], ("Code", "Name", "Description", "Base Price", "Retail Price", "Currency"))
         self.assertEqual(rows[1][0], "EXP-1")
         self.assertEqual(rows[1][1], "Export Product")
         self.assertEqual(rows[1][2], "Export description")
         self.assertEqual(Decimal(str(rows[1][3])), Decimal("1500000"))
         self.assertEqual(Decimal(str(rows[1][4])), Decimal("1800000"))
+        self.assertEqual(rows[1][5], "IDR")
 
     def test_import_reads_base_and_retail_prices(self):
         workbook = Workbook()
         sheet = workbook.active
-        sheet.append(["Code", "Name", "Description", "Base Price", "Retail Price"])
-        sheet.append(["IMP-1", "Imported Product", "Imported description", "2000000", "2600000"])
+        sheet.append(["Code", "Name", "Description", "Base Price", "Retail Price", "Currency"])
+        sheet.append(["IMP-1", "Imported Product", "Imported description", "2000000", "2600000", "usd"])
         # Retail omitted -> must default to base price.
-        sheet.append(["IMP-2", "Imported Product 2", "Imported description 2", "3000000", ""])
+        sheet.append(["IMP-2", "Imported Product 2", "Imported description 2", "3000000", "", ""])
 
         buffer = BytesIO()
         workbook.save(buffer)
@@ -103,5 +105,7 @@ class ProductExcelJobsTests(TestCase):
 
         self.assertEqual(first.base_price, Decimal("2000000.00"))
         self.assertEqual(first.retail_price, Decimal("2600000.00"))
+        self.assertEqual(first.currency, "USD")
         self.assertEqual(second.base_price, Decimal("3000000.00"))
         self.assertEqual(second.retail_price, Decimal("3000000.00"))
+        self.assertEqual(second.currency, "IDR")

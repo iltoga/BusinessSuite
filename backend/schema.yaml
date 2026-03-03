@@ -232,6 +232,12 @@ paths:
         name: include_users
         schema:
           type: boolean
+      - in: query
+        name: replay
+        schema:
+          type: boolean
+        description: Set true to replay existing stream events without enqueuing a
+          new restore job.
       tags:
       - backups
       security:
@@ -255,6 +261,12 @@ paths:
         name: include_users
         schema:
           type: boolean
+      - in: query
+        name: replay
+        schema:
+          type: boolean
+        description: Set true to replay existing stream events without enqueuing a
+          new backup job.
       tags:
       - backups
       security:
@@ -1848,6 +1860,11 @@ paths:
         description: A search term.
         schema:
           type: string
+      - in: query
+        name: uses_customer_app_workflow
+        schema:
+          type: boolean
+        description: Filter products by workflow-enabled flag.
       tags:
       - document-types
       security:
@@ -2940,6 +2957,56 @@ paths:
               schema:
                 $ref: '#/components/schemas/InvoiceList'
           description: ''
+  /api/invoices/from_application_prefill/{applicationId}/:
+    get:
+      operationId: invoicesFromApplicationPrefillRetrieve
+      parameters:
+      - in: path
+        name: applicationId
+        schema:
+          type: integer
+        required: true
+      tags:
+      - invoices
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/invoices/get_billable_products/{customerId}/:
+    get:
+      operationId: invoicesGetBillableProductsRetrieve
+      parameters:
+      - in: query
+        name: current_invoice_id
+        schema:
+          type: integer
+        description: Include already linked applications for this invoice in pending
+          groups.
+      - in: path
+        name: customerId
+        schema:
+          type: integer
+        required: true
+      tags:
+      - invoices
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/invoices/get_customer_applications/{customerId}/:
     get:
       operationId: invoicesGetCustomerApplicationsList
@@ -3465,6 +3532,11 @@ paths:
         description: A search term.
         schema:
           type: string
+      - in: query
+        name: uses_customer_app_workflow
+        schema:
+          type: boolean
+        description: Filter products by whether they use customer-application workflows.
       tags:
       - products
       security:
@@ -4919,6 +4991,12 @@ paths:
         name: include_users
         schema:
           type: boolean
+      - in: query
+        name: replay
+        schema:
+          type: boolean
+        description: Set true to replay existing stream events without enqueuing a
+          new restore job.
       tags:
       - v1
       security:
@@ -4942,6 +5020,12 @@ paths:
         name: include_users
         schema:
           type: boolean
+      - in: query
+        name: replay
+        schema:
+          type: boolean
+        description: Set true to replay existing stream events without enqueuing a
+          new backup job.
       tags:
       - v1
       security:
@@ -6535,6 +6619,11 @@ paths:
         description: A search term.
         schema:
           type: string
+      - in: query
+        name: uses_customer_app_workflow
+        schema:
+          type: boolean
+        description: Filter products by workflow-enabled flag.
       tags:
       - v1
       security:
@@ -7627,6 +7716,56 @@ paths:
               schema:
                 $ref: '#/components/schemas/InvoiceList'
           description: ''
+  /api/v1/invoices/from_application_prefill/{applicationId}/:
+    get:
+      operationId: v1InvoicesFromApplicationPrefillRetrieve
+      parameters:
+      - in: path
+        name: applicationId
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/invoices/get_billable_products/{customerId}/:
+    get:
+      operationId: v1InvoicesGetBillableProductsRetrieve
+      parameters:
+      - in: query
+        name: current_invoice_id
+        schema:
+          type: integer
+        description: Include already linked applications for this invoice in pending
+          groups.
+      - in: path
+        name: customerId
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/invoices/get_customer_applications/{customerId}/:
     get:
       operationId: v1InvoicesGetCustomerApplicationsList
@@ -8152,6 +8291,11 @@ paths:
         description: A search term.
         schema:
           type: string
+      - in: query
+        name: uses_customer_app_workflow
+        schema:
+          type: boolean
+        description: Filter products by whether they use customer-application workflows.
       tags:
       - v1
       security:
@@ -9888,6 +10032,9 @@ paths:
                   dateFormat:
                     type: string
                     example: dd-MM-yyyy
+                  baseCurrency:
+                    type: string
+                    example: IDR
                   title:
                     type: string
                     example: BusinessSuite (Mock)
@@ -11413,10 +11560,15 @@ components:
         id:
           type: integer
           readOnly: true
+        product:
+          allOf:
+          - $ref: '#/components/schemas/Product'
+          readOnly: true
         customer_application:
           allOf:
           - $ref: '#/components/schemas/DocApplicationInvoice'
           readOnly: true
+          nullable: true
         amount:
           type: string
           format: decimal
@@ -11464,16 +11616,22 @@ components:
       - id
       - paid_amount
       - payments
+      - product
     InvoiceApplicationSummary:
       type: object
       properties:
         id:
           type: integer
           readOnly: true
+        product:
+          allOf:
+          - $ref: '#/components/schemas/Product'
+          readOnly: true
         customer_application:
           allOf:
           - $ref: '#/components/schemas/DocApplicationInvoice'
           readOnly: true
+          nullable: true
         amount:
           type: string
           format: decimal
@@ -11515,20 +11673,24 @@ components:
       - due_amount
       - id
       - paid_amount
+      - product
     InvoiceApplicationWrite:
       type: object
       properties:
         id:
           type: integer
+        product:
+          type: integer
+          nullable: true
         customer_application:
           type: integer
+          nullable: true
         amount:
           type: string
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
       required:
       - amount
-      - customer_application
     InvoiceCreateUpdate:
       type: object
       properties:
@@ -12091,6 +12253,10 @@ components:
           type: string
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        currency:
+          type: string
+          pattern: ^[A-Za-z]{2,3}$
+          maxLength: 3
         product_type:
           enum:
           - visa
@@ -12124,6 +12290,8 @@ components:
         validation_prompt:
           type: string
         deprecated:
+          type: boolean
+        uses_customer_app_workflow:
           type: boolean
         created_at:
           type: string
@@ -12178,6 +12346,10 @@ components:
           type: string
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        currency:
+          type: string
+          pattern: ^[A-Za-z]{2,3}$
+          maxLength: 3
         product_type:
           enum:
           - visa
@@ -12251,6 +12423,10 @@ components:
           type: string
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        currency:
+          type: string
+          pattern: ^[A-Za-z]{2,3}$
+          maxLength: 3
         product_type:
           enum:
           - visa
@@ -12284,6 +12460,8 @@ components:
         validation_prompt:
           type: string
         deprecated:
+          type: boolean
+        uses_customer_app_workflow:
           type: boolean
         tasks:
           type: array

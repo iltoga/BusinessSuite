@@ -5,6 +5,7 @@ export interface AppConfig {
   MOCK_AUTH_ENABLED: string | boolean;
   theme: ThemeName;
   dateFormat: string;
+  baseCurrency: string;
   calendarTodoColorId?: string;
   calendarDoneColorId?: string;
   // Optional: custom page title to show in the browser tab
@@ -27,6 +28,7 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
   MOCK_AUTH_ENABLED: 'False',
   theme: 'neutral',
   dateFormat: 'dd-MM-yyyy',
+  baseCurrency: 'IDR',
   calendarTodoColorId: '5',
   calendarDoneColorId: '10',
   title: 'BusinessSuite',

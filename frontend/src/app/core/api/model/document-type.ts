@@ -27,3 +27,4 @@ export interface DocumentType {
     aiStructuredOutput?: string;
     isInRequiredDocuments?: boolean;
 }
+

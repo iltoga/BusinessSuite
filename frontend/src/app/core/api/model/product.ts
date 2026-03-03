@@ -17,6 +17,7 @@ export interface Product {
     immigrationId?: string | null;
     basePrice?: string | null;
     retailPrice?: string;
+    currency?: string;
     /**
      * * `visa` - Visa * `other` - Other
      */
@@ -28,6 +29,7 @@ export interface Product {
     applicationWindowDays?: number | null;
     validationPrompt?: string;
     deprecated?: boolean;
+    usesCustomerAppWorkflow?: boolean;
     readonly createdAt: string;
     readonly updatedAt: string;
     /**

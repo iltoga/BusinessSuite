@@ -294,14 +294,15 @@ export class DocumentTypesService extends BaseService {
      * @param hideDeprecated When true (default), hide deprecated document types.
      * @param ordering Which field to use when ordering the results.
      * @param search A search term.
+     * @param usesCustomerAppWorkflow Filter products by workflow-enabled flag.
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public documentTypesList(deprecated?: boolean, hideDeprecated?: boolean, ordering?: string, search?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<Array<DocumentType>>;
-    public documentTypesList(deprecated?: boolean, hideDeprecated?: boolean, ordering?: string, search?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<Array<DocumentType>>>;
-    public documentTypesList(deprecated?: boolean, hideDeprecated?: boolean, ordering?: string, search?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<Array<DocumentType>>>;
-    public documentTypesList(deprecated?: boolean, hideDeprecated?: boolean, ordering?: string, search?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+    public documentTypesList(deprecated?: boolean, hideDeprecated?: boolean, ordering?: string, search?: string, usesCustomerAppWorkflow?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<Array<DocumentType>>;
+    public documentTypesList(deprecated?: boolean, hideDeprecated?: boolean, ordering?: string, search?: string, usesCustomerAppWorkflow?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<Array<DocumentType>>>;
+    public documentTypesList(deprecated?: boolean, hideDeprecated?: boolean, ordering?: string, search?: string, usesCustomerAppWorkflow?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<Array<DocumentType>>>;
+    public documentTypesList(deprecated?: boolean, hideDeprecated?: boolean, ordering?: string, search?: string, usesCustomerAppWorkflow?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
 
         let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
@@ -336,6 +337,15 @@ export class DocumentTypesService extends BaseService {
             localVarQueryParameters,
             'search',
             <any>search,
+            QueryParamStyle.Form,
+            true,
+        );
+
+
+        localVarQueryParameters = this.addToHttpParams(
+            localVarQueryParameters,
+            'uses_customer_app_workflow',
+            <any>usesCustomerAppWorkflow,
             QueryParamStyle.Form,
             true,
         );

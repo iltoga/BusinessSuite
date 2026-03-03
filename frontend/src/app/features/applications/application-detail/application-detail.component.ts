@@ -411,6 +411,10 @@ export class ApplicationDetailComponent implements OnInit {
   readonly uploadedDocuments = computed(() =>
     (this.application()?.documents ?? []).filter((doc) => doc.completed),
   );
+  readonly hasConfiguredDocuments = computed(() => {
+    const app = this.application();
+    return !!app && this.getConfiguredDocumentNames(app).size > 0;
+  });
   readonly requiredDocuments = computed(() =>
     (this.application()?.documents ?? []).filter((doc) => doc.required && !doc.completed),
   );
@@ -1743,17 +1747,8 @@ export class ApplicationDetailComponent implements OnInit {
   }
 
   private isReadyForInvoice(app: ApplicationDetail): boolean {
-    if (typeof app.readyForInvoice === 'boolean') {
-      return app.readyForInvoice;
-    }
-
-    if (app.status === 'completed' || app.status === 'rejected') {
-      return true;
-    }
-
-    const requiredDocuments = app.documents.filter((document) => document.required);
-    const completedRequiredDocuments = requiredDocuments.filter((document) => document.completed);
-    return requiredDocuments.length === completedRequiredDocuments.length;
+    const readyFlag = typeof app.readyForInvoice === 'boolean' ? app.readyForInvoice : true;
+    return readyFlag && app.status === 'completed' && !app.hasInvoice;
   }
 
   private calculateGapDays(
@@ -1933,16 +1928,28 @@ export class ApplicationDetailComponent implements OnInit {
   }
 
   private getConfiguredStayPermitDocumentNames(application: ApplicationDetail): Set<string> {
-    const parseNames = (value?: string | null): string[] =>
-      (value ?? '')
-        .split(',')
-        .map((item) => item.trim())
-        .filter((item) => item.length > 0);
+    return this.getConfiguredDocumentNames(application);
+  }
 
+  private getConfiguredDocumentNames(application: ApplicationDetail): Set<string> {
     return new Set([
-      ...parseNames(application.product?.requiredDocuments),
-      ...parseNames(application.product?.optionalDocuments),
+      ...this.parseDocumentNames(
+        application.product?.requiredDocuments ?? (application.product as any)?.required_documents,
+      ),
+      ...this.parseDocumentNames(
+        application.product?.optionalDocuments ?? (application.product as any)?.optional_documents,
+      ),
     ]);
+  }
+
+  private parseDocumentNames(value: unknown): string[] {
+    if (typeof value !== 'string' || !value.trim()) {
+      return [];
+    }
+    return value
+      .split(',')
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
   }
 
   private getDocumentExpirationState(doc: ApplicationDocument): 'ok' | 'expiring' | 'expired' {

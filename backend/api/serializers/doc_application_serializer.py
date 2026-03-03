@@ -83,6 +83,8 @@ class DocApplicationSerializerWithRelations(serializers.ModelSerializer):
         """
         if getattr(instance.product, "deprecated", False):
             return False
+        if not getattr(instance.product, "uses_customer_app_workflow", True):
+            return False
         if instance.status in (DocApplication.STATUS_COMPLETED, DocApplication.STATUS_REJECTED):
             return True
         return instance.total_required_documents == instance.completed_required_documents
@@ -160,6 +162,8 @@ class CustomerUninvoicedApplicationSerializer(DocApplicationInvoiceSerializer):
 
     def get_ready_for_invoice(self, instance) -> bool:
         if getattr(instance.product, "deprecated", False):
+            return False
+        if not getattr(instance.product, "uses_customer_app_workflow", True):
             return False
         if instance.status in (DocApplication.STATUS_COMPLETED, DocApplication.STATUS_REJECTED):
             return True
@@ -331,6 +335,10 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
 
         if product and getattr(product, "deprecated", False):
             raise serializers.ValidationError({"product": "Deprecated products cannot be used for applications."})
+        if product and not getattr(product, "uses_customer_app_workflow", False):
+            raise serializers.ValidationError(
+                {"product": "This product is invoice-only and does not support customer applications."}
+            )
 
         should_validate_submission_window = (
             self.instance is None or "doc_date" in attrs or "product" in attrs

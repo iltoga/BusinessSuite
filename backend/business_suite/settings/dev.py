@@ -59,7 +59,6 @@ MIDDLEWARE = [
     "debug_toolbar.middleware.DebugToolbarMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
-    "django_http_compression.middleware.HttpCompressionMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",  # to serve static files
     "django.contrib.sessions.middleware.SessionMiddleware",
     "business_suite.middlewares.disable_csrf_check.DisableCsrfCheckMiddleware",

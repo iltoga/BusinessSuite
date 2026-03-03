@@ -102,8 +102,12 @@
   <ul class="space-y-1 text-sm">
     @for (item of row.invoiceApplications ?? []; track item.id) {
       <li>
-        {{ item.customerApplication?.product?.code }} -
-        {{ item.customerApplication?.notes || item.customerApplication?.customer?.fullName || '—' }}
+        {{ item.product?.code || item.customerApplication?.product?.code || '—' }} -
+        {{
+          item.customerApplication?.notes ||
+            item.customerApplication?.customer?.fullName ||
+            'Unlinked line item'
+        }}
       </li>
     }
     @if (!row.invoiceApplications?.length) {

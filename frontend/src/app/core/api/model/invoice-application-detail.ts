@@ -9,11 +9,13 @@
  */
 import { Payment } from './payment';
 import { DocApplicationInvoice } from './doc-application-invoice';
+import { Product } from './product';
 
 
 export interface InvoiceApplicationDetail { 
     readonly id: number;
-    readonly customerApplication: DocApplicationInvoice;
+    readonly product: Product;
+    readonly customerApplication: DocApplicationInvoice | null;
     amount: string;
     /**
      * * `pending` - Pending * `partial_payment` - Partial Payment * `paid` - Paid * `overdue` - Overdue * `disputed` - Disputed * `cancelled` - Cancelled * `refunded` - Refunded * `write_off` - Write Off

@@ -87,7 +87,7 @@
 
     <z-card class="p-4 sm:p-6">
       <div class="flex flex-wrap items-center justify-between gap-3">
-        <h2 class="text-lg font-semibold">Applications</h2>
+        <h2 class="text-lg font-semibold">Invoice Lines</h2>
         @if (hasMultipleDueApplications()) {
           <z-button zType="warning" zSize="sm" (click)="openFullPaymentModal()">
             Add Full Payment
@@ -104,6 +104,9 @@
                 </div>
                 <div class="text-xs text-muted-foreground">
                   {{ getApplicationCustomerName(app) }}
+                  @if (app.customerApplication?.id) {
+                    · Linked app #{{ app.customerApplication?.id }}
+                  }
                 </div>
               </div>
               <div class="invoice-application-metrics flex flex-wrap items-center gap-4">

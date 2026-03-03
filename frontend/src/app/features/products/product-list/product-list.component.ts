@@ -18,6 +18,7 @@ import { catchError, Observable, takeWhile } from 'rxjs';
 
 import { ProductsService, type PaginatedProductList, type Product } from '@/core/api';
 import { AuthService } from '@/core/services/auth.service';
+import { ConfigService } from '@/core/services/config.service';
 import { ProductImportExportService } from '@/core/services/product-import-export.service';
 import { SseService } from '@/core/services/sse.service';
 import { GlobalToastService } from '@/core/services/toast.service';
@@ -71,6 +72,7 @@ export class ProductListComponent implements OnInit {
   private productImportExportApi = inject(ProductImportExportService);
   private sseService = inject(SseService);
   private authService = inject(AuthService);
+  private configService = inject(ConfigService);
   private toast = inject(GlobalToastService);
   private platformId = inject(PLATFORM_ID);
   private router = inject(Router);
@@ -462,23 +464,40 @@ export class ProductListComponent implements OnInit {
     this.basePricesVisible.update((visible) => !visible);
   }
 
-  formatCurrency(value?: string | number | null): string {
+  resolveCurrency(row?: Product | null): string {
+    const configured = String(this.configService.settings.baseCurrency ?? 'IDR')
+      .trim()
+      .toUpperCase();
+    const currency = String((row as any)?.currency ?? configured || 'IDR')
+      .trim()
+      .toUpperCase();
+    if (!currency || currency.length < 2 || currency.length > 3 || !/^[A-Z]+$/.test(currency)) {
+      return 'IDR';
+    }
+    return currency;
+  }
+
+  formatCurrency(value?: string | number | null, currencyCode?: string): string {
     if (value === null || value === undefined || value === '') return '—';
     const n = Number(value);
     if (Number.isNaN(n)) return String(value ?? '—');
-    // Format as Indonesian Rupiah without decimals
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      maximumFractionDigits: 0,
-    }).format(n);
+    const currency = currencyCode ?? this.resolveCurrency();
+    try {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency,
+        maximumFractionDigits: 2,
+      }).format(n);
+    } catch {
+      return `${currency} ${n.toLocaleString('en-US')}`;
+    }
   }
 
-  formatBasePrice(value?: string | number | null): string {
+  formatBasePrice(value?: string | number | null, row?: Product): string {
     if (!this.basePricesVisible()) {
       return '****';
     }
-    return this.formatCurrency(value);
+    return this.formatCurrency(value, this.resolveCurrency(row));
   }
 
   retailPriceValue(row: Product): string | number | null {

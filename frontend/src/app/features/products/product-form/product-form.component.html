@@ -70,6 +70,23 @@
               </select>
             </div>
             <div class="md:col-span-3 space-y-2">
+              <label class="text-sm font-medium">Currency</label>
+              <input
+                z-input
+                formControlName="currency"
+                type="text"
+                maxlength="3"
+                placeholder="IDR"
+                (blur)="normalizeCurrency()"
+                [zStatus]="
+                  form.get('currency')?.invalid && form.get('currency')?.touched
+                    ? 'error'
+                    : undefined
+                "
+              />
+              <p class="text-xs text-muted-foreground">Use 2-3 letters (e.g. IDR, USD, EUR).</p>
+            </div>
+            <div class="md:col-span-3 space-y-2">
               <label class="text-sm font-medium">Base price</label>
               <input
                 z-input

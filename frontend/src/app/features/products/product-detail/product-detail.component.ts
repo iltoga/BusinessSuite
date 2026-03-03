@@ -87,12 +87,16 @@ export class ProductDetailComponent implements OnInit {
   readonly optionalDocuments = computed<DocumentType[]>(
     () => this.product()?.optionalDocumentTypes ?? [],
   );
+  readonly hasAnyDocuments = computed(
+    () => this.requiredDocuments().length > 0 || this.optionalDocuments().length > 0,
+  );
   readonly validationPrompt = computed(() => (this.product()?.validationPrompt ?? '').trim());
 
   readonly tasks = computed(() => {
     const items = this.product()?.tasks ?? [];
     return [...items].sort((a, b) => (a.step ?? 0) - (b.step ?? 0));
   });
+  readonly hasTasks = computed(() => this.tasks().length > 0);
 
   readonly taskColumns = computed<ColumnConfig<TaskNested>[]>(() => [
     { key: 'step', header: 'Step' },
@@ -171,6 +175,34 @@ export class ProductDetailComponent implements OnInit {
     return type === 'visa'
       ? 'Application window (days before stay permit expiry)'
       : 'Application window (days)';
+  }
+
+  currencyCode(): string {
+    const currency = String(this.product()?.currency ?? 'IDR').trim().toUpperCase();
+    if (!currency || currency.length < 2 || currency.length > 3) {
+      return 'IDR';
+    }
+    return currency;
+  }
+
+  formatCurrency(value?: string | number | null): string {
+    if (value === null || value === undefined || value === '') {
+      return '—';
+    }
+    const n = Number(value);
+    if (Number.isNaN(n)) {
+      return String(value);
+    }
+    const currency = this.currencyCode();
+    try {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency,
+        maximumFractionDigits: 2,
+      }).format(n);
+    } catch {
+      return `${currency} ${n.toLocaleString('en-US')}`;
+    }
   }
 
   retailPriceValue(): string | null {

@@ -16,7 +16,7 @@ from django.urls import reverse
 from django.utils import timezone
 from invoices.models import Invoice, InvoiceApplication
 from PIL import Image
-from products.models import Product
+from products.models import Product, Task
 from products.models.document_type import DocumentType
 from rest_framework.test import APIRequestFactory, force_authenticate
 
@@ -200,6 +200,13 @@ class CustomerListAPITestCase(TestCase):
     def test_uninvoiced_applications_endpoint(self):
         customer = Customer.objects.create(customer_type="person", first_name="Nina", last_name="Stone")
         product = Product.objects.create(name="KITAS", code="KITAS-1", product_type="visa")
+        Task.objects.create(
+            product=product,
+            step=1,
+            name="Collect docs",
+            duration=3,
+            duration_is_business_days=False,
+        )
 
         ready_app = DocApplication.objects.create(
             customer=customer,
@@ -237,6 +244,7 @@ class CustomerListAPITestCase(TestCase):
         )
         InvoiceApplication.objects.create(
             invoice=invoice,
+            product=invoiced_app.product,
             customer_application=invoiced_app,
             amount="100.00",
         )
@@ -596,6 +604,47 @@ class CustomerApplicationDetailAPITestCase(TestCase):
             f"GET {url} exceeded query budget: {len(queries)} queries",
         )
 
+    def test_customer_application_list_excludes_invoice_only_products(self):
+        invoice_only_product = Product.objects.create(
+            name="Invoice Only Product",
+            code="INV-ONLY-APP-LIST",
+            product_type="other",
+        )
+        hidden_app = DocApplication.objects.create(
+            customer=self.customer,
+            product=invoice_only_product,
+            doc_date=timezone.now().date(),
+            created_by=self.user,
+        )
+
+        response = self.client.get(reverse("customer-applications-list"))
+        self.assertEqual(response.status_code, 200)
+        ids = {item["id"] for item in response.json().get("results", [])}
+        self.assertNotIn(hidden_app.id, ids)
+
+    def test_create_customer_application_rejects_invoice_only_product(self):
+        invoice_only_product = Product.objects.create(
+            name="Invoice Only Product",
+            code="INV-ONLY-APP-CREATE",
+            product_type="other",
+        )
+        payload = {
+            "customer": self.customer.id,
+            "product": invoice_only_product.id,
+            "doc_date": timezone.now().date().isoformat(),
+            "notes": "Should fail",
+            "document_types": [],
+        }
+        response = self.client.post(
+            reverse("customer-applications-list"),
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
+        body = response.json()
+        self.assertIn("errors", body)
+        self.assertTrue("product" in body["errors"] or "productId" in body["errors"])
+
 
 class ProductApiTestCase(TestCase):
     def setUp(self):
@@ -656,6 +705,105 @@ class ProductApiTestCase(TestCase):
         inv = Invoice.objects.get(pk=data["id"])
         self.assertEqual(inv.customer_id, customer.id)
         self.assertEqual(inv.invoice_applications.count(), 1)
+        self.assertEqual(inv.invoice_applications.first().product_id, product.id)
+
+    def test_create_invoice_via_api_with_product_only_line(self):
+        self.client.force_login(self.user)
+        customer = Customer.objects.create(customer_type="person", first_name="Product", last_name="Only", active=True)
+        product = Product.objects.create(name="Bank Fee", code="BANK-FEE-1", product_type="other")
+
+        payload = {
+            "customer": customer.id,
+            "invoice_date": timezone.now().date().isoformat(),
+            "due_date": timezone.now().date().isoformat(),
+            "invoice_applications": [{"product": product.id, "amount": "250000.00"}],
+        }
+
+        response = self.client.post(reverse("invoices-list"), data=json.dumps(payload), content_type="application/json")
+        self.assertIn(response.status_code, (200, 201))
+        invoice = Invoice.objects.get(pk=response.json()["id"])
+        line = invoice.invoice_applications.first()
+        self.assertIsNotNone(line)
+        self.assertEqual(line.product_id, product.id)
+        self.assertIsNone(line.customer_application_id)
+
+    def test_create_invoice_legacy_customer_application_payload_derives_product(self):
+        self.client.force_login(self.user)
+        customer = Customer.objects.create(customer_type="person", first_name="Legacy", last_name="Payload", active=True)
+        product = Product.objects.create(
+            name="Legacy Workflow Product",
+            code="LEGACY-WF-1",
+            product_type="visa",
+            required_documents="Passport",
+        )
+        application = DocApplication.objects.create(
+            customer=customer,
+            product=product,
+            doc_date=timezone.now().date(),
+            created_by=self.user,
+        )
+
+        payload = {
+            "customer": customer.id,
+            "invoice_date": timezone.now().date().isoformat(),
+            "due_date": timezone.now().date().isoformat(),
+            # Backward compatibility payload without explicit `product`.
+            "invoice_applications": [{"customer_application": application.id, "amount": "1000.00"}],
+        }
+        response = self.client.post(reverse("invoices-list"), data=json.dumps(payload), content_type="application/json")
+        self.assertIn(response.status_code, (200, 201))
+
+        invoice = Invoice.objects.get(pk=response.json()["id"])
+        line = invoice.invoice_applications.first()
+        self.assertIsNotNone(line)
+        self.assertEqual(line.customer_application_id, application.id)
+        self.assertEqual(line.product_id, product.id)
+
+    def test_from_application_prefill_requires_completed_and_uninvoiced(self):
+        self.client.force_login(self.user)
+        customer = Customer.objects.create(customer_type="person", first_name="Prefill", last_name="Check", active=True)
+        product = Product.objects.create(
+            name="Prefill Product",
+            code="PREFILL-1",
+            product_type="visa",
+            required_documents="Passport",
+        )
+        application = DocApplication.objects.create(
+            customer=customer,
+            product=product,
+            doc_date=timezone.now().date(),
+            created_by=self.user,
+        )
+
+        url = f"/api/invoices/from_application_prefill/{application.id}/"
+        pending_response = self.client.get(url)
+        self.assertEqual(pending_response.status_code, 400)
+
+        application.status = DocApplication.STATUS_COMPLETED
+        application.save(skip_status_calculation=True)
+
+        completed_response = self.client.get(url)
+        self.assertEqual(completed_response.status_code, 200)
+        payload = completed_response.json()
+        self.assertEqual(payload["customer"]["id"], customer.id)
+        self.assertEqual(payload["invoiceApplication"]["product"], product.id)
+        self.assertEqual(payload["invoiceApplication"]["customerApplication"], application.id)
+
+        invoice = Invoice.objects.create(
+            customer=customer,
+            invoice_date=timezone.now().date(),
+            due_date=timezone.now().date(),
+            created_by=self.user,
+        )
+        InvoiceApplication.objects.create(
+            invoice=invoice,
+            product=product,
+            customer_application=application,
+            amount="1000.00",
+        )
+
+        invoiced_response = self.client.get(url)
+        self.assertEqual(invoiced_response.status_code, 400)
 
     def test_product_create_with_tasks_and_documents(self):
         url = reverse("products-list")

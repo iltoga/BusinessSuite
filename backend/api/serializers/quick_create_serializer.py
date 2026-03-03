@@ -105,6 +105,11 @@ class ProductQuickCreateSerializer(serializers.Serializer):
     description = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     base_price = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
     retail_price = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
+    currency = serializers.RegexField(
+        regex=r"^[A-Za-z]{2,3}$",
+        required=False,
+        allow_null=True,
+    )
     validity = serializers.IntegerField(required=False, allow_null=True)
     documents_min_validity = serializers.IntegerField(required=False, allow_null=True)
     required_documents = serializers.CharField(required=False, allow_blank=True, allow_null=True)
@@ -121,6 +126,11 @@ class ProductQuickCreateSerializer(serializers.Serializer):
         if Product.objects.filter(code=value).exists():
             raise serializers.ValidationError("A product with this code already exists.")
         return value
+
+    def validate_currency(self, value):
+        if value is None:
+            return value
+        return str(value).strip().upper()
 
     def validate(self, attrs):
         base_price = attrs.get("base_price")

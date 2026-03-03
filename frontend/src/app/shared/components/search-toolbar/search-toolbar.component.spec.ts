@@ -10,7 +10,6 @@ describe('SearchToolbarComponent keyboard shortcut', () => {
     const fixture = TestBed.createComponent(SearchToolbarComponent);
     fixture.detectChanges();
 
-    const comp = fixture.componentInstance;
     const input = fixture.nativeElement.querySelector('input');
     expect(input).toBeTruthy();
 
@@ -26,5 +25,42 @@ describe('SearchToolbarComponent keyboard shortcut', () => {
 
     // input should now be focused
     expect(document.activeElement).toBe(input);
+  });
+
+  it('should emit tabOut when pressing Shift+T outside editable fields', () => {
+    const fixture = TestBed.createComponent(SearchToolbarComponent);
+    fixture.detectChanges();
+
+    const comp = fixture.componentInstance;
+    let emitted = 0;
+    comp.tabOut.subscribe(() => {
+      emitted += 1;
+    });
+
+    (document.activeElement as HTMLElement | null)?.blur?.();
+
+    const e = new KeyboardEvent('keydown', { key: 'T', shiftKey: true, bubbles: true });
+    document.dispatchEvent(e);
+
+    expect(emitted).toBe(1);
+  });
+
+  it('should not emit tabOut when Shift+T is pressed inside an input', () => {
+    const fixture = TestBed.createComponent(SearchToolbarComponent);
+    fixture.detectChanges();
+
+    const comp = fixture.componentInstance;
+    let emitted = 0;
+    comp.tabOut.subscribe(() => {
+      emitted += 1;
+    });
+
+    const input = fixture.nativeElement.querySelector('input') as HTMLInputElement;
+    input.focus();
+
+    const e = new KeyboardEvent('keydown', { key: 'T', shiftKey: true, bubbles: true });
+    document.dispatchEvent(e);
+
+    expect(emitted).toBe(0);
   });
 });

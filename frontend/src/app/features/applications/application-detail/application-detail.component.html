@@ -178,9 +178,10 @@
           ></textarea>
         </div>
       </div>
-    </z-card>
+      </z-card>
 
-    <z-card class="p-4 sm:p-6">
+    @if (hasConfiguredDocuments()) {
+      <z-card class="p-4 sm:p-6">
       <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
         <h3 class="text-lg font-semibold">Tasks Timeline</h3>
         <div class="flex flex-wrap gap-2">
@@ -313,7 +314,7 @@
           }
         </ol>
       }
-    </z-card>
+      </z-card>
 
     <z-card class="p-4 sm:p-6">
       <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
@@ -542,8 +543,8 @@
       }
     </z-card>
 
-    @if (optionalDocuments().length > 0) {
-      <z-card class="p-4 sm:p-6">
+      @if (optionalDocuments().length > 0) {
+        <z-card class="p-4 sm:p-6">
         <div class="mb-4 flex items-center justify-between">
           <h3 class="text-lg font-semibold">Optional Documents</h3>
         </div>
@@ -571,7 +572,8 @@
             </tbody>
           </table>
         </div>
-      </z-card>
+        </z-card>
+      }
     }
   </div>
 }

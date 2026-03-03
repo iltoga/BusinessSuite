@@ -34,6 +34,7 @@ class InvoiceApplicationPaymentStatusTest(TestCase):
         )
         return InvoiceApplication.objects.create(
             invoice=invoice,
+            product=self.product,
             customer_application=self.application,
             amount=Decimal("100.00"),
         )
@@ -96,6 +97,7 @@ class InvoiceStatusOrderingTest(TestCase):
         )
         InvoiceApplication.objects.create(
             invoice=invoice,
+            product=self.product,
             customer_application=self.application,
             amount=Decimal("100.00"),
         )
@@ -114,6 +116,7 @@ class InvoiceStatusOrderingTest(TestCase):
         )
         InvoiceApplication.objects.create(
             invoice=invoice,
+            product=self.product,
             customer_application=self.application,
             amount=Decimal("100.00"),
         )

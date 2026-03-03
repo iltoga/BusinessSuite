@@ -651,14 +651,15 @@ export class V1Service extends BaseService {
      * @endpoint post /api/v1/backups/restore/
      * @param file 
      * @param includeUsers 
+     * @param replay Set true to replay existing stream events without enqueuing a new restore job.
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public v1BackupsRestoreCreate(file?: string, includeUsers?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<{ [key: string]: any; }>;
-    public v1BackupsRestoreCreate(file?: string, includeUsers?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<{ [key: string]: any; }>>;
-    public v1BackupsRestoreCreate(file?: string, includeUsers?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<{ [key: string]: any; }>>;
-    public v1BackupsRestoreCreate(file?: string, includeUsers?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+    public v1BackupsRestoreCreate(file?: string, includeUsers?: boolean, replay?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<{ [key: string]: any; }>;
+    public v1BackupsRestoreCreate(file?: string, includeUsers?: boolean, replay?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<{ [key: string]: any; }>>;
+    public v1BackupsRestoreCreate(file?: string, includeUsers?: boolean, replay?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<{ [key: string]: any; }>>;
+    public v1BackupsRestoreCreate(file?: string, includeUsers?: boolean, replay?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
 
         let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
@@ -675,6 +676,15 @@ export class V1Service extends BaseService {
             localVarQueryParameters,
             'include_users',
             <any>includeUsers,
+            QueryParamStyle.Form,
+            true,
+        );
+
+
+        localVarQueryParameters = this.addToHttpParams(
+            localVarQueryParameters,
+            'replay',
+            <any>replay,
             QueryParamStyle.Form,
             true,
         );
@@ -789,14 +799,15 @@ export class V1Service extends BaseService {
      * Trigger stream-backed SSE backup execution.
      * @endpoint get /api/v1/backups/start/
      * @param includeUsers 
+     * @param replay Set true to replay existing stream events without enqueuing a new backup job.
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public v1BackupsStartRetrieve(includeUsers?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<{ [key: string]: any; }>;
-    public v1BackupsStartRetrieve(includeUsers?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<{ [key: string]: any; }>>;
-    public v1BackupsStartRetrieve(includeUsers?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<{ [key: string]: any; }>>;
-    public v1BackupsStartRetrieve(includeUsers?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+    public v1BackupsStartRetrieve(includeUsers?: boolean, replay?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<{ [key: string]: any; }>;
+    public v1BackupsStartRetrieve(includeUsers?: boolean, replay?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<{ [key: string]: any; }>>;
+    public v1BackupsStartRetrieve(includeUsers?: boolean, replay?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<{ [key: string]: any; }>>;
+    public v1BackupsStartRetrieve(includeUsers?: boolean, replay?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
 
         let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
@@ -804,6 +815,15 @@ export class V1Service extends BaseService {
             localVarQueryParameters,
             'include_users',
             <any>includeUsers,
+            QueryParamStyle.Form,
+            true,
+        );
+
+
+        localVarQueryParameters = this.addToHttpParams(
+            localVarQueryParameters,
+            'replay',
+            <any>replay,
             QueryParamStyle.Form,
             true,
         );
@@ -4734,14 +4754,15 @@ export class V1Service extends BaseService {
      * @param hideDeprecated When true (default), hide deprecated document types.
      * @param ordering Which field to use when ordering the results.
      * @param search A search term.
+     * @param usesCustomerAppWorkflow Filter products by workflow-enabled flag.
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public v1DocumentTypesList(deprecated?: boolean, hideDeprecated?: boolean, ordering?: string, search?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<Array<DocumentType>>;
-    public v1DocumentTypesList(deprecated?: boolean, hideDeprecated?: boolean, ordering?: string, search?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<Array<DocumentType>>>;
-    public v1DocumentTypesList(deprecated?: boolean, hideDeprecated?: boolean, ordering?: string, search?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<Array<DocumentType>>>;
-    public v1DocumentTypesList(deprecated?: boolean, hideDeprecated?: boolean, ordering?: string, search?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+    public v1DocumentTypesList(deprecated?: boolean, hideDeprecated?: boolean, ordering?: string, search?: string, usesCustomerAppWorkflow?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<Array<DocumentType>>;
+    public v1DocumentTypesList(deprecated?: boolean, hideDeprecated?: boolean, ordering?: string, search?: string, usesCustomerAppWorkflow?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<Array<DocumentType>>>;
+    public v1DocumentTypesList(deprecated?: boolean, hideDeprecated?: boolean, ordering?: string, search?: string, usesCustomerAppWorkflow?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<Array<DocumentType>>>;
+    public v1DocumentTypesList(deprecated?: boolean, hideDeprecated?: boolean, ordering?: string, search?: string, usesCustomerAppWorkflow?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
 
         let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
@@ -4776,6 +4797,15 @@ export class V1Service extends BaseService {
             localVarQueryParameters,
             'search',
             <any>search,
+            QueryParamStyle.Form,
+            true,
+        );
+
+
+        localVarQueryParameters = this.addToHttpParams(
+            localVarQueryParameters,
+            'uses_customer_app_workflow',
+            <any>usesCustomerAppWorkflow,
             QueryParamStyle.Form,
             true,
         );
@@ -7372,6 +7402,139 @@ export class V1Service extends BaseService {
     }
 
     /**
+     * @endpoint get /api/v1/invoices/from_application_prefill/{applicationId}/
+     * @param applicationId 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     * @param options additional options
+     */
+    public v1InvoicesFromApplicationPrefillRetrieve(applicationId: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<{ [key: string]: any; }>;
+    public v1InvoicesFromApplicationPrefillRetrieve(applicationId: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<{ [key: string]: any; }>>;
+    public v1InvoicesFromApplicationPrefillRetrieve(applicationId: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<{ [key: string]: any; }>>;
+    public v1InvoicesFromApplicationPrefillRetrieve(applicationId: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+        if (applicationId === null || applicationId === undefined) {
+            throw new Error('Required parameter applicationId was null or undefined when calling v1InvoicesFromApplicationPrefillRetrieve.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        // authentication (cookieAuth) required
+
+        // authentication (jwtAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
+
+        const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            'application/json'
+        ]);
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+        const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/invoices/from_application_prefill/${this.configuration.encodeParam({name: "applicationId", value: applicationId, in: "path", style: "simple", explode: false, dataType: "number", dataFormat: undefined})}/`;
+        const { basePath, withCredentials } = this.configuration;
+        return this.httpClient.request<{ [key: string]: any; }>('get', `${basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                responseType: <any>responseType_,
+                ...(withCredentials ? { withCredentials } : {}),
+                headers: localVarHeaders,
+                observe: observe,
+                ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * @endpoint get /api/v1/invoices/get_billable_products/{customerId}/
+     * @param customerId 
+     * @param currentInvoiceId Include already linked applications for this invoice in pending groups.
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     * @param options additional options
+     */
+    public v1InvoicesGetBillableProductsRetrieve(customerId: number, currentInvoiceId?: number, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<{ [key: string]: any; }>;
+    public v1InvoicesGetBillableProductsRetrieve(customerId: number, currentInvoiceId?: number, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<{ [key: string]: any; }>>;
+    public v1InvoicesGetBillableProductsRetrieve(customerId: number, currentInvoiceId?: number, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<{ [key: string]: any; }>>;
+    public v1InvoicesGetBillableProductsRetrieve(customerId: number, currentInvoiceId?: number, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+        if (customerId === null || customerId === undefined) {
+            throw new Error('Required parameter customerId was null or undefined when calling v1InvoicesGetBillableProductsRetrieve.');
+        }
+
+        let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
+
+        localVarQueryParameters = this.addToHttpParams(
+            localVarQueryParameters,
+            'current_invoice_id',
+            <any>currentInvoiceId,
+            QueryParamStyle.Form,
+            true,
+        );
+
+
+        let localVarHeaders = this.defaultHeaders;
+
+        // authentication (cookieAuth) required
+
+        // authentication (jwtAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
+
+        const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            'application/json'
+        ]);
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+        const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/invoices/get_billable_products/${this.configuration.encodeParam({name: "customerId", value: customerId, in: "path", style: "simple", explode: false, dataType: "number", dataFormat: undefined})}/`;
+        const { basePath, withCredentials } = this.configuration;
+        return this.httpClient.request<{ [key: string]: any; }>('get', `${basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                params: localVarQueryParameters.toHttpParams(),
+                responseType: <any>responseType_,
+                ...(withCredentials ? { withCredentials } : {}),
+                headers: localVarHeaders,
+                observe: observe,
+                ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
      * @endpoint get /api/v1/invoices/get_customer_applications/{customerId}/
      * @param customerId 
      * @param currentInvoiceId 
@@ -9602,6 +9765,7 @@ export class V1Service extends BaseService {
      * @param immigrationId 
      * @param basePrice 
      * @param retailPrice 
+     * @param currency 
      * @param productType * &#x60;visa&#x60; - Visa * &#x60;other&#x60; - Other
      * @param validity 
      * @param requiredDocuments 
@@ -9610,14 +9774,15 @@ export class V1Service extends BaseService {
      * @param applicationWindowDays 
      * @param validationPrompt 
      * @param deprecated 
+     * @param usesCustomerAppWorkflow 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public v1ProductsImportStartCreate(id: number, name: string, code: string, createdAt: string, updatedAt: string, createdBy: string, updatedBy: string, description?: string, immigrationId?: string, basePrice?: string, retailPrice?: string, productType?: string, validity?: number, requiredDocuments?: string, optionalDocuments?: string, documentsMinValidity?: number, applicationWindowDays?: number, validationPrompt?: string, deprecated?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<Product>;
-    public v1ProductsImportStartCreate(id: number, name: string, code: string, createdAt: string, updatedAt: string, createdBy: string, updatedBy: string, description?: string, immigrationId?: string, basePrice?: string, retailPrice?: string, productType?: string, validity?: number, requiredDocuments?: string, optionalDocuments?: string, documentsMinValidity?: number, applicationWindowDays?: number, validationPrompt?: string, deprecated?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<Product>>;
-    public v1ProductsImportStartCreate(id: number, name: string, code: string, createdAt: string, updatedAt: string, createdBy: string, updatedBy: string, description?: string, immigrationId?: string, basePrice?: string, retailPrice?: string, productType?: string, validity?: number, requiredDocuments?: string, optionalDocuments?: string, documentsMinValidity?: number, applicationWindowDays?: number, validationPrompt?: string, deprecated?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<Product>>;
-    public v1ProductsImportStartCreate(id: number, name: string, code: string, createdAt: string, updatedAt: string, createdBy: string, updatedBy: string, description?: string, immigrationId?: string, basePrice?: string, retailPrice?: string, productType?: string, validity?: number, requiredDocuments?: string, optionalDocuments?: string, documentsMinValidity?: number, applicationWindowDays?: number, validationPrompt?: string, deprecated?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+    public v1ProductsImportStartCreate(id: number, name: string, code: string, createdAt: string, updatedAt: string, createdBy: string, updatedBy: string, description?: string, immigrationId?: string, basePrice?: string, retailPrice?: string, currency?: string, productType?: string, validity?: number, requiredDocuments?: string, optionalDocuments?: string, documentsMinValidity?: number, applicationWindowDays?: number, validationPrompt?: string, deprecated?: boolean, usesCustomerAppWorkflow?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<Product>;
+    public v1ProductsImportStartCreate(id: number, name: string, code: string, createdAt: string, updatedAt: string, createdBy: string, updatedBy: string, description?: string, immigrationId?: string, basePrice?: string, retailPrice?: string, currency?: string, productType?: string, validity?: number, requiredDocuments?: string, optionalDocuments?: string, documentsMinValidity?: number, applicationWindowDays?: number, validationPrompt?: string, deprecated?: boolean, usesCustomerAppWorkflow?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<Product>>;
+    public v1ProductsImportStartCreate(id: number, name: string, code: string, createdAt: string, updatedAt: string, createdBy: string, updatedBy: string, description?: string, immigrationId?: string, basePrice?: string, retailPrice?: string, currency?: string, productType?: string, validity?: number, requiredDocuments?: string, optionalDocuments?: string, documentsMinValidity?: number, applicationWindowDays?: number, validationPrompt?: string, deprecated?: boolean, usesCustomerAppWorkflow?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<Product>>;
+    public v1ProductsImportStartCreate(id: number, name: string, code: string, createdAt: string, updatedAt: string, createdBy: string, updatedBy: string, description?: string, immigrationId?: string, basePrice?: string, retailPrice?: string, currency?: string, productType?: string, validity?: number, requiredDocuments?: string, optionalDocuments?: string, documentsMinValidity?: number, applicationWindowDays?: number, validationPrompt?: string, deprecated?: boolean, usesCustomerAppWorkflow?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
         if (id === null || id === undefined) {
             throw new Error('Required parameter id was null or undefined when calling v1ProductsImportStartCreate.');
         }
@@ -9696,6 +9861,9 @@ export class V1Service extends BaseService {
         if (retailPrice !== undefined) {
             localVarFormParams = localVarFormParams.append('retail_price', <any>retailPrice) as any || localVarFormParams;
         }
+        if (currency !== undefined) {
+            localVarFormParams = localVarFormParams.append('currency', <any>currency) as any || localVarFormParams;
+        }
         if (productType !== undefined) {
             localVarFormParams = localVarFormParams.append('product_type', <any>productType) as any || localVarFormParams;
         }
@@ -9719,6 +9887,9 @@ export class V1Service extends BaseService {
         }
         if (deprecated !== undefined) {
             localVarFormParams = localVarFormParams.append('deprecated', <any>deprecated) as any || localVarFormParams;
+        }
+        if (usesCustomerAppWorkflow !== undefined) {
+            localVarFormParams = localVarFormParams.append('uses_customer_app_workflow', <any>usesCustomerAppWorkflow) as any || localVarFormParams;
         }
         if (createdAt !== undefined) {
             localVarFormParams = localVarFormParams.append('created_at', <any>createdAt) as any || localVarFormParams;
@@ -9768,14 +9939,15 @@ export class V1Service extends BaseService {
      * @param page A page number within the paginated result set.
      * @param pageSize Number of results to return per page.
      * @param search A search term.
+     * @param usesCustomerAppWorkflow Filter products by whether they use customer-application workflows.
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public v1ProductsList(deprecated?: boolean, hideDeprecated?: boolean, ordering?: string, page?: number, pageSize?: number, search?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<PaginatedProductList>;
-    public v1ProductsList(deprecated?: boolean, hideDeprecated?: boolean, ordering?: string, page?: number, pageSize?: number, search?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<PaginatedProductList>>;
-    public v1ProductsList(deprecated?: boolean, hideDeprecated?: boolean, ordering?: string, page?: number, pageSize?: number, search?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<PaginatedProductList>>;
-    public v1ProductsList(deprecated?: boolean, hideDeprecated?: boolean, ordering?: string, page?: number, pageSize?: number, search?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+    public v1ProductsList(deprecated?: boolean, hideDeprecated?: boolean, ordering?: string, page?: number, pageSize?: number, search?: string, usesCustomerAppWorkflow?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<PaginatedProductList>;
+    public v1ProductsList(deprecated?: boolean, hideDeprecated?: boolean, ordering?: string, page?: number, pageSize?: number, search?: string, usesCustomerAppWorkflow?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<PaginatedProductList>>;
+    public v1ProductsList(deprecated?: boolean, hideDeprecated?: boolean, ordering?: string, page?: number, pageSize?: number, search?: string, usesCustomerAppWorkflow?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<PaginatedProductList>>;
+    public v1ProductsList(deprecated?: boolean, hideDeprecated?: boolean, ordering?: string, page?: number, pageSize?: number, search?: string, usesCustomerAppWorkflow?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
 
         let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
@@ -9828,6 +10000,15 @@ export class V1Service extends BaseService {
             localVarQueryParameters,
             'search',
             <any>search,
+            QueryParamStyle.Form,
+            true,
+        );
+
+
+        localVarQueryParameters = this.addToHttpParams(
+            localVarQueryParameters,
+            'uses_customer_app_workflow',
+            <any>usesCustomerAppWorkflow,
             QueryParamStyle.Form,
             true,
         );
