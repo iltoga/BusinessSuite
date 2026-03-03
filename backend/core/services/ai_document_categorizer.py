@@ -10,9 +10,15 @@ import os
 from datetime import date
 from typing import Callable, Optional
 
-from core.services.ai_client import AIClient
+from core.services.ai_client import (
+    AIClient,
+    GENERIC_AI_SLOW_RESPONSE,
+    get_ai_user_message,
+    is_ai_timeout_exception,
+)
 from core.services.ai_usage_service import AIUsageFeature
 from core.services.logger_service import Logger
+from core.utils.document_type_ai_fields import format_fields_for_prompt, parse_structured_output_fields
 from django.conf import settings
 from products.models.document_type import DocumentType
 
@@ -183,7 +189,12 @@ def get_document_types_for_prompt() -> list[dict]:
     """Fetch all DocumentType records formatted for the prompt."""
     return list(
         DocumentType.objects.values(
-            "id", "name", "description", "validation_rule_ai_positive", "validation_rule_ai_negative"
+            "id",
+            "name",
+            "description",
+            "validation_rule_ai_positive",
+            "validation_rule_ai_negative",
+            "ai_structured_output",
         ).order_by("name")
     )
 
@@ -196,6 +207,7 @@ class AIDocumentCategorizer:
         model: Optional[str] = None,
         provider_order: Optional[list[str]] = None,
         feature_name: str = AIUsageFeature.DOCUMENT_AI_CATEGORIZER,
+        timeout: Optional[float] = None,
     ):
         self.model = model or getattr(
             settings,
@@ -204,6 +216,7 @@ class AIDocumentCategorizer:
         )
         self.provider_order = provider_order
         self.feature_name = feature_name
+        self.timeout = float(timeout or getattr(settings, "DOCUMENT_CATEGORIZATION_TIMEOUT", 30.0))
         self._client = None
 
     def _get_client(self) -> AIClient:
@@ -211,6 +224,8 @@ class AIDocumentCategorizer:
             kwargs = {"feature_name": self.feature_name}
             if self.model:
                 kwargs["model"] = self.model
+            if self.timeout:
+                kwargs["timeout"] = self.timeout
             self._client = AIClient(**kwargs)
         return self._client
 
@@ -304,6 +319,7 @@ class AIDocumentCategorizer:
             schema_name="document_categorization",
             temperature=0.1,
             strict=True,
+            retry_on_invalid_json=False,
             **extra_kwargs,
         )
 
@@ -393,9 +409,23 @@ class AIDocumentCategorizer:
             result = self.categorize_file(file_bytes, filename, document_types)
         except Exception as exc:
             logger.warning("Pass 1 failed for %s: %s", filename, exc)
-            result = {"document_type": None, "confidence": 0, "reasoning": f"Pass 1 error: {exc}"}
+            result = {
+                "document_type": None,
+                "confidence": 0,
+                "reasoning": (
+                    GENERIC_AI_SLOW_RESPONSE
+                    if is_ai_timeout_exception(exc)
+                    else get_ai_user_message(exc)
+                ),
+                "_skip_pass_2": True,
+            }
 
         if result.get("document_type_id"):
+            result["pass_used"] = 1
+            return result
+
+        if result.get("_skip_pass_2"):
+            result.pop("_skip_pass_2", None)
             result["pass_used"] = 1
             return result
 
@@ -415,12 +445,21 @@ class AIDocumentCategorizer:
             model=high_model,
             provider_order=self.provider_order,
             feature_name=self.feature_name,
+            timeout=self.timeout,
         )
         try:
             result2 = high_categorizer.categorize_file(file_bytes, filename, document_types)
         except Exception as exc:
             logger.warning("Pass 2 failed for %s: %s", filename, exc)
-            result2 = {"document_type": None, "confidence": 0, "reasoning": f"Pass 2 error: {exc}"}
+            result2 = {
+                "document_type": None,
+                "confidence": 0,
+                "reasoning": (
+                    GENERIC_AI_SLOW_RESPONSE
+                    if is_ai_timeout_exception(exc)
+                    else get_ai_user_message(exc)
+                ),
+            }
 
         result2["pass_used"] = 2
         return result2
@@ -438,6 +477,7 @@ class AIDocumentCategorizer:
         require_details: bool = False,
         model: Optional[str] = None,
         provider_order: Optional[list[str]] = None,
+        timeout: Optional[float] = None,
     ) -> dict:
         """
         Validate a document against its DocumentType's positive/negative criteria.
@@ -466,10 +506,20 @@ class AIDocumentCategorizer:
             }
 
         validator_model = model or getattr(settings, "DOCUMENT_VALIDATOR_MODEL", None)
+        validation_timeout = float(timeout or getattr(settings, "DOCUMENT_VALIDATION_TIMEOUT", 30.0))
         client = AIClient(
             model=validator_model,
             feature_name=AIUsageFeature.DOCUMENT_AI_VALIDATOR,
+            timeout=validation_timeout,
         )
+
+        normalized_negative_prompt = negative_prompt
+        negative_fields = parse_structured_output_fields(negative_prompt)
+        if negative_fields:
+            normalized_negative_prompt = (
+                "Flag document as invalid when any required extraction field is missing or unreliable:\n"
+                f"{format_fields_for_prompt(negative_fields)}"
+            )
 
         # Build system prompt incorporating both positive and negative rules
         sections = [
@@ -478,9 +528,10 @@ class AIDocumentCategorizer:
         ]
         if positive_prompt:
             sections.append(f"POSITIVE VALIDATION CRITERIA (the document SHOULD meet these):\n{positive_prompt}\n")
-        if negative_prompt:
+        if normalized_negative_prompt:
             sections.append(
-                f"NEGATIVE VALIDATION CRITERIA (the document should NOT have these issues):\n{negative_prompt}\n"
+                "NEGATIVE VALIDATION CRITERIA (the document should NOT have these issues):\n"
+                f"{normalized_negative_prompt}\n"
             )
         if product_prompt:
             sections.append(
@@ -555,6 +606,7 @@ class AIDocumentCategorizer:
             schema_name="document_validation",
             temperature=0.1,
             strict=True,
+            retry_on_invalid_json=False,
             **extra_kwargs,
         )
 

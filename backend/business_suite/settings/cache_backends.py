@@ -1,11 +1,12 @@
 import os
 
 
-def build_prod_redis_caches() -> dict:
+def build_prod_redis_caches(*, redis_url: str | None = None) -> dict:
+    location = redis_url or os.getenv("REDIS_URL", "redis://redis:6379/1")
     return {
         "default": {
             "BACKEND": "django_redis.cache.RedisCache",
-            "LOCATION": os.getenv("REDIS_URL", "redis://redis:6379/1"),
+            "LOCATION": location,
             "OPTIONS": {
                 "CLIENT_CLASS": "django_redis.client.DefaultClient",
                 "CONNECTION_POOL_KWARGS": {

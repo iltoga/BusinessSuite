@@ -11,6 +11,8 @@ export interface DocumentPartialUpdatePayload {
   metadata?: Record<string, unknown> | null;
   file?: File | null;
   validateWithAi?: boolean;
+  aiValidationStatusOverride?: '' | 'valid' | 'invalid' | 'error';
+  aiValidationResultOverride?: Record<string, unknown> | null;
 }
 
 @Injectable({
@@ -48,6 +50,12 @@ export class DocumentsService {
     }
     if (payload.validateWithAi) {
       form.append('validate_with_ai', 'true');
+    }
+    if (payload.aiValidationStatusOverride !== undefined) {
+      form.append('ai_validation_status_override', payload.aiValidationStatusOverride);
+    }
+    if (payload.aiValidationResultOverride !== undefined) {
+      form.append('ai_validation_result_override', JSON.stringify(payload.aiValidationResultOverride ?? null));
     }
 
     const token = this.auth.getToken();

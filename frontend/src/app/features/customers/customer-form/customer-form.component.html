@@ -56,13 +56,26 @@
               [accept]="'image/*,application/pdf'"
               [disabled]="ocrProcessing()"
               [fileName]="passportFile()?.name ?? null"
-              [previewUrl]="passportFilePreviewUrl()"
-              [previewType]="passportFilePreviewType()"
+              [previewUrl]="activePassportPreviewUrl()"
+              [previewType]="activePassportPreviewType()"
               [magnifierEnabledByDefault]="true"
               [helperText]="'Supported: JPG, PNG, PDF'"
               (fileSelected)="onPassportFileSelected($event)"
               (cleared)="onPassportFileCleared()"
             ></app-file-upload>
+
+            @if (hasExistingPassportFile()) {
+              <p class="text-xs text-muted-foreground">
+                Current file on record:
+                <a
+                  [href]="customer()?.passportFile"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-primary hover:underline"
+                  >{{ existingPassportFileName() || 'Open passport file' }}</a
+                >
+              </p>
+            }
 
             <div class="flex flex-wrap gap-3">
               <button

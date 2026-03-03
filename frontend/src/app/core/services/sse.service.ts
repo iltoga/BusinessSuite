@@ -1,31 +1,45 @@
 import { Injectable, NgZone } from '@angular/core';
-import { Observable } from 'rxjs';
+import { map, Observable } from 'rxjs';
 
 import { AuthService } from '@/core/services/auth.service';
 
 export interface SseOptions {
   withCredentials?: boolean;
+  useReplayCursor?: boolean;
+}
+
+export interface SseMessage<T> {
+  event: string;
+  data: T;
+  id?: string;
 }
 
 @Injectable({
   providedIn: 'root',
 })
 export class SseService {
+  private readonly lastEventIds = new Map<string, string>();
+
   constructor(
     private zone: NgZone,
     private authService: AuthService,
   ) {}
 
   connect<T>(url: string, options: SseOptions = {}): Observable<T> {
+    return this.connectMessages<T>(url, options).pipe(map((message) => message.data));
+  }
+
+  connectMessages<T>(url: string, options: SseOptions = {}): Observable<SseMessage<T>> {
     const withCredentials = options.withCredentials ?? true;
+    const useReplayCursor = options.useReplayCursor ?? true;
 
     // If token is expired, force logout and return an observable error immediately
     if (this.authService.isTokenExpired()) {
       this.authService.logout();
-      return new Observable<T>((subscriber) => subscriber.error(new Error('Token expired')));
+      return new Observable<SseMessage<T>>((subscriber) => subscriber.error(new Error('Token expired')));
     }
 
-    return new Observable<T>((subscriber) => {
+    return new Observable<SseMessage<T>>((subscriber) => {
       const controller = new AbortController();
 
       const streamSse = async () => {
@@ -34,6 +48,12 @@ export class SseService {
           const token = this.authService.getToken() ?? (this.authService.isMockEnabled() ? 'mock-token' : null);
           if (token) {
             headers.set('Authorization', `Bearer ${token}`);
+          }
+          if (useReplayCursor) {
+            const lastEventId = this.lastEventIds.get(url);
+            if (lastEventId) {
+              headers.set('Last-Event-ID', lastEventId);
+            }
           }
 
           const response = await fetch(url, {
@@ -66,13 +86,13 @@ export class SseService {
             while (frameBoundary !== -1) {
               const frame = buffer.slice(0, frameBoundary);
               buffer = buffer.slice(frameBoundary + 2);
-              this.handleFrame<T>(frame, subscriber);
+              this.handleFrame<T>(url, frame, subscriber);
               frameBoundary = buffer.indexOf('\n\n');
             }
           }
 
           if (buffer.trim().length > 0) {
-            this.handleFrame<T>(buffer, subscriber);
+            this.handleFrame<T>(url, buffer, subscriber);
           }
 
           this.zone.run(() => subscriber.complete());
@@ -87,13 +107,31 @@ export class SseService {
     });
   }
 
-  private handleFrame<T>(frame: string, subscriber: { next(value: T): void; error(err: unknown): void }): void {
+  private handleFrame<T>(
+    url: string,
+    frame: string,
+    subscriber: { next(value: SseMessage<T>): void; error(err: unknown): void },
+  ): void {
     const lines = frame.split('\n');
     const dataLines: string[] = [];
+    let eventType = 'message';
+    let eventId: string | undefined;
 
     for (const rawLine of lines) {
       const line = rawLine.trimEnd();
       if (!line || line.startsWith(':')) {
+        continue;
+      }
+      if (line.startsWith('event:')) {
+        eventType = line.slice(6).trim() || 'message';
+        continue;
+      }
+      if (line.startsWith('id:')) {
+        const parsedId = line.slice(3).trim();
+        if (parsedId) {
+          eventId = parsedId;
+          this.lastEventIds.set(url, parsedId);
+        }
         continue;
       }
       if (line.startsWith('data:')) {
@@ -106,7 +144,11 @@ export class SseService {
     const payload = dataLines.join('\n');
     this.zone.run(() => {
       try {
-        subscriber.next(JSON.parse(payload) as T);
+        subscriber.next({
+          event: eventType,
+          data: JSON.parse(payload) as T,
+          id: eventId,
+        });
       } catch (error) {
         subscriber.error(error);
       }

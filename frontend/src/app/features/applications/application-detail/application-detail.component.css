@@ -2,9 +2,16 @@
   display: block;
 }
 
+.app-modal-overlay {
+  align-items: flex-start;
+  overflow-y: auto;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+
 .app-upload-dialog {
-  width: min(52rem, calc(100vw - 2rem));
-  max-height: calc(100vh - 2rem);
+  width: min(52rem, calc(100% - 0.5rem));
+  max-height: calc(100% - 0.5rem);
   display: flex;
   flex-direction: column;
 }

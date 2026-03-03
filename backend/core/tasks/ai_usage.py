@@ -5,7 +5,7 @@ from typing import Any
 
 import requests
 from django.conf import settings
-from huey.contrib.djhuey import db_task
+from core.tasks.runtime import QUEUE_DEFAULT, db_task
 
 from core.services.ai_usage_service import AIUsageService
 from core.services.logger_service import Logger
@@ -108,7 +108,7 @@ def _fetch_openrouter_generation_data(request_id: str) -> dict[str, Any]:
     raise RuntimeError("OpenRouter generation endpoint did not return usable data.")
 
 
-@db_task()
+@db_task(queue=QUEUE_DEFAULT)
 def capture_ai_usage_task(
     *,
     feature: str,

@@ -21,6 +21,10 @@
     <z-icon zType="file-code" class="mr-2" />
     Download PDF
   </button>
+  <button z-dropdown-menu-item (click)="openPrintPreview()">
+    <z-icon zType="eye" class="mr-2" />
+    Print Preview
+  </button>
 </z-dropdown-menu-content>
 
 @if (progress() !== null) {
@@ -33,4 +37,16 @@
       <div class="h-2 rounded-full bg-primary" [style.width.%]="progress()"></div>
     </div>
   </div>
+}
+
+@if (printPreviewOpen()) {
+  <app-pdf-viewer-host
+    [src]="printPreviewBlob()"
+    [isBusy]="printPreviewLoading()"
+    [errorMessage]="printPreviewError()"
+    [showDownloadButton]="true"
+    [downloadFileName]="printPreviewFilename()"
+    (downloadRequested)="downloadPreviewPdf()"
+    (closed)="closePrintPreview()"
+  />
 }

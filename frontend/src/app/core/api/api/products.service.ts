@@ -349,7 +349,7 @@ export class ProductsService extends BaseService {
             }
         }
 
-        let localVarPath = `/api/products/export/download/${this.configuration.encodeParam({name: "jobId", value: jobId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: undefined})}/`;
+        let localVarPath = `/api/products/export/download/${this.configuration.encodeParam({name: "jobId", value: jobId, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: "uuid"})}/`;
         const { basePath, withCredentials } = this.configuration;
         return this.httpClient.request<Product>('get', `${basePath}${localVarPath}`,
             {

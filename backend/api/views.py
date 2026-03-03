@@ -2,11 +2,10 @@ import json
 import logging
 import mimetypes
 import os
-import time
 import uuid
 from datetime import datetime, timedelta
 from io import BytesIO
-from typing import Any, cast
+from typing import Any, Generator, cast
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from api.async_controls import (
@@ -69,6 +68,7 @@ from api.serializers import (
 )
 from api.serializers.auth_serializer import CustomTokenObtainSerializer
 from api.serializers.passport_check_serializer import PassportCheckSerializer
+from api.utils.redis_sse import iter_replay_and_live_events
 from api.utils.sse_auth import sse_token_auth_required
 from business_suite.authentication import JwtOrMockAuthentication
 from core.models import (
@@ -84,14 +84,11 @@ from core.models import (
 )
 from core.models.async_job import AsyncJob
 from core.services.calendar_reminder_service import CalendarReminderService
-from core.services.calendar_reminder_stream import (
-    get_calendar_reminder_stream_cursor,
-    get_calendar_reminder_stream_last_event,
-)
 from core.services.document_merger import DocumentMerger, DocumentMergerError
 from core.services.ocr_preview_storage import get_ocr_preview_url
 from core.services.push_notifications import FcmConfigurationError, PushNotificationService
 from core.services.quick_create import create_quick_customer, create_quick_customer_application, create_quick_product
+from core.services.redis_streams import format_sse_event, resolve_last_event_id, stream_job_key, stream_user_key
 from core.tasks.cron_jobs import enqueue_clear_cache_now, enqueue_full_backup_now
 from core.tasks.document_ocr import run_document_ocr_job
 from core.tasks.document_validation import run_document_validation
@@ -99,11 +96,7 @@ from core.tasks.ocr import run_ocr_job
 from core.utils.dateutils import calculate_due_date
 from core.utils.pdf_converter import PDFConverter, PDFConverterError
 from customer_applications.models import DocApplication, Document, DocWorkflow, WorkflowNotification
-from customer_applications.services.workflow_notification_stream import (
-    RECENT_WORKFLOW_NOTIFICATION_WINDOW_HOURS,
-    get_workflow_notification_stream_cursor,
-    get_workflow_notification_stream_last_event,
-)
+from customer_applications.services.workflow_notification_stream import RECENT_WORKFLOW_NOTIFICATION_WINDOW_HOURS
 from customers.models import Customer
 from customers.tasks import check_passport_uploadability_task
 from django.conf import settings
@@ -1092,6 +1085,11 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             status=status.HTTP_202_ACCEPTED,
         )
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("job_id", OpenApiTypes.UUID, OpenApiParameter.PATH, required=True),
+        ],
+    )
     @action(detail=False, methods=["get"], url_path=r"export/download/(?P<job_id>[^/.]+)")
     def export_download(self, request, job_id=None):
         try:
@@ -1734,27 +1732,36 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         if not job:
             return self.error_response("Job not found", status.HTTP_404_NOT_FOUND)
 
-        response = StreamingHttpResponse(self._stream_download_job(request, job), content_type="text/event-stream")
+        response = StreamingHttpResponse(
+            self._stream_download_job(request, job, last_event_id=resolve_last_event_id(request)),
+            content_type="text/event-stream",
+        )
         response["Cache-Control"] = "no-cache"
         response["X-Accel-Buffering"] = "no"
         return response
 
-    def _stream_download_job(self, request, job):
+    def _stream_download_job(self, request, job, *, last_event_id: str | None = None):
+        stream_key = stream_job_key(job.id)
         last_progress = None
+        last_status = None
 
         yield self._send_download_event(
             "start", {"message": "Starting invoice generation...", "progress": job.progress}
         )
 
-        while True:
+        def _emit_updates(*, event_id: str | None = None) -> Generator[str, None, bool]:
+            nonlocal last_progress
+            nonlocal last_status
             job.refresh_from_db()
 
-            if last_progress != job.progress:
+            if last_progress != job.progress or last_status != job.status:
                 yield self._send_download_event(
                     "progress",
                     {"progress": job.progress, "status": job.status},
+                    event_id=event_id,
                 )
                 last_progress = job.progress
+                last_status = job.status
 
             if job.status == InvoiceDownloadJob.STATUS_COMPLETED:
                 yield self._send_download_event(
@@ -1766,22 +1773,34 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                         ),
                         "status": job.status,
                     },
+                    event_id=event_id,
                 )
-                break
+                return True
 
             if job.status == InvoiceDownloadJob.STATUS_FAILED:
                 yield self._send_download_event(
                     "error",
                     {"message": job.error_message or "Invoice generation failed", "status": job.status},
+                    event_id=event_id,
                 )
-                break
+                return True
+            return False
 
-            yield ": keep-alive\n\n"
-            time.sleep(0.5)
+        done = yield from _emit_updates()
+        if done:
+            return
+
+        for stream_event in iter_replay_and_live_events(stream_key=stream_key, last_event_id=last_event_id):
+            if stream_event is None:
+                yield ": keep-alive\n\n"
+                continue
+            done = yield from _emit_updates(event_id=stream_event.id)
+            if done:
+                return
 
     @staticmethod
-    def _send_download_event(event_type, data):
-        return f"event: {event_type}\ndata: {json.dumps(data)}\n\n"
+    def _send_download_event(event_type, data, *, event_id: str | None = None):
+        return format_sse_event(event=event_type, data=data, event_id=event_id)
 
     @extend_schema(
         parameters=[
@@ -2309,17 +2328,18 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             return self.error_response("Job not found", status.HTTP_404_NOT_FOUND)
 
         response = StreamingHttpResponse(
-            self._stream_import_job(job.id, request),
+            self._stream_import_job(job.id, request, last_event_id=resolve_last_event_id(request)),
             content_type="text/event-stream",
         )
         response["Cache-Control"] = "no-cache"
         response["X-Accel-Buffering"] = "no"
         return response
 
-    def _stream_import_job(self, job_id, request=None):
-        """Stream SSE updates for a running Huey import job."""
+    def _stream_import_job(self, job_id, request=None, *, last_event_id: str | None = None):
+        """Stream SSE updates for a running import job."""
         from invoices.models import InvoiceImportJob
 
+        stream_key = stream_job_key(job_id)
         sent_states = {}
         job = InvoiceImportJob.objects.get(id=job_id)
         total_files = job.total_files
@@ -2332,7 +2352,8 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             },
         )
 
-        while True:
+        def _collect_updates(*, event_id: str | None = None) -> tuple[list[str], bool]:
+            messages: list[str] = []
             job.refresh_from_db()
             items = list(job.items.all().order_by("sort_index"))
 
@@ -2342,13 +2363,16 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                 state = sent_states.get(item.id, {"file_start": False, "parsing": False, "done": False})
 
                 if item.status == InvoiceImportItem.STATUS_PROCESSING and not state["file_start"]:
-                    yield self._send_import_event(
-                        "file_start",
-                        {
-                            "index": item.sort_index,
-                            "filename": item.filename,
-                            "message": f"Processing {item.filename}...",
-                        },
+                    messages.append(
+                        self._send_import_event(
+                            "file_start",
+                            {
+                                "index": item.sort_index,
+                                "filename": item.filename,
+                                "message": f"Processing {item.filename}...",
+                            },
+                            event_id=event_id,
+                        )
                     )
                     state["file_start"] = True
 
@@ -2358,13 +2382,16 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                     and item.result.get("stage") == "parsing"
                     and not state["parsing"]
                 ):
-                    yield self._send_import_event(
-                        "parsing",
-                        {
-                            "index": item.sort_index,
-                            "filename": item.filename,
-                            "message": f"Parsing {item.filename} with AI...",
-                        },
+                    messages.append(
+                        self._send_import_event(
+                            "parsing",
+                            {
+                                "index": item.sort_index,
+                                "filename": item.filename,
+                                "message": f"Parsing {item.filename} with AI...",
+                            },
+                            event_id=event_id,
+                        )
                     )
                     state["parsing"] = True
 
@@ -2388,14 +2415,17 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                         event_type = "file_error"
                         message = f"✗ Error processing {item.filename}: {result_data.get('message', 'Unknown error')}"
 
-                    yield self._send_import_event(
-                        event_type,
-                        {
-                            "index": item.sort_index,
-                            "filename": item.filename,
-                            "message": message,
-                            "result": result_data,
-                        },
+                    messages.append(
+                        self._send_import_event(
+                            event_type,
+                            {
+                                "index": item.sort_index,
+                                "filename": item.filename,
+                                "message": message,
+                                "result": result_data,
+                            },
+                            event_id=event_id,
+                        )
                     )
                     state["done"] = True
 
@@ -2403,18 +2433,62 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
             if job.processed_files >= job.total_files and all(state["done"] for state in sent_states.values()):
                 summary = self._build_import_summary(job, items)
-                yield self._send_import_event(
-                    "complete",
-                    {
-                        "message": f"Import complete: {summary['summary']['imported']} imported, "
-                        f"{summary['summary']['duplicates']} duplicates, {summary['summary']['errors']} errors",
-                        **summary,
-                    },
+                messages.append(
+                    self._send_import_event(
+                        "complete",
+                        {
+                            "message": f"Import complete: {summary['summary']['imported']} imported, "
+                            f"{summary['summary']['duplicates']} duplicates, {summary['summary']['errors']} errors",
+                            **summary,
+                        },
+                        event_id=event_id,
+                    )
                 )
-                break
+                return messages, True
+            return messages, False
 
-            yield ": keep-alive\n\n"
-            time.sleep(0.5)
+        initial_messages, done = _collect_updates()
+        for message in initial_messages:
+            yield message
+        if done:
+            return
+
+        refresh_interval_seconds = 0.35
+        last_refresh_at = time.monotonic()
+        pending_event_id: str | None = None
+
+        for stream_event in iter_replay_and_live_events(stream_key=stream_key, last_event_id=last_event_id):
+            if stream_event is None:
+                if pending_event_id is not None:
+                    messages, done = _collect_updates(event_id=pending_event_id)
+                    pending_event_id = None
+                    last_refresh_at = time.monotonic()
+                    for message in messages:
+                        yield message
+                    if done:
+                        return
+                yield ": keep-alive\n\n"
+                continue
+
+            pending_event_id = stream_event.id
+            now = time.monotonic()
+            if (now - last_refresh_at) < refresh_interval_seconds and stream_event.event != "invoice_import_job_changed":
+                continue
+
+            messages, done = _collect_updates(event_id=pending_event_id)
+            pending_event_id = None
+            last_refresh_at = now
+            for message in messages:
+                yield message
+            if done:
+                return
+
+        if pending_event_id is not None:
+            messages, done = _collect_updates(event_id=pending_event_id)
+            for message in messages:
+                yield message
+            if done:
+                return
 
     def _build_import_result(self, item):
         """Build result data for an import item."""
@@ -2439,9 +2513,9 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         return {"summary": summary, "results": results}
 
     @staticmethod
-    def _send_import_event(event_type, data):
+    def _send_import_event(event_type, data, *, event_id: str | None = None):
         """Format and send an SSE event."""
-        return f"event: {event_type}\ndata: {json.dumps(data)}\n\n"
+        return format_sse_event(event=event_type, data=data, event_id=event_id)
 
 
 class PaymentViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
@@ -2628,7 +2702,7 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
     @extend_schema(responses={201: DocApplicationDetailSerializer})
     def create(self, request, *args, **kwargs):
-        """Create application synchronously and queue calendar sync in Huey."""
+        """Create application synchronously and queue calendar sync in Dramatiq."""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         application = serializer.save()
@@ -2639,7 +2713,7 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
     @extend_schema(responses={200: DocApplicationDetailSerializer})
     def update(self, request, *args, **kwargs):
-        """Update application synchronously and queue calendar sync in Huey."""
+        """Update application synchronously and queue calendar sync in Dramatiq."""
         partial = kwargs.pop("partial", False)
         instance = self.get_object()
         previous_due_date = instance.due_date
@@ -2669,7 +2743,7 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="advance-workflow")
     @extend_schema(responses={200: DocApplicationDetailSerializer})
     def advance_workflow(self, request, pk=None):
-        """Complete current workflow synchronously and queue calendar sync in Huey."""
+        """Complete current workflow synchronously and queue calendar sync in Dramatiq."""
         from customer_applications.services.application_lifecycle_service import ApplicationLifecycleService
 
         try:
@@ -2698,7 +2772,7 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         responses={204: OpenApiTypes.NONE},
     )
     def destroy(self, request, *args, **kwargs):
-        """Delete application synchronously and queue calendar cleanup in Huey."""
+        """Delete application synchronously and queue calendar cleanup in Dramatiq."""
         from customer_applications.services.application_lifecycle_service import ApplicationLifecycleService
 
         try:
@@ -2939,6 +3013,38 @@ class DocumentViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         """Override to trigger AI validation when requested."""
         response = super().partial_update(request, *args, **kwargs)
 
+        ai_status_override_raw = request.data.get("ai_validation_status_override", None)
+        ai_result_override_raw = request.data.get("ai_validation_result_override", None)
+        ai_status_override = None if ai_status_override_raw is None else str(ai_status_override_raw)
+        ai_result_override = ai_result_override_raw
+        if isinstance(ai_result_override_raw, str):
+            text = ai_result_override_raw.strip()
+            if not text:
+                ai_result_override = None
+            else:
+                try:
+                    ai_result_override = json.loads(text)
+                except json.JSONDecodeError:
+                    ai_result_override = None
+
+        if response.status_code == 200 and ai_status_override is not None:
+            document = self.get_object()
+            allowed_overrides = {
+                Document.AI_VALIDATION_NONE,
+                Document.AI_VALIDATION_VALID,
+                Document.AI_VALIDATION_INVALID,
+                Document.AI_VALIDATION_ERROR,
+            }
+            if ai_status_override in allowed_overrides:
+                document.ai_validation_status = ai_status_override
+                # Keep AI "reason" payload only for explicitly invalid outcomes.
+                document.ai_validation_result = (
+                    ai_result_override if ai_status_override == Document.AI_VALIDATION_INVALID else None
+                )
+                document.save(update_fields=["ai_validation_status", "ai_validation_result", "updated_at"])
+                response.data = self.get_serializer(document).data
+                return response
+
         validate_with_ai_value = request.data.get("validate_with_ai", "")
         if isinstance(validate_with_ai_value, bool):
             validate_with_ai = validate_with_ai_value
@@ -3067,6 +3173,7 @@ class DocumentViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             "expirationDate": str(document.expiration_date) if document.expiration_date else None,
             "details": document.details,
             "fileLink": document.file_link,
+            "thumbnailLink": document.thumbnail_link,
             "aiValidation": document.ai_validation,
             "completed": document.completed,
         }
@@ -3424,6 +3531,35 @@ class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                 status.HTTP_400_BAD_REQUEST,
             )
 
+        resolved_doc_type_id: int | None = None
+        resolved_document_id: int | None = None
+        document_id_raw = request.data.get("document_id")
+        doc_type_id_raw = request.data.get("doc_type_id")
+
+        if document_id_raw not in (None, ""):
+            try:
+                document_id = int(document_id_raw)
+            except (TypeError, ValueError):
+                return self.error_response("Invalid document_id", status.HTTP_400_BAD_REQUEST)
+
+            document = (
+                restrict_to_owner_unless_privileged(
+                    Document.objects.select_related("doc_type").filter(id=document_id),
+                    request.user,
+                ).first()
+            )
+            if not document:
+                return self.error_response("Document not found", status.HTTP_404_NOT_FOUND)
+
+            if document.doc_type_id:
+                resolved_doc_type_id = int(document.doc_type_id)
+            resolved_document_id = int(document.id)
+        elif doc_type_id_raw not in (None, ""):
+            try:
+                resolved_doc_type_id = int(doc_type_id_raw)
+            except (TypeError, ValueError):
+                return self.error_response("Invalid doc_type_id", status.HTTP_400_BAD_REQUEST)
+
         existing_job = _latest_inflight_job(
             DocumentOCRJob.objects.filter(created_by=request.user),
             QUEUE_JOB_INFLIGHT_STATUSES,
@@ -3539,7 +3675,11 @@ class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                 file_path=file_path,
                 file_url=default_storage.url(file_path),
                 created_by=request.user,
-                request_params={"file_type": file_type},
+                request_params={
+                    "file_type": file_type,
+                    "doc_type_id": resolved_doc_type_id,
+                    "document_id": resolved_document_id,
+                },
             )
             run_document_ocr_job(str(job.id))
 
@@ -3575,6 +3715,13 @@ class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
 
         if job.status == DocumentOCRJob.STATUS_COMPLETED:
             response_data["text"] = job.result_text
+            try:
+                structured_data = json.loads(job.result_text or "")
+            except (TypeError, ValueError, json.JSONDecodeError):
+                structured_data = None
+            if isinstance(structured_data, dict):
+                response_data["structured_data"] = structured_data
+                response_data["structuredData"] = structured_data
         elif job.status == DocumentOCRJob.STATUS_FAILED:
             response_data["error"] = job.error_message or "Document OCR job failed"
 
@@ -3645,7 +3792,7 @@ class DashboardStatsView(ApiErrorHandlingMixin, viewsets.ViewSet):
 @throttle_classes([ScopedRateThrottle])
 def exec_cron_jobs(request):
     """
-    Execute cron jobs via Huey
+    Execute cron jobs via Dramatiq.
     """
     request.throttle_scope = "cron"
     full_backup_queued = enqueue_full_backup_now()
@@ -4718,7 +4865,7 @@ def calendar_reminders_stream_sse(request):
     def _build_payload(
         *,
         event: str,
-        cursor: int,
+        cursor: str,
         last_reminder_id,
         last_updated_at,
         reason: str,
@@ -4738,80 +4885,50 @@ def calendar_reminders_stream_sse(request):
             payload["changedReminderId"] = changed_reminder_id
         return payload
 
-    def _safe_owner_id(value):
-        try:
-            return int(value)
-        except (TypeError, ValueError):
-            return None
-
     def event_stream():
-        last_cursor = get_calendar_reminder_stream_cursor()
+        stream_key = stream_user_key(user.id)
+        replay_cursor = resolve_last_event_id(request)
         last_reminder_id, last_updated_at = _latest_reminder_state()
-        keepalive_tick = 0
 
         snapshot_payload = _build_payload(
             event="calendar_reminders_snapshot",
-            cursor=last_cursor,
+            cursor=replay_cursor or "0-0",
             last_reminder_id=last_reminder_id,
             last_updated_at=last_updated_at,
             reason="initial",
         )
-        yield f"data: {json.dumps(snapshot_payload)}\n\n"
+        yield format_sse_event(data=snapshot_payload)
 
-        while True:
+        for stream_event in iter_replay_and_live_events(stream_key=stream_key, last_event_id=replay_cursor):
             try:
-                time.sleep(1)
-                keepalive_tick += 1
-
-                current_cursor = get_calendar_reminder_stream_cursor()
-                current_reminder_id = last_reminder_id
-                current_last_updated_at = last_updated_at
-                reason = None
-                operation = None
-                changed_reminder_id = None
-
-                if current_cursor != last_cursor:
-                    event_meta = get_calendar_reminder_stream_last_event() or {}
-                    owner_id = _safe_owner_id(event_meta.get("ownerId"))
-                    if owner_id is None or owner_id == int(user.id):
-                        reason = "signal"
-                        if event_meta.get("cursor") == current_cursor:
-                            operation = str(event_meta.get("operation") or "").strip() or None
-                            raw_changed_id = event_meta.get("reminderId")
-                            try:
-                                changed_reminder_id = int(raw_changed_id) if raw_changed_id is not None else None
-                            except (TypeError, ValueError):
-                                changed_reminder_id = None
-                        current_reminder_id, current_last_updated_at = _latest_reminder_state()
-                    last_cursor = current_cursor
-                elif keepalive_tick >= 15:
-                    current_reminder_id, current_last_updated_at = _latest_reminder_state()
-                    if current_reminder_id != last_reminder_id or current_last_updated_at != last_updated_at:
-                        reason = "db_state_change"
-
-                if reason is not None:
-                    payload = _build_payload(
-                        event="calendar_reminders_changed",
-                        cursor=last_cursor,
-                        last_reminder_id=current_reminder_id,
-                        last_updated_at=current_last_updated_at,
-                        reason=reason,
-                        operation=operation,
-                        changed_reminder_id=changed_reminder_id,
-                    )
-                    yield f"data: {json.dumps(payload)}\n\n"
-                    last_reminder_id = current_reminder_id
-                    last_updated_at = current_last_updated_at
-                    keepalive_tick = 0
+                if stream_event is None:
                     continue
 
-                if keepalive_tick >= 15:
-                    yield ": keepalive\n\n"
-                    keepalive_tick = 0
+                event_meta = stream_event.payload if isinstance(stream_event.payload, dict) else {}
+                operation = str(event_meta.get("operation") or "").strip() or None
+                raw_changed_id = event_meta.get("reminderId")
+                try:
+                    changed_reminder_id = int(raw_changed_id) if raw_changed_id is not None else None
+                except (TypeError, ValueError):
+                    changed_reminder_id = None
+
+                current_reminder_id, current_last_updated_at = _latest_reminder_state()
+                payload = _build_payload(
+                    event="calendar_reminders_changed",
+                    cursor=stream_event.id,
+                    last_reminder_id=current_reminder_id,
+                    last_updated_at=current_last_updated_at,
+                    reason="signal",
+                    operation=operation,
+                    changed_reminder_id=changed_reminder_id,
+                )
+                yield format_sse_event(event_id=stream_event.id, data=payload)
+                last_reminder_id = current_reminder_id
+                last_updated_at = current_last_updated_at
             except GeneratorExit:
                 return
             except Exception as exc:
-                yield f"data: {json.dumps({'event': 'calendar_reminders_error', 'error': str(exc)})}\n\n"
+                yield format_sse_event(data={"event": "calendar_reminders_error", "error": str(exc)})
                 return
 
     response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
@@ -4843,7 +4960,7 @@ def workflow_notifications_stream_sse(request):
     def _build_payload(
         *,
         event: str,
-        cursor: int,
+        cursor: str,
         last_notification_id,
         last_updated_at,
         reason: str,
@@ -4865,72 +4982,51 @@ def workflow_notifications_stream_sse(request):
         return payload
 
     def event_stream():
-        last_cursor = get_workflow_notification_stream_cursor()
+        stream_key = stream_job_key("workflow-notifications")
+        replay_cursor = resolve_last_event_id(request)
         last_notification_id, last_updated_at = _latest_recent_notification_state()
-        keepalive_tick = 0
 
         snapshot_payload = _build_payload(
             event="workflow_notifications_snapshot",
-            cursor=last_cursor,
+            cursor=replay_cursor or "0-0",
             last_notification_id=last_notification_id,
             last_updated_at=last_updated_at,
             reason="initial",
         )
-        yield f"data: {json.dumps(snapshot_payload)}\n\n"
+        yield format_sse_event(data=snapshot_payload)
 
-        while True:
+        for stream_event in iter_replay_and_live_events(stream_key=stream_key, last_event_id=replay_cursor):
             try:
-                time.sleep(1)
-                keepalive_tick += 1
-
-                current_cursor = get_workflow_notification_stream_cursor()
-                current_notification_id = last_notification_id
-                current_last_updated_at = last_updated_at
-                reason = None
-                operation = None
-                changed_notification_id = None
-
-                if current_cursor != last_cursor:
-                    reason = "signal"
-                    event_meta = get_workflow_notification_stream_last_event() or {}
-                    if event_meta.get("cursor") == current_cursor:
-                        operation = str(event_meta.get("operation") or "").strip() or None
-                        raw_changed_id = event_meta.get("notificationId")
-                        if raw_changed_id is not None:
-                            try:
-                                changed_notification_id = int(raw_changed_id)
-                            except (TypeError, ValueError):
-                                changed_notification_id = None
-                    current_notification_id, current_last_updated_at = _latest_recent_notification_state()
-                elif keepalive_tick >= 15:
-                    current_notification_id, current_last_updated_at = _latest_recent_notification_state()
-                    if current_notification_id != last_notification_id or current_last_updated_at != last_updated_at:
-                        reason = "db_state_change"
-
-                if reason is not None:
-                    payload = _build_payload(
-                        event="workflow_notifications_changed",
-                        cursor=current_cursor,
-                        last_notification_id=current_notification_id,
-                        last_updated_at=current_last_updated_at,
-                        reason=reason,
-                        operation=operation,
-                        changed_notification_id=changed_notification_id,
-                    )
-                    yield f"data: {json.dumps(payload)}\n\n"
-                    last_cursor = current_cursor
-                    last_notification_id = current_notification_id
-                    last_updated_at = current_last_updated_at
-                    keepalive_tick = 0
+                if stream_event is None:
                     continue
 
-                if keepalive_tick >= 15:
-                    yield ": keepalive\n\n"
-                    keepalive_tick = 0
+                event_meta = stream_event.payload if isinstance(stream_event.payload, dict) else {}
+                operation = str(event_meta.get("operation") or "").strip() or None
+                raw_changed_id = event_meta.get("notificationId")
+                changed_notification_id = None
+                if raw_changed_id is not None:
+                    try:
+                        changed_notification_id = int(raw_changed_id)
+                    except (TypeError, ValueError):
+                        changed_notification_id = None
+
+                current_notification_id, current_last_updated_at = _latest_recent_notification_state()
+                payload = _build_payload(
+                    event="workflow_notifications_changed",
+                    cursor=stream_event.id,
+                    last_notification_id=current_notification_id,
+                    last_updated_at=current_last_updated_at,
+                    reason="signal",
+                    operation=operation,
+                    changed_notification_id=changed_notification_id,
+                )
+                yield format_sse_event(event_id=stream_event.id, data=payload)
+                last_notification_id = current_notification_id
+                last_updated_at = current_last_updated_at
             except GeneratorExit:
                 return
             except Exception as exc:
-                yield f"data: {json.dumps({'event': 'workflow_notifications_error', 'error': str(exc)})}\n\n"
+                yield format_sse_event(data={"event": "workflow_notifications_error", "error": str(exc)})
                 return
 
     response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
@@ -4947,41 +5043,61 @@ def async_job_status_sse(request, job_id):
         return JsonResponse({"error": "Job not found"}, status=404)
 
     def event_stream():
-        last_progress = -1
+        replay_cursor = resolve_last_event_id(request)
+        stream_key = stream_job_key(job_id)
+        last_progress = None
         last_status = None
 
-        while True:
+        try:
+            job = job_queryset.get()
+        except AsyncJob.DoesNotExist:
+            yield format_sse_event(data={"error": "Job not found"})
+            return
+
+        initial_payload = {
+            "id": str(job.id),
+            "status": job.status,
+            "progress": job.progress,
+            "message": job.message,
+            "result": job.result,
+            "error_message": job.error_message,
+        }
+        yield format_sse_event(data=initial_payload)
+        last_progress = job.progress
+        last_status = job.status
+        if job.status in [AsyncJob.STATUS_COMPLETED, AsyncJob.STATUS_FAILED]:
+            return
+
+        for stream_event in iter_replay_and_live_events(stream_key=stream_key, last_event_id=replay_cursor):
             try:
-                # Refresh from DB
+                if stream_event is None:
+                    yield ": keepalive\n\n"
+                    continue
+
                 job = job_queryset.get()
+                if job.progress == last_progress and job.status == last_status:
+                    continue
 
-                # Only send if changed
-                if job.progress != last_progress or job.status != last_status:
-                    data = {
-                        "id": str(job.id),
-                        "status": job.status,
-                        "progress": job.progress,
-                        "message": job.message,
-                        "result": job.result,
-                        "error_message": job.error_message,
-                    }
-                    yield f"data: {json.dumps(data)}\n\n"
-                    last_progress = job.progress
-                    last_status = job.status
+                data = {
+                    "id": str(job.id),
+                    "status": job.status,
+                    "progress": job.progress,
+                    "message": job.message,
+                    "result": job.result,
+                    "error_message": job.error_message,
+                }
+                yield format_sse_event(event_id=stream_event.id, data=data)
+                last_progress = job.progress
+                last_status = job.status
 
-                # Check for completion
                 if job.status in [AsyncJob.STATUS_COMPLETED, AsyncJob.STATUS_FAILED]:
-                    break
-
+                    return
             except AsyncJob.DoesNotExist:
-                yield f"data: {json.dumps({'error': 'Job not found'})}\n\n"
+                yield format_sse_event(data={"error": "Job not found"})
                 break
             except Exception as e:
-                yield f"data: {json.dumps({'error': str(e)})}\n\n"
+                yield format_sse_event(data={"error": str(e)})
                 break
-
-            time.sleep(1)
-            yield ": keepalive\n\n"
 
     response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
     response["Cache-Control"] = "no-cache"

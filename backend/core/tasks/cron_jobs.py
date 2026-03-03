@@ -6,8 +6,7 @@ import requests
 from django.conf import settings
 from django.core.cache import cache
 from django.core.management import call_command
-from huey import crontab
-from huey.contrib.djhuey import db_periodic_task, db_task
+from core.tasks.runtime import QUEUE_LOW, QUEUE_SCHEDULED, crontab, db_periodic_task, db_task
 
 from core.services.logger_service import Logger
 
@@ -147,12 +146,12 @@ def _perform_clear_cache_locked() -> bool:
     )
 
 
-@db_task()
+@db_task(queue=QUEUE_LOW)
 def run_full_backup_now() -> None:
     _perform_full_backup_locked()
 
 
-@db_task()
+@db_task(queue=QUEUE_LOW)
 def run_clear_cache_now() -> None:
     _perform_clear_cache_locked()
 
@@ -175,13 +174,13 @@ def enqueue_clear_cache_now() -> bool:
     )
 
 
-@db_task()
+@db_task(queue=QUEUE_LOW)
 def run_auditlog_prune_now() -> None:
     """Immediate task to prune auditlog DB entries older than configured retention."""
     _perform_prune_auditlog()
 
 
-@db_task()
+@db_task(queue=QUEUE_LOW)
 def run_openrouter_health_check_now() -> None:
     """Immediate task to run OpenRouter API health check."""
     _perform_openrouter_health_check()
@@ -195,7 +194,7 @@ def _register_full_backup() -> None:
         logger.error(str(exc))
         return
 
-    @db_periodic_task(crontab(hour=hour, minute=minute), name="core.full_backup_daily")
+    @db_periodic_task(crontab(hour=hour, minute=minute), name="core.full_backup_daily", queue=QUEUE_SCHEDULED)
     def _full_backup_daily() -> None:
         _perform_full_backup_locked()
 
@@ -213,7 +212,7 @@ def _register_clear_cache() -> None:
 
         task_name = f"core.clear_cache_{hour:02d}{minute:02d}"
 
-        @db_periodic_task(crontab(hour=hour, minute=minute), name=task_name)
+        @db_periodic_task(crontab(hour=hour, minute=minute), name=task_name, queue=QUEUE_SCHEDULED)
         def _clear_cache_scheduled() -> None:
             _perform_clear_cache_locked()
 
@@ -251,7 +250,7 @@ def _register_auditlog_prune() -> None:
         logger.error(str(exc))
         return
 
-    @db_periodic_task(crontab(hour=hour, minute=minute), name="core.auditlog_prune_daily")
+    @db_periodic_task(crontab(hour=hour, minute=minute), name="core.auditlog_prune_daily", queue=QUEUE_SCHEDULED)
     def _auditlog_prune_daily() -> None:
         _perform_prune_auditlog()
 
@@ -355,7 +354,7 @@ def _register_openrouter_health_check() -> None:
         logger.error("Invalid OPENROUTER_HEALTHCHECK_CRON_MINUTE '%s': %s", minute_expr, str(exc))
         return
 
-    @db_periodic_task(schedule, name="core.openrouter_health_check")
+    @db_periodic_task(schedule, name="core.openrouter_health_check", queue=QUEUE_SCHEDULED)
     def _openrouter_health_check_periodic() -> None:
         _perform_openrouter_health_check()
 

@@ -91,7 +91,7 @@ services:
       SESSION_COOKIE_DOMAIN: ""
       REDIS_HOST: ${DESKTOP_REDIS_HOST:-redis}
       REDIS_PORT: ${DESKTOP_REDIS_PORT:-6379}
-      HUEY_REDIS_DB: ${DESKTOP_HUEY_REDIS_DB:-0}
+      DRAMATIQ_REDIS_DB: ${DESKTOP_DRAMATIQ_REDIS_DB:-0}
       COMPONENT: backend
       MEDIA_ROOT: /media
       MEDIA_URL: /media/
@@ -158,7 +158,11 @@ services:
       SESSION_COOKIE_DOMAIN: ""
       REDIS_HOST: ${DESKTOP_REDIS_HOST:-redis}
       REDIS_PORT: ${DESKTOP_REDIS_PORT:-6379}
-      HUEY_REDIS_DB: ${DESKTOP_HUEY_REDIS_DB:-0}
+      DRAMATIQ_REDIS_DB: ${DESKTOP_DRAMATIQ_REDIS_DB:-0}
+      DRAMATIQ_HIGH_THREADS: ${DRAMATIQ_HIGH_THREADS:-8}
+      DRAMATIQ_LOW_THREADS: ${DRAMATIQ_LOW_THREADS:-2}
+      DRAMATIQ_HIGH_PROCESSES: ${DRAMATIQ_HIGH_PROCESSES:-1}
+      DRAMATIQ_LOW_PROCESSES: ${DRAMATIQ_LOW_PROCESSES:-1}
       COMPONENT: task_worker
       MEDIA_ROOT: /media
       MEDIA_URL: /media/
@@ -196,7 +200,78 @@ services:
       - type: bind
         source: ${DATA_PATH}/backups
         target: /backups
-    command: python manage.py run_huey
+    command:
+      - /bin/sh
+      - -lc
+      - exec /bin/sh /usr/src/app/scripts/run_dramatiq_workers.sh
+
+  bs-scheduler:
+    profiles:
+      - app
+    depends_on:
+      - db
+      - bs-core
+      - redis
+    image: bs-app:web
+    restart: unless-stopped
+    networks:
+      - desktop_stack
+    env_file:
+      - ./.env
+    environment:
+      DB_HOST: ${DESKTOP_DB_HOST:-db}
+      DB_PORT: ${DESKTOP_DB_PORT:-5432}
+      DB_NAME: ${DESKTOP_DB_NAME:-business_suite}
+      DB_USER: ${DESKTOP_DB_USER:-postgres}
+      DB_PASS: ${DESKTOP_DB_PASS:-postgres}
+      SECRET_KEY: ${DESKTOP_SECRET_KEY:-desktop-local-secret-key-change-me}
+      APP_DOMAIN: ${DESKTOP_APP_DOMAIN:-127.0.0.1}
+      SECURE_SSL_REDIRECT: "false"
+      CSRF_COOKIE_SECURE: "false"
+      SESSION_COOKIE_SECURE: "false"
+      CSRF_COOKIE_DOMAIN: ""
+      SESSION_COOKIE_DOMAIN: ""
+      REDIS_HOST: ${DESKTOP_REDIS_HOST:-redis}
+      REDIS_PORT: ${DESKTOP_REDIS_PORT:-6379}
+      DRAMATIQ_REDIS_DB: ${DESKTOP_DRAMATIQ_REDIS_DB:-0}
+      COMPONENT: scheduler
+      MEDIA_ROOT: /media
+      MEDIA_URL: /media/
+      BACKUPS_ROOT: /backups
+      LOKI_ENABLED: "false"
+      LOCAL_MEDIA_ENCRYPTION_ENABLED: ${LOCAL_MEDIA_ENCRYPTION_ENABLED:-true}
+      LOCAL_MEDIA_ENCRYPTION_KEY: ${LOCAL_MEDIA_ENCRYPTION_KEY:-}
+      LOCAL_SYNC_ENABLED: ${LOCAL_SYNC_ENABLED:-false}
+      LOCAL_SYNC_NODE_ID: ${LOCAL_SYNC_NODE_ID:-desktop-local-node}
+      LOCAL_SYNC_REMOTE_BASE_URL: ${LOCAL_SYNC_REMOTE_BASE_URL:-}
+      LOCAL_SYNC_REMOTE_TOKEN: ${LOCAL_SYNC_REMOTE_TOKEN:-}
+      LOCAL_SYNC_PUSH_LIMIT: ${LOCAL_SYNC_PUSH_LIMIT:-200}
+      LOCAL_SYNC_PULL_LIMIT: ${LOCAL_SYNC_PULL_LIMIT:-200}
+      SITE_ADMIN_USERNAME: ${DESKTOP_SITE_ADMIN_USERNAME:-revisadmin}
+      SITE_ADMIN_EMAIL: ${DESKTOP_SITE_ADMIN_EMAIL:-info@example.com}
+      SITE_ADMIN_PASSWORD: ${DESKTOP_SITE_ADMIN_PASSWORD:-P12345678!}
+      SYSTEM_USER_EMAIL: ${SYSTEM_USER_EMAIL:-desktop-local@revisbali.local}
+      SYSTEM_USER_PASSWORD: ${SYSTEM_USER_PASSWORD:-desktop-local-change-me}
+    volumes:
+      - type: bind
+        source: ./backend
+        target: /usr/src/app
+      - type: bind
+        source: ${DATA_PATH}/media
+        target: /media
+      - type: bind
+        source: ${DATA_PATH}/db
+        target: /db
+      - type: bind
+        source: ${DATA_PATH}/logs
+        target: /logs
+      - type: bind
+        source: ${DATA_PATH}/staticfiles
+        target: /staticfiles
+      - type: bind
+        source: ${DATA_PATH}/backups
+        target: /backups
+    command: /opt/venv/bin/python manage.py run_dramatiq_scheduler
 
   bs-frontend:
     profiles:

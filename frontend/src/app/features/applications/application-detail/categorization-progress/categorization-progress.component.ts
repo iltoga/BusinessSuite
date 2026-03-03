@@ -75,7 +75,7 @@ export class CategorizationProgressComponent {
   });
 
   readonly categorizedResults = computed(() =>
-    this.results().filter((r) => r.status === 'categorized' && r.documentId),
+    this.results().filter((r) => r.status === 'categorized' && r.documentId && r.itemId),
   );
 
   readonly unmatchedResults = computed(() =>
@@ -170,10 +170,12 @@ export class CategorizationProgressComponent {
   }
 
   onApplyAll(): void {
-    const mappings = this.categorizedResults().map((r) => ({
-      itemId: r.itemId,
-      documentId: r.documentId!,
-    }));
+    const mappings = this.categorizedResults()
+      .filter((result) => result.itemId.trim().length > 0)
+      .map((r) => ({
+        itemId: r.itemId,
+        documentId: r.documentId!,
+      }));
     if (mappings.length > 0) {
       this.applyAll.emit(mappings);
     }

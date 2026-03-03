@@ -208,6 +208,28 @@ export class ReportsComponent {
             },
           ],
         };
+      case 'aiModelBreakdownCost':
+        return {
+          labels: d.model_breakdown_month?.map((row: any) => row.model) ?? [],
+          datasets: [
+            {
+              label: 'Model Cost (Selected Month)',
+              data: d.model_breakdown_month?.map((row: any) => row.total_cost) ?? [],
+              backgroundColor: this.chartColors,
+            },
+          ],
+        };
+      case 'aiModelBreakdownRequests':
+        return {
+          labels: d.model_breakdown_month?.map((row: any) => row.model) ?? [],
+          datasets: [
+            {
+              label: 'Model Requests (Selected Month)',
+              data: d.model_breakdown_month?.map((row: any) => row.request_count) ?? [],
+              backgroundColor: this.chartColors,
+            },
+          ],
+        };
       default:
         return { labels: [], datasets: [] };
     }

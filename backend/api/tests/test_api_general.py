@@ -18,6 +18,7 @@ from invoices.models import Invoice, InvoiceApplication
 from PIL import Image
 from products.models import Product
 from products.models.document_type import DocumentType
+from rest_framework.test import APIRequestFactory, force_authenticate
 
 
 class CustomerQuickCreateAPITestCase(TestCase):
@@ -444,6 +445,63 @@ class CustomerApplicationDetailAPITestCase(TestCase):
         self.document.refresh_from_db()
         self.assertEqual(self.document.doc_number, "B987654")
         run_validation_mock.assert_not_called()
+
+    def test_document_update_multipart_save_anyway_persists_file_and_marks_completed(self):
+        file_payload = SimpleUploadedFile("bank-statement.png", b"fake-image", content_type="image/png")
+        from api.views import DocumentViewSet
+
+        request = APIRequestFactory().patch(
+            f"/api/documents/{self.document.pk}/",
+            {
+                "file": file_payload,
+                "ai_validation_status_override": Document.AI_VALIDATION_INVALID,
+                "ai_validation_result_override": json.dumps(
+                    {
+                        "valid": False,
+                        "negative_issues": ["Sample/template statement"],
+                    }
+                ),
+            },
+            format="multipart",
+        )
+        force_authenticate(request, user=self.user)
+        response = DocumentViewSet.as_view({"patch": "partial_update"})(request, pk=self.document.pk)
+
+        self.assertEqual(response.status_code, 200)
+        self.document.refresh_from_db()
+        self.assertTrue(bool(self.document.file))
+        self.assertTrue(self.document.completed)
+        self.assertEqual(self.document.ai_validation_status, Document.AI_VALIDATION_INVALID)
+
+    def test_document_update_valid_override_clears_ai_result_payload(self):
+        self.document.ai_validation_status = Document.AI_VALIDATION_INVALID
+        self.document.ai_validation_result = {"reasoning": "Previous invalid reason"}
+        self.document.save(update_fields=["ai_validation_status", "ai_validation_result", "updated_at"])
+
+        file_payload = SimpleUploadedFile("passport.png", b"fake-image", content_type="image/png")
+        from api.views import DocumentViewSet
+
+        request = APIRequestFactory().patch(
+            f"/api/documents/{self.document.pk}/",
+            {
+                "file": file_payload,
+                "ai_validation_status_override": Document.AI_VALIDATION_VALID,
+                "ai_validation_result_override": json.dumps(
+                    {
+                        "valid": True,
+                        "reasoning": "Looks good",
+                    }
+                ),
+            },
+            format="multipart",
+        )
+        force_authenticate(request, user=self.user)
+        response = DocumentViewSet.as_view({"patch": "partial_update"})(request, pk=self.document.pk)
+
+        self.assertEqual(response.status_code, 200)
+        self.document.refresh_from_db()
+        self.assertEqual(self.document.ai_validation_status, Document.AI_VALIDATION_VALID)
+        self.assertIsNone(self.document.ai_validation_result)
 
     def test_application_detail_documents_ordering(self):
         # Create a product with specific document order

@@ -13,25 +13,20 @@ class CoreConfig(AppConfig):
         # and the problematic transaction atomic patch is not needed. If easyaudit is still
         # installed in an environment, admins should run `python manage.py migrate easyaudit zero`
         # before removing the package entirely.
-        pass
+        # Ensure web/scheduler processes use the configured Redis-backed Dramatiq
+        # broker before any `.delay()` call is made.
+        #
+        # Without this import, Dramatiq may lazily fall back to its default broker
+        # (loopback localhost in-container), which causes enqueue failures from API
+        # endpoints even when worker/scheduler are healthy.
+        import business_suite.dramatiq  # noqa: F401
 
-        # Ensure Huey tasks are registered and we register our own signals after the patch
-        # so that our signal handlers integrate with the patched behavior.
-        # Register our signal forwarder (if present)
+        # Keep app startup side effects minimal outside of broker initialization.
         import core.signals  # noqa: F401
         import core.signals_calendar  # noqa: F401
         import core.signals_calendar_reminder  # noqa: F401
+        import core.signals_streams  # noqa: F401
         import core.sync_signals  # noqa: F401
-        import core.telemetry.huey_tracing  # noqa: F401
-        from core.tasks import (  # noqa: F401
-            ai_usage,
-            calendar_reminders,
-            calendar_sync,
-            cron_jobs,
-            document_ocr,
-            local_resilience,
-            ocr,
-        )
 
         # Register models with django-auditlog automatically for apps listed in LOGGING_MODE
         try:

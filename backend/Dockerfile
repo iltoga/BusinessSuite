@@ -28,7 +28,10 @@ RUN uv venv /opt/venv
 RUN uv sync --frozen --no-dev --no-install-project
 
 COPY . .
-RUN uv sync --frozen --no-dev
+# Install the local project explicitly from the current backend context.
+# This avoids workspace-relative editable paths in uv.lock (e.g. "backend")
+# that are not present inside this Docker build context.
+RUN uv pip install --python /opt/venv/bin/python -e .
 
 
 # -------- Web Runtime --------
@@ -38,6 +41,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV DJANGO_SETTINGS_MODULE=business_suite.settings.prod
 ENV VIRTUAL_ENV=/opt/venv
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -51,6 +55,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /usr/src/app
 
+COPY --from=base /bin/uv /bin/uvx /bin/
 COPY --from=base /opt/venv /opt/venv
 COPY --from=base /usr/src/app /usr/src/app
 

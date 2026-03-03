@@ -26,6 +26,7 @@ import {
 } from '@/shared/components/data-table/data-table.component';
 import { ZardDialogService } from '@/shared/components/dialog';
 import { ZardInputDirective } from '@/shared/components/input';
+import { JsonFieldMappingEditorComponent } from '@/shared/components/json-field-mapping-editor';
 import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
 
 @Component({
@@ -40,6 +41,7 @@ import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
     DataTableComponent,
     SearchToolbarComponent,
     ConfirmDialogComponent,
+    JsonFieldMappingEditorComponent,
   ],
   templateUrl: './document-types.component.html',
   styleUrls: ['./document-types.component.css'],
@@ -119,6 +121,7 @@ export class DocumentTypesComponent implements OnInit {
     validationRuleRegex: [''],
     validationRuleAiPositive: [''],
     validationRuleAiNegative: [''],
+    aiStructuredOutput: [''],
     aiValidation: [true],
     deprecated: [false],
     hasExpirationDate: [false],
@@ -220,6 +223,7 @@ export class DocumentTypesComponent implements OnInit {
       validationRuleRegex: '',
       validationRuleAiPositive: '',
       validationRuleAiNegative: '',
+      aiStructuredOutput: '',
       aiValidation: true,
       deprecated: false,
       hasExpirationDate: false,
@@ -237,7 +241,8 @@ export class DocumentTypesComponent implements OnInit {
       zHideFooter: true,
       zClosable: true,
       // Custom sizing and border for clearer modal presentation
-      zCustomClasses: 'border-2 border-primary/30 sm:max-w-[760px]',
+      zCustomClasses:
+        'border-2 border-primary/30 sm:max-w-[760px] max-h-[calc(100vh-2rem)] overflow-hidden',
       zWidth: '760px',
       zOnCancel: () => {
         // ensure internal state is reset when the dialog is closed via header X or backdrop
@@ -257,6 +262,7 @@ export class DocumentTypesComponent implements OnInit {
       validationRuleRegex: documentType.validationRuleRegex || '',
       validationRuleAiPositive: documentType.validationRuleAiPositive || '',
       validationRuleAiNegative: documentType.validationRuleAiNegative || '',
+      aiStructuredOutput: documentType.aiStructuredOutput || '',
       aiValidation: documentType.aiValidation ?? true,
       deprecated: documentType.deprecated ?? false,
       hasExpirationDate: documentType.hasExpirationDate || false,
@@ -274,7 +280,8 @@ export class DocumentTypesComponent implements OnInit {
       zHideFooter: true,
       zClosable: true,
       // Custom sizing and border for clearer modal presentation
-      zCustomClasses: 'border-2 border-primary/30 sm:max-w-[760px]',
+      zCustomClasses:
+        'border-2 border-primary/30 sm:max-w-[760px] max-h-[calc(100vh-2rem)] overflow-hidden',
       zWidth: '760px',
       zOnCancel: () => {
         // ensure internal state is reset when the dialog is closed via header X or backdrop
@@ -298,6 +305,7 @@ export class DocumentTypesComponent implements OnInit {
       validationRuleRegex: formValue.validationRuleRegex || '',
       validationRuleAiPositive: formValue.validationRuleAiPositive || '',
       validationRuleAiNegative: formValue.validationRuleAiNegative || '',
+      aiStructuredOutput: formValue.aiStructuredOutput || '',
       aiValidation: formValue.aiValidation ?? true,
       deprecated: formValue.deprecated || false,
       hasExpirationDate: formValue.hasExpirationDate || false,

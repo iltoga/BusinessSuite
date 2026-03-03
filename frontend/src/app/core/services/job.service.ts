@@ -1,6 +1,5 @@
-import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { catchError, Observable, switchMap, takeWhile, timer } from 'rxjs';
+import { Observable } from 'rxjs';
 
 import { AsyncJob } from '@/core/api';
 import { SseService } from '@/core/services/sse.service';
@@ -12,10 +11,7 @@ import { ZardDialogService } from '@/shared/components/dialog';
 export class JobService {
   private dialogService = inject(ZardDialogService);
 
-  constructor(
-    private sseService: SseService,
-    private http: HttpClient,
-  ) {}
+  constructor(private sseService: SseService) {}
 
   /**
    * Connects to the SSE endpoint for a specific job and returns an observable of job updates.
@@ -24,16 +20,7 @@ export class JobService {
    * @returns Observable of AsyncJob updates
    */
   watchJob(jobId: string): Observable<AsyncJob> {
-    return this.sseService
-      .connect<AsyncJob>(`/api/async-jobs/status/${jobId}/`)
-      .pipe(catchError(() => this.pollJob(jobId)));
-  }
-
-  private pollJob(jobId: string): Observable<AsyncJob> {
-    return timer(0, 1000).pipe(
-      switchMap(() => this.http.get<AsyncJob>(`/api/async-jobs/${jobId}/`)),
-      takeWhile((job) => !this.isFinished(job), true),
-    );
+    return this.sseService.connect<AsyncJob>(`/api/async-jobs/status/${jobId}/`);
   }
 
   /**

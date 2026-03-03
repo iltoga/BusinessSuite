@@ -42,6 +42,7 @@ Base path: `frontend/src/app/shared/components/`
 | ExpiryBadge             | `app-expiry-badge`              | `expiry-badge/`                              | Date-based status badge (expiring/expired).                          |
 | DashboardWidget         | `app-dashboard-widget`          | `dashboard-widget/`                          | Reusable widget container for dashboard stats/charts.                |
 | FormErrorSummary        | `app-form-error-summary`        | `form-error-summary/`                        | Consolidates form validation errors into a summary block.            |
+| JsonFieldMappingEditor  | `app-json-field-mapping-editor` | `json-field-mapping-editor/`                 | Reusable JSON `{field_name, description}` table editor (CVA).        |
 | HelpDrawer              | `z-help-drawer`                 | `help-drawer/`                               | Global contextual help + hotkeys drawer.                             |
 | CalendarIntegration     | `app-calendar-integration`      | `calendar/calendar-integration.component.ts` | Calendar integration panel and sync UX.                              |
 | Calendar                | `z-calendar`                    | `calendar/calendar.component.ts`             | Reusable calendar view primitives (grid/navigation/types).           |

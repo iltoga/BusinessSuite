@@ -221,7 +221,7 @@ paths:
   /api/backups/restore/:
     post:
       operationId: backupsRestoreCreate
-      description: Trigger SSE restore stream.
+      description: Trigger stream-backed SSE restore execution.
       summary: Restore from backup
       parameters:
       - in: query
@@ -248,7 +248,7 @@ paths:
   /api/backups/start/:
     get:
       operationId: backupsStartRetrieve
-      description: Trigger SSE backup stream.
+      description: Trigger stream-backed SSE backup execution.
       summary: Start backup process
       parameters:
       - in: query
@@ -300,7 +300,7 @@ paths:
         Local-mirror calendar API.
 
         CRUD operations update `CalendarEvent` records and signals queue asynchronous
-        synchronization to Google Calendar through Huey tasks.
+        synchronization to Google Calendar through Dramatiq tasks.
       tags:
       - calendar
       security:
@@ -321,7 +321,7 @@ paths:
         Local-mirror calendar API.
 
         CRUD operations update `CalendarEvent` records and signals queue asynchronous
-        synchronization to Google Calendar through Huey tasks.
+        synchronization to Google Calendar through Dramatiq tasks.
       tags:
       - calendar
       requestBody:
@@ -733,7 +733,7 @@ paths:
         Local-mirror calendar API.
 
         CRUD operations update `CalendarEvent` records and signals queue asynchronous
-        synchronization to Google Calendar through Huey tasks.
+        synchronization to Google Calendar through Dramatiq tasks.
       parameters:
       - in: path
         name: id
@@ -758,7 +758,7 @@ paths:
         Local-mirror calendar API.
 
         CRUD operations update `CalendarEvent` records and signals queue asynchronous
-        synchronization to Google Calendar through Huey tasks.
+        synchronization to Google Calendar through Dramatiq tasks.
       parameters:
       - in: path
         name: id
@@ -798,7 +798,7 @@ paths:
         Local-mirror calendar API.
 
         CRUD operations update `CalendarEvent` records and signals queue asynchronous
-        synchronization to Google Calendar through Huey tasks.
+        synchronization to Google Calendar through Dramatiq tasks.
       parameters:
       - in: path
         name: id
@@ -838,7 +838,7 @@ paths:
         Local-mirror calendar API.
 
         CRUD operations update `CalendarEvent` records and signals queue asynchronous
-        synchronization to Google Calendar through Huey tasks.
+        synchronization to Google Calendar through Dramatiq tasks.
       parameters:
       - in: path
         name: id
@@ -969,7 +969,7 @@ paths:
           description: ''
     post:
       operationId: customerApplicationsCreate
-      description: Create application synchronously and queue calendar sync in Huey.
+      description: Create application synchronously and queue calendar sync in Dramatiq.
       tags:
       - customer-applications
       requestBody:
@@ -1021,7 +1021,7 @@ paths:
           description: ''
     put:
       operationId: customerApplicationsUpdate
-      description: Update application synchronously and queue calendar sync in Huey.
+      description: Update application synchronously and queue calendar sync in Dramatiq.
       parameters:
       - in: path
         name: id
@@ -1095,7 +1095,7 @@ paths:
     delete:
       operationId: customerApplicationsDestroy
       description: Delete application synchronously and queue calendar cleanup in
-        Huey.
+        Dramatiq.
       parameters:
       - in: query
         name: deleteInvoices
@@ -1123,7 +1123,7 @@ paths:
     post:
       operationId: customerApplicationsAdvanceWorkflowCreate
       description: Complete current workflow synchronously and queue calendar sync
-        in Huey.
+        in Dramatiq.
       parameters:
       - in: path
         name: id
@@ -3677,6 +3677,7 @@ paths:
         name: jobId
         schema:
           type: string
+          format: uuid
         required: true
       tags:
       - products
@@ -4907,7 +4908,7 @@ paths:
   /api/v1/backups/restore/:
     post:
       operationId: v1BackupsRestoreCreate
-      description: Trigger SSE restore stream.
+      description: Trigger stream-backed SSE restore execution.
       summary: Restore from backup
       parameters:
       - in: query
@@ -4934,7 +4935,7 @@ paths:
   /api/v1/backups/start/:
     get:
       operationId: v1BackupsStartRetrieve
-      description: Trigger SSE backup stream.
+      description: Trigger stream-backed SSE backup execution.
       summary: Start backup process
       parameters:
       - in: query
@@ -4986,7 +4987,7 @@ paths:
         Local-mirror calendar API.
 
         CRUD operations update `CalendarEvent` records and signals queue asynchronous
-        synchronization to Google Calendar through Huey tasks.
+        synchronization to Google Calendar through Dramatiq tasks.
       tags:
       - v1
       security:
@@ -5007,7 +5008,7 @@ paths:
         Local-mirror calendar API.
 
         CRUD operations update `CalendarEvent` records and signals queue asynchronous
-        synchronization to Google Calendar through Huey tasks.
+        synchronization to Google Calendar through Dramatiq tasks.
       tags:
       - v1
       requestBody:
@@ -5419,7 +5420,7 @@ paths:
         Local-mirror calendar API.
 
         CRUD operations update `CalendarEvent` records and signals queue asynchronous
-        synchronization to Google Calendar through Huey tasks.
+        synchronization to Google Calendar through Dramatiq tasks.
       parameters:
       - in: path
         name: id
@@ -5444,7 +5445,7 @@ paths:
         Local-mirror calendar API.
 
         CRUD operations update `CalendarEvent` records and signals queue asynchronous
-        synchronization to Google Calendar through Huey tasks.
+        synchronization to Google Calendar through Dramatiq tasks.
       parameters:
       - in: path
         name: id
@@ -5484,7 +5485,7 @@ paths:
         Local-mirror calendar API.
 
         CRUD operations update `CalendarEvent` records and signals queue asynchronous
-        synchronization to Google Calendar through Huey tasks.
+        synchronization to Google Calendar through Dramatiq tasks.
       parameters:
       - in: path
         name: id
@@ -5524,7 +5525,7 @@ paths:
         Local-mirror calendar API.
 
         CRUD operations update `CalendarEvent` records and signals queue asynchronous
-        synchronization to Google Calendar through Huey tasks.
+        synchronization to Google Calendar through Dramatiq tasks.
       parameters:
       - in: path
         name: id
@@ -5655,7 +5656,7 @@ paths:
           description: ''
     post:
       operationId: v1CustomerApplicationsCreate
-      description: Create application synchronously and queue calendar sync in Huey.
+      description: Create application synchronously and queue calendar sync in Dramatiq.
       tags:
       - v1
       requestBody:
@@ -5707,7 +5708,7 @@ paths:
           description: ''
     put:
       operationId: v1CustomerApplicationsUpdate
-      description: Update application synchronously and queue calendar sync in Huey.
+      description: Update application synchronously and queue calendar sync in Dramatiq.
       parameters:
       - in: path
         name: id
@@ -5781,7 +5782,7 @@ paths:
     delete:
       operationId: v1CustomerApplicationsDestroy
       description: Delete application synchronously and queue calendar cleanup in
-        Huey.
+        Dramatiq.
       parameters:
       - in: query
         name: deleteInvoices
@@ -5809,7 +5810,7 @@ paths:
     post:
       operationId: v1CustomerApplicationsAdvanceWorkflowCreate
       description: Complete current workflow synchronously and queue calendar sync
-        in Huey.
+        in Dramatiq.
       parameters:
       - in: path
         name: id
@@ -8363,6 +8364,7 @@ paths:
         name: jobId
         schema:
           type: string
+          format: uuid
         required: true
       tags:
       - v1
@@ -11115,6 +11117,9 @@ components:
         file_link:
           type: string
           readOnly: true
+        thumbnail_link:
+          type: string
+          readOnly: true
         details:
           type: string
         completed:
@@ -11147,6 +11152,20 @@ components:
           readOnly: true
         ai_validation_result:
           readOnly: true
+          nullable: true
+        ai_validation_status_override:
+          enum:
+          - ''
+          - valid
+          - invalid
+          - error
+          type: string
+          description: "* `` - \n* `valid` - valid\n* `invalid` - invalid\n* `error`
+            - error"
+          x-spec-enum-id: d9048f465c57f55e
+          writeOnly: true
+        ai_validation_result_override:
+          writeOnly: true
           nullable: true
         created_at:
           type: string
@@ -11192,6 +11211,7 @@ components:
       - file
       - file_link
       - id
+      - thumbnail_link
       - updated_at
       - updated_by
       - updated_by_username
@@ -11261,6 +11281,8 @@ components:
         validation_rule_ai_positive:
           type: string
         validation_rule_ai_negative:
+          type: string
+        ai_structured_output:
           type: string
         is_in_required_documents:
           type: boolean

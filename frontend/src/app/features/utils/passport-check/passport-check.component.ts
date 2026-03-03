@@ -1,19 +1,84 @@
 import { ZardButtonComponent } from '@/shared/components/button';
 import { FileUploadComponent } from '@/shared/components/file-upload';
+import { ZardIconComponent } from '@/shared/components/icon';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  OnDestroy,
+  OnInit,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { firstValueFrom, Subscription } from 'rxjs';
 import { environment } from '../../../../environments/environment';
-import { CustomersService } from '../../../core/api/api/customers.service';
+import { CustomersService } from '../../../core/services/customers.service';
 import { JobService } from '../../../core/services/job.service';
 import { GlobalToastService } from '../../../core/services/toast.service';
-import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { ContextHelpDirective } from '../../../shared/directives/context-help.directive';
 import { HelpService } from '../../../shared/services/help.service';
+import { buildLocalFilePreview } from '../../../shared/utils/document-preview-source';
 import { extractServerErrorMessage } from '../../../shared/utils/form-errors';
+
+interface PassportExtractedData {
+  first_name?: string | null;
+  last_name?: string | null;
+  nationality?: string | null;
+  nationality_code?: string | null;
+  gender?: string | null;
+  date_of_birth?: string | null;
+  birth_place?: string | null;
+  passport_number?: string | null;
+  passport_issue_date?: string | null;
+  expiration_date?: string | null;
+  address_abroad?: string | null;
+  confidence_score?: number | null;
+}
+
+interface CustomerMatchCandidate {
+  id: number;
+  first_name?: string | null;
+  last_name?: string | null;
+  full_name?: string | null;
+  passport_number?: string | null;
+  passport_issue_date?: string | null;
+  passport_expiration_date?: string | null;
+  nationality_code?: string | null;
+  nationality_name?: string | null;
+  match_kind?: string | null;
+  passport_status?: 'missing' | 'present' | null;
+  similarity?: number | null;
+}
+
+interface CustomerMatchResult {
+  status:
+    | 'passport_found'
+    | 'exact_name_found'
+    | 'similar_name_found'
+    | 'no_match'
+    | 'insufficient_data'
+    | 'error';
+  message: string;
+  passport_number?: string | null;
+  exact_matches: CustomerMatchCandidate[];
+  similar_matches: CustomerMatchCandidate[];
+  recommended_action: 'update_customer' | 'choose_customer' | 'create_customer' | 'none';
+}
+
+interface PassportCheckResult {
+  is_valid: boolean;
+  method_used?: string;
+  model_used?: string;
+  passport_data?: PassportExtractedData;
+  rejection_code?: string;
+  rejection_reason?: string;
+  rejection_reasons?: string[];
+  customer_match?: CustomerMatchResult;
+}
 
 @Component({
   selector: 'app-passport-check',
@@ -22,8 +87,8 @@ import { extractServerErrorMessage } from '../../../shared/utils/form-errors';
     CommonModule,
     FormsModule,
     ZardButtonComponent,
+    ZardIconComponent,
     ContextHelpDirective,
-    ConfirmDialogComponent,
     FileUploadComponent,
   ],
   templateUrl: './passport-check.component.html',
@@ -31,7 +96,7 @@ import { extractServerErrorMessage } from '../../../shared/utils/form-errors';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PassportCheckComponent implements OnInit, OnDestroy {
-  private readonly customersApi = inject(CustomersService);
+  private readonly customersService = inject(CustomersService);
   private readonly http = inject(HttpClient);
   private readonly jobService = inject(JobService);
   private readonly toast = inject(GlobalToastService);
@@ -41,6 +106,7 @@ export class PassportCheckComponent implements OnInit, OnDestroy {
 
   readonly selectedFile = signal<File | null>(null);
   readonly previewUrl = signal<string | null>(null);
+  readonly previewType = signal<'image' | 'pdf' | 'unknown'>('unknown');
   readonly method = signal<'ai' | 'hybrid'>('hybrid');
 
   readonly isChecking = signal(false);
@@ -48,11 +114,13 @@ export class PassportCheckComponent implements OnInit, OnDestroy {
   readonly progressMessage = signal('');
   readonly processSteps = signal<string[]>([]);
 
-  readonly result = signal<any>(null);
-  readonly existingCustomer = signal<any>(null);
+  readonly result = signal<PassportCheckResult | null>(null);
+  readonly actionInProgress = signal(false);
+  readonly actionTargetCustomerId = signal<number | null>(null);
 
-  readonly showUpdateDialog = signal(false);
-  readonly showCreateDialog = signal(false);
+  readonly customerMatch = computed<CustomerMatchResult | null>(
+    () => this.result()?.customer_match ?? null,
+  );
 
   ngOnInit() {
     this.helpService.register('/utils/passport-check', {
@@ -67,31 +135,41 @@ export class PassportCheckComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.stopProgressStream();
+    this.clearPreviewUrl();
   }
 
   onFileSelected(file: File) {
     this.selectedFile.set(file);
+    this.clearPreviewUrl();
+    const preview = buildLocalFilePreview(file);
+    this.previewUrl.set(preview.url);
+    this.previewType.set(preview.type);
 
-    // Create preview
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      this.previewUrl.set(e.target?.result as string);
-    };
-    reader.readAsDataURL(file);
-
-    // Reset state
     this.result.set(null);
-    this.existingCustomer.set(null);
     this.processSteps.set([]);
+    this.actionInProgress.set(false);
+    this.actionTargetCustomerId.set(null);
   }
 
   onFileCleared() {
     this.stopProgressStream();
     this.selectedFile.set(null);
-    this.previewUrl.set(null);
+    this.clearPreviewUrl();
+    this.previewType.set('unknown');
     this.result.set(null);
-    this.existingCustomer.set(null);
     this.processSteps.set([]);
+    this.actionInProgress.set(false);
+    this.actionTargetCustomerId.set(null);
+  }
+
+  private clearPreviewUrl() {
+    const url = this.previewUrl();
+    if (url && url.startsWith('blob:')) {
+      try {
+        URL.revokeObjectURL(url);
+      } catch {}
+    }
+    this.previewUrl.set(null);
   }
 
   async checkPassport() {
@@ -102,8 +180,10 @@ export class PassportCheckComponent implements OnInit, OnDestroy {
     this.isChecking.set(true);
     this.progress.set(0);
     this.progressMessage.set('Starting verification...');
+    this.processSteps.set([]);
     this.result.set(null);
-    this.existingCustomer.set(null);
+    this.actionInProgress.set(false);
+    this.actionTargetCustomerId.set(null);
 
     try {
       const formData = new FormData();
@@ -137,7 +217,7 @@ export class PassportCheckComponent implements OnInit, OnDestroy {
   private listenToJobProgress(jobId: string) {
     this.stopProgressStream();
     this.jobProgressSubscription = this.jobService.watchJob(jobId).subscribe({
-      next: async (job: any) => {
+      next: (job: any) => {
         if (job?.error) {
           this.isChecking.set(false);
           this.toast.error(String(job.error));
@@ -152,13 +232,9 @@ export class PassportCheckComponent implements OnInit, OnDestroy {
 
         if (job?.status === 'completed') {
           this.isChecking.set(false);
-          const result = job?.result ?? null;
+          const result = (job?.result ?? null) as PassportCheckResult | null;
           this.result.set(result);
           this.stopProgressStream();
-
-          if (result?.is_valid) {
-            await this.checkExistingCustomer(result.passport_data);
-          }
         } else if (job?.status === 'failed') {
           this.isChecking.set(false);
           this.toast.error(job?.errorMessage || job?.error_message || 'Verification failed');
@@ -184,78 +260,198 @@ export class PassportCheckComponent implements OnInit, OnDestroy {
     if (!trimmed) return;
 
     this.processSteps.update((steps) => {
-      if (steps[steps.length - 1] === trimmed) {
+      if (steps[steps.length - 1] === trimmed || steps.includes(trimmed)) {
         return steps;
       }
       return [...steps, trimmed];
     });
   }
 
-  private async checkExistingCustomer(passportData: any) {
-    if (!passportData.first_name || !passportData.last_name) return;
-
-    try {
-      // Search for customer by name
-      const query = `${passportData.first_name} ${passportData.last_name}`;
-      const response = await this.customersApi
-        .customersList(undefined, undefined, undefined, query)
-        .toPromise();
-
-      if (response && response.results && response.results.length > 0) {
-        // Find exact match (simplified for now)
-        const customer = response.results[0];
-        this.existingCustomer.set(customer);
-
-        if (customer.passportNumber !== passportData.passport_number) {
-          this.showUpdateDialog.set(true);
-        }
-      } else {
-        this.showCreateDialog.set(true);
-      }
-    } catch (error) {
-      console.error('Error checking existing customer', error);
-    }
+  isUpdatingCustomer(customerId: number): boolean {
+    return this.actionInProgress() && this.actionTargetCustomerId() === customerId;
   }
 
-  async updateCustomer() {
-    const customer = this.existingCustomer();
+  async updateCustomer(customerId: number) {
     const file = this.selectedFile();
     const data = this.result()?.passport_data;
 
-    if (!customer || !file || !data) return;
+    if (!file || !data) {
+      this.toast.error('Missing passport file or extracted data');
+      return;
+    }
+
+    this.actionInProgress.set(true);
+    this.actionTargetCustomerId.set(customerId);
 
     try {
-      await this.customersApi
-        .customersPartialUpdate(customer.id, {
-          passportNumber: data.passport_number,
-          passportIssueDate: data.issue_date,
-          passportExpirationDate: data.expiration_date,
-          passportFile: file as any, // The API client might need adjustment for file uploads in PATCH
-        } as any)
-        .toPromise();
-
+      const payload = this.buildCustomerFormData(data, file, 'update');
+      await firstValueFrom(this.customersService.updateCustomer(customerId, payload));
       this.toast.success('Customer updated successfully');
-      this.showUpdateDialog.set(false);
+      await this.router.navigate(['/customers', customerId, 'edit']);
     } catch (error) {
-      this.toast.error('Failed to update customer');
+      const message = extractServerErrorMessage(error) || 'Failed to update customer';
+      this.toast.error(message);
+    } finally {
+      this.actionInProgress.set(false);
+      this.actionTargetCustomerId.set(null);
     }
   }
 
-  createNewCustomer() {
+  async createNewCustomer() {
+    const file = this.selectedFile();
     const data = this.result()?.passport_data;
-    if (!data) return;
 
-    // Navigate to new customer form with query params
-    this.router.navigate(['/customers/new'], {
-      queryParams: {
-        firstName: data.first_name,
-        lastName: data.last_name,
-        passportNumber: data.passport_number,
-        nationality: data.nationality,
-        // We can't easily pass the file via query params, so the user will have to upload it again
-        // Or we could store it in a shared service temporarily
-      },
+    if (!file || !data) {
+      this.toast.error('Missing passport file or extracted data');
+      return;
+    }
+
+    this.actionInProgress.set(true);
+    this.actionTargetCustomerId.set(null);
+
+    try {
+      const payload = this.buildCustomerFormData(data, file, 'create');
+      const customer = await firstValueFrom(this.customersService.createCustomer(payload));
+      this.toast.success('Customer created successfully');
+      await this.router.navigate(['/customers', customer.id, 'edit']);
+    } catch (error) {
+      const message = extractServerErrorMessage(error) || 'Failed to create customer';
+      this.toast.error(message);
+    } finally {
+      this.actionInProgress.set(false);
+      this.actionTargetCustomerId.set(null);
+    }
+  }
+
+  customerMatchSummary(match: CustomerMatchResult | null): string {
+    if (!match) {
+      return '';
+    }
+
+    if (match.message) {
+      return match.message;
+    }
+
+    if (match.status === 'passport_found') {
+      return 'A customer with this passport already exists.';
+    }
+
+    if (match.status === 'exact_name_found') {
+      return 'Exact customer name match found. You can update customer data with this passport.';
+    }
+
+    if (match.status === 'similar_name_found') {
+      return 'Similar names found. Review and pick the right customer to update.';
+    }
+
+    if (match.status === 'no_match') {
+      return 'No existing customer matched. You can create a new customer with this passport.';
+    }
+
+    if (match.status === 'insufficient_data') {
+      return 'Not enough extracted data to run matching.';
+    }
+
+    return 'Customer matching could not be completed.';
+  }
+
+  private buildCustomerFormData(
+    passportData: PassportExtractedData,
+    file: File,
+    mode: 'create' | 'update',
+  ): FormData {
+    const firstName = this.normalizeName(passportData.first_name);
+    const lastName = this.normalizeName(passportData.last_name);
+    const requireFullName = mode === 'create';
+
+    if (requireFullName && (!firstName || !lastName)) {
+      throw new Error(
+        'Cannot create customer: first and last name are required from passport extraction.',
+      );
+    }
+
+    const payload: Record<string, unknown> = {
+      ...(mode === 'create' ? { customerType: 'person' } : {}),
+      firstName,
+      lastName,
+      nationality: this.normalizeNationalityCode(
+        passportData.nationality_code ?? passportData.nationality,
+      ),
+      gender: this.normalizeGender(passportData.gender),
+      birthdate: this.normalizeDate(passportData.date_of_birth),
+      birthPlace: this.normalizeText(passportData.birth_place),
+      addressAbroad: this.normalizeText(passportData.address_abroad),
+      passportNumber: this.normalizePassportNumber(passportData.passport_number),
+      passportIssueDate: this.normalizeDate(passportData.passport_issue_date),
+      passportExpirationDate: this.normalizeDate(passportData.expiration_date),
+      passportMetadata: passportData,
+    };
+
+    const formData = new FormData();
+    Object.entries(payload).forEach(([key, value]) => {
+      if (value === null || value === undefined || value === '') {
+        return;
+      }
+      if (typeof value === 'object') {
+        formData.append(key, JSON.stringify(value));
+      } else {
+        formData.append(key, String(value));
+      }
     });
+
+    formData.append('passport_file', file, file.name);
+    return formData;
+  }
+
+  private normalizeText(value: unknown): string | null {
+    if (typeof value !== 'string') {
+      return null;
+    }
+    const normalized = value.trim();
+    return normalized ? normalized : null;
+  }
+
+  private normalizeName(value: unknown): string | null {
+    if (typeof value !== 'string') {
+      return null;
+    }
+    const normalized = value.replace(/\s+/g, ' ').trim();
+    return normalized ? normalized : null;
+  }
+
+  private normalizePassportNumber(value: unknown): string | null {
+    if (typeof value !== 'string') {
+      return null;
+    }
+    const normalized = value.replace(/\s+/g, '').trim().toUpperCase();
+    return normalized ? normalized : null;
+  }
+
+  private normalizeNationalityCode(value: unknown): string | null {
+    if (typeof value !== 'string') {
+      return null;
+    }
+    const normalized = value.replace(/\s+/g, '').trim().toUpperCase();
+    return /^[A-Z]{3}$/.test(normalized) ? normalized : null;
+  }
+
+  private normalizeGender(value: unknown): 'M' | 'F' | null {
+    if (typeof value !== 'string') {
+      return null;
+    }
+    const normalized = value.trim().toUpperCase();
+    if (normalized === 'M' || normalized === 'F') {
+      return normalized;
+    }
+    return null;
+  }
+
+  private normalizeDate(value: unknown): string | null {
+    if (typeof value !== 'string') {
+      return null;
+    }
+    const normalized = value.trim();
+    return /^\d{4}-\d{2}-\d{2}$/.test(normalized) ? normalized : null;
   }
 
   getDisplayRejectionReason(): string {
@@ -264,8 +460,13 @@ export class PassportCheckComponent implements OnInit, OnDestroy {
       return '';
     }
 
-    if (result.rejection_code === 'page_cropped') {
-      return 'Passport page is cropped/partial. Please upload a full passport biodata page with all 4 corners visible.';
+    const orderedReasons = Array.isArray(result.rejection_reasons)
+      ? result.rejection_reasons
+          .map((value: unknown) => String(value ?? '').trim())
+          .filter((value: string) => value.length > 0)
+      : [];
+    if (orderedReasons.length > 0) {
+      return orderedReasons.join(' | ');
     }
 
     if (result.rejection_code === 'image_blurry') {
@@ -273,11 +474,14 @@ export class PassportCheckComponent implements OnInit, OnDestroy {
     }
 
     if (result.rejection_code === 'mrz_incomplete') {
-      return 'MRZ is incomplete (only part of the bottom zone is visible/readable). Please upload the full passport page with both full MRZ lines.';
+      return (
+        result.rejection_reason ||
+        'MRZ is incomplete (only part of the bottom zone is visible/readable). Please upload the full passport page with both full MRZ lines.'
+      );
     }
 
     if (result.rejection_code === 'mrz_cropped') {
-      return 'The last MRZ line is cut/cropped at the bottom edge. Please upload a full passport image where both MRZ lines are entirely visible.';
+      return 'MRZ zone is cropped/incomplete. Please upload a full passport image where both MRZ lines are fully visible and readable.';
     }
 
     if (result.rejection_code === 'invalid_name') {

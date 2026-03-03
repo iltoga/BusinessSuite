@@ -54,7 +54,7 @@ This file summarizes the main API surface in `backend/api/urls.py` and related D
 ### Passport check flow (async)
 
 - `POST /api/customers/check-passport/` (multipart)
-  - Queues Huey task and returns `job_id`
+  - Queues Dramatiq task and returns `job_id`
 - Progress/result is consumed via async-job/SSE status endpoints.
 
 ---
@@ -109,7 +109,7 @@ This file summarizes the main API surface in `backend/api/urls.py` and related D
 
 ### Calendar sync behavior note
 
-Application create/update/workflow transitions queue `sync_application_calendar_task` (Huey), which:
+Application create/update/workflow transitions queue `sync_application_calendar_task` (Dramatiq), which:
 
 1. updates local `CalendarEvent` rows,
 2. triggers Google Calendar sync via calendar-event model signals.
@@ -136,6 +136,56 @@ Application create/update/workflow transitions queue `sync_application_calendar_
 - `GET /api/document-categorization/{job_id}/status/`
 - `POST /api/documents/{document_id}/validate-category/`
 - `GET /api/documents/{document_id}/validation-stream/` (SSE)
+
+### Document Upload / Update Workflow Map
+
+#### Single-document upload/update (`PATCH /api/documents/{id}/`)
+
+1. If selected `DocumentType.ai_validation=true` and a new file is selected:
+   - client first calls `POST /api/documents/{document_id}/validate-category/` (pre-upload validation),
+   - backend validates file with the same AI validator used by multi-upload final validation,
+   - response includes `validationStatus` + `validationResult` (reasoning/issues/extracted fields).
+2. If pre-validation is `valid`:
+   - client uploads immediately via `PATCH /api/documents/{id}/` and persists AI result using:
+     - `ai_validation_status_override=valid`
+     - `ai_validation_result_override=<validationResult>`
+3. If pre-validation is `invalid`/`error`:
+   - client shows reason/preview,
+   - user can still press **Save Anyway**,
+   - upload proceeds via `PATCH /api/documents/{id}/` with override status/result, so document keeps `Invalid` badge + reason.
+4. If AI validation is disabled by user checkbox for that upload:
+   - upload proceeds without pre-validation,
+   - client sends `ai_validation_status_override=""` to clear stale AI status for the new file.
+5. Legacy async flow (`validate_with_ai=true` + `GET /api/documents/{document_id}/validation-stream/`) remains available for backward compatibility.
+
+#### Multi-document upload (`Upload Multiple Documents`)
+
+1. Client creates/uses a categorization job:
+   - `POST /api/customer-applications/{application_id}/categorize-documents/init/`
+   - `POST /api/document-categorization/{job_id}/upload/`
+2. Backend stores each file in temp storage and creates one `DocumentCategorizationItem` per file.
+3. After upload completes, backend enqueues **one independent Dramatiq task per item** (`run_document_categorization_item`) so files run in parallel.
+4. Each item runs its own pipeline:
+   - `uploading -> uploaded -> categorizing_pass_1` (optional `categorizing_pass_2`) -> `categorized`
+   - optional `validating -> validated`
+5. SSE endpoint `GET /api/document-categorization/stream/{job_id}/` emits per-file and overall progress events.
+
+#### Multi-document outcome matrix (all cases)
+
+1. Categorized + matched slot + `doc_type.ai_validation=true`:
+   - AI validation runs.
+   - Final validation badge is `Valid` or `Invalid`.
+2. Categorized + matched slot + `doc_type.ai_validation=false`:
+   - AI validation is skipped.
+   - `validationStatus` stays empty.
+3. Categorized + **no slot** (no matching `Document` in application):
+   - AI validation is skipped even if `doc_type.ai_validation=true`.
+   - UI shows `No Slot`; validation column remains empty.
+4. Categorization failure:
+   - item status becomes `error`, no validation step.
+5. Apply step (`POST /api/document-categorization/{job_id}/apply/`):
+   - only matched items (`documentId` present) are applied to final `Document` rows.
+   - no-slot and error items are never auto-applied.
 
 ---
 

@@ -35,7 +35,12 @@ class DocApplicationTestDocumentCompleted(TestCase):
             notify_by="email",
             notification_sent=False,
         )
-        self.doc_type = DocumentType.objects.create(name="Test Doc Type", is_in_required_documents=True)
+        self.doc_type = DocumentType.objects.create(
+            name="Test Doc Type",
+            is_in_required_documents=True,
+            ai_validation=False,
+            has_details=True,
+        )
         self.product = Product.objects.create(name="Test Product", code="TP1", product_type="Type A")
         self.user = User.objects.create_user(username="johndoe", email="john.doe@test.com", password="password123!")
         self.doc_app = DocApplication.objects.create(

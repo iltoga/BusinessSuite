@@ -1,6 +1,5 @@
 # Admin Tools API ViewSets
 import datetime
-import functools
 import json
 import logging
 import os
@@ -9,6 +8,7 @@ import tarfile
 
 import requests
 from admin_tools import services
+from admin_tools import tasks as admin_tasks
 from api.permissions import (
     SUPERUSER_OR_ADMIN_PERMISSION_REQUIRED_ERROR,
     IsSuperuserOrAdminGroup,
@@ -16,11 +16,13 @@ from api.permissions import (
 )
 from api.serializers.local_resilience_serializer import LocalResilienceSettingsSerializer
 from api.serializers.ui_settings_serializer import UiSettingsSerializer
+from api.utils.redis_sse import iter_replay_and_live_events
 from api.utils.sse_auth import sse_token_auth_required
 from api.views import ApiErrorHandlingMixin
 from core.models.ai_request_usage import AIRequestUsage
 from core.services.ai_usage_service import AIUsageFeature
 from core.services.local_resilience_service import LocalResilienceService
+from core.services.redis_streams import format_sse_event, resolve_last_event_id, stream_user_key
 from core.services.ui_settings_service import UiSettingsService
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -62,6 +64,63 @@ def _clear_cacheops_query_store() -> None:
     invalidate_all()
 
 
+def _build_sse_response(event_stream) -> StreamingHttpResponse:
+    response = StreamingHttpResponse(event_stream, content_type="text/event-stream")
+    response["Cache-Control"] = "no-cache"
+    response["X-Accel-Buffering"] = "no"
+    return response
+
+
+def _query_param(request, key: str, default: str | None = None) -> str | None:
+    if hasattr(request, "query_params"):
+        return request.query_params.get(key, default)
+    return request.GET.get(key, default)
+
+
+def _as_bool(value: str | None) -> bool:
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _resolve_backup_path(filename: str | None) -> str | None:
+    safe_filename = os.path.basename(filename or "")
+    if not safe_filename:
+        return None
+    path = os.path.join(services.BACKUPS_DIR, safe_filename)
+    return path if os.path.exists(path) else None
+
+
+def _stream_admin_events(
+    *,
+    user_id: int,
+    replay_cursor: str | None,
+    accepted_events: set[str],
+    enqueue_callback,
+):
+    def event_stream():
+        if not replay_cursor:
+            try:
+                enqueue_callback()
+            except Exception as exc:
+                yield format_sse_event(data={"message": f"Error: {exc}"})
+                return
+
+        for stream_event in iter_replay_and_live_events(stream_key=stream_user_key(user_id), last_event_id=replay_cursor):
+            if stream_event is None:
+                yield ": keepalive\n\n"
+                continue
+
+            if stream_event.event not in accepted_events:
+                continue
+
+            payload = dict(stream_event.payload)
+            terminal = bool(payload.pop("_terminal", False))
+            yield format_sse_event(data=payload, event_id=stream_event.id)
+            if terminal:
+                break
+
+    return _build_sse_response(event_stream())
+
+
 # ============================================================================
 # Plain Django views for SSE endpoints (bypass DRF content negotiation)
 # ============================================================================
@@ -69,68 +128,45 @@ def _clear_cacheops_query_store() -> None:
 
 @sse_token_auth_required()
 def backup_start_sse(request):
-    """SSE endpoint for backup - bypasses DRF content negotiation."""
+    """SSE endpoint for backup with replay support."""
     if not is_superuser_or_admin_group(request.user):
         return JsonResponse({"error": SUPERUSER_OR_ADMIN_PERMISSION_REQUIRED_ERROR}, status=403)
 
-    include_users = request.GET.get("include_users", "0") in ("1", "true", "True")
-
-    def _sse_event(data: str):
-        return f"data: {json.dumps({'message': data})}\n\n"
-
-    def event_stream():
-        yield _sse_event("Backup started")
-        try:
-            for msg in services.backup_all(include_users=include_users):
-                yield ": keepalive\n\n"
-                if msg.startswith("RESULT_PATH:"):
-                    path = msg.split(":", 1)[1]
-                    yield _sse_event(f"Backup finished: {path}")
-                else:
-                    yield _sse_event(msg)
-        except Exception as ex:
-            yield _sse_event(f"Error: {str(ex)}")
-
-    response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
-    response["Cache-Control"] = "no-cache"
-    response["X-Accel-Buffering"] = "no"
-    return response
+    include_users = _as_bool(_query_param(request, "include_users", "0"))
+    replay_cursor = resolve_last_event_id(request)
+    return _stream_admin_events(
+        user_id=request.user.id,
+        replay_cursor=replay_cursor,
+        accepted_events={"backup_started", "backup_message", "backup_finished", "backup_failed"},
+        enqueue_callback=lambda: admin_tasks.run_backup_stream.delay(
+            user_id=request.user.id,
+            include_users=include_users,
+        ),
+    )
 
 
 @sse_token_auth_required()
 def backup_restore_sse(request):
-    """SSE endpoint for restore - bypasses DRF content negotiation."""
+    """SSE endpoint for restore with replay support."""
     if not is_superuser_or_admin_group(request.user):
         return JsonResponse({"error": SUPERUSER_OR_ADMIN_PERMISSION_REQUIRED_ERROR}, status=403)
 
-    filename = request.GET.get("file")
-    if not filename:
+    gz_path = _resolve_backup_path(_query_param(request, "file"))
+    if not gz_path:
         return JsonResponse({"error": "Missing file parameter"}, status=400)
 
-    gz_path = os.path.join(services.BACKUPS_DIR, filename)
-    include_users = request.GET.get("include_users", "0") in ("1", "true", "True")
-
-    def _sse_event(data: str):
-        return f"data: {json.dumps({'message': data})}\n\n"
-
-    def event_stream():
-        yield _sse_event("Restore started")
-        try:
-            for msg in services.restore_from_file(gz_path, include_users=include_users):
-                yield ": keepalive\n\n"
-                if msg.startswith("PROGRESS:"):
-                    progress = msg.split(":")[1]
-                    yield f"data: {json.dumps({'progress': progress})}\n\n"
-                else:
-                    yield _sse_event(msg)
-            yield _sse_event("Restore finished")
-        except Exception as ex:
-            yield _sse_event(f"Error: {str(ex)}")
-
-    response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
-    response["Cache-Control"] = "no-cache"
-    response["X-Accel-Buffering"] = "no"
-    return response
+    include_users = _as_bool(_query_param(request, "include_users", "0"))
+    replay_cursor = resolve_last_event_id(request)
+    return _stream_admin_events(
+        user_id=request.user.id,
+        replay_cursor=replay_cursor,
+        accepted_events={"restore_started", "restore_progress", "restore_message", "restore_finished", "restore_failed"},
+        enqueue_callback=lambda: admin_tasks.run_restore_stream.delay(
+            user_id=request.user.id,
+            archive_path=gz_path,
+            include_users=include_users,
+        ),
+    )
 
 
 # ============================================================================
@@ -319,30 +355,18 @@ class BackupsViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
     )
     @action(detail=False, methods=["get"], url_path="start")
     def start_backup(self, request):
-        """Trigger SSE backup stream."""
-        include_users = request.query_params.get("include_users", "0") == "1"
-
-        def _sse_event(data: str):
-            return f"data: {json.dumps({'message': data})}\n\n"
-
-        def event_stream():
-            yield _sse_event("Backup started")
-            try:
-                for msg in services.backup_all(include_users=include_users):
-                    # Send comment as keepalive to prevent timeout
-                    yield ": keepalive\n\n"
-                    if msg.startswith("RESULT_PATH:"):
-                        path = msg.split(":", 1)[1]
-                        yield _sse_event(f"Backup finished: {path}")
-                    else:
-                        yield _sse_event(msg)
-            except Exception as ex:
-                yield _sse_event(f"Error: {str(ex)}")
-
-        response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
-        response["Cache-Control"] = "no-cache"
-        response["X-Accel-Buffering"] = "no"  # Disable buffering in Nginx
-        return response
+        """Trigger stream-backed SSE backup execution."""
+        include_users = _as_bool(_query_param(request, "include_users", "0"))
+        replay_cursor = resolve_last_event_id(request)
+        return _stream_admin_events(
+            user_id=request.user.id,
+            replay_cursor=replay_cursor,
+            accepted_events={"backup_started", "backup_message", "backup_finished", "backup_failed"},
+            enqueue_callback=lambda: admin_tasks.run_backup_stream.delay(
+                user_id=request.user.id,
+                include_users=include_users,
+            ),
+        )
 
     @extend_schema(summary="Delete all backups", responses={200: OpenApiTypes.OBJECT})
     @action(detail=False, methods=["delete"], url_path="delete-all")
@@ -420,36 +444,23 @@ class BackupsViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
     )
     @action(detail=False, methods=["post"], url_path="restore")
     def restore(self, request):
-        """Trigger SSE restore stream."""
-        filename = request.query_params.get("file")
-        if not filename:
+        """Trigger stream-backed SSE restore execution."""
+        gz_path = _resolve_backup_path(_query_param(request, "file"))
+        if not gz_path:
             return Response({"error": "Missing file parameter"}, status=400)
 
-        gz_path = os.path.join(services.BACKUPS_DIR, filename)
-        include_users = request.query_params.get("include_users", "0") == "1"
-
-        def _sse_event(data: str):
-            return f"data: {json.dumps({'message': data})}\n\n"
-
-        def event_stream():
-            yield _sse_event("Restore started")
-            try:
-                for msg in services.restore_from_file(gz_path, include_users=include_users):
-                    # Send comment as keepalive to prevent timeout
-                    yield ": keepalive\n\n"
-                    if msg.startswith("PROGRESS:"):
-                        progress = msg.split(":")[1]
-                        yield f"data: {json.dumps({'progress': progress})}\n\n"
-                    else:
-                        yield _sse_event(msg)
-                yield _sse_event("Restore finished")
-            except Exception as ex:
-                yield _sse_event(f"Error: {str(ex)}")
-
-        response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
-        response["Cache-Control"] = "no-cache"
-        response["X-Accel-Buffering"] = "no"  # Disable buffering in Nginx
-        return response
+        include_users = _as_bool(_query_param(request, "include_users", "0"))
+        replay_cursor = resolve_last_event_id(request)
+        return _stream_admin_events(
+            user_id=request.user.id,
+            replay_cursor=replay_cursor,
+            accepted_events={"restore_started", "restore_progress", "restore_message", "restore_finished", "restore_failed"},
+            enqueue_callback=lambda: admin_tasks.run_restore_stream.delay(
+                user_id=request.user.id,
+                archive_path=gz_path,
+                include_users=include_users,
+            ),
+        )
 
 
 class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):

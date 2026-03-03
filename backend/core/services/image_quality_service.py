@@ -30,6 +30,9 @@ class ImageQualityResult:
     bottom_edge_dark_ratio: float = 0.0
     bottom_edge_edge_density: float = 0.0
     mrz_cutoff_suspected: bool = False
+    mrz_detected_line_count: int = 0
+    mrz_bottom_touch_ratio: float = 0.0
+    mrz_zone_incomplete_suspected: bool = False
     quality_score: float = 0.0
     notes: list[str] = field(default_factory=list)
 
@@ -53,6 +56,9 @@ class ImageQualityResult:
             "bottom_edge_dark_ratio": self.bottom_edge_dark_ratio,
             "bottom_edge_edge_density": self.bottom_edge_edge_density,
             "mrz_cutoff_suspected": self.mrz_cutoff_suspected,
+            "mrz_detected_line_count": self.mrz_detected_line_count,
+            "mrz_bottom_touch_ratio": self.mrz_bottom_touch_ratio,
+            "mrz_zone_incomplete_suspected": self.mrz_zone_incomplete_suspected,
             "quality_score": self.quality_score,
             "notes": self.notes,
         }
@@ -80,9 +86,10 @@ class ImageQualityService:
         min_dynamic_range_p95_p5: float = 45.0,
         min_short_side_px: int = 700,
         brightness_min: float = 55.0,
-        brightness_max: float = 215.0,
+        brightness_max: float = 230.0,
+        min_clipped_bright_ratio_for_brightness_fail: float = 0.08,
         max_clipped_dark_ratio: float = 0.30,
-        max_clipped_bright_ratio: float = 0.30,
+        max_clipped_bright_ratio: float = 0.40,
     ):
         self.min_laplacian_variance = min_laplacian_variance
         self.hard_blur_laplacian_threshold = hard_blur_laplacian_threshold
@@ -97,6 +104,7 @@ class ImageQualityService:
         self.min_short_side_px = min_short_side_px
         self.brightness_min = brightness_min
         self.brightness_max = brightness_max
+        self.min_clipped_bright_ratio_for_brightness_fail = min_clipped_bright_ratio_for_brightness_fail
         self.max_clipped_dark_ratio = max_clipped_dark_ratio
         self.max_clipped_bright_ratio = max_clipped_bright_ratio
 
@@ -152,6 +160,11 @@ class ImageQualityService:
             bottom_edge_dark_ratio > self.max_bottom_edge_dark_ratio
             and bottom_edge_edge_density > self.max_bottom_edge_edge_density
         )
+        mrz_detected_line_count, mrz_bottom_touch_ratio = self._analyze_mrz_zone_structure(cv2, gray)
+        mrz_zone_incomplete_suspected = (
+            (mrz_cutoff_suspected and mrz_bottom_touch_ratio > 0.15 and mrz_detected_line_count <= 2)
+            or (mrz_bottom_touch_ratio > 0.20 and mrz_detected_line_count <= 1)
+        )
 
         mean_arr, std_arr = cv2.meanStdDev(gray)
         brightness_mean = float(mean_arr[0][0])
@@ -164,6 +177,7 @@ class ImageQualityService:
         clipped_bright_ratio = float(np.mean(gray >= 245))
 
         reasons: list[str] = []
+        advisories: list[str] = []
         rejection_code: Optional[str] = None
 
         if min(width, height) < self.min_short_side_px:
@@ -173,17 +187,25 @@ class ImageQualityService:
             )
 
         if mrz_cutoff_suspected:
-            rejection_code = "mrz_cropped"
-            reasons.append(
-                "The bottom MRZ line appears cut/cropped at the image edge. Please upload the full passport page with both full MRZ lines visible."
+            advisories.append(
+                "Bottom-edge heuristic suspects MRZ cutoff, but this signal is advisory and must be confirmed by visual checks."
+            )
+        if mrz_zone_incomplete_suspected:
+            advisories.append(
+                "MRZ-zone structure suggests incomplete/cut MRZ (missing expected lines or text touching bottom edge)."
             )
 
         if brightness_mean < self.brightness_min:
             rejection_code = rejection_code or "image_too_dark"
             reasons.append("Image is too dark. Increase light and avoid underexposure.")
         elif brightness_mean > self.brightness_max:
-            rejection_code = rejection_code or "image_too_bright"
-            reasons.append("Image is too bright. Avoid glare/overexposure and reduce direct reflections.")
+            if clipped_bright_ratio >= self.min_clipped_bright_ratio_for_brightness_fail:
+                rejection_code = rejection_code or "image_too_bright"
+                reasons.append("Image is too bright. Avoid glare/overexposure and reduce direct reflections.")
+            else:
+                advisories.append(
+                    "Image is bright but highlights are not heavily clipped; brightness accepted by deterministic checks."
+                )
 
         if clipped_dark_ratio > self.max_clipped_dark_ratio:
             rejection_code = rejection_code or "image_shadow_clipping"
@@ -250,8 +272,11 @@ class ImageQualityService:
             bottom_edge_dark_ratio=bottom_edge_dark_ratio,
             bottom_edge_edge_density=bottom_edge_edge_density,
             mrz_cutoff_suspected=mrz_cutoff_suspected,
+            mrz_detected_line_count=mrz_detected_line_count,
+            mrz_bottom_touch_ratio=mrz_bottom_touch_ratio,
+            mrz_zone_incomplete_suspected=mrz_zone_incomplete_suspected,
             quality_score=quality_score,
-            notes=reasons,
+            notes=[*reasons, *advisories],
         )
 
     @staticmethod
@@ -268,3 +293,43 @@ class ImageQualityService:
         if np_buffer.size == 0:
             return None
         return cv2.imdecode(np_buffer, cv2.IMREAD_COLOR)
+
+    @staticmethod
+    def _analyze_mrz_zone_structure(cv2: Any, gray: np.ndarray) -> tuple[int, float]:
+        """
+        Estimate MRZ line structure in the lower passport zone.
+        Returns (detected_line_count, bottom_touch_ratio).
+        """
+        height = gray.shape[0]
+        if height <= 0:
+            return 0, 0.0
+
+        mrz_top = int(height * 0.80)
+        mrz_zone = gray[mrz_top:height, :]
+        if mrz_zone.size == 0:
+            return 0, 0.0
+
+        _, mrz_bin = cv2.threshold(mrz_zone, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+        mrz_bin = cv2.medianBlur(mrz_bin, 3)
+
+        row_ink_ratio = np.mean(mrz_bin > 0, axis=1)
+        line_rows = row_ink_ratio > 0.08
+
+        smoothed = np.convolve(line_rows.astype(np.uint8), np.ones(3, dtype=np.uint8), mode="same") > 0
+
+        bands: list[tuple[int, int]] = []
+        start = None
+        for idx, present in enumerate(smoothed):
+            if present and start is None:
+                start = idx
+            elif not present and start is not None:
+                if idx - start >= 2:
+                    bands.append((start, idx - 1))
+                start = None
+        if start is not None and len(smoothed) - start >= 2:
+            bands.append((start, len(smoothed) - 1))
+
+        bottom_rows = mrz_bin[-2:, :] if mrz_bin.shape[0] >= 2 else mrz_bin
+        bottom_touch_ratio = float(np.mean(bottom_rows > 0)) if bottom_rows.size else 0.0
+
+        return len(bands), bottom_touch_ratio

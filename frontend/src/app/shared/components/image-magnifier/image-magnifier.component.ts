@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 
 import type { ClassValue } from 'clsx';
 
@@ -19,6 +19,8 @@ export class ImageMagnifierComponent {
   src = input<string | null | undefined>(null);
   alt = input<string>('Image preview');
   href = input<string | null | undefined>(null);
+  width = input<number | string | null | undefined>(null);
+  height = input<number | string | null | undefined>(null);
   imageClass = input<ClassValue>('');
   wrapperClass = input<ClassValue>('');
   toggleClass = input<ClassValue>('');
@@ -26,6 +28,8 @@ export class ImageMagnifierComponent {
   zoom = input<number>(4);
   showToggle = input<boolean>(true);
   enabledByDefault = input<boolean>(false);
+  imageLoaded = output<void>();
+  imageError = output<void>();
 
   readonly magnifierActive = signal(false);
   readonly magnifierLensX = signal(0);
@@ -37,6 +41,19 @@ export class ImageMagnifierComponent {
   readonly hasSource = computed(() => Boolean(this.src()?.trim()));
   readonly resolvedSrc = computed(() => this.src()?.trim() ?? '');
   readonly resolvedHref = computed(() => this.href()?.trim() ?? '');
+  readonly resolvedSquareSize = computed(() => {
+    const preferredSize = this.width() ?? this.height();
+    if (preferredSize === null || preferredSize === undefined) {
+      return null;
+    }
+
+    if (typeof preferredSize === 'number') {
+      return preferredSize > 0 ? `${preferredSize}px` : null;
+    }
+
+    const normalized = preferredSize.trim();
+    return normalized ? normalized : null;
+  });
 
   readonly resolvedWrapperClass = computed(() =>
     mergeClasses('image-magnifier-wrapper', this.wrapperClass()),
@@ -96,5 +113,14 @@ export class ImageMagnifierComponent {
     this.magnifierLensY.set(clampedY - halfLens);
     this.magnifierBgX.set((clampedX / rect.width) * 100);
     this.magnifierBgY.set((clampedY / rect.height) * 100);
+  }
+
+  onImageLoad(): void {
+    this.imageLoaded.emit();
+  }
+
+  onImageError(): void {
+    this.magnifierActive.set(false);
+    this.imageError.emit();
   }
 }

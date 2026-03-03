@@ -43,12 +43,13 @@ class AICostingReportApiTests(TestCase):
         created_at: datetime,
         cost_usd: Decimal,
         total_tokens: int,
+        model: str = "google/gemini-2.5-flash-lite",
         success: bool = True,
     ) -> None:
         row = AIRequestUsage.objects.create(
             feature=feature,
             provider="openrouter",
-            model="google/gemini-2.5-flash-lite",
+            model=model,
             success=success,
             total_tokens=total_tokens,
             cost_usd=cost_usd,
@@ -87,6 +88,7 @@ class AICostingReportApiTests(TestCase):
             created_at=timezone.make_aware(datetime(2026, 2, 11, 9, 15), tz),
             cost_usd=Decimal("0.020000"),
             total_tokens=40,
+            model="openai/gpt-4o-mini",
         )
 
         response = self.client.get("/api/reports/ai-costing/?year=2026&month=2")
@@ -111,6 +113,18 @@ class AICostingReportApiTests(TestCase):
         )
         self.assertEqual(feature_row["requestCount"], 2)
         self.assertAlmostEqual(feature_row["totalCost"], 0.12, places=6)
+
+        model_row = next(
+            row for row in payload["modelBreakdownMonth"] if row["model"] == "google/gemini-2.5-flash-lite"
+        )
+        self.assertEqual(model_row["requestCount"], 2)
+        self.assertAlmostEqual(model_row["totalCost"], 0.13, places=6)
+
+        secondary_model_row = next(
+            row for row in payload["modelBreakdownMonth"] if row["model"] == "openai/gpt-4o-mini"
+        )
+        self.assertEqual(secondary_model_row["requestCount"], 1)
+        self.assertAlmostEqual(secondary_model_row["totalCost"], 0.02, places=6)
 
     def test_ai_costing_report_rejects_authenticated_non_manager_non_admin_user(self):
         regular_client = APIClient()

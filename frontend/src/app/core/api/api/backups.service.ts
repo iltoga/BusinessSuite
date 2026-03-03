@@ -282,7 +282,7 @@ export class BackupsService extends BaseService {
 
     /**
      * Restore from backup
-     * Trigger SSE restore stream.
+     * Trigger stream-backed SSE restore execution.
      * @endpoint post /api/backups/restore/
      * @param file 
      * @param includeUsers 
@@ -421,7 +421,7 @@ export class BackupsService extends BaseService {
 
     /**
      * Start backup process
-     * Trigger SSE backup stream.
+     * Trigger stream-backed SSE backup execution.
      * @endpoint get /api/backups/start/
      * @param includeUsers 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.

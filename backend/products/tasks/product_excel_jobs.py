@@ -13,7 +13,7 @@ from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.db import transaction
 from django.utils import timezone
-from huey.contrib.djhuey import db_task
+from core.tasks.runtime import QUEUE_REALTIME, db_task
 from openpyxl import Workbook, load_workbook
 from api.serializers.product_serializer import ProductCreateUpdateSerializer
 from products.models import Product
@@ -115,7 +115,7 @@ def _send_import_done_push(user, result: dict) -> None:
         logger.exception("Failed to send product import push notification to user #%s", getattr(user, "id", None))
 
 
-@db_task()
+@db_task(queue=QUEUE_REALTIME)
 def run_product_export_job(job_id: str, user_id: int | None = None, search_query: str = "") -> None:
     lock_key = build_task_lock_key(namespace="products_export_job", item_id=str(job_id))
     lock_token = acquire_task_lock(lock_key)
@@ -186,7 +186,7 @@ def run_product_export_job(job_id: str, user_id: int | None = None, search_query
         release_task_lock(lock_key, lock_token)
 
 
-@db_task()
+@db_task(queue=QUEUE_REALTIME)
 def run_product_import_job(job_id: str, user_id: int | None = None, file_path: str = "") -> None:
     lock_key = build_task_lock_key(namespace="products_import_job", item_id=str(job_id))
     lock_token = acquire_task_lock(lock_key)

@@ -1,5 +1,5 @@
 import { NgZone } from '@angular/core';
-import { TestBed } from '@angular/core/testing';
+import { firstValueFrom } from 'rxjs';
 import { vi } from 'vitest';
 import { AuthService } from './auth.service';
 import { SseService } from './sse.service';
@@ -34,16 +34,7 @@ describe('SseService', () => {
       isMockEnabled: vi.fn().mockReturnValue(false),
     };
     (globalThis as any).fetch = vi.fn();
-
-    TestBed.configureTestingModule({
-      providers: [
-        SseService,
-        { provide: AuthService, useValue: mockAuth },
-        { provide: NgZone, useValue: ngZoneMock },
-      ],
-    });
-
-    sse = TestBed.inject(SseService);
+    sse = new SseService(ngZoneMock as NgZone, mockAuth as AuthService);
   });
 
   it('rejects connection if token is expired and triggers logout', () => {
@@ -96,5 +87,46 @@ describe('SseService', () => {
     const [, options] = (globalThis.fetch as any).mock.calls[0];
     expect(options.headers.get('Authorization')).toBe('Bearer jwt-token');
     sub.unsubscribe();
+  });
+
+  it('parses SSE event/id frames via connectMessages', async () => {
+    (globalThis.fetch as any).mockResolvedValue(
+      createSseResponse(['id: 1710000000000-0\nevent: job_update\ndata: {"status":"processing"}\n\n']),
+    );
+
+    const message = await firstValueFrom(sse.connectMessages<{ status: string }>('/sse'));
+    expect(message.event).toBe('job_update');
+    expect(message.id).toBe('1710000000000-0');
+    expect(message.data.status).toBe('processing');
+  });
+
+  it('sends Last-Event-ID header on reconnect for the same URL', async () => {
+    (globalThis.fetch as any)
+      .mockResolvedValueOnce(createSseResponse(['id: 42-0\ndata: {"step":"one"}\n\n']))
+      .mockResolvedValueOnce(createSseResponse(['data: {"step":"two"}\n\n']));
+
+    await firstValueFrom(sse.connectMessages<{ step: string }>('/sse'));
+    await firstValueFrom(sse.connectMessages<{ step: string }>('/sse'));
+
+    const [, firstOptions] = (globalThis.fetch as any).mock.calls[0];
+    const [, secondOptions] = (globalThis.fetch as any).mock.calls[1];
+
+    expect(firstOptions.headers.get('Last-Event-ID')).toBeNull();
+    expect(secondOptions.headers.get('Last-Event-ID')).toBe('42-0');
+  });
+
+  it('does not send Last-Event-ID when replay cursor is disabled', async () => {
+    (globalThis.fetch as any)
+      .mockResolvedValueOnce(createSseResponse(['id: 99-0\ndata: {"step":"one"}\n\n']))
+      .mockResolvedValueOnce(createSseResponse(['data: {"step":"two"}\n\n']));
+
+    await firstValueFrom(sse.connectMessages<{ step: string }>('/sse-no-replay', { useReplayCursor: false }));
+    await firstValueFrom(sse.connectMessages<{ step: string }>('/sse-no-replay', { useReplayCursor: false }));
+
+    const [, firstOptions] = (globalThis.fetch as any).mock.calls[0];
+    const [, secondOptions] = (globalThis.fetch as any).mock.calls[1];
+
+    expect(firstOptions.headers.get('Last-Event-ID')).toBeNull();
+    expect(secondOptions.headers.get('Last-Event-ID')).toBeNull();
   });
 });

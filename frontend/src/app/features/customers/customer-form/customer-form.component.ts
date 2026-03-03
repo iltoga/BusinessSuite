@@ -29,6 +29,7 @@ import { FormErrorSummaryComponent } from '@/shared/components/form-error-summar
 import { ZardIconComponent } from '@/shared/components/icon';
 import { ImageMagnifierComponent } from '@/shared/components/image-magnifier';
 import { ZardInputDirective } from '@/shared/components/input';
+import { buildExistingDocumentPreview, buildLocalFilePreview } from '@/shared/utils/document-preview-source';
 import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/utils/form-errors';
 
 @Component({
@@ -72,6 +73,18 @@ export class CustomerFormComponent implements OnInit {
   readonly passportFile = signal<File | null>(null);
   readonly passportFilePreviewUrl = signal<string | null>(null);
   readonly passportFilePreviewType = signal<'image' | 'pdf' | 'unknown'>('unknown');
+  readonly existingPassportPreviewUrl = signal<string | null>(null);
+  readonly existingPassportPreviewType = signal<'image' | 'pdf' | 'unknown'>('unknown');
+  readonly existingPassportFileName = signal<string | null>(null);
+  readonly activePassportPreviewUrl = computed(
+    () => this.passportFilePreviewUrl() ?? this.existingPassportPreviewUrl(),
+  );
+  readonly activePassportPreviewType = computed(() =>
+    this.passportFilePreviewUrl() ? this.passportFilePreviewType() : this.existingPassportPreviewType(),
+  );
+  readonly hasExistingPassportFile = computed(
+    () => this.isEditMode() && !!this.customer()?.passportFile && !this.passportFile(),
+  );
   readonly passportPreviewUrl = signal<string | null>(null);
   readonly passportPastePreviewUrl = signal<string | null>(null);
   readonly passportPasteStatus = signal<string | null>(null);
@@ -266,6 +279,7 @@ export class CustomerFormComponent implements OnInit {
       this.customersService.getCustomer(id).subscribe({
         next: (data) => {
           this.customer.set(data);
+          this.setExistingPassportPreview(data.passportFile);
           // Update isPerson immediately based on loaded data
           this.isPerson.set(data.customerType === 'person');
           this.form.patchValue({
@@ -340,24 +354,9 @@ export class CustomerFormComponent implements OnInit {
 
   private setPassportFilePreview(file: File): void {
     this.clearPassportFilePreview();
-
-    const mime = file.type.toLowerCase();
-    const lowerName = file.name.toLowerCase();
-
-    if (mime.startsWith('image/') || /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(lowerName)) {
-      this.passportFilePreviewType.set('image');
-      this.passportFilePreviewUrl.set(URL.createObjectURL(file));
-      return;
-    }
-
-    if (mime === 'application/pdf' || lowerName.endsWith('.pdf')) {
-      this.passportFilePreviewType.set('pdf');
-      this.passportFilePreviewUrl.set(URL.createObjectURL(file));
-      return;
-    }
-
-    this.passportFilePreviewType.set('unknown');
-    this.passportFilePreviewUrl.set(null);
+    const preview = buildLocalFilePreview(file);
+    this.passportFilePreviewType.set(preview.type);
+    this.passportFilePreviewUrl.set(preview.url);
   }
 
   private clearPassportFilePreview(): void {
@@ -371,6 +370,33 @@ export class CustomerFormComponent implements OnInit {
     }
     this.passportFilePreviewUrl.set(null);
     this.passportFilePreviewType.set('unknown');
+  }
+
+  private setExistingPassportPreview(fileUrl: string | null | undefined): void {
+    const normalizedUrl = (fileUrl ?? '').trim();
+    if (!normalizedUrl) {
+      this.existingPassportPreviewUrl.set(null);
+      this.existingPassportPreviewType.set('unknown');
+      this.existingPassportFileName.set(null);
+      return;
+    }
+
+    const preview = buildExistingDocumentPreview({ fileLink: normalizedUrl });
+    this.existingPassportPreviewUrl.set(preview.url);
+    this.existingPassportPreviewType.set(preview.type);
+    this.existingPassportFileName.set(this.extractFilenameFromUrl(normalizedUrl));
+  }
+
+  private extractFilenameFromUrl(fileUrl: string): string {
+    try {
+      const pathname = new URL(fileUrl).pathname;
+      const filename = pathname.split('/').pop() ?? '';
+      return decodeURIComponent(filename) || 'passport-file';
+    } catch {
+      const withoutQuery = fileUrl.split('?')[0]?.split('#')[0] ?? '';
+      const filename = withoutQuery.split('/').pop() ?? '';
+      return decodeURIComponent(filename) || 'passport-file';
+    }
   }
 
   onPastePassport(event: ClipboardEvent): void {

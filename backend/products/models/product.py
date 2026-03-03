@@ -122,7 +122,30 @@ class Product(models.Model):
         return DocumentType.objects.filter(name__in=doc_names, deprecated=True).exists()
 
     def sync_deprecated_status_from_documents(self) -> None:
-        self.deprecated = self.has_deprecated_document_types()
+        has_deprecated_documents = self.has_deprecated_document_types()
+        if has_deprecated_documents:
+            self.deprecated = True
+            return
+
+        # Keep explicit/manual deprecated toggles, but automatically clear
+        # only when the previous deprecated state was document-driven.
+        if self._state.adding or not self.pk:
+            return
+        try:
+            previous = Product.objects.only(
+                "id",
+                "deprecated",
+                "required_documents",
+                "optional_documents",
+            ).get(pk=self.pk)
+        except Product.DoesNotExist:
+            return
+
+        if self.deprecated != previous.deprecated:
+            return
+
+        if previous.deprecated and previous.has_deprecated_document_types():
+            self.deprecated = False
 
     def save(self, *args, **kwargs):
         # Preserve legacy creates where base_price is provided but retail_price is omitted.

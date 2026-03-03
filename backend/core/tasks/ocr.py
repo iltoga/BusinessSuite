@@ -12,12 +12,12 @@ from core.utils.imgutils import convert_and_resize_image
 from core.utils.passport_ocr import extract_mrz_data, extract_passport_with_ai
 from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import SimpleUploadedFile
-from huey.contrib.djhuey import db_task
+from core.tasks.runtime import QUEUE_REALTIME, db_task
 
 logger = Logger.get_logger(__name__)
 
 
-@db_task(retries=2, retry_delay=10, context=True)
+@db_task(retries=2, retry_delay=10, context=True, queue=QUEUE_REALTIME)
 def run_ocr_job(job_id: str, task=None) -> None:
     lock_key = build_task_lock_key(namespace="ocr_job", item_id=str(job_id))
     lock_token = acquire_task_lock(lock_key)
@@ -125,7 +125,7 @@ def run_ocr_job(job_id: str, task=None) -> None:
                 )
                 job.error_message = f"AI connection error, retrying... ({task.retries} left)"
                 job.save(update_fields=["error_message", "updated_at"])
-                raise exc  # Re-raise to trigger Huey retry
+                raise exc  # Re-raise to trigger Dramatiq retry
 
             logger.error(f"OCR job {job_id} failed after retries: {str(exc)}")
             job.status = OCRJob.STATUS_FAILED

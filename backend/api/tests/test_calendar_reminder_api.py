@@ -1,3 +1,4 @@
+import signal
 import json
 from datetime import datetime, timedelta
 
@@ -35,6 +36,18 @@ class CalendarReminderApiTests(TestCase):
         data_line = next((line for line in chunk.splitlines() if line.startswith("data: ")), "")
         self.assertTrue(data_line, f"Expected SSE data line in chunk: {chunk!r}")
         return json.loads(data_line.replace("data: ", "", 1))
+
+    def _next_sse_chunk_with_timeout(self, stream, timeout_seconds: int = 5):
+        def _on_timeout(signum, frame):  # pragma: no cover - signal handler
+            raise TimeoutError(f"SSE stream read exceeded {timeout_seconds}s")
+
+        previous_handler = signal.signal(signal.SIGALRM, _on_timeout)
+        signal.setitimer(signal.ITIMER_REAL, timeout_seconds)
+        try:
+            return next(stream)
+        finally:
+            signal.setitimer(signal.ITIMER_REAL, 0)
+            signal.signal(signal.SIGALRM, previous_handler)
 
     def test_bulk_create_creates_one_record_per_user(self):
         response = self.client.post(
@@ -365,7 +378,7 @@ class CalendarReminderApiTests(TestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.token.key}")
         response = self.client.get("/api/calendar-reminders/stream/")
         self.assertEqual(response.status_code, 200)
-        payload = self._decode_sse_payload(next(response.streaming_content))
+        payload = self._decode_sse_payload(self._next_sse_chunk_with_timeout(response.streaming_content))
         self.assertEqual(payload["event"], "calendar_reminders_snapshot")
         self.assertEqual(payload["reason"], "initial")
         self.assertEqual(payload["lastReminderId"], reminder.id)
@@ -374,7 +387,7 @@ class CalendarReminderApiTests(TestCase):
         reminder.error_message = "Delivery error"
         reminder.save(update_fields=["status", "error_message", "updated_at"])
 
-        changed_payload = self._decode_sse_payload(next(response.streaming_content))
+        changed_payload = self._decode_sse_payload(self._next_sse_chunk_with_timeout(response.streaming_content))
         self.assertEqual(changed_payload["event"], "calendar_reminders_changed")
         self.assertEqual(changed_payload["lastReminderId"], reminder.id)
         self.assertIn(changed_payload["reason"], {"signal", "db_state_change"})

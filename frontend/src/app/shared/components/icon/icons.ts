@@ -73,6 +73,7 @@ import {
   Play,
   Plus,
   Popcorn,
+  Printer,
   Puzzle,
   Save,
   Search,
@@ -219,6 +220,7 @@ export const ZARD_ICONS = {
   upload: Upload,
   'zoom-in': ZoomIn,
   'zoom-out': ZoomOut,
+  printer: Printer,
 } as const satisfies Record<string, LucideIconData>;
 
 export declare type ZardIcon = keyof typeof ZARD_ICONS | LucideIconData;

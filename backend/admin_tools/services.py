@@ -1,6 +1,7 @@
 # Vanilla Django backup/restore using only dumpdata/loaddata/flush
 import datetime
 import gzip
+import importlib
 import io
 import json
 import os
@@ -9,8 +10,9 @@ import tarfile
 import tempfile
 import time
 import uuid
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from pathlib import Path
+from urllib.parse import unquote, urlparse
 
 from django.apps import apps
 from django.conf import settings
@@ -31,6 +33,103 @@ except Exception:  # pragma: no cover - optional import fallback
 BACKUPS_DIR = getattr(settings, "BACKUPS_ROOT", os.path.join(settings.BASE_DIR, "backups"))
 USER_RELATED_MODELS = {"core.userprofile", "core.usersettings", "core.webpushsubscription"}
 _MISSING = object()
+_LEGACY_FIELD_RENAMES: dict[str, dict[str, str]] = {
+    # products.DocumentType.has_ocr_check -> products.DocumentType.ai_validation
+    "products.documenttype": {"has_ocr_check": "ai_validation"},
+    # customer_applications.Document.ocr_check -> customer_applications.Document.ai_validation
+    "customer_applications.document": {"ocr_check": "ai_validation"},
+}
+
+
+def _get_zstd_module():
+    """Return a module exposing ``open`` for .zst streams, if available."""
+    for module_name in ("compression.zstd", "zstandard", "backports.zstd"):
+        try:
+            module = importlib.import_module(module_name)
+            if hasattr(module, "open"):
+                return module
+        except Exception:
+            continue
+    return None
+
+
+def _supports_tarfile_zstd_write() -> bool:
+    """Whether current Python/tarfile supports mode 'w:zst'."""
+    try:
+        with tarfile.open(fileobj=io.BytesIO(), mode="w:zst"):
+            pass
+        return True
+    except Exception:
+        return False
+
+
+def _safe_extract_tar(tar: tarfile.TarFile, destination_dir: str) -> None:
+    """Extract a tar archive only when every member resolves under destination_dir."""
+    destination_abs = os.path.abspath(destination_dir)
+    for member in tar.getmembers():
+        member_name = member.name
+        if not member_name:
+            continue
+
+        normalized_name = member_name.replace("\\", "/")
+        target_path = os.path.abspath(os.path.join(destination_abs, normalized_name))
+        try:
+            is_within_destination = os.path.commonpath([destination_abs, target_path]) == destination_abs
+        except ValueError:
+            is_within_destination = False
+        if not is_within_destination:
+            raise RuntimeError(f"Unsafe backup archive member path detected: {member_name!r}")
+
+        # Prevent symlink/hardlink path tricks during restore extraction.
+        if member.issym() or member.islnk():
+            raise RuntimeError(f"Unsafe backup archive link entry detected: {member_name!r}")
+
+    tar.extractall(path=destination_abs)
+
+
+def _extract_archive_to_dir(path: str, extracted_tmp: str, comp: str) -> None:
+    """
+    Extract tar archive to a directory.
+
+    For .tar.zst, prefer native tarfile support and fall back to
+    backports.zstd/zstandard decompression for Python runtimes that
+    do not support mode 'r:zst' (e.g. Python 3.13).
+    """
+    if comp != "zst":
+        with tarfile.open(path, f"r:{comp}") as tar:
+            _safe_extract_tar(tar, extracted_tmp)
+        return
+
+    try:
+        with tarfile.open(path, "r:zst") as tar:
+            _safe_extract_tar(tar, extracted_tmp)
+        return
+    except (tarfile.CompressionError, tarfile.ReadError, ValueError):
+        pass
+
+    zstd = _get_zstd_module()
+    if not zstd:
+        raise RuntimeError(
+            "Cannot extract .tar.zst backup: no zstd support available. "
+            "Install 'backports-zstd' (or 'zstandard') or restore from .tar.gz."
+        )
+
+    decompressed_tar_path = None
+    try:
+        with tempfile.NamedTemporaryFile(prefix="restore-zst-", suffix=".tar", delete=False) as temp_tar:
+            decompressed_tar_path = temp_tar.name
+
+        with zstd.open(path, "rb") as f_in, open(decompressed_tar_path, "wb") as f_out:
+            shutil.copyfileobj(f_in, f_out)
+
+        with tarfile.open(decompressed_tar_path, "r:") as tar:
+            _safe_extract_tar(tar, extracted_tmp)
+    finally:
+        if decompressed_tar_path and os.path.exists(decompressed_tar_path):
+            try:
+                os.unlink(decompressed_tar_path)
+            except Exception:
+                pass
 
 
 def _is_external_object_storage(storage) -> bool:
@@ -517,6 +616,92 @@ def _normalize_legacy_natural_key_fixture(fixture_path: str) -> tuple[str | None
     return normalized_path, assigned_pk_count, converted_ref_count, unresolved_ref_count, ambiguous_ref_count
 
 
+def _sanitize_fixture_model_fields(
+    fixture_path: str,
+) -> tuple[str | None, int, int, dict[str, int]]:
+    """
+    Sanitize fixture field payloads to match the current Django schema.
+
+    - Applies known legacy field renames.
+    - Drops unknown fields to prevent loaddata hard-failures after refactors.
+    """
+    try:
+        with open(fixture_path, "r", encoding="utf-8") as handle:
+            objects = json.load(handle)
+    except Exception:
+        return None, 0, 0, {}
+
+    if not isinstance(objects, list):
+        return None, 0, 0, {}
+
+    changed = False
+    renamed_count = 0
+    dropped_count = 0
+    dropped_by_model: dict[str, int] = {}
+    valid_field_cache: dict[str, set[str]] = {}
+
+    for obj in objects:
+        if not isinstance(obj, dict):
+            continue
+
+        model_label = obj.get("model")
+        fields = obj.get("fields")
+        if not isinstance(model_label, str) or not isinstance(fields, dict):
+            continue
+
+        # 1) Apply explicit legacy rename mappings.
+        rename_map = _LEGACY_FIELD_RENAMES.get(model_label, {})
+        for old_name, new_name in rename_map.items():
+            if old_name not in fields:
+                continue
+            if new_name not in fields:
+                fields[new_name] = fields[old_name]
+                renamed_count += 1
+            fields.pop(old_name, None)
+            changed = True
+
+        # 2) Drop unknown fields against current model metadata.
+        if model_label not in valid_field_cache:
+            try:
+                model = apps.get_model(model_label)
+            except Exception:
+                valid_field_cache[model_label] = set()
+            else:
+                valid_field_cache[model_label] = {
+                    field.name
+                    for field in model._meta.get_fields()
+                    if not (getattr(field, "auto_created", False) and not getattr(field, "concrete", False))
+                }
+
+        valid_fields = valid_field_cache.get(model_label, set())
+        if not valid_fields:
+            continue
+
+        for field_name in list(fields.keys()):
+            if field_name in valid_fields:
+                continue
+            fields.pop(field_name, None)
+            dropped_count += 1
+            dropped_by_model[model_label] = dropped_by_model.get(model_label, 0) + 1
+            changed = True
+
+    if not changed:
+        return None, 0, 0, {}
+
+    fd, sanitized_path = tempfile.mkstemp(prefix="restore-schema-sanitized-", suffix=".json")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as out:
+            json.dump(objects, out)
+    except Exception:
+        try:
+            os.unlink(sanitized_path)
+        except Exception:
+            pass
+        return None, 0, 0, {}
+
+    return sanitized_path, renamed_count, dropped_count, dropped_by_model
+
+
 def _format_bytes(size_bytes: int) -> str:
     units = ["B", "KB", "MB", "GB", "TB"]
     size = float(max(size_bytes, 0))
@@ -585,8 +770,10 @@ def backup_all(include_users=False):
     ensure_backups_dir()
     ts = datetime.datetime.utcnow().strftime("%Y%m%d-%H%M%S")
     suffix = "_with_users" if include_users else ""
-    # Use tar.zst archive (Python 3.14+) to store JSON dump + manifest (+ media payload only for local storage).
-    filename = f"backup-{ts}{suffix}.tar.zst"
+    use_zst_archive = _supports_tarfile_zstd_write()
+    archive_ext = "tar.zst" if use_zst_archive else "tar.gz"
+    archive_mode = "w:zst" if use_zst_archive else "w:gz"
+    filename = f"backup-{ts}{suffix}.{archive_ext}"
     out_path = os.path.join(BACKUPS_DIR, filename)
 
     yield "Starting Django dumpdata backup..."
@@ -651,8 +838,8 @@ def backup_all(include_users=False):
         else:
             yield "Media storage is local filesystem; embedding media files in backup archive."
 
-        # Create tar.zst with JSON, manifest and files under 'media/' prefix
-        with tarfile.open(out_path, "w:zst") as tar:
+        # Create tar archive with JSON, manifest and files under 'media/' prefix.
+        with tarfile.open(out_path, archive_mode) as tar:
             tar.add(temp_json, arcname="data.json")
 
             embedded_file_count = 0
@@ -758,31 +945,37 @@ def restore_from_file(path, include_users=False):
     from django.db import connection, transaction
     from django.db.models.signals import post_save
 
+    sync_apply_ctx = nullcontext
+    try:
+        # Prevent local sync capture signals from writing to SyncChangeLog while fixtures load.
+        from core.services.sync_service import sync_apply_context
+
+        sync_apply_ctx = sync_apply_context
+    except Exception:
+        pass
+
     tmp_path = None
     extracted_tmp = None
     extracted_media_tmpdir = None
     normalized_fixture_path = None
     sanitized_fixture_path = None
+    schema_sanitized_fixture_path = None
     manifest = {}
     signals_disconnected = False
 
     try:
-        # Handle tar backed up archives that include files (gz or zst for Python 3.14+)
+        # Handle tar-backed archives that include files (.tar.gz or .tar.zst).
         if path.endswith((".tar.gz", ".tar.zst")):
             yield "Extracting archive..."
             comp = "zst" if path.endswith(".tar.zst") else "gz"
             extracted_tmp = tempfile.mkdtemp(prefix="restore-")
             extracted_media_tmpdir = os.path.join(extracted_tmp, "media")
             os.makedirs(extracted_media_tmpdir, exist_ok=True)
-            with tarfile.open(path, f"r:{comp}") as tar:
-                tar.extractall(path=extracted_tmp)
+            _extract_archive_to_dir(path, extracted_tmp, comp)
             manifest = _load_manifest(extracted_tmp)
             fixture_path = os.path.join(extracted_tmp, "data.json")
         elif path.endswith((".gz", ".zst")):
-            try:
-                import compression.zstd as zstd
-            except ImportError:
-                zstd = None
+            zstd = _get_zstd_module()
 
             yield f"Decompressing {path.split('.')[-1]} JSON..."
             tmp_path = path + ".decompressed.json"
@@ -790,6 +983,11 @@ def restore_from_file(path, include_users=False):
             if path.endswith(".zst") and zstd:
                 with zstd.open(path, "rb") as f_in, open(tmp_path, "wb") as f_out:
                     f_out.write(f_in.read())
+            elif path.endswith(".zst"):
+                raise RuntimeError(
+                    "Cannot decompress .zst backup: no zstd support available. "
+                    "Install the 'zstandard' package or restore from a .gz/.tar.gz archive."
+                )
             else:
                 with gzip.open(path, "rb") as f_in, open(tmp_path, "wb") as f_out:
                     f_out.write(f_in.read())
@@ -817,6 +1015,24 @@ def restore_from_file(path, include_users=False):
                     "Warning: some legacy natural-key references could not be normalized "
                     f"(count={unresolved_ref_count})."
                 )
+
+        (
+            schema_sanitized_fixture_path,
+            renamed_field_count,
+            dropped_field_count,
+            dropped_fields_by_model,
+        ) = _sanitize_fixture_model_fields(fixture_path)
+        if schema_sanitized_fixture_path:
+            fixture_path = schema_sanitized_fixture_path
+            yield (
+                "Sanitized fixture fields for current schema: "
+                f"renamed_fields={renamed_field_count}, dropped_unknown_fields={dropped_field_count}"
+            )
+            if dropped_fields_by_model:
+                dropped_preview = ", ".join(
+                    f"{label}={count}" for label, count in sorted(dropped_fields_by_model.items())[:5]
+                )
+                yield f"Warning: dropped unknown fields by model: {dropped_preview}"
 
         # --- Automatic detection of user/system tables in backup ---
         user_system_prefixes = ("auth.", "admin.", "sessions.", "contenttypes.", "debug_toolbar.")
@@ -922,7 +1138,8 @@ def restore_from_file(path, include_users=False):
                                     cursor.execute(f'TRUNCATE TABLE "{table}" RESTART IDENTITY CASCADE;')
 
                 yield "Loading data via loaddata (this may take a few minutes)..."
-                call_command("loaddata", fixture_path)
+                with sync_apply_ctx():
+                    call_command("loaddata", fixture_path)
                 yield "Data loading complete."
 
                 # Commit the savepoint
@@ -1119,6 +1336,11 @@ def restore_from_file(path, include_users=False):
                 os.unlink(sanitized_fixture_path)
             except Exception:
                 pass
+        if schema_sanitized_fixture_path and os.path.exists(schema_sanitized_fixture_path):
+            try:
+                os.unlink(schema_sanitized_fixture_path)
+            except Exception:
+                pass
         if normalized_fixture_path and os.path.exists(normalized_fixture_path):
             try:
                 os.unlink(normalized_fixture_path)
@@ -1132,12 +1354,212 @@ def restore_from_file(path, include_users=False):
 
 
 def check_media_files():
-    """Verify disk presence for files referenced in FileFields. Returns list of dicts."""
-    from django.apps import apps
-    from django.core.files.storage import default_storage
-    from django.db.models.fields.files import FileField
+    """Verify storage presence for files referenced in FileFields."""
+
+    def _append_unique(values: list[str], seen: set[str], value: str | None) -> None:
+        normalized = _normalize_storage_key(value)
+        if not normalized or normalized in seen:
+            return
+        seen.add(normalized)
+        values.append(normalized)
+
+    def _known_storage_prefixes() -> list[str]:
+        prefixes: list[str] = []
+        seen: set[str] = set()
+
+        _append_unique(prefixes, seen, getattr(default_storage, "location", ""))
+
+        media_url = urlparse(str(getattr(settings, "MEDIA_URL", "") or "")).path
+        _append_unique(prefixes, seen, media_url)
+
+        raw_media_root = str(getattr(settings, "MEDIA_ROOT", "") or "").replace("\\", "/").strip().strip("/")
+        if raw_media_root:
+            parts = [part for part in raw_media_root.split("/") if part]
+            for depth in (1, 2, 3):
+                if len(parts) >= depth:
+                    _append_unique(prefixes, seen, "/".join(parts[-depth:]))
+
+        return prefixes
+
+    def _strip_prefix(path: str, prefix: str) -> str:
+        if not prefix:
+            return path
+        if path == prefix:
+            return ""
+        prefixed = f"{prefix}/"
+        if path.startswith(prefixed):
+            return path[len(prefixed) :]
+        return path
+
+    def _normalize_storage_key(raw_path: str | None) -> str:
+        if raw_path is None:
+            return ""
+
+        value = str(raw_path).strip().strip("'").strip('"')
+        if not value:
+            return ""
+
+        parsed = urlparse(value)
+        if parsed.scheme and parsed.netloc:
+            value = parsed.path or ""
+        else:
+            value = value.split("?", 1)[0]
+
+        value = unquote(value).replace("\\", "/")
+        while "//" in value:
+            value = value.replace("//", "/")
+
+        media_root = str(getattr(settings, "MEDIA_ROOT", "") or "").replace("\\", "/").rstrip("/")
+        if media_root and value.startswith(media_root):
+            value = value[len(media_root) :]
+
+        media_url_path = urlparse(str(getattr(settings, "MEDIA_URL", "") or "")).path.replace("\\", "/").strip()
+        if media_url_path and value.startswith(media_url_path):
+            value = value[len(media_url_path) :]
+
+        return value.strip().strip("/")
+
+    def _candidate_storage_keys(raw_path: str | None) -> list[str]:
+        base = _normalize_storage_key(raw_path)
+        if not base:
+            return []
+
+        prefixes = _known_storage_prefixes()
+        candidates: list[str] = []
+        seen: set[str] = set()
+
+        _append_unique(candidates, seen, base)
+        queue = [base]
+
+        while queue:
+            current = queue.pop(0)
+            for prefix in prefixes:
+                stripped = _strip_prefix(current, prefix)
+                normalized = _normalize_storage_key(stripped)
+                if normalized and normalized not in seen:
+                    seen.add(normalized)
+                    candidates.append(normalized)
+                    queue.append(normalized)
+
+        documents_folder = _normalize_storage_key(getattr(settings, "DOCUMENTS_FOLDER", "documents"))
+        if documents_folder:
+            marker = f"{documents_folder}/"
+            for current in list(candidates):
+                marker_index = current.find(marker)
+                if marker_index > 0:
+                    _append_unique(candidates, seen, current[marker_index:])
+
+        for current in list(candidates):
+            for prefix in prefixes:
+                if not prefix:
+                    continue
+                prefixed = f"{prefix}/{current}"
+                _append_unique(candidates, seen, prefixed)
+
+        return candidates
+
+    def _join_storage_key(*parts: str) -> str:
+        normalized_parts = []
+        for part in parts:
+            normalized = _normalize_storage_key(part)
+            if normalized:
+                normalized_parts.append(normalized)
+        return "/".join(normalized_parts)
+
+    def _extract_file_name(value) -> str:
+        if not value:
+            return ""
+        return _normalize_storage_key(getattr(value, "name", str(value)))
+
+    def _resolve_path_hints(obj, field, current_path: str) -> list[str]:
+        hints: list[str] = []
+        seen: set[str] = set()
+
+        def add_hint(path: str | None) -> None:
+            normalized = _normalize_storage_key(path)
+            if not normalized or normalized in seen:
+                return
+            seen.add(normalized)
+            hints.append(normalized)
+
+        current_name = _normalize_storage_key(current_path)
+        add_hint(current_name)
+
+        filename = os.path.basename(current_name) if current_name else ""
+        file_extension = os.path.splitext(filename)[1] if filename else ""
+
+        if filename:
+            try:
+                generated = field.generate_filename(obj, filename)
+                add_hint(generated)
+            except Exception:
+                pass
+
+        expected_dirs: set[str] = set()
+        upload_folder = getattr(obj, "upload_folder", None)
+        if upload_folder:
+            expected_dirs.add(_normalize_storage_key(upload_folder))
+
+        parent_application = getattr(obj, "doc_application", None)
+        if parent_application is not None:
+            parent_upload_folder = getattr(parent_application, "upload_folder", None)
+            if parent_upload_folder:
+                expected_dirs.add(_normalize_storage_key(parent_upload_folder))
+
+        customer = getattr(obj, "customer", None)
+        if customer is not None:
+            customer_upload_folder = getattr(customer, "upload_folder", None)
+            if customer_upload_folder:
+                expected_dirs.add(_normalize_storage_key(customer_upload_folder))
+
+        if filename:
+            for expected_dir in expected_dirs:
+                add_hint(_join_storage_key(expected_dir, filename))
+
+        if file_extension and "passport" in str(field.name).lower():
+            passport_filename = f"passport{file_extension}"
+            for expected_dir in expected_dirs:
+                add_hint(_join_storage_key(expected_dir, passport_filename))
+
+        return hints
+
+    def _find_existing_storage_key(
+        raw_path: str | None,
+        *,
+        exists_cache: dict[str, bool],
+        extra_hints: list[str] | None = None,
+    ) -> str | None:
+        candidates: list[str] = []
+        seen: set[str] = set()
+
+        for candidate in _candidate_storage_keys(raw_path):
+            if candidate not in seen:
+                seen.add(candidate)
+                candidates.append(candidate)
+
+        for hint in extra_hints or []:
+            for candidate in _candidate_storage_keys(hint):
+                if candidate not in seen:
+                    seen.add(candidate)
+                    candidates.append(candidate)
+
+        for candidate in candidates:
+            if candidate in exists_cache:
+                exists = exists_cache[candidate]
+            else:
+                try:
+                    exists = bool(default_storage.exists(candidate))
+                except Exception:
+                    exists = False
+                exists_cache[candidate] = exists
+
+            if exists:
+                return candidate
+
+        return None
 
     results = []
+    exists_cache: dict[str, bool] = {}
     for model in apps.get_models():
         for field in model._meta.get_fields():
             if isinstance(field, FileField):
@@ -1148,25 +1570,34 @@ def check_media_files():
                 except Exception:
                     continue
                 for obj in qs:
-                    file_field = getattr(obj, field_name)
-                    if not file_field:
+                    file_value = getattr(obj, field_name)
+                    current_path = _extract_file_name(file_value)
+                    if not current_path:
                         continue
-                    path = file_field.name
-                    exists = default_storage.exists(path)
+
+                    resolved_path = _find_existing_storage_key(
+                        current_path,
+                        exists_cache=exists_cache,
+                        extra_hints=_resolve_path_hints(obj, field, current_path),
+                    )
+                    exists = bool(resolved_path)
+
+                    path_for_url = resolved_path or current_path
                     try:
-                        url = file_field.url
-                        try:
-                            abs_path = file_field.path
-                        except Exception:
-                            abs_path = "N/A (not on local filesystem)"
+                        url = default_storage.url(path_for_url) if path_for_url else ""
                     except Exception as e:
                         url = f"ERROR: {str(e)}"
-                        abs_path = "ERROR"
+                    try:
+                        abs_path = default_storage.path(path_for_url) if path_for_url else ""
+                    except Exception:
+                        abs_path = "N/A (not on local filesystem)"
 
                     # Check for file_link discrepancy if it exists on the model
                     file_link = getattr(obj, "file_link", None)
                     discrepancy = False
-                    if file_link and url and file_link != url:
+                    if file_link and url and not str(url).startswith("ERROR:") and file_link != url:
+                        discrepancy = True
+                    if resolved_path and resolved_path != current_path:
                         discrepancy = True
 
                     results.append(
@@ -1174,7 +1605,8 @@ def check_media_files():
                             "model": model._meta.label,
                             "id": obj.pk,
                             "field": field_name,
-                            "path": path,
+                            "path": current_path,
+                            "resolved_path": resolved_path,
                             "abs_path": abs_path,
                             "exists": exists,
                             "url": url,
@@ -1186,12 +1618,212 @@ def check_media_files():
 
 
 def repair_media_paths():
-    """Attempt to find missing files if customer name changed. Returns repair log."""
-    from django.apps import apps
-    from django.core.files.storage import default_storage
-    from django.db.models.fields.files import FileField
+    """Repair DB file paths/file links by resolving existing storage object keys."""
+
+    def _append_unique(values: list[str], seen: set[str], value: str | None) -> None:
+        normalized = _normalize_storage_key(value)
+        if not normalized or normalized in seen:
+            return
+        seen.add(normalized)
+        values.append(normalized)
+
+    def _known_storage_prefixes() -> list[str]:
+        prefixes: list[str] = []
+        seen: set[str] = set()
+
+        _append_unique(prefixes, seen, getattr(default_storage, "location", ""))
+
+        media_url = urlparse(str(getattr(settings, "MEDIA_URL", "") or "")).path
+        _append_unique(prefixes, seen, media_url)
+
+        raw_media_root = str(getattr(settings, "MEDIA_ROOT", "") or "").replace("\\", "/").strip().strip("/")
+        if raw_media_root:
+            parts = [part for part in raw_media_root.split("/") if part]
+            for depth in (1, 2, 3):
+                if len(parts) >= depth:
+                    _append_unique(prefixes, seen, "/".join(parts[-depth:]))
+
+        return prefixes
+
+    def _strip_prefix(path: str, prefix: str) -> str:
+        if not prefix:
+            return path
+        if path == prefix:
+            return ""
+        prefixed = f"{prefix}/"
+        if path.startswith(prefixed):
+            return path[len(prefixed) :]
+        return path
+
+    def _normalize_storage_key(raw_path: str | None) -> str:
+        if raw_path is None:
+            return ""
+
+        value = str(raw_path).strip().strip("'").strip('"')
+        if not value:
+            return ""
+
+        parsed = urlparse(value)
+        if parsed.scheme and parsed.netloc:
+            value = parsed.path or ""
+        else:
+            value = value.split("?", 1)[0]
+
+        value = unquote(value).replace("\\", "/")
+        while "//" in value:
+            value = value.replace("//", "/")
+
+        media_root = str(getattr(settings, "MEDIA_ROOT", "") or "").replace("\\", "/").rstrip("/")
+        if media_root and value.startswith(media_root):
+            value = value[len(media_root) :]
+
+        media_url_path = urlparse(str(getattr(settings, "MEDIA_URL", "") or "")).path.replace("\\", "/").strip()
+        if media_url_path and value.startswith(media_url_path):
+            value = value[len(media_url_path) :]
+
+        return value.strip().strip("/")
+
+    def _candidate_storage_keys(raw_path: str | None) -> list[str]:
+        base = _normalize_storage_key(raw_path)
+        if not base:
+            return []
+
+        prefixes = _known_storage_prefixes()
+        candidates: list[str] = []
+        seen: set[str] = set()
+
+        _append_unique(candidates, seen, base)
+        queue = [base]
+
+        while queue:
+            current = queue.pop(0)
+            for prefix in prefixes:
+                stripped = _strip_prefix(current, prefix)
+                normalized = _normalize_storage_key(stripped)
+                if normalized and normalized not in seen:
+                    seen.add(normalized)
+                    candidates.append(normalized)
+                    queue.append(normalized)
+
+        documents_folder = _normalize_storage_key(getattr(settings, "DOCUMENTS_FOLDER", "documents"))
+        if documents_folder:
+            marker = f"{documents_folder}/"
+            for current in list(candidates):
+                marker_index = current.find(marker)
+                if marker_index > 0:
+                    _append_unique(candidates, seen, current[marker_index:])
+
+        for current in list(candidates):
+            for prefix in prefixes:
+                if not prefix:
+                    continue
+                prefixed = f"{prefix}/{current}"
+                _append_unique(candidates, seen, prefixed)
+
+        return candidates
+
+    def _join_storage_key(*parts: str) -> str:
+        normalized_parts = []
+        for part in parts:
+            normalized = _normalize_storage_key(part)
+            if normalized:
+                normalized_parts.append(normalized)
+        return "/".join(normalized_parts)
+
+    def _extract_file_name(value) -> str:
+        if not value:
+            return ""
+        return _normalize_storage_key(getattr(value, "name", str(value)))
+
+    def _resolve_path_hints(obj, field, current_path: str) -> list[str]:
+        hints: list[str] = []
+        seen: set[str] = set()
+
+        def add_hint(path: str | None) -> None:
+            normalized = _normalize_storage_key(path)
+            if not normalized or normalized in seen:
+                return
+            seen.add(normalized)
+            hints.append(normalized)
+
+        current_name = _normalize_storage_key(current_path)
+        add_hint(current_name)
+
+        filename = os.path.basename(current_name) if current_name else ""
+        file_extension = os.path.splitext(filename)[1] if filename else ""
+
+        if filename:
+            try:
+                generated = field.generate_filename(obj, filename)
+                add_hint(generated)
+            except Exception:
+                pass
+
+        expected_dirs: set[str] = set()
+        upload_folder = getattr(obj, "upload_folder", None)
+        if upload_folder:
+            expected_dirs.add(_normalize_storage_key(upload_folder))
+
+        parent_application = getattr(obj, "doc_application", None)
+        if parent_application is not None:
+            parent_upload_folder = getattr(parent_application, "upload_folder", None)
+            if parent_upload_folder:
+                expected_dirs.add(_normalize_storage_key(parent_upload_folder))
+
+        customer = getattr(obj, "customer", None)
+        if customer is not None:
+            customer_upload_folder = getattr(customer, "upload_folder", None)
+            if customer_upload_folder:
+                expected_dirs.add(_normalize_storage_key(customer_upload_folder))
+
+        if filename:
+            for expected_dir in expected_dirs:
+                add_hint(_join_storage_key(expected_dir, filename))
+
+        if file_extension and "passport" in str(field.name).lower():
+            passport_filename = f"passport{file_extension}"
+            for expected_dir in expected_dirs:
+                add_hint(_join_storage_key(expected_dir, passport_filename))
+
+        return hints
+
+    def _find_existing_storage_key(
+        raw_path: str | None,
+        *,
+        exists_cache: dict[str, bool],
+        extra_hints: list[str] | None = None,
+    ) -> str | None:
+        candidates: list[str] = []
+        seen: set[str] = set()
+
+        for candidate in _candidate_storage_keys(raw_path):
+            if candidate not in seen:
+                seen.add(candidate)
+                candidates.append(candidate)
+
+        for hint in extra_hints or []:
+            for candidate in _candidate_storage_keys(hint):
+                if candidate not in seen:
+                    seen.add(candidate)
+                    candidates.append(candidate)
+
+        for candidate in candidates:
+            if candidate in exists_cache:
+                exists = exists_cache[candidate]
+            else:
+                try:
+                    exists = bool(default_storage.exists(candidate))
+                except Exception:
+                    exists = False
+                exists_cache[candidate] = exists
+
+            if exists:
+                return candidate
+
+        return None
 
     repairs = []
+    exists_cache: dict[str, bool] = {}
     for model in apps.get_models():
         for field in model._meta.get_fields():
             if isinstance(field, FileField):
@@ -1201,30 +1833,58 @@ def repair_media_paths():
                 except Exception:
                     continue
                 for obj in qs:
-                    file_field = getattr(obj, field_name)
-                    if not file_field or default_storage.exists(file_field.name):
+                    file_value = getattr(obj, field_name)
+                    current_path = _extract_file_name(file_value)
+                    if not current_path:
                         continue
 
-                    # File is missing. Check if the model has a property 'upload_folder' or similar
-                    # that suggests where it SHOULD be now.
-                    expected_dir = None
-                    if hasattr(obj, "upload_folder"):
-                        expected_dir = obj.upload_folder
-                    elif hasattr(obj, "doc_application") and hasattr(obj.doc_application, "upload_folder"):
-                        # For Document model
-                        expected_dir = obj.doc_application.upload_folder
+                    resolved_path = _find_existing_storage_key(
+                        current_path,
+                        exists_cache=exists_cache,
+                        extra_hints=_resolve_path_hints(obj, field, current_path),
+                    )
+                    if not resolved_path:
+                        continue
 
-                    if expected_dir:
-                        filename = os.path.basename(file_field.name)
-                        new_path = f"{expected_dir}/{filename}"
-                        if default_storage.exists(new_path):
-                            old_path = file_field.name
-                            setattr(obj, field_name, new_path)
-                            # Also update file_link if present
-                            if hasattr(obj, "file_link"):
-                                obj.file_link = default_storage.url(new_path)
-                            obj.save(update_fields=[field_name] + (["file_link"] if hasattr(obj, "file_link") else []))
-                            repairs.append(f"Fixed {model._meta.label} #{obj.pk}: moved from {old_path} to {new_path}")
+                    needs_path_update = resolved_path != current_path
+                    has_file_link = hasattr(obj, "file_link")
+                    needs_link_update = False
+                    desired_file_link = None
+
+                    if has_file_link:
+                        try:
+                            desired_file_link = default_storage.url(resolved_path)
+                        except Exception:
+                            desired_file_link = None
+                        current_file_link = getattr(obj, "file_link", None)
+                        needs_link_update = bool(desired_file_link and current_file_link != desired_file_link)
+
+                    if not needs_path_update and not needs_link_update:
+                        continue
+
+                    update_fields: list[str] = []
+                    old_path = current_path
+
+                    if needs_path_update:
+                        setattr(obj, field_name, resolved_path)
+                        update_fields.append(field_name)
+                    if needs_link_update and desired_file_link is not None:
+                        obj.file_link = desired_file_link
+                        update_fields.append("file_link")
+
+                    if update_fields:
+                        obj.save(update_fields=update_fields)
+                        if needs_path_update and needs_link_update:
+                            repairs.append(
+                                f"Fixed {model._meta.label} #{obj.pk}: relinked {old_path} -> {resolved_path} and "
+                                "refreshed file_link"
+                            )
+                        elif needs_path_update:
+                            repairs.append(f"Fixed {model._meta.label} #{obj.pk}: relinked {old_path} -> {resolved_path}")
+                        else:
+                            repairs.append(
+                                f"Fixed {model._meta.label} #{obj.pk}: refreshed file_link for {resolved_path}"
+                            )
 
     return repairs
 

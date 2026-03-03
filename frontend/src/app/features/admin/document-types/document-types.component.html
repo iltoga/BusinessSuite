@@ -8,7 +8,11 @@
 
   <!-- Edit/Create Modal Template -->
   <ng-template #documentTypeModalTemplate>
-    <form [formGroup]="documentTypeForm" (ngSubmit)="saveDocumentType()" class="space-y-4 py-4">
+    <form
+      [formGroup]="documentTypeForm"
+      (ngSubmit)="saveDocumentType()"
+      class="space-y-4 py-4 max-h-[calc(100vh-11rem)] overflow-y-auto pr-1"
+    >
       <div class="space-y-4">
         <div></div>
 
@@ -81,6 +85,14 @@
               rows="4"
             ></textarea>
           </div>
+
+          <app-json-field-mapping-editor
+            formControlName="aiStructuredOutput"
+            [title]="'AI Data To Extract'"
+            [description]="
+              'Strict structured output schema for Run OCR (array of field_name and description).'
+            "
+          />
         }
 
         <div class="grid grid-cols-2 md:grid-cols-3 gap-4">

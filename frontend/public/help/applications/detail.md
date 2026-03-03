@@ -46,5 +46,7 @@ Manage all files related to this application.
 
 ### Document Upload Features
 
-- **OCR**: Use "Run OCR" on passports to automatically extract data (Number, Expiration).
+- **OCR**: Use "Run OCR" to extract AI data using the selected document type schema.
+  - If the document type has **Has Details** enabled, extracted JSON is auto-appended to **Details**.
+  - If **Has Details** is disabled, extracted JSON is shown in a copy-ready dialog (close with `x` or `Esc`).
 - **Expiration**: specific expiration dates for documents.

@@ -1,0 +1,8 @@
+:host {
+  display: block;
+}
+
+table th,
+table td {
+  vertical-align: top;
+}

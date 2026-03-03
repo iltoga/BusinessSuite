@@ -4,6 +4,7 @@ import {
   Component,
   ElementRef,
   computed,
+  effect,
   inject,
   input,
   output,
@@ -46,6 +47,7 @@ export class FileUploadComponent {
   private readonly sanitizer = inject(DomSanitizer);
   private readonly fileInput = viewChild.required<ElementRef<HTMLInputElement>>('fileInput');
   readonly isDragging = signal(false);
+  readonly imagePreviewLoading = signal(false);
 
   readonly hasImagePreview = computed(
     () =>
@@ -57,11 +59,25 @@ export class FileUploadComponent {
     () => this.previewType() === 'pdf' && Boolean(this.sanitizedPreview()),
   );
   readonly showPreview = computed(() => this.hasImagePreview() || this.hasPdfPreview());
-  readonly hasPreviewCandidate = computed(() => Boolean(this.fileName()) || Boolean(this.previewUrl()));
+  readonly hasPreviewCandidate = computed(
+    () => Boolean(this.fileName()) || Boolean(this.previewUrl()),
+  );
   readonly showPreviewContainer = computed(
     () => this.previewLoading() || this.showPreview() || this.hasPreviewCandidate(),
   );
-  readonly showPreviewSkeleton = computed(() => this.previewLoading());
+  readonly hasPreviewUrl = computed(() => Boolean(this.previewUrl()));
+  readonly showImageLoadingSkeleton = computed(
+    () => this.previewType() === 'image' && this.hasPreviewUrl() && this.imagePreviewLoading(),
+  );
+  readonly showPreviewSkeleton = computed(
+    () => this.previewLoading() || this.showImageLoadingSkeleton(),
+  );
+  readonly previewImageClass = computed(() =>
+    mergeClasses(
+      'h-full w-full max-h-full max-w-full object-contain transition-opacity duration-150',
+      this.showImageLoadingSkeleton() ? 'opacity-0' : 'opacity-100',
+    ),
+  );
 
   readonly sanitizedPreview = computed<SafeResourceUrl | null>(() => {
     const url = this.previewUrl();
@@ -70,6 +86,13 @@ export class FileUploadComponent {
     }
     return sanitizeResourceUrl(url, this.sanitizer);
   });
+
+  constructor() {
+    effect(() => {
+      const shouldTrackImageLoad = this.previewType() === 'image' && Boolean(this.previewUrl());
+      this.imagePreviewLoading.set(shouldTrackImageLoad);
+    });
+  }
 
   onBrowseClick(): void {
     if (this.disabled()) {
@@ -114,6 +137,14 @@ export class FileUploadComponent {
   clearSelection(): void {
     this.fileInput().nativeElement.value = '';
     this.cleared.emit();
+  }
+
+  onPreviewImageLoaded(): void {
+    this.imagePreviewLoading.set(false);
+  }
+
+  onPreviewImageError(): void {
+    this.imagePreviewLoading.set(false);
   }
 
   getDropzoneClasses(): string {

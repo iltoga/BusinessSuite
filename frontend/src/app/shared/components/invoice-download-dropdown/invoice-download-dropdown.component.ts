@@ -7,14 +7,22 @@ import {
 } from '@/shared/components/button/button.variants';
 import { ZardDropdownImports } from '@/shared/components/dropdown/dropdown.imports';
 import { ZardIconComponent } from '@/shared/components/icon/icon.component';
+import { PdfViewerHostComponent } from '@/shared/components/pdf-viewer-host/pdf-viewer-host.component';
 import { downloadBlob } from '@/shared/utils/file-download';
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-invoice-download-dropdown',
   standalone: true,
-  imports: [CommonModule, ...ZardDropdownImports, ZardButtonComponent, ZardIconComponent],
+  imports: [
+    CommonModule,
+    ...ZardDropdownImports,
+    ZardButtonComponent,
+    ZardIconComponent,
+    PdfViewerHostComponent,
+  ],
   templateUrl: './invoice-download-dropdown.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -30,6 +38,11 @@ export class InvoiceDownloadDropdownComponent {
 
   loading = signal(false);
   progress = signal<number | null>(null);
+  printPreviewOpen = signal(false);
+  printPreviewLoading = signal(false);
+  printPreviewError = signal<string | null>(null);
+  printPreviewBlob = signal<Blob | null>(null);
+  printPreviewFilename = signal('invoice.pdf');
 
   download(format: 'docx' | 'pdf') {
     if (this.loading()) return;
@@ -54,32 +67,87 @@ export class InvoiceDownloadDropdownComponent {
     });
   }
 
+  openPrintPreview() {
+    if (this.loading()) return;
+
+    this.printPreviewOpen.set(true);
+    this.printPreviewLoading.set(true);
+    this.printPreviewError.set(null);
+    this.printPreviewBlob.set(null);
+    this.printPreviewFilename.set(this.defaultPdfFilename());
+    this.loading.set(true);
+
+    this.generatePdfBlob(() => {})
+      .then(({ blob, filename }) => {
+        this.printPreviewBlob.set(blob);
+        this.printPreviewFilename.set(filename);
+      })
+      .catch((err) => {
+        console.error('Print preview failed', err);
+        this.printPreviewError.set('Unable to generate PDF preview. Please try again.');
+      })
+      .finally(() => {
+        this.printPreviewLoading.set(false);
+        this.loading.set(false);
+      });
+  }
+
+  closePrintPreview() {
+    this.printPreviewOpen.set(false);
+    this.printPreviewLoading.set(false);
+    this.printPreviewError.set(null);
+    this.printPreviewBlob.set(null);
+  }
+
+  downloadPreviewPdf() {
+    const blob = this.printPreviewBlob();
+    if (!blob) {
+      return;
+    }
+    downloadBlob(blob, this.printPreviewFilename());
+  }
+
   private startAsyncPdfDownload() {
     this.loading.set(true);
     this.progress.set(0);
 
-    this.invoicesService
-      .invoicesDownloadAsyncCreate(this.invoiceId(), { format: 'pdf' })
-      .subscribe({
-        next: (payload: any) => {
-          const streamUrl = payload?.stream_url || payload?.streamUrl;
-          const downloadUrl = payload?.download_url || payload?.downloadUrl;
-          if (!streamUrl) {
-            this.loading.set(false);
-            this.progress.set(null);
-            return;
-          }
-          this.streamDownloadProgress(streamUrl, downloadUrl);
-        },
-        error: (err: any) => {
-          console.error('Async download failed', err);
-          this.loading.set(false);
-          this.progress.set(null);
-        },
+    this.generatePdfBlob((progress) => this.progress.set(progress))
+      .then(({ blob, filename }) => {
+        this.progress.set(100);
+        downloadBlob(blob, filename);
+        setTimeout(() => this.progress.set(null), 2000);
+      })
+      .catch((err) => {
+        console.error('Async download failed', err);
+        setTimeout(() => this.progress.set(null), 3000);
+      })
+      .finally(() => {
+        this.loading.set(false);
       });
   }
 
-  private async streamDownloadProgress(streamUrl: string, downloadUrl?: string) {
+  private async generatePdfBlob(
+    onProgress: (progress: number) => void,
+  ): Promise<{ blob: Blob; filename: string }> {
+    const payload = await firstValueFrom(
+      this.invoicesService.invoicesDownloadAsyncCreate(this.invoiceId(), { format: 'pdf' }),
+    );
+    const streamUrl = payload?.['stream_url'] || payload?.['streamUrl'];
+    const downloadUrl = payload?.['download_url'] || payload?.['downloadUrl'];
+
+    if (!streamUrl) {
+      throw new Error('Missing stream URL in PDF generation response');
+    }
+
+    const finalUrl = await this.streamDownloadProgress(streamUrl, downloadUrl, onProgress);
+    return this.fetchFile(finalUrl);
+  }
+
+  private async streamDownloadProgress(
+    streamUrl: string,
+    downloadUrl: string | undefined,
+    onProgress: (progress: number) => void,
+  ): Promise<string> {
     try {
       const token = this.authService.getToken();
       const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
@@ -95,6 +163,36 @@ export class InvoiceDownloadDropdownComponent {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
+      const processEvent = (eventText: string): string | null => {
+        if (!eventText.trim()) return null;
+        const lines = eventText.split('\n');
+        let eventType = 'message';
+        let eventData = '';
+        lines.forEach((line) => {
+          if (line.startsWith('event: ')) {
+            eventType = line.substring(7);
+          } else if (line.startsWith('data: ')) {
+            eventData = line.substring(6);
+          }
+        });
+
+        if (!eventData) return null;
+        let data: any;
+        try {
+          data = JSON.parse(eventData);
+        } catch (err) {
+          console.error('Failed to parse download stream event', err);
+          throw err;
+        }
+        const result = this.handleStreamEvent(eventType, data, downloadUrl, onProgress);
+        if (result.status === 'complete') {
+          return result.url;
+        }
+        if (result.status === 'error') {
+          throw new Error(result.message);
+        }
+        return null;
+      };
 
       while (true) {
         const { done, value } = await reader.read();
@@ -103,68 +201,67 @@ export class InvoiceDownloadDropdownComponent {
         const events = buffer.split('\n\n');
         buffer = events.pop() || '';
 
-        events.forEach((eventText) => {
-          if (!eventText.trim()) return;
-          const lines = eventText.split('\n');
-          let eventType = 'message';
-          let eventData = '';
-          lines.forEach((line) => {
-            if (line.startsWith('event: ')) {
-              eventType = line.substring(7);
-            } else if (line.startsWith('data: ')) {
-              eventData = line.substring(6);
-            }
-          });
-
-          if (!eventData) return;
-          try {
-            const data = JSON.parse(eventData);
-            this.handleStreamEvent(eventType, data, downloadUrl);
-          } catch (err) {
-            console.error('Failed to parse download stream event', err);
+        for (const eventText of events) {
+          const completedUrl = processEvent(eventText);
+          if (completedUrl) {
+            return completedUrl;
           }
-        });
+        }
       }
+
+      if (buffer.trim()) {
+        const trailingEvents = buffer.split('\n\n').filter((eventText) => eventText.trim());
+        for (const eventText of trailingEvents) {
+          const completedUrl = processEvent(eventText);
+          if (completedUrl) {
+            return completedUrl;
+          }
+        }
+      }
+
+      throw new Error('Download stream closed before completion');
     } catch (err) {
       console.error('Download stream error', err);
-      this.loading.set(false);
-      this.progress.set(null);
+      throw err;
     }
   }
 
-  private handleStreamEvent(eventType: string, data: any, downloadUrl?: string) {
+  private handleStreamEvent(
+    eventType: string,
+    data: any,
+    downloadUrl: string | undefined,
+    onProgress: (progress: number) => void,
+  ):
+    | { status: 'continue' }
+    | { status: 'complete'; url: string }
+    | { status: 'error'; message: string } {
     switch (eventType) {
       case 'start':
       case 'progress': {
         const progress = typeof data.progress === 'number' ? data.progress : 0;
-        this.progress.set(progress);
-        break;
+        onProgress(progress);
+        return { status: 'continue' };
       }
       case 'complete': {
-        this.progress.set(100);
-        this.loading.set(false);
         const finalUrl = data.download_url || data.downloadUrl || downloadUrl;
-        if (finalUrl) {
-          // Use authenticated fetch to download the file so Authorization header is included
-          // (window.location.assign would not include the Bearer token and may return 401)
-          this.fetchAndDownloadFile(finalUrl).catch((err) => {
-            console.error('Failed to download file after completion', err);
-          });
+        if (!finalUrl) {
+          return {
+            status: 'error',
+            message: 'PDF generation completed without a download URL',
+          };
         }
-        // Hide progress bar after a short delay
-        setTimeout(() => this.progress.set(null), 2000);
-        break;
+        return { status: 'complete', url: finalUrl };
       }
       case 'error':
       default:
-        this.loading.set(false);
-        // Hide error state after a few seconds
-        setTimeout(() => this.progress.set(null), 3000);
-        break;
+        return {
+          status: 'error',
+          message: data?.message || data?.detail || 'PDF generation failed',
+        };
     }
   }
 
-  private async fetchAndDownloadFile(url: string) {
+  private async fetchFile(url: string): Promise<{ blob: Blob; filename: string }> {
     const token = this.authService.getToken();
     const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
 
@@ -178,9 +275,11 @@ export class InvoiceDownloadDropdownComponent {
     }
 
     const blob = await response.blob();
+    const filename = this.extractFilename(response.headers.get('Content-Disposition') || '', url);
+    return { blob, filename };
+  }
 
-    // try to parse filename from Content-Disposition header
-    const contentDisposition = response.headers.get('Content-Disposition') || '';
+  private extractFilename(contentDisposition: string, fallbackUrl: string): string {
     let filename = `${this.invoiceNumber()}_${this.customerName()}`.replace(/\s+/g, '_');
     const match = /filename\*?=(?:UTF-8'')?"?([^";]*)"?/.exec(contentDisposition);
     if (match && match[1]) {
@@ -191,10 +290,13 @@ export class InvoiceDownloadDropdownComponent {
       }
     } else {
       // fallback to PDF extension
-      const ext = url.endsWith('.pdf') ? 'pdf' : url.endsWith('.docx') ? 'docx' : 'bin';
+      const ext = fallbackUrl.endsWith('.docx') ? 'docx' : 'pdf';
       filename = `${filename}.${ext}`;
     }
+    return filename;
+  }
 
-    downloadBlob(blob, filename);
+  private defaultPdfFilename(): string {
+    return `${this.invoiceNumber()}_${this.customerName()}.pdf`.replace(/\s+/g, '_');
   }
 }

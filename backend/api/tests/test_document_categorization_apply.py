@@ -113,3 +113,6 @@ class DocumentCategorizationApplyTests(TestCase):
         self.assertEqual(self.document.expiration_date, date(2031, 2, 14))
         self.assertEqual(self.document.doc_number, "ITK-BULK-100")
         self.assertEqual(self.document.details, "## ITK\n- Permit Number: ITK-BULK-100")
+        self.assertEqual(self.document.ai_validation_status, Document.AI_VALIDATION_VALID)
+        self.assertTrue(self.document.ai_validation)
+        self.assertEqual(self.document.ai_validation_result, self.item.validation_result)

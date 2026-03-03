@@ -82,7 +82,7 @@ The hybrid cache system is a production-grade caching architecture that combines
 │                    Cache Layer - Redis              │             │
 │  ┌──────────────────────────────────────────────────────────┐   │
 │  │                      Redis Cache                         │   │
-│  │  DB 0: Huey Tasks  │  DB 1: Django Cache                 │   │
+│  │  DB 0: Dramatiq Tasks  │  DB 1: Django Cache                 │   │
 │  │  DB 2: Cacheops    │  DB 3: Benchmark                    │   │
 │  │  DB 4: Test        │                                      │   │
 │  └──────────────────────────────────────────────────────────┘   │
@@ -835,7 +835,7 @@ CALENDAR_REMINDER_STREAM_CURSOR_CACHE_KEY
 #### Cache Backend Separation
 
 **Redis Database Allocation**:
-- DB 0: Huey task queue (existing)
+- DB 0: Dramatiq task queue (existing)
 - DB 1: Django cache (existing patterns + namespace version keys)
 - DB 2: Cacheops query cache (new, namespaced)
 - DB 3: Benchmark system (new, isolated)
@@ -1005,7 +1005,7 @@ The hybrid cache system uses multiple Redis databases to isolate different consu
 
 | Database | Consumer | Purpose | Key Examples | Configuration |
 |----------|----------|---------|--------------|---------------|
-| **DB 0** | Huey Task Queue | Background task queue and results | `huey.task.*`, `huey.result.*` | `HUEY['connection']['db'] = 0` |
+| **DB 0** | Dramatiq Task Queue | Background task queue and results | `dramatiq.task.*`, `dramatiq.result.*` | `DRAMATIQ['connection']['db'] = 0` |
 | **DB 1** | Django Cache | Django cache backend, version keys, existing patterns | `cache_user_version:123`, `META_RUNTIME_ACCESS_TOKEN_CACHE_KEY`, `invoice_seq_2024` | `CACHES['default']['LOCATION'] = 'redis://redis:6379/1'` |
 | **DB 2** | Cacheops | ORM query cache with namespace prefixes | `cache:123:v5:cacheops:abc123def456` | `CACHEOPS_REDIS = 'redis://redis:6379/2'` |
 | **DB 3** | Benchmark System | Performance testing and metrics | `benchmark:*`, `metrics:*` | `BENCHMARK_REDIS_DB = 3` |
@@ -1013,31 +1013,31 @@ The hybrid cache system uses multiple Redis databases to isolate different consu
 
 ### Database Details
 
-#### DB 0: Huey Task Queue
+#### DB 0: Dramatiq Task Queue
 
 **Purpose**: Background task queue for asynchronous job processing
 
 **Consumers**:
-- Huey task scheduler
-- Huey workers
+- Dramatiq task scheduler
+- Dramatiq workers
 - Task result storage
 
 **Key Patterns**:
 ```
-huey.task.{task_id}
-huey.result.{task_id}
-huey.schedule.{timestamp}
+dramatiq.task.{task_id}
+dramatiq.result.{task_id}
+dramatiq.schedule.{timestamp}
 ```
 
 **Configuration** (from `settings/base.py`):
 ```python
-HUEY = {
-    'huey_class': 'huey.contrib.redis_huey.RedisHuey',
+DRAMATIQ = {
+    'dramatiq_class': 'dramatiq.contrib.redis_dramatiq.RedisDramatiq',
     'name': 'business_suite',
     'connection': {
         'host': 'redis',
         'port': 6379,
-        'db': 0,  # DB 0 for Huey
+        'db': 0,  # DB 0 for Dramatiq
     },
 }
 ```
@@ -1210,7 +1210,7 @@ if TESTING:
 Different consumers use different databases, preventing key collisions:
 
 ```
-DB 0: huey.task.123
+DB 0: dramatiq.task.123
 DB 1: cache_user_version:123
 DB 2: cache:123:v5:cacheops:abc123
 DB 3: benchmark:run:123
@@ -1234,7 +1234,7 @@ redis-cli -n 4 FLUSHDB
 redis-cli -n 1 FLUSHDB
 redis-cli -n 2 FLUSHDB
 
-# NEVER flush Huey (breaks background tasks)
+# NEVER flush Dramatiq (breaks background tasks)
 # redis-cli -n 0 FLUSHDB  # DON'T DO THIS
 ```
 
@@ -1243,7 +1243,7 @@ redis-cli -n 2 FLUSHDB
 Each database can be monitored separately:
 
 ```bash
-# Check Huey queue size
+# Check Dramatiq queue size
 redis-cli -n 0 DBSIZE
 
 # Check Django cache size
@@ -1291,8 +1291,8 @@ REDIS_HOST=redis
 REDIS_PORT=6379
 REDIS_URL=redis://redis:6379/1
 
-# Huey configuration
-HUEY_REDIS_DB=0
+# Dramatiq configuration
+DRAMATIQ_REDIS_DB=0
 
 # Benchmark configuration
 BENCHMARK_REDIS_DB=3
@@ -1310,7 +1310,7 @@ redis-cli
 
 # Check each database
 SELECT 0
-DBSIZE  # Huey tasks
+DBSIZE  # Dramatiq tasks
 
 SELECT 1
 DBSIZE  # Django cache
@@ -1326,7 +1326,7 @@ DBSIZE  # Test
 ```
 
 **Expected Sizes** (production):
-- DB 0 (Huey): 10-1000 keys (active tasks)
+- DB 0 (Dramatiq): 10-1000 keys (active tasks)
 - DB 1 (Django): 100-10,000 keys (version keys + global cache)
 - DB 2 (Cacheops): 10,000-1,000,000+ keys (query cache)
 - DB 3 (Benchmark): 0-1000 keys (temporary)
@@ -1349,7 +1349,7 @@ redis-cli -n 2 FLUSHDB
 
 **Dangerous Operations**:
 ```bash
-# NEVER flush Huey database (breaks background tasks)
+# NEVER flush Dramatiq database (breaks background tasks)
 # redis-cli -n 0 FLUSHDB  # DON'T DO THIS
 
 # NEVER flush all databases
@@ -1701,8 +1701,8 @@ CACHEOPS_DEGRADE_ON_FAILURE=true
 BENCHMARK_REDIS_DB=3
 BENCHMARK_MAX_USERS=1000
 
-# Huey configuration
-HUEY_REDIS_DB=0
+# Dramatiq configuration
+DRAMATIQ_REDIS_DB=0
 ```
 
 ### Frontend Configuration

@@ -1,3 +1,4 @@
+import { ZardIconComponent } from '@/shared/components/icon';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -21,6 +22,7 @@ export type ZardAvatarStatus = 'online' | 'offline' | 'doNotDisturb' | 'away';
 @Component({
   selector: 'z-avatar, [z-avatar]',
   standalone: true,
+  imports: [ZardIconComponent],
   template: `
     @if (zFallback() && (!zSrc() || !imageLoaded())) {
       <span class="absolute z-0 m-auto text-base font-semibold text-foreground">{{
@@ -42,69 +44,28 @@ export type ZardAvatarStatus = 'online' | 'offline' | 'doNotDisturb' | 'away';
     @if (zStatus()) {
       @switch (zStatus()) {
         @case ('online') {
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            stroke="white"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
+          <z-icon
+            zType="circle"
             class="absolute -right-1.25 -bottom-1.25 z-20 h-5 w-5 text-green-500"
-          >
-            <circle cx="12" cy="12" r="10" fill="currentColor" />
-          </svg>
+          />
         }
         @case ('offline') {
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            stroke="white"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
+          <z-icon
+            zType="circle"
             class="absolute -right-1.25 -bottom-1.25 z-20 h-5 w-5 text-red-500"
-          >
-            <circle cx="12" cy="12" r="10" fill="currentColor" />
-          </svg>
+          />
         }
         @case ('doNotDisturb') {
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            stroke="white"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
+          <z-icon
+            zType="circle-x"
             class="absolute -right-1.25 -bottom-1.25 z-20 h-5 w-5 text-red-500"
-          >
-            <circle cx="12" cy="12" r="10" />
-            <path d="M8 12h8" fill="currentColor" />
-          </svg>
+          />
         }
         @case ('away') {
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            stroke="white"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            class="absolute -right-1.25 -bottom-1.25 z-20 h-5 w-5 rotate-y-180 text-yellow-400"
-          >
-            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" fill="currentColor" />
-          </svg>
+          <z-icon
+            zType="moon"
+            class="absolute -right-1.25 -bottom-1.25 z-20 h-5 w-5 text-yellow-400"
+          />
         }
       }
     }

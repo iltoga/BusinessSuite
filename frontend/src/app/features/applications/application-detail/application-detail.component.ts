@@ -33,6 +33,7 @@ import {
   DocumentCategorizationService,
   type CategorizationSseEvent,
   type CategorizationFileResult as ServiceFileResult,
+  type ValidateCategoryResponse,
 } from '@/core/services/document-categorization.service';
 import { DocumentsService } from '@/core/services/documents.service';
 import { GlobalToastService } from '@/core/services/toast.service';
@@ -43,7 +44,7 @@ import { ZardComboboxComponent, type ZardComboboxOption } from '@/shared/compone
 import { ZardDateInputComponent } from '@/shared/components/date-input';
 import { DocumentPreviewComponent } from '@/shared/components/document-preview';
 import { FileUploadComponent } from '@/shared/components/file-upload';
-import { ZardIconComponent } from '@/shared/components/icon';
+import { ZardIconComponent, type ZardIcon } from '@/shared/components/icon';
 import { ImageMagnifierComponent } from '@/shared/components/image-magnifier';
 import { ZardInputDirective } from '@/shared/components/input';
 import { ZardPopoverComponent, ZardPopoverDirective } from '@/shared/components/popover';
@@ -56,6 +57,10 @@ import { ZardTooltipImports } from '@/shared/components/tooltip';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 import { downloadBlob } from '@/shared/utils/file-download';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
+import {
+  buildLocalFilePreview,
+  inferPreviewTypeFromUrl,
+} from '@/shared/utils/document-preview-source';
 import { Subscription } from 'rxjs';
 
 import { MultiFileUploadComponent } from '@/shared/components/multi-file-upload/multi-file-upload.component';
@@ -68,6 +73,11 @@ import {
 interface TimelineWorkflowItem {
   workflow: ApplicationWorkflow;
   gapDaysFromPrevious: number | null;
+}
+
+interface PreUploadValidationOutcome {
+  status: 'valid' | 'invalid' | 'error';
+  result: Record<string, unknown> | null;
 }
 
 @Component({
@@ -157,6 +167,8 @@ export class ApplicationDetailComponent implements OnInit {
   readonly ocrPreviewImage = signal<string | null>(null);
   readonly ocrReviewOpen = signal(false);
   readonly ocrReviewData = signal<OcrStatusResponse | null>(null);
+  readonly ocrExtractedDataDialogOpen = signal(false);
+  readonly ocrExtractedDataDialogText = signal('');
   readonly ocrMetadata = signal<Record<string, unknown> | null>(null);
   readonly ocrExtractedDataText = computed(() => this.buildOcrExtractedDataText());
   readonly ocrHasExtractedData = computed(() => this.ocrExtractedDataText() !== this.ocrNoDataText);
@@ -167,15 +179,26 @@ export class ApplicationDetailComponent implements OnInit {
   // AI validation on upload
   readonly validateWithAi = signal(true);
   readonly aiValidationInProgress = signal(false);
-  readonly aiValidationDocId = signal<number | null>(null);
-  readonly hasAiValidationRules = computed(() => {
-    const app = this.application();
-    const doc = this.selectedDocument();
-    if (!app || !doc) return false;
-    const productHasPrompt = !!app.product?.validationPrompt;
-    const docTypeHasPositive = !!doc.docType?.validationRuleAiPositive;
-    const docTypeHasNegative = !!doc.docType?.validationRuleAiNegative;
-    return productHasPrompt || docTypeHasPositive || docTypeHasNegative;
+  readonly preUploadValidationOutcome = signal<PreUploadValidationOutcome | null>(null);
+  readonly preUploadValidationReason = computed(() =>
+    this.buildPreUploadValidationReason(this.preUploadValidationOutcome()?.result ?? null),
+  );
+  readonly preUploadValidationIssues = computed(() => {
+    const result = this.preUploadValidationOutcome()?.result ?? null;
+    const issues = result?.['negative_issues'] ?? result?.['negativeIssues'];
+    return Array.isArray(issues)
+      ? issues.filter((issue): issue is string => typeof issue === 'string')
+      : [];
+  });
+  readonly shouldShowSaveAnyway = computed(() => {
+    const outcome = this.preUploadValidationOutcome();
+    return (
+      !!outcome &&
+      outcome.status !== 'valid' &&
+      this.isAiValidationEnabledForSelectedDocument() &&
+      this.validateWithAi() &&
+      !!this.selectedFile()
+    );
   });
   readonly isAiValidationEnabledForSelectedDocument = computed(() =>
     Boolean(this.selectedDocument()?.docType?.aiValidation),
@@ -184,6 +207,30 @@ export class ApplicationDetailComponent implements OnInit {
   readonly isSuperuser = this.authService.isSuperuser;
   readonly isSavingMeta = signal(false);
   readonly editableNotes = signal('');
+
+  /**
+   * Convert an incoming icon descriptor (often FontAwesome CSS classes) into a
+   * lucide/zardUI name suitable for `<z-icon>`.  Returning an empty string
+   * causes the template to skip rendering the icon.
+   */
+  mapIcon(icon: string | null | undefined): ZardIcon {
+    if (!icon) {
+      return '' as ZardIcon;
+    }
+    // handle common FontAwesome patterns like "fas fa-file-upload"
+    const faMatch = icon.match(/fa[srlb]? fa-([^ ]+)/);
+    if (faMatch) {
+      const name = faMatch[1];
+      const mapping: Record<string, ZardIcon> = {
+        'file-upload': 'upload',
+        magic: 'sparkles',
+        spinner: 'loader-circle',
+      };
+      return (mapping[name] as ZardIcon) || (name as ZardIcon);
+    }
+    // otherwise assume the string is already a valid ZardIcon name
+    return icon as ZardIcon;
+  }
   readonly selectedNewDocType = signal<string | null>(null);
   readonly docTypeOptions = signal<ZardComboboxOption[]>([]);
   readonly filteredDocTypeOptions = computed(() => {
@@ -332,6 +379,12 @@ export class ApplicationDetailComponent implements OnInit {
 
   @HostListener('window:keydown', ['$event'])
   handleGlobalKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Escape' && this.ocrExtractedDataDialogOpen()) {
+      event.preventDefault();
+      this.dismissOcrExtractedDataDialog();
+      return;
+    }
+
     const activeElement = document.activeElement;
     const isInput =
       activeElement instanceof HTMLInputElement ||
@@ -442,16 +495,27 @@ export class ApplicationDetailComponent implements OnInit {
       untracked(() => {
         const current = this.localUploadedDocuments();
 
-        // Sync local list only if the SET of documents changed (new upload, deletion, etc.)
-        // but preserve the local order if it's just a reorder.
+        // Preserve local order while always refreshing document payloads so badges/metadata
+        // (e.g. AI validation status/reason) update immediately after server-side changes.
         const currentIds = new Set(current.map((d) => d.id));
         const docsIds = new Set(docs.map((d) => d.id));
+        const docsById = new Map(docs.map((d) => [d.id, d] as const));
+        const sameIdSet =
+          currentIds.size === docsIds.size && [...docsIds].every((id) => currentIds.has(id));
 
-        const needsSync =
-          currentIds.size !== docsIds.size || [...docsIds].some((id) => !currentIds.has(id));
-
-        if (needsSync) {
+        if (!sameIdSet) {
           this.localUploadedDocuments.set([...docs]);
+          return;
+        }
+
+        const merged = current
+          .map((doc) => docsById.get(doc.id))
+          .filter((doc): doc is ApplicationDocument => Boolean(doc));
+        const hasOrderOrLengthDiff =
+          merged.length !== current.length ||
+          merged.some((doc, idx) => doc.id !== current[idx]?.id || doc !== current[idx]);
+        if (hasOrderOrLengthDiff) {
+          this.localUploadedDocuments.set(merged);
         }
       });
     });
@@ -485,12 +549,15 @@ export class ApplicationDetailComponent implements OnInit {
   openUpload(document: ApplicationDocument): void {
     this.selectedDocument.set(document);
     this.selectedFile.set(null);
+    this.clearPreUploadValidationOutcome();
     this.clearUploadPreview();
     this.loadExistingDocumentPreview(document);
     this.uploadProgress.set(null);
     this.ocrPreviewImage.set(null);
     this.ocrReviewOpen.set(false);
     this.ocrReviewData.set(null);
+    this.ocrExtractedDataDialogOpen.set(false);
+    this.ocrExtractedDataDialogText.set('');
     this.ocrMetadata.set(document.metadata ?? null);
     this.validateWithAi.set(true);
     this.uploadForm.reset({
@@ -510,22 +577,32 @@ export class ApplicationDetailComponent implements OnInit {
     this.uploadProgress.set(null);
     this.ocrPolling.set(false);
     this.ocrStatus.set(null);
+    this.ocrExtractedDataDialogOpen.set(false);
+    this.ocrExtractedDataDialogText.set('');
     this.closeValidationStream();
+    this.clearPreUploadValidationOutcome();
   }
 
   onFileSelected(file: File): void {
     this.existingPreviewLoading.set(false);
     this.selectedFile.set(file);
+    this.clearPreUploadValidationOutcome();
     this.setUploadPreviewFromFile(file);
   }
 
   onFileCleared(): void {
     this.selectedFile.set(null);
+    this.clearPreUploadValidationOutcome();
     this.clearUploadPreview();
     const document = this.selectedDocument();
     if (document) {
       this.loadExistingDocumentPreview(document);
     }
+  }
+
+  onValidateWithAiChanged(checked: boolean): void {
+    this.validateWithAi.set(checked);
+    this.clearPreUploadValidationOutcome();
   }
 
   onSaveDocument(): void {
@@ -534,27 +611,119 @@ export class ApplicationDetailComponent implements OnInit {
       return;
     }
 
+    const formValue = this.uploadForm.getRawValue();
+    const file = this.selectedFile();
+    const shouldPreValidate =
+      this.isAiValidationEnabledForSelectedDocument() && this.validateWithAi() && !!file;
+
+    if (shouldPreValidate && file) {
+      const preUploadOutcome = this.preUploadValidationOutcome();
+      if (!preUploadOutcome) {
+        this.runPreUploadAiValidation(document, file, formValue);
+        return;
+      }
+      this.uploadDocument(
+        document,
+        formValue,
+        file,
+        preUploadOutcome.status,
+        preUploadOutcome.result,
+      );
+      return;
+    }
+
+    const shouldClearAiValidation =
+      !!file && this.isAiValidationEnabledForSelectedDocument() && !this.validateWithAi();
+    this.uploadDocument(
+      document,
+      formValue,
+      file,
+      shouldClearAiValidation ? '' : undefined,
+      shouldClearAiValidation ? null : undefined,
+    );
+  }
+
+  private runPreUploadAiValidation(
+    document: ApplicationDocument,
+    file: File,
+    formValue: ReturnType<typeof this.uploadForm.getRawValue>,
+  ): void {
+    this.isSaving.set(true);
+    this.aiValidationInProgress.set(true);
+    this.uploadProgress.set(null);
+
+    this.categorizationService.validateCategory(document.id, file).subscribe({
+      next: (response) => {
+        const outcome = this.normalizePreUploadValidationOutcome(response);
+        this.preUploadValidationOutcome.set(outcome);
+        this.aiValidationInProgress.set(false);
+
+        if (outcome.status === 'valid') {
+          this.uploadDocument(document, formValue, file, outcome.status, outcome.result);
+          return;
+        }
+
+        this.isSaving.set(false);
+        this.toast.error(
+          `AI validation failed: ${this.buildPreUploadValidationReason(outcome.result) || 'See details below.'}`,
+        );
+      },
+      error: (error) => {
+        const message = extractServerErrorMessage(error) || 'AI validation failed';
+        this.preUploadValidationOutcome.set({
+          status: 'error',
+          result: {
+            valid: false,
+            confidence: 0,
+            positive_analysis: '',
+            negative_issues: [message],
+            reasoning: message,
+            extracted_expiration_date: null,
+            extracted_doc_number: null,
+            extracted_details_markdown: null,
+          },
+        });
+        this.aiValidationInProgress.set(false);
+        this.isSaving.set(false);
+        this.toast.error(message);
+      },
+    });
+  }
+
+  private uploadDocument(
+    document: ApplicationDocument,
+    formValue: ReturnType<typeof this.uploadForm.getRawValue>,
+    file: File | null,
+    aiValidationStatusOverride?: '' | 'valid' | 'invalid' | 'error',
+    aiValidationResultOverride?: Record<string, unknown> | null,
+  ): void {
     this.isSaving.set(true);
     this.uploadProgress.set(0);
 
-    const formValue = this.uploadForm.getRawValue();
-    const shouldValidate =
-      this.isAiValidationEnabledForSelectedDocument() &&
-      this.validateWithAi() &&
-      this.hasAiValidationRules() &&
-      !!this.selectedFile();
+    const mergedPayload = this.mergeUploadFormWithValidationExtraction(
+      {
+        docNumber: formValue.docNumber || null,
+        expirationDate: this.toApiDate(formValue.expirationDate),
+        details: formValue.details || null,
+      },
+      aiValidationResultOverride ?? null,
+    );
+    const persistedAiValidationResultOverride =
+      aiValidationStatusOverride === 'invalid' ? aiValidationResultOverride : null;
 
     this.applicationsService
       .updateDocument(
         document.id,
         {
-          docNumber: formValue.docNumber || null,
-          expirationDate: this.toApiDate(formValue.expirationDate),
-          details: formValue.details || null,
+          docNumber: mergedPayload.docNumber,
+          expirationDate: mergedPayload.expirationDate,
+          details: mergedPayload.details,
           metadata: this.ocrMetadata(),
         },
-        this.selectedFile(),
-        shouldValidate,
+        file,
+        false,
+        aiValidationStatusOverride,
+        persistedAiValidationResultOverride,
       )
       .subscribe({
         next: (state) => {
@@ -565,199 +734,142 @@ export class ApplicationDetailComponent implements OnInit {
             this.replaceDocument(state.document);
             this.toast.success('Document updated');
             this.isSaving.set(false);
-
-            if (shouldValidate && state.document.aiValidationStatus) {
-              // Start SSE stream for validation progress
-              this.startValidationStream(state.document.id);
-            } else {
-              this.closeUpload();
-            }
+            this.closeUpload();
           }
         },
         error: (error) => {
           this.toast.error(extractServerErrorMessage(error) || 'Failed to update document');
+          this.aiValidationInProgress.set(false);
           this.isSaving.set(false);
         },
       });
   }
 
-  startValidationStream(documentId: number): void {
-    this.closeValidationStream();
-    this.aiValidationInProgress.set(true);
-    this.aiValidationDocId.set(documentId);
-
-    const controller = new AbortController();
-    this.validationAbortController = controller;
-
-    const runStream = async () => {
-      try {
-        const headers = new Headers({ Accept: 'text/event-stream' });
-        const token = this.authService.getToken();
-        if (token) {
-          headers.set('Authorization', `Bearer ${token}`);
-        }
-
-        const response = await fetch(`/api/documents/${documentId}/validation-stream/`, {
-          method: 'GET',
-          headers,
-          credentials: 'include',
-          cache: 'no-store',
-          signal: controller.signal,
-        });
-
-        if (!response.ok || !response.body) {
-          this.toast.error('Failed to connect to validation stream');
-          this.closeValidationStream();
-          this.closeUpload();
-          return;
-        }
-
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
-
-          let eventType = '';
-          for (const line of lines) {
-            if (line.startsWith('event: ')) {
-              eventType = line.slice(7).trim();
-            } else if (line.startsWith('data: ') && eventType) {
-              try {
-                const data = JSON.parse(line.slice(6));
-                this.handleValidationEvent(eventType, data, documentId);
-              } catch {
-                // ignore parse errors
-              }
-              eventType = '';
-            }
-          }
-        }
-      } catch (err: unknown) {
-        if (err instanceof DOMException && err.name === 'AbortError') return;
-        this.closeValidationStream();
-        this.closeUpload();
-      }
-    };
-
-    void runStream();
-  }
-
-  private handleValidationEvent(
-    eventType: string,
-    data: Record<string, unknown>,
-    documentId: number,
-  ): void {
-    if (eventType === 'complete') {
-      const status = data['validationStatus'] as string;
-      const result = (data['validationResult'] as Record<string, unknown>) || {};
-
-      this.updateDocumentValidation(documentId, status, result);
-
-      if (status === 'valid') {
-        this.toast.success('AI validation passed');
-      } else if (status === 'invalid') {
-        const issues = ((result['negative_issues'] as string[]) || []).join('; ');
-        this.toast.error(
-          `AI validation failed: ${issues || (result['reasoning'] as string) || 'See details'}`,
-        );
-      } else {
-        this.toast.error('AI validation encountered an error');
-      }
-      this.closeValidationStream();
-      this.closeUpload();
-    } else if (eventType === 'timeout') {
-      this.toast.error('AI validation timed out');
-      this.closeValidationStream();
-      this.closeUpload();
+  private normalizePreUploadValidationOutcome(
+    response: ValidateCategoryResponse,
+  ): PreUploadValidationOutcome {
+    const responseRecord = response as unknown as Record<string, unknown>;
+    const rawStatus = String(responseRecord['validationStatus'] ?? '')
+      .trim()
+      .toLowerCase();
+    let status: 'valid' | 'invalid' | 'error';
+    if (rawStatus === 'valid' || rawStatus === 'invalid' || rawStatus === 'error') {
+      status = rawStatus;
+    } else {
+      status = response.matches ? 'valid' : 'invalid';
     }
+
+    const existingResult = responseRecord['validationResult'];
+    const result =
+      existingResult && typeof existingResult === 'object'
+        ? this.normalizeValidationResultShape(existingResult as Record<string, unknown>)
+        : {
+            valid: status === 'valid',
+            confidence: Number(response.confidence ?? 0),
+            positive_analysis: status === 'valid' ? String(response.reasoning ?? '') : '',
+            negative_issues:
+              status === 'invalid'
+                ? [String(response.reasoning ?? 'Validation failed')].filter(Boolean)
+                : [],
+            reasoning: String(response.reasoning ?? ''),
+            extracted_expiration_date: null,
+            extracted_doc_number: null,
+            extracted_details_markdown: null,
+          };
+
+    return { status, result };
   }
 
-  private validationAbortController: AbortController | null = null;
+  private mergeUploadFormWithValidationExtraction(
+    payload: {
+      docNumber: string | null;
+      expirationDate: string | null;
+      details: string | null;
+    },
+    validationResult: Record<string, unknown> | null,
+  ): {
+    docNumber: string | null;
+    expirationDate: string | null;
+    details: string | null;
+  } {
+    if (!validationResult) {
+      return payload;
+    }
+
+    const extractedExpirationDate =
+      typeof (
+        validationResult['extracted_expiration_date'] ?? validationResult['extractedExpirationDate']
+      ) === 'string'
+        ? ((validationResult['extracted_expiration_date'] ??
+            validationResult['extractedExpirationDate']) as string)
+        : null;
+    const extractedDocNumber =
+      typeof (
+        validationResult['extracted_doc_number'] ?? validationResult['extractedDocNumber']
+      ) === 'string'
+        ? (
+            (validationResult['extracted_doc_number'] ??
+              validationResult['extractedDocNumber']) as string
+          ).trim() || null
+        : null;
+    const extractedDetails =
+      typeof (
+        validationResult['extracted_details_markdown'] ??
+        validationResult['extractedDetailsMarkdown']
+      ) === 'string'
+        ? (
+            (validationResult['extracted_details_markdown'] ??
+              validationResult['extractedDetailsMarkdown']) as string
+          ).trim() || null
+        : null;
+
+    return {
+      expirationDate: payload.expirationDate || extractedExpirationDate || null,
+      docNumber: payload.docNumber || extractedDocNumber || null,
+      details: payload.details || extractedDetails || null,
+    };
+  }
+
+  private buildPreUploadValidationReason(result: Record<string, unknown> | null): string {
+    if (!result) {
+      return '';
+    }
+    const negativeIssues = result['negative_issues'] ?? result['negativeIssues'];
+    const issues = Array.isArray(negativeIssues)
+      ? negativeIssues.filter((issue): issue is string => typeof issue === 'string')
+      : [];
+    if (issues.length > 0) {
+      return issues.join('; ');
+    }
+    return String(result['reasoning'] ?? '');
+  }
+
+  private normalizeValidationResultShape(result: Record<string, unknown>): Record<string, unknown> {
+    const normalized: Record<string, unknown> = { ...result };
+    if ('negativeIssues' in result && !('negative_issues' in result)) {
+      normalized['negative_issues'] = result['negativeIssues'];
+    }
+    if ('positiveAnalysis' in result && !('positive_analysis' in result)) {
+      normalized['positive_analysis'] = result['positiveAnalysis'];
+    }
+    if ('extractedExpirationDate' in result && !('extracted_expiration_date' in result)) {
+      normalized['extracted_expiration_date'] = result['extractedExpirationDate'];
+    }
+    if ('extractedDocNumber' in result && !('extracted_doc_number' in result)) {
+      normalized['extracted_doc_number'] = result['extractedDocNumber'];
+    }
+    if ('extractedDetailsMarkdown' in result && !('extracted_details_markdown' in result)) {
+      normalized['extracted_details_markdown'] = result['extractedDetailsMarkdown'];
+    }
+    return normalized;
+  }
+
+  private clearPreUploadValidationOutcome(): void {
+    this.preUploadValidationOutcome.set(null);
+  }
 
   closeValidationStream(): void {
     this.aiValidationInProgress.set(false);
-    this.aiValidationDocId.set(null);
-    this.validationAbortController?.abort();
-    this.validationAbortController = null;
-  }
-
-  private updateDocumentValidation(
-    documentId: number,
-    status: string,
-    result: Record<string, unknown>,
-  ): void {
-    const extractedExpirationDate =
-      typeof result['extracted_expiration_date'] === 'string'
-        ? (result['extracted_expiration_date'] as string)
-        : null;
-    const extractedDocNumber =
-      typeof result['extracted_doc_number'] === 'string'
-        ? ((result['extracted_doc_number'] as string).trim() || null)
-        : null;
-    const extractedDetails =
-      typeof result['extracted_details_markdown'] === 'string'
-        ? ((result['extracted_details_markdown'] as string).trim() || null)
-        : null;
-
-    // Update in localUploadedDocuments
-    const docs = this.localUploadedDocuments();
-    const idx = docs.findIndex((d) => d.id === documentId);
-    if (idx >= 0) {
-      const existingDocNumber = (docs[idx].docNumber ?? '').trim();
-      const existingDetails = (docs[idx].details ?? '').trim();
-      const updated = {
-        ...docs[idx],
-        aiValidationStatus: status,
-        aiValidationResult: result,
-        expirationDate: docs[idx].expirationDate || extractedExpirationDate || null,
-        docNumber: existingDocNumber ? docs[idx].docNumber : extractedDocNumber,
-        details: existingDetails ? docs[idx].details : extractedDetails,
-      };
-      const newDocs = [...docs];
-      newDocs[idx] = updated;
-      this.localUploadedDocuments.set(newDocs);
-    }
-
-    // Also update in the main application signal
-    const app = this.application();
-    if (app) {
-      const appDocs = [...(app.documents || [])];
-      const appIdx = appDocs.findIndex((d) => d.id === documentId);
-      if (appIdx >= 0) {
-        const existingDocNumber = (appDocs[appIdx].docNumber ?? '').trim();
-        const existingDetails = (appDocs[appIdx].details ?? '').trim();
-        appDocs[appIdx] = {
-          ...appDocs[appIdx],
-          aiValidationStatus: status,
-          aiValidationResult: result,
-          expirationDate: appDocs[appIdx].expirationDate || extractedExpirationDate || null,
-          docNumber: existingDocNumber ? appDocs[appIdx].docNumber : extractedDocNumber,
-          details: existingDetails ? appDocs[appIdx].details : extractedDetails,
-        };
-        this.application.set({ ...app, documents: appDocs });
-      }
-    }
-
-    const selected = this.selectedDocument();
-    if (selected?.id === documentId) {
-      const existingDocNumber = (selected.docNumber ?? '').trim();
-      const existingDetails = (selected.details ?? '').trim();
-      this.selectedDocument.set({
-        ...selected,
-        aiValidationStatus: status,
-        aiValidationResult: result,
-        expirationDate: selected.expirationDate || extractedExpirationDate || null,
-        docNumber: existingDocNumber ? selected.docNumber : extractedDocNumber,
-        details: existingDetails ? selected.details : extractedDetails,
-      });
-    }
   }
 
   runOcr(): void {
@@ -811,22 +923,27 @@ export class ApplicationDetailComponent implements OnInit {
     this.ocrPolling.set(true);
     this.ocrStatus.set('Queued');
 
-    this.applicationsService.startDocumentOcr(file).subscribe({
-      next: (response) => {
-        const statusUrl =
-          ('statusUrl' in response && response.statusUrl) ||
-          (response as { status_url?: string }).status_url;
-        if (statusUrl) {
-          this.pollOcrStatus(statusUrl, 0);
-        } else {
-          this.handleOcrResult(response as unknown as OcrStatusResponse);
-        }
-      },
-      error: (error) => {
-        this.toast.error(extractServerErrorMessage(error) || 'Failed to start OCR');
-        this.ocrPolling.set(false);
-      },
-    });
+    this.applicationsService
+      .startDocumentOcr(file, {
+        documentId: document.id,
+        docTypeId: document.docType?.id,
+      })
+      .subscribe({
+        next: (response) => {
+          const statusUrl =
+            ('statusUrl' in response && response.statusUrl) ||
+            (response as { status_url?: string }).status_url;
+          if (statusUrl) {
+            this.pollOcrStatus(statusUrl, 0);
+          } else {
+            this.handleOcrResult(response as unknown as OcrStatusResponse);
+          }
+        },
+        error: (error) => {
+          this.toast.error(extractServerErrorMessage(error) || 'Failed to start OCR');
+          this.ocrPolling.set(false);
+        },
+      });
   }
 
   private getOcrFileName(document: ApplicationDocument, blob: Blob): string {
@@ -853,7 +970,12 @@ export class ApplicationDetailComponent implements OnInit {
   private buildOcrExtractedDataText(): string {
     const review = this.ocrReviewData();
     const metadata = this.ocrMetadata();
+    const structuredData = this.getStructuredOcrData(review);
     const directText = this.getDirectOcrText(review);
+
+    if (structuredData && Object.keys(structuredData).length > 0) {
+      return JSON.stringify(structuredData, null, 2);
+    }
 
     if (directText) {
       return directText;
@@ -890,6 +1012,35 @@ export class ApplicationDetailComponent implements OnInit {
     }
 
     return this.ocrNoDataText;
+  }
+
+  private getStructuredOcrData(
+    status: OcrStatusResponse | null,
+  ): Record<string, string | null> | null {
+    if (!status) {
+      return null;
+    }
+
+    const directStructured =
+      status.structuredData ??
+      (status as { structured_data?: Record<string, string | null> }).structured_data;
+    if (directStructured && typeof directStructured === 'object') {
+      return directStructured;
+    }
+
+    const textPayload = this.getDirectOcrText(status);
+    if (!textPayload) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(textPayload);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return parsed as Record<string, string | null>;
+      }
+    } catch {
+      return null;
+    }
+    return null;
   }
 
   applyOcrData(): void {
@@ -930,6 +1081,23 @@ export class ApplicationDetailComponent implements OnInit {
     this.ocrReviewOpen.set(false);
   }
 
+  copyOcrExtractedData(): void {
+    const payload = this.ocrExtractedDataDialogText();
+    if (!payload.trim()) {
+      return;
+    }
+
+    if (this.isBrowser && typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      navigator.clipboard
+        .writeText(payload)
+        .then(() => this.toast.success('Extracted data copied'))
+        .catch(() => this.toast.error('Failed to copy extracted data'));
+      return;
+    }
+
+    this.toast.error('Clipboard API is not available in this browser');
+  }
+
   executeAction(action: DocumentAction): void {
     const document = this.selectedDocument();
     if (!document) {
@@ -944,12 +1112,11 @@ export class ApplicationDetailComponent implements OnInit {
           this.toast.success(response.message ?? 'Action completed successfully');
           if (response.document) {
             this.replaceDocument(response.document);
-            // Update selected document with new data
+            // Keep modal state in sync with the updated document returned by action hooks.
             this.selectedDocument.set(response.document);
-            // Update file name in upload component if file was uploaded
-            if (response.document.fileLink) {
-              this.selectedFile.set(null);
-            }
+            this.selectedFile.set(null);
+            this.clearUploadPreview();
+            this.loadExistingDocumentPreview(response.document);
           }
         } else {
           this.toast.error('Action failed');
@@ -1359,6 +1526,9 @@ export class ApplicationDetailComponent implements OnInit {
   }
 
   getDocumentValidationTooltip(doc: ApplicationDocument): string {
+    if (!this.isDocumentAiInvalid(doc)) {
+      return '';
+    }
     const expirationReason = this.getDocumentExpirationReason(doc);
     if (expirationReason) {
       return expirationReason;
@@ -1716,14 +1886,14 @@ export class ApplicationDetailComponent implements OnInit {
     this.ocrPolling.set(false);
     this.ocrStatus.set('Completed');
     this.ocrReviewData.set(status);
-    this.maybePopulateDetailsFromOcr();
+    const openedExtractedDataDialog = this.handleOcrExtractionForSelectedDocument();
     const previewUrl = status.previewUrl ?? (status as { preview_url?: string }).preview_url;
     if (previewUrl) {
       this.ocrPreviewImage.set(previewUrl);
     } else if (status.b64ResizedImage) {
       this.ocrPreviewImage.set(`data:image/jpeg;base64,${status.b64ResizedImage}`);
     }
-    if (status.mrzData) {
+    if (!openedExtractedDataDialog && status.mrzData) {
       this.ocrReviewOpen.set(true);
     } else {
       this.ocrReviewOpen.set(false);
@@ -1802,7 +1972,11 @@ export class ApplicationDetailComponent implements OnInit {
       return 'ok';
     }
 
-    const thresholdDate = new Date(todayDate.getFullYear(), todayDate.getMonth(), todayDate.getDate());
+    const thresholdDate = new Date(
+      todayDate.getFullYear(),
+      todayDate.getMonth(),
+      todayDate.getDate(),
+    );
     thresholdDate.setDate(thresholdDate.getDate() + thresholdDays);
     if (expirationDate.getTime() <= thresholdDate.getTime()) {
       return 'expiring';
@@ -1834,8 +2008,8 @@ export class ApplicationDetailComponent implements OnInit {
     const thresholdRaw = Number(doc.docType?.expiringThresholdDays ?? 0);
     const thresholdDays = Number.isFinite(thresholdRaw) ? Math.max(0, thresholdRaw) : 0;
     return (
-      'Document is expiring soon: expiration date '
-      + `${this.formatDateForApi(expirationDate)} is within ${thresholdDays} days.`
+      'Document is expiring soon: expiration date ' +
+      `${this.formatDateForApi(expirationDate)} is within ${thresholdDays} days.`
     );
   }
 
@@ -1846,20 +2020,38 @@ export class ApplicationDetailComponent implements OnInit {
     return dateValue >= startValue && dateValue <= endValue;
   }
 
-  private maybePopulateDetailsFromOcr(): void {
+  dismissOcrExtractedDataDialog(): void {
+    this.ocrExtractedDataDialogOpen.set(false);
+    this.ocrExtractedDataDialogText.set('');
+  }
+
+  private handleOcrExtractionForSelectedDocument(): boolean {
     const selected = this.selectedDocument();
-    if (!selected?.docType?.hasDetails) {
-      return;
+    if (!selected) {
+      return false;
     }
+
     const extractedDetails = this.buildOcrExtractedDataText();
     if (!extractedDetails || extractedDetails === this.ocrNoDataText) {
-      return;
+      this.ocrExtractedDataDialogOpen.set(false);
+      this.ocrExtractedDataDialogText.set('');
+      return false;
     }
-    const currentDetails = this.uploadForm.getRawValue().details ?? '';
-    const merged = this.mergeOcrDetails(currentDetails, extractedDetails);
-    if (merged !== currentDetails) {
-      this.uploadForm.patchValue({ details: merged });
+
+    if (selected.docType?.hasDetails) {
+      const currentDetails = this.uploadForm.getRawValue().details ?? '';
+      const merged = this.mergeOcrDetails(currentDetails, extractedDetails);
+      if (merged !== currentDetails) {
+        this.uploadForm.patchValue({ details: merged });
+      }
+      this.ocrExtractedDataDialogOpen.set(false);
+      this.ocrExtractedDataDialogText.set('');
+      return false;
     }
+
+    this.ocrExtractedDataDialogText.set(extractedDetails);
+    this.ocrExtractedDataDialogOpen.set(true);
+    return true;
   }
 
   private replaceDocument(updated: ApplicationDocument): void {
@@ -1883,19 +2075,9 @@ export class ApplicationDetailComponent implements OnInit {
 
   private setUploadPreviewFromFile(file: File): void {
     this.clearUploadPreview();
-    const type = file.type.toLowerCase();
-    if (type.startsWith('image/')) {
-      this.uploadPreviewType.set('image');
-    } else if (type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
-      this.uploadPreviewType.set('pdf');
-    } else if (/\.(png|jpe?g)$/i.test(file.name)) {
-      this.uploadPreviewType.set('image');
-    } else {
-      this.uploadPreviewType.set('unknown');
-      this.uploadPreviewUrl.set(null);
-      return;
-    }
-    this.uploadPreviewUrl.set(URL.createObjectURL(file));
+    const preview = buildLocalFilePreview(file);
+    this.uploadPreviewType.set(preview.type);
+    this.uploadPreviewUrl.set(preview.url);
   }
 
   private loadExistingDocumentPreview(document: ApplicationDocument): void {
@@ -1944,17 +2126,7 @@ export class ApplicationDetailComponent implements OnInit {
   }
 
   private getPreviewTypeFromUrl(url?: string | null): 'image' | 'pdf' | 'unknown' {
-    if (!url) {
-      return 'unknown';
-    }
-    const lower = url.toLowerCase();
-    if (lower.endsWith('.pdf')) {
-      return 'pdf';
-    }
-    if (/\.(png|jpe?g)$/i.test(lower)) {
-      return 'image';
-    }
-    return 'unknown';
+    return inferPreviewTypeFromUrl(url);
   }
 
   private clearUploadPreview(): void {
@@ -2288,7 +2460,7 @@ export class ApplicationDetailComponent implements OnInit {
         const results = [...this.categorizationResults()];
         const idx = results.findIndex((r) => r.filename === event.data['filename']);
         const result: CategorizationFileResult = {
-          itemId: '',
+          itemId: event.data['itemId'] ?? '',
           filename: event.data['filename'] ?? '',
           status: 'categorized',
           pipelineStage: 'categorized',
@@ -2404,6 +2576,7 @@ export class ApplicationDetailComponent implements OnInit {
       case 'complete': {
         this.categorizationComplete.set(true);
         this.categorizationProgressPercentOverride.set(100);
+        this.categorizationProcessedFiles.set(this.categorizationTotalFiles());
         this.categorizationStatusMessage.set(event.data['message'] ?? 'Complete');
         // Update results with final data including itemIds
         if (event.data['results']) {
@@ -2440,18 +2613,65 @@ export class ApplicationDetailComponent implements OnInit {
         break;
       }
     }
+
+    this.maybeFinalizeCategorizationFromClientState();
+  }
+
+  private maybeFinalizeCategorizationFromClientState(): void {
+    if (this.categorizationComplete()) {
+      return;
+    }
+
+    const total = this.categorizationTotalFiles();
+    const results = this.categorizationResults();
+    if (total <= 0 || results.length < total) {
+      return;
+    }
+
+    const isTerminal = (result: CategorizationFileResult): boolean => {
+      if (result.status === 'error' || result.pipelineStage === 'error') {
+        return true;
+      }
+      if (result.aiValidationEnabled === false) {
+        return result.pipelineStage === 'categorized' || result.pipelineStage === 'validated';
+      }
+      if (result.validationStatus === 'valid' || result.validationStatus === 'invalid') {
+        return true;
+      }
+      return false;
+    };
+
+    if (!results.every(isTerminal)) {
+      return;
+    }
+
+    this.categorizationComplete.set(true);
+    this.categorizationProcessedFiles.set(total);
+    this.categorizationProgressPercentOverride.set(100);
+    const currentMessage = this.categorizationStatusMessage().trim();
+    if (!currentMessage || /processing|categorizing|validating|uploading/i.test(currentMessage)) {
+      this.categorizationStatusMessage.set('Processing complete');
+    }
   }
 
   onApplyCategorization(mappings: CategorizationApplyMapping[]): void {
     const jobId = this.categorizationJobId();
     if (!jobId) return;
 
+    const normalizedMappings = mappings.filter(
+      (mapping) => typeof mapping.itemId === 'string' && mapping.itemId.trim().length > 0,
+    );
+    if (normalizedMappings.length === 0) {
+      this.toast.error('No valid matched files to apply yet. Please wait a moment and retry.');
+      return;
+    }
+
     this.isCategorizationApplying.set(true);
 
     this.categorizationService
       .applyResults(
         jobId,
-        mappings.map((m) => ({
+        normalizedMappings.map((m) => ({
           itemId: m.itemId,
           documentId: m.documentId,
         })),

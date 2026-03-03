@@ -38,6 +38,15 @@ def get_upload_to(instance, filename):
     return f"{doc_application_folder}/{filename}"
 
 
+def get_thumbnail_upload_to(instance, filename):
+    """Return the upload path for generated document thumbnails."""
+    _, extension = os.path.splitext(filename)
+    extension = extension.lower() or ".jpg"
+    doc_application_folder = instance.doc_application.upload_folder
+    document_id = instance.pk or "new"
+    return f"{doc_application_folder}/thumbnails/document_{document_id}{extension}"
+
+
 class Document(models.Model):
 
     doc_application = models.ForeignKey(DocApplication, related_name="documents", on_delete=models.CASCADE)
@@ -46,6 +55,8 @@ class Document(models.Model):
     expiration_date = models.DateField(blank=True, null=True, db_index=True)
     file = models.FileField(upload_to=get_upload_to, blank=True)
     file_link = models.CharField(max_length=1024, blank=True)
+    thumbnail = models.FileField(upload_to=get_thumbnail_upload_to, blank=True)
+    thumbnail_link = models.CharField(max_length=1024, blank=True)
     # True when AI validation has been requested/performed for this document
     ai_validation = models.BooleanField(default=False)
     details = models.TextField(blank=True)
@@ -119,8 +130,12 @@ class Document(models.Model):
         )
 
     def save(self, *args, **kwargs):
+        skip_thumbnail_sync = bool(kwargs.pop("skip_thumbnail_sync", False))
+        update_fields = kwargs.get("update_fields")
+
         self.updated_at = timezone.now()
-        if self.pk is None:
+        is_create = self.pk is None
+        if is_create:
             self.created_at = timezone.now()
 
         # Check each field separately
@@ -146,12 +161,23 @@ class Document(models.Model):
             ]
         )
 
+        old_file_name = ""
+        old_thumbnail_name = ""
+
         # In case of an update operation, handle file replacement or removal
         if self.pk is not None:
             orig = Document.objects.get(pk=self.pk)
-            if orig.file and (not self.file or orig.file.name != self.file.name):
+            old_file_name = getattr(orig.file, "name", "") or ""
+            old_thumbnail_name = getattr(orig.thumbnail, "name", "") or ""
+            new_file_name = getattr(self.file, "name", "") or ""
+            file_changed = old_file_name != new_file_name
+
+            if old_file_name and file_changed:
                 if default_storage.exists(orig.file.name):
                     default_storage.delete(orig.file.name)
+            if old_thumbnail_name and file_changed:
+                if default_storage.exists(old_thumbnail_name):
+                    default_storage.delete(old_thumbnail_name)
 
         if self.file:
             self.file_link = self.file.url
@@ -167,6 +193,29 @@ class Document(models.Model):
         }
 
         super().save(*args, **kwargs)
+
+        if skip_thumbnail_sync:
+            return
+
+        if update_fields is not None and "file" not in update_fields:
+            return
+
+        new_file_name = getattr(self.file, "name", "") or ""
+        should_sync_thumbnail = False
+        if is_create:
+            should_sync_thumbnail = bool(new_file_name)
+        elif old_file_name != new_file_name:
+            should_sync_thumbnail = True
+        elif new_file_name and not old_thumbnail_name:
+            should_sync_thumbnail = True
+
+        if should_sync_thumbnail:
+            try:
+                from customer_applications.services.thumbnail_service import DocumentThumbnailService
+
+                DocumentThumbnailService().sync_for_document(self)
+            except Exception as exc:
+                logger.warning("Failed to sync thumbnail for document #%s: %s", self.pk, exc)
 
 
 def _queue_visa_submission_window_sync(document: Document, *, operation: str) -> None:
@@ -229,24 +278,32 @@ def _queue_visa_submission_window_sync(document: Document, *, operation: str) ->
 def pre_delete_document_storage_signal(sender, instance, **kwargs):
     # Keep storage paths before deleting DB row.
     file_path = getattr(instance.file, "name", "") or ""
+    thumbnail_path = getattr(instance.thumbnail, "name", "") or ""
     instance._storage_file_path = file_path
     instance._storage_folder_path = os.path.dirname(file_path).strip("/") if file_path else ""
+    instance._storage_thumbnail_path = thumbnail_path
+    instance._storage_thumbnail_folder_path = os.path.dirname(thumbnail_path).strip("/") if thumbnail_path else ""
 
 
 @receiver(post_delete, sender=Document)
 def post_delete_document_storage_signal(sender, instance, **kwargs):
     file_path = getattr(instance, "_storage_file_path", "") or ""
-    if not file_path:
+    thumbnail_path = getattr(instance, "_storage_thumbnail_path", "") or ""
+    if not file_path and not thumbnail_path:
         return
 
     folder_path = getattr(instance, "_storage_folder_path", "") or ""
+    thumbnail_folder_path = getattr(instance, "_storage_thumbnail_folder_path", "") or ""
     document_id = instance.id
 
     def _queue_storage_cleanup():
         try:
             from customer_applications.tasks import cleanup_document_storage_task
 
-            cleanup_document_storage_task(file_path=file_path, folder_path=folder_path or None)
+            if file_path:
+                cleanup_document_storage_task(file_path=file_path, folder_path=folder_path or None)
+            if thumbnail_path:
+                cleanup_document_storage_task(file_path=thumbnail_path, folder_path=thumbnail_folder_path or None)
         except Exception as exc:
             # Do not block document deletion when queueing storage cleanup fails.
             logger.warning("Failed to queue storage cleanup for document #%s: %s", document_id, exc)

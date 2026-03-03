@@ -1,0 +1,65 @@
+<z-card class="p-4">
+  <div class="flex flex-wrap items-start justify-between gap-3">
+    <div>
+      <h4 class="text-sm font-semibold">{{ title }}</h4>
+      <p class="text-xs text-muted-foreground">{{ description }}</p>
+    </div>
+    <button z-button zType="outline" zSize="sm" type="button" (click)="addRow()" [disabled]="form.disabled">
+      Add Field
+    </button>
+  </div>
+
+  @if (parseError()) {
+    <div class="mt-3 rounded-md border border-warning/40 bg-warning/10 p-2 text-xs text-warning">
+      {{ parseError() }}
+    </div>
+  }
+
+  <div class="mt-3 overflow-x-auto">
+    <table class="w-full min-w-[32rem] text-sm">
+      <thead>
+        <tr class="border-b">
+          <th class="py-2 pr-3 text-left font-medium text-muted-foreground">Field Name</th>
+          <th class="py-2 pr-3 text-left font-medium text-muted-foreground">Description</th>
+          <th class="py-2 text-right font-medium text-muted-foreground">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of items.controls; track trackByIndex($index)) {
+          <tr [formGroup]="row" class="border-b align-top">
+            <td class="py-3 pr-3">
+              <input
+                z-input
+                type="text"
+                formControlName="fieldName"
+                placeholder="e.g. permit_number"
+                (blur)="handleTouched()"
+              />
+            </td>
+            <td class="py-3 pr-3">
+              <textarea
+                z-input
+                rows="2"
+                formControlName="description"
+                placeholder="Short extraction hint for AI"
+                (blur)="handleTouched()"
+              ></textarea>
+            </td>
+            <td class="py-3 text-right">
+              <button
+                z-button
+                zType="ghost"
+                zSize="sm"
+                type="button"
+                (click)="removeRow($index)"
+                [disabled]="form.disabled"
+              >
+                Remove
+              </button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</z-card>

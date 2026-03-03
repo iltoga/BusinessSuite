@@ -1,7 +1,14 @@
 import os
 import shutil
 
+from core.models import CountryCode
+from core.services.logger_service import Logger
+from core.utils.form_validators import validate_birthdate, validate_email, validate_phone_number
+from core.utils.helpers import whitespaces_to_underscores
 from django.conf import settings
+
+# PostgreSQL-specific indexes
+from django.contrib.postgres.indexes import GinIndex
 from django.core.exceptions import ValidationError
 from django.core.files.storage import default_storage
 from django.core.serializers import serialize
@@ -9,11 +16,6 @@ from django.db import models
 from django.db.models.signals import post_delete, pre_delete
 from django.dispatch import receiver
 from django.utils.translation import gettext_lazy as _
-
-from core.models import CountryCode
-from core.services.logger_service import Logger
-from core.utils.form_validators import validate_birthdate, validate_email, validate_phone_number
-from core.utils.helpers import whitespaces_to_underscores
 
 logger = Logger.get_logger(__name__)
 
@@ -151,6 +153,11 @@ class Customer(models.Model):
                 name="unique_customer_passport",
                 condition=(models.Q(passport_number__isnull=False) & ~models.Q(passport_number="")),
             )
+        ]
+        # Use GIN trigram indexes to speed up fuzzy searches on name fields
+        indexes = [
+            GinIndex(fields=["first_name"], name="customer_first_name_trgm_idx", opclasses=["gin_trgm_ops"]),
+            GinIndex(fields=["last_name"], name="customer_last_name_trgm_idx", opclasses=["gin_trgm_ops"]),
         ]
 
     def __str__(self):

@@ -44,6 +44,40 @@ export class DocumentTypeDetailComponent implements OnInit {
   readonly isLoading = signal(false);
   readonly originSearchQuery = signal<string | null>(null);
 
+  get structuredOutputRows(): Array<{ fieldName: string; description: string }> {
+    const raw = this.documentType()?.aiStructuredOutput;
+    if (!raw) {
+      return [];
+    }
+    try {
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) {
+        return [];
+      }
+      return parsed
+        .map((item) => {
+          if (!item || typeof item !== 'object') {
+            return null;
+          }
+          const record = item as Record<string, unknown>;
+          const fieldName = String(record['field_name'] ?? record['fieldName'] ?? '').trim();
+          const description = String(record['description'] ?? '').trim();
+          if (!fieldName) {
+            return null;
+          }
+          return { fieldName, description };
+        })
+        .filter((item): item is { fieldName: string; description: string } => item !== null);
+    } catch {
+      return [];
+    }
+  }
+
+  get hasStructuredOutputJson(): boolean {
+    const raw = this.documentType()?.aiStructuredOutput;
+    return Boolean(raw && this.structuredOutputRows.length > 0);
+  }
+
   @HostListener('window:keydown', ['$event'])
   handleGlobalKeydown(event: KeyboardEvent): void {
     const activeElement = document.activeElement;

@@ -3,7 +3,7 @@ import logging
 from core.models.calendar_event import CalendarEvent
 from core.utils.google_client import GoogleClient
 from django.utils import timezone
-from huey.contrib.djhuey import db_task
+from core.tasks.runtime import QUEUE_DEFAULT, db_task
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +119,13 @@ def _resolve_google_event_id_for_update(client: GoogleClient, event: CalendarEve
         return None
 
 
-@db_task(retries=CALENDAR_SYNC_MAX_RETRIES, retry_delay=CALENDAR_SYNC_RETRY_DELAY_SECONDS, context=True)
+@db_task(
+    name="core.tasks.calendar_sync.create_google_event_task",
+    retries=CALENDAR_SYNC_MAX_RETRIES,
+    retry_delay=CALENDAR_SYNC_RETRY_DELAY_SECONDS,
+    context=True,
+    queue=QUEUE_DEFAULT,
+)
 def create_google_event_task(event_id: str, task=None):
     event = CalendarEvent.objects.filter(pk=event_id).first()
     if not event:
@@ -193,7 +199,13 @@ def create_google_event_task(event_id: str, task=None):
         return {"status": "failed", "error": str(exc)}
 
 
-@db_task(retries=CALENDAR_SYNC_MAX_RETRIES, retry_delay=CALENDAR_SYNC_RETRY_DELAY_SECONDS, context=True)
+@db_task(
+    name="core.tasks.calendar_sync.update_google_event_task",
+    retries=CALENDAR_SYNC_MAX_RETRIES,
+    retry_delay=CALENDAR_SYNC_RETRY_DELAY_SECONDS,
+    context=True,
+    queue=QUEUE_DEFAULT,
+)
 def update_google_event_task(event_id: str, task=None):
     event = CalendarEvent.objects.filter(pk=event_id).first()
     if not event:
@@ -278,7 +290,13 @@ def update_google_event_task(event_id: str, task=None):
         return {"status": "failed", "error": str(exc)}
 
 
-@db_task(retries=CALENDAR_SYNC_MAX_RETRIES, retry_delay=CALENDAR_SYNC_RETRY_DELAY_SECONDS, context=True)
+@db_task(
+    name="core.tasks.calendar_sync.delete_google_event_task",
+    retries=CALENDAR_SYNC_MAX_RETRIES,
+    retry_delay=CALENDAR_SYNC_RETRY_DELAY_SECONDS,
+    context=True,
+    queue=QUEUE_DEFAULT,
+)
 def delete_google_event_task(google_event_id: str, google_calendar_id: str | None = None, task=None):
     if not google_event_id:
         logger.error("calendar_delete_sync_missing_google_event_id google_event_id=%s", google_event_id)

@@ -161,7 +161,7 @@ export class BackupsComponent implements OnInit, OnDestroy {
       .connect<{
         message?: string;
         progress?: number;
-      }>(`/api/backups/start/?include_users=${this.includeUsers()}`)
+      }>(`/api/backups/start/?include_users=${this.includeUsers()}`, { useReplayCursor: false })
       .subscribe({
         next: (data) => {
           const message = data.message;
@@ -213,7 +213,9 @@ export class BackupsComponent implements OnInit, OnDestroy {
       .connect<{
         message?: string;
         progress?: string | number;
-      }>(`/api/backups/restore/?file=${filename}&include_users=${this.includeUsers()}`)
+      }>(`/api/backups/restore/?file=${filename}&include_users=${this.includeUsers()}`, {
+        useReplayCursor: false,
+      })
       .subscribe({
         next: (data) => {
           const message = data.message;

@@ -152,6 +152,25 @@
         <z-card class="p-4">
           <canvas
             baseChart
+            [type]="'bar'"
+            [data]="chart('aiModelBreakdownCost')"
+            [options]="{ responsive: true }"
+          ></canvas>
+        </z-card>
+        <z-card class="p-4">
+          <canvas
+            baseChart
+            [type]="'bar'"
+            [data]="chart('aiModelBreakdownRequests')"
+            [options]="{ responsive: true }"
+          ></canvas>
+        </z-card>
+      </div>
+
+      <div class="grid gap-6 md:grid-cols-2">
+        <z-card class="p-4">
+          <canvas
+            baseChart
             [type]="'line'"
             [data]="chart('aiDailyCost')"
             [options]="{ responsive: true }"
@@ -182,6 +201,31 @@
           <tbody>
             <tr *ngFor="let row of d.feature_breakdown_month" class="border-t">
               <td class="p-2">{{ row.feature }}</td>
+              <td class="p-2 text-right">{{ row.request_count }}</td>
+              <td class="p-2 text-right">{{ row.success_count }}</td>
+              <td class="p-2 text-right">{{ row.failed_count }}</td>
+              <td class="p-2 text-right">{{ row.total_tokens }}</td>
+              <td class="p-2 text-right">${{ row.total_cost | number: '1.4-4' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="rounded-lg border bg-card overflow-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-muted/50">
+            <tr>
+              <th class="p-2 text-left">Model</th>
+              <th class="p-2 text-right">Requests</th>
+              <th class="p-2 text-right">Success</th>
+              <th class="p-2 text-right">Failed</th>
+              <th class="p-2 text-right">Tokens</th>
+              <th class="p-2 text-right">Cost (USD)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let row of d.model_breakdown_month" class="border-t">
+              <td class="p-2">{{ row.model }}</td>
               <td class="p-2 text-right">{{ row.request_count }}</td>
               <td class="p-2 text-right">{{ row.success_count }}</td>
               <td class="p-2 text-right">{{ row.failed_count }}</td>

@@ -37,6 +37,18 @@ class DocumentSerializer(serializers.ModelSerializer):
     updated_by_username = serializers.SerializerMethodField()
     created_by_username = serializers.SerializerMethodField()
     extra_actions = serializers.SerializerMethodField()
+    ai_validation_status_override = serializers.ChoiceField(
+        choices=[
+            Document.AI_VALIDATION_NONE,
+            Document.AI_VALIDATION_VALID,
+            Document.AI_VALIDATION_INVALID,
+            Document.AI_VALIDATION_ERROR,
+        ],
+        required=False,
+        allow_blank=True,
+        write_only=True,
+    )
+    ai_validation_result_override = serializers.JSONField(required=False, allow_null=True, write_only=True)
 
     class Meta:
         model = Document
@@ -49,6 +61,7 @@ class DocumentSerializer(serializers.ModelSerializer):
             "expiration_date",
             "file",
             "file_link",
+            "thumbnail_link",
             "details",
             "completed",
             "metadata",
@@ -56,6 +69,8 @@ class DocumentSerializer(serializers.ModelSerializer):
             "required",
             "ai_validation_status",
             "ai_validation_result",
+            "ai_validation_status_override",
+            "ai_validation_result_override",
             "created_at",
             "updated_at",
             "created_by",
@@ -68,6 +83,7 @@ class DocumentSerializer(serializers.ModelSerializer):
             "doc_application",
             "doc_type",
             "file_link",
+            "thumbnail_link",
             "completed",
             "ai_validation",
             "ai_validation_status",
@@ -140,3 +156,14 @@ class DocumentSerializer(serializers.ModelSerializer):
             except json.JSONDecodeError:
                 raise serializers.ValidationError("Metadata must be valid JSON")
         return value
+
+    def update(self, instance, validated_data):
+        request = self.context.get("request")
+        uploaded_file = request.FILES.get("file") if request and hasattr(request, "FILES") else None
+        if uploaded_file is not None:
+            validated_data["file"] = uploaded_file
+
+        # These are handled in DocumentViewSet.partial_update after serializer.save().
+        validated_data.pop("ai_validation_status_override", None)
+        validated_data.pop("ai_validation_result_override", None)
+        return super().update(instance, validated_data)

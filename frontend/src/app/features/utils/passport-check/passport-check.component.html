@@ -5,20 +5,7 @@
       appContextHelp
       class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
     >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        class="h-6 w-6"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-        />
-      </svg>
+      <z-icon zType="info" class="h-6 w-6" />
     </button>
   </div>
 
@@ -60,14 +47,13 @@
         [disabled]="isChecking()"
         [fileName]="selectedFile()?.name ?? null"
         [previewUrl]="previewUrl()"
-        [previewType]="'image'"
+        [previewType]="previewType()"
         [magnifierEnabledByDefault]="true"
         [helperText]="'Supported: JPG, PNG, GIF up to 10MB'"
         (fileSelected)="onFileSelected($event)"
         (cleared)="onFileCleared()"
       ></app-file-upload>
 
-      <!-- Verified Stamp Overlay -->
       <div
         *ngIf="result()?.is_valid"
         class="absolute inset-0 flex items-center justify-center pointer-events-none z-10"
@@ -79,7 +65,6 @@
         </div>
       </div>
 
-      <!-- Rejected Stamp Overlay -->
       <div
         *ngIf="result() && !result()?.is_valid"
         class="absolute inset-0 flex items-center justify-center pointer-events-none z-10"
@@ -154,34 +139,107 @@
         <strong>Reason:</strong> {{ getDisplayRejectionReason() }}
       </div>
 
-      <div
-        *ngIf="result()?.is_valid && result()?.passport_data"
-        class="mt-4 grid grid-cols-2 gap-4 text-sm"
-      >
+      <div *ngIf="result()?.passport_data" class="mt-4 grid grid-cols-2 gap-4 text-sm">
         <div>
           <span class="block text-gray-500 dark:text-gray-400">Name</span>
           <span class="font-medium text-gray-900 dark:text-white"
-            >{{ result()?.passport_data.first_name }} {{ result()?.passport_data.last_name }}</span
+            >{{ result()?.passport_data?.first_name }}
+            {{ result()?.passport_data?.last_name }}</span
           >
         </div>
         <div>
           <span class="block text-gray-500 dark:text-gray-400">Passport Number</span>
           <span class="font-medium text-gray-900 dark:text-white">{{
-            result()?.passport_data.passport_number
+            result()?.passport_data?.passport_number || '—'
           }}</span>
         </div>
         <div>
           <span class="block text-gray-500 dark:text-gray-400">Nationality</span>
           <span class="font-medium text-gray-900 dark:text-white">{{
-            result()?.passport_data.nationality
+            result()?.passport_data?.nationality_code || result()?.passport_data?.nationality || '—'
           }}</span>
         </div>
         <div>
           <span class="block text-gray-500 dark:text-gray-400">Expiration Date</span>
           <span class="font-medium text-gray-900 dark:text-white">{{
-            result()?.passport_data.expiration_date
+            result()?.passport_data?.expiration_date || '—'
           }}</span>
         </div>
+      </div>
+    </div>
+
+    <div *ngIf="customerMatch() as match" class="mb-6 border rounded-lg p-4 match-panel">
+      <h3 class="text-base font-semibold text-gray-900 dark:text-white">Customer Match Result</h3>
+      <p class="text-sm text-gray-700 dark:text-gray-300 mt-1">{{ customerMatchSummary(match) }}</p>
+
+      <div
+        *ngIf="match.status === 'passport_found' || match.status === 'exact_name_found'"
+        class="mt-4 space-y-3"
+      >
+        <div
+          *ngFor="let customer of match.exact_matches"
+          class="rounded-md border border-gray-200 dark:border-gray-700 p-3"
+        >
+          <div class="text-sm text-gray-900 dark:text-white font-medium">
+            {{ customer.full_name || 'Unnamed customer' }}
+          </div>
+          <div class="text-xs text-gray-600 dark:text-gray-300 mt-1">
+            Current passport:
+            <strong>{{ customer.passport_number || 'No passport on file' }}</strong>
+          </div>
+          <button
+            z-button
+            zType="warning"
+            class="mt-3"
+            [zDisabled]="actionInProgress() || !result()?.passport_data || !selectedFile()"
+            (click)="updateCustomer(customer.id)"
+          >
+            {{ isUpdatingCustomer(customer.id) ? 'Updating...' : 'Update Customer Data' }}
+          </button>
+        </div>
+      </div>
+
+      <div *ngIf="match.status === 'similar_name_found'" class="mt-4 space-y-3">
+        <div
+          *ngFor="let customer of match.similar_matches"
+          class="rounded-md border border-gray-200 dark:border-gray-700 p-3"
+        >
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <div class="text-sm text-gray-900 dark:text-white font-medium">
+                {{ customer.full_name || 'Unnamed customer' }}
+              </div>
+              <div class="text-xs text-gray-600 dark:text-gray-300 mt-1">
+                Passport: <strong>{{ customer.passport_number || 'No passport on file' }}</strong>
+              </div>
+              <div
+                class="text-xs text-gray-600 dark:text-gray-300"
+                *ngIf="customer.similarity !== null && customer.similarity !== undefined"
+              >
+                Similarity: {{ (customer.similarity || 0) * 100 | number: '1.0-1' }}%
+              </div>
+            </div>
+            <button
+              z-button
+              zType="warning"
+              [zDisabled]="actionInProgress() || !result()?.passport_data || !selectedFile()"
+              (click)="updateCustomer(customer.id)"
+            >
+              {{ isUpdatingCustomer(customer.id) ? 'Updating...' : 'Update Customer Data' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="match.status === 'no_match'" class="mt-4">
+        <button
+          z-button
+          zType="success"
+          [zDisabled]="actionInProgress() || !result()?.passport_data || !selectedFile()"
+          (click)="createNewCustomer()"
+        >
+          {{ actionInProgress() ? 'Creating...' : 'Create Customer with Passport' }}
+        </button>
       </div>
     </div>
 
@@ -189,7 +247,7 @@
       <button
         z-button
         zType="default"
-        [zDisabled]="!selectedFile() || isChecking()"
+        [zDisabled]="!selectedFile() || isChecking() || actionInProgress()"
         (click)="checkPassport()"
       >
         {{ isChecking() ? 'Checking...' : 'Check Passport' }}
@@ -197,27 +255,3 @@
     </div>
   </div>
 </div>
-
-<!-- Update Customer Dialog -->
-<app-confirm-dialog
-  *ngIf="showUpdateDialog()"
-  title="Update Existing Customer"
-  message="I found a customer with the same name and nationality but an outdated passport. Do you want me to update their data directly?"
-  confirmText="Update Customer"
-  cancelText="Cancel"
-  (confirm)="updateCustomer()"
-  (cancel)="showUpdateDialog.set(false)"
->
-</app-confirm-dialog>
-
-<!-- Create Customer Dialog -->
-<app-confirm-dialog
-  *ngIf="showCreateDialog()"
-  title="Create New Customer"
-  message="This customer does not exist in the database. Do you want to create a new customer with this passport data?"
-  confirmText="Create Customer"
-  cancelText="Cancel"
-  (confirm)="createNewCustomer()"
-  (cancel)="showCreateDialog.set(false)"
->
-</app-confirm-dialog>

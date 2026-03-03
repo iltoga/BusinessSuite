@@ -1,5 +1,6 @@
 import io
 import json
+import shutil
 import tarfile
 import tempfile
 from pathlib import Path
@@ -29,6 +30,33 @@ def _build_archive(base_dir: str, objects: list[dict], manifest: dict | None = N
         tar.add(data_path, arcname="data.json")
         if manifest_path:
             tar.add(manifest_path, arcname="manifest.json")
+
+    return str(archive_path)
+
+
+def _build_zst_archive(base_dir: str, objects: list[dict], manifest: dict | None = None) -> str:
+    root = Path(base_dir)
+    data_path = root / "data.json"
+    data_path.write_text(json.dumps(objects), encoding="utf-8")
+
+    manifest_path = None
+    if manifest is not None:
+        manifest_path = root / "manifest.json"
+        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    tar_path = root / "backup.tar"
+    with tarfile.open(tar_path, "w:") as tar:
+        tar.add(data_path, arcname="data.json")
+        if manifest_path:
+            tar.add(manifest_path, arcname="manifest.json")
+
+    zstd = services._get_zstd_module()
+    if not zstd:
+        raise RuntimeError("zstd module is required for this test")
+
+    archive_path = root / "backup.tar.zst"
+    with open(tar_path, "rb") as f_in, zstd.open(archive_path, "wb") as f_out:
+        shutil.copyfileobj(f_in, f_out)
 
     return str(archive_path)
 
@@ -110,7 +138,148 @@ class BackupSerializationTests(SimpleTestCase):
         self.assertIn("--exclude=core.userprofile", attempts[1])
 
 
+class RestoreFixtureSanitizationUnitTests(SimpleTestCase):
+    def test_sanitize_fixture_renames_legacy_fields(self):
+        objects = [
+            {
+                "model": "products.documenttype",
+                "pk": 7,
+                "fields": {
+                    "name": "Passport",
+                    "has_ocr_check": True,
+                },
+            },
+            {
+                "model": "customer_applications.document",
+                "pk": 11,
+                "fields": {
+                    "ocr_check": True,
+                },
+            },
+        ]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            fixture_path = Path(tmpdir) / "fixture.json"
+            fixture_path.write_text(json.dumps(objects), encoding="utf-8")
+
+            sanitized_path, renamed_count, dropped_count, dropped_by_model = services._sanitize_fixture_model_fields(
+                str(fixture_path)
+            )
+            self.assertIsNotNone(sanitized_path)
+            self.assertEqual(renamed_count, 2)
+            self.assertEqual(dropped_count, 0)
+            self.assertEqual(dropped_by_model, {})
+
+            with open(sanitized_path, "r", encoding="utf-8") as handle:
+                sanitized_objects = json.load(handle)
+
+        document_type_fields = sanitized_objects[0]["fields"]
+        self.assertNotIn("has_ocr_check", document_type_fields)
+        self.assertTrue(document_type_fields["ai_validation"])
+
+        document_fields = sanitized_objects[1]["fields"]
+        self.assertNotIn("ocr_check", document_fields)
+        self.assertTrue(document_fields["ai_validation"])
+
+    def test_sanitize_fixture_drops_unknown_fields(self):
+        objects = [
+            {
+                "model": "products.product",
+                "pk": 5,
+                "fields": {
+                    "name": "Test Product",
+                    "code": "TEST-PROD",
+                    "non_existing_field": "legacy-value",
+                },
+            }
+        ]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            fixture_path = Path(tmpdir) / "fixture.json"
+            fixture_path.write_text(json.dumps(objects), encoding="utf-8")
+
+            sanitized_path, renamed_count, dropped_count, dropped_by_model = services._sanitize_fixture_model_fields(
+                str(fixture_path)
+            )
+            self.assertIsNotNone(sanitized_path)
+            self.assertEqual(renamed_count, 0)
+            self.assertEqual(dropped_count, 1)
+            self.assertEqual(dropped_by_model, {"products.product": 1})
+
+            with open(sanitized_path, "r", encoding="utf-8") as handle:
+                sanitized_objects = json.load(handle)
+
+        fields = sanitized_objects[0]["fields"]
+        self.assertNotIn("non_existing_field", fields)
+        self.assertEqual(fields["code"], "TEST-PROD")
+
+    def test_extract_archive_rejects_path_traversal_members(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            archive_path = Path(tmpdir) / "malicious.tar.gz"
+            outside_path = Path(tmpdir).parent / "outside-should-not-exist.txt"
+            if outside_path.exists():
+                outside_path.unlink()
+
+            payload = b"malicious"
+            with tarfile.open(archive_path, "w:gz") as tar:
+                info = tarfile.TarInfo(name="../outside-should-not-exist.txt")
+                info.size = len(payload)
+                tar.addfile(info, io.BytesIO(payload))
+
+            extract_target = Path(tmpdir) / "extract"
+            extract_target.mkdir(parents=True, exist_ok=True)
+
+            with self.assertRaises(RuntimeError):
+                services._extract_archive_to_dir(str(archive_path), str(extract_target), "gz")
+
+            self.assertFalse(outside_path.exists())
+
+
 class RestoreCompatibilityTests(TestCase):
+    def test_restore_tar_zst_falls_back_when_native_zst_mode_unavailable(self):
+        objects = [
+            {
+                "model": "products.product",
+                "pk": 11,
+                "fields": {
+                    "name": "Fallback Product",
+                    "code": "FALLBACK_PRODUCT",
+                    "description": "",
+                    "immigration_id": None,
+                    "base_price": "1000.00",
+                    "retail_price": "1000.00",
+                    "product_type": "visa",
+                    "validity": None,
+                    "required_documents": "",
+                    "optional_documents": "",
+                    "documents_min_validity": None,
+                    "created_at": "2026-02-18T00:00:00Z",
+                    "updated_at": "2026-02-18T00:00:00Z",
+                    "created_by": None,
+                    "updated_by": None,
+                },
+            }
+        ]
+
+        real_tarfile_open = tarfile.open
+
+        def _patched_tarfile_open(*args, **kwargs):
+            mode = kwargs.get("mode")
+            if mode is None and len(args) >= 2:
+                mode = args[1]
+            if mode == "r:zst":
+                raise tarfile.CompressionError("unknown compression type 'zst'")
+            return real_tarfile_open(*args, **kwargs)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            archive_path = _build_zst_archive(tmpdir, objects)
+            with patch("admin_tools.services.tarfile.open", side_effect=_patched_tarfile_open):
+                messages = list(services.restore_from_file(archive_path, include_users=False))
+
+        self.assertTrue(any("Extracting archive..." in message for message in messages))
+        self.assertTrue(any("Restore completed successfully." in message for message in messages))
+        self.assertEqual(Product.objects.filter(code="FALLBACK_PRODUCT").count(), 1)
+
     def test_restore_handles_legacy_dict_fk_fixture(self):
         legacy_objects = [
             {
@@ -250,6 +419,40 @@ class RestoreCompatibilityTests(TestCase):
         self.assertEqual(Customer.objects.count(), 2)
         invoice = Invoice.objects.get(pk=48)
         self.assertIsNotNone(invoice.customer_id)
+
+    def test_restore_does_not_capture_local_sync_changelog_during_loaddata(self):
+        objects = [
+            {
+                "model": "products.product",
+                "pk": 31,
+                "fields": {
+                    "name": "Restore Safety Product",
+                    "code": "RESTORE_SAFETY_PRODUCT",
+                    "description": "",
+                    "immigration_id": None,
+                    "base_price": "1000.00",
+                    "retail_price": "1000.00",
+                    "product_type": "visa",
+                    "validity": None,
+                    "required_documents": "",
+                    "optional_documents": "",
+                    "documents_min_validity": None,
+                    "created_at": "2026-02-18T00:00:00Z",
+                    "updated_at": "2026-02-18T00:00:00Z",
+                    "created_by": None,
+                    "updated_by": None,
+                },
+            }
+        ]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            archive_path = _build_archive(tmpdir, objects)
+            with patch("core.sync_signals.capture_model_upsert") as capture_model_upsert_mock:
+                messages = list(services.restore_from_file(archive_path, include_users=False))
+
+        capture_model_upsert_mock.assert_not_called()
+        self.assertTrue(any("Restore completed successfully." in message for message in messages))
+        self.assertEqual(Product.objects.filter(code="RESTORE_SAFETY_PRODUCT").count(), 1)
 
     def test_restore_external_storage_copies_files_and_rewires_filefields(self):
         fixture_objects = [
