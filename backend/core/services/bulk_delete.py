@@ -23,9 +23,7 @@ def bulk_delete_customers(query: str | None = None, hide_disabled: bool = True) 
 def bulk_delete_products(query: str | None = None) -> int:
     queryset = Product.objects.all()
     if query:
-        queryset = queryset.filter(
-            Q(name__icontains=query) | Q(code__icontains=query) | Q(product_type__icontains=query)
-        )
+        queryset = Product.objects.search_products(query)
 
     with transaction.atomic():
         count = queryset.count()

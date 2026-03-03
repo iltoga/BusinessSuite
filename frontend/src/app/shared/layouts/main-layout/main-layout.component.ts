@@ -29,6 +29,7 @@ import { ZardDropdownImports } from '@/shared/components/dropdown';
 import { ZardIconComponent } from '@/shared/components/icon';
 import { MenuContainerComponent } from '@/shared/components/menu/menu-container.component';
 import { ThemeSwitcherComponent } from '@/shared/components/theme-switcher/theme-switcher.component';
+import { ZardTooltipImports } from '@/shared/components/tooltip';
 import { PwaOverlayService } from '@/shared/services/pwa-overlay.service';
 
 @Component({
@@ -44,6 +45,7 @@ import { PwaOverlayService } from '@/shared/services/pwa-overlay.service';
     ZardDropdownImports,
     ThemeSwitcherComponent,
     MenuContainerComponent,
+    ...ZardTooltipImports,
   ],
   templateUrl: './main-layout.component.html',
   styleUrls: ['./main-layout.component.css'],

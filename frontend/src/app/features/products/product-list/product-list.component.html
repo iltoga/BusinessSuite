@@ -3,7 +3,7 @@
     <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">Products</h1>
     <a
       routerLink="/products/new"
-      [state]="{ from: 'products', searchQuery: query() }"
+      [state]="{ from: 'products', searchQuery: query(), page: page() }"
       [contextHelp]="'/products/new'"
     >
       <z-button zType="default" zSize="default">New Product</z-button>
@@ -101,7 +101,7 @@
 <ng-template #nameTemplate let-row>
   <a
     [routerLink]="['/products', row.id]"
-    [state]="{ from: 'products', focusId: row.id, searchQuery: query() }"
+    [state]="{ from: 'products', focusId: row.id, searchQuery: query(), page: page() }"
     class="font-medium hover:underline"
   >
     {{ row.name }}
@@ -173,15 +173,11 @@
   </div>
 </ng-template>
 
-<app-confirm-dialog
-  [isOpen]="confirmOpen()"
-  [title]="'Delete product'"
-  [message]="confirmMessage()"
-  [destructive]="true"
-  confirmText="Delete"
-  cancelText="Cancel"
-  (confirmed)="confirmDelete()"
-  (cancelled)="cancelDelete()"
+<app-product-delete-dialog
+  [isOpen]="productDeleteOpen()"
+  [data]="productDeleteData()"
+  (confirmed)="onProductDeleteConfirmed($event)"
+  (cancelled)="onProductDeleteCancelled()"
 />
 
 <app-bulk-delete-dialog

@@ -10,7 +10,7 @@ import {
   signal,
 } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 
 import {
   CustomersService,
@@ -37,7 +37,6 @@ import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/uti
   standalone: true,
   imports: [
     CommonModule,
-    RouterLink,
     ReactiveFormsModule,
     ZardInputDirective,
     ZardComboboxComponent,
@@ -762,6 +761,10 @@ export class CustomerFormComponent implements OnInit {
       if (id) state['focusId'] = id;
     }
     if (st.searchQuery) state['searchQuery'] = st.searchQuery;
+    const page = Number(st.page);
+    if (Number.isFinite(page) && page > 0) {
+      state['page'] = Math.floor(page);
+    }
     this.router.navigate(['/customers'], { state });
   }
 
@@ -806,13 +809,22 @@ export class CustomerFormComponent implements OnInit {
 
     const file = this.passportFile();
     const requestPayload = file ? this.buildFormData(payload, file) : payload;
+    const sourceState = (history.state as any) || {};
+    const detailNavigationState: Record<string, unknown> = {
+      from: sourceState.from ?? 'customers',
+      searchQuery: sourceState.searchQuery ?? null,
+    };
+    const sourcePage = Number(sourceState.page);
+    if (Number.isFinite(sourcePage) && sourcePage > 0) {
+      detailNavigationState['page'] = Math.floor(sourcePage);
+    }
 
     if (this.isEditMode()) {
       const id = Number(this.route.snapshot.paramMap.get('id'));
       this.customersService.updateCustomer(id, requestPayload).subscribe({
         next: (data) => {
           this.toast.success('Customer updated');
-          this.router.navigate(['/customers', data.id]);
+          this.router.navigate(['/customers', data.id], { state: detailNavigationState });
         },
         error: (error) => {
           applyServerErrorsToForm(this.form, error);
@@ -828,7 +840,7 @@ export class CustomerFormComponent implements OnInit {
       this.customersService.createCustomer(requestPayload).subscribe({
         next: (data) => {
           this.toast.success('Customer created');
-          this.router.navigate(['/customers', data.id]);
+          this.router.navigate(['/customers', data.id], { state: detailNavigationState });
         },
         error: (error) => {
           applyServerErrorsToForm(this.form, error);

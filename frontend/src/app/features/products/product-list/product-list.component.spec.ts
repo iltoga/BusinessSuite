@@ -27,7 +27,26 @@ describe('ProductListComponent', () => {
           },
         ],
       }),
-    productsCanDeleteRetrieve: () => of({ can_delete: true }),
+    productsDeletePreviewRetrieve: () =>
+      of({
+        can_delete: true,
+        requires_force_delete: false,
+        related_counts: {
+          tasks: 0,
+          applications: 0,
+          workflows: 0,
+          documents: 0,
+          invoice_applications: 0,
+          invoices: 0,
+          payments: 0,
+        },
+        related_records: {
+          tasks: [],
+          applications: [],
+          invoice_applications: [],
+        },
+      }),
+    productsForceDeleteCreate: () => of({ deleted: true }),
   };
   const mockProductImportExportService: any = {
     startExport: () => of({ job_id: 'job-1', status: 'pending', progress: 0 }),
@@ -107,5 +126,20 @@ describe('ProductListComponent', () => {
     const text = String((host.innerText ?? host.textContent) || '');
     expect(text).toContain('Rp');
     expect(text).not.toContain('****');
+  });
+
+  it('should restore page and search query from navigation state', async () => {
+    window.history.replaceState({ page: 3, searchQuery: 'visa' }, '');
+
+    fixture.detectChanges();
+    const req = httpMock.expectOne((request) => request.url.startsWith('/api/products/'));
+    expect(req.request.method).toBe('GET');
+    expect(req.request.params.get('page')).toBe('3');
+    expect(req.request.params.get('search')).toBe('visa');
+    req.flush({ count: 0, results: [] });
+
+    await fixture.whenStable();
+    expect(component.page()).toBe(3);
+    expect(component.query()).toBe('visa');
   });
 });

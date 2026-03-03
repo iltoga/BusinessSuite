@@ -204,6 +204,7 @@ export class ApplicationDetailComponent implements OnInit {
     Boolean(this.selectedDocument()?.docType?.aiValidation),
   );
   readonly originSearchQuery = signal<string | null>(null);
+  readonly originPage = signal<number | null>(null);
   readonly isSuperuser = this.authService.isSuperuser;
   readonly isSavingMeta = signal(false);
   readonly editableNotes = signal('');
@@ -529,6 +530,10 @@ export class ApplicationDetailComponent implements OnInit {
     const id = Number(this.route.snapshot.paramMap.get('id'));
     const st = this.isBrowser ? (window as any).history.state || {} : {};
     this.originSearchQuery.set(st.searchQuery ?? null);
+    const page = Number(st.page);
+    if (Number.isFinite(page) && page > 0) {
+      this.originPage.set(Math.floor(page));
+    }
     if (!id) {
       this.toast.error('Invalid application ID');
       this.isLoading.set(false);
@@ -1396,6 +1401,7 @@ export class ApplicationDetailComponent implements OnInit {
         from: 'applications',
         focusId: app.id,
         searchQuery: this.originSearchQuery(),
+        page: this.originPage() ?? undefined,
       },
     });
   }
@@ -1560,18 +1566,24 @@ export class ApplicationDetailComponent implements OnInit {
     if (st.searchQuery) {
       focusState['searchQuery'] = st.searchQuery;
     }
+    const page = Number(st.page ?? this.originPage());
+    if (Number.isFinite(page) && page > 0) {
+      focusState['page'] = Math.floor(page);
+    }
 
     if (st.from === 'applications') {
       this.router.navigate(['/applications'], { state: focusState });
       return;
     }
     if (typeof st.returnUrl === 'string' && st.returnUrl.startsWith('/')) {
-      this.router.navigateByUrl(st.returnUrl, { state: { searchQuery: st.searchQuery ?? null } });
+      this.router.navigateByUrl(st.returnUrl, {
+        state: { searchQuery: st.searchQuery ?? null, page: st.page ?? this.originPage() ?? null },
+      });
       return;
     }
     if (st.from === 'customer-detail' && st.customerId) {
       this.router.navigate(['/customers', st.customerId], {
-        state: { searchQuery: st.searchQuery ?? null },
+        state: { searchQuery: st.searchQuery ?? null, page: st.page ?? this.originPage() ?? null },
       });
       return;
     }
@@ -1585,7 +1597,12 @@ export class ApplicationDetailComponent implements OnInit {
     }
 
     // Edge case: newly created applications should return to the list and focus the first row.
-    this.router.navigate(['/applications'], { state: { focusTable: true } });
+    this.router.navigate(['/applications'], {
+      state: {
+        focusTable: true,
+        page: this.originPage() ?? undefined,
+      },
+    });
   }
 
   onInlineDateChange(field: 'docDate' | 'dueDate', value: Date | null): void {
@@ -1748,7 +1765,7 @@ export class ApplicationDetailComponent implements OnInit {
 
   private isReadyForInvoice(app: ApplicationDetail): boolean {
     const readyFlag = typeof app.readyForInvoice === 'boolean' ? app.readyForInvoice : true;
-    return readyFlag && app.status === 'completed' && !app.hasInvoice;
+    return readyFlag && !app.hasInvoice;
   }
 
   private calculateGapDays(

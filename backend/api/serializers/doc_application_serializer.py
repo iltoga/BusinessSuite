@@ -13,6 +13,30 @@ from invoices.models.invoice import InvoiceApplication
 from rest_framework import serializers
 
 
+def is_ready_for_invoice(instance: DocApplication) -> bool:
+    product = getattr(instance, "product", None)
+    if not product:
+        return False
+    if getattr(product, "deprecated", False):
+        return False
+    if not getattr(product, "uses_customer_app_workflow", True):
+        return False
+    if instance.status in (DocApplication.STATUS_COMPLETED, DocApplication.STATUS_REJECTED):
+        return True
+
+    total_required_documents = getattr(instance, "total_required_documents", None)
+    completed_required_documents = getattr(instance, "completed_required_documents", None)
+    if total_required_documents is not None and completed_required_documents is not None:
+        return total_required_documents == completed_required_documents
+
+    completion_value = getattr(instance, "is_document_collection_completed", None)
+    if callable(completion_value):
+        return bool(completion_value())
+    if completion_value is not None:
+        return bool(completion_value)
+    return False
+
+
 class DocApplicationSerializer(serializers.ModelSerializer):
     class Meta:
         model = DocApplication
@@ -76,18 +100,7 @@ class DocApplicationSerializerWithRelations(serializers.ModelSerializer):
         return invoice.id if invoice else None
 
     def get_ready_for_invoice(self, instance) -> bool:
-        """Check if application is ready for invoicing.
-
-        Ready if all required documents are completed OR if the application
-        has been marked as completed (e.g. force closed).
-        """
-        if getattr(instance.product, "deprecated", False):
-            return False
-        if not getattr(instance.product, "uses_customer_app_workflow", True):
-            return False
-        if instance.status in (DocApplication.STATUS_COMPLETED, DocApplication.STATUS_REJECTED):
-            return True
-        return instance.total_required_documents == instance.completed_required_documents
+        return is_ready_for_invoice(instance)
 
     def get_can_force_close(self, instance) -> bool:
         """Return True if the current user can force close this application."""
@@ -161,13 +174,7 @@ class CustomerUninvoicedApplicationSerializer(DocApplicationInvoiceSerializer):
         return invoice.id if invoice else None
 
     def get_ready_for_invoice(self, instance) -> bool:
-        if getattr(instance.product, "deprecated", False):
-            return False
-        if not getattr(instance.product, "uses_customer_app_workflow", True):
-            return False
-        if instance.status in (DocApplication.STATUS_COMPLETED, DocApplication.STATUS_REJECTED):
-            return True
-        return instance.is_document_collection_completed
+        return is_ready_for_invoice(instance)
 
 
 class CustomerApplicationHistorySerializer(CustomerUninvoicedApplicationSerializer):
@@ -244,6 +251,7 @@ class DocApplicationDetailSerializer(serializers.ModelSerializer):
     is_application_completed = serializers.BooleanField(read_only=True)
     has_next_task = serializers.BooleanField(read_only=True)
     next_task = TaskSerializer(read_only=True)
+    ready_for_invoice = serializers.SerializerMethodField()
     has_invoice = serializers.SerializerMethodField()
     invoice_id = serializers.SerializerMethodField()
     can_force_close = serializers.SerializerMethodField()
@@ -271,6 +279,7 @@ class DocApplicationDetailSerializer(serializers.ModelSerializer):
             "is_application_completed",
             "has_next_task",
             "next_task",
+            "ready_for_invoice",
             "has_invoice",
             "invoice_id",
             "str_field",
@@ -287,6 +296,9 @@ class DocApplicationDetailSerializer(serializers.ModelSerializer):
     def get_invoice_id(self, instance) -> int | None:
         invoice = instance.get_invoice()
         return invoice.id if invoice else None
+
+    def get_ready_for_invoice(self, instance) -> bool:
+        return is_ready_for_invoice(instance)
 
     def get_can_force_close(self, instance) -> bool:
         request = self.context.get("request") if hasattr(self, "context") else None

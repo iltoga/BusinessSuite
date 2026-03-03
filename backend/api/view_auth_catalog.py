@@ -595,8 +595,49 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=["get"], url_path="can-delete")
     def can_delete(self, request, pk=None):
         product = self.get_object()
-        can_delete, message = product.can_be_deleted()
-        return Response({"can_delete": can_delete, "message": message})
+        from products.services import build_product_delete_preview
+
+        preview = build_product_delete_preview(product, limit=1)
+        return Response(
+            {
+                "can_delete": preview["can_delete"],
+                "message": preview["message"],
+                "requires_force_delete": preview["requires_force_delete"],
+                "related_counts": preview["related_counts"],
+            }
+        )
+
+    @extend_schema(responses=OpenApiTypes.OBJECT)
+    @action(detail=True, methods=["get"], url_path="delete-preview")
+    def delete_preview(self, request, pk=None):
+        if not is_superuser(request.user):
+            return self.error_response("Only superusers can delete products.", status.HTTP_403_FORBIDDEN)
+
+        from products.services import build_product_delete_preview
+
+        product = self.get_object()
+        preview = build_product_delete_preview(product)
+        return Response(preview)
+
+    @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)
+    @action(detail=True, methods=["post"], url_path="force-delete")
+    def force_delete(self, request, pk=None):
+        if not is_superuser(request.user):
+            return self.error_response("Only superusers can delete products.", status.HTTP_403_FORBIDDEN)
+
+        force_confirmed = parse_bool(
+            request.data.get("force_delete_confirmed")
+            or request.data.get("forceDeleteConfirmed")
+            or request.data.get("confirmed")
+        )
+        if not force_confirmed:
+            return self.error_response("Please confirm the force delete action.", status.HTTP_400_BAD_REQUEST)
+
+        from products.services import force_delete_product
+
+        product = self.get_object()
+        result = force_delete_product(product)
+        return Response({"deleted": True, **result})
 
     @action(detail=False, methods=["post"], url_path="bulk-delete")
     def bulk_delete(self, request):
@@ -824,4 +865,3 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             },
             status=status.HTTP_202_ACCEPTED,
         )
-

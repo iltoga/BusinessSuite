@@ -48,6 +48,21 @@ export class SearchToolbarComponent implements AfterViewInit, OnDestroy {
 
   /** Handle keys on search input specifically */
   handleInputKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Escape' || event.key === 'Esc') {
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (this.debounceHandle) {
+        clearTimeout(this.debounceHandle);
+        this.debounceHandle = undefined;
+      }
+
+      // Clear immediately and notify parent list components to reload without search filters.
+      this.searchValue.set('');
+      this.queryChange.emit('');
+      return;
+    }
+
     if (event.key === 'Tab') {
       event.preventDefault();
       event.stopPropagation();

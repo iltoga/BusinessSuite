@@ -681,11 +681,6 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                 "Source application product is invoice-only and cannot be invoiced from customer applications.",
                 status.HTTP_400_BAD_REQUEST,
             )
-        if source_application.status != DocApplication.STATUS_COMPLETED:
-            return self.error_response(
-                "Only completed customer applications can be used to prefill invoices.",
-                status.HTTP_400_BAD_REQUEST,
-            )
         if source_application.invoice_applications.exists():
             return self.error_response(
                 "This customer application is already invoiced.",
@@ -1349,4 +1344,3 @@ class PaymentViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             notes=serializer.validated_data.get("notes"),
         )
         serializer.instance = payment
-

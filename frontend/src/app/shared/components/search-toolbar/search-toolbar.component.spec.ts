@@ -45,6 +45,60 @@ describe('SearchToolbarComponent keyboard shortcut', () => {
     expect(emitted).toBe(1);
   });
 
+  it('should clear and emit empty query on Escape in the search input', async () => {
+    const fixture = TestBed.createComponent(SearchToolbarComponent);
+    fixture.componentRef.setInput('query', 'bank');
+    fixture.componentRef.setInput('debounceMs', 50);
+    fixture.detectChanges();
+
+    const comp = fixture.componentInstance;
+    const emitted: string[] = [];
+    comp.queryChange.subscribe((value) => emitted.push(value));
+
+    const input = fixture.nativeElement.querySelector('input') as HTMLInputElement;
+    input.focus();
+
+    input.value = 'bank fee';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    fixture.detectChanges();
+
+    const escapeEvent = new KeyboardEvent('keydown', {
+      key: 'Escape',
+      bubbles: true,
+      cancelable: true,
+    });
+    const notCancelled = input.dispatchEvent(escapeEvent);
+    fixture.detectChanges();
+
+    expect(notCancelled).toBe(false);
+    expect(input.value).toBe('');
+    expect(emitted).toEqual(['']);
+
+    // Ensure stale debounced terms are not emitted after clearing.
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    expect(emitted).toEqual(['']);
+  });
+
+  it('should not emit queryChange when Escape comes from a different input', () => {
+    const fixture = TestBed.createComponent(SearchToolbarComponent);
+    fixture.detectChanges();
+
+    const comp = fixture.componentInstance;
+    const emitted: string[] = [];
+    comp.queryChange.subscribe((value) => emitted.push(value));
+
+    const externalInput = document.createElement('input');
+    document.body.appendChild(externalInput);
+    try {
+      externalInput.focus();
+      const escapeEvent = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true });
+      externalInput.dispatchEvent(escapeEvent);
+      expect(emitted).toEqual([]);
+    } finally {
+      externalInput.remove();
+    }
+  });
+
   it('should not emit tabOut when Shift+T is pressed inside an input', () => {
     const fixture = TestBed.createComponent(SearchToolbarComponent);
     fixture.detectChanges();

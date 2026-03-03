@@ -7,7 +7,7 @@
       </a>
       <a
         routerLink="/invoices/new"
-        [state]="{ from: 'invoices', searchQuery: query() }"
+        [state]="{ from: 'invoices', searchQuery: query(), page: page() }"
         [contextHelp]="'/invoices/new'"
       >
         <z-button zType="default" zSize="default">New Invoice</z-button>
@@ -82,7 +82,7 @@
 <ng-template #numberTemplate let-row>
   <a
     [routerLink]="['/invoices', row.id]"
-    [state]="{ from: 'invoices', focusId: row.id, searchQuery: query() }"
+    [state]="{ from: 'invoices', focusId: row.id, searchQuery: query(), page: page() }"
     class="font-medium hover:underline"
   >
     {{ row.invoiceNoDisplay || row.invoiceNo || '—' }}

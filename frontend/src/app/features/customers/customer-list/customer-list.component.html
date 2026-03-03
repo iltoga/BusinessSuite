@@ -3,7 +3,7 @@
     <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">Customer List</h1>
     <a
       routerLink="/customers/new"
-      [state]="{ from: 'customers', searchQuery: query() }"
+      [state]="{ from: 'customers', searchQuery: query(), page: page() }"
       [contextHelp]="'/customers/new'"
     >
       <z-button zType="default" zSize="default"> New Customer </z-button>
@@ -70,7 +70,11 @@
 
 <ng-template #customerTemplate let-row>
   <div class="flex items-center gap-2">
-    <a [routerLink]="['/customers', row.id]" class="font-medium hover:underline">
+    <a
+      [routerLink]="['/customers', row.id]"
+      [state]="{ from: 'customers', focusId: row.id, searchQuery: query(), page: page() }"
+      class="font-medium hover:underline"
+    >
       {{ row.fullNameWithCompany }}
     </a>
     @if (!row.active) {

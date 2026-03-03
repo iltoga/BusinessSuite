@@ -167,7 +167,12 @@ export class CustomerListComponent implements OnInit {
         variant: 'default',
         action: (item) =>
           this.router.navigate(['/customers', item.id], {
-            state: { from: 'customers', focusId: item.id, searchQuery: this.query() },
+            state: {
+              from: 'customers',
+              focusId: item.id,
+              searchQuery: this.query(),
+              page: this.page(),
+            },
           }),
       },
       {
@@ -176,7 +181,12 @@ export class CustomerListComponent implements OnInit {
         variant: 'warning',
         action: (item) =>
           this.router.navigate(['/customers', item.id, 'edit'], {
-            state: { from: 'customers', focusId: item.id, searchQuery: this.query() },
+            state: {
+              from: 'customers',
+              focusId: item.id,
+              searchQuery: this.query(),
+              page: this.page(),
+            },
           }),
       },
       {
@@ -192,7 +202,12 @@ export class CustomerListComponent implements OnInit {
         shortcut: 'a',
         action: (item) =>
           this.router.navigate(['/customers', item.id, 'applications', 'new'], {
-            state: { from: 'customers', focusId: item.id, searchQuery: this.query() },
+            state: {
+              from: 'customers',
+              focusId: item.id,
+              searchQuery: this.query(),
+              page: this.page(),
+            },
           }),
       },
     ];
@@ -235,7 +250,7 @@ export class CustomerListComponent implements OnInit {
     if (event.key === 'N' && !event.ctrlKey && !event.altKey && !event.metaKey) {
       event.preventDefault();
       this.router.navigate(['/customers', 'new'], {
-        state: { from: 'customers', searchQuery: this.query() },
+        state: { from: 'customers', searchQuery: this.query(), page: this.page() },
       });
     }
   }
@@ -248,6 +263,10 @@ export class CustomerListComponent implements OnInit {
     const st = (window as any).history.state || {};
     this.focusTableOnInit.set(Boolean(st.focusTable));
     this.focusIdOnInit.set(st.focusId ? Number(st.focusId) : null);
+    const restoredPage = Number(st.page);
+    if (Number.isFinite(restoredPage) && restoredPage > 0) {
+      this.page.set(Math.floor(restoredPage));
+    }
     if (st.searchQuery) {
       this.query.set(String(st.searchQuery));
     }

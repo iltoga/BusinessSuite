@@ -155,7 +155,10 @@
                 [class.opacity-0]="!!item.readAt"
               ></span>
               <span class="flex min-w-0 max-w-full flex-1 flex-col overflow-hidden text-left">
-                <span class="block max-w-full truncate text-xs font-medium" [title]="item.content">
+                <span
+                  class="block max-w-full truncate text-xs font-medium"
+                  [zTooltip]="item.content"
+                >
                   {{ item.content }}
                 </span>
                 <span class="text-[11px] text-muted-foreground">

@@ -28,7 +28,6 @@ import {
   type BulkDeleteDialogData,
 } from '@/shared/components/bulk-delete-dialog/bulk-delete-dialog.component';
 import { ZardButtonComponent } from '@/shared/components/button';
-import { ConfirmDialogComponent } from '@/shared/components/confirm-dialog/confirm-dialog.component';
 import {
   DataTableComponent,
   type ColumnConfig,
@@ -37,6 +36,11 @@ import {
 } from '@/shared/components/data-table/data-table.component';
 import { ZardIconComponent } from '@/shared/components/icon';
 import { PaginationControlsComponent } from '@/shared/components/pagination-controls';
+import {
+  ProductDeleteDialogComponent,
+  type ProductDeleteDialogResult,
+  type ProductDeletePreviewData,
+} from '@/shared/components/product-delete-dialog/product-delete-dialog.component';
 import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
 import { ZardTooltipImports } from '@/shared/components/tooltip';
 import { ContextHelpDirective } from '@/shared/directives';
@@ -56,7 +60,7 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
     ContextHelpDirective,
     ZardButtonComponent,
     ZardIconComponent,
-    ConfirmDialogComponent,
+    ProductDeleteDialogComponent,
     ZardBadgeComponent,
     BulkDeleteDialogComponent,
     ...ZardTooltipImports,
@@ -126,8 +130,8 @@ export class ProductListComponent implements OnInit {
   readonly bulkDeleteData = signal<BulkDeleteDialogData | null>(null);
   private readonly bulkDeleteQuery = signal<string>('');
 
-  readonly confirmOpen = signal(false);
-  readonly confirmMessage = signal('');
+  readonly productDeleteOpen = signal(false);
+  readonly productDeleteData = signal<ProductDeletePreviewData | null>(null);
   readonly pendingDelete = signal<Product | null>(null);
 
   readonly bulkDeleteLabel = computed(() =>
@@ -192,7 +196,12 @@ export class ProductListComponent implements OnInit {
       variant: 'default',
       action: (item) =>
         this.router.navigate(['/products', item.id], {
-          state: { from: 'products', focusId: item.id, searchQuery: this.query() },
+          state: {
+            from: 'products',
+            focusId: item.id,
+            searchQuery: this.query(),
+            page: this.page(),
+          },
         }),
     },
     {
@@ -201,7 +210,12 @@ export class ProductListComponent implements OnInit {
       variant: 'warning',
       action: (item) =>
         this.router.navigate(['/products', item.id, 'edit'], {
-          state: { from: 'products', focusId: item.id, searchQuery: this.query() },
+          state: {
+            from: 'products',
+            focusId: item.id,
+            searchQuery: this.query(),
+            page: this.page(),
+          },
         }),
     },
     {
@@ -236,7 +250,7 @@ export class ProductListComponent implements OnInit {
     if (event.key === 'N' && !event.ctrlKey && !event.altKey && !event.metaKey) {
       event.preventDefault();
       this.router.navigate(['/products', 'new'], {
-        state: { from: 'products', searchQuery: this.query() },
+        state: { from: 'products', searchQuery: this.query(), page: this.page() },
       });
     }
   }
@@ -248,6 +262,10 @@ export class ProductListComponent implements OnInit {
     const st = (window as any).history.state || {};
     this.focusTableOnInit.set(Boolean(st.focusTable));
     this.focusIdOnInit.set(st.focusId ? Number(st.focusId) : null);
+    const restoredPage = Number(st.page);
+    if (Number.isFinite(restoredPage) && restoredPage > 0) {
+      this.page.set(Math.floor(restoredPage));
+    }
     if (st.searchQuery) {
       this.query.set(String(st.searchQuery));
     }
@@ -282,36 +300,35 @@ export class ProductListComponent implements OnInit {
     if (!this.isSuperuser()) {
       return;
     }
-    this.productsApi.productsCanDeleteRetrieve(product.id).subscribe({
+    this.pendingDelete.set(product);
+    this.productsApi.productsDeletePreviewRetrieve(product.id).subscribe({
       next: (result) => {
-        const payload = result as unknown as { can_delete: boolean; message?: string | null };
-        if (!payload.can_delete) {
-          this.toast.error(payload.message ?? 'Product cannot be deleted.');
-          return;
-        }
-        this.pendingDelete.set(product);
-        this.confirmMessage.set(
-          payload.message ??
-            `Delete product ${product.code} - ${product.name}? This cannot be undone.`,
-        );
-        this.confirmOpen.set(true);
+        this.productDeleteData.set(this.mapProductDeletePreview(result, product));
+        this.productDeleteOpen.set(true);
       },
-      error: () => {
-        this.toast.error('Failed to validate delete request');
+      error: (error) => {
+        const message = extractServerErrorMessage(error);
+        this.toast.error(
+          message ? `Failed to load delete preview: ${message}` : 'Failed to load delete preview',
+        );
+        this.pendingDelete.set(null);
       },
     });
   }
 
-  confirmDelete(): void {
+  onProductDeleteConfirmed(result: ProductDeleteDialogResult): void {
     const product = this.pendingDelete();
     if (!product) {
       return;
     }
-    this.productsApi.productsDestroy(product.id).subscribe({
+    const deleteRequest = result.forceDelete
+      ? this.productsApi.productsForceDeleteCreate(product.id, { forceDeleteConfirmed: true } as any)
+      : this.productsApi.productsDestroy(product.id);
+
+    deleteRequest.subscribe({
       next: () => {
-        this.toast.success('Product deleted');
-        this.confirmOpen.set(false);
-        this.pendingDelete.set(null);
+        this.toast.success(result.forceDelete ? 'Product force deleted' : 'Product deleted');
+        this.resetProductDeleteDialog();
         this.loadProducts();
       },
       error: (error) => {
@@ -319,15 +336,13 @@ export class ProductListComponent implements OnInit {
         this.toast.error(
           message ? `Failed to delete product: ${message}` : 'Failed to delete product',
         );
-        this.confirmOpen.set(false);
-        this.pendingDelete.set(null);
+        this.resetProductDeleteDialog();
       },
     });
   }
 
-  cancelDelete(): void {
-    this.confirmOpen.set(false);
-    this.pendingDelete.set(null);
+  onProductDeleteCancelled(): void {
+    this.resetProductDeleteDialog();
   }
 
   openBulkDeleteDialog(): void {
@@ -468,7 +483,7 @@ export class ProductListComponent implements OnInit {
     const configured = String(this.configService.settings.baseCurrency ?? 'IDR')
       .trim()
       .toUpperCase();
-    const currency = String((row as any)?.currency ?? configured || 'IDR')
+    const currency = String(((row as any)?.currency ?? configured) || 'IDR')
       .trim()
       .toUpperCase();
     if (!currency || currency.length < 2 || currency.length > 3 || !/^[A-Z]+$/.test(currency)) {
@@ -513,6 +528,112 @@ export class ProductListComponent implements OnInit {
       return 0;
     }
     return retail - base;
+  }
+
+  private mapProductDeletePreview(response: unknown, product: Product): ProductDeletePreviewData {
+    const payload: any = response ?? {};
+    const relatedCounts: any = payload.relatedCounts ?? payload.related_counts ?? {};
+    const relatedRecords: any = payload.relatedRecords ?? payload.related_records ?? {};
+    const relatedRecordsTruncated: any =
+      payload.relatedRecordsTruncated ?? payload.related_records_truncated ?? {};
+
+    const taskRecords = this.asArray<any>(relatedRecords.tasks).map((task: any) => ({
+      id: this.asNumber(task?.id),
+      step: this.asNumber(task?.step),
+      name: String(task?.name ?? ''),
+    }));
+
+    const applicationRecords = this.asArray<any>(relatedRecords.applications).map(
+      (application: any) => ({
+        id: this.asNumber(application?.id),
+        customerName: String(application?.customerName ?? application?.customer_name ?? '—'),
+        status: String(application?.status ?? ''),
+        statusDisplay: String(application?.statusDisplay ?? application?.status_display ?? ''),
+        docDate: application?.docDate ?? application?.doc_date ?? null,
+        dueDate: application?.dueDate ?? application?.due_date ?? null,
+        workflowCount: this.asNumber(application?.workflowCount ?? application?.workflow_count),
+        documentCount: this.asNumber(application?.documentCount ?? application?.document_count),
+        invoiceLineCount: this.asNumber(
+          application?.invoiceLineCount ?? application?.invoice_line_count,
+        ),
+      }),
+    );
+
+    const invoiceLineRecords = this.asArray<any>(
+      relatedRecords.invoiceApplications ?? relatedRecords.invoice_applications,
+    ).map((invoiceLine: any) => ({
+      id: this.asNumber(invoiceLine?.id),
+      invoiceId: this.asNumber(invoiceLine?.invoiceId ?? invoiceLine?.invoice_id),
+      invoiceNoDisplay: String(invoiceLine?.invoiceNoDisplay ?? invoiceLine?.invoice_no_display ?? ''),
+      invoiceStatus: String(invoiceLine?.invoiceStatus ?? invoiceLine?.invoice_status ?? ''),
+      customerApplicationId: this.asNullableNumber(
+        invoiceLine?.customerApplicationId ?? invoiceLine?.customer_application_id,
+      ),
+      customerName: String(invoiceLine?.customerName ?? invoiceLine?.customer_name ?? '—'),
+      amount: invoiceLine?.amount ?? '0',
+      status: String(invoiceLine?.status ?? ''),
+      statusDisplay: String(invoiceLine?.statusDisplay ?? invoiceLine?.status_display ?? ''),
+      paymentCount: this.asNumber(invoiceLine?.paymentCount ?? invoiceLine?.payment_count),
+    }));
+
+    return {
+      productId: this.asNumber(payload.productId ?? payload.product_id ?? product.id),
+      productCode: String(payload.productCode ?? payload.product_code ?? product.code ?? ''),
+      productName: String(payload.productName ?? payload.product_name ?? product.name ?? ''),
+      canDelete: Boolean(payload.canDelete ?? payload.can_delete ?? true),
+      requiresForceDelete: Boolean(
+        payload.requiresForceDelete ?? payload.requires_force_delete ?? false,
+      ),
+      message: payload.message ?? null,
+      relatedCounts: {
+        tasks: this.asNumber(relatedCounts.tasks),
+        applications: this.asNumber(relatedCounts.applications),
+        workflows: this.asNumber(relatedCounts.workflows),
+        documents: this.asNumber(relatedCounts.documents),
+        invoiceApplications: this.asNumber(
+          relatedCounts.invoiceApplications ?? relatedCounts.invoice_applications,
+        ),
+        invoices: this.asNumber(relatedCounts.invoices),
+        payments: this.asNumber(relatedCounts.payments),
+      },
+      relatedRecords: {
+        tasks: taskRecords,
+        applications: applicationRecords,
+        invoiceApplications: invoiceLineRecords,
+      },
+      relatedRecordsTruncated: {
+        tasks: Boolean(relatedRecordsTruncated.tasks),
+        applications: Boolean(relatedRecordsTruncated.applications),
+        invoiceApplications: Boolean(
+          relatedRecordsTruncated.invoiceApplications ??
+            relatedRecordsTruncated.invoice_applications,
+        ),
+      },
+      recordLimit: this.asNullableNumber(payload.recordLimit ?? payload.record_limit) ?? undefined,
+    };
+  }
+
+  private asArray<T>(value: unknown): T[] {
+    return Array.isArray(value) ? (value as T[]) : [];
+  }
+
+  private asNumber(value: unknown): number {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  private asNullableNumber(value: unknown): number | null {
+    if (value === null || value === undefined || value === '') {
+      return null;
+    }
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  private resetProductDeleteDialog(): void {
+    this.productDeleteOpen.set(false);
+    this.productDeleteData.set(null);
+    this.pendingDelete.set(null);
   }
 
   private watchExportJob(jobId: string): void {

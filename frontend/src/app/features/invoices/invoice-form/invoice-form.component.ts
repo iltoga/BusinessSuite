@@ -12,7 +12,7 @@ import {
   type OnInit,
 } from '@angular/core';
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { map } from 'rxjs';
 
 import {
@@ -25,6 +25,7 @@ import {
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
+import { ZardComboboxComponent, type ZardComboboxOption } from '@/shared/components/combobox';
 import { CustomerSelectComponent } from '@/shared/components/customer-select/customer-select.component';
 import { ZardDateInputComponent } from '@/shared/components/date-input';
 import { FormErrorSummaryComponent } from '@/shared/components/form-error-summary/form-error-summary.component';
@@ -51,11 +52,11 @@ interface InvoiceLineInitial {
   standalone: true,
   imports: [
     CommonModule,
-    RouterLink,
     ReactiveFormsModule,
     ZardInputDirective,
     ZardButtonComponent,
     ZardCardComponent,
+    ZardComboboxComponent,
     ZardDateInputComponent,
     CustomerSelectComponent,
     FormErrorSummaryComponent,
@@ -112,6 +113,12 @@ export class InvoiceFormComponent implements OnInit {
       const amount = Number(group.get('amount')?.value ?? 0);
       return sum + (Number.isNaN(amount) ? 0 : amount);
     }, 0),
+  );
+  readonly billableProductOptions = computed<ZardComboboxOption[]>(() =>
+    this.billableProducts().map((row) => ({
+      value: String(row.product.id),
+      label: this.getBillableProductLabel(row),
+    })),
   );
 
   @HostListener('window:keydown', ['$event'])
@@ -210,6 +217,10 @@ export class InvoiceFormComponent implements OnInit {
     if (st?.searchQuery) {
       focusState['searchQuery'] = st.searchQuery;
     }
+    const page = Number(st?.page);
+    if (Number.isFinite(page) && page > 0) {
+      focusState['page'] = Math.floor(page);
+    }
 
     if (st?.from === 'applications') {
       this.router.navigate(['/applications'], { state: focusState });
@@ -220,6 +231,7 @@ export class InvoiceFormComponent implements OnInit {
       this.router.navigateByUrl(st.returnUrl, {
         state: {
           searchQuery: st.searchQuery ?? null,
+          page: st.page ?? null,
         },
       });
       return;
@@ -229,6 +241,7 @@ export class InvoiceFormComponent implements OnInit {
       this.router.navigate(['/customers', st.customerId], {
         state: {
           searchQuery: st.searchQuery ?? null,
+          page: st.page ?? null,
         },
       });
       return;
@@ -341,8 +354,8 @@ export class InvoiceFormComponent implements OnInit {
       sent: raw.sent ?? false,
       invoiceApplications: (raw.invoiceApplications ?? []).map((item: any) => ({
         id: item.id ?? undefined,
-        product: item.product,
-        customerApplication: item.customerApplication ?? null,
+        product: Number(item.product),
+        customerApplication: item.customerApplication ? Number(item.customerApplication) : null,
         amount: String(item.amount ?? 0),
       })),
     } as InvoiceCreateUpdate;
@@ -351,11 +364,13 @@ export class InvoiceFormComponent implements OnInit {
     const returnUrl = history.state?.returnUrl;
     const customerId = history.state?.customerId;
     const searchQuery = history.state?.searchQuery;
+    const page = Number(history.state?.page);
     const detailState: Record<string, unknown> = {
       from: fromState,
       returnUrl,
       customerId,
       searchQuery,
+      page: Number.isFinite(page) && page > 0 ? Math.floor(page) : undefined,
     };
 
     if (this.isEditMode() && this.invoice()) {
@@ -408,8 +423,29 @@ export class InvoiceFormComponent implements OnInit {
   }
 
   getBillableProductLabel(row: BillableProductRow): string {
-    const prefix = row.hasPendingApplications ? `[Pending ${row.pendingApplicationsCount}] ` : '';
-    return `${prefix}${row.product.code} - ${row.product.name}`;
+    return `${row.product.code} - ${row.product.name}`;
+  }
+
+  toComboboxValue(value: unknown): string | null {
+    if (value === null || value === undefined || value === '') {
+      return null;
+    }
+    return String(value);
+  }
+
+  availablePendingApplicationOptionsForLine(group: FormGroup): ZardComboboxOption[] {
+    return this.availablePendingApplicationsForLine(group).map((app) => ({
+      value: String(app.id),
+      label: `#${app.id} \u00b7 ${app.customer?.fullName ?? 'Unknown customer'}`,
+    }));
+  }
+
+  onLineProductComboboxChange(group: FormGroup, value: string | null): void {
+    group.get('product')?.setValue(this.parseComboboxNumericValue(value));
+  }
+
+  onLineCustomerApplicationComboboxChange(group: FormGroup, value: string | null): void {
+    group.get('customerApplication')?.setValue(this.parseComboboxNumericValue(value));
   }
 
   private selectedCustomerApplicationIds(excludeLineKey?: number): Set<number> {
@@ -726,6 +762,14 @@ export class InvoiceFormComponent implements OnInit {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  }
+
+  private parseComboboxNumericValue(value: string | null): number | null {
+    if (!value) {
+      return null;
+    }
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
   }
 
   private proposeInvoiceNo(invoiceDate?: Date | string | null): void {

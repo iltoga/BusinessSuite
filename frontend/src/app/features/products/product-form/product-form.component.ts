@@ -10,7 +10,7 @@ import {
   type OnInit,
 } from '@angular/core';
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 
 import {
   DocumentTypesService,
@@ -39,7 +39,6 @@ type ProductTask = NonNullable<ProductDetail['tasks']>[number];
   standalone: true,
   imports: [
     CommonModule,
-    RouterLink,
     ReactiveFormsModule,
     ZardInputDirective,
     ZardButtonComponent,
@@ -243,6 +242,10 @@ export class ProductFormComponent implements OnInit {
     if (st?.searchQuery) {
       focusState['searchQuery'] = st.searchQuery;
     }
+    const page = Number(st?.page);
+    if (Number.isFinite(page) && page > 0) {
+      focusState['page'] = Math.floor(page);
+    }
 
     this.router.navigate(['/products'], { state: focusState });
   }
@@ -306,6 +309,15 @@ export class ProductFormComponent implements OnInit {
 
     this.isSaving.set(true);
     const rawValue = this.form.getRawValue();
+    const sourceState = (history.state as any) || {};
+    const detailNavigationState: Record<string, unknown> = {
+      from: sourceState.from ?? 'products',
+      searchQuery: sourceState.searchQuery ?? null,
+    };
+    const sourcePage = Number(sourceState.page);
+    if (Number.isFinite(sourcePage) && sourcePage > 0) {
+      detailNavigationState['page'] = Math.floor(sourcePage);
+    }
 
     const payload: ProductCreateUpdate = {
       id: this.product()?.id ?? 0,
@@ -346,7 +358,7 @@ export class ProductFormComponent implements OnInit {
       this.productsApi.productsUpdate(this.product()!.id, payload).subscribe({
         next: (product: ProductCreateUpdate) => {
           this.toast.success('Product updated successfully');
-          this.router.navigate(['/products', product.id]);
+          this.router.navigate(['/products', product.id], { state: detailNavigationState });
         },
         error: (error) => {
           applyServerErrorsToForm(this.form, error);
@@ -364,7 +376,7 @@ export class ProductFormComponent implements OnInit {
     this.productsApi.productsCreate(payload).subscribe({
       next: (product: ProductCreateUpdate) => {
         this.toast.success('Product created successfully');
-        this.router.navigate(['/products', product.id]);
+        this.router.navigate(['/products', product.id], { state: detailNavigationState });
       },
       error: (error) => {
         applyServerErrorsToForm(this.form, error);

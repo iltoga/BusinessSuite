@@ -37,7 +37,7 @@
         <p class="text-sm text-muted-foreground">Customer detail</p>
       </div>
       <div class="customer-detail-header-actions flex w-full flex-wrap gap-2 sm:w-auto">
-        <a z-button zType="outline" routerLink="/customers/{{ customer()!.id }}/edit">Edit</a>
+        <button z-button zType="outline" (click)="onEdit()">Edit</button>
         @if (isSuperuser()) {
           <button z-button zType="destructive" (click)="onDelete()">Delete</button>
         }
@@ -45,7 +45,12 @@
           z-button
           zType="ghost"
           [routerLink]="'/customers'"
-          [state]="{ focusTable: true, focusId: customer()!.id, searchQuery: originSearchQuery() }"
+          [state]="{
+            focusTable: true,
+            focusId: customer()!.id,
+            searchQuery: originSearchQuery(),
+            page: originPage()
+          }"
           >Back to list</a
         >
       </div>

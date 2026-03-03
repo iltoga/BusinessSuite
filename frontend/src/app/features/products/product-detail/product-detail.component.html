@@ -8,13 +8,9 @@
     </div>
     <div class="flex items-center gap-2">
       @if (product()) {
-        <a [routerLink]="['/products', product()?.id, 'edit']">
-          <z-button zType="warning" zSize="default">Edit</z-button>
-        </a>
+        <z-button zType="warning" zSize="default" (click)="navigateToEdit(product()!.id)">Edit</z-button>
       }
-      <a routerLink="/products">
-        <z-button zType="outline" zSize="default">Back</z-button>
-      </a>
+      <z-button zType="outline" zSize="default" (click)="navigateToList(product()?.id)">Back</z-button>
     </div>
   </div>
 

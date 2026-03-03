@@ -15,6 +15,7 @@ from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 from invoices.models import Invoice, InvoiceApplication
+from payments.models import Payment
 from PIL import Image
 from products.models import Product, Task
 from products.models.document_type import DocumentType
@@ -759,7 +760,7 @@ class ProductApiTestCase(TestCase):
         self.assertEqual(line.customer_application_id, application.id)
         self.assertEqual(line.product_id, product.id)
 
-    def test_from_application_prefill_requires_completed_and_uninvoiced(self):
+    def test_from_application_prefill_allows_non_completed_when_uninvoiced(self):
         self.client.force_login(self.user)
         customer = Customer.objects.create(customer_type="person", first_name="Prefill", last_name="Check", active=True)
         product = Product.objects.create(
@@ -777,14 +778,8 @@ class ProductApiTestCase(TestCase):
 
         url = f"/api/invoices/from_application_prefill/{application.id}/"
         pending_response = self.client.get(url)
-        self.assertEqual(pending_response.status_code, 400)
-
-        application.status = DocApplication.STATUS_COMPLETED
-        application.save(skip_status_calculation=True)
-
-        completed_response = self.client.get(url)
-        self.assertEqual(completed_response.status_code, 200)
-        payload = completed_response.json()
+        self.assertEqual(pending_response.status_code, 200)
+        payload = pending_response.json()
         self.assertEqual(payload["customer"]["id"], customer.id)
         self.assertEqual(payload["invoiceApplication"]["product"], product.id)
         self.assertEqual(payload["invoiceApplication"]["customerApplication"], application.id)
@@ -943,6 +938,140 @@ class ProductApiTestCase(TestCase):
         # Accept either snake_case or camelCase keys
         self.assertTrue("can_delete" in payload or "canDelete" in payload)
 
+    def test_product_delete_preview_includes_related_records(self):
+        customer = Customer.objects.create(customer_type="person", first_name="Preview", last_name="Customer")
+        product = Product.objects.create(name="Preview Product", code="PREVIEW-1", product_type="visa")
+        Task.objects.create(
+            product=product,
+            step=1,
+            name="Preview Task",
+            duration=1,
+            duration_is_business_days=True,
+        )
+        application = DocApplication.objects.create(
+            customer=customer,
+            product=product,
+            doc_date=timezone.now().date(),
+            created_by=self.user,
+        )
+        invoice = Invoice.objects.create(
+            customer=customer,
+            invoice_date=timezone.now().date(),
+            due_date=timezone.now().date(),
+            created_by=self.user,
+        )
+        invoice_line = InvoiceApplication.objects.create(
+            invoice=invoice,
+            product=product,
+            customer_application=application,
+            amount="150.00",
+        )
+        Payment.objects.create(
+            invoice_application=invoice_line,
+            from_customer=customer,
+            amount="150.00",
+            created_by=self.user,
+        )
+
+        response = self.client.get(reverse("products-delete-preview", kwargs={"pk": product.id}))
+        self.assertEqual(response.status_code, 200)
+
+        payload = response.json()
+        can_delete = payload.get("can_delete", payload.get("canDelete"))
+        requires_force = payload.get("requires_force_delete", payload.get("requiresForceDelete"))
+        related_counts = payload.get("related_counts", payload.get("relatedCounts", {}))
+        related_records = payload.get("related_records", payload.get("relatedRecords", {}))
+
+        self.assertFalse(can_delete)
+        self.assertTrue(requires_force)
+        self.assertEqual(related_counts.get("tasks"), 1)
+        self.assertEqual(related_counts.get("applications"), 1)
+        self.assertEqual(
+            related_counts.get("invoice_applications", related_counts.get("invoiceApplications")),
+            1,
+        )
+        self.assertEqual(related_counts.get("payments"), 1)
+
+        applications = related_records.get("applications", [])
+        invoice_lines = related_records.get("invoice_applications", related_records.get("invoiceApplications", []))
+        self.assertTrue(any(item.get("id") == application.id for item in applications))
+        self.assertTrue(any(item.get("id") == invoice_line.id for item in invoice_lines))
+
+    def test_product_force_delete_requires_confirmation(self):
+        product = Product.objects.create(name="Force Guard", code="FORCE-GUARD-1", product_type="other")
+        response = self.client.post(
+            reverse("products-force-delete", kwargs={"pk": product.id}),
+            data=json.dumps({}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertTrue(Product.objects.filter(id=product.id).exists())
+
+    def test_product_force_delete_removes_invoice_lines_and_refreshes_invoice_totals(self):
+        customer = Customer.objects.create(customer_type="person", first_name="Force", last_name="Delete")
+        target_product = Product.objects.create(name="Delete Me", code="DEL-ME-1", product_type="visa")
+        keep_product = Product.objects.create(name="Keep Me", code="KEEP-ME-1", product_type="other")
+
+        Task.objects.create(
+            product=target_product,
+            step=1,
+            name="Cleanup Task",
+            duration=1,
+            duration_is_business_days=True,
+        )
+        target_application = DocApplication.objects.create(
+            customer=customer,
+            product=target_product,
+            doc_date=timezone.now().date(),
+            created_by=self.user,
+        )
+        invoice = Invoice.objects.create(
+            customer=customer,
+            invoice_date=timezone.now().date(),
+            due_date=timezone.now().date(),
+            created_by=self.user,
+        )
+        target_line = InvoiceApplication.objects.create(
+            invoice=invoice,
+            product=target_product,
+            customer_application=target_application,
+            amount="100.00",
+        )
+        keep_line = InvoiceApplication.objects.create(
+            invoice=invoice,
+            product=keep_product,
+            amount="250.00",
+        )
+        Payment.objects.create(
+            invoice_application=target_line,
+            from_customer=customer,
+            amount="100.00",
+            created_by=self.user,
+        )
+
+        response = self.client.post(
+            reverse("products-force-delete", kwargs={"pk": target_product.id}),
+            data=json.dumps({"forceDeleteConfirmed": True}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["deleted"])
+        self.assertEqual(
+            payload.get("deleted_invoice_applications", payload.get("deletedInvoiceApplications")),
+            1,
+        )
+        self.assertEqual(payload.get("deleted_payments", payload.get("deletedPayments")), 1)
+
+        self.assertFalse(Product.objects.filter(id=target_product.id).exists())
+        self.assertFalse(Task.objects.filter(product_id=target_product.id).exists())
+        self.assertFalse(DocApplication.objects.filter(id=target_application.id).exists())
+        self.assertFalse(InvoiceApplication.objects.filter(id=target_line.id).exists())
+        self.assertTrue(InvoiceApplication.objects.filter(id=keep_line.id).exists())
+
+        invoice.refresh_from_db()
+        self.assertEqual(str(invoice.total_amount), "250.00")
+
     def test_product_search_includes_description(self):
         """Ensure the API search endpoint also matches text found in the product description."""
         # Create a product with a distinctive word in the description
@@ -960,6 +1089,31 @@ class ProductApiTestCase(TestCase):
         results = data.get("results", [])
         self.assertGreater(len(results), 0)
         self.assertTrue(any(item.get("code") == "DESC-1" for item in results))
+
+    def test_product_bulk_delete_matches_description_query(self):
+        Product.objects.create(
+            name="Description Bulk Target",
+            code="DESC-BULK-1",
+            product_type="visa",
+            description="Contains unique delete phrase qwerty-desc-bulk",
+        )
+        Product.objects.create(
+            name="Description Bulk Keep",
+            code="DESC-BULK-2",
+            product_type="visa",
+            description="Different text",
+        )
+
+        response = self.client.post(
+            reverse("products-bulk-delete"),
+            data=json.dumps({"searchQuery": "qwerty-desc-bulk"}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload.get("deleted_count", payload.get("deletedCount")), 1)
+        self.assertFalse(Product.objects.filter(code="DESC-BULK-1").exists())
+        self.assertTrue(Product.objects.filter(code="DESC-BULK-2").exists())
 
     def test_document_type_deprecation_requires_confirmation_and_cascades_products(self):
         document_type = DocumentType.objects.create(name="KITAS Sponsor Letter")

@@ -28,6 +28,7 @@ Base path: `frontend/src/app/shared/components/`
 | ConfirmDialog           | `app-confirm-dialog`            | `confirm-dialog/`                            | Generic confirmation dialog.                                         |
 | BulkDeleteDialog        | `app-bulk-delete-dialog`        | `bulk-delete-dialog/`                        | Bulk-delete confirmation with payload/result contract.               |
 | InvoiceDeleteDialog     | `app-invoice-delete-dialog`     | `invoice-delete-dialog/`                     | Invoice-specific delete confirmation flow.                           |
+| ProductDeleteDialog     | `app-product-delete-dialog`     | `product-delete-dialog/`                     | Product delete preview + optional force-delete confirmation dialog.  |
 | ApplicationDeleteDialog | `app-application-delete-dialog` | `application-delete-dialog/`                 | Application delete confirmation.                                     |
 | CustomerSelect          | `app-customer-select`           | `customer-select/`                           | Async customer search/select control.                                |
 | ProductSelect           | `app-product-select`            | `product-select/`                            | Product selection control.                                           |

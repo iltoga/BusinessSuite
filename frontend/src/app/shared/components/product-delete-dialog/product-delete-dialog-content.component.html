@@ -1,0 +1,138 @@
+<div class="space-y-3 text-sm">
+  <h3 class="text-base font-semibold">Product: {{ data.productCode }} - {{ data.productName }}</h3>
+  <p class="text-muted-foreground">
+    @if (data.message) {
+      {{ data.message }}
+    } @else {
+      This action will permanently remove this product.
+    }
+  </p>
+</div>
+
+<div
+  class="mt-4 rounded-md border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive"
+>
+  <div class="font-semibold">Warning</div>
+  <p>This action may permanently delete related records and cannot be undone.</p>
+  <ul class="mt-3 space-y-1">
+    <li><strong>{{ data.relatedCounts.tasks }}</strong> task(s)</li>
+    <li><strong>{{ data.relatedCounts.applications }}</strong> application(s)</li>
+    <li><strong>{{ data.relatedCounts.workflows }}</strong> workflow step(s)</li>
+    <li><strong>{{ data.relatedCounts.documents }}</strong> document(s)</li>
+    <li><strong>{{ data.relatedCounts.invoiceApplications }}</strong> invoice line(s)</li>
+    <li><strong>{{ data.relatedCounts.payments }}</strong> payment(s)</li>
+  </ul>
+</div>
+
+@if (hasAnyRelatedRecords()) {
+  <z-card class="mt-4 border-border/70 bg-muted/20">
+    <button
+      type="button"
+      class="flex w-full items-center justify-between text-left text-sm font-medium"
+      (click)="showRelated.set(!showRelated())"
+    >
+      <span>Related records preview</span>
+      <z-icon [zType]="showRelated() ? 'chevron-up' : 'chevron-down'" class="h-4 w-4" />
+    </button>
+
+    @if (showRelated()) {
+      <div class="mt-3 space-y-4 border-t pt-3 text-sm">
+        @if (data.relatedRecords.tasks.length) {
+          <div class="space-y-1">
+            <div class="font-semibold">Tasks</div>
+            <ul class="space-y-1 text-muted-foreground">
+              @for (task of data.relatedRecords.tasks; track task.id) {
+                <li>#{{ task.id }} · Step {{ task.step }} · {{ task.name }}</li>
+              }
+            </ul>
+            @if (data.relatedRecordsTruncated?.tasks) {
+              <p class="text-xs text-muted-foreground">
+                Showing first {{ data.recordLimit || data.relatedRecords.tasks.length }} task record(s).
+              </p>
+            }
+          </div>
+        }
+
+        @if (data.relatedRecords.applications.length) {
+          <div class="space-y-1">
+            <div class="font-semibold">Applications</div>
+            <ul class="space-y-1 text-muted-foreground">
+              @for (application of data.relatedRecords.applications; track application.id) {
+                <li>
+                  #{{ application.id }} · {{ application.customerName }} ·
+                  {{ application.statusDisplay || application.status }}
+                  @if (application.docDate) {
+                    · Doc {{ application.docDate | appDate: 'date' }}
+                  }
+                  @if (application.dueDate) {
+                    · Due {{ application.dueDate | appDate: 'date' }}
+                  }
+                  · Wf {{ application.workflowCount }} · Docs {{ application.documentCount }} ·
+                  Lines {{ application.invoiceLineCount }}
+                </li>
+              }
+            </ul>
+            @if (data.relatedRecordsTruncated?.applications) {
+              <p class="text-xs text-muted-foreground">
+                Showing first {{ data.recordLimit || data.relatedRecords.applications.length }}
+                application record(s).
+              </p>
+            }
+          </div>
+        }
+
+        @if (data.relatedRecords.invoiceApplications.length) {
+          <div class="space-y-1">
+            <div class="font-semibold">Invoice Lines</div>
+            <ul class="space-y-1 text-muted-foreground">
+              @for (line of data.relatedRecords.invoiceApplications; track line.id) {
+                <li>
+                  #{{ line.id }} · Invoice {{ line.invoiceNoDisplay }} · {{ line.customerName }} ·
+                  {{ line.statusDisplay || line.status }} · {{ line.amount }} · Payments {{ line.paymentCount }}
+                </li>
+              }
+            </ul>
+            @if (data.relatedRecordsTruncated?.invoiceApplications) {
+              <p class="text-xs text-muted-foreground">
+                Showing first {{ data.recordLimit || data.relatedRecords.invoiceApplications.length }}
+                invoice line record(s).
+              </p>
+            }
+          </div>
+        }
+      </div>
+    }
+  </z-card>
+}
+
+<label class="mt-4 flex items-start gap-2 text-sm text-destructive">
+  <input
+    type="checkbox"
+    class="mt-0.5 h-4 w-4 rounded border-gray-300 text-destructive focus:ring-destructive"
+    [checked]="confirmChecked()"
+    (change)="confirmChecked.set($any($event.target).checked); showValidation.set(false)"
+  />
+  <span class="font-semibold">I understand this delete action is permanent.</span>
+</label>
+
+@if (data.requiresForceDelete || !data.canDelete) {
+  <label class="mt-3 flex items-start gap-2 text-sm text-destructive">
+    <input
+      type="checkbox"
+      class="mt-0.5 h-4 w-4 rounded border-gray-300 text-destructive focus:ring-destructive"
+      [checked]="forceDelete()"
+      (change)="forceDelete.set($any($event.target).checked); showForceValidation.set(false)"
+    />
+    <span class="font-semibold">Force delete this product and all listed related records.</span>
+  </label>
+}
+
+@if (showValidation()) {
+  <p class="mt-3 text-xs text-destructive">Please confirm the delete action.</p>
+}
+
+@if (showForceValidation()) {
+  <p class="mt-2 text-xs text-destructive">
+    This product still has related invoice lines. Enable force delete to continue.
+  </p>
+}

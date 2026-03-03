@@ -72,30 +72,32 @@
           <div [formGroupName]="i" class="grid gap-3 rounded-lg border p-4 md:grid-cols-4">
             <div class="md:col-span-2">
               <label class="text-sm font-medium">Product</label>
-              <select
-                class="mt-1 w-full rounded border border-input bg-background px-3 py-2 text-sm"
-                formControlName="product"
-              >
-                <option [ngValue]="null">Select product...</option>
-                @for (row of billableProducts(); track row.product.id) {
-                  <option [ngValue]="row.product.id">{{ getBillableProductLabel(row) }}</option>
-                }
-              </select>
+              <z-combobox
+                class="mt-1"
+                [value]="toComboboxValue(group.get('product')?.value)"
+                [options]="billableProductOptions()"
+                [placeholder]="'Select product...'"
+                [searchPlaceholder]="'Search products...'"
+                [emptyText]="'No billable products found.'"
+                [disabled]="isLineLocked(group)"
+                [zWidth]="'full'"
+                (zValueChange)="onLineProductComboboxChange(group, $event)"
+              />
             </div>
 
             <div>
               <label class="text-sm font-medium">Linked Application</label>
-              <select
-                class="mt-1 w-full rounded border border-input bg-background px-3 py-2 text-sm"
-                formControlName="customerApplication"
-              >
-                <option [ngValue]="null">No linked application</option>
-                @for (app of availablePendingApplicationsForLine(group); track app.id) {
-                  <option [ngValue]="app.id">
-                    #{{ app.id }} · {{ app.customer.fullName }}
-                  </option>
-                }
-              </select>
+              <z-combobox
+                class="mt-1"
+                [value]="toComboboxValue(group.get('customerApplication')?.value)"
+                [options]="availablePendingApplicationOptionsForLine(group)"
+                [placeholder]="'No linked application'"
+                [searchPlaceholder]="'Search applications...'"
+                [emptyText]="'No pending applications for this product.'"
+                [disabled]="isLineLocked(group)"
+                [zWidth]="'full'"
+                (zValueChange)="onLineCustomerApplicationComboboxChange(group, $event)"
+              />
               <div class="mt-1 text-xs text-muted-foreground">
                 @if (selectedProductPendingCount(group) > 0) {
                   Pending applications for product: {{ selectedProductPendingCount(group) }}
@@ -136,9 +138,7 @@
       <z-button zType="default" (click)="save()" [zDisabled]="isSaving()">
         {{ isEditMode() ? 'Update Invoice' : 'Create Invoice' }}
       </z-button>
-      <a routerLink="/invoices">
-        <z-button zType="ghost">Cancel</z-button>
-      </a>
+      <button type="button" z-button zType="ghost" (click)="goBack()">Cancel</button>
     </div>
   </form>
 </div>

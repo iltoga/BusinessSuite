@@ -185,7 +185,12 @@ export class ApplicationListComponent implements OnInit {
       variant: 'default',
       action: (item) =>
         this.router.navigate(['/applications', item.id], {
-          state: { from: 'applications', focusId: item.id, searchQuery: this.query() },
+          state: {
+            from: 'applications',
+            focusId: item.id,
+            searchQuery: this.query(),
+            page: this.page(),
+          },
         }),
     },
     {
@@ -204,7 +209,12 @@ export class ApplicationListComponent implements OnInit {
       action: (item) =>
         this.router.navigate(['/invoices', 'new'], {
           queryParams: { applicationId: item.id },
-          state: { from: 'applications', focusId: item.id, searchQuery: this.query() },
+          state: {
+            from: 'applications',
+            focusId: item.id,
+            searchQuery: this.query(),
+            page: this.page(),
+          },
         }),
     },
     {
@@ -214,7 +224,12 @@ export class ApplicationListComponent implements OnInit {
       isVisible: (item) => Boolean(item.hasInvoice && item.invoiceId),
       action: (item) =>
         this.router.navigate(['/invoices', item.invoiceId], {
-          state: { from: 'applications', focusId: item.id, searchQuery: this.query() },
+          state: {
+            from: 'applications',
+            focusId: item.id,
+            searchQuery: this.query(),
+            page: this.page(),
+          },
         }),
     },
     {
@@ -224,7 +239,12 @@ export class ApplicationListComponent implements OnInit {
       isVisible: (item) => Boolean(item.hasInvoice && item.invoiceId),
       action: (item) =>
         this.router.navigate(['/invoices', item.invoiceId, 'edit'], {
-          state: { from: 'applications', focusId: item.id, searchQuery: this.query() },
+          state: {
+            from: 'applications',
+            focusId: item.id,
+            searchQuery: this.query(),
+            page: this.page(),
+          },
         }),
     },
     {
@@ -300,7 +320,7 @@ export class ApplicationListComponent implements OnInit {
     if (event.key === 'N' && !event.ctrlKey && !event.altKey && !event.metaKey) {
       event.preventDefault();
       this.router.navigate(['/applications', 'new'], {
-        state: { from: 'applications', searchQuery: this.query() },
+        state: { from: 'applications', searchQuery: this.query(), page: this.page() },
       });
     }
   }
@@ -313,6 +333,10 @@ export class ApplicationListComponent implements OnInit {
     const st = (window as any).history.state || {};
     this.focusTableOnInit.set(Boolean(st.focusTable));
     this.focusIdOnInit.set(st.focusId ? Number(st.focusId) : null);
+    const restoredPage = Number(st.page);
+    if (Number.isFinite(restoredPage) && restoredPage > 0) {
+      this.page.set(Math.floor(restoredPage));
+    }
     if (st.searchQuery) {
       this.query.set(String(st.searchQuery));
     }
