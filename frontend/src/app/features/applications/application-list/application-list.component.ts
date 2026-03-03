@@ -27,6 +27,7 @@ import {
   type BulkDeleteDialogData,
 } from '@/shared/components/bulk-delete-dialog/bulk-delete-dialog.component';
 import { ZardButtonComponent } from '@/shared/components/button';
+import { ZardCardComponent } from '@/shared/components/card';
 import { ConfirmDialogComponent } from '@/shared/components/confirm-dialog/confirm-dialog.component';
 import {
   DataTableComponent,
@@ -52,6 +53,7 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
     SearchToolbarComponent,
     PaginationControlsComponent,
     ZardButtonComponent,
+    ZardCardComponent,
     ApplicationDeleteDialogComponent,
     ConfirmDialogComponent,
     BulkDeleteDialogComponent,

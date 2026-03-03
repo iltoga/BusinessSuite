@@ -198,3 +198,30 @@ html.app-brand-ready img[data-app-logo] {
 .z-command-option .text-xs.opacity-60 {
   opacity: 0.7; /* match opacity-70 */
 }
+
+/* Normalize all loader-circle spinners to rotate in place around the SVG center. */
+@keyframes app-circle-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.app-circle-spinner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.app-circle-spinner svg {
+  animation: app-circle-spin 0.85s linear infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+  will-change: transform;
+}

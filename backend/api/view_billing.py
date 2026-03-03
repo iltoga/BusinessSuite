@@ -256,6 +256,31 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             return self.error_response("Invalid format. Use 'docx' or 'pdf'.", status.HTTP_400_BAD_REQUEST)
 
         invoice = self.get_object()
+        stale_seconds = max(30, int(getattr(settings, "INVOICE_DOWNLOAD_STALE_SECONDS", 180) or 180))
+        stale_cutoff = timezone.now() - timedelta(seconds=stale_seconds)
+        stale_jobs = InvoiceDownloadJob.objects.filter(
+            invoice=invoice,
+            format_type=format_type,
+            created_by=request.user,
+            status__in=QUEUE_JOB_INFLIGHT_STATUSES,
+            updated_at__lt=stale_cutoff,
+        )
+        stale_count = stale_jobs.count()
+        if stale_count:
+            stale_jobs.update(
+                status=InvoiceDownloadJob.STATUS_FAILED,
+                progress=100,
+                output_path="",
+                error_message="Stale async download job auto-failed before retry.",
+                traceback="",
+            )
+            logger.warning(
+                "Auto-failed stale invoice download jobs user_id=%s invoice_id=%s format=%s count=%s",
+                getattr(request.user, "id", None),
+                invoice.id,
+                format_type,
+                stale_count,
+            )
 
         def build_existing_response(existing_job):
             return Response(

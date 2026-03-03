@@ -1,4 +1,3 @@
-import logging
 import os
 import traceback
 from io import BytesIO
@@ -7,6 +6,7 @@ from zipfile import ZIP_DEFLATED, ZipFile
 from core.services.logger_service import Logger
 from core.tasks.idempotency import acquire_task_lock, build_task_lock_key, release_task_lock
 from core.utils.pdf_converter import PDFConverter, PDFConverterError
+from django.conf import settings
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.utils.text import slugify
@@ -15,9 +15,10 @@ from invoices.models import InvoiceDocumentItem, InvoiceDocumentJob
 from invoices.services.InvoiceService import InvoiceService
 
 logger = Logger.get_logger(__name__)
+INVOICE_DOC_QUEUE = str(getattr(settings, "DRAMATIQ_INVOICE_DOC_QUEUE", QUEUE_REALTIME) or QUEUE_REALTIME).strip()
 
 
-@db_task(queue=QUEUE_REALTIME)
+@db_task(queue=INVOICE_DOC_QUEUE)
 def run_invoice_document_job(job_id: str) -> None:
     lock_key = build_task_lock_key(namespace="invoice_document_job", item_id=str(job_id))
     lock_token = acquire_task_lock(lock_key)

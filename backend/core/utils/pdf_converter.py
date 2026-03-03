@@ -75,6 +75,53 @@ class PDFConverter:
     CONVERSION_TIMEOUT = 60
 
     @classmethod
+    def _convert_docx_path_with_soffice(cls, *, docx_path: Path, output_dir: Path) -> Path:
+        """Run a single DOCX->PDF soffice conversion and return output PDF path."""
+        soffice = cls._get_soffice_path()
+        cmd = [
+            soffice,
+            "--headless",
+            "--invisible",
+            "--nodefault",
+            "--nofirststartwizard",
+            "--nolockcheck",
+            "--nologo",
+            "--norestore",
+            "--convert-to",
+            "pdf",
+            "--outdir",
+            str(output_dir),
+            str(docx_path),
+        ]
+
+        logger.debug(f"Running LibreOffice conversion: {' '.join(cmd)}")
+
+        try:
+            result = subprocess.run(
+                cmd,
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                timeout=cls.CONVERSION_TIMEOUT,
+            )
+            logger.debug(f"LibreOffice stdout: {result.stdout}")
+            if result.stderr:
+                logger.debug(f"LibreOffice stderr: {result.stderr}")
+        except subprocess.TimeoutExpired:
+            raise PDFConverterError(f"PDF conversion timed out after {cls.CONVERSION_TIMEOUT} seconds.")
+        except subprocess.CalledProcessError as e:
+            error_msg = e.stderr if e.stderr else str(e)
+            raise PDFConverterError(f"LibreOffice conversion failed: {error_msg}")
+
+        pdf_path = output_dir / f"{docx_path.stem}.pdf"
+        if not pdf_path.exists():
+            raise PDFConverterError(
+                "PDF conversion failed: output file not found. LibreOffice may have encountered an error."
+            )
+        return pdf_path
+
+    @classmethod
     def is_libreoffice_available(cls) -> bool:
         """Check if LibreOffice (soffice) binary is available on the system."""
         return shutil.which("soffice") is not None
@@ -116,67 +163,11 @@ class PDFConverter:
         if not docx_path.exists():
             raise FileNotFoundError(f"DOCX file not found: {docx_path}")
 
-        soffice = cls._get_soffice_path()
-
         temp_dir = None
         try:
             # Create temporary directory for conversion output
             temp_dir = tempfile.mkdtemp(prefix="docx_to_pdf_")
-
-            # Build LibreOffice command
-            # --headless: run without GUI
-            # --invisible: no splash screen
-            # --nodefault: don't start with an empty document
-            # --nofirststartwizard: skip first-run wizard
-            # --nolockcheck: don't check for lock files (safe in containers)
-            # --nologo: no logo on startup
-            # --norestore: don't restore previous session
-            # --convert-to pdf: output format
-            # --outdir: output directory
-            cmd = [
-                soffice,
-                "--headless",
-                "--invisible",
-                "--nodefault",
-                "--nofirststartwizard",
-                "--nolockcheck",
-                "--nologo",
-                "--norestore",
-                "--convert-to",
-                "pdf",
-                "--outdir",
-                str(temp_dir),
-                str(docx_path),
-            ]
-
-            logger.debug(f"Running LibreOffice conversion: {' '.join(cmd)}")
-
-            try:
-                result = subprocess.run(
-                    cmd,
-                    check=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True,
-                    timeout=cls.CONVERSION_TIMEOUT,
-                )
-                logger.debug(f"LibreOffice stdout: {result.stdout}")
-                if result.stderr:
-                    logger.debug(f"LibreOffice stderr: {result.stderr}")
-            except subprocess.TimeoutExpired:
-                raise PDFConverterError(f"PDF conversion timed out after {cls.CONVERSION_TIMEOUT} seconds.")
-            except subprocess.CalledProcessError as e:
-                error_msg = e.stderr if e.stderr else str(e)
-                raise PDFConverterError(f"LibreOffice conversion failed: {error_msg}")
-
-            # Find the output PDF file
-            pdf_filename = docx_path.stem + ".pdf"
-            temp_pdf_path = Path(temp_dir) / pdf_filename
-
-            if not temp_pdf_path.exists():
-                raise PDFConverterError(
-                    "PDF conversion failed: output file not found. " "LibreOffice may have encountered an error."
-                )
+            temp_pdf_path = cls._convert_docx_path_with_soffice(docx_path=docx_path, output_dir=Path(temp_dir))
 
             # Read the PDF content
             pdf_bytes = temp_pdf_path.read_bytes()
@@ -229,9 +220,20 @@ class PDFConverter:
             # Write buffer to temp file
             docx_buffer.seek(0)
             temp_docx_path.write_bytes(docx_buffer.read())
+            temp_pdf_path = cls._convert_docx_path_with_soffice(docx_path=temp_docx_path, output_dir=Path(temp_dir))
+            pdf_bytes = temp_pdf_path.read_bytes()
 
-            # Use the file-based conversion
-            return cls.docx_to_pdf(temp_docx_path, output_path)
+            if output_path:
+                output_path = Path(output_path)
+                output_path.write_bytes(pdf_bytes)
+                logger.info(f"PDF saved to: {output_path}")
+
+            return pdf_bytes
+        except PDFConverterError:
+            raise
+        except Exception as e:
+            logger.error(f"Failed to convert DOCX buffer to PDF: {e}")
+            raise PDFConverterError(f"DOCX buffer to PDF conversion failed: {e}") from e
 
         finally:
             # Cleanup temporary directory

@@ -16,6 +16,7 @@ import { InvoicesService } from '@/core/api';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
+import { ZardCardComponent } from '@/shared/components/card';
 import { ZardIconComponent, type ZardIcon } from '@/shared/components/icon';
 import { mergeClasses } from '@/shared/utils/merge-classes';
 
@@ -99,7 +100,14 @@ interface SSECompleteMessage {
 @Component({
   selector: 'app-invoice-import',
   standalone: true,
-  imports: [CommonModule, FormsModule, ZardButtonComponent, ZardBadgeComponent, ZardIconComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    ZardButtonComponent,
+    ZardCardComponent,
+    ZardBadgeComponent,
+    ZardIconComponent,
+  ],
   templateUrl: './invoice-import.component.html',
   styleUrls: ['./invoice-import.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

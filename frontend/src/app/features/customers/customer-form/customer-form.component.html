@@ -446,7 +446,7 @@
         Cancel
       </button>
       <button type="submit" z-button zType="default" [zDisabled]="isLoading() || form.invalid">
-        <z-icon *ngIf="isLoading()" zType="loader-circle" class="h-4 w-4 mr-2 animate-spin" />
+        <z-icon *ngIf="isLoading()" zType="loader-circle" class="h-4 w-4 mr-2 app-circle-spinner" />
         {{ isEditMode() ? 'Save Changes' : 'Create Customer' }}
       </button>
     </div>

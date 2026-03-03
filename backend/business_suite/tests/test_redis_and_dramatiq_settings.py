@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from business_suite.settings.base import _default_dramatiq_workers
 from business_suite.settings.cache_backends import build_prod_redis_caches
-from core.tasks.runtime import QUEUE_DEFAULT, QUEUE_LOW, QUEUE_REALTIME, QUEUE_SCHEDULED
+from core.tasks.runtime import QUEUE_DEFAULT, QUEUE_DOC_CONVERSION, QUEUE_LOW, QUEUE_REALTIME, QUEUE_SCHEDULED
 from django.conf import settings
 from django.test import SimpleTestCase, override_settings
 
@@ -64,6 +64,7 @@ class DramatiqSettingsTests(SimpleTestCase):
         self.assertEqual(QUEUE_DEFAULT, "default")
         self.assertEqual(QUEUE_SCHEDULED, "scheduled")
         self.assertEqual(QUEUE_LOW, "low")
+        self.assertEqual(QUEUE_DOC_CONVERSION, "doc_conversion")
 
     def test_document_validator_model_defaults_to_llm_default_when_unset(self):
         from business_suite.settings import base as base_settings

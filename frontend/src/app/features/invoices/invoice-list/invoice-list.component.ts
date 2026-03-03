@@ -23,6 +23,7 @@ import {
   type BulkDeleteDialogData,
 } from '@/shared/components/bulk-delete-dialog/bulk-delete-dialog.component';
 import { ZardButtonComponent } from '@/shared/components/button';
+import { ZardCardComponent } from '@/shared/components/card';
 import {
   DataTableComponent,
   type ColumnConfig,
@@ -55,6 +56,7 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
     PaginationControlsComponent,
     ZardBadgeComponent,
     ZardButtonComponent,
+    ZardCardComponent,
     BulkDeleteDialogComponent,
     InvoiceDeleteDialogComponent,
     InvoiceDownloadDropdownComponent,
@@ -129,6 +131,7 @@ export class InvoiceListComponent implements OnInit {
   readonly invoiceDeleteOpen = signal(false);
   readonly invoiceDeleteData = signal<InvoiceDeletePreviewData | null>(null);
   private readonly pendingInvoiceId = signal<number | null>(null);
+  readonly showDownloadMenu = signal(true);
 
   readonly bulkDeleteLabel = computed(() =>
     this.query().trim() ? 'Delete Selected Invoices' : 'Delete All Invoices',
@@ -340,6 +343,10 @@ export class InvoiceListComponent implements OnInit {
       default:
         return 'default';
     }
+  }
+
+  setDownloadMenuVisible(visible: boolean): void {
+    this.showDownloadMenu.set(visible);
   }
 
   openBulkDeleteDialog(): void {
