@@ -5,6 +5,7 @@ import { Subject, firstValueFrom } from 'rxjs';
 
 import { ConfigService } from '@/core/services/config.service';
 import { DesktopBridgeService } from '@/core/services/desktop-bridge.service';
+import { PushProxyFetchService } from '@/core/services/push-proxy-fetch.service';
 import { ReminderDialogService } from '@/core/services/reminder-dialog.service';
 import { GlobalToastService } from '@/core/services/toast.service';
 
@@ -32,6 +33,7 @@ export class PushNotificationsService {
   private readonly http = inject(HttpClient);
   private readonly configService = inject(ConfigService);
   private readonly desktopBridge = inject(DesktopBridgeService);
+  private readonly pushProxyFetch = inject(PushProxyFetchService);
   private readonly reminderDialogs = inject(ReminderDialogService);
   private readonly toast = inject(GlobalToastService);
 
@@ -111,28 +113,25 @@ export class PushNotificationsService {
         return;
       }
 
-      // Install a fetch() proxy so the Firebase SDK never calls googleapis.com
-      // directly from the browser.  On some networks / Chrome configurations
-      // those endpoints return 504 or CORS errors (QUIC/HTTP3 issues) even
-      // though the Django server can reach them fine via TCP.  We redirect the
-      // two problematic domains through our backend proxy endpoints.  The proxy
-      // requires Django authentication so we forward the stored auth token.
-      this.installGoogleapisProxy();
+      // Scope googleapis proxy interception to the token flow only.
+      const fetchToken = async (): Promise<string> => {
+        const nextToken = await this.pushProxyFetch.runWithGoogleApisProxy<string>(() =>
+          messaging.getToken({
+            vapidKey,
+            serviceWorkerRegistration: activeRegistration,
+          }) as Promise<string>,
+        );
+        return nextToken || '';
+      };
 
       let token = '';
       try {
-        token = await messaging.getToken({
-          vapidKey,
-          serviceWorkerRegistration: activeRegistration,
-        });
+        token = await fetchToken();
       } catch (error) {
         const message = String((error as any)?.message || error || '');
         if (message.includes('pushManager')) {
           // Fallback for compat code paths that only work when registration is bound via useServiceWorker.
-          token = await messaging.getToken({
-            vapidKey,
-            serviceWorkerRegistration: activeRegistration,
-          });
+          token = await fetchToken();
         } else {
           throw error;
         }
@@ -297,104 +296,6 @@ export class PushNotificationsService {
         }
       }
     });
-  }
-
-  /**
-   * Overrides window.fetch to proxy Firebase googleapis calls through the
-   * Django backend, bypassing CORS / QUIC issues that can prevent the browser
-   * from reaching googleapis.com directly.
-   *
-   * Only installs the proxy once per page lifetime (guarded by a sentinel
-   * property on window).  Uses a distinct sentinel per interceptor to allow
-   * future updates.
-   */
-  /**
-   * Extract headers from any combination of fetch() arguments.
-   * Handles: fetch(url, {headers}), fetch(Request), fetch(Request, {headers}).
-   */
-  private extractFetchHeaders(input: RequestInfo | URL, init?: RequestInit): Headers {
-    const result = new Headers();
-    // Copy headers from Request object first (if input is a Request)
-    if (input instanceof Request) {
-      input.headers.forEach((value, key) => result.set(key, value));
-    }
-    // Then overlay headers from init (init headers take precedence)
-    if (init?.headers) {
-      const extra =
-        init.headers instanceof Headers
-          ? init.headers
-          : new Headers(init.headers as Record<string, string>);
-      extra.forEach((value, key) => result.set(key, value));
-    }
-    return result;
-  }
-
-  private installGoogleapisProxy(): void {
-    if ((window as any).__fcmProxyInstalled) return;
-    (window as any).__fcmProxyInstalled = true;
-
-    const originalFetch = window.fetch.bind(window);
-
-    window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-      const url =
-        typeof input === 'string'
-          ? input
-          : input instanceof URL
-            ? input.href
-            : (input as Request).url;
-
-      if (url.includes('fcmregistrations.googleapis.com')) {
-        const origHeaders = this.extractFetchHeaders(input, init);
-        // Firebase SDK uses x-goog-firebase-installations-auth (not Authorization)
-        const fisAuth =
-          origHeaders.get('x-goog-firebase-installations-auth') ||
-          origHeaders.get('Authorization') ||
-          '';
-        const apiKey = origHeaders.get('x-goog-api-key') || '';
-        const djangoToken = localStorage.getItem('auth_token') || '';
-        const body = init?.body ?? (input instanceof Request ? await input.text() : undefined);
-
-        return originalFetch('/api/push-notifications/fcm-register-proxy/', {
-          method: 'POST',
-          body,
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${djangoToken}`,
-            'X-FCM-Auth': fisAuth,
-            'X-Goog-Api-Key': apiKey,
-          },
-        });
-      }
-
-      if (url.includes('firebaseinstallations.googleapis.com')) {
-        const match = url.match(
-          /firebaseinstallations\.googleapis\.com\/v1\/projects\/[^/]+\/(.*)/,
-        );
-        const pathSuffix = match ? match[1] : '';
-        const origHeaders = this.extractFetchHeaders(input, init);
-        const firebaseAuth =
-          origHeaders.get('x-goog-firebase-installations-auth') ||
-          origHeaders.get('Authorization') ||
-          '';
-        const apiKey = origHeaders.get('x-goog-api-key') || '';
-        const djangoToken = localStorage.getItem('auth_token') || '';
-        const body = init?.body ?? (input instanceof Request ? await input.text() : undefined);
-
-        return originalFetch('/api/push-notifications/firebase-install-proxy/', {
-          method: 'POST',
-          body,
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${djangoToken}`,
-            'X-Firebase-Auth': firebaseAuth,
-            'X-Firebase-Path': pathSuffix,
-            'X-Goog-Api-Key': apiKey,
-          },
-        });
-      }
-
-      return originalFetch(input, init);
-    };
   }
 
   private buildServiceWorkerUrl(firebaseConfig: Record<string, string>): string {

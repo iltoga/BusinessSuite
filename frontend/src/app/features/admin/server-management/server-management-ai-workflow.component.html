@@ -1,0 +1,366 @@
+<z-card class="p-6">
+  <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+    <div>
+      <h3 class="text-lg font-medium">AI Workflow Models</h3>
+      <p class="text-xs text-muted-foreground">Model selections save automatically.</p>
+    </div>
+    <div class="flex w-full flex-wrap gap-2 sm:w-auto">
+      <button
+        z-button
+        zType="outline"
+        class="w-full sm:w-auto"
+        (click)="loadAiWorkflowStatus()"
+        [zDisabled]="aiWorkflowLoading() || aiWorkflowSaving()"
+      >
+        @if (aiWorkflowLoading()) {
+          <span>Refreshing...</span>
+        } @else {
+          <span>Refresh</span>
+        }
+      </button>
+    </div>
+  </div>
+
+  @if (aiWorkflowStatus(); as aiStatus) {
+    <div class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div>
+        <label class="text-sm font-medium text-muted-foreground">Current Provider</label>
+        <p class="mt-1 rounded bg-muted p-2 font-mono text-sm">
+          {{ aiStatus.aiModels.providerName }}
+        </p>
+      </div>
+      <div>
+        <label class="text-sm font-medium text-muted-foreground">Primary Default Model</label>
+        <p class="mt-1 rounded bg-muted p-2 font-mono text-xs wrap-break-word">
+          {{ aiStatus.aiModels.defaultModel || 'n/a' }}
+        </p>
+      </div>
+      <div>
+        <label class="text-sm font-medium text-muted-foreground">Provider Failover Router</label>
+        <div class="mt-1">
+          <z-badge
+            [zType]="
+              aiStatus.aiModels.failover.enabled
+                ? aiStatus.aiModels.failover.effectiveProviderOrder.length > 0
+                  ? 'default'
+                  : 'secondary'
+                : 'destructive'
+            "
+          >
+            @if (!aiStatus.aiModels.failover.enabled) {
+              Disabled
+            } @else if (aiStatus.aiModels.failover.effectiveProviderOrder.length > 0) {
+              Active ({{ aiStatus.aiModels.failover.effectiveProviderOrder.length }})
+            } @else {
+              No Available Providers
+            }
+          </z-badge>
+        </div>
+      </div>
+      <div>
+        <label class="text-sm font-medium text-muted-foreground">Configured Failover Order</label>
+        <p class="mt-1 rounded bg-muted p-2 font-mono text-xs wrap-break-word">
+          {{
+            aiStatus.aiModels.failover.configuredProviderOrder.length > 0
+              ? aiStatus.aiModels.failover.configuredProviderOrder.join(' -> ')
+              : 'None'
+          }}
+        </p>
+      </div>
+    </div>
+
+    <div class="mb-4 rounded border border-border/70 bg-muted/20 p-4">
+      <h4 class="text-sm font-semibold">Runtime Defaults</h4>
+      <p class="mt-1 text-xs text-muted-foreground">
+        Defaults come from `.env`/Django settings and are overridden by DB values saved here.
+      </p>
+
+      <div class="mt-3 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div>
+          <label class="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+            >Primary Runtime Model</label
+          >
+          <app-typeahead-combobox
+            class="mt-1 block"
+            [placeholder]="'Select primary provider/model...'"
+            [searchPlaceholder]="'Search provider or model...'"
+            [emptyText]="'No models found.'"
+            [value]="getPrimaryModelValue()"
+            [disabled]="aiWorkflowSaving()"
+            [zWidth]="'full'"
+            [pageSize]="aiModelTypeaheadPageSize"
+            [loadOptions]="allProviderModelLoader"
+            (valueChange)="onPrimaryModelValueChange($event)"
+          ></app-typeahead-combobox>
+          <p class="mt-2 text-xs text-muted-foreground">
+            Selecting a model sets the matching primary provider automatically.
+          </p>
+        </div>
+
+        <div>
+          <label class="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+            >Provider Router Sticky Seconds</label
+          >
+          <input
+            type="number"
+            min="1"
+            class="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+            [value]="getAiSettingValue('LLM_FALLBACK_STICKY_SECONDS')"
+            [disabled]="aiWorkflowSaving()"
+            (change)="setAiSettingNumberFromEvent('LLM_FALLBACK_STICKY_SECONDS', $event)"
+          />
+        </div>
+
+        <div>
+          <label class="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+            >OpenRouter Failover Model</label
+          >
+          <app-typeahead-combobox
+            class="mt-1 block"
+            [placeholder]="'Select OpenRouter model...'"
+            [searchPlaceholder]="'Search OpenRouter model...'"
+            [emptyText]="'No OpenRouter models found.'"
+            [value]="getAiSettingValue('OPENROUTER_DEFAULT_MODEL')"
+            [disabled]="aiWorkflowSaving()"
+            [zWidth]="'full'"
+            [pageSize]="aiModelTypeaheadPageSize"
+            [loadOptions]="openrouterModelLoader"
+            (valueChange)="onModelSettingComboboxChange('OPENROUTER_DEFAULT_MODEL', $event)"
+          ></app-typeahead-combobox>
+        </div>
+
+        <div>
+          <label class="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+            >OpenAI Failover Model</label
+          >
+          <app-typeahead-combobox
+            class="mt-1 block"
+            [placeholder]="'Select OpenAI model...'"
+            [searchPlaceholder]="'Search OpenAI model...'"
+            [emptyText]="'No OpenAI models found.'"
+            [value]="getAiSettingValue('OPENAI_DEFAULT_MODEL')"
+            [disabled]="aiWorkflowSaving()"
+            [zWidth]="'full'"
+            [pageSize]="aiModelTypeaheadPageSize"
+            [loadOptions]="openaiModelLoader"
+            (valueChange)="onModelSettingComboboxChange('OPENAI_DEFAULT_MODEL', $event)"
+          ></app-typeahead-combobox>
+        </div>
+
+        <div>
+          <label class="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+            >Groq Failover Model</label
+          >
+          <app-typeahead-combobox
+            class="mt-1 block"
+            [placeholder]="'Select Groq model...'"
+            [searchPlaceholder]="'Search Groq model...'"
+            [emptyText]="'No Groq models found.'"
+            [value]="getAiSettingValue('GROQ_DEFAULT_MODEL')"
+            [disabled]="aiWorkflowSaving()"
+            [zWidth]="'full'"
+            [pageSize]="aiModelTypeaheadPageSize"
+            [loadOptions]="groqModelLoader"
+            (valueChange)="onModelSettingComboboxChange('GROQ_DEFAULT_MODEL', $event)"
+          ></app-typeahead-combobox>
+        </div>
+      </div>
+
+      <div class="mt-4 rounded border border-border/70 bg-background p-3">
+        <label class="flex items-center gap-2 text-sm font-medium">
+          <input
+            type="checkbox"
+            [checked]="getAiSettingBool('LLM_AUTO_FALLBACK_ENABLED')"
+            [disabled]="aiWorkflowSaving()"
+            (change)="setAiSettingBoolFromEvent('LLM_AUTO_FALLBACK_ENABLED', $event)"
+          />
+          Enable Provider Failover Router
+        </label>
+
+        <div class="mt-3">
+          <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Fallback Provider Order
+          </p>
+          <div class="mt-2 flex flex-wrap gap-3">
+            @for (providerKey of getProviderKeys(); track providerKey) {
+              <label class="inline-flex items-center gap-2 text-xs">
+                <input
+                  type="checkbox"
+                  [disabled]="aiWorkflowSaving() || providerKey === getAiSettingValue('LLM_PROVIDER')"
+                  [checked]="getDraftFallbackProviderOrder().includes(providerKey)"
+                  (change)="toggleFallbackProvider(providerKey, $any($event.target).checked)"
+                />
+                <span>{{ getProviderDisplayName(providerKey) }}</span>
+              </label>
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+
+    @if (aiStatus.aiModels.features.length > 0) {
+      <div class="space-y-3">
+        @for (feature of aiStatus.aiModels.features; track feature.feature) {
+          <div class="rounded border border-border/70 bg-muted/20 p-4">
+            <div class="text-sm font-semibold">{{ feature.feature }}</div>
+            <p class="mt-1 text-xs text-muted-foreground">
+              {{ feature.purpose }}
+            </p>
+
+            <div class="mt-3 grid grid-cols-1 gap-4 xl:grid-cols-2">
+              <div class="rounded border border-border/70 bg-background p-3">
+                <label class="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                  >Primary Runtime</label
+                >
+                <p class="mt-2 text-xs">
+                  Provider:
+                  <span class="font-medium">{{ getProviderDisplayName(getFeatureProvider(feature)) }}</span>
+                </p>
+                @if (feature.modelSettingName) {
+                  @if (feature.modelSettingName === 'LLM_DEFAULT_MODEL') {
+                    <p class="mt-2 text-xs">
+                      Model:
+                      <span class="font-mono wrap-break-word">{{ getPrimaryModelValue() || feature.primaryModel }}</span>
+                    </p>
+                    <p class="mt-1 text-xs text-muted-foreground">
+                      Uses the global Primary Runtime Model from Runtime Defaults.
+                    </p>
+                  } @else {
+                    <label class="mt-2 block text-xs text-muted-foreground">Model</label>
+                    <div class="mt-1 flex items-start gap-2">
+                      <app-typeahead-combobox
+                        class="block min-w-0 flex-1"
+                        [placeholder]="'Select provider/model...'"
+                        [searchPlaceholder]="'Search provider or model...'"
+                        [emptyText]="'No models found.'"
+                        [value]="getAiSettingValue(feature.modelSettingName)"
+                        [disabled]="aiWorkflowSaving()"
+                        [zWidth]="'full'"
+                        [pageSize]="aiModelTypeaheadPageSize"
+                        [loadOptions]="allProviderModelLoader"
+                        (valueChange)="onModelSettingComboboxChange(feature.modelSettingName, $event)"
+                      ></app-typeahead-combobox>
+                      <button
+                        z-button
+                        zType="outline"
+                        class="h-10 shrink-0"
+                        [zDisabled]="aiWorkflowSaving() || !getAiSettingValue(feature.modelSettingName)"
+                        (click)="resetAiWorkflowSetting(feature.modelSettingName)"
+                      >
+                        Reset
+                      </button>
+                    </div>
+                    @if (!getAiSettingValue(feature.modelSettingName)) {
+                      <p class="mt-2 text-xs text-muted-foreground">
+                        Inheriting primary model:
+                        <span class="font-mono wrap-break-word">{{ feature.primaryModel || getPrimaryModelValue() || 'n/a' }}</span>
+                      </p>
+                    }
+                  }
+                  @if (
+                    findModelDefinitionForSetting(
+                      feature.modelSettingName,
+                      getFeatureProvider(feature),
+                      getAiSettingValue(feature.modelSettingName)
+                    );
+                    as selectedModel
+                  ) {
+                    <p class="mt-2 text-xs text-muted-foreground">
+                      {{ selectedModel.description }} • {{ formatModelCapabilities(selectedModel) }}
+                    </p>
+                  }
+                } @else {
+                  <p class="text-xs">
+                    Model:
+                    <span class="font-mono wrap-break-word">{{ feature.primaryModel }}</span>
+                  </p>
+                }
+                <p class="mt-2 text-xs text-muted-foreground">
+                  {{ feature.modelStrategy }}
+                </p>
+              </div>
+
+              <div class="rounded border border-border/70 bg-background p-3">
+                <label class="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                  >Failover Providers</label
+                >
+                @if (feature.failoverProviders.length === 0) {
+                  <p class="mt-2 text-xs text-muted-foreground">No failover providers configured.</p>
+                } @else {
+                  <div class="mt-2 space-y-2">
+                    @for (failover of feature.failoverProviders; track failover.provider) {
+                      <div
+                        class="flex flex-wrap items-center justify-between gap-2 rounded border border-border/70 bg-muted/30 p-2"
+                      >
+                        <div class="min-w-0">
+                          <p class="text-xs font-medium">{{ failover.providerName }}</p>
+                          <p class="text-xs font-mono wrap-break-word">{{ failover.model || 'n/a' }}</p>
+                        </div>
+                        <z-badge [zType]="getFailoverProviderBadgeType(failover)">
+                          {{ getFailoverProviderStatus(failover) }}
+                        </z-badge>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+
+              @if (feature.modelFailoverSettingName) {
+                <div class="mt-3 rounded border border-border/70 bg-background p-3">
+                  <label class="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                    >Model Failover</label
+                  >
+                  <div class="mt-2 flex items-start gap-2">
+                    <app-typeahead-combobox
+                      class="block min-w-0 flex-1"
+                      [placeholder]="'Select failover provider/model...'"
+                      [searchPlaceholder]="'Search provider or model...'"
+                      [emptyText]="'No models found.'"
+                      [value]="getAiSettingValue(feature.modelFailoverSettingName)"
+                      [disabled]="aiWorkflowSaving()"
+                      [zWidth]="'full'"
+                      [pageSize]="aiModelTypeaheadPageSize"
+                      [loadOptions]="allProviderModelLoader"
+                      (valueChange)="onModelSettingComboboxChange(feature.modelFailoverSettingName, $event)"
+                    ></app-typeahead-combobox>
+                    <button
+                      z-button
+                      zType="outline"
+                      class="h-10 shrink-0"
+                      [zDisabled]="aiWorkflowSaving() || !getAiSettingValue(feature.modelFailoverSettingName)"
+                      (click)="resetAiWorkflowSetting(feature.modelFailoverSettingName)"
+                    >
+                      Reset
+                    </button>
+                  </div>
+                  @if (
+                    findModelDefinitionForSetting(
+                      feature.modelFailoverSettingName,
+                    getFeatureProvider(feature),
+                    getAiSettingValue(feature.modelFailoverSettingName)
+                  );
+                  as selectedFailoverModel
+                ) {
+                  <p class="mt-2 text-xs text-muted-foreground">
+                    {{ selectedFailoverModel.description }} •
+                    {{ formatModelCapabilities(selectedFailoverModel) }}
+                  </p>
+                }
+                @if (feature.modelFailover.strategy) {
+                  <p class="mt-1 text-xs text-muted-foreground">
+                    {{ feature.modelFailover.strategy }}
+                  </p>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+    } @else {
+      <p class="text-sm text-muted-foreground">No AI workflows were returned by the backend.</p>
+    }
+  } @else {
+    <p class="text-sm text-muted-foreground">AI workflow model settings not loaded yet.</p>
+  }
+</z-card>

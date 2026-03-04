@@ -2,6 +2,7 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   HostListener,
   PLATFORM_ID,
   computed,
@@ -11,7 +12,9 @@ import {
   type OnInit,
   type TemplateRef,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
+import { Subject, catchError, of, switchMap } from 'rxjs';
 
 import { CustomerApplicationsService } from '@/core/api/api/customer-applications.service';
 import { DocApplicationSerializerWithRelations } from '@/core/api/model/doc-application-serializer-with-relations';
@@ -71,6 +74,8 @@ export class ApplicationListComponent implements OnInit {
   private toast = inject(GlobalToastService);
   private router = inject(Router);
   private platformId = inject(PLATFORM_ID);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly loadTrigger$ = new Subject<void>();
 
   readonly items = signal<DocApplicationSerializerWithRelations[]>([]);
   readonly isLoading = signal(false);
@@ -127,6 +132,47 @@ export class ApplicationListComponent implements OnInit {
 
   // Access the data table for focus management
   private readonly dataTable = viewChild.required(DataTableComponent);
+
+  constructor() {
+    this.loadTrigger$
+      .pipe(
+        switchMap(() => {
+          this.isLoading.set(true);
+          return this.service
+            .customerApplicationsList(this.ordering(), this.page(), this.pageSize(), this.query())
+            .pipe(
+              catchError(() => {
+                this.toast.error('Failed to load applications');
+                return of(null);
+              }),
+            );
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((res) => {
+        if (!res) {
+          this.isLoading.set(false);
+          return;
+        }
+
+        this.items.set(res.results ?? []);
+        this.totalItems.set(res.count ?? 0);
+        this.isLoading.set(false);
+
+        // Focus table or a specific row if requested by navigation state
+        const table = this.dataTable();
+        if (table) {
+          const focusId = this.focusIdOnInit();
+          if (focusId) {
+            this.focusIdOnInit.set(null);
+            table.focusRowById(focusId);
+          } else if (this.focusTableOnInit()) {
+            this.focusTableOnInit.set(false);
+            table.focusFirstRowIfNone();
+          }
+        }
+      });
+  }
 
   readonly columns = computed<ColumnConfig[]>(() => [
     { key: 'id', header: 'ID', sortable: true, sortKey: 'id' },
@@ -545,33 +591,10 @@ export class ApplicationListComponent implements OnInit {
   }
 
   private load(): void {
-    this.isLoading.set(true);
-    this.service
-      .customerApplicationsList(this.ordering(), this.page(), this.pageSize(), this.query())
-      .subscribe({
-        next: (res) => {
-          this.items.set(res.results ?? []);
-          this.totalItems.set(res.count ?? 0);
-          this.isLoading.set(false);
-
-          // Focus table or a specific row if requested by navigation state
-          const table = this.dataTable();
-          if (table) {
-            const focusId = this.focusIdOnInit();
-            if (focusId) {
-              this.focusIdOnInit.set(null);
-              table.focusRowById(focusId);
-            } else if (this.focusTableOnInit()) {
-              this.focusTableOnInit.set(false);
-              table.focusFirstRowIfNone();
-            }
-          }
-        },
-        error: () => {
-          this.toast.error('Failed to load applications');
-          this.isLoading.set(false);
-        },
-      });
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+    this.loadTrigger$.next();
   }
 
   private getProductLabel(item: DocApplicationSerializerWithRelations): string {

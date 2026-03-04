@@ -4,6 +4,7 @@ import {
   Component,
   computed,
   effect,
+  isDevMode,
   input,
   output,
   signal,
@@ -39,6 +40,9 @@ export interface CategorizationFileResult {
   validationStatus: 'valid' | 'invalid' | 'pending' | null;
   validationReasoning: string | null;
   validationNegativeIssues: string[] | null;
+  validationProvider?: string | null;
+  validationProviderName?: string | null;
+  validationModel?: string | null;
 }
 
 export interface CategorizationApplyMapping {
@@ -62,6 +66,7 @@ export interface CategorizationApplyMapping {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CategorizationProgressComponent {
+  readonly isDevelopmentMode = isDevMode();
   readonly totalFiles = input.required<number>();
   readonly processedFiles = input<number>(0);
   readonly progressPercentOverride = input<number | null>(null);
@@ -261,5 +266,37 @@ export class CategorizationProgressComponent {
     }
 
     return `${upload} → ${categorize} → ${validate}`;
+  }
+
+  getValidationTooltip(result: CategorizationFileResult): string {
+    const reasoning = (result.validationReasoning ?? '').trim();
+    if (!this.isDevelopmentMode) {
+      return reasoning;
+    }
+
+    const runtime = this.formatAiRuntimeLabel(
+      result.validationProviderName ?? null,
+      result.validationProvider ?? null,
+      result.validationModel ?? null,
+    );
+    if (!runtime) {
+      return reasoning;
+    }
+
+    return reasoning ? `${reasoning}\nAI runtime: ${runtime}` : `AI runtime: ${runtime}`;
+  }
+
+  private formatAiRuntimeLabel(
+    providerName: string | null,
+    provider: string | null,
+    model: string | null,
+  ): string {
+    const providerLabel = (providerName ?? provider ?? '').trim();
+    const modelLabel = (model ?? '').trim();
+
+    if (providerLabel && modelLabel) {
+      return `${providerLabel} / ${modelLabel}`;
+    }
+    return providerLabel || modelLabel;
   }
 }

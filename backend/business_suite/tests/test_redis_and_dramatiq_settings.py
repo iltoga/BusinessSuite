@@ -1,10 +1,12 @@
 import os
 import importlib
+import hashlib
 from unittest.mock import patch
 
 from business_suite.settings.base import _default_dramatiq_workers
 from business_suite.settings.cache_backends import build_prod_redis_caches
 from core.tasks.runtime import QUEUE_DEFAULT, QUEUE_DOC_CONVERSION, QUEUE_LOW, QUEUE_REALTIME, QUEUE_SCHEDULED
+from django.core.exceptions import ImproperlyConfigured
 from django.conf import settings
 from django.test import SimpleTestCase, override_settings
 
@@ -28,6 +30,31 @@ class RedisCacheSettingsTests(SimpleTestCase):
 
 
 class DramatiqSettingsTests(SimpleTestCase):
+    def _load_base_settings_snapshot(
+        self,
+        *,
+        env_updates: dict[str, str | None],
+        fields: list[str],
+    ) -> dict[str, object]:
+        from business_suite.settings import base as base_settings
+
+        originals = {key: os.environ.get(key) for key in env_updates}
+        try:
+            for key, value in env_updates.items():
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
+            reloaded = importlib.reload(base_settings)
+            return {field: getattr(reloaded, field) for field in fields}
+        finally:
+            for key, value in originals.items():
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
+            importlib.reload(base_settings)
+
     def test_dramatiq_worker_default_is_four_for_task_worker_component(self):
         with patch.dict(os.environ, {"COMPONENT": "task_worker"}, clear=False):
             self.assertEqual(_default_dramatiq_workers(), "4")
@@ -67,26 +94,132 @@ class DramatiqSettingsTests(SimpleTestCase):
         self.assertEqual(QUEUE_DOC_CONVERSION, "doc_conversion")
 
     def test_document_validator_model_defaults_to_llm_default_when_unset(self):
+        snapshot = self._load_base_settings_snapshot(
+            env_updates={
+                "LLM_PROVIDER": "openrouter",
+                "LLM_DEFAULT_MODEL": "test/vision-model",
+                "DOCUMENT_VALIDATOR_MODEL": None,
+            },
+            fields=["DOCUMENT_VALIDATOR_MODEL"],
+        )
+        self.assertEqual(snapshot["DOCUMENT_VALIDATOR_MODEL"], "test/vision-model")
+
+    def test_llm_default_model_stays_on_env_value_when_provider_is_groq(self):
+        snapshot = self._load_base_settings_snapshot(
+            env_updates={
+                "LLM_PROVIDER": "groq",
+                "LLM_DEFAULT_MODEL": "google/gemini-3-flash-preview",
+                "GROQ_DEFAULT_MODEL": "meta-llama/custom-groq-model",
+            },
+            fields=["LLM_DEFAULT_MODEL"],
+        )
+        self.assertEqual(snapshot["LLM_DEFAULT_MODEL"], "google/gemini-3-flash-preview")
+
+    def test_llm_default_model_falls_back_to_required_default_when_env_model_missing(self):
+        snapshot = self._load_base_settings_snapshot(
+            env_updates={
+                "LLM_PROVIDER": "groq",
+                "LLM_DEFAULT_MODEL": "",
+                "GROQ_DEFAULT_MODEL": "",
+            },
+            fields=["LLM_DEFAULT_MODEL"],
+        )
+        self.assertEqual(snapshot["LLM_DEFAULT_MODEL"], "google/gemini-3-flash-preview")
+
+    def test_openrouter_only_model_overrides_fallback_to_llm_default_for_non_openrouter_provider(self):
+        snapshot = self._load_base_settings_snapshot(
+            env_updates={
+                "LLM_PROVIDER": "groq",
+                "GROQ_DEFAULT_MODEL": "meta-llama/custom-groq-model",
+                "DOCUMENT_CATEGORIZER_MODEL": "openrouter/specific-model",
+                "DOCUMENT_CATEGORIZER_MODEL_HIGH": "openrouter/high-model",
+                "DOCUMENT_VALIDATOR_MODEL": "openrouter/validator-model",
+                "CHECK_PASSPORT_MODEL": "openrouter/passport-model",
+            },
+            fields=[
+                "LLM_DEFAULT_MODEL",
+                "DOCUMENT_CATEGORIZER_MODEL",
+                "DOCUMENT_CATEGORIZER_MODEL_HIGH",
+                "DOCUMENT_VALIDATOR_MODEL",
+                "CHECK_PASSPORT_MODEL",
+            ],
+        )
+        self.assertEqual(snapshot["DOCUMENT_CATEGORIZER_MODEL"], snapshot["LLM_DEFAULT_MODEL"])
+        self.assertEqual(snapshot["DOCUMENT_CATEGORIZER_MODEL_HIGH"], snapshot["LLM_DEFAULT_MODEL"])
+        self.assertEqual(snapshot["DOCUMENT_VALIDATOR_MODEL"], snapshot["LLM_DEFAULT_MODEL"])
+        self.assertEqual(snapshot["CHECK_PASSPORT_MODEL"], snapshot["LLM_DEFAULT_MODEL"])
+
+    def test_openrouter_only_model_overrides_fallback_to_llm_default_when_unset(self):
+        snapshot = self._load_base_settings_snapshot(
+            env_updates={
+                "LLM_PROVIDER": "openrouter",
+                "LLM_DEFAULT_MODEL": "google/gemini-2.5-flash-lite",
+                "DOCUMENT_CATEGORIZER_MODEL": None,
+                "DOCUMENT_CATEGORIZER_MODEL_HIGH": None,
+                "DOCUMENT_VALIDATOR_MODEL": None,
+                "CHECK_PASSPORT_MODEL": None,
+            },
+            fields=[
+                "DOCUMENT_CATEGORIZER_MODEL",
+                "DOCUMENT_CATEGORIZER_MODEL_HIGH",
+                "DOCUMENT_VALIDATOR_MODEL",
+                "CHECK_PASSPORT_MODEL",
+            ],
+        )
+        self.assertEqual(snapshot["DOCUMENT_CATEGORIZER_MODEL"], "google/gemini-2.5-flash-lite")
+        self.assertEqual(snapshot["DOCUMENT_CATEGORIZER_MODEL_HIGH"], "google/gemini-2.5-flash-lite")
+        self.assertEqual(snapshot["DOCUMENT_VALIDATOR_MODEL"], "google/gemini-2.5-flash-lite")
+        self.assertEqual(snapshot["CHECK_PASSPORT_MODEL"], "google/gemini-2.5-flash-lite")
+
+    def test_jwt_signing_key_uses_secret_key_when_long_enough(self):
+        long_secret = "a-very-long-secret-key-for-jwt-signing-1234567890"
+        snapshot = self._load_base_settings_snapshot(
+            env_updates={
+                "DJANGO_SETTINGS_MODULE": "business_suite.settings.dev",
+                "SECRET_KEY": long_secret,
+                "JWT_SIGNING_KEY": None,
+            },
+            fields=["JWT_SIGNING_KEY"],
+        )
+        self.assertEqual(snapshot["JWT_SIGNING_KEY"], long_secret)
+
+    def test_jwt_signing_key_derives_sha256_when_short_in_non_prod_settings(self):
+        short_secret = "short-secret-key-24-bytes"
+        snapshot = self._load_base_settings_snapshot(
+            env_updates={
+                "DJANGO_SETTINGS_MODULE": "business_suite.settings.dev",
+                "SECRET_KEY": short_secret,
+                "JWT_SIGNING_KEY": None,
+            },
+            fields=["JWT_SIGNING_KEY"],
+        )
+        self.assertEqual(snapshot["JWT_SIGNING_KEY"], hashlib.sha256(short_secret.encode("utf-8")).hexdigest())
+
+    def test_short_jwt_signing_key_raises_in_prod_settings(self):
         from business_suite.settings import base as base_settings
 
-        original_llm_default_model = os.environ.get("LLM_DEFAULT_MODEL")
-        original_document_validator_model = os.environ.get("DOCUMENT_VALIDATOR_MODEL")
+        env_updates = {
+            "DJANGO_SETTINGS_MODULE": "business_suite.settings.prod",
+            "SECRET_KEY": "short-secret-key-24-bytes",
+            "JWT_SIGNING_KEY": None,
+        }
+        originals = {key: os.environ.get(key) for key in env_updates}
+
         try:
-            os.environ["LLM_DEFAULT_MODEL"] = "test/vision-model"
-            os.environ.pop("DOCUMENT_VALIDATOR_MODEL", None)
-            reloaded = importlib.reload(base_settings)
-            self.assertEqual(reloaded.DOCUMENT_VALIDATOR_MODEL, "test/vision-model")
+            for key, value in env_updates.items():
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
+
+            with self.assertRaises(ImproperlyConfigured):
+                importlib.reload(base_settings)
         finally:
-            if original_llm_default_model is None:
-                os.environ.pop("LLM_DEFAULT_MODEL", None)
-            else:
-                os.environ["LLM_DEFAULT_MODEL"] = original_llm_default_model
-
-            if original_document_validator_model is None:
-                os.environ.pop("DOCUMENT_VALIDATOR_MODEL", None)
-            else:
-                os.environ["DOCUMENT_VALIDATOR_MODEL"] = original_document_validator_model
-
+            for key, value in originals.items():
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
             importlib.reload(base_settings)
 
     def test_core_periodic_actors_are_registered_on_broker(self):

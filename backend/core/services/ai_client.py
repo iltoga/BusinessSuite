@@ -1,6 +1,6 @@
 """
 AI Client Base Module
-Provides a reusable AI client for OpenRouter/OpenAI API access.
+Provides a reusable AI client for OpenRouter/OpenAI/Groq API access.
 All AI-powered services should use this base client for consistency.
 """
 
@@ -8,15 +8,25 @@ import base64
 import json
 import re
 import time
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional, Union
 
 import openai
+from core.services.ai_runtime_settings_service import AIRuntimeSettingsService
 from core.services.ai_usage_service import AIUsageFeature, AIUsageService
 from core.services.logger_service import Logger
 from django.conf import settings
+from django.core.cache import cache
 from django.core.files.uploadedfile import UploadedFile
 from openai import OpenAI
+
+try:  # pragma: no cover - import optional for environments without groq SDK
+    import groq
+    from groq import Groq
+except ImportError:  # pragma: no cover
+    groq = None  # type: ignore[assignment]
+    Groq = None  # type: ignore[assignment]
 
 logger = Logger.get_logger(__name__)
 
@@ -54,16 +64,37 @@ def get_ai_user_message(exc: BaseException) -> str:
     return GENERIC_AI_PROVIDER_ERROR
 
 
+@dataclass
+class _ProviderContext:
+    provider_key: str
+    provider_name: str
+    client: Any
+    api_key: str
+    model: str
+    timeout: float
+
+
 class AIClient:
     """
-    Base AI client for OpenRouter/OpenAI API.
+    Base AI client for OpenRouter/OpenAI/Groq API.
     Provides common functionality for all AI-powered services.
     """
+
+    SUPPORTED_PROVIDERS = {"openrouter", "openai", "groq"}
+    RETRIABLE_ERROR_CODES = {
+        "timeout",
+        "connection_error",
+        "rate_limit",
+        "internal_server",
+        "status_error",
+        "schema_validation_failed",
+    }
 
     def __init__(
         self,
         api_key: Optional[str] = None,
         model: Optional[str] = None,
+        provider: Optional[str] = None,
         use_openrouter: Optional[bool] = None,
         timeout: Optional[float] = None,
         feature_name: Optional[str] = None,
@@ -74,77 +105,251 @@ class AIClient:
         Args:
             api_key: API key (defaults to settings based on provider)
             model: Model to use (defaults to settings.LLM_DEFAULT_MODEL)
+            provider: Explicit provider override ("openrouter", "openai", "groq")
             use_openrouter: Whether to use OpenRouter (defaults to settings.LLM_PROVIDER)
             timeout: Request timeout in seconds (defaults to settings)
             feature_name: Logical AI feature tag used for usage accounting
         """
         self.feature_name = feature_name or AIUsageFeature.UNKNOWN
+        self._api_key_override = api_key
+        self._model_override = model
+        self._timeout_override = timeout
+        self._explicit_provider_requested = provider is not None or use_openrouter is not None
 
-        # Determine provider
-        if use_openrouter is None:
-            llm_provider = getattr(settings, "LLM_PROVIDER", "openrouter")
-            self.use_openrouter = llm_provider == "openrouter"
-        else:
-            self.use_openrouter = use_openrouter
+        self._requested_provider = self._resolve_requested_provider(provider=provider, use_openrouter=use_openrouter)
+        self._provider_contexts: dict[str, _ProviderContext] = {}
 
-        if self.use_openrouter:
-            self._init_openrouter(api_key, model, timeout)
-        else:
-            self._init_openai(api_key, model, timeout)
+        # Compatibility attributes used by services/tests.
+        self.provider_key = self._requested_provider
+        self.provider_name = ""
+        self.api_key = None
+        self.model = ""
+        self.timeout = 0.0
+        self.client = None
+        self.use_openrouter = False
 
-    def _init_openrouter(
-        self,
-        api_key: Optional[str],
-        model: Optional[str],
-        timeout: Optional[float],
-    ):
-        """Initialize OpenRouter client."""
-        self.api_key = api_key or getattr(settings, "OPENROUTER_API_KEY", None)
-        if not self.api_key:
+        initial_provider = self._resolve_initial_provider(self._requested_provider)
+        self._activate_provider(initial_provider)
+
+    @classmethod
+    def _normalize_provider(cls, provider: Optional[str], *, strict: bool = False) -> str:
+        candidate = (provider or "").strip().lower()
+        if candidate in cls.SUPPORTED_PROVIDERS:
+            return candidate
+        if strict and candidate:
+            raise ValueError(
+                f"Unsupported LLM provider '{provider}'. "
+                f"Supported providers are: {sorted(cls.SUPPORTED_PROVIDERS)}."
+            )
+        return "openrouter"
+
+    def _resolve_requested_provider(self, *, provider: Optional[str], use_openrouter: Optional[bool]) -> str:
+        if provider is not None:
+            return self._normalize_provider(provider, strict=True)
+        if use_openrouter is not None:
+            return "openrouter" if bool(use_openrouter) else "openai"
+        inferred_provider = AIRuntimeSettingsService.get_provider_for_model(self._model_override)
+        if inferred_provider:
+            return inferred_provider
+        configured = AIRuntimeSettingsService.get_llm_provider()
+        normalized = self._normalize_provider(configured, strict=False)
+        if normalized != str(configured).strip().lower():
+            logger.warning("Unknown LLM_PROVIDER '%s'. Falling back to 'openrouter'.", configured)
+        return normalized
+
+    @staticmethod
+    def _sticky_cache_key() -> str:
+        return AIRuntimeSettingsService.get_fallback_sticky_cache_key()
+
+    @staticmethod
+    def _fallback_sticky_seconds() -> int:
+        configured = AIRuntimeSettingsService.get_fallback_sticky_seconds()
+        return configured if configured > 0 else 3600
+
+    @staticmethod
+    def _router_enabled() -> bool:
+        return AIRuntimeSettingsService.get_auto_fallback_enabled()
+
+    def _get_sticky_provider(self) -> Optional[str]:
+        provider = cache.get(self._sticky_cache_key())
+        if not provider:
+            return None
+        candidate = str(provider).strip().lower()
+        return candidate if candidate in self.SUPPORTED_PROVIDERS else None
+
+    def _set_sticky_provider(self, provider: str) -> None:
+        if not self._router_enabled():
+            return
+        normalized = self._normalize_provider(provider, strict=False)
+        cache.set(self._sticky_cache_key(), normalized, timeout=self._fallback_sticky_seconds())
+        logger.warning(
+            "AI router sticky provider set to %s for %ss",
+            normalized,
+            self._fallback_sticky_seconds(),
+        )
+
+    def _resolve_initial_provider(self, requested_provider: str) -> str:
+        if self._explicit_provider_requested:
+            return requested_provider
+        if not self._router_enabled():
+            return requested_provider
+
+        sticky = self._get_sticky_provider()
+        if sticky and sticky != requested_provider and self._is_provider_available(sticky):
+            logger.warning(
+                "Using sticky AI provider '%s' instead of configured '%s'.",
+                sticky,
+                requested_provider,
+            )
+            return sticky
+        return requested_provider
+
+    def _configured_fallback_order(self, primary_provider: str) -> list[str]:
+        values = AIRuntimeSettingsService.get_fallback_provider_order()
+        if not values and primary_provider == "groq":
+            values = ["openrouter"]
+
+        deduped: list[str] = []
+        for provider in values:
+            normalized = provider.strip().lower()
+            if normalized not in self.SUPPORTED_PROVIDERS:
+                logger.warning("Ignoring unsupported fallback provider '%s'.", provider)
+                continue
+            if normalized == primary_provider or normalized in deduped:
+                continue
+            deduped.append(normalized)
+        return deduped
+
+    def _fallback_candidates(self, primary_provider: str) -> list[str]:
+        if not self._router_enabled():
+            return []
+        candidates: list[str] = []
+        for provider in self._configured_fallback_order(primary_provider):
+            if self._is_provider_available(provider):
+                candidates.append(provider)
+            else:
+                logger.warning("Skipping fallback provider '%s' because it is not configured.", provider)
+        return candidates
+
+    def _api_key_for_provider(self, provider: str) -> Optional[str]:
+        if self._api_key_override and provider == self._requested_provider:
+            return self._api_key_override
+
+        if provider == "openrouter":
+            return getattr(settings, "OPENROUTER_API_KEY", None)
+        if provider == "openai":
+            return getattr(settings, "OPENAI_API_KEY", None)
+        if provider == "groq":
+            return getattr(settings, "GROQ_API_KEY", None)
+        return None
+
+    def _is_provider_available(self, provider: str) -> bool:
+        if provider == "groq" and Groq is None:
+            return False
+        return bool(self._api_key_for_provider(provider))
+
+    def _create_provider_context(self, provider: str) -> _ProviderContext:
+        if provider == "openrouter":
+            return self._create_openrouter_context()
+        if provider == "openai":
+            return self._create_openai_context()
+        if provider == "groq":
+            return self._create_groq_context()
+        raise ValueError(f"Unsupported LLM provider '{provider}'.")
+
+    def _activate_provider(self, provider: str) -> None:
+        context = self._provider_contexts.get(provider)
+        if context is None:
+            context = self._create_provider_context(provider)
+            self._provider_contexts[provider] = context
+
+        self.provider_key = context.provider_key
+        self.provider_name = context.provider_name
+        self.client = context.client
+        self.api_key = context.api_key
+        self.model = context.model
+        self.timeout = context.timeout
+        self.use_openrouter = self.provider_key == "openrouter"
+
+    def _create_openrouter_context(self) -> _ProviderContext:
+        api_key = self._api_key_for_provider("openrouter")
+        if not api_key:
             raise ValueError("OpenRouter API key not configured. Set OPENROUTER_API_KEY in settings or .env file.")
 
-        configured_default_model = getattr(settings, "LLM_DEFAULT_MODEL", None)
-        deprecated_default_models = {"google/gemini-2.0-flash-001"}
         effective_default_model = (
-            "google/gemini-2.5-flash-lite"
-            if not configured_default_model or configured_default_model in deprecated_default_models
-            else configured_default_model
+            AIRuntimeSettingsService.get_openrouter_default_model()
+            or AIRuntimeSettingsService.get_llm_default_model()
+            or "google/gemini-3-flash-preview"
         )
-        self.model = model or effective_default_model
+        model = self._model_override or effective_default_model
 
-        base_url = getattr(settings, "OPENROUTER_API_BASE_URL", "https://openrouter.ai/api/v1")
-        self.timeout = timeout or getattr(settings, "OPENROUTER_TIMEOUT", 120.0)
-
-        self.client = OpenAI(
-            api_key=self.api_key,
+        base_url = AIRuntimeSettingsService.get("OPENROUTER_API_BASE_URL")
+        timeout = self._timeout_override or AIRuntimeSettingsService.get_openrouter_timeout()
+        client = OpenAI(
+            api_key=api_key,
             base_url=base_url,
-            timeout=self.timeout,
+            timeout=timeout,
+        )
+        logger.info("Initialized AI client with OpenRouter (model: %s, timeout: %ss)", model, timeout)
+        return _ProviderContext(
+            provider_key="openrouter",
+            provider_name="OpenRouter",
+            client=client,
+            api_key=api_key,
+            model=model,
+            timeout=timeout,
         )
 
-        self.provider_name = "OpenRouter"
-        logger.info(f"Initialized AI client with OpenRouter (model: {self.model}, timeout: {self.timeout}s)")
-
-    def _init_openai(
-        self,
-        api_key: Optional[str],
-        model: Optional[str],
-        timeout: Optional[float],
-    ):
-        """Initialize OpenAI client."""
-        self.api_key = api_key or getattr(settings, "OPENAI_API_KEY", None)
-        if not self.api_key:
+    def _create_openai_context(self) -> _ProviderContext:
+        api_key = self._api_key_for_provider("openai")
+        if not api_key:
             raise ValueError("OpenAI API key not configured. Set OPENAI_API_KEY in settings or .env file.")
 
-        self.model = model or getattr(settings, "LLM_DEFAULT_MODEL", "gpt-4o-mini")
-        self.timeout = timeout or getattr(settings, "OPENAI_TIMEOUT", 120.0)
+        configured_provider = AIRuntimeSettingsService.get_llm_provider()
+        openai_default_model = AIRuntimeSettingsService.get_openai_default_model()
+        llm_default_model = AIRuntimeSettingsService.get_llm_default_model()
+        if configured_provider == "openai":
+            default_model = llm_default_model or openai_default_model or "gpt-4o-mini"
+        else:
+            default_model = openai_default_model or "gpt-4o-mini"
 
-        self.client = OpenAI(
-            api_key=self.api_key,
-            timeout=self.timeout,
+        model = self._model_override or default_model
+        timeout = self._timeout_override or AIRuntimeSettingsService.get_openai_timeout()
+        client = OpenAI(
+            api_key=api_key,
+            timeout=timeout,
+        )
+        logger.info("Initialized AI client with OpenAI (model: %s, timeout: %ss)", model, timeout)
+        return _ProviderContext(
+            provider_key="openai",
+            provider_name="OpenAI",
+            client=client,
+            api_key=api_key,
+            model=model,
+            timeout=timeout,
         )
 
-        self.provider_name = "OpenAI"
-        logger.info(f"Initialized AI client with OpenAI (model: {self.model}, timeout: {self.timeout}s)")
+    def _create_groq_context(self) -> _ProviderContext:
+        if Groq is None:
+            raise ValueError("groq library is not installed. Install `groq` package to use LLM_PROVIDER='groq'.")
+
+        api_key = self._api_key_for_provider("groq")
+        if not api_key:
+            raise ValueError("Groq API key not configured. Set GROQ_API_KEY in settings or .env file.")
+
+        default_model = AIRuntimeSettingsService.get_groq_default_model()
+        model = self._model_override or default_model
+        timeout = self._timeout_override or float(getattr(settings, "GROQ_TIMEOUT", 120.0))
+        client = Groq(api_key=api_key, timeout=timeout)
+        logger.info("Initialized AI client with Groq (model: %s, timeout: %ss)", model, timeout)
+        return _ProviderContext(
+            provider_key="groq",
+            provider_name="Groq",
+            client=client,
+            api_key=api_key,
+            model=model,
+            timeout=timeout,
+        )
 
     def chat_completion(
         self,
@@ -165,138 +370,187 @@ class AIClient:
         Returns:
             Response text content
         """
-        request_kwargs = {
-            "model": self.model,
-            "messages": messages,
-            "temperature": temperature,
-            **kwargs,
-        }
-
+        feature_name = kwargs.pop("feature_name", None) or self.feature_name or AIUsageFeature.UNKNOWN
+        request_kwargs = {"messages": messages, "temperature": temperature, **kwargs}
         if response_format:
             request_kwargs["response_format"] = response_format
 
-        feature_name = kwargs.pop("feature_name", None) or self.feature_name or AIUsageFeature.UNKNOWN
+        attempted_providers = [self.provider_key] + self._fallback_candidates(self.provider_key)
+        last_error: Optional[AIConnectionError] = None
+
+        for index, provider in enumerate(attempted_providers):
+            if provider != self.provider_key:
+                self._activate_provider(provider)
+
+            try:
+                result = self._chat_completion_single_attempt(
+                    feature_name=feature_name,
+                    request_kwargs=request_kwargs,
+                )
+                if index > 0:
+                    self._set_sticky_provider(self.provider_key)
+                return result
+            except AIConnectionError as exc:
+                last_error = exc
+                is_last_attempt = index >= len(attempted_providers) - 1
+                should_retry = exc.error_code in self.RETRIABLE_ERROR_CODES and not is_last_attempt
+                if not should_retry:
+                    raise
+                logger.warning(
+                    "AI provider '%s' failed with %s. Retrying with fallback provider '%s'.",
+                    self.provider_key,
+                    exc.error_code,
+                    attempted_providers[index + 1],
+                )
+
+        if last_error is not None:
+            raise last_error
+        raise AIConnectionError(GENERIC_AI_PROVIDER_ERROR, error_code="unexpected_error")
+
+    def _chat_completion_single_attempt(self, *, feature_name: str, request_kwargs: dict[str, Any]) -> str:
         started_at = time.perf_counter()
+        attempt_kwargs = {"model": self.model, **request_kwargs}
+
+        # OpenRouter-specific provider hints should not be sent to other providers.
+        if self.provider_key != "openrouter":
+            attempt_kwargs.pop("extra_body", None)
 
         try:
-            response = self.client.chat.completions.create(**request_kwargs)
+            response = self.client.chat.completions.create(**attempt_kwargs)
             self._record_usage(
                 feature_name=feature_name,
                 response=response,
                 success=True,
                 error_type="",
                 started_at=started_at,
+                provider_key=self.provider_key,
+                model=self.model,
             )
             return response.choices[0].message.content
-        except openai.APITimeoutError as e:
+        except Exception as exc:
+            mapped_error = self._map_provider_exception(exc)
             self._record_usage(
                 feature_name=feature_name,
                 response=None,
                 success=False,
-                error_type="APITimeoutError",
+                error_type=type(exc).__name__,
                 started_at=started_at,
+                provider_key=self.provider_key,
+                model=self.model,
             )
-            logger.error(
-                "%s timeout after %.1fs. details=%s",
-                self.provider_name,
-                self.timeout,
-                str(e),
-            )
-            raise AIConnectionError(
-                GENERIC_AI_SLOW_RESPONSE,
-                error_code="timeout",
-                is_timeout=True,
-            ) from e
-        except openai.APIConnectionError as e:
-            self._record_usage(
-                feature_name=feature_name,
-                response=None,
-                success=False,
-                error_type="APIConnectionError",
-                started_at=started_at,
-            )
+            self._log_provider_exception(exc, mapped_error)
+            raise mapped_error from exc
+
+    def _provider_exception_type(self, name: str, fallback: type[BaseException]) -> type[BaseException]:
+        if self.provider_key == "groq" and groq is not None:
+            return getattr(groq, name, fallback)
+        return fallback
+
+    @staticmethod
+    def _extract_provider_error_code(exc: BaseException) -> str:
+        body = getattr(exc, "body", None)
+        if isinstance(body, dict):
+            nested_error = body.get("error")
+            if isinstance(nested_error, dict):
+                nested_code = nested_error.get("code")
+                if nested_code:
+                    return str(nested_code).strip().lower()
+            body_code = body.get("code")
+            if body_code:
+                return str(body_code).strip().lower()
+
+        direct_code = getattr(exc, "code", None) or getattr(exc, "error_code", None)
+        if direct_code:
+            return str(direct_code).strip().lower()
+        return ""
+
+    @staticmethod
+    def _is_groq_schema_validation_bad_request(exc: BaseException) -> bool:
+        body = getattr(exc, "body", None)
+        if not isinstance(body, dict):
+            return False
+
+        nested_error = body.get("error")
+        if not isinstance(nested_error, dict):
+            return False
+
+        code = str(nested_error.get("code") or "").strip().lower()
+        if code == "json_validate_failed":
+            return True
+
+        message = str(nested_error.get("message") or "").strip().lower()
+        if "invalid json schema for response_format" in message:
+            return True
+
+        schema_kind = str(nested_error.get("schema_kind") or "").strip().lower()
+        param = str(nested_error.get("param") or "").strip().lower()
+        return bool(schema_kind) and param == "response_format"
+
+    def _map_provider_exception(self, exc: BaseException) -> AIConnectionError:
+        if isinstance(exc, self._provider_exception_type("APITimeoutError", openai.APITimeoutError)):
+            return AIConnectionError(GENERIC_AI_SLOW_RESPONSE, error_code="timeout", is_timeout=True)
+        if isinstance(exc, self._provider_exception_type("APIConnectionError", openai.APIConnectionError)):
+            return AIConnectionError(GENERIC_AI_PROVIDER_ERROR, error_code="connection_error")
+        if isinstance(exc, self._provider_exception_type("RateLimitError", openai.RateLimitError)):
+            return AIConnectionError(GENERIC_AI_PROVIDER_ERROR, error_code="rate_limit")
+        if isinstance(exc, self._provider_exception_type("AuthenticationError", openai.AuthenticationError)):
+            return AIConnectionError(GENERIC_AI_PROVIDER_ERROR, error_code="auth_error")
+        if isinstance(exc, self._provider_exception_type("BadRequestError", openai.BadRequestError)):
+            if self.provider_key == "groq" and self._is_groq_schema_validation_bad_request(exc):
+                return AIConnectionError(GENERIC_AI_PROVIDER_ERROR, error_code="schema_validation_failed")
+            return AIConnectionError(GENERIC_AI_PROVIDER_ERROR, error_code="bad_request")
+        if isinstance(exc, self._provider_exception_type("NotFoundError", openai.NotFoundError)):
+            return AIConnectionError(GENERIC_AI_PROVIDER_ERROR, error_code="not_found")
+        if isinstance(exc, self._provider_exception_type("InternalServerError", openai.InternalServerError)):
+            return AIConnectionError(GENERIC_AI_PROVIDER_ERROR, error_code="internal_server")
+        if isinstance(exc, self._provider_exception_type("APIStatusError", openai.APIStatusError)):
+            return AIConnectionError(GENERIC_AI_PROVIDER_ERROR, error_code="status_error")
+        return AIConnectionError(GENERIC_AI_PROVIDER_ERROR, error_code="unexpected_error")
+
+    def _log_provider_exception(self, exc: BaseException, mapped_error: AIConnectionError) -> None:
+        if mapped_error.is_timeout:
+            logger.error("%s timeout after %.1fs. details=%s", self.provider_name, self.timeout, str(exc))
+            return
+        if mapped_error.error_code == "connection_error":
             logger.error(
                 "%s connection error: %s (cause=%s)",
                 self.provider_name,
-                str(e),
-                str(e.__cause__) if e.__cause__ else "",
+                str(exc),
+                str(getattr(exc, "__cause__", "")) if getattr(exc, "__cause__", None) else "",
             )
-            raise AIConnectionError(GENERIC_AI_PROVIDER_ERROR, error_code="connection_error") from e
-        except openai.RateLimitError as e:
-            self._record_usage(
-                feature_name=feature_name,
-                response=None,
-                success=False,
-                error_type="RateLimitError",
-                started_at=started_at,
+            return
+        if mapped_error.error_code == "rate_limit":
+            logger.error("%s rate limit error: %s", self.provider_name, str(exc))
+            return
+        if mapped_error.error_code == "auth_error":
+            logger.error("%s authentication error: %s", self.provider_name, str(exc))
+            return
+        if mapped_error.error_code == "bad_request":
+            logger.error("%s bad request error: %s", self.provider_name, str(exc))
+            return
+        if mapped_error.error_code == "schema_validation_failed":
+            logger.error(
+                "%s schema validation error: %s (provider_code=%s)",
+                self.provider_name,
+                str(exc),
+                self._extract_provider_error_code(exc) or "unknown",
             )
-            logger.error("%s rate limit error: %s", self.provider_name, str(e))
-            raise AIConnectionError(GENERIC_AI_PROVIDER_ERROR, error_code="rate_limit") from e
-        except openai.AuthenticationError as e:
-            self._record_usage(
-                feature_name=feature_name,
-                response=None,
-                success=False,
-                error_type="AuthenticationError",
-                started_at=started_at,
-            )
-            logger.error("%s authentication error: %s", self.provider_name, str(e))
-            raise AIConnectionError(GENERIC_AI_PROVIDER_ERROR, error_code="auth_error") from e
-        except openai.BadRequestError as e:
-            self._record_usage(
-                feature_name=feature_name,
-                response=None,
-                success=False,
-                error_type="BadRequestError",
-                started_at=started_at,
-            )
-            logger.error("%s bad request error: %s", self.provider_name, str(e))
-            raise AIConnectionError(GENERIC_AI_PROVIDER_ERROR, error_code="bad_request") from e
-        except openai.NotFoundError as e:
-            self._record_usage(
-                feature_name=feature_name,
-                response=None,
-                success=False,
-                error_type="NotFoundError",
-                started_at=started_at,
-            )
-            logger.error("%s not found error: %s", self.provider_name, str(e))
-            raise AIConnectionError(GENERIC_AI_PROVIDER_ERROR, error_code="not_found") from e
-        except openai.InternalServerError as e:
-            self._record_usage(
-                feature_name=feature_name,
-                response=None,
-                success=False,
-                error_type="InternalServerError",
-                started_at=started_at,
-            )
-            logger.error("%s internal server error: %s", self.provider_name, str(e))
-            raise AIConnectionError(GENERIC_AI_PROVIDER_ERROR, error_code="internal_server") from e
-        except openai.APIStatusError as e:
-            self._record_usage(
-                feature_name=feature_name,
-                response=None,
-                success=False,
-                error_type="APIStatusError",
-                started_at=started_at,
-            )
+            return
+        if mapped_error.error_code == "not_found":
+            logger.error("%s not found error: %s", self.provider_name, str(exc))
+            return
+        if mapped_error.error_code == "internal_server":
+            logger.error("%s internal server error: %s", self.provider_name, str(exc))
+            return
+        if mapped_error.error_code == "status_error":
             logger.error(
                 "%s API status error http=%s details=%s",
                 self.provider_name,
-                getattr(e, "status_code", "unknown"),
-                str(e),
+                getattr(exc, "status_code", "unknown"),
+                str(exc),
             )
-            raise AIConnectionError(GENERIC_AI_PROVIDER_ERROR, error_code="status_error") from e
-        except Exception as e:
-            self._record_usage(
-                feature_name=feature_name,
-                response=None,
-                success=False,
-                error_type=type(e).__name__,
-                started_at=started_at,
-            )
-            logger.error("Unexpected %s client error: %s", self.provider_name, str(e), exc_info=True)
-            raise AIConnectionError(GENERIC_AI_PROVIDER_ERROR, error_code="unexpected_error") from e
+            return
+        logger.error("Unexpected %s client error: %s", self.provider_name, str(exc), exc_info=True)
 
     def _record_usage(
         self,
@@ -306,12 +560,14 @@ class AIClient:
         success: bool,
         error_type: str,
         started_at: float,
+        provider_key: Optional[str] = None,
+        model: Optional[str] = None,
     ) -> None:
         elapsed_ms = int((time.perf_counter() - started_at) * 1000)
         AIUsageService.enqueue_request_capture(
             feature=feature_name or self.feature_name or AIUsageFeature.UNKNOWN,
-            provider=self.provider_name.lower(),
-            model=self.model,
+            provider=(provider_key or self.provider_key or "unknown").lower(),
+            model=model or self.model or "unknown",
             response=response,
             success=success,
             error_type=error_type,
@@ -331,7 +587,7 @@ class AIClient:
         """
         Send a chat completion request with structured JSON output.
 
-        Both OpenRouter and OpenAI support json_schema with strict mode.
+        OpenRouter, OpenAI and Groq support json_schema with strict mode.
         See: https://openrouter.ai/docs/guides/features/structured-outputs
 
         Args:

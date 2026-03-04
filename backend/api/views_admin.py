@@ -3,8 +3,11 @@ import datetime
 import json
 import logging
 import os
+import re
 import shutil
 import tarfile
+import ast
+from collections.abc import Mapping
 
 import requests
 from admin_tools import services
@@ -20,13 +23,13 @@ from api.utils.redis_sse import iter_replay_and_live_events
 from api.utils.sse_auth import sse_token_auth_required
 from api.views import ApiErrorHandlingMixin
 from core.models.ai_request_usage import AIRequestUsage
+from core.services.ai_runtime_settings_service import AI_RUNTIME_SETTING_DEFINITIONS, AIRuntimeSettingsService
 from core.services.ai_usage_service import AIUsageFeature
 from core.services.local_resilience_service import LocalResilienceService
 from core.services.redis_streams import format_sse_event, resolve_last_event_id, stream_user_key
 from core.services.ui_settings_service import UiSettingsService
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.contrib.staticfiles import finders
 from django.core.cache import caches
 from django.db.models import Count, Q, Sum
 from django.db.utils import OperationalError, ProgrammingError
@@ -673,28 +676,96 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
         except Exception as e:
             return Response({"ok": False, "message": str(e)}, status=500)
 
-    @extend_schema(summary="Get OpenRouter status and AI model usage", responses={200: OpenApiTypes.OBJECT})
-    @action(detail=False, methods=["get"], url_path="openrouter-status")
+    @extend_schema(
+        summary="Get or update OpenRouter status and AI model usage",
+        request=OpenApiTypes.OBJECT,
+        responses={200: OpenApiTypes.OBJECT, 400: OpenApiTypes.OBJECT},
+    )
+    @action(detail=False, methods=["get", "patch"], url_path="openrouter-status")
     def openrouter_status(self, request):
-        """Return OpenRouter credit status and AI model usage by feature."""
+        """Return OpenRouter credit status and AI model usage by feature.
+
+        PATCH accepts DB overrides for supported AI runtime setting names.
+        """
         usage_tracking_unavailable = False
+
+        if request.method.lower() == "patch":
+            def _as_mapping(value):
+                if isinstance(value, list) and len(value) == 1:
+                    value = value[0]
+                if isinstance(value, Mapping):
+                    return dict(value)
+                if isinstance(value, str):
+                    try:
+                        parsed = json.loads(value)
+                    except ValueError:
+                        try:
+                            parsed = ast.literal_eval(value)
+                        except (ValueError, SyntaxError):
+                            return None
+                    return parsed if isinstance(parsed, dict) else None
+                return None
+
+            payload = _as_mapping(request.data) or {}
+            updates = _as_mapping(payload.get("settings"))
+            if updates is None:
+                updates = _as_mapping(payload.get("updates"))
+            if updates is None:
+                updates = {
+                    name: value for name, value in payload.items() if name not in {"settings", "updates"}
+                }
+
+            if not isinstance(updates, dict):
+                return Response({"detail": "Invalid payload. Expected an object."}, status=HTTP_400_BAD_REQUEST)
+
+            def _normalize_setting_name(raw_name):
+                candidate = str(raw_name or "").strip()
+                if not candidate:
+                    return None
+                if candidate in AI_RUNTIME_SETTING_DEFINITIONS:
+                    return candidate
+                uppercase = candidate.upper()
+                if uppercase in AI_RUNTIME_SETTING_DEFINITIONS:
+                    return uppercase
+                snake_upper = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", candidate).replace("-", "_").upper()
+                if snake_upper in AI_RUNTIME_SETTING_DEFINITIONS:
+                    return snake_upper
+                return None
+
+            normalized_updates: dict[str, object] = {}
+            for raw_name, raw_value in updates.items():
+                normalized_name = _normalize_setting_name(raw_name)
+                if normalized_name:
+                    normalized_updates[normalized_name] = raw_value
+
+            if not normalized_updates:
+                bracket_updates: dict[str, object] = {}
+                for raw_name, raw_value in updates.items():
+                    key = str(raw_name)
+                    if key.startswith("settings[") and key.endswith("]"):
+                        bracket_updates[key[len("settings[") : -1]] = raw_value
+                    elif key.startswith("updates[") and key.endswith("]"):
+                        bracket_updates[key[len("updates[") : -1]] = raw_value
+                for raw_name, raw_value in bracket_updates.items():
+                    normalized_name = _normalize_setting_name(raw_name)
+                    if normalized_name:
+                        normalized_updates[normalized_name] = raw_value
+            if not normalized_updates:
+                return Response(
+                    {"detail": "No supported runtime settings provided."},
+                    status=HTTP_400_BAD_REQUEST,
+                )
+
+            try:
+                AIRuntimeSettingsService.update_runtime_settings(normalized_updates, updated_by=request.user)
+            except ValueError as exc:
+                return Response({"detail": str(exc)}, status=HTTP_400_BAD_REQUEST)
 
         def _to_float(value):
             try:
                 return float(value)
             except (TypeError, ValueError):
                 return None
-
-        def _load_llm_models_config():
-            llm_config_path = finders.find("llm_models.json")
-            if not llm_config_path:
-                llm_config_path = settings.BASE_DIR / "business_suite" / "static" / "llm_models.json"
-
-            try:
-                with open(llm_config_path, "r", encoding="utf-8") as f:
-                    return json.load(f)
-            except Exception:
-                return {"providers": {}}
 
         def _empty_period_usage(now_dt: datetime.datetime, *, month: bool) -> dict:
             return {
@@ -804,7 +875,7 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             ]
 
         api_key = getattr(settings, "OPENROUTER_API_KEY", None)
-        base_url = getattr(settings, "OPENROUTER_API_BASE_URL", "https://openrouter.ai/api/v1").rstrip("/")
+        base_url = str(AIRuntimeSettingsService.get("OPENROUTER_API_BASE_URL") or "https://openrouter.ai/api/v1").rstrip("/")
         timeout = float(getattr(settings, "OPENROUTER_HEALTHCHECK_TIMEOUT", 10.0))
         now = timezone.now()
 
@@ -897,69 +968,228 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             except ValueError:
                 credits_status["message"] = "Invalid JSON response from /credits endpoint."
 
-        llm_config = _load_llm_models_config()
-        providers = llm_config.get("providers", {}) if isinstance(llm_config, dict) else {}
-        current_provider = getattr(settings, "LLM_PROVIDER", "openrouter")
-        default_model = getattr(settings, "LLM_DEFAULT_MODEL", "google/gemini-2.5-flash-lite")
-        check_passport_model = getattr(settings, "CHECK_PASSPORT_MODEL", "") or default_model
+        runtime_settings = AIRuntimeSettingsService.get_many()
+        runtime_settings_rows = AIRuntimeSettingsService.serialize_runtime_settings()
+        workflow_bindings = AIRuntimeSettingsService.workflow_bindings()
+        binding_by_feature = {item.get("feature"): item for item in workflow_bindings}
+
+        model_catalog = AIRuntimeSettingsService.get_model_catalog()
+        providers = model_catalog.get("providers", {}) if isinstance(model_catalog, dict) else {}
+        provider_names = {"openrouter": "OpenRouter", "openai": "OpenAI", "groq": "Groq"}
+
+        configured_provider = AIRuntimeSettingsService.get_llm_provider()
+        current_provider = configured_provider if configured_provider in provider_names else "openrouter"
+
+        global_default_model = AIRuntimeSettingsService.get_llm_default_model()
+        openrouter_default_model = AIRuntimeSettingsService.get_openrouter_default_model()
+        openai_default_model = AIRuntimeSettingsService.get_openai_default_model()
+        groq_default_model = AIRuntimeSettingsService.get_groq_default_model()
+
+        document_categorizer_model = AIRuntimeSettingsService.get_document_categorizer_model()
+        document_categorizer_model_high = AIRuntimeSettingsService.get_document_categorizer_model_high()
+        document_validator_model = AIRuntimeSettingsService.get_document_validator_model()
+        check_passport_model = AIRuntimeSettingsService.get_check_passport_model()
+        document_ocr_structured_model = AIRuntimeSettingsService.get_document_ocr_structured_model()
+        invoice_import_model = AIRuntimeSettingsService.get_invoice_import_model()
+        passport_ocr_model = AIRuntimeSettingsService.get_passport_ocr_model()
+
         provider_info = providers.get(current_provider, {}) if isinstance(providers, dict) else {}
         available_models = provider_info.get("models", []) if isinstance(provider_info, dict) else []
+
+        provider_availability = {
+            "openrouter": bool(getattr(settings, "OPENROUTER_API_KEY", None)),
+            "openai": bool(getattr(settings, "OPENAI_API_KEY", None)),
+            "groq": bool(getattr(settings, "GROQ_API_KEY", None)),
+        }
+
+        router_enabled = AIRuntimeSettingsService.get_auto_fallback_enabled()
+        fallback_candidates = AIRuntimeSettingsService.get_fallback_provider_order()
+        fallback_sticky_seconds = AIRuntimeSettingsService.get_fallback_sticky_seconds()
+
+        def _provider_info(provider_key: str) -> dict:
+            if not isinstance(providers, dict):
+                return {}
+            raw = providers.get(provider_key)
+            return raw if isinstance(raw, dict) else {}
+
+        def _provider_display_name(provider_key: str) -> str:
+            info = _provider_info(provider_key)
+            return str(info.get("name") or provider_names.get(provider_key, provider_key))
+
+        def _configured_fallback_order_for(primary_provider: str) -> list[str]:
+            configured: list[str] = []
+            for candidate in fallback_candidates:
+                if candidate not in provider_names:
+                    continue
+                if candidate == primary_provider or candidate in configured:
+                    continue
+                configured.append(candidate)
+            return configured
+
+        def _effective_fallback_order_for(primary_provider: str) -> list[str]:
+            configured = _configured_fallback_order_for(primary_provider)
+            return [provider for provider in configured if router_enabled and provider_availability.get(provider)]
+
+        configured_fallback_order = _configured_fallback_order_for(current_provider)
+        effective_fallback_order = _effective_fallback_order_for(current_provider)
+
+        def _provider_default_model(provider_key: str) -> str:
+            if provider_key == "openrouter":
+                if current_provider == "openrouter":
+                    configured_default_model = openrouter_default_model or global_default_model
+                else:
+                    configured_default_model = openrouter_default_model
+                return configured_default_model or "google/gemini-3-flash-preview"
+            if provider_key == "openai":
+                if current_provider == "openai":
+                    return global_default_model or openai_default_model or "gpt-5-mini"
+                else:
+                    return openai_default_model or "gpt-5-mini"
+            if provider_key == "groq":
+                return groq_default_model or "meta-llama/llama-4-scout-17b-16e-instruct"
+            return global_default_model or "google/gemini-3-flash-preview"
+
+        def _feature_primary_provider(model_override: str | None) -> str:
+            return AIRuntimeSettingsService.get_provider_for_model(model_override, fallback=current_provider) or current_provider
+
+        def _feature_primary_model(*, model_override: str | None, primary_provider: str) -> str:
+            return (model_override or "").strip() or _provider_default_model(primary_provider)
+
+        def _feature_failover_providers(*, primary_provider: str) -> list[dict]:
+            entries: list[dict] = []
+            configured_order = _configured_fallback_order_for(primary_provider)
+            effective_order = set(_effective_fallback_order_for(primary_provider))
+            for provider in configured_order:
+                available = bool(provider_availability.get(provider))
+                entries.append(
+                    {
+                        "provider": provider,
+                        "providerName": _provider_display_name(provider),
+                        "model": _provider_default_model(provider),
+                        "available": available,
+                        "active": provider in effective_order,
+                    }
+                )
+            return entries
 
         def _feature_usage_row(
             *,
             feature_name: str,
             purpose: str,
             model_strategy: str,
-            effective_model: str,
+            model_override: str | None = None,
+            model_failover: str | None = None,
+            model_failover_strategy: str | None = None,
         ) -> dict:
+            binding = binding_by_feature.get(feature_name, {})
+            feature_provider = _feature_primary_provider(model_override)
+            feature_provider_info = _provider_info(feature_provider)
+            primary_model = _feature_primary_model(
+                model_override=model_override,
+                primary_provider=feature_provider,
+            )
+            normalized_failover_model = (model_failover or "").strip()
+            has_model_failover = bool(normalized_failover_model and normalized_failover_model != primary_model)
             return {
                 "feature": feature_name,
                 "purpose": purpose,
                 "modelStrategy": model_strategy,
-                "effectiveModel": effective_model,
-                "provider": current_provider,
-                "usageCurrentMonth": _period_usage(feature_name, current_provider, now, month=True),
-                "usageCurrentYear": _period_usage(feature_name, current_provider, now, month=False),
-                "modelBreakdownCurrentMonth": _model_breakdown(feature_name, current_provider, now, month=True),
-                "modelBreakdownCurrentYear": _model_breakdown(feature_name, current_provider, now, month=False),
+                "effectiveModel": primary_model,
+                "provider": feature_provider,
+                "providerName": str(
+                    feature_provider_info.get("name", provider_names.get(feature_provider, feature_provider))
+                ),
+                "primaryProvider": feature_provider,
+                "primaryProviderName": str(
+                    feature_provider_info.get("name", provider_names.get(feature_provider, feature_provider))
+                ),
+                "primaryModel": primary_model,
+                "providerSettingName": binding.get("providerSettingName"),
+                "modelSettingName": binding.get("modelSettingName"),
+                "modelFailoverSettingName": binding.get("modelFailoverSettingName"),
+                "failoverProviders": _feature_failover_providers(primary_provider=feature_provider),
+                "modelFailover": {
+                    "enabled": has_model_failover,
+                    "model": normalized_failover_model if has_model_failover else None,
+                    "strategy": model_failover_strategy if has_model_failover else None,
+                },
+                "usageCurrentMonth": _period_usage(feature_name, feature_provider, now, month=True),
+                "usageCurrentYear": _period_usage(feature_name, feature_provider, now, month=False),
+                "modelBreakdownCurrentMonth": _model_breakdown(feature_name, feature_provider, now, month=True),
+                "modelBreakdownCurrentYear": _model_breakdown(feature_name, feature_provider, now, month=False),
             }
 
         feature_rows = [
             _feature_usage_row(
                 feature_name=AIUsageFeature.INVOICE_IMPORT_AI_PARSER,
                 purpose="Extracts invoice/customer data from uploaded invoice files.",
-                model_strategy="Uses request llm_model override, otherwise LLM_DEFAULT_MODEL.",
-                effective_model=default_model,
+                model_strategy="Uses INVOICE_IMPORT_MODEL (or request llm_model override) for this workflow.",
+                model_override=invoice_import_model,
             ),
             _feature_usage_row(
                 feature_name=AIUsageFeature.PASSPORT_OCR_AI_EXTRACTOR,
                 purpose="Extracts structured passport fields in hybrid MRZ + AI flow.",
-                model_strategy="Uses LLM_DEFAULT_MODEL unless parser is explicitly instantiated with a model.",
-                effective_model=default_model,
+                model_strategy="Uses PASSPORT_OCR_MODEL (or parser model override) for this workflow.",
+                model_override=passport_ocr_model,
             ),
             _feature_usage_row(
                 feature_name=AIUsageFeature.DOCUMENT_AI_CATEGORIZER,
                 purpose="Classifies uploaded documents into document types using vision AI.",
-                model_strategy="Uses request model override, otherwise LLM_DEFAULT_MODEL.",
-                effective_model=default_model,
+                model_strategy="Uses DOCUMENT_CATEGORIZER_MODEL (or request override) as pass-1 model.",
+                model_override=document_categorizer_model,
+                model_failover=document_categorizer_model_high,
+                model_failover_strategy=(
+                    "When pass 1 has no match, retries with DOCUMENT_CATEGORIZER_MODEL_HIGH."
+                ),
+            ),
+            _feature_usage_row(
+                feature_name=AIUsageFeature.DOCUMENT_AI_VALIDATOR,
+                purpose="Validates document quality/requirements with prompt-based AI rules.",
+                model_strategy="Uses DOCUMENT_VALIDATOR_MODEL unless request override is provided.",
+                model_override=document_validator_model,
+            ),
+            _feature_usage_row(
+                feature_name=AIUsageFeature.DOCUMENT_OCR_AI_EXTRACTOR,
+                purpose="Extracts typed structured fields from classified document images/PDFs.",
+                model_strategy=(
+                    "Uses DOCUMENT_OCR_STRUCTURED_MODEL, otherwise DOCUMENT_VALIDATOR_MODEL, "
+                    "then provider default model."
+                ),
+                model_override=document_ocr_structured_model,
+            ),
+            _feature_usage_row(
+                feature_name=AIUsageFeature.PASSPORT_CHECK_API,
+                purpose="Validates passport uploadability via async /customers/check-passport/ API.",
+                model_strategy="Uses CHECK_PASSPORT_MODEL for AI decisions.",
+                model_override=check_passport_model,
             ),
         ]
 
-        if check_passport_model != default_model:
-            feature_rows.append(
-                _feature_usage_row(
-                    feature_name=AIUsageFeature.PASSPORT_CHECK_API,
-                    purpose="Validates passport uploadability via async /customers/check-passport/ API.",
-                    model_strategy="Uses CHECK_PASSPORT_MODEL from settings for AI decisions.",
-                    effective_model=check_passport_model,
-                )
-            )
-
         ai_model_usage = {
             "provider": current_provider,
-            "providerName": provider_info.get("name", current_provider),
-            "defaultModel": default_model,
+            "providerName": provider_info.get("name", provider_names.get(current_provider, current_provider)),
+            "defaultModel": _provider_default_model(current_provider),
             "availableModels": available_models,
+            "runtimeSettings": runtime_settings_rows,
+            "settingsMap": runtime_settings,
+            "workflowBindings": workflow_bindings,
+            "modelCatalog": model_catalog,
+            "failover": {
+                "enabled": router_enabled,
+                "configuredProviderOrder": configured_fallback_order,
+                "effectiveProviderOrder": effective_fallback_order,
+                "stickySeconds": fallback_sticky_seconds,
+                "providers": [
+                    {
+                        "provider": provider,
+                        "providerName": provider_names.get(provider, provider),
+                        "defaultModel": _provider_default_model(provider),
+                        "available": bool(provider_availability.get(provider)),
+                        "active": provider in effective_fallback_order,
+                    }
+                    for provider in configured_fallback_order
+                ],
+            },
             "usageCurrentMonth": _period_usage(None, current_provider, now, month=True),
             "usageCurrentYear": _period_usage(None, current_provider, now, month=False),
             "features": feature_rows,

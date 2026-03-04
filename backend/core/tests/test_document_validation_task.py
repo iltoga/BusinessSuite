@@ -227,3 +227,29 @@ class DocumentValidationTaskTests(TestCase):
         self.assertEqual(self.document.ai_validation_result.get("expiration_state"), "ok")
         self.assertIsNone(self.document.ai_validation_result.get("expiration_reason"))
         self.assertTrue(self.document.ai_validation_result.get("valid"))
+
+    @patch("core.tasks.document_validation.default_storage.open")
+    @patch("core.tasks.document_validation.AIDocumentCategorizer.validate_document")
+    @patch("core.tasks.document_validation.acquire_task_lock", return_value="token-6")
+    @patch("core.tasks.document_validation.release_task_lock")
+    def test_validation_error_keeps_runtime_metadata_when_available(
+        self,
+        _release_lock_mock,
+        _acquire_lock_mock,
+        validate_document_mock,
+        storage_open_mock,
+    ):
+        storage_open_mock.return_value.__enter__.return_value.read.return_value = b"fake-file-bytes"
+        failure = Exception("Provider unavailable")
+        setattr(failure, "ai_provider", "openrouter")
+        setattr(failure, "ai_provider_name", "OpenRouter")
+        setattr(failure, "ai_model", "google/gemini-2.5-flash-lite")
+        validate_document_mock.side_effect = failure
+
+        _run_huey_task(run_document_validation, document_id=self.document.id)
+
+        self.document.refresh_from_db()
+        self.assertEqual(self.document.ai_validation_status, Document.AI_VALIDATION_ERROR)
+        self.assertEqual(self.document.ai_validation_result.get("ai_provider"), "openrouter")
+        self.assertEqual(self.document.ai_validation_result.get("ai_provider_name"), "OpenRouter")
+        self.assertEqual(self.document.ai_validation_result.get("ai_model"), "google/gemini-2.5-flash-lite")

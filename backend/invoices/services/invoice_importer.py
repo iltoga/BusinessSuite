@@ -9,12 +9,12 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional, Tuple
 
-from django.conf import settings
 from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
 from core.services import AIInvoiceParser, ParsedInvoiceResult
+from core.services.ai_runtime_settings_service import AIRuntimeSettingsService
 from core.services.logger_service import Logger
 from customer_applications.models import DocApplication
 from customers.models import Customer
@@ -51,19 +51,17 @@ class InvoiceImporter:
 
         Args:
             user: Django user performing the import (for audit trail)
-            llm_provider: Optional override for LLM provider ("openrouter" or "openai")
+            llm_provider: Optional override for LLM provider ("openrouter", "openai", "groq")
             llm_model: Optional override for LLM model
         """
         self.user = user
 
-        # Determine which provider to use
-        if llm_provider:
-            use_openrouter = llm_provider == "openrouter"
-        else:
-            use_openrouter = getattr(settings, "LLM_PROVIDER", "openrouter") == "openrouter"
+        resolved_model = llm_model
+        if resolved_model is None and llm_provider is None:
+            resolved_model = AIRuntimeSettingsService.get_invoice_import_model()
 
-        # Initialize parser with optional model override
-        self.llm_parser = AIInvoiceParser(use_openrouter=use_openrouter, model=llm_model)
+        # Preserve explicit provider/model overrides from caller; otherwise use runtime workflow model.
+        self.llm_parser = AIInvoiceParser(provider=llm_provider, model=resolved_model)
 
     def import_from_file(self, uploaded_file, filename: str = None) -> ImportResult:
         """

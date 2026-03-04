@@ -14,6 +14,7 @@ from core.services.ai_document_categorizer import (
     extract_validation_details_markdown,
     extract_validation_doc_number,
     extract_validation_expiration_date,
+    format_validation_reasoning,
 )
 from core.services.ai_client import get_ai_user_message, is_ai_timeout_exception
 from core.services.logger_service import Logger
@@ -46,12 +47,12 @@ def _apply_expiration_metadata(document: Document, validation: dict) -> tuple[di
     if expiration_state.reason and expiration_state.reason not in issues:
         issues.append(expiration_state.reason)
 
-    reasoning = str(validation.get("reasoning", "") or "").strip()
-    if expiration_state.reason and expiration_state.reason not in reasoning:
-        reasoning = f"{reasoning} {expiration_state.reason}".strip() if reasoning else expiration_state.reason
-
     validation["negative_issues"] = issues
-    validation["reasoning"] = reasoning
+    validation["reasoning"] = format_validation_reasoning(
+        valid=False,
+        reasoning=validation.get("reasoning", ""),
+        negative_issues=issues,
+    )
     validation["valid"] = False
     return validation, False
 
@@ -194,6 +195,9 @@ def run_document_validation(document_id: int) -> None:
             full_tb = tb_module.format_exc()
             logger.error("AI validation failed for document %s: %s\n%s", document_id, exc, full_tb)
             user_message = get_ai_user_message(exc)
+            runtime_provider = str(getattr(exc, "ai_provider", "") or "").strip().lower() or None
+            runtime_provider_name = str(getattr(exc, "ai_provider_name", "") or "").strip() or None
+            runtime_model = str(getattr(exc, "ai_model", "") or "").strip() or None
             document.ai_validation_status = Document.AI_VALIDATION_ERROR
             document.ai_validation_result = {
                 "valid": False,
@@ -205,6 +209,9 @@ def run_document_validation(document_id: int) -> None:
                 "extracted_doc_number": None,
                 "extracted_details_markdown": None,
                 "error_type": "timeout" if is_ai_timeout_exception(exc) else "provider_error",
+                "ai_provider": runtime_provider,
+                "ai_provider_name": runtime_provider_name or runtime_provider,
+                "ai_model": runtime_model,
             }
             document.save(update_fields=["ai_validation_status", "ai_validation_result", "updated_at"])
 

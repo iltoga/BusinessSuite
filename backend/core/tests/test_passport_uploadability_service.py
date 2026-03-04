@@ -34,6 +34,22 @@ class PassportUploadabilityServiceQualityGateTestCase(TestCase):
         self.assertEqual(result.rejection_code, "image_blurry")
         self.assertIn("opencv-quality-gate", result.method_used)
 
+    @override_settings(
+        LLM_PROVIDER="groq",
+        CHECK_PASSPORT_MODEL="meta-llama/llama-4-scout-17b-16e-instruct",
+    )
+    @patch("core.services.passport_uploadability_service.AIPassportParser")
+    def test_does_not_force_openrouter_provider(self, mock_parser_cls):
+        mock_parser = MagicMock()
+        mock_parser.model = "meta-llama/llama-4-scout-17b-16e-instruct"
+        mock_parser_cls.return_value = mock_parser
+
+        PassportUploadabilityService()
+
+        kwargs = mock_parser_cls.call_args.kwargs
+        self.assertNotIn("use_openrouter", kwargs)
+        self.assertEqual(kwargs.get("model"), "meta-llama/llama-4-scout-17b-16e-instruct")
+
     @patch("core.services.passport_uploadability_service.AIPassportParser")
     def test_does_not_reject_when_only_deterministic_mrz_cutoff_hint_is_present(self, mock_parser_cls):
         mock_parser = MagicMock()

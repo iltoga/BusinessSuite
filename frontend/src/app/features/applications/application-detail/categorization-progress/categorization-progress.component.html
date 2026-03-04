@@ -142,7 +142,7 @@
                 @if (result.validationStatus === 'valid') {
                   <z-badge zType="success">Valid</z-badge>
                 } @else if (result.validationStatus === 'invalid') {
-                  <z-badge zType="destructive" [zTooltip]="result.validationReasoning ?? ''"
+                  <z-badge zType="destructive" [zTooltip]="getValidationTooltip(result)"
                     >Invalid</z-badge
                   >
                 } @else if (result.validationStatus === 'pending') {

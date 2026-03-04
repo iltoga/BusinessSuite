@@ -2,14 +2,13 @@ from typing import Optional
 
 from core.services.ai_client import AIClient
 from core.services.ai_document_categorizer import AIDocumentCategorizer
+from core.services.ai_runtime_settings_service import AIRuntimeSettingsService
 from core.services.ai_usage_service import AIUsageFeature
 from core.utils.document_type_ai_fields import (
     StructuredOutputField,
     build_strict_structured_schema,
     format_fields_for_prompt,
 )
-from django.conf import settings
-
 
 def extract_document_structured_output(
     *,
@@ -23,12 +22,7 @@ def extract_document_structured_output(
     if not fields:
         raise ValueError("Structured output fields are required.")
 
-    extractor_model = (
-        model
-        or getattr(settings, "DOCUMENT_OCR_STRUCTURED_MODEL", None)
-        or getattr(settings, "DOCUMENT_VALIDATOR_MODEL", None)
-        or getattr(settings, "LLM_DEFAULT_MODEL", None)
-    )
+    extractor_model = model or AIRuntimeSettingsService.get_document_ocr_structured_model()
 
     client = AIClient(
         model=extractor_model,

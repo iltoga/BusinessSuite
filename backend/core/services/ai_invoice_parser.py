@@ -13,6 +13,7 @@ from typing import List, Optional, Union
 from django.core.files.uploadedfile import UploadedFile
 
 from core.services.ai_client import AIClient
+from core.services.ai_runtime_settings_service import AIRuntimeSettingsService
 from core.services.ai_usage_service import AIUsageFeature
 
 logger = logging.getLogger(__name__)
@@ -187,6 +188,7 @@ class AIInvoiceParser:
         self,
         api_key: Optional[str] = None,
         model: Optional[str] = None,
+        provider: Optional[str] = None,
         use_openrouter: Optional[bool] = None,
     ):
         """
@@ -195,11 +197,17 @@ class AIInvoiceParser:
         Args:
             api_key: API key (defaults to settings)
             model: Model to use (defaults to settings)
+            provider: Provider override ("openrouter", "openai", "groq")
             use_openrouter: Whether to use OpenRouter (defaults to settings)
         """
+        resolved_model = model
+        if resolved_model is None and provider is None and use_openrouter is None:
+            resolved_model = AIRuntimeSettingsService.get_invoice_import_model()
+
         self.ai_client = AIClient(
             api_key=api_key,
-            model=model,
+            model=resolved_model,
+            provider=provider,
             use_openrouter=use_openrouter,
             feature_name=AIUsageFeature.INVOICE_IMPORT_AI_PARSER,
         )

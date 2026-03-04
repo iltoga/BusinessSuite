@@ -33,6 +33,9 @@ export interface CategorizationFileResult {
   validationStatus: 'valid' | 'invalid' | 'pending' | null;
   validationReasoning: string | null;
   validationNegativeIssues: string[] | null;
+  validationProvider?: string | null;
+  validationProviderName?: string | null;
+  validationModel?: string | null;
 }
 
 export interface CategorizationSseEvent {
@@ -54,6 +57,9 @@ export interface CategorizationSseEvent {
     validationStatus?: string;
     validationReasoning?: string;
     validationNegativeIssues?: string[];
+    validationProvider?: string;
+    validationProviderName?: string;
+    validationModel?: string;
     validationConfidence?: number;
     aiValidationEnabled?: boolean;
     pipelineStage?:
@@ -111,6 +117,9 @@ export interface ValidateCategoryResponse {
   validationStatus?: 'valid' | 'invalid' | 'error' | '';
   validationResult?: Record<string, unknown> | null;
   aiValidationEnabled?: boolean;
+  validationProvider?: string | null;
+  validationProviderName?: string | null;
+  validationModel?: string | null;
 }
 
 @Injectable({

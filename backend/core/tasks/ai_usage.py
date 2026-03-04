@@ -7,6 +7,7 @@ import requests
 from django.conf import settings
 from core.tasks.runtime import QUEUE_DEFAULT, db_task
 
+from core.services.ai_runtime_settings_service import AIRuntimeSettingsService
 from core.services.ai_usage_service import AIUsageService
 from core.services.logger_service import Logger
 
@@ -50,7 +51,7 @@ def _fetch_openrouter_generation_data(request_id: str) -> dict[str, Any]:
     if not api_key:
         raise RuntimeError("OPENROUTER_API_KEY is not configured.")
 
-    base_url = getattr(settings, "OPENROUTER_API_BASE_URL", "https://openrouter.ai/api/v1").rstrip("/")
+    base_url = str(AIRuntimeSettingsService.get("OPENROUTER_API_BASE_URL") or "https://openrouter.ai/api/v1").rstrip("/")
     timeout = float(getattr(settings, "OPENROUTER_USAGE_FETCH_TIMEOUT", 10.0))
     headers = {"Authorization": f"Bearer {api_key}", "Accept": "application/json"}
 

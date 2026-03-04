@@ -816,28 +816,18 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     @action(detail=False, methods=["get"], url_path="import/config")
     def import_config(self, request):
         """Return LLM configuration and import settings."""
-        import json as json_module
-
         from django.conf import settings as django_settings
-        from django.contrib.staticfiles import finders
+        from core.services.ai_runtime_settings_service import AIRuntimeSettingsService
 
-        # Load LLM models config from static file
-        llm_config = {"providers": {}}
-        llm_config_path = finders.find("llm_models.json")
-        if not llm_config_path:
-            llm_config_path = django_settings.BASE_DIR / "business_suite" / "static" / "llm_models.json"
-
-        try:
-            with open(llm_config_path, "r") as f:
-                llm_config = json_module.load(f)
-        except Exception:
-            llm_config = {"providers": {}}
+        llm_config = AIRuntimeSettingsService.get_model_catalog()
+        runtime_settings = AIRuntimeSettingsService.get_many()
 
         return Response(
             {
                 "providers": llm_config.get("providers", {}),
-                "currentProvider": getattr(django_settings, "LLM_PROVIDER", "openrouter"),
-                "currentModel": getattr(django_settings, "LLM_DEFAULT_MODEL", "google/gemini-2.5-flash-lite"),
+                "currentProvider": AIRuntimeSettingsService.get_llm_provider(),
+                "currentModel": AIRuntimeSettingsService.get_llm_default_model(),
+                "runtimeSettings": runtime_settings,
                 "maxWorkers": getattr(django_settings, "INVOICE_IMPORT_MAX_WORKERS", 3),
                 "supportedFormats": [".pdf", ".xlsx", ".xls", ".docx", ".doc"],
             }

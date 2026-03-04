@@ -8,6 +8,7 @@ from django.core.cache import cache
 from django.core.management import call_command
 from core.tasks.runtime import QUEUE_LOW, QUEUE_SCHEDULED, crontab, db_periodic_task, db_task
 
+from core.services.ai_runtime_settings_service import AIRuntimeSettingsService
 from core.services.logger_service import Logger
 
 logger = Logger.get_logger(__name__)
@@ -272,7 +273,7 @@ def _perform_openrouter_health_check() -> bool:
         logger.warning("OpenRouter health check skipped: OPENROUTER_API_KEY is not configured.")
         return False
 
-    base_url = getattr(settings, "OPENROUTER_API_BASE_URL", "https://openrouter.ai/api/v1").rstrip("/")
+    base_url = str(AIRuntimeSettingsService.get("OPENROUTER_API_BASE_URL") or "https://openrouter.ai/api/v1").rstrip("/")
     timeout = float(getattr(settings, "OPENROUTER_HEALTHCHECK_TIMEOUT", 10.0))
     endpoint = f"{base_url}/key"
 

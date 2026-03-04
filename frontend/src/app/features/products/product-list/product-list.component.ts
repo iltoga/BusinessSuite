@@ -1,8 +1,8 @@
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { HttpClient, HttpParams } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   computed,
   ElementRef,
   HostListener,
@@ -13,10 +13,11 @@ import {
   type OnInit,
   type TemplateRef,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
-import { catchError, Observable, takeWhile } from 'rxjs';
+import { Subject, catchError, Observable, of, switchMap, takeWhile } from 'rxjs';
 
-import { ProductsService, type PaginatedProductList, type Product } from '@/core/api';
+import { ProductsService, type Product } from '@/core/api';
 import { AuthService } from '@/core/services/auth.service';
 import { ConfigService } from '@/core/services/config.service';
 import { ProductImportExportService } from '@/core/services/product-import-export.service';
@@ -74,7 +75,6 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 })
 export class ProductListComponent implements OnInit {
   private productsApi = inject(ProductsService);
-  private http = inject(HttpClient);
   private productImportExportApi = inject(ProductImportExportService);
   private sseService = inject(SseService);
   private authService = inject(AuthService);
@@ -82,6 +82,8 @@ export class ProductListComponent implements OnInit {
   private toast = inject(GlobalToastService);
   private platformId = inject(PLATFORM_ID);
   private router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly loadProductsTrigger$ = new Subject<void>();
 
   private readonly nameTemplate =
     viewChild.required<TemplateRef<{ $implicit: Product; value: any; row: Product }>>(
@@ -117,6 +119,56 @@ export class ProductListComponent implements OnInit {
 
   // Access the data table for focus management
   private readonly dataTable = viewChild.required(DataTableComponent);
+
+  constructor() {
+    this.loadProductsTrigger$
+      .pipe(
+        switchMap(() => {
+          this.isLoading.set(true);
+          const ordering = this.ordering();
+          const search = this.query().trim();
+
+          return this.productsApi
+            .productsList(
+              undefined,
+              !this.includeDeprecated(),
+              ordering,
+              this.page(),
+              this.pageSize(),
+              search || undefined,
+            )
+            .pipe(
+              catchError(() => {
+                this.toast.error('Failed to load products');
+                return of(null);
+              }),
+            );
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((response) => {
+        if (!response) {
+          this.isLoading.set(false);
+          return;
+        }
+
+        this.products.set(response.results ?? []);
+        this.totalItems.set(response.count ?? 0);
+        this.isLoading.set(false);
+
+        const table = this.dataTable();
+        if (table) {
+          const focusId = this.focusIdOnInit();
+          if (focusId) {
+            this.focusIdOnInit.set(null);
+            table.focusRowById(focusId);
+          } else if (this.focusTableOnInit()) {
+            this.focusTableOnInit.set(false);
+            table.focusFirstRowIfNone();
+          }
+        }
+      });
+  }
 
   readonly products = signal<Product[]>([]);
   readonly isLoading = signal(false);
@@ -731,44 +783,6 @@ export class ProductListComponent implements OnInit {
     if (!isPlatformBrowser(this.platformId)) {
       return;
     }
-    this.isLoading.set(true);
-    const ordering = this.ordering();
-
-    let params = new HttpParams()
-      .set('page', String(this.page()))
-      .set('page_size', String(this.pageSize()))
-      .set('hide_deprecated', String(!this.includeDeprecated()));
-
-    if (ordering) {
-      params = params.set('ordering', ordering);
-    }
-    const search = this.query();
-    if (search) {
-      params = params.set('search', search);
-    }
-
-    this.http.get<PaginatedProductList>('/api/products/', { params }).subscribe({
-      next: (response: PaginatedProductList) => {
-        this.products.set(response.results ?? []);
-        this.totalItems.set(response.count ?? 0);
-        this.isLoading.set(false);
-
-        const table = this.dataTable();
-        if (table) {
-          const focusId = this.focusIdOnInit();
-          if (focusId) {
-            this.focusIdOnInit.set(null);
-            table.focusRowById(focusId);
-          } else if (this.focusTableOnInit()) {
-            this.focusTableOnInit.set(false);
-            table.focusFirstRowIfNone();
-          }
-        }
-      },
-      error: () => {
-        this.toast.error('Failed to load products');
-        this.isLoading.set(false);
-      },
-    });
+    this.loadProductsTrigger$.next();
   }
 }

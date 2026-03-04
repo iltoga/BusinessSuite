@@ -7,6 +7,7 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
+from core.models import AppSetting
 from core.models.ai_request_usage import AIRequestUsage
 from core.services.ai_usage_service import AIUsageFeature
 
@@ -38,9 +39,13 @@ class ServerManagementOpenRouterStatusApiTests(TestCase):
 
     @override_settings(
         OPENROUTER_API_KEY="test-key",
+        OPENAI_API_KEY="openai-test-key",
         OPENROUTER_API_BASE_URL="https://openrouter.ai/api/v1",
         LLM_PROVIDER="openrouter",
         LLM_DEFAULT_MODEL="google/gemini-2.5-flash-lite",
+        OPENAI_DEFAULT_MODEL="gpt-5-mini",
+        LLM_AUTO_FALLBACK_ENABLED=True,
+        LLM_FALLBACK_PROVIDER_ORDER=["openai", "groq"],
         CHECK_PASSPORT_MODEL="google/gemini-3-flash-preview",
     )
     def test_openrouter_status_returns_credit_and_ai_model_data(self):
@@ -121,13 +126,25 @@ class ServerManagementOpenRouterStatusApiTests(TestCase):
         self.assertEqual(payload["openrouter"]["keyStatus"]["limitRemaining"], 12.5)
         self.assertEqual(payload["openrouter"]["effectiveCreditRemaining"], 12.5)
         self.assertEqual(payload["aiModels"]["provider"], "openrouter")
+        self.assertTrue(payload["aiModels"]["failover"]["enabled"])
+        self.assertEqual(payload["aiModels"]["failover"]["configuredProviderOrder"], ["openai", "groq"])
+        self.assertEqual(payload["aiModels"]["failover"]["effectiveProviderOrder"], ["openai"])
         self.assertEqual(payload["aiModels"]["usageCurrentMonth"]["requestCount"], 5)
         self.assertEqual(payload["aiModels"]["usageCurrentMonth"]["totalTokens"], 3450)
         self.assertAlmostEqual(payload["aiModels"]["usageCurrentMonth"]["totalCost"], 0.215)
-        self.assertGreaterEqual(len(payload["aiModels"]["features"]), 3)
+        self.assertGreaterEqual(len(payload["aiModels"]["features"]), 6)
         invoice_feature = next(
             feature for feature in payload["aiModels"]["features"] if feature["feature"] == AIUsageFeature.INVOICE_IMPORT_AI_PARSER
         )
+        self.assertEqual(invoice_feature["modelSettingName"], "INVOICE_IMPORT_MODEL")
+        self.assertEqual(invoice_feature["primaryProvider"], "openrouter")
+        self.assertEqual(invoice_feature["primaryModel"], "google/gemini-2.5-flash-lite")
+        self.assertEqual(len(invoice_feature["failoverProviders"]), 2)
+        self.assertEqual(invoice_feature["failoverProviders"][0]["provider"], "openai")
+        self.assertEqual(invoice_feature["failoverProviders"][0]["model"], "gpt-5-mini")
+        self.assertTrue(invoice_feature["failoverProviders"][0]["active"])
+        self.assertEqual(invoice_feature["failoverProviders"][1]["provider"], "groq")
+        self.assertFalse(invoice_feature["failoverProviders"][1]["active"])
         self.assertEqual(invoice_feature["usageCurrentMonth"]["requestCount"], 1)
         self.assertEqual(invoice_feature["usageCurrentMonth"]["totalTokens"], 240)
         self.assertEqual(invoice_feature["usageCurrentYear"]["requestCount"], 1)
@@ -135,6 +152,7 @@ class ServerManagementOpenRouterStatusApiTests(TestCase):
         passport_feature = next(
             feature for feature in payload["aiModels"]["features"] if feature["feature"] == AIUsageFeature.PASSPORT_OCR_AI_EXTRACTOR
         )
+        self.assertEqual(passport_feature["modelSettingName"], "PASSPORT_OCR_MODEL")
         self.assertEqual(passport_feature["usageCurrentMonth"]["failedCount"], 1)
 
         passport_check_feature = next(
@@ -147,6 +165,7 @@ class ServerManagementOpenRouterStatusApiTests(TestCase):
         document_feature = next(
             feature for feature in payload["aiModels"]["features"] if feature["feature"] == AIUsageFeature.DOCUMENT_AI_CATEGORIZER
         )
+        self.assertFalse(document_feature["modelFailover"]["enabled"])
         self.assertEqual(document_feature["usageCurrentMonth"]["requestCount"], 2)
         self.assertEqual(document_feature["usageCurrentMonth"]["totalTokens"], 3000)
         self.assertAlmostEqual(document_feature["usageCurrentMonth"]["totalCost"], 0.025)
@@ -155,6 +174,11 @@ class ServerManagementOpenRouterStatusApiTests(TestCase):
         self.assertAlmostEqual(document_feature["modelBreakdownCurrentMonth"][0]["totalCost"], 0.02)
         self.assertEqual(document_feature["modelBreakdownCurrentMonth"][1]["model"], "google/gemini-2.5-flash-lite")
         self.assertAlmostEqual(document_feature["modelBreakdownCurrentMonth"][1]["totalCost"], 0.005)
+        self.assertIn("runtimeSettings", payload["aiModels"])
+        self.assertIn("settingsMap", payload["aiModels"])
+        self.assertIn("workflowBindings", payload["aiModels"])
+        self.assertIn("modelCatalog", payload["aiModels"])
+        self.assertIn("providers", payload["aiModels"]["modelCatalog"])
 
     @override_settings(OPENROUTER_API_KEY="")
     def test_openrouter_status_handles_missing_usage_table(self):
@@ -184,10 +208,191 @@ class ServerManagementOpenRouterStatusApiTests(TestCase):
         LLM_DEFAULT_MODEL="google/gemini-2.5-flash-lite",
         CHECK_PASSPORT_MODEL="google/gemini-2.5-flash-lite",
     )
-    def test_openrouter_status_omits_passport_check_feature_when_model_matches_default(self):
+    def test_openrouter_status_includes_passport_check_feature_when_model_matches_default(self):
         response = self.client.get("/api/server-management/openrouter-status/")
 
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         feature_names = [feature["feature"] for feature in payload["aiModels"]["features"]]
-        self.assertNotIn(AIUsageFeature.PASSPORT_CHECK_API, feature_names)
+        self.assertIn(AIUsageFeature.PASSPORT_CHECK_API, feature_names)
+
+    @override_settings(
+        OPENROUTER_API_KEY="",
+        LLM_PROVIDER="openrouter",
+        OPENROUTER_DEFAULT_MODEL="openai/gpt-5-mini",
+    )
+    def test_openrouter_status_workflow_models_inherit_primary_when_unset(self):
+        response = self.client.get("/api/server-management/openrouter-status/")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+
+        invoice_feature = next(
+            feature for feature in payload["aiModels"]["features"] if feature["feature"] == AIUsageFeature.INVOICE_IMPORT_AI_PARSER
+        )
+        passport_feature = next(
+            feature for feature in payload["aiModels"]["features"] if feature["feature"] == AIUsageFeature.PASSPORT_OCR_AI_EXTRACTOR
+        )
+
+        self.assertEqual(invoice_feature["modelSettingName"], "INVOICE_IMPORT_MODEL")
+        self.assertEqual(passport_feature["modelSettingName"], "PASSPORT_OCR_MODEL")
+        self.assertEqual(invoice_feature["primaryModel"], "openai/gpt-5-mini")
+        self.assertEqual(passport_feature["primaryModel"], "openai/gpt-5-mini")
+
+    @override_settings(
+        OPENROUTER_API_KEY="",
+        LLM_PROVIDER="groq",
+        GROQ_DEFAULT_MODEL="meta-llama/llama-4-scout-17b-16e-instruct",
+        CHECK_PASSPORT_MODEL="openai/gpt-5-mini",
+    )
+    def test_openrouter_status_feature_provider_follows_model_provider(self):
+        response = self.client.get("/api/server-management/openrouter-status/")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        passport_check_feature = next(
+            feature for feature in payload["aiModels"]["features"] if feature["feature"] == AIUsageFeature.PASSPORT_CHECK_API
+        )
+        self.assertEqual(passport_check_feature["provider"], "openrouter")
+        self.assertEqual(passport_check_feature["primaryProvider"], "openrouter")
+        self.assertEqual(passport_check_feature["primaryModel"], "openai/gpt-5-mini")
+
+    @override_settings(
+        OPENROUTER_API_KEY="",
+        LLM_PROVIDER="openrouter",
+        LLM_DEFAULT_MODEL="google/gemini-3-flash-preview",
+    )
+    def test_openrouter_status_patch_updates_runtime_settings_in_db(self):
+        response = self.client.patch(
+            "/api/server-management/openrouter-status/",
+            data={
+                "settings": {
+                    "LLM_PROVIDER": "openai",
+                    "LLM_DEFAULT_MODEL": "gpt-5-mini",
+                    "LLM_FALLBACK_PROVIDER_ORDER": ["openrouter"],
+                }
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["aiModels"]["provider"], "openai")
+        self.assertEqual(payload["aiModels"]["settingsMap"]["LLM_PROVIDER"], "openai")
+        self.assertEqual(payload["aiModels"]["settingsMap"]["LLM_DEFAULT_MODEL"], "gpt-5-mini")
+        self.assertEqual(payload["aiModels"]["settingsMap"]["LLM_FALLBACK_PROVIDER_ORDER"], ["openrouter"])
+
+        provider_setting = AppSetting.objects.get(name="LLM_PROVIDER")
+        self.assertEqual(provider_setting.value, "openai")
+        self.assertEqual(provider_setting.updated_by_id, self.user.id)
+
+    @override_settings(
+        OPENROUTER_API_KEY="",
+        LLM_PROVIDER="openrouter",
+        LLM_DEFAULT_MODEL="google/gemini-3-flash-preview",
+    )
+    def test_openrouter_status_patch_updates_invoice_workflow_model_setting(self):
+        response = self.client.patch(
+            "/api/server-management/openrouter-status/",
+            data={
+                "settings": {
+                    "INVOICE_IMPORT_MODEL": "gpt-5-mini",
+                }
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["aiModels"]["settingsMap"]["INVOICE_IMPORT_MODEL"], "gpt-5-mini")
+
+        invoice_feature = next(
+            feature for feature in payload["aiModels"]["features"] if feature["feature"] == AIUsageFeature.INVOICE_IMPORT_AI_PARSER
+        )
+        self.assertEqual(invoice_feature["primaryProvider"], "openai")
+        self.assertEqual(invoice_feature["primaryModel"], "gpt-5-mini")
+
+    @override_settings(
+        OPENROUTER_API_KEY="",
+        LLM_PROVIDER="openrouter",
+        OPENROUTER_DEFAULT_MODEL="google/gemini-2.5-flash-lite",
+    )
+    def test_openrouter_status_patch_reset_workflow_model_deletes_db_override(self):
+        self.client.patch(
+            "/api/server-management/openrouter-status/",
+            data={"settings": {"INVOICE_IMPORT_MODEL": "gpt-5-mini"}},
+            format="json",
+        )
+        self.assertTrue(AppSetting.objects.filter(name="INVOICE_IMPORT_MODEL").exists())
+
+        response = self.client.patch(
+            "/api/server-management/openrouter-status/",
+            data={"settings": {"INVOICE_IMPORT_MODEL": None}},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertFalse(AppSetting.objects.filter(name="INVOICE_IMPORT_MODEL").exists())
+        self.assertEqual(payload["aiModels"]["settingsMap"]["INVOICE_IMPORT_MODEL"], "")
+
+        invoice_feature = next(
+            feature for feature in payload["aiModels"]["features"] if feature["feature"] == AIUsageFeature.INVOICE_IMPORT_AI_PARSER
+        )
+        self.assertEqual(invoice_feature["primaryProvider"], "openrouter")
+        self.assertEqual(invoice_feature["primaryModel"], "google/gemini-2.5-flash-lite")
+
+    @override_settings(
+        OPENROUTER_API_KEY="",
+        LLM_PROVIDER="openrouter",
+        LLM_DEFAULT_MODEL="google/gemini-3-flash-preview",
+    )
+    def test_openrouter_status_patch_accepts_snake_case_setting_names(self):
+        response = self.client.patch(
+            "/api/server-management/openrouter-status/",
+            data={
+                "settings": {
+                    "llm_provider": "openai",
+                    "llm_default_model": "gpt-5-mini",
+                }
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["aiModels"]["settingsMap"]["LLM_PROVIDER"], "openai")
+        self.assertEqual(payload["aiModels"]["settingsMap"]["LLM_DEFAULT_MODEL"], "gpt-5-mini")
+
+        provider_setting = AppSetting.objects.get(name="LLM_PROVIDER")
+        self.assertEqual(provider_setting.value, "openai")
+        self.assertEqual(provider_setting.updated_by_id, self.user.id)
+
+    @override_settings(OPENROUTER_API_KEY="")
+    def test_openrouter_status_patch_rejects_invalid_provider(self):
+        response = self.client.patch(
+            "/api/server-management/openrouter-status/",
+            data={"settings": {"LLM_PROVIDER": "invalid-provider"}},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("LLM_PROVIDER must be one of", response.json().get("detail", ""))
+
+    @override_settings(
+        OPENROUTER_API_KEY="",
+        LLM_PROVIDER="openrouter",
+        LLM_DEFAULT_MODEL="openai/gpt-5-mini",
+    )
+    def test_openrouter_status_patch_rejects_provider_switch_without_compatible_default_model(self):
+        response = self.client.patch(
+            "/api/server-management/openrouter-status/",
+            data={"settings": {"LLM_PROVIDER": "openai"}},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn(
+            "LLM_DEFAULT_MODEL must be listed under provider 'openai'",
+            response.json().get("detail", ""),
+        )

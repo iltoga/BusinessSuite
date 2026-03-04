@@ -84,7 +84,7 @@
             [value]="d.selected_month"
             (change)="onAiMonthChange($event)"
           >
-            <option *ngFor="let option of monthOptions()" [value]="option.value">
+            <option *ngFor="let option of monthOptions" [value]="option.value">
               {{ option.label }}
             </option>
           </select>

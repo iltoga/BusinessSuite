@@ -1,3 +1,4 @@
+from core.models import AppSetting
 from core.models.ui_settings import UiSettings
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
@@ -81,3 +82,25 @@ class PublicAppConfigTests(TestCase):
             "fcmWebMeasurementId",
         }
         self.assertTrue(disallowed_keys.isdisjoint(payload.keys()))
+
+    def test_public_app_config_includes_frontend_and_both_scoped_db_settings(self):
+        AppSetting.objects.update_or_create(
+            name="PUBLIC_FEATURE_FLAG",
+            defaults={"value": "true", "scope": AppSetting.SCOPE_FRONTEND},
+        )
+        AppSetting.objects.update_or_create(
+            name="PUBLIC_MAX_UPLOAD_MB",
+            defaults={"value": "25", "scope": AppSetting.SCOPE_BOTH},
+        )
+        AppSetting.objects.update_or_create(
+            name="INTERNAL_ONLY_SECRET",
+            defaults={"value": "do-not-expose", "scope": AppSetting.SCOPE_BACKEND},
+        )
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload.get("PUBLIC_FEATURE_FLAG"), True)
+        self.assertEqual(payload.get("PUBLIC_MAX_UPLOAD_MB"), 25)
+        self.assertNotIn("INTERNAL_ONLY_SECRET", payload)

@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 import json
+import hashlib
 import logging
 import os
 import socket
@@ -21,6 +22,7 @@ from urllib.parse import urlparse, urlunparse
 
 from business_suite.settings.cache_backends import build_prod_redis_caches
 from dotenv import load_dotenv
+from django.core.exceptions import ImproperlyConfigured
 
 # Load environment variables from .env file
 load_dotenv()
@@ -70,8 +72,7 @@ DEFAULT_DOCUMENT_LANGUAGE_CODE = os.getenv("DEFAULT_DOCUMENT_LANGUAGE_CODE", "id
 
 DEFAULT_CUSTOMER_EMAIL = os.getenv("DEFAULT_CUSTOMER_EMAIL", "sample_email@gmail.com")
 
-CHECK_PASSPORT_MODEL = os.getenv("CHECK_PASSPORT_MODEL", "google/gemini-2.5-flash")
-CHECK_PASSPORT_AI_MIN_CONFIDENCE_FOR_UPLOAD = float(os.getenv("CHECK_PASSPORT_AI_MIN_CONFIDENCE_FOR_UPLOAD", "0.75"))
+CHECK_PASSPORT_AI_MIN_CONFIDENCE_FOR_UPLOAD = float(os.getenv("CHECK_PASSPORT_AI_MIN_CONFIDENCE_FOR_UPLOAD", "0.95"))
 
 
 # MOCK AUTH SETTINGS
@@ -206,7 +207,51 @@ LOGGING_LEVEL = DJANGO_LOG_LEVEL
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
+_DEV_SECRET_KEY_FALLBACK = "django-insecure-dev-only-not-for-production"
+_SETTINGS_MODULE = str(os.getenv("DJANGO_SETTINGS_MODULE", "")).strip()
+_IS_PROD_SETTINGS = _SETTINGS_MODULE.endswith(".prod")
+
 SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY and not _IS_PROD_SETTINGS:
+    SECRET_KEY = _DEV_SECRET_KEY_FALLBACK
+
+
+def _resolve_jwt_signing_key(secret_key: str | None) -> str:
+    """
+    Resolve an HS256-compatible signing key with a minimum 32-byte length.
+
+    - Prefer explicit JWT_SIGNING_KEY when provided.
+    - In production settings, reject short/missing keys early.
+    - In non-production settings, derive a stable 32-byte+ key from short values.
+    """
+    candidate = str(os.getenv("JWT_SIGNING_KEY", "")).strip()
+    if not candidate:
+        candidate = str(secret_key or "").strip()
+
+    if not candidate:
+        if _IS_PROD_SETTINGS:
+            raise ImproperlyConfigured("JWT signing key is required. Set JWT_SIGNING_KEY or SECRET_KEY.")
+        candidate = _DEV_SECRET_KEY_FALLBACK
+
+    key_len = len(candidate.encode("utf-8"))
+    if key_len >= 32:
+        return candidate
+
+    if _IS_PROD_SETTINGS:
+        raise ImproperlyConfigured(
+            f"JWT signing key must be at least 32 bytes for HS256, got {key_len}. "
+            "Set JWT_SIGNING_KEY to a secure 32+ byte value."
+        )
+
+    # Keep development usable while avoiding PyJWT InsecureKeyLengthWarning.
+    logging.getLogger(__name__).warning(
+        "JWT signing key is %s bytes (<32). Deriving a stable SHA-256 key for non-production settings.",
+        key_len,
+    )
+    return hashlib.sha256(candidate.encode("utf-8")).hexdigest()
+
+
+JWT_SIGNING_KEY = _resolve_jwt_signing_key(SECRET_KEY)
 APP_DOMAIN = os.getenv("APP_DOMAIN")
 
 # SECURITY WARNING: don't run with debug turned on in production!
@@ -570,7 +615,7 @@ SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": False,
     "UPDATE_LAST_LOGIN": True,
     "ALGORITHM": "HS256",
-    "SIGNING_KEY": SECRET_KEY,
+    "SIGNING_KEY": JWT_SIGNING_KEY,
     "VERIFYING_KEY": None,
     "AUDIENCE": None,
     "ISSUER": None,
@@ -1003,6 +1048,7 @@ CURRENCY_DECIMAL_PLACES = 0
 
 # OpenAI API configuration for invoice import
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 OPENROUTER_API_BASE_URL = os.getenv("OPENROUTER_API_BASE_URL", "https://openrouter.ai/api/v1")
@@ -1013,17 +1059,70 @@ OPENROUTER_HEALTHCHECK_TIMEOUT = float(os.getenv("OPENROUTER_HEALTHCHECK_TIMEOUT
 OPENROUTER_HEALTHCHECK_CRON_MINUTE = os.getenv("OPENROUTER_HEALTHCHECK_CRON_MINUTE", "*/5")
 OPENROUTER_HEALTHCHECK_MIN_CREDIT_REMAINING = float(os.getenv("OPENROUTER_HEALTHCHECK_MIN_CREDIT_REMAINING", "0"))
 
-# LLM Provider: "openrouter" for multi-provider access, "openai" for direct OpenAI API
-LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openrouter")
-LLM_DEFAULT_MODEL = os.getenv("LLM_DEFAULT_MODEL", "google/gemini-2.5-flash-lite")
+# LLM provider and model configuration.
+LLM_PROVIDER = (os.getenv("LLM_PROVIDER", "openrouter") or "openrouter").strip().lower()
+LLM_ENV_DEFAULT_MODEL = (os.getenv("LLM_DEFAULT_MODEL", "google/gemini-3-flash-preview") or "").strip()
+if not LLM_ENV_DEFAULT_MODEL:
+    LLM_ENV_DEFAULT_MODEL = "google/gemini-3-flash-preview"
+
+GROQ_DEFAULT_MODEL = (os.getenv("GROQ_DEFAULT_MODEL", "meta-llama/llama-4-scout-17b-16e-instruct") or "").strip()
+if not GROQ_DEFAULT_MODEL:
+    GROQ_DEFAULT_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
+
+# Global default model for non-groq providers.
+# Keep this value independent from LLM_PROVIDER so runtime/admin can still show the
+# configured non-groq default even when Groq is currently selected as primary.
+LLM_DEFAULT_MODEL = LLM_ENV_DEFAULT_MODEL
+
+# Provider-specific defaults used by the router when failing over to another provider.
+OPENROUTER_DEFAULT_MODEL = (os.getenv("OPENROUTER_DEFAULT_MODEL", "google/gemini-2.5-flash-lite") or "").strip()
+if not OPENROUTER_DEFAULT_MODEL:
+    OPENROUTER_DEFAULT_MODEL = "google/gemini-2.5-flash-lite"
+
+OPENAI_DEFAULT_MODEL = (os.getenv("OPENAI_DEFAULT_MODEL", "gpt-5-mini") or "").strip()
+if not OPENAI_DEFAULT_MODEL:
+    OPENAI_DEFAULT_MODEL = "gpt-5-mini"
+
+# Optional workflow-specific runtime overrides.
+# When unset, runtime settings service falls back to the active primary model.
+INVOICE_IMPORT_MODEL = (os.getenv("INVOICE_IMPORT_MODEL", "") or "").strip()
+PASSPORT_OCR_MODEL = (os.getenv("PASSPORT_OCR_MODEL", "") or "").strip()
+
+
+def _resolve_openrouter_model_override(setting_name: str) -> str:
+    """
+    Dedicated model overrides are OpenRouter-oriented.
+    When provider is not openrouter, force global LLM_DEFAULT_MODEL.
+    """
+    if LLM_PROVIDER != "openrouter":
+        return LLM_DEFAULT_MODEL
+    candidate = (os.getenv(setting_name, "") or "").strip()
+    return candidate or LLM_DEFAULT_MODEL
+
+
 # Dedicated model for document categorization; must support image input.
-# Falls back to global LLM default when unset.
-DOCUMENT_CATEGORIZER_MODEL = os.getenv("DOCUMENT_CATEGORIZER_MODEL", LLM_DEFAULT_MODEL)
-# Higher-tier model used as fallback when the primary categorizer fails to classify.
-DOCUMENT_CATEGORIZER_MODEL_HIGH = os.getenv("DOCUMENT_CATEGORIZER_MODEL_HIGH", "google/gemini-3-flash-preview")
+DOCUMENT_CATEGORIZER_MODEL = _resolve_openrouter_model_override("DOCUMENT_CATEGORIZER_MODEL")
+# Higher-tier fallback model for categorization second pass.
+DOCUMENT_CATEGORIZER_MODEL_HIGH = _resolve_openrouter_model_override("DOCUMENT_CATEGORIZER_MODEL_HIGH")
 # Dedicated model for document validation (positive/negative prompt analysis); must support image input.
-# Falls back to global LLM default when unset.
-DOCUMENT_VALIDATOR_MODEL = os.getenv("DOCUMENT_VALIDATOR_MODEL", LLM_DEFAULT_MODEL)
+DOCUMENT_VALIDATOR_MODEL = _resolve_openrouter_model_override("DOCUMENT_VALIDATOR_MODEL")
+# Model used by PassportUploadabilityService.
+CHECK_PASSPORT_MODEL = _resolve_openrouter_model_override("CHECK_PASSPORT_MODEL")
+
+# Automatic provider failover router settings.
+LLM_AUTO_FALLBACK_ENABLED = _parse_bool(os.getenv("LLM_AUTO_FALLBACK_ENABLED", "True"))
+_llm_fallback_default_order = "openrouter" if LLM_PROVIDER == "groq" else ""
+LLM_FALLBACK_PROVIDER_ORDER = [
+    provider.strip().lower()
+    for provider in _parse_list(os.getenv("LLM_FALLBACK_PROVIDER_ORDER", _llm_fallback_default_order))
+]
+LLM_FALLBACK_STICKY_SECONDS = int(os.getenv("LLM_FALLBACK_STICKY_SECONDS", "3600"))
+LLM_FALLBACK_STICKY_CACHE_KEY = os.getenv("LLM_FALLBACK_STICKY_CACHE_KEY", "ai:router:sticky_provider")
+
+# Provider timeout defaults in seconds.
+OPENROUTER_TIMEOUT = float(os.getenv("OPENROUTER_TIMEOUT", "120.0"))
+OPENAI_TIMEOUT = float(os.getenv("OPENAI_TIMEOUT", "120.0"))
+GROQ_TIMEOUT = float(os.getenv("GROQ_TIMEOUT", "120.0"))
 # Per-request timeout (seconds) for document categorization AI calls.
 DOCUMENT_CATEGORIZATION_TIMEOUT = float(os.getenv("DOCUMENT_CATEGORIZATION_TIMEOUT", "30"))
 # Per-request timeout (seconds) for document validation AI calls.

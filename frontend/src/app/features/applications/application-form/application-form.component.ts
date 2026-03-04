@@ -4,7 +4,7 @@ import { CustomersService } from '@/core/api/api/customers.service';
 import { DocumentTypesService } from '@/core/api/api/document-types.service';
 import { ProductsService } from '@/core/api/api/products.service';
 import type { Customer } from '@/core/api/model/customer';
-import { AuthService } from '@/core/services/auth.service';
+import type { DocApplicationCreateUpdate } from '@/core/api/model/doc-application-create-update';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
@@ -19,7 +19,6 @@ import { ZardTooltipImports } from '@/shared/components/tooltip';
 import { TypeaheadComboboxComponent } from '@/shared/components/typeahead-combobox';
 import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/utils/form-errors';
 import { CommonModule, Location } from '@angular/common';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -41,6 +40,47 @@ import {
 } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { map, pairwise, startWith, Subject, takeUntil } from 'rxjs';
+import { ApplicationFormDocumentsSectionComponent } from './application-form-documents-section.component';
+import { FormNavigationFacadeService } from '@/features/shared/services/form-navigation-facade.service';
+
+interface ApplicationDocumentTypeOption {
+  id: number;
+  name: string;
+}
+
+interface ApplicationCalendarTaskOption {
+  id: number;
+  step: number;
+  name: string;
+  addTaskToCalendar: boolean;
+}
+
+interface ProductDocumentsAdapter {
+  requiredDocuments: ApplicationDocumentTypeOption[];
+  optionalDocuments: ApplicationDocumentTypeOption[];
+  tasks: ApplicationCalendarTaskOption[];
+  calendarTask: ApplicationCalendarTaskOption | null;
+}
+
+interface ApplicationFormSnapshot {
+  customerId: number | null;
+  productId: number | null;
+  docDate: Date;
+  dueDate: Date;
+  addDeadlinesToCalendar: boolean;
+  notifyCustomer: boolean;
+  notifyCustomerChannel: 'whatsapp' | 'email';
+  notes: string;
+}
+
+interface ApplicationFormNavigationState {
+  from?: string;
+  focusId?: number | null;
+  searchQuery?: string | null;
+  returnUrl?: string;
+  customerId?: number;
+  page?: number;
+}
 
 @Component({
   selector: 'app-application-form',
@@ -59,6 +99,7 @@ import { map, pairwise, startWith, Subject, takeUntil } from 'rxjs';
     TypeaheadComboboxComponent,
     ZardDateInputComponent,
     FormErrorSummaryComponent,
+    ApplicationFormDocumentsSectionComponent,
     ...ZardTooltipImports,
   ],
   templateUrl: './application-form.component.html',
@@ -72,18 +113,17 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
   private computeService = inject(ComputeService);
   private productsService = inject(ProductsService);
   private documentTypesService = inject(DocumentTypesService);
-  private authService = inject(AuthService);
   private toast = inject(GlobalToastService);
-  private http = inject(HttpClient);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private location = inject(Location);
   private cdr = inject(ChangeDetectorRef);
+  private formNavigationFacade = inject(FormNavigationFacadeService);
 
   private destroy$ = new Subject<void>();
 
   readonly selectedCustomer = signal<Customer | null>(null);
-  readonly documentTypes = signal<any[]>([]);
+  readonly documentTypes = signal<ApplicationDocumentTypeOption[]>([]);
   readonly isEditMode = signal(false);
   readonly applicationId = signal<number | null>(null);
   readonly isLoading = signal(false);
@@ -161,27 +201,16 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
     this.form.get('documents')!.valueChanges.pipe(
       startWith(this.form.get('documents')!.value),
       map((docs) =>
-        (docs || [])
-          .map((d: any) => (d?.docTypeId ? String(d.docTypeId) : ''))
+        (Array.isArray(docs) ? docs : [])
+          .map((d) => {
+            const doc = d as { docTypeId?: string | number | null };
+            return doc?.docTypeId ? String(doc.docTypeId) : '';
+          })
           .filter((id: string) => id !== ''),
       ),
     ),
     { initialValue: [] as string[] },
   );
-
-  /**
-   * Filter document type options for a specific row to exclude already selected types,
-   * but keep the currently selected type for that row in the list.
-   */
-  getFilteredDocumentTypes(index: number): ZardComboboxOption[] {
-    const allOptions = this.documentTypeOptions();
-    const currentSelected = String(this.documentsArray.at(index).get('docTypeId')?.value || '');
-    const otherSelected = this.selectedDocTypeIds().filter((_, i) => i !== index);
-
-    return allOptions.filter(
-      (opt) => opt.value === currentSelected || !otherSelected.includes(opt.value),
-    );
-  }
 
   get documentsArray() {
     return this.form.get('documents') as FormArray;
@@ -305,35 +334,31 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
   private loadApplication(id: number): void {
     this.isLoading.set(true);
     this.customerApplicationsService.customerApplicationsRetrieve(id).subscribe({
-      next: (app: any) => {
-        const docDate = app.docDate ? new Date(app.docDate) : new Date();
-        const customerId = Number(app.customer?.id ?? app.customer);
-        const productId = Number(app.product?.id ?? app.product);
+      next: (rawApp) => {
+        const app = this.adaptApplicationSnapshot(rawApp);
         this.form.patchValue(
           {
-            customer: String(customerId),
-            product: productId ? String(productId) : null,
-            docDate: docDate,
-            dueDate: app.dueDate ? new Date(app.dueDate) : docDate,
-            addDeadlinesToCalendar: app.addDeadlinesToCalendar ?? true,
-            notifyCustomer:
-              app.notifyCustomer ?? app.notifyCustomerToo ?? app.notify_customer_too ?? false,
-            notifyCustomerChannel:
-              app.notifyCustomerChannel ?? app.notify_customer_channel ?? 'whatsapp',
-            notes: app.notes ?? '',
+            customer: app.customerId ? String(app.customerId) : null,
+            product: app.productId ? String(app.productId) : null,
+            docDate: app.docDate,
+            dueDate: app.dueDate,
+            addDeadlinesToCalendar: app.addDeadlinesToCalendar,
+            notifyCustomer: app.notifyCustomer,
+            notifyCustomerChannel: app.notifyCustomerChannel,
+            notes: app.notes,
           },
           { emitEvent: false },
         );
-        if (customerId) {
-          this.loadCustomerDetail(customerId);
+        if (app.customerId) {
+          this.loadCustomerDetail(app.customerId);
         }
 
         // Ensure product documents are loaded when editing an application
-        if (productId) {
-          this.initialProductId.set(productId);
+        if (app.productId) {
+          this.initialProductId.set(app.productId);
           // open the documents panel and load documents
           this.documentsPanelOpen.set(true);
-          this.loadProductDocuments(productId);
+          this.loadProductDocuments(app.productId);
         }
 
         this.isLoading.set(false);
@@ -365,7 +390,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
 
   private loadDocumentTypes() {
     this.documentTypesService.documentTypesList().subscribe({
-      next: (res) => this.documentTypes.set(res ?? []),
+      next: (res) => this.documentTypes.set(this.adaptDocumentTypes(res)),
       error: () => this.toast.error('Failed to load document types'),
     });
   }
@@ -376,8 +401,9 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
     this.documentsPanelOpen.set(true);
 
     this.productsService.productsGetProductByIdRetrieve(productId).subscribe({
-      next: (data: any) => {
-        const deadlineTask = this.getCalendarTaskFromProduct(data);
+      next: (rawData) => {
+        const data = this.adaptProductDocuments(rawData);
+        const deadlineTask = data.calendarTask;
         // Do not clear an already computed label from productsRetrieve() if this
         // lighter endpoint does not include task details.
         if (deadlineTask) {
@@ -385,13 +411,9 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
         }
 
         this.documentsArray.clear();
-        let passportAutoImported = false;
-
-        const processDocs = (docs: any[], required: boolean) => {
-          if (!docs) return;
-          docs.forEach((dt: any) => {
+        const processDocs = (docs: ApplicationDocumentTypeOption[], required: boolean) => {
+          docs.forEach((dt) => {
             if (this.checkPassportAutoImport(dt.id)) {
-              passportAutoImported = true;
               return; // Skip adding to form correctly
             }
             this.addDocument(dt.id, required);
@@ -485,7 +507,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
 
   private tryAutoDueDateCalculation(productId: number): void {
     this.productsService.productsGetProductByIdRetrieve(productId).subscribe({
-      next: (productLookupResponse: any) => {
+      next: (productLookupResponse) => {
         const task = this.getCalendarTaskFromProduct(productLookupResponse);
         this.nextDeadlineTaskName.set(this.getTaskName(task));
         const doc = this.toDateOnly(this.form.get('docDate')?.value);
@@ -498,7 +520,8 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
         if (!start) return;
         this.computeService.computeDocWorkflowDueDateRetrieve(start, task.id).subscribe({
           next: (res) => {
-            const computedDueDate = res?.dueDate ?? res?.due_date;
+            const payload = this.toRecord(res);
+            const computedDueDate = payload?.['dueDate'] ?? payload?.['due_date'];
             if (!computedDueDate) return;
             const parsedDueDate = this.toDateOnly(computedDueDate);
             if (!parsedDueDate) return;
@@ -509,27 +532,19 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
     });
   }
 
-  private getCalendarTaskFromProduct(product: any): any | null {
-    const explicitCalendarTask = product?.calendarTask ?? product?.calendar_task;
-    if (explicitCalendarTask) {
-      return explicitCalendarTask;
+  private getCalendarTaskFromProduct(product: unknown): ApplicationCalendarTaskOption | null {
+    const adapted = this.adaptProductDocuments(product);
+    if (adapted.calendarTask) {
+      return adapted.calendarTask;
     }
-
-    const normalizedProduct = product?.product ?? product;
-    const tasks = Array.isArray(normalizedProduct?.tasks) ? normalizedProduct.tasks : [];
-    if (!tasks.length) return null;
-
-    const calendarTask = tasks.find(
-      (task: any) => task?.addTaskToCalendar === true || task?.add_task_to_calendar === true,
-    );
-
-    // Fallback: if no explicit calendar flag is available, infer from earliest step.
-    if (calendarTask) return calendarTask;
-    const sortedTasks = [...tasks].sort((a: any, b: any) => (a?.step ?? 0) - (b?.step ?? 0));
+    if (!adapted.tasks.length) {
+      return null;
+    }
+    const sortedTasks = [...adapted.tasks].sort((a, b) => a.step - b.step);
     return sortedTasks[0] ?? null;
   }
 
-  private getTaskName(task: any): string | null {
+  private getTaskName(task: ApplicationCalendarTaskOption | null): string | null {
     const rawName = typeof task?.name === 'string' ? task.name.trim() : '';
     return rawName || null;
   }
@@ -574,7 +589,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
     }
 
     this.isSubmitting.set(true);
-    const sourceState = (history.state as any) || {};
+    const sourceState = (history.state as ApplicationFormNavigationState) || {};
     const detailState: Record<string, unknown> = {
       from: sourceState.from ?? 'applications',
       focusId: sourceState.focusId ?? null,
@@ -588,27 +603,33 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
     }
 
     const docDateStr = this.toApiDate(this.form.value.docDate);
+    if (!docDateStr) {
+      this.toast.error('Application date is required');
+      this.isSubmitting.set(false);
+      return;
+    }
 
     if (this.isEditMode() && this.applicationId()) {
       // Update mode
       const dueDateStr = this.toApiDate(this.form.value.dueDate);
-      const payload = {
+      const payload: Omit<DocApplicationCreateUpdate, 'id'> = {
         customer: Number(this.form.getRawValue().customer),
         product: Number(this.form.value.product),
         docDate: docDateStr,
         dueDate: dueDateStr,
-        addDeadlinesToCalendar: this.form.value.addDeadlinesToCalendar,
-        notifyCustomerToo: this.form.value.notifyCustomer,
+        addDeadlinesToCalendar: this.form.value.addDeadlinesToCalendar ?? undefined,
+        notifyCustomerToo: this.form.value.notifyCustomer ?? undefined,
         notifyCustomerChannel: this.form.value.notifyCustomer
           ? this.form.value.notifyCustomerChannel
           : null,
         notes: this.form.value.notes,
       };
 
-      const headers = this.buildAuthHeaders();
-
-      this.http
-        .patch<any>(`/api/customer-applications/${this.applicationId()}/`, payload, { headers })
+      this.customerApplicationsService
+        .customerApplicationsPartialUpdate(
+          this.applicationId()!,
+          payload as unknown as DocApplicationCreateUpdate,
+        )
         .subscribe({
           next: (application) => {
             this.toast.success('Application updated');
@@ -629,51 +650,52 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
     } else {
       // Create mode
       const dueDateStr = this.toApiDate(this.form.value.dueDate);
-      const payload = {
+      const payload: Omit<DocApplicationCreateUpdate, 'id'> = {
         customer: Number(this.form.getRawValue().customer),
         product: Number(this.form.value.product),
         docDate: docDateStr,
         dueDate: dueDateStr,
-        addDeadlinesToCalendar: this.form.value.addDeadlinesToCalendar,
-        notifyCustomerToo: this.form.value.notifyCustomer,
+        addDeadlinesToCalendar: this.form.value.addDeadlinesToCalendar ?? undefined,
+        notifyCustomerToo: this.form.value.notifyCustomer ?? undefined,
         notifyCustomerChannel: this.form.value.notifyCustomer
           ? this.form.value.notifyCustomerChannel
           : null,
         notes: this.form.value.notes,
-        documentTypes: this.form.value.documents,
+        documentTypes: this.form.value.documents as Array<Record<string, unknown>>,
       };
 
-      const headers = this.buildAuthHeaders();
-
-      // Use the main endpoint which supports document_types via DocApplicationCreateUpdateSerializer
-      this.http.post<any>('/api/customer-applications/', payload, { headers }).subscribe({
-        next: (application) => {
-          this.toast.success('Application created');
-          const id = application?.id;
-          if (id) {
-            this.router.navigate(['/applications', id], { state: detailState });
-          } else {
-            this.router.navigate(['/applications'], {
-              state: {
-                focusTable: true,
-                searchQuery: sourceState.searchQuery ?? null,
-                page:
-                  Number.isFinite(sourcePage) && sourcePage > 0 ? Math.floor(sourcePage) : undefined,
-              },
-            });
-          }
-          this.isSubmitting.set(false);
-        },
-        error: (error) => {
-          applyServerErrorsToForm(this.form, error);
-          this.form.markAllAsTouched();
-          const message = extractServerErrorMessage(error);
-          this.toast.error(
-            message ? `Failed to create application: ${message}` : 'Failed to create application',
-          );
-          this.isSubmitting.set(false);
-        },
-      });
+      this.customerApplicationsService
+        .customerApplicationsCreate(payload as unknown as DocApplicationCreateUpdate)
+        .subscribe({
+          next: (application) => {
+            this.toast.success('Application created');
+            const id = application?.id;
+            if (id) {
+              this.router.navigate(['/applications', id], { state: detailState });
+            } else {
+              this.router.navigate(['/applications'], {
+                state: {
+                  focusTable: true,
+                  searchQuery: sourceState.searchQuery ?? null,
+                  page:
+                    Number.isFinite(sourcePage) && sourcePage > 0
+                      ? Math.floor(sourcePage)
+                      : undefined,
+                },
+              });
+            }
+            this.isSubmitting.set(false);
+          },
+          error: (error) => {
+            applyServerErrorsToForm(this.form, error);
+            this.form.markAllAsTouched();
+            const message = extractServerErrorMessage(error);
+            this.toast.error(
+              message ? `Failed to create application: ${message}` : 'Failed to create application',
+            );
+            this.isSubmitting.set(false);
+          },
+        });
     }
   }
 
@@ -682,69 +704,14 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
    * Uses navigation state `from` if present, then browser history, then sensible fallbacks.
    */
   goBack(): void {
-    const nav = this.router.getCurrentNavigation();
-    // Be safe under SSR by preferring router navigation state and guarding access to window.history
-    let st: any = (nav && nav.extras && (nav.extras.state as any)) || {};
-    try {
-      if (typeof window !== 'undefined' && history && (history as any).state) {
-        st = { ...(st || {}), ...((history as any).state || {}) };
-      }
-    } catch {
-      // ignore (SSR or no history)
-    }
-
-    const stateFrom = st?.from;
-    const focusId = st?.focusId;
-
-    const focusState: Record<string, unknown> = { focusTable: true };
-    if (focusId) {
-      focusState['focusId'] = focusId;
-    } else if (this.applicationId()) {
-      focusState['focusId'] = this.applicationId();
-    }
-
-    // Preserve searchQuery from the original navigation state so the list restores the search box
-    if (st?.searchQuery) {
-      focusState['searchQuery'] = st.searchQuery;
-    }
-    const page = Number(st?.page);
-    if (Number.isFinite(page) && page > 0) {
-      focusState['page'] = Math.floor(page);
-    }
-
-    // If source list is known, go back there with focus
-    if (stateFrom === 'customers') {
-      this.router.navigate(['/customers'], { state: focusState });
-      return;
-    }
-    if (stateFrom === 'applications') {
-      this.router.navigate(['/applications'], { state: focusState });
-      return;
-    }
-
-    // Fallback logic if from state is missing
-    try {
-      if (window.history.length > 1) {
-        this.location.back();
-        return;
-      }
-    } catch (e) {
-      // ignore
-    }
-
-    // Fallbacks: if customer param present, go to customer; if editing, go to application; else go to applications list
-    const customerIdParam = this.route.snapshot.paramMap.get('id') || this.form.value.customer;
-    if (customerIdParam) {
-      this.router.navigate(['/customers', Number(customerIdParam)]);
-      return;
-    }
-
-    if (this.isEditMode() && this.applicationId()) {
-      this.router.navigate(['/applications', this.applicationId()]);
-      return;
-    }
-
-    this.router.navigate(['/applications'], { state: focusState });
+    this.formNavigationFacade.goBackFromApplicationForm({
+      router: this.router,
+      route: this.route,
+      location: this.location,
+      applicationId: this.applicationId(),
+      isEditMode: this.isEditMode(),
+      selectedCustomerId: this.form.value.customer,
+    });
   }
 
   ngOnDestroy(): void {
@@ -789,13 +756,103 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
     }
   }
 
-  private buildAuthHeaders(): HttpHeaders | undefined {
-    let token = this.authService.getToken();
-    if (!token && this.authService.isMockEnabled()) {
-      this.authService.initMockAuth();
-      token = this.authService.getToken();
+  private adaptApplicationSnapshot(raw: unknown): ApplicationFormSnapshot {
+    const source = this.toRecord(raw);
+    const docDate = this.toDateOnly(source?.['docDate'] ?? source?.['doc_date']) ?? new Date();
+    const dueDate = this.toDateOnly(source?.['dueDate'] ?? source?.['due_date']) ?? docDate;
+    const notifyCustomerRaw =
+      source?.['notifyCustomer'] ?? source?.['notifyCustomerToo'] ?? source?.['notify_customer_too'];
+    const notifyChannelRaw = source?.['notifyCustomerChannel'] ?? source?.['notify_customer_channel'];
+    const notifyCustomerChannel: 'whatsapp' | 'email' =
+      notifyChannelRaw === 'email' ? 'email' : 'whatsapp';
+
+    return {
+      customerId: this.toNumber(
+        source?.['customer'] ?? this.toRecord(source?.['customer'])?.['id'],
+      ),
+      productId: this.toNumber(source?.['product'] ?? this.toRecord(source?.['product'])?.['id']),
+      docDate,
+      dueDate,
+      addDeadlinesToCalendar: Boolean(
+        source?.['addDeadlinesToCalendar'] ?? source?.['add_deadlines_to_calendar'] ?? true,
+      ),
+      notifyCustomer: Boolean(notifyCustomerRaw),
+      notifyCustomerChannel,
+      notes: typeof source?.['notes'] === 'string' ? source['notes'] : '',
+    };
+  }
+
+  private adaptDocumentTypes(raw: unknown): ApplicationDocumentTypeOption[] {
+    if (!Array.isArray(raw)) {
+      return [];
     }
-    return token ? new HttpHeaders({ Authorization: `Bearer ${token}` }) : undefined;
+    return raw
+      .map((entry) => this.toRecord(entry))
+      .filter((entry): entry is Record<string, unknown> => !!entry)
+      .map((entry) => ({
+        id: this.toNumber(entry['id']) ?? 0,
+        name: typeof entry['name'] === 'string' ? entry['name'] : '',
+      }))
+      .filter((entry) => entry.id > 0 && entry.name.length > 0);
+  }
+
+  private adaptProductDocuments(raw: unknown): ProductDocumentsAdapter {
+    const source = this.toRecord(raw);
+    const productContainer = this.toRecord(source?.['product']) ?? source;
+    const explicitTask =
+      this.adaptCalendarTask(source?.['calendarTask']) ??
+      this.adaptCalendarTask(source?.['calendar_task']);
+
+    const tasks = Array.isArray(productContainer?.['tasks'])
+      ? (productContainer['tasks'] as unknown[])
+          .map((task) => this.adaptCalendarTask(task))
+          .filter((task): task is ApplicationCalendarTaskOption => !!task)
+      : [];
+
+    const calendarTask =
+      explicitTask ??
+      tasks.find((task) => task.addTaskToCalendar) ??
+      null;
+
+    return {
+      requiredDocuments: this.adaptDocumentTypes(
+        source?.['requiredDocuments'] ?? source?.['required_documents'],
+      ),
+      optionalDocuments: this.adaptDocumentTypes(
+        source?.['optionalDocuments'] ?? source?.['optional_documents'],
+      ),
+      tasks,
+      calendarTask,
+    };
+  }
+
+  private adaptCalendarTask(raw: unknown): ApplicationCalendarTaskOption | null {
+    const source = this.toRecord(raw);
+    if (!source) {
+      return null;
+    }
+    const id = this.toNumber(source['id']);
+    if (!id) {
+      return null;
+    }
+    return {
+      id,
+      step: this.toNumber(source['step']) ?? 0,
+      name: typeof source['name'] === 'string' ? source['name'] : '',
+      addTaskToCalendar: Boolean(source['addTaskToCalendar'] ?? source['add_task_to_calendar']),
+    };
+  }
+
+  private toRecord(value: unknown): Record<string, unknown> | null {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return null;
+    }
+    return value as Record<string, unknown>;
+  }
+
+  private toNumber(value: unknown): number | null {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
   }
 
   private toDateOnly(raw: unknown): Date | null {

@@ -16,6 +16,7 @@ from core.services.ai_client import (
     get_ai_user_message,
     is_ai_timeout_exception,
 )
+from core.services.ai_runtime_settings_service import AIRuntimeSettingsService
 from core.services.ai_usage_service import AIUsageFeature
 from core.services.logger_service import Logger
 from core.utils.document_type_ai_fields import format_fields_for_prompt, parse_structured_output_fields
@@ -45,6 +46,18 @@ CATEGORIZATION_SCHEMA = {
     "additionalProperties": False,
 }
 
+_VALIDATION_REASONING_STRUCTURED_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "missing data": {"type": "array", "items": {"type": "string"}},
+        "invalid data": {"type": "array", "items": {"type": "string"}},
+        "notes": {"type": "array", "items": {"type": "string"}},
+        "to do or to ask": {"type": "array", "items": {"type": "string"}},
+    },
+    "required": ["missing data", "invalid data", "notes", "to do or to ask"],
+    "additionalProperties": False,
+}
+
 # JSON schema for document validation output
 VALIDATION_SCHEMA = {
     "type": "object",
@@ -67,8 +80,18 @@ VALIDATION_SCHEMA = {
             "description": "List of specific issues found based on negative validation criteria. Empty if valid.",
         },
         "reasoning": {
-            "type": "string",
-            "description": "Overall reasoning for the validation verdict.",
+            "anyOf": [
+                {"type": "string"},
+                {"type": "array", "items": {"type": "string"}},
+                {"type": "null"},
+                _VALIDATION_REASONING_STRUCTURED_SCHEMA,
+            ],
+            "description": (
+                "Concise operational summary for the validation verdict. "
+                "For invalid results, prefer short sectioned output using: "
+                "'missing data', 'invalid data', 'notes', and 'to do or to ask'. "
+                "Can be plain text or a structured object/array."
+            ),
         },
         "extracted_expiration_date": {
             "type": ["string", "null"],
@@ -99,6 +122,257 @@ VALIDATION_SCHEMA = {
     ],
     "additionalProperties": False,
 }
+
+
+_REASONING_SECTION_ORDER = ("missing data", "invalid data", "notes", "to do or to ask")
+_MISSING_DATA_HINTS = (
+    "missing",
+    "not visible",
+    "not shown",
+    "not found",
+    "not provided",
+    "not present",
+    "unreadable",
+    "cannot read",
+    "can't read",
+    "absent",
+)
+_INVALID_DATA_HINTS = (
+    "invalid",
+    "expired",
+    "mismatch",
+    "does not match",
+    "do not match",
+    "incorrect",
+    "inconsistent",
+    "tampered",
+    "altered",
+)
+
+
+def _normalize_text(value: str) -> str:
+    return " ".join(value.split()).strip()
+
+
+def _dedupe_preserve_order(items: list[str]) -> list[str]:
+    seen: set[str] = set()
+    deduped: list[str] = []
+    for item in items:
+        key = item.casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(item)
+    return deduped
+
+
+def _normalize_negative_issues(raw_issues: object) -> list[str]:
+    if not isinstance(raw_issues, list):
+        return []
+    normalized: list[str] = []
+    for issue in raw_issues:
+        if issue is None:
+            continue
+        text = _normalize_text(str(issue))
+        if text:
+            normalized.append(text)
+    return _dedupe_preserve_order(normalized)
+
+
+def _normalize_reasoning_items(raw_value: object) -> list[str]:
+    if raw_value is None:
+        return []
+    if isinstance(raw_value, str):
+        text = _normalize_text(raw_value)
+        return [text] if text else []
+    if isinstance(raw_value, dict):
+        normalized: list[str] = []
+        for key, value in raw_value.items():
+            key_text = _normalize_text(str(key))
+            nested_items = _normalize_reasoning_items(value)
+            if not nested_items:
+                continue
+            if not key_text:
+                normalized.extend(nested_items)
+            elif len(nested_items) == 1:
+                normalized.append(f"{key_text}: {nested_items[0]}")
+            else:
+                normalized.append(f"{key_text}: {'; '.join(nested_items)}")
+        return _dedupe_preserve_order(normalized)
+    if isinstance(raw_value, (list, tuple, set)):
+        normalized: list[str] = []
+        for entry in raw_value:
+            normalized.extend(_normalize_reasoning_items(entry))
+        return _dedupe_preserve_order(normalized)
+
+    text = _normalize_text(str(raw_value))
+    return [text] if text else []
+
+
+def _stringify_reasoning(reasoning: object) -> str:
+    if reasoning is None:
+        return ""
+    if isinstance(reasoning, str):
+        return reasoning
+    if isinstance(reasoning, dict):
+        lines: list[str] = []
+        for raw_key, raw_value in reasoning.items():
+            items = _normalize_reasoning_items(raw_value)
+            if not items:
+                continue
+
+            section_key = _normalize_text(str(raw_key)).strip(" :").lower()
+            heading = section_key if section_key in _REASONING_SECTION_ORDER else _normalize_text(str(raw_key))
+            if heading:
+                lines.append(f"{heading}:")
+                lines.extend(f"- {item}" for item in items[:4])
+            else:
+                lines.extend(f"- {item}" for item in items[:4])
+
+        if lines:
+            return "\n".join(lines)
+    if isinstance(reasoning, (list, tuple, set)):
+        items = _normalize_reasoning_items(reasoning)
+        if items:
+            return "\n".join(f"- {item}" for item in items[:8])
+
+    return str(reasoning)
+
+
+def _extract_structured_reasoning_sections(reasoning: str) -> dict[str, list[str]]:
+    sections = {section: [] for section in _REASONING_SECTION_ORDER}
+    if not reasoning:
+        return {}
+
+    current_section: str | None = None
+    has_structured_labels = False
+    for raw_line in reasoning.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+
+        normalized = line.lower()
+        matched_section: str | None = None
+        for section in _REASONING_SECTION_ORDER:
+            section_with_colon = f"{section}:"
+            if normalized.startswith(section_with_colon):
+                has_structured_labels = True
+                matched_section = section
+                current_section = section
+                remainder = _normalize_text(line[len(section_with_colon) :].strip(" -"))
+                if remainder:
+                    sections[section].append(remainder)
+                break
+            if normalized == section:
+                has_structured_labels = True
+                matched_section = section
+                current_section = section
+                break
+
+        if matched_section:
+            continue
+
+        item = line[1:].strip() if line.startswith(("-", "*")) else line
+        item = _normalize_text(item)
+        if not item:
+            continue
+        target_section = current_section or "notes"
+        sections[target_section].append(item)
+
+    if not has_structured_labels:
+        return {}
+
+    for section in _REASONING_SECTION_ORDER:
+        sections[section] = _dedupe_preserve_order(sections[section])
+    return sections
+
+
+def _is_missing_data_issue(issue: str) -> bool:
+    lower = issue.lower()
+    return any(hint in lower for hint in _MISSING_DATA_HINTS)
+
+
+def _is_invalid_data_issue(issue: str) -> bool:
+    lower = issue.lower()
+    return any(hint in lower for hint in _INVALID_DATA_HINTS)
+
+
+def _build_reasoning_sections_from_issues(
+    issues: list[str], reasoning: str, structured_sections: dict[str, list[str]]
+) -> dict[str, list[str]]:
+    sections = {section: [] for section in _REASONING_SECTION_ORDER}
+
+    if structured_sections:
+        for section in _REASONING_SECTION_ORDER:
+            sections[section] = _dedupe_preserve_order(structured_sections.get(section, []))
+    else:
+        for issue in issues:
+            if _is_missing_data_issue(issue):
+                sections["missing data"].append(issue)
+            elif _is_invalid_data_issue(issue):
+                sections["invalid data"].append(issue)
+            else:
+                sections["notes"].append(issue)
+
+    if not sections["notes"] and reasoning and not structured_sections and not issues:
+        sections["notes"].append(reasoning)
+
+    if (sections["missing data"] or sections["invalid data"]) and not sections["to do or to ask"]:
+        if sections["missing data"]:
+            sections["to do or to ask"].append(
+                "Request a replacement document that includes the missing data listed above."
+            )
+        if sections["invalid data"]:
+            sections["to do or to ask"].append("Correct or replace the invalid data listed above.")
+    elif sections["notes"] and not sections["to do or to ask"]:
+        sections["to do or to ask"].append(
+            "Ask the issuer or uploader for clarification and a corrected file if needed."
+        )
+
+    for section in _REASONING_SECTION_ORDER:
+        sections[section] = _dedupe_preserve_order(
+            [item for item in (_normalize_text(value) for value in sections[section]) if item]
+        )
+    return sections
+
+
+def _render_reasoning_sections(sections: dict[str, list[str]]) -> str:
+    lines: list[str] = []
+    for section in _REASONING_SECTION_ORDER:
+        items = sections.get(section, [])
+        if not items:
+            continue
+        lines.append(f"{section}:")
+        for item in items[:4]:
+            lines.append(f"- {item}")
+    return "\n".join(lines).strip()
+
+
+def format_validation_reasoning(valid: bool, reasoning: object, negative_issues: object) -> str:
+    """
+    Normalize validation reasoning to concise, operator-friendly text.
+
+    For invalid documents, always emit optional sections in this order:
+    missing data, invalid data, notes, to do or to ask.
+    """
+    reasoning_text = _stringify_reasoning(reasoning)
+    normalized_reasoning = _normalize_text(reasoning_text)
+    if valid:
+        return normalized_reasoning or "valid: all required checks passed."
+
+    issues = _normalize_negative_issues(negative_issues)
+    structured_sections = _extract_structured_reasoning_sections(reasoning_text)
+    sections = _build_reasoning_sections_from_issues(issues, normalized_reasoning, structured_sections)
+    rendered = _render_reasoning_sections(sections)
+    if rendered:
+        return rendered
+
+    return (
+        "notes:\n"
+        "- Validation failed.\n"
+        "to do or to ask:\n"
+        "- Review the document and upload a corrected version."
+    )
 
 
 def extract_validation_expiration_date(validation_result: dict) -> date | None:
@@ -144,6 +418,46 @@ def extract_validation_details_markdown(validation_result: dict) -> str | None:
 
     normalized = raw_value.strip()
     return normalized or None
+
+
+def _collect_ai_runtime_metadata(client: AIClient) -> dict[str, str]:
+    """Collect provider/model metadata from an AI client instance."""
+    provider = str(getattr(client, "provider_key", "") or "").strip().lower()
+    provider_name = str(getattr(client, "provider_name", "") or "").strip()
+    model = str(getattr(client, "model", "") or "").strip()
+    return {
+        "ai_provider": provider,
+        "ai_provider_name": provider_name or provider,
+        "ai_model": model,
+    }
+
+
+def _attach_ai_runtime_metadata(target: dict, metadata: dict[str, str]) -> None:
+    """Attach provider/model metadata to a validation payload."""
+    provider = str(metadata.get("ai_provider") or "").strip().lower()
+    provider_name = str(metadata.get("ai_provider_name") or "").strip()
+    model = str(metadata.get("ai_model") or "").strip()
+
+    if provider:
+        target["ai_provider"] = provider
+    if provider_name:
+        target["ai_provider_name"] = provider_name
+    if model:
+        target["ai_model"] = model
+
+
+def _attach_ai_runtime_metadata_to_exception(exc: Exception, metadata: dict[str, str]) -> None:
+    """Expose provider/model metadata on an exception for downstream handlers."""
+    provider = str(metadata.get("ai_provider") or "").strip().lower()
+    provider_name = str(metadata.get("ai_provider_name") or "").strip()
+    model = str(metadata.get("ai_model") or "").strip()
+
+    if provider:
+        setattr(exc, "ai_provider", provider)
+    if provider_name:
+        setattr(exc, "ai_provider_name", provider_name)
+    if model:
+        setattr(exc, "ai_model", model)
 
 
 def _build_system_prompt(document_types: list[dict]) -> str:
@@ -209,11 +523,7 @@ class AIDocumentCategorizer:
         feature_name: str = AIUsageFeature.DOCUMENT_AI_CATEGORIZER,
         timeout: Optional[float] = None,
     ):
-        self.model = model or getattr(
-            settings,
-            "DOCUMENT_CATEGORIZER_MODEL",
-            getattr(settings, "LLM_DEFAULT_MODEL", None),
-        )
+        self.model = model or AIRuntimeSettingsService.get_document_categorizer_model()
         self.provider_order = provider_order
         self.feature_name = feature_name
         self.timeout = float(timeout or getattr(settings, "DOCUMENT_CATEGORIZATION_TIMEOUT", 30.0))
@@ -430,7 +740,7 @@ class AIDocumentCategorizer:
             return result
 
         # --- Pass 2: fallback to higher-tier model ---
-        high_model = getattr(settings, "DOCUMENT_CATEGORIZER_MODEL_HIGH", None)
+        high_model = AIRuntimeSettingsService.get_document_categorizer_model_high()
         if not high_model or high_model == self.model:
             # No distinct fallback configured
             result["pass_used"] = 1
@@ -505,7 +815,7 @@ class AIDocumentCategorizer:
                 "extracted_details_markdown": None,
             }
 
-        validator_model = model or getattr(settings, "DOCUMENT_VALIDATOR_MODEL", None)
+        validator_model = model or AIRuntimeSettingsService.get_document_validator_model()
         validation_timeout = float(timeout or getattr(settings, "DOCUMENT_VALIDATION_TIMEOUT", 30.0))
         client = AIClient(
             model=validator_model,
@@ -574,7 +884,11 @@ class AIDocumentCategorizer:
             "Return valid=true ONLY if the document reasonably meets the positive criteria "
             "AND has no major negative issues.\n"
             "List each specific negative issue found in 'negative_issues' (empty array if none).\n"
-            "Provide an overall confidence score (0.0-1.0) and clear reasoning.\n"
+            "Provide an overall confidence score (0.0-1.0).\n"
+            "For invalid results, keep 'reasoning' concise and structured using only these optional sections, "
+            "in this order: missing data, invalid data, notes, to do or to ask.\n"
+            "Use short bullet lines ('- ...') under each included section and skip empty sections.\n"
+            "For valid results, keep 'reasoning' to one short sentence.\n"
             "Always include 'extracted_expiration_date', 'extracted_doc_number', and "
             "'extracted_details_markdown'."
         )
@@ -600,15 +914,27 @@ class AIDocumentCategorizer:
         if provider_order:
             extra_kwargs["extra_body"] = {"provider": {"order": provider_order}}
 
-        result = client.chat_completion_json(
-            messages=messages,
-            json_schema=VALIDATION_SCHEMA,
-            schema_name="document_validation",
-            temperature=0.1,
-            strict=True,
-            retry_on_invalid_json=False,
-            **extra_kwargs,
+        try:
+            result = client.chat_completion_json(
+                messages=messages,
+                json_schema=VALIDATION_SCHEMA,
+                schema_name="document_validation",
+                temperature=0.1,
+                strict=True,
+                retry_on_invalid_json=False,
+                **extra_kwargs,
+            )
+        except Exception as exc:
+            _attach_ai_runtime_metadata_to_exception(exc, _collect_ai_runtime_metadata(client))
+            raise
+
+        result["negative_issues"] = _normalize_negative_issues(result.get("negative_issues"))
+        result["reasoning"] = format_validation_reasoning(
+            valid=bool(result.get("valid")),
+            reasoning=result.get("reasoning"),
+            negative_issues=result.get("negative_issues"),
         )
+        _attach_ai_runtime_metadata(result, _collect_ai_runtime_metadata(client))
 
         logger.info(
             "Document validated: %s (%s) -> valid=%s (confidence: %.2f)",

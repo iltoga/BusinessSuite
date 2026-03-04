@@ -31,6 +31,8 @@ import { ZardDateInputComponent } from '@/shared/components/date-input';
 import { FormErrorSummaryComponent } from '@/shared/components/form-error-summary/form-error-summary.component';
 import { ZardInputDirective } from '@/shared/components/input';
 import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/utils/form-errors';
+import { InvoiceLineItemsSectionComponent } from './invoice-line-items-section.component';
+import { FormNavigationFacadeService } from '@/features/shared/services/form-navigation-facade.service';
 
 interface BillableProductRow {
   product: Product;
@@ -60,6 +62,7 @@ interface InvoiceLineInitial {
     ZardDateInputComponent,
     CustomerSelectComponent,
     FormErrorSummaryComponent,
+    InvoiceLineItemsSectionComponent,
   ],
   templateUrl: './invoice-form.component.html',
   styleUrls: ['./invoice-form.component.css'],
@@ -74,6 +77,7 @@ export class InvoiceFormComponent implements OnInit {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly http = inject(HttpClient);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly formNavigationFacade = inject(FormNavigationFacadeService);
 
   private nextLineKey = 1;
 
@@ -206,48 +210,11 @@ export class InvoiceFormComponent implements OnInit {
   }
 
   goBack(): void {
-    const st = history.state as any;
-
-    const focusState: Record<string, unknown> = { focusTable: true };
-    if (st?.focusId) {
-      focusState['focusId'] = st.focusId;
-    } else if (this.invoice()?.id) {
-      focusState['focusId'] = this.invoice()?.id;
-    }
-    if (st?.searchQuery) {
-      focusState['searchQuery'] = st.searchQuery;
-    }
-    const page = Number(st?.page);
-    if (Number.isFinite(page) && page > 0) {
-      focusState['page'] = Math.floor(page);
-    }
-
-    if (st?.from === 'applications') {
-      this.router.navigate(['/applications'], { state: focusState });
-      return;
-    }
-
-    if (typeof st?.returnUrl === 'string' && st.returnUrl.startsWith('/')) {
-      this.router.navigateByUrl(st.returnUrl, {
-        state: {
-          searchQuery: st.searchQuery ?? null,
-          page: st.page ?? null,
-        },
-      });
-      return;
-    }
-
-    if (st?.from === 'customer-detail' && st?.customerId) {
-      this.router.navigate(['/customers', st.customerId], {
-        state: {
-          searchQuery: st.searchQuery ?? null,
-          page: st.page ?? null,
-        },
-      });
-      return;
-    }
-
-    this.router.navigate(['/invoices'], { state: focusState });
+    this.formNavigationFacade.goBackFromInvoiceForm({
+      router: this.router,
+      state: history.state as any,
+      invoiceId: this.invoice()?.id ?? null,
+    });
   }
 
   addLineItem(
