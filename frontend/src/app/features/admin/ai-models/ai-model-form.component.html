@@ -6,9 +6,9 @@
     <input class="border p-2 w-full" placeholder="Type model name..." (input)="searchOpenRouter($event)" />
     @if (searchResults().length) {
     <div class="border mt-2 max-h-40 overflow-auto">
-      @for (item of searchResults(); track item.model_id) {
+      @for (item of searchResults(); track item.model_id || item.modelId || $index) {
       <button class="block w-full text-left p-2 hover:bg-gray-100" (click)="useResult(item)">
-        {{ item.name }} ({{ item.model_id }})
+        {{ item.name }} ({{ item.model_id || item.modelId }})
       </button>
       }
     </div>
@@ -18,13 +18,25 @@
   <form [formGroup]="form" class="grid grid-cols-2 gap-3">
     <input class="border p-2" formControlName="provider" placeholder="Provider" />
     <input class="border p-2" formControlName="model_id" placeholder="Model id" />
+    @if (form.controls.model_id.invalid && form.controls.model_id.touched) {
+    <p class="col-span-2 text-sm text-red-600">Model id is required.</p>
+    }
     <input class="border p-2" formControlName="name" placeholder="Name" />
+    @if (form.controls.name.invalid && form.controls.name.touched) {
+    <p class="col-span-2 text-sm text-red-600">Name is required.</p>
+    }
     <input class="border p-2" formControlName="modality" placeholder="Modality" />
     <input class="border p-2 col-span-2" formControlName="description" placeholder="Description" />
   </form>
 
+  @if (saveError()) {
+  <p class="text-sm text-red-600">{{ saveError() }}</p>
+  }
+
   <div class="flex gap-2">
-    <button z-button variant="default" (click)="save()">Save</button>
+    <button z-button variant="default" [disabled]="isSaving()" (click)="save()">
+      {{ isSaving() ? 'Saving...' : 'Save' }}
+    </button>
     @if (isEdit()) {
     <button z-button variant="destructive" (click)="delete()">Delete</button>
     }
