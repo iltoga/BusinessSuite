@@ -4,6 +4,7 @@ from io import BytesIO
 from uuid import uuid4
 
 from core.services.app_setting_service import AppSettingService
+from django.conf import settings
 from django.utils.timezone import now as datetime_now
 from django.utils.translation import activate, get_language, gettext
 from mailmerge import MailMerge

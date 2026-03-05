@@ -402,7 +402,8 @@ class ServerManagementOpenRouterStatusApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         item = next((row for row in payload["items"] if row["name"] == "DJANGO_LOG_LEVEL"), None)
-        self.assertIsNotNone(item)
+        if item is None:
+            self.fail("Expected DJANGO_LOG_LEVEL item in settings payload")
         self.assertEqual(item["effectiveValue"], "WARNING")
 
         create_response = self.client.post(
