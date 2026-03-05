@@ -1,37 +1,40 @@
-<div class="p-4 space-y-4">
-  <div class="flex items-center justify-between">
-    <h1 class="text-xl font-semibold">AI Models</h1>
-    <button z-button variant="default" (click)="createNew()">New model</button>
+<div class="h-full flex flex-col gap-6">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">AI Models</h1>
+    <button z-button zType="default" zSize="default" (click)="createNew()">New model</button>
   </div>
 
-  <app-search-toolbar
-    [query]="query()"
-    (queryChange)="onQueryChange($event)"
-    [placeholder]="'Search model name, id, provider...'"
-  />
+  <z-card class="bg-card rounded-lg border shadow-sm py-0 gap-0 **:data-[slot=card-content]:px-0">
+    <div class="border-b p-3 sm:p-4">
+      <app-search-toolbar
+        [query]="query()"
+        [placeholder]="'Search model name, id, provider...'"
+        [isLoading]="loading()"
+        (queryChange)="onQueryChange($event)"
+        (tabOut)="onEnterSearch()"
+      />
+    </div>
 
-  <table class="w-full text-sm border-collapse">
-    <thead>
-      <tr>
-        <th class="text-left p-2 border-b">Provider</th>
-        <th class="text-left p-2 border-b">Name</th>
-        <th class="text-left p-2 border-b">Model ID</th>
-        <th class="text-left p-2 border-b">Description</th>
-        <th class="text-left p-2 border-b">Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      @for (item of items(); track item.id) {
-      <tr>
-        <td class="p-2 border-b">{{ item.provider }}</td>
-        <td class="p-2 border-b">{{ item.name }}</td>
-        <td class="p-2 border-b">{{ item.model_id }}</td>
-        <td class="p-2 border-b">{{ item.description }}</td>
-        <td class="p-2 border-b">
-          <button z-button variant="outline" size="sm" (click)="edit(item)">Edit</button>
-        </td>
-      </tr>
-      }
-    </tbody>
-  </table>
+    <div class="p-0">
+      <app-data-table
+        #dataTable
+        [columns]="columns()"
+        [data]="items()"
+        [isLoading]="loading()"
+        [actions]="actions()"
+        (sortChange)="onSortChange($event)"
+      />
+    </div>
+  </z-card>
+
+  <app-confirm-dialog
+    [isOpen]="showDeleteConfirm()"
+    title="Delete AI model"
+    [message]="'Are you sure you want to delete ' + (pendingDelete()?.name || 'this model') + '?'"
+    [destructive]="true"
+    confirmText="Delete"
+    cancelText="Cancel"
+    (confirmed)="confirmDelete()"
+    (cancelled)="cancelDelete()"
+  />
 </div>
