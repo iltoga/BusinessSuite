@@ -251,7 +251,8 @@ class ServerManagementOpenRouterStatusApiTests(TestCase):
     @override_settings(
         OPENROUTER_API_KEY="",
         LLM_PROVIDER="openrouter",
-        OPENROUTER_DEFAULT_MODEL="openai/gpt-5-mini",
+        LLM_DEFAULT_MODEL="openai/gpt-5-mini",
+        OPENROUTER_DEFAULT_MODEL="google/gemini-3-flash-preview",
     )
     def test_openrouter_status_workflow_models_inherit_primary_when_unset(self):
         response = self.client.get("/api/server-management/openrouter-status/")
@@ -347,6 +348,7 @@ class ServerManagementOpenRouterStatusApiTests(TestCase):
     @override_settings(
         OPENROUTER_API_KEY="",
         LLM_PROVIDER="openrouter",
+        LLM_DEFAULT_MODEL="qwen/qwen3.5-flash",
         OPENROUTER_DEFAULT_MODEL="google/gemini-2.5-flash-lite",
     )
     def test_openrouter_status_patch_reset_workflow_model_deletes_db_override(self):
@@ -372,7 +374,7 @@ class ServerManagementOpenRouterStatusApiTests(TestCase):
             feature for feature in payload["aiModels"]["features"] if feature["feature"] == AIUsageFeature.INVOICE_IMPORT_AI_PARSER
         )
         self.assertEqual(invoice_feature["primaryProvider"], "openrouter")
-        self.assertEqual(invoice_feature["primaryModel"], "google/gemini-2.5-flash-lite")
+        self.assertEqual(invoice_feature["primaryModel"], "qwen/qwen3.5-flash")
 
     @override_settings(
         OPENROUTER_API_KEY="",

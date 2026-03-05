@@ -657,7 +657,7 @@ class AIRuntimeSettingsService:
             return cls.get_groq_default_model()
         if provider == "openai":
             return cls.get_llm_default_model() or cls.get_openai_default_model() or "gpt-5-mini"
-        return cls.get_openrouter_default_model() or cls.get_llm_default_model() or "google/gemini-3-flash-preview"
+        return cls.get_llm_default_model() or cls.get_openrouter_default_model() or "google/gemini-3-flash-preview"
 
     @classmethod
     def get_invoice_import_model(cls) -> str:

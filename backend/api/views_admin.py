@@ -1169,7 +1169,7 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
         def _provider_default_model(provider_key: str) -> str:
             if provider_key == "openrouter":
                 if current_provider == "openrouter":
-                    configured_default_model = openrouter_default_model or global_default_model
+                    configured_default_model = global_default_model or openrouter_default_model
                 else:
                     configured_default_model = openrouter_default_model
                 return configured_default_model or "google/gemini-3-flash-preview"
