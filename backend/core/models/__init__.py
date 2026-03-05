@@ -4,6 +4,7 @@ Expose model classes at package level for imports like `from core.models import 
 Use explicit imports so import errors are not silently converted to `None`.
 """
 
+from .ai_model import AiModel
 from .ai_request_usage import AIRequestUsage
 from .app_setting import AppSetting
 from .async_job import AsyncJob
@@ -30,6 +31,7 @@ __all__ = [
     "WebPushSubscription",
     "CalendarEvent",
     "CalendarReminder",
+    "AiModel",
     "AIRequestUsage",
     "LocalResilienceSettings",
     "SyncChangeLog",

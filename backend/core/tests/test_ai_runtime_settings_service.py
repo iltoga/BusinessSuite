@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 
-from core.models import AppSetting
+from core.models import AiModel, AppSetting
 from core.services.ai_runtime_settings_service import AIRuntimeSettingsService
 
 
@@ -109,4 +109,28 @@ class AIRuntimeSettingsServiceTests(TestCase):
         self.assertEqual(
             AIRuntimeSettingsService.get_invoice_import_model(),
             "meta-llama/llama-4-scout-17b-16e-instruct",
+        )
+
+
+    @override_settings(
+        LLM_DEFAULT_MODEL="google/gemini-3-flash-preview",
+        OPENROUTER_DEFAULT_MODEL="google/gemini-2.5-flash-lite",
+    )
+    def test_deleted_model_references_are_replaced_with_defaults(self):
+        AppSetting.objects.update_or_create(
+            name="INVOICE_IMPORT_MODEL",
+            defaults={
+                "value": "openai/gpt-5",
+                "scope": AppSetting.SCOPE_BACKEND,
+                "description": "workflow model",
+                "updated_by": None,
+            },
+        )
+
+        model = AiModel.objects.get(provider="openrouter", model_id="openai/gpt-5")
+        model.delete()
+
+        self.assertEqual(
+            AIRuntimeSettingsService.get("INVOICE_IMPORT_MODEL"),
+            "google/gemini-3-flash-preview",
         )

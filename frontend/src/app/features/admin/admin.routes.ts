@@ -20,6 +20,28 @@ export const adminRoutes: Routes = [
         (c) => c.DocumentTypeDetailComponent,
       ),
   },
+
+  {
+    path: 'ai-models',
+    title: 'AI Models',
+    canActivate: [staffGuard],
+    loadComponent: () =>
+      import('./ai-models/ai-model-list.component').then((c) => c.AiModelListComponent),
+  },
+  {
+    path: 'ai-models/new',
+    title: 'New AI Model',
+    canActivate: [staffGuard],
+    loadComponent: () =>
+      import('./ai-models/ai-model-form.component').then((c) => c.AiModelFormComponent),
+  },
+  {
+    path: 'ai-models/:id/edit',
+    title: 'Edit AI Model',
+    canActivate: [staffGuard],
+    loadComponent: () =>
+      import('./ai-models/ai-model-form.component').then((c) => c.AiModelFormComponent),
+  },
   {
     path: 'workflow-notifications',
     title: 'Notifications Center',

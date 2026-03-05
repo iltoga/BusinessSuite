@@ -94,6 +94,12 @@ export class MenuService {
           visible: () => this.canAccessStaffAdminItems(),
         },
         {
+          id: 'admin-ai-models',
+          label: 'AI Models',
+          route: '/admin/ai-models',
+          visible: () => this.canAccessStaffAdminItems(),
+        },
+        {
           id: 'admin-holidays',
           label: 'National Holidays',
           route: '/admin/holidays',

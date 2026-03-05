@@ -132,6 +132,91 @@ class HolidayViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         return queryset
 
 
+class AiModelViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    queryset = AiModel.objects.all()
+    serializer_class = AiModelSerializer
+    pagination_class = None
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["provider", "model_id", "name", "description", "modality"]
+    ordering_fields = ["provider", "name", "model_id", "updated_at", "created_at"]
+    ordering = ["provider", "name"]
+
+    @action(detail=False, methods=["get"], url_path="catalog")
+    def catalog(self, request):
+        return Response(AIRuntimeSettingsService.get_model_catalog())
+
+    def get_permissions(self):
+        if self.action in ["create", "update", "partial_update", "destroy"]:
+            return [IsAuthenticated(), IsStaffOrAdminGroup()]
+        return super().get_permissions()
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(name="q", type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, required=False),
+            OpenApiParameter(name="limit", type=OpenApiTypes.INT, location=OpenApiParameter.QUERY, required=False),
+        ]
+    )
+    @action(detail=False, methods=["get"], url_path="openrouter-search")
+    def openrouter_search(self, request):
+        query = str(request.query_params.get("q") or "").strip().lower()
+        limit = min(max(int(request.query_params.get("limit") or 20), 1), 50)
+        api_key = getattr(settings, "OPENROUTER_API_KEY", None)
+        base_url = str(AIRuntimeSettingsService.get("OPENROUTER_API_BASE_URL") or "https://openrouter.ai/api/v1").rstrip("/")
+
+        if not api_key:
+            return Response({"results": [], "message": "OPENROUTER_API_KEY is not configured."}, status=200)
+
+        headers = {"Authorization": f"Bearer {api_key}", "Accept": "application/json"}
+        try:
+            response = requests.get(f"{base_url}/models", headers=headers, timeout=10)
+            response.raise_for_status()
+            payload = response.json()
+        except Exception as exc:
+            return self.error_response(f"OpenRouter model lookup failed: {exc}", status.HTTP_502_BAD_GATEWAY)
+
+        raw_models = payload.get("data", []) if isinstance(payload, dict) else []
+        results = []
+        for item in raw_models:
+            model_id = str(item.get("id") or "").strip()
+            name = str(item.get("name") or model_id).strip()
+            description = str(item.get("description") or "").strip()
+            searchable = f"{model_id} {name} {description}".lower()
+            if query and query not in searchable:
+                continue
+
+            architecture = item.get("architecture") if isinstance(item.get("architecture"), dict) else {}
+            pricing = item.get("pricing") if isinstance(item.get("pricing"), dict) else {}
+            top_provider = item.get("top_provider") if isinstance(item.get("top_provider"), dict) else {}
+            modality = str(architecture.get("modality") or "").strip()
+
+            results.append(
+                {
+                    "provider": "openrouter",
+                    "model_id": model_id,
+                    "name": name,
+                    "description": description,
+                    "vision": "image" in modality.lower() or "vision" in searchable,
+                    "file_upload": "file" in searchable,
+                    "reasoning": "reason" in searchable or "think" in searchable,
+                    "context_length": item.get("context_length"),
+                    "max_completion_tokens": top_provider.get("max_completion_tokens"),
+                    "modality": modality,
+                    "prompt_price_per_token": pricing.get("prompt"),
+                    "completion_price_per_token": pricing.get("completion"),
+                    "image_price": pricing.get("image"),
+                    "request_price": pricing.get("request"),
+                    "source": "openrouter",
+                    "raw_metadata": item,
+                }
+            )
+            if len(results) >= limit:
+                break
+
+        return Response({"results": results})
+
+
+
 class LettersViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
 

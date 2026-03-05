@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
 
+from core.models import AiModel
 from core.services.ai_usage_service import AIUsageFeature
 from core.services.app_setting_service import AppSettingScope, AppSettingService
 from django.conf import settings
-from django.contrib.staticfiles import finders
 
 
 @dataclass(frozen=True)
@@ -401,28 +399,34 @@ class AIRuntimeSettingsService:
 
     @staticmethod
     def _load_llm_models_config() -> dict[str, Any]:
-        llm_config_path = finders.find("llm_models.json")
-        if not llm_config_path:
-            llm_config_path = settings.BASE_DIR / "business_suite" / "static" / "llm_models.json"
-        try:
-            with Path(llm_config_path).open("r", encoding="utf-8") as handle:
-                raw = json.load(handle)
-        except Exception:
-            raw = {"providers": {}}
+        provider_names = {
+            "openrouter": "OpenRouter",
+            "openai": "OpenAI Direct",
+            "groq": "Groq",
+        }
+        providers: dict[str, dict[str, Any]] = {}
+        for provider in _PROVIDER_PRIORITY:
+            providers[provider] = {"name": provider_names.get(provider, provider.title()), "models": []}
 
-        providers = raw.get("providers", {}) if isinstance(raw, dict) else {}
-        for provider_data in providers.values():
-            models = provider_data.get("models", []) if isinstance(provider_data, dict) else []
-            for model in models:
-                capabilities = model.get("capabilities")
-                if not isinstance(capabilities, dict):
-                    capabilities = {}
-                    model["capabilities"] = capabilities
-                capabilities.setdefault("vision", False)
-                capabilities.setdefault("fileUpload", False)
-                capabilities.setdefault("reasoning", False)
-                for capability_key in ("vision", "fileUpload", "reasoning"):
-                    capabilities[capability_key] = bool(capabilities.get(capability_key))
+        for model in AiModel.objects.all().order_by("provider", "name", "model_id"):
+            provider_key = str(model.provider or "").strip().lower()
+            if provider_key not in providers:
+                providers[provider_key] = {"name": provider_names.get(provider_key, provider_key.title()), "models": []}
+            providers[provider_key]["models"].append(
+                {
+                    "id": model.model_id,
+                    "name": model.name,
+                    "description": model.description,
+                    "capabilities": {
+                        "vision": bool(model.vision),
+                        "fileUpload": bool(model.file_upload),
+                        "reasoning": bool(model.reasoning),
+                    },
+                    "contextLength": model.context_length,
+                    "maxCompletionTokens": model.max_completion_tokens,
+                    "modality": model.modality,
+                }
+            )
         return {"providers": providers}
 
     @classmethod
@@ -523,6 +527,45 @@ class AIRuntimeSettingsService:
             return ",".join(values)
         return str(value if value is not None else "").strip()
 
+
+    @classmethod
+    def replace_deleted_model_references(cls, deleted_model_id: str) -> None:
+        normalized_deleted_model_id = str(deleted_model_id or "").strip()
+        if not normalized_deleted_model_id:
+            return
+
+        defaults = cls.defaults()
+        replacement_map = {
+            "LLM_DEFAULT_MODEL": str(defaults.get("LLM_DEFAULT_MODEL") or "").strip(),
+            "GROQ_DEFAULT_MODEL": str(defaults.get("GROQ_DEFAULT_MODEL") or "").strip(),
+            "OPENROUTER_DEFAULT_MODEL": str(defaults.get("OPENROUTER_DEFAULT_MODEL") or "").strip(),
+            "OPENAI_DEFAULT_MODEL": str(defaults.get("OPENAI_DEFAULT_MODEL") or "").strip(),
+            "INVOICE_IMPORT_MODEL": str(defaults.get("LLM_DEFAULT_MODEL") or "").strip(),
+            "PASSPORT_OCR_MODEL": str(defaults.get("LLM_DEFAULT_MODEL") or "").strip(),
+            "DOCUMENT_CATEGORIZER_MODEL": str(defaults.get("LLM_DEFAULT_MODEL") or "").strip(),
+            "DOCUMENT_CATEGORIZER_MODEL_HIGH": str(defaults.get("LLM_DEFAULT_MODEL") or "").strip(),
+            "DOCUMENT_VALIDATOR_MODEL": str(defaults.get("LLM_DEFAULT_MODEL") or "").strip(),
+            "DOCUMENT_OCR_STRUCTURED_MODEL": str(defaults.get("LLM_DEFAULT_MODEL") or "").strip(),
+            "CHECK_PASSPORT_MODEL": str(defaults.get("LLM_DEFAULT_MODEL") or "").strip(),
+        }
+
+        for setting_name in _MODEL_SETTING_KEYS:
+            current = str(AppSettingService.get_raw(setting_name, default="") or "").strip()
+            if current != normalized_deleted_model_id:
+                continue
+            replacement_value = replacement_map.get(setting_name, "")
+            if replacement_value:
+                definition = AI_RUNTIME_SETTING_DEFINITIONS[setting_name]
+                AppSettingService.set_raw(
+                    name=setting_name,
+                    value=replacement_value,
+                    scope=definition.scope,
+                    description=definition.description,
+                    updated_by=None,
+                )
+            else:
+                AppSettingService.delete_raw(setting_name)
+
     @classmethod
     def update_runtime_settings(cls, updates: dict[str, Any], updated_by=None) -> dict[str, Any]:
         if not isinstance(updates, dict):
@@ -555,7 +598,7 @@ class AIRuntimeSettingsService:
 
         for name, normalized_value in normalized_updates.items():
             if name in _MODEL_SETTING_KEYS and normalized_value and normalized_value not in model_ids:
-                raise ValueError(f"Model '{normalized_value}' is not present in llm_models.json.")
+                raise ValueError(f"Model '{normalized_value}' is not present in configured AI models.")
 
         openrouter_model_ids = model_ids_by_provider.get("openrouter", set())
         openai_model_ids = model_ids_by_provider.get("openai", set())

@@ -1,0 +1,33 @@
+<div class="p-4 space-y-4">
+  <h1 class="text-xl font-semibold">{{ isEdit() ? 'Edit AI Model' : 'New AI Model' }}</h1>
+
+  <div>
+    <label>OpenRouter search</label>
+    <input class="border p-2 w-full" placeholder="Type model name..." (input)="searchOpenRouter($event)" />
+    @if (searchResults().length) {
+    <div class="border mt-2 max-h-40 overflow-auto">
+      @for (item of searchResults(); track item.model_id) {
+      <button class="block w-full text-left p-2 hover:bg-gray-100" (click)="useResult(item)">
+        {{ item.name }} ({{ item.model_id }})
+      </button>
+      }
+    </div>
+    }
+  </div>
+
+  <form [formGroup]="form" class="grid grid-cols-2 gap-3">
+    <input class="border p-2" formControlName="provider" placeholder="Provider" />
+    <input class="border p-2" formControlName="model_id" placeholder="Model id" />
+    <input class="border p-2" formControlName="name" placeholder="Name" />
+    <input class="border p-2" formControlName="modality" placeholder="Modality" />
+    <input class="border p-2 col-span-2" formControlName="description" placeholder="Description" />
+  </form>
+
+  <div class="flex gap-2">
+    <button z-button variant="default" (click)="save()">Save</button>
+    @if (isEdit()) {
+    <button z-button variant="destructive" (click)="delete()">Delete</button>
+    }
+    <a z-button variant="outline" routerLink="/admin/ai-models">Cancel</a>
+  </div>
+</div>
