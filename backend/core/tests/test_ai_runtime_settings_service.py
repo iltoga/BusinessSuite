@@ -109,7 +109,7 @@ class AIRuntimeSettingsServiceTests(TestCase):
         user = get_user_model().objects.create_user(username="invoice-model-updater")
 
         # No explicit workflow model set: inherit primary runtime model.
-        self.assertEqual(AIRuntimeSettingsService.get_invoice_import_model(), "google/gemini-2.5-flash-lite")
+        self.assertEqual(AIRuntimeSettingsService.get_invoice_import_model(), "google/gemini-3-flash-preview")
 
         AIRuntimeSettingsService.update_runtime_settings(
             {"INVOICE_IMPORT_MODEL": "gpt-5-mini"},
