@@ -36,11 +36,11 @@ def public_app_config(request):
         frontend_setting_overrides = {}
 
     payload = {
-        "MOCK_AUTH_ENABLED": getattr(settings, "MOCK_AUTH_ENABLED", False),
+        "MOCK_AUTH_ENABLED": AppSettingService.parse_bool(AppSettingService.get_effective_raw("MOCK_AUTH_ENABLED", False), False),
         "useOverlayMenu": use_overlay_menu,
         "title": global_settings.get("SITE_NAME", "BusinessSuite"),
-        "dateFormat": getattr(settings, "DATE_FORMAT_JS", "dd-MM-yyyy"),
-        "baseCurrency": getattr(settings, "BASE_CURRENCY", "IDR"),
+        "dateFormat": str(AppSettingService.get_effective_raw("DATE_FORMAT_JS", "dd-MM-yyyy") or "dd-MM-yyyy"),
+        "baseCurrency": str(AppSettingService.get_effective_raw("BASE_CURRENCY", "IDR") or "IDR"),
         "calendarTodoColorId": GoogleCalendarEventColors.todo_color_id(),
         "calendarDoneColorId": GoogleCalendarEventColors.done_color_id(),
         "logoFilename": global_settings.get("LOGO_FILENAME", "logo_transparent.png"),

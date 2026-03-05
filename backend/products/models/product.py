@@ -24,7 +24,9 @@ class ProductManager(models.Manager):
 
 
 def default_product_currency() -> str:
-    configured = str(getattr(settings, "BASE_CURRENCY", "IDR") or "IDR").strip().upper()
+    from core.services.app_setting_service import AppSettingService
+
+    configured = str(AppSettingService.get_effective_raw("BASE_CURRENCY", "IDR") or "IDR").strip().upper()
     if configured.isalpha() and 2 <= len(configured) <= 3:
         return configured
     return "IDR"

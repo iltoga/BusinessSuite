@@ -384,15 +384,55 @@ class ServerManagementOpenRouterStatusApiTests(TestCase):
         LLM_PROVIDER="openrouter",
         LLM_DEFAULT_MODEL="openai/gpt-5-mini",
     )
-    def test_openrouter_status_patch_rejects_provider_switch_without_compatible_default_model(self):
+    def test_openrouter_status_patch_allows_provider_switch_with_independent_primary_model(self):
         response = self.client.patch(
             "/api/server-management/openrouter-status/",
             data={"settings": {"LLM_PROVIDER": "openai"}},
             format="json",
         )
 
-        self.assertEqual(response.status_code, 400)
-        self.assertIn(
-            "LLM_DEFAULT_MODEL must be listed under provider 'openai'",
-            response.json().get("detail", ""),
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["aiModels"]["settingsMap"]["LLM_PROVIDER"], "openai")
+        self.assertEqual(payload["aiModels"]["settingsMap"]["LLM_DEFAULT_MODEL"], "openai/gpt-5-mini")
+
+    @override_settings(DJANGO_LOG_LEVEL="WARNING")
+    def test_app_settings_list_and_create(self):
+        response = self.client.get("/api/server-management/app-settings/")
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        item = next((row for row in payload["items"] if row["name"] == "DJANGO_LOG_LEVEL"), None)
+        self.assertIsNotNone(item)
+        self.assertEqual(item["effectiveValue"], "WARNING")
+
+        create_response = self.client.post(
+            "/api/server-management/app-settings/",
+            data={
+                "name": "DJANGO_LOG_LEVEL",
+                "value": "ERROR",
+                "scope": "backend",
+                "description": "override",
+            },
+            format="json",
         )
+        self.assertEqual(create_response.status_code, 200)
+        setting = AppSetting.objects.get(name="DJANGO_LOG_LEVEL")
+        self.assertEqual(setting.value, "ERROR")
+        self.assertEqual(setting.updated_by_id, self.user.id)
+
+    @override_settings(DJANGO_LOG_LEVEL="WARNING")
+    def test_app_settings_delete_falls_back_to_previous_precedence(self):
+        AppSetting.objects.update_or_create(
+            name="DJANGO_LOG_LEVEL",
+            defaults={
+                "value": "ERROR",
+                "scope": AppSetting.SCOPE_BACKEND,
+                "description": "override",
+                "updated_by": self.user,
+            },
+        )
+
+        response = self.client.delete("/api/server-management/app-settings/DJANGO_LOG_LEVEL/")
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(AppSetting.objects.filter(name="DJANGO_LOG_LEVEL").exists())
+        self.assertEqual(response.json().get("effectiveValue"), "WARNING")

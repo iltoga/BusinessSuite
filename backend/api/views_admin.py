@@ -23,7 +23,9 @@ from api.utils.redis_sse import iter_replay_and_live_events
 from api.utils.sse_auth import sse_token_auth_required
 from api.views import ApiErrorHandlingMixin
 from core.models.ai_request_usage import AIRequestUsage
+from core.models import AppSetting
 from core.services.ai_runtime_settings_service import AI_RUNTIME_SETTING_DEFINITIONS, AIRuntimeSettingsService
+from core.services.app_setting_service import AppSettingScope, AppSettingService
 from core.services.ai_usage_service import AIUsageFeature
 from core.services.local_resilience_service import LocalResilienceService
 from core.services.redis_streams import format_sse_event, resolve_last_event_id, stream_user_key
@@ -675,6 +677,137 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             return Response({"ok": True, "repairs": repairs})
         except Exception as e:
             return Response({"ok": False, "message": str(e)}, status=500)
+
+    @extend_schema(summary="List and create application settings", request=OpenApiTypes.OBJECT, responses={200: OpenApiTypes.OBJECT})
+    @action(detail=False, methods=["get", "post"], url_path="app-settings")
+    def app_settings(self, request):
+        if request.method.lower() == "post":
+            name = str(request.data.get("name") or "").strip().upper()
+            if not name:
+                return Response({"detail": "name is required."}, status=HTTP_400_BAD_REQUEST)
+            value = request.data.get("value")
+            scope = str(request.data.get("scope") or "").strip().lower()
+            description = str(request.data.get("description") or "").strip()
+
+            definition = AI_RUNTIME_SETTING_DEFINITIONS.get(name)
+            effective_scope = scope or (definition.scope if definition else AppSettingScope.BACKEND)
+            if effective_scope not in {AppSettingScope.BACKEND, AppSettingScope.FRONTEND, AppSettingScope.BOTH}:
+                return Response({"detail": "scope must be backend, frontend, or both."}, status=HTTP_400_BAD_REQUEST)
+
+            if value is None:
+                return Response({"detail": "value is required."}, status=HTTP_400_BAD_REQUEST)
+
+            if definition is not None:
+                try:
+                    AIRuntimeSettingsService.update_runtime_settings({name: value}, updated_by=request.user)
+                except ValueError as exc:
+                    return Response({"detail": str(exc)}, status=HTTP_400_BAD_REQUEST)
+            else:
+                AppSettingService.set_raw(
+                    name=name,
+                    value=str(value),
+                    scope=effective_scope,
+                    description=description,
+                    updated_by=request.user,
+                )
+
+        defaults = AIRuntimeSettingsService.defaults()
+        db_rows = AppSettingService._load_all_rows()
+        known_names = sorted(set(defaults.keys()) | set(db_rows.keys()))
+        items = []
+        for name in known_names:
+            definition = AI_RUNTIME_SETTING_DEFINITIONS.get(name)
+            hardcoded_default = defaults.get(name)
+            raw_effective = (
+                AIRuntimeSettingsService.get(name)
+                if definition is not None
+                else AppSettingService.get_effective_raw(name, hardcoded_default)
+            )
+            items.append(
+                AppSettingService.get_metadata(
+                    name,
+                    hardcoded_default=hardcoded_default,
+                    fallback_scope=definition.scope if definition else AppSettingScope.BACKEND,
+                    fallback_description=definition.description if definition else "",
+                    effective_value=raw_effective,
+                )
+            )
+        return Response({"items": items})
+
+    @extend_schema(summary="Update or delete single application setting", request=OpenApiTypes.OBJECT, responses={200: OpenApiTypes.OBJECT})
+    @action(detail=False, methods=["patch", "delete"], url_path=r"app-settings/(?P<name>[^/.]+)")
+    def app_setting_item(self, request, name=None):
+        setting_name = str(name or "").strip().upper()
+        if not setting_name:
+            return Response({"detail": "Invalid setting name."}, status=HTTP_400_BAD_REQUEST)
+
+        if request.method.lower() == "delete":
+            AppSettingService.delete_raw(setting_name)
+            effective_value = (
+                AIRuntimeSettingsService.get(setting_name)
+                if setting_name in AI_RUNTIME_SETTING_DEFINITIONS
+                else AppSettingService.get_effective_raw(setting_name, None)
+            )
+            definition = AI_RUNTIME_SETTING_DEFINITIONS.get(setting_name)
+            metadata = AppSettingService.get_metadata(
+                setting_name,
+                hardcoded_default=AIRuntimeSettingsService.defaults().get(setting_name) if definition else None,
+                fallback_scope=definition.scope if definition else AppSettingScope.BACKEND,
+                fallback_description=definition.description if definition else "",
+                effective_value=effective_value,
+            )
+            return Response({"ok": True, "name": setting_name, "effectiveValue": effective_value, "setting": metadata})
+
+        payload = dict(request.data or {})
+        if "value" in payload and payload["value"] is None:
+            AppSettingService.delete_raw(setting_name)
+            effective_value = (
+                AIRuntimeSettingsService.get(setting_name)
+                if setting_name in AI_RUNTIME_SETTING_DEFINITIONS
+                else AppSettingService.get_effective_raw(setting_name, None)
+            )
+            definition = AI_RUNTIME_SETTING_DEFINITIONS.get(setting_name)
+            metadata = AppSettingService.get_metadata(
+                setting_name,
+                hardcoded_default=AIRuntimeSettingsService.defaults().get(setting_name) if definition else None,
+                fallback_scope=definition.scope if definition else AppSettingScope.BACKEND,
+                fallback_description=definition.description if definition else "",
+                effective_value=effective_value,
+            )
+            return Response({"ok": True, "name": setting_name, "effectiveValue": effective_value, "setting": metadata})
+
+        current = AppSetting.objects.filter(name=setting_name).first()
+        scope = str(payload.get("scope") or (current.scope if current else AppSettingScope.BACKEND)).strip().lower()
+        description = str(payload.get("description") if payload.get("description") is not None else (current.description if current else "")).strip()
+        if scope not in {AppSettingScope.BACKEND, AppSettingScope.FRONTEND, AppSettingScope.BOTH}:
+            return Response({"detail": "scope must be backend, frontend, or both."}, status=HTTP_400_BAD_REQUEST)
+
+        if "value" not in payload:
+            return Response({"detail": "value is required."}, status=HTTP_400_BAD_REQUEST)
+        value = payload.get("value")
+        definition = AI_RUNTIME_SETTING_DEFINITIONS.get(setting_name)
+        if definition:
+            try:
+                AIRuntimeSettingsService.update_runtime_settings({setting_name: value}, updated_by=request.user)
+            except ValueError as exc:
+                return Response({"detail": str(exc)}, status=HTTP_400_BAD_REQUEST)
+        else:
+            AppSettingService.set_raw(
+                name=setting_name,
+                value=str(value),
+                scope=scope,
+                description=description or "",
+                updated_by=request.user,
+            )
+        effective_value = AIRuntimeSettingsService.get(setting_name) if definition else AppSettingService.get_effective_raw(setting_name, None)
+        metadata = AppSettingService.get_metadata(
+            setting_name,
+            hardcoded_default=AIRuntimeSettingsService.defaults().get(setting_name) if definition else None,
+            fallback_scope=definition.scope if definition else AppSettingScope.BACKEND,
+            fallback_description=definition.description if definition else "",
+            effective_value=effective_value,
+        )
+        return Response({"ok": True, "name": setting_name, "effectiveValue": effective_value, "setting": metadata})
 
     @extend_schema(
         summary="Get or update OpenRouter status and AI model usage",

@@ -52,6 +52,67 @@
   <!-- AI Workflow Models -->
   <app-server-management-ai-workflow />
 
+  <!-- App Settings -->
+  <z-card class="p-6">
+    <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+      <h3 class="text-lg font-medium">Application Settings</h3>
+      <button z-button zType="outline" class="w-full sm:w-auto" (click)="loadAppSettings()" [zDisabled]="appSettingsLoading()">
+        @if (appSettingsLoading()) {
+          <span>Refreshing...</span>
+        } @else {
+          <span>Refresh</span>
+        }
+      </button>
+    </div>
+
+    <div class="grid grid-cols-1 gap-3 rounded border border-border/70 bg-muted/20 p-3 lg:grid-cols-4">
+      <input class="h-10 rounded-md border border-input bg-background px-3 text-sm" placeholder="NAME" [value]="appSettingDraft().name" (input)="setAppSettingDraftField('name', $event)" />
+      <input class="h-10 rounded-md border border-input bg-background px-3 text-sm" placeholder="Value" [value]="appSettingDraft().value" (input)="setAppSettingDraftField('value', $event)" />
+      <select class="h-10 rounded-md border border-input bg-background px-3 text-sm" [value]="appSettingDraft().scope" (change)="setAppSettingDraftField('scope', $event)">
+        <option value="backend">backend</option>
+        <option value="frontend">frontend</option>
+        <option value="both">both</option>
+      </select>
+      <button z-button zType="default" (click)="createAppSetting()">Save Setting</button>
+      <input class="h-10 rounded-md border border-input bg-background px-3 text-sm lg:col-span-4" placeholder="Description (optional)" [value]="appSettingDraft().description" (input)="setAppSettingDraftField('description', $event)" />
+    </div>
+
+    <div class="mt-4 overflow-x-auto">
+      <table class="min-w-full text-xs">
+        <thead>
+          <tr class="border-b border-border/70 text-left text-muted-foreground">
+            <th class="px-2 py-2">Name</th>
+            <th class="px-2 py-2">DB Value</th>
+            <th class="px-2 py-2">Effective</th>
+            <th class="px-2 py-2">Source</th>
+            <th class="px-2 py-2">Scope</th>
+            <th class="px-2 py-2">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of appSettings(); track item.name) {
+            <tr class="border-b border-border/40 align-top">
+              <td class="px-2 py-2 font-mono">{{ item.name }}</td>
+              <td class="px-2 py-2">
+                <input #settingValue class="h-8 w-64 rounded-md border border-input bg-background px-2 font-mono" [value]="item.value ?? ''" />
+              </td>
+              <td class="px-2 py-2 font-mono">{{ item.effectiveValue }}</td>
+              <td class="px-2 py-2">{{ item.source }}</td>
+              <td class="px-2 py-2">{{ item.scope }}</td>
+              <td class="px-2 py-2">
+                <div class="flex gap-2">
+                  <button z-button zType="outline" (click)="updateAppSetting(item, settingValue.value)">Save</button>
+                  <button z-button zType="destructive" (click)="deleteAppSetting(item.name)">Delete</button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <p class="mt-2 text-xs text-muted-foreground">Deleting a DB setting falls back automatically to env, Django setting, or hardcoded defaults based on precedence.</p>
+  </z-card>
+
   <!-- Cache Management -->
   <z-card class="p-6">
     <div class="mb-4 flex flex-wrap items-start justify-between gap-3">

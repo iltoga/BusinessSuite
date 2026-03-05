@@ -7,7 +7,7 @@ in the DB via `django-auditlog` when `AUDIT_ENABLED` and
 
 import logging
 
-from django.conf import settings
+from core.services.app_setting_service import AppSettingService
 from django.contrib.auth import get_user_model
 from django.contrib.auth.signals import user_logged_in, user_login_failed
 from django.contrib.contenttypes.models import ContentType
@@ -29,7 +29,7 @@ def _audit_user_logged_in(sender, request, user, **kwargs):
     Respects `AUDIT_ENABLED` and `AUDIT_WATCH_AUTH_EVENTS` settings.
     """
     try:
-        if not getattr(settings, "AUDIT_ENABLED", True) or not getattr(settings, "AUDIT_WATCH_AUTH_EVENTS", True):
+        if not AppSettingService.parse_bool(AppSettingService.get_effective_raw("AUDIT_ENABLED", True), True) or not AppSettingService.parse_bool(AppSettingService.get_effective_raw("AUDIT_WATCH_AUTH_EVENTS", True), True):
             return
         if LogEntry is None:
             return
@@ -56,7 +56,7 @@ def _audit_user_login_failed(sender, credentials, request, **kwargs):
     user. Otherwise create a LogEntry with `actor_email` populated.
     """
     try:
-        if not getattr(settings, "AUDIT_ENABLED", True) or not getattr(settings, "AUDIT_WATCH_AUTH_EVENTS", True):
+        if not AppSettingService.parse_bool(AppSettingService.get_effective_raw("AUDIT_ENABLED", True), True) or not AppSettingService.parse_bool(AppSettingService.get_effective_raw("AUDIT_WATCH_AUTH_EVENTS", True), True):
             return
         if LogEntry is None:
             return

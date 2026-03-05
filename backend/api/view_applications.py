@@ -1112,7 +1112,9 @@ def exec_cron_jobs(request):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def mock_auth_config(request):
-    if not getattr(settings, "MOCK_AUTH_ENABLED", False):
+    from core.services.app_setting_service import AppSettingService
+
+    if not AppSettingService.parse_bool(AppSettingService.get_effective_raw("MOCK_AUTH_ENABLED", False), False):
         return Response(
             {
                 "code": "mock_auth_disabled",

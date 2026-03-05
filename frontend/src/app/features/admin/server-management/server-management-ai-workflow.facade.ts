@@ -145,24 +145,7 @@ export class ServerManagementAiWorkflowFacade {
   }
 
   getPrimaryModelValue(): string {
-    const provider = this.getCurrentPrimaryProvider();
-    if (provider === 'groq') {
-      return (
-        this.getAiSettingValue('GROQ_DEFAULT_MODEL') ||
-        this.aiWorkflowStatus()?.aiModels.defaultModel ||
-        ''
-      );
-    }
-    if (provider === 'openai') {
-      return (
-        this.getAiSettingValue('OPENAI_DEFAULT_MODEL') ||
-        this.getAiSettingValue('LLM_DEFAULT_MODEL') ||
-        this.aiWorkflowStatus()?.aiModels.defaultModel ||
-        ''
-      );
-    }
     return (
-      this.getAiSettingValue('OPENROUTER_DEFAULT_MODEL') ||
       this.getAiSettingValue('LLM_DEFAULT_MODEL') ||
       this.aiWorkflowStatus()?.aiModels.defaultModel ||
       ''
@@ -182,16 +165,8 @@ export class ServerManagementAiWorkflowFacade {
 
     const updates: Record<string, unknown> = {
       LLM_PROVIDER: provider,
+      LLM_DEFAULT_MODEL: modelId,
     };
-    if (provider === 'groq') {
-      updates['GROQ_DEFAULT_MODEL'] = modelId;
-    } else if (provider === 'openai') {
-      updates['OPENAI_DEFAULT_MODEL'] = modelId;
-      updates['LLM_DEFAULT_MODEL'] = modelId;
-    } else {
-      updates['OPENROUTER_DEFAULT_MODEL'] = modelId;
-      updates['LLM_DEFAULT_MODEL'] = modelId;
-    }
 
     this.patchAiWorkflowSettings(updates, {
       errorPrefix: 'Failed to update primary runtime model',

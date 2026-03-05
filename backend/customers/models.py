@@ -201,7 +201,9 @@ class Customer(models.Model):
                 # If setup fails (e.g., DJANGO_SETTINGS_MODULE not set),
                 # proceed and rely on defaults to avoid crashing.
                 pass
-        lang = lang or getattr(settings, "DEFAULT_DOCUMENT_LANGUAGE_CODE", "en")
+        from core.services.app_setting_service import AppSettingService
+
+        lang = lang or AppSettingService.get_effective_raw("DEFAULT_DOCUMENT_LANGUAGE_CODE", "en")
         current_lang = get_language()
         activate(lang)
         try:

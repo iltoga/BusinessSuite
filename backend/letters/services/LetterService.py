@@ -3,7 +3,7 @@ from datetime import date, datetime
 from io import BytesIO
 from uuid import uuid4
 
-from django.conf import settings
+from core.services.app_setting_service import AppSettingService
 from django.utils.timezone import now as datetime_now
 from django.utils.translation import activate, get_language, gettext
 from mailmerge import MailMerge
@@ -88,7 +88,7 @@ class LetterService:
             label = value.strip()
 
         # Activate document language, translate, then restore
-        lang = getattr(settings, "DEFAULT_DOCUMENT_LANGUAGE_CODE", "en")
+        lang = AppSettingService.get_effective_raw("DEFAULT_DOCUMENT_LANGUAGE_CODE", "en")
         current_lang = get_language()
         activate(lang)
         try:
