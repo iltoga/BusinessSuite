@@ -2,6 +2,7 @@ import json
 import logging
 import mimetypes
 import os
+import requests
 import time
 import uuid
 from datetime import datetime, timedelta
@@ -18,6 +19,7 @@ from api.permissions import (
 )
 from api.serializers import (
     AdminPushNotificationSendSerializer,
+    AiModelSerializer,
     AdminWhatsappTestSendSerializer,
     AsyncJobSerializer,
     AvatarUploadSerializer,
@@ -67,6 +69,7 @@ from api.utils.redis_sse import iter_replay_and_live_events
 from api.utils.sse_auth import sse_token_auth_required
 from business_suite.authentication import JwtOrMockAuthentication
 from core.models import (
+    AiModel,
     AsyncJob,
     CalendarReminder,
     CountryCode,
@@ -81,6 +84,7 @@ from core.services.calendar_reminder_service import CalendarReminderService
 from core.services.document_merger import DocumentMerger, DocumentMergerError
 from core.services.ocr_preview_storage import get_ocr_preview_url
 from core.services.push_notifications import FcmConfigurationError, PushNotificationService
+from core.services.ai_runtime_settings_service import AIRuntimeSettingsService
 from core.services.quick_create import create_quick_customer, create_quick_customer_application, create_quick_product
 from core.services.redis_streams import format_sse_event, resolve_last_event_id, stream_job_key, stream_user_key
 from core.tasks.cron_jobs import enqueue_clear_cache_now, enqueue_full_backup_now

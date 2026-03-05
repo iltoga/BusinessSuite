@@ -87,6 +87,7 @@ router.register(r"calendar-reminders", views.CalendarReminderViewSet, basename="
 router.register(r"async-jobs", views.AsyncJobViewSet, basename="async-jobs")
 router.register(r"push-notifications", views.PushNotificationViewSet, basename="push-notifications")
 router.register(r"holidays", views.HolidayViewSet, basename="holidays")
+router.register(r"ai-models", views.AiModelViewSet, basename="ai-models")
 router.register(r"sync", SyncViewSet, basename="sync")
 
 urlpatterns = [
