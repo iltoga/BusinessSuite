@@ -11,19 +11,28 @@ from dramatiq.brokers.redis import RedisBroker
 from dramatiq.results import Results
 from dramatiq.results.backends.redis import RedisBackend
 
+from core.services.app_setting_service import AppSettingService
 from core.telemetry.dramatiq_tracing import DramatiqTracingMiddleware
 
 _LOOPBACK_HOSTS = {"localhost", "127.0.0.1", "::1"}
 
 
 def _setting_or_env(name: str, default: str = "") -> str:
-    value = getattr(settings, name, None)
-    if value is None:
-        return str(os.getenv(name, default))
-    text = str(value).strip()
-    if text:
-        return text
-    return str(os.getenv(name, default))
+    value = default
+
+    configured = getattr(settings, name, None)
+    if configured is not None and str(configured).strip() != "":
+        value = configured
+
+    env_value = os.getenv(name)
+    if env_value is not None and str(env_value).strip() != "":
+        value = env_value
+
+    db_value = AppSettingService.get_raw(name, default=None, require_override=True)
+    if db_value is not None and str(db_value).strip() != "":
+        value = db_value
+
+    return str(value)
 
 
 def _running_in_docker() -> bool:

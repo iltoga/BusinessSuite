@@ -59,14 +59,31 @@ class AIRuntimeSettingsServiceTests(TestCase):
     @override_settings(
         LLM_PROVIDER="openrouter",
         LLM_DEFAULT_MODEL="openai/gpt-5-mini",
-        OPENROUTER_DEFAULT_MODEL="openai/gpt-5-mini",
+        OPENROUTER_DEFAULT_MODEL="google/gemini-2.5-flash-lite",
     )
-    def test_update_runtime_settings_rejects_incompatible_llm_default_for_openai_provider(self):
-        with self.assertRaisesMessage(
-            ValueError,
-            "LLM_DEFAULT_MODEL must be listed under provider 'openai' when LLM_PROVIDER is openai.",
-        ):
-            AIRuntimeSettingsService.update_runtime_settings({"LLM_PROVIDER": "openai"})
+    def test_update_runtime_settings_allows_primary_model_independent_of_provider_defaults(self):
+        AIRuntimeSettingsService.update_runtime_settings({"LLM_PROVIDER": "openai"})
+
+        self.assertEqual(AIRuntimeSettingsService.get_llm_provider(), "openai")
+        self.assertEqual(AIRuntimeSettingsService.get_llm_default_model(), "openai/gpt-5-mini")
+        self.assertEqual(AIRuntimeSettingsService.get_openrouter_default_model(), "google/gemini-2.5-flash-lite")
+
+
+    @override_settings(
+        OPENROUTER_TIMEOUT=60.0,
+    )
+    def test_env_defaults_override_django_settings_when_no_db_override(self):
+        import os
+
+        previous = os.environ.get("OPENROUTER_TIMEOUT")
+        os.environ["OPENROUTER_TIMEOUT"] = "75.5"
+        try:
+            self.assertEqual(AIRuntimeSettingsService.get_openrouter_timeout(), 75.5)
+        finally:
+            if previous is None:
+                os.environ.pop("OPENROUTER_TIMEOUT", None)
+            else:
+                os.environ["OPENROUTER_TIMEOUT"] = previous
 
     def test_get_provider_for_model_returns_expected_provider(self):
         self.assertEqual(

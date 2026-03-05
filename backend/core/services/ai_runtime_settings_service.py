@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from typing import Any
 
@@ -138,6 +139,181 @@ AI_RUNTIME_SETTING_DEFINITIONS: dict[str, RuntimeSettingDefinition] = {
         scope=AppSettingScope.BACKEND,
         description="OpenAI API timeout in seconds.",
     ),
+    "DRAMATIQ_REDIS_URL": RuntimeSettingDefinition(
+        name="DRAMATIQ_REDIS_URL",
+        value_type="string",
+        scope=AppSettingScope.BACKEND,
+        description="Optional Redis URL override for Dramatiq broker.",
+    ),
+    "REDIS_URL": RuntimeSettingDefinition(
+        name="REDIS_URL",
+        value_type="string",
+        scope=AppSettingScope.BACKEND,
+        description="Fallback Redis URL used by Dramatiq when DRAMATIQ_REDIS_URL is empty.",
+    ),
+    "REDIS_HOST": RuntimeSettingDefinition(
+        name="REDIS_HOST",
+        value_type="string",
+        scope=AppSettingScope.BACKEND,
+        description="Fallback Redis host used by Dramatiq when URL settings are empty.",
+    ),
+    "REDIS_PORT": RuntimeSettingDefinition(
+        name="REDIS_PORT",
+        value_type="int",
+        scope=AppSettingScope.BACKEND,
+        description="Fallback Redis port used by Dramatiq when URL settings are empty.",
+    ),
+    "DRAMATIQ_REDIS_DB": RuntimeSettingDefinition(
+        name="DRAMATIQ_REDIS_DB",
+        value_type="int",
+        scope=AppSettingScope.BACKEND,
+        description="Redis DB index used by Dramatiq queues.",
+    ),
+    "DRAMATIQ_NAMESPACE": RuntimeSettingDefinition(
+        name="DRAMATIQ_NAMESPACE",
+        value_type="string",
+        scope=AppSettingScope.BACKEND,
+        description="Dramatiq queue namespace.",
+    ),
+    "DRAMATIQ_RESULTS_ENABLED": RuntimeSettingDefinition(
+        name="DRAMATIQ_RESULTS_ENABLED",
+        value_type="bool",
+        scope=AppSettingScope.BACKEND,
+        description="Enable Dramatiq results middleware.",
+    ),
+    "DRAMATIQ_RESULTS_STORE_RESULTS": RuntimeSettingDefinition(
+        name="DRAMATIQ_RESULTS_STORE_RESULTS",
+        value_type="bool",
+        scope=AppSettingScope.BACKEND,
+        description="Enable result persistence in Dramatiq results backend.",
+    ),
+    "DRAMATIQ_RESULTS_TTL_MS": RuntimeSettingDefinition(
+        name="DRAMATIQ_RESULTS_TTL_MS",
+        value_type="int",
+        scope=AppSettingScope.BACKEND,
+        description="Dramatiq result TTL in milliseconds.",
+    ),
+    "DRAMATIQ_RESULTS_NAMESPACE": RuntimeSettingDefinition(
+        name="DRAMATIQ_RESULTS_NAMESPACE",
+        value_type="string",
+        scope=AppSettingScope.BACKEND,
+        description="Dramatiq results namespace.",
+    ),
+    "DRAMATIQ_RESULTS_REDIS_URL": RuntimeSettingDefinition(
+        name="DRAMATIQ_RESULTS_REDIS_URL",
+        value_type="string",
+        scope=AppSettingScope.BACKEND,
+        description="Optional dedicated Redis URL for Dramatiq results backend.",
+    ),
+
+    "AUDIT_ENABLED": RuntimeSettingDefinition(
+        name="AUDIT_ENABLED",
+        value_type="bool",
+        scope=AppSettingScope.BACKEND,
+        description="Enable audit logging features.",
+    ),
+    "AUDIT_WATCH_AUTH_EVENTS": RuntimeSettingDefinition(
+        name="AUDIT_WATCH_AUTH_EVENTS",
+        value_type="bool",
+        scope=AppSettingScope.BACKEND,
+        description="Capture authentication events in audit logs.",
+    ),
+    "AUDIT_FORWARD_TO_LOKI": RuntimeSettingDefinition(
+        name="AUDIT_FORWARD_TO_LOKI",
+        value_type="bool",
+        scope=AppSettingScope.BACKEND,
+        description="Forward audit events to Loki sink.",
+    ),
+    "AUDITLOG_RETENTION_DAYS": RuntimeSettingDefinition(
+        name="AUDITLOG_RETENTION_DAYS",
+        value_type="int",
+        scope=AppSettingScope.BACKEND,
+        description="Retention period (days) for audit logs.",
+    ),
+    "AUDITLOG_RETENTION_SCHEDULE": RuntimeSettingDefinition(
+        name="AUDITLOG_RETENTION_SCHEDULE",
+        value_type="string",
+        scope=AppSettingScope.BACKEND,
+        description="Daily cron time (HH:MM) to prune audit logs.",
+    ),
+    "DJANGO_LOG_LEVEL": RuntimeSettingDefinition(
+        name="DJANGO_LOG_LEVEL",
+        value_type="string",
+        scope=AppSettingScope.BACKEND,
+        description="Django log level.",
+    ),
+    "DJANGO_DEBUG": RuntimeSettingDefinition(
+        name="DJANGO_DEBUG",
+        value_type="bool",
+        scope=AppSettingScope.BACKEND,
+        description="Enable Django debug mode.",
+    ),
+    "DISABLE_DJANGO_VIEWS": RuntimeSettingDefinition(
+        name="DISABLE_DJANGO_VIEWS",
+        value_type="bool",
+        scope=AppSettingScope.BACKEND,
+        description="Disable Django server-rendered views.",
+    ),
+    "MOCK_AUTH_ENABLED": RuntimeSettingDefinition(
+        name="MOCK_AUTH_ENABLED",
+        value_type="bool",
+        scope=AppSettingScope.BOTH,
+        description="Enable mock authentication paths.",
+    ),
+    "INVOICE_IMPORT_MAX_WORKERS": RuntimeSettingDefinition(
+        name="INVOICE_IMPORT_MAX_WORKERS",
+        value_type="int",
+        scope=AppSettingScope.BACKEND,
+        description="Maximum parallel workers for invoice import.",
+    ),
+    "DATE_FORMAT_JS": RuntimeSettingDefinition(
+        name="DATE_FORMAT_JS",
+        value_type="string",
+        scope=AppSettingScope.BOTH,
+        description="Frontend date format string.",
+    ),
+    "BASE_CURRENCY": RuntimeSettingDefinition(
+        name="BASE_CURRENCY",
+        value_type="string",
+        scope=AppSettingScope.BOTH,
+        description="Default base currency code.",
+    ),
+    "DEFAULT_DOCUMENT_LANGUAGE_CODE": RuntimeSettingDefinition(
+        name="DEFAULT_DOCUMENT_LANGUAGE_CODE",
+        value_type="string",
+        scope=AppSettingScope.BOTH,
+        description="Default document language code.",
+    ),
+    "DEFAULT_CUSTOMER_EMAIL": RuntimeSettingDefinition(
+        name="DEFAULT_CUSTOMER_EMAIL",
+        value_type="string",
+        scope=AppSettingScope.BOTH,
+        description="Default customer email fallback.",
+    ),
+    "GOOGLE_TIMEZONE": RuntimeSettingDefinition(
+        name="GOOGLE_TIMEZONE",
+        value_type="string",
+        scope=AppSettingScope.BACKEND,
+        description="Google integration timezone.",
+    ),
+    "GOOGLE_CALENDAR_ID": RuntimeSettingDefinition(
+        name="GOOGLE_CALENDAR_ID",
+        value_type="string",
+        scope=AppSettingScope.BACKEND,
+        description="Google Calendar ID.",
+    ),
+    "GOOGLE_TASKLIST_ID": RuntimeSettingDefinition(
+        name="GOOGLE_TASKLIST_ID",
+        value_type="string",
+        scope=AppSettingScope.BACKEND,
+        description="Google Tasklist ID.",
+    ),
+    "USE_CLOUD_STORAGE": RuntimeSettingDefinition(
+        name="USE_CLOUD_STORAGE",
+        value_type="bool",
+        scope=AppSettingScope.BACKEND,
+        description="Enable cloud storage backends.",
+    ),
 }
 
 _WORKFLOW_BINDINGS = [
@@ -199,14 +375,42 @@ _PROVIDER_PRIORITY = ("openrouter", "openai", "groq")
 
 class AIRuntimeSettingsService:
     @staticmethod
+    def _default_from_settings_and_env(name: str, hardcoded_default: Any) -> Any:
+        value = hardcoded_default
+        if hasattr(settings, name):
+            configured_value = getattr(settings, name)
+            if configured_value is not None:
+                value = configured_value
+        env_value = os.getenv(name)
+        if env_value is not None and str(env_value).strip() != "":
+            return env_value
+        return value
+
+    @staticmethod
     def defaults() -> dict[str, Any]:
-        llm_provider = str(getattr(settings, "LLM_PROVIDER", "openrouter") or "openrouter").strip().lower()
+        llm_provider = (
+            str(AIRuntimeSettingsService._default_from_settings_and_env("LLM_PROVIDER", "openrouter") or "openrouter")
+            .strip()
+            .lower()
+        )
         llm_default_model = (
-            str(getattr(settings, "LLM_DEFAULT_MODEL", "google/gemini-3-flash-preview") or "").strip()
+            str(
+                AIRuntimeSettingsService._default_from_settings_and_env(
+                    "LLM_DEFAULT_MODEL",
+                    "google/gemini-3-flash-preview",
+                )
+                or ""
+            ).strip()
             or "google/gemini-3-flash-preview"
         )
         groq_default_model = (
-            str(getattr(settings, "GROQ_DEFAULT_MODEL", "meta-llama/llama-4-scout-17b-16e-instruct") or "").strip()
+            str(
+                AIRuntimeSettingsService._default_from_settings_and_env(
+                    "GROQ_DEFAULT_MODEL",
+                    "meta-llama/llama-4-scout-17b-16e-instruct",
+                )
+                or ""
+            ).strip()
             or "meta-llama/llama-4-scout-17b-16e-instruct"
         )
         return {
@@ -214,36 +418,176 @@ class AIRuntimeSettingsService:
             "LLM_DEFAULT_MODEL": llm_default_model,
             "GROQ_DEFAULT_MODEL": groq_default_model,
             "OPENROUTER_DEFAULT_MODEL": (
-                str(getattr(settings, "OPENROUTER_DEFAULT_MODEL", llm_default_model) or "").strip() or llm_default_model
+                str(AIRuntimeSettingsService._default_from_settings_and_env("OPENROUTER_DEFAULT_MODEL", llm_default_model) or "").strip()
+                or llm_default_model
             ),
             "OPENAI_DEFAULT_MODEL": (
-                str(getattr(settings, "OPENAI_DEFAULT_MODEL", "gpt-5-mini") or "").strip() or "gpt-5-mini"
+                str(AIRuntimeSettingsService._default_from_settings_and_env("OPENAI_DEFAULT_MODEL", "gpt-5-mini") or "").strip()
+                or "gpt-5-mini"
             ),
-            "INVOICE_IMPORT_MODEL": "",
-            "PASSPORT_OCR_MODEL": "",
-            "DOCUMENT_CATEGORIZER_MODEL": "",
-            "DOCUMENT_CATEGORIZER_MODEL_HIGH": "",
-            "DOCUMENT_VALIDATOR_MODEL": "",
-            "DOCUMENT_OCR_STRUCTURED_MODEL": "",
-            "CHECK_PASSPORT_MODEL": "",
+            "INVOICE_IMPORT_MODEL": str(
+                AIRuntimeSettingsService._default_from_settings_and_env("INVOICE_IMPORT_MODEL", "") or ""
+            ).strip(),
+            "PASSPORT_OCR_MODEL": str(
+                AIRuntimeSettingsService._default_from_settings_and_env("PASSPORT_OCR_MODEL", "") or ""
+            ).strip(),
+            "DOCUMENT_CATEGORIZER_MODEL": str(
+                AIRuntimeSettingsService._default_from_settings_and_env("DOCUMENT_CATEGORIZER_MODEL", "") or ""
+            ).strip(),
+            "DOCUMENT_CATEGORIZER_MODEL_HIGH": str(
+                AIRuntimeSettingsService._default_from_settings_and_env("DOCUMENT_CATEGORIZER_MODEL_HIGH", "") or ""
+            ).strip(),
+            "DOCUMENT_VALIDATOR_MODEL": str(
+                AIRuntimeSettingsService._default_from_settings_and_env("DOCUMENT_VALIDATOR_MODEL", "") or ""
+            ).strip(),
+            "DOCUMENT_OCR_STRUCTURED_MODEL": str(
+                AIRuntimeSettingsService._default_from_settings_and_env("DOCUMENT_OCR_STRUCTURED_MODEL", "") or ""
+            ).strip(),
+            "CHECK_PASSPORT_MODEL": str(
+                AIRuntimeSettingsService._default_from_settings_and_env("CHECK_PASSPORT_MODEL", "") or ""
+            ).strip(),
             "CHECK_PASSPORT_AI_MIN_CONFIDENCE_FOR_UPLOAD": float(
-                getattr(settings, "CHECK_PASSPORT_AI_MIN_CONFIDENCE_FOR_UPLOAD", 0.95)
+                AIRuntimeSettingsService._default_from_settings_and_env("CHECK_PASSPORT_AI_MIN_CONFIDENCE_FOR_UPLOAD", 0.95)
             ),
-            "LLM_AUTO_FALLBACK_ENABLED": bool(getattr(settings, "LLM_AUTO_FALLBACK_ENABLED", True)),
-            "LLM_FALLBACK_PROVIDER_ORDER": list(getattr(settings, "LLM_FALLBACK_PROVIDER_ORDER", [])),
-            "LLM_FALLBACK_STICKY_SECONDS": int(getattr(settings, "LLM_FALLBACK_STICKY_SECONDS", 3600)),
+            "LLM_AUTO_FALLBACK_ENABLED": AppSettingService.parse_bool(
+                AIRuntimeSettingsService._default_from_settings_and_env("LLM_AUTO_FALLBACK_ENABLED", True),
+                True,
+            ),
+            "LLM_FALLBACK_PROVIDER_ORDER": AppSettingService.parse_list(
+                AIRuntimeSettingsService._default_from_settings_and_env("LLM_FALLBACK_PROVIDER_ORDER", []),
+                [],
+            ),
+            "LLM_FALLBACK_STICKY_SECONDS": int(
+                AIRuntimeSettingsService._default_from_settings_and_env("LLM_FALLBACK_STICKY_SECONDS", 3600)
+            ),
             "LLM_FALLBACK_STICKY_CACHE_KEY": (
-                str(getattr(settings, "LLM_FALLBACK_STICKY_CACHE_KEY", "ai:router:sticky_provider") or "").strip()
+                str(
+                    AIRuntimeSettingsService._default_from_settings_and_env(
+                        "LLM_FALLBACK_STICKY_CACHE_KEY",
+                        "ai:router:sticky_provider",
+                    )
+                    or ""
+                ).strip()
                 or "ai:router:sticky_provider"
             ),
             "OPENROUTER_API_BASE_URL": (
-                str(getattr(settings, "OPENROUTER_API_BASE_URL", "https://openrouter.ai/api/v1") or "").strip()
+                str(
+                    AIRuntimeSettingsService._default_from_settings_and_env(
+                        "OPENROUTER_API_BASE_URL",
+                        "https://openrouter.ai/api/v1",
+                    )
+                    or ""
+                ).strip()
                 or "https://openrouter.ai/api/v1"
             ),
-            "OPENROUTER_TIMEOUT": float(getattr(settings, "OPENROUTER_TIMEOUT", 120.0)),
-            "OPENAI_TIMEOUT": float(getattr(settings, "OPENAI_TIMEOUT", 120.0)),
-        }
+            "OPENROUTER_TIMEOUT": float(AIRuntimeSettingsService._default_from_settings_and_env("OPENROUTER_TIMEOUT", 120.0)),
+            "OPENAI_TIMEOUT": float(AIRuntimeSettingsService._default_from_settings_and_env("OPENAI_TIMEOUT", 120.0)),
+            "DRAMATIQ_REDIS_URL": str(
+                AIRuntimeSettingsService._default_from_settings_and_env("DRAMATIQ_REDIS_URL", "") or ""
+            ).strip(),
+            "REDIS_URL": str(AIRuntimeSettingsService._default_from_settings_and_env("REDIS_URL", "") or "").strip(),
+            "REDIS_HOST": str(AIRuntimeSettingsService._default_from_settings_and_env("REDIS_HOST", "") or "").strip(),
+            "REDIS_PORT": int(AIRuntimeSettingsService._default_from_settings_and_env("REDIS_PORT", 6379)),
+            "DRAMATIQ_REDIS_DB": int(AIRuntimeSettingsService._default_from_settings_and_env("DRAMATIQ_REDIS_DB", 0)),
+            "DRAMATIQ_NAMESPACE": str(
+                AIRuntimeSettingsService._default_from_settings_and_env("DRAMATIQ_NAMESPACE", "dramatiq:queue")
+                or "dramatiq:queue"
+            ).strip()
+            or "dramatiq:queue",
+            "DRAMATIQ_RESULTS_ENABLED": AppSettingService.parse_bool(
+                AIRuntimeSettingsService._default_from_settings_and_env("DRAMATIQ_RESULTS_ENABLED", True),
+                True,
+            ),
+            "DRAMATIQ_RESULTS_STORE_RESULTS": AppSettingService.parse_bool(
+                AIRuntimeSettingsService._default_from_settings_and_env("DRAMATIQ_RESULTS_STORE_RESULTS", True),
+                True,
+            ),
+            "DRAMATIQ_RESULTS_TTL_MS": int(
+                AIRuntimeSettingsService._default_from_settings_and_env("DRAMATIQ_RESULTS_TTL_MS", 300000)
+            ),
+            "DRAMATIQ_RESULTS_NAMESPACE": str(
+                AIRuntimeSettingsService._default_from_settings_and_env("DRAMATIQ_RESULTS_NAMESPACE", "dramatiq:results")
+                or "dramatiq:results"
+            ).strip()
+            or "dramatiq:results",
+            "DRAMATIQ_RESULTS_REDIS_URL": str(
+                AIRuntimeSettingsService._default_from_settings_and_env("DRAMATIQ_RESULTS_REDIS_URL", "") or ""
+            ).strip(),
 
+
+            "AUDIT_ENABLED": AppSettingService.parse_bool(
+                AIRuntimeSettingsService._default_from_settings_and_env("AUDIT_ENABLED", True),
+                True,
+            ),
+            "AUDIT_WATCH_AUTH_EVENTS": AppSettingService.parse_bool(
+                AIRuntimeSettingsService._default_from_settings_and_env("AUDIT_WATCH_AUTH_EVENTS", True),
+                True,
+            ),
+            "AUDIT_FORWARD_TO_LOKI": AppSettingService.parse_bool(
+                AIRuntimeSettingsService._default_from_settings_and_env("AUDIT_FORWARD_TO_LOKI", True),
+                True,
+            ),
+            "AUDITLOG_RETENTION_DAYS": int(
+                AIRuntimeSettingsService._default_from_settings_and_env("AUDITLOG_RETENTION_DAYS", 14)
+            ),
+            "AUDITLOG_RETENTION_SCHEDULE": str(
+                AIRuntimeSettingsService._default_from_settings_and_env("AUDITLOG_RETENTION_SCHEDULE", "04:00")
+                or ""
+            ).strip(),
+            "DJANGO_LOG_LEVEL": str(
+                AIRuntimeSettingsService._default_from_settings_and_env("DJANGO_LOG_LEVEL", "INFO") or "INFO"
+            ).strip()
+            or "INFO",
+            "DJANGO_DEBUG": AppSettingService.parse_bool(
+                AIRuntimeSettingsService._default_from_settings_and_env("DJANGO_DEBUG", False),
+                False,
+            ),
+            "DISABLE_DJANGO_VIEWS": AppSettingService.parse_bool(
+                AIRuntimeSettingsService._default_from_settings_and_env("DISABLE_DJANGO_VIEWS", False),
+                False,
+            ),
+            "MOCK_AUTH_ENABLED": AppSettingService.parse_bool(
+                AIRuntimeSettingsService._default_from_settings_and_env("MOCK_AUTH_ENABLED", False),
+                False,
+            ),
+            "INVOICE_IMPORT_MAX_WORKERS": int(
+                AIRuntimeSettingsService._default_from_settings_and_env("INVOICE_IMPORT_MAX_WORKERS", 3)
+            ),
+            "DATE_FORMAT_JS": str(
+                AIRuntimeSettingsService._default_from_settings_and_env("DATE_FORMAT_JS", "dd-MM-yyyy") or "dd-MM-yyyy"
+            ).strip()
+            or "dd-MM-yyyy",
+            "BASE_CURRENCY": str(
+                AIRuntimeSettingsService._default_from_settings_and_env("BASE_CURRENCY", "IDR") or "IDR"
+            ).strip()
+            or "IDR",
+            "DEFAULT_DOCUMENT_LANGUAGE_CODE": str(
+                AIRuntimeSettingsService._default_from_settings_and_env("DEFAULT_DOCUMENT_LANGUAGE_CODE", "id") or "id"
+            ).strip()
+            or "id",
+            "DEFAULT_CUSTOMER_EMAIL": str(
+                AIRuntimeSettingsService._default_from_settings_and_env("DEFAULT_CUSTOMER_EMAIL", "sample_email@gmail.com")
+                or "sample_email@gmail.com"
+            ).strip()
+            or "sample_email@gmail.com",
+            "GOOGLE_TIMEZONE": str(
+                AIRuntimeSettingsService._default_from_settings_and_env("GOOGLE_TIMEZONE", "Asia/Makassar")
+                or "Asia/Makassar"
+            ).strip()
+            or "Asia/Makassar",
+            "GOOGLE_CALENDAR_ID": str(
+                AIRuntimeSettingsService._default_from_settings_and_env("GOOGLE_CALENDAR_ID", "primary") or "primary"
+            ).strip()
+            or "primary",
+            "GOOGLE_TASKLIST_ID": str(
+                AIRuntimeSettingsService._default_from_settings_and_env("GOOGLE_TASKLIST_ID", "@default") or "@default"
+            ).strip()
+            or "@default",
+            "USE_CLOUD_STORAGE": AppSettingService.parse_bool(
+                AIRuntimeSettingsService._default_from_settings_and_env("USE_CLOUD_STORAGE", False),
+                False,
+            ),
+        }
     @staticmethod
     def _coerce_value(name: str, raw_value: Any, default_value: Any) -> Any:
         definition = AI_RUNTIME_SETTING_DEFINITIONS[name]
@@ -304,10 +648,7 @@ class AIRuntimeSettingsService:
 
     @classmethod
     def _get_runtime_workflow_model_override(cls, setting_name: str) -> str:
-        raw_value = AppSettingService.get_raw(setting_name, default=None, require_override=True)
-        if raw_value is not None:
-            return str(raw_value).strip()
-        return ""
+        return str(cls.get(setting_name) or "").strip()
 
     @classmethod
     def get_primary_runtime_model(cls) -> str:
@@ -501,17 +842,24 @@ class AIRuntimeSettingsService:
     def serialize_runtime_settings(cls) -> list[dict[str, Any]]:
         defaults = cls.defaults()
         current = cls.get_many()
-        return [
-            {
-                "name": definition.name,
-                "valueType": definition.value_type,
-                "scope": definition.scope,
-                "description": definition.description,
-                "defaultValue": defaults.get(definition.name),
-                "value": current.get(definition.name),
-            }
-            for definition in AI_RUNTIME_SETTING_DEFINITIONS.values()
-        ]
+        rows: list[dict[str, Any]] = []
+        for definition in AI_RUNTIME_SETTING_DEFINITIONS.values():
+            metadata = AppSettingService.get_metadata(
+                definition.name,
+                hardcoded_default=defaults.get(definition.name),
+                fallback_scope=definition.scope,
+                fallback_description=definition.description,
+                effective_value=current.get(definition.name),
+            )
+            metadata.update(
+                {
+                    "valueType": definition.value_type,
+                    # Backward compatibility for existing frontend contracts.
+                    "value": metadata.get("effectiveValue"),
+                }
+            )
+            rows.append(metadata)
+        return rows
 
     @classmethod
     def _normalize_for_storage(cls, name: str, value: Any) -> str:
@@ -562,6 +910,7 @@ class AIRuntimeSettingsService:
                     scope=definition.scope,
                     description=definition.description,
                     updated_by=None,
+                    force_override=True,
                 )
             else:
                 AppSettingService.delete_raw(setting_name)
@@ -603,15 +952,6 @@ class AIRuntimeSettingsService:
         openrouter_model_ids = model_ids_by_provider.get("openrouter", set())
         openai_model_ids = model_ids_by_provider.get("openai", set())
         groq_model_ids = model_ids_by_provider.get("groq", set())
-        non_groq_model_ids = set(openrouter_model_ids) | set(openai_model_ids)
-
-        if "LLM_PROVIDER" in normalized_updates:
-            effective_provider = normalized_updates["LLM_PROVIDER"]
-        elif "LLM_PROVIDER" in cleared_setting_names:
-            effective_provider = str(defaults.get("LLM_PROVIDER") or "openrouter").strip().lower()
-        else:
-            effective_provider = cls.get_llm_provider()
-
         if "LLM_DEFAULT_MODEL" in normalized_updates:
             effective_llm_default_model = normalized_updates["LLM_DEFAULT_MODEL"]
         elif "LLM_DEFAULT_MODEL" in cleared_setting_names:
@@ -619,13 +959,8 @@ class AIRuntimeSettingsService:
         else:
             effective_llm_default_model = cls.get_llm_default_model()
 
-        if effective_llm_default_model:
-            if effective_provider == "openrouter" and effective_llm_default_model not in openrouter_model_ids:
-                raise ValueError("LLM_DEFAULT_MODEL must be listed under provider 'openrouter' when LLM_PROVIDER is openrouter.")
-            if effective_provider == "openai" and effective_llm_default_model not in openai_model_ids:
-                raise ValueError("LLM_DEFAULT_MODEL must be listed under provider 'openai' when LLM_PROVIDER is openai.")
-            if effective_provider == "groq" and effective_llm_default_model not in non_groq_model_ids:
-                raise ValueError("LLM_DEFAULT_MODEL must be listed under provider 'openrouter' or 'openai'.")
+        if effective_llm_default_model and effective_llm_default_model not in model_ids:
+            raise ValueError("LLM_DEFAULT_MODEL must be listed in configured AI models.")
 
         openrouter_default = normalized_updates.get("OPENROUTER_DEFAULT_MODEL")
         if openrouter_default and openrouter_default not in openrouter_model_ids:
@@ -650,6 +985,7 @@ class AIRuntimeSettingsService:
                 scope=definition.scope,
                 description=definition.description,
                 updated_by=updated_by,
+                force_override=True,
             )
 
         return cls.get_many()

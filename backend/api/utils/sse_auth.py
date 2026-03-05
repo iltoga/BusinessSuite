@@ -36,7 +36,9 @@ def sse_token_auth_required(view_func=None, superuser_only=False):
         if not token_str:
             return None
 
-        if getattr(settings, "MOCK_AUTH_ENABLED", False) and token_str == "mock-token":
+        from core.services.app_setting_service import AppSettingService
+
+        if AppSettingService.parse_bool(AppSettingService.get_effective_raw("MOCK_AUTH_ENABLED", False), False) and token_str == "mock-token":
             from business_suite.authentication import ensure_mock_user
 
             return ensure_mock_user()

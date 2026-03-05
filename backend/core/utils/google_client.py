@@ -1,6 +1,7 @@
 import os
 
 from core.services.google_calendar_event_colors import GoogleCalendarEventColors
+from core.services.app_setting_service import AppSettingService
 from django.conf import settings
 from rest_framework.exceptions import APIException
 
@@ -25,9 +26,9 @@ SCOPES = getattr(
 SERVICE_ACCOUNT_FILE = getattr(
     settings, "GOOGLE_SERVICE_ACCOUNT_FILE", os.path.join(settings.BASE_DIR, "crm-revisbali-94d3dc9b6077.json")
 )
-TIMEZONE = getattr(settings, "GOOGLE_TIMEZONE", "Asia/Makassar")
-DEFAULT_CALENDAR_ID = getattr(settings, "GOOGLE_CALENDAR_ID", "primary")
-DEFAULT_TASKLIST_ID = getattr(settings, "GOOGLE_TASKLIST_ID", "@default")
+TIMEZONE = str(AppSettingService.get_effective_raw("GOOGLE_TIMEZONE", "Asia/Makassar") or "Asia/Makassar")
+DEFAULT_CALENDAR_ID = str(AppSettingService.get_effective_raw("GOOGLE_CALENDAR_ID", "primary") or "primary")
+DEFAULT_TASKLIST_ID = str(AppSettingService.get_effective_raw("GOOGLE_TASKLIST_ID", "@default") or "@default")
 
 
 class GoogleClient:

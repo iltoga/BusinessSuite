@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 from collections.abc import Iterable
 from typing import Any
 
 from core.models import AppSetting
+from django.conf import settings
+from django.core.cache import cache
 
 
 class AppSettingScope:
@@ -21,6 +24,82 @@ logger = logging.getLogger(__name__)
 
 
 class AppSettingService:
+    _CACHE_ALL_ROWS_KEY = "app_settings:rows:v1"
+    _RUNTIME_OVERRIDE_MARKER = "__runtime_override__"
+
+    @staticmethod
+    def _cache_enabled() -> bool:
+        return not bool(getattr(settings, "TESTING", False))
+
+    @classmethod
+    def invalidate_cache(cls) -> None:
+        if not cls._cache_enabled():
+            return
+        try:
+            cache.delete(cls._CACHE_ALL_ROWS_KEY)
+        except Exception:
+            return
+
+    @classmethod
+    def _load_all_rows(cls) -> dict[str, dict[str, Any]]:
+        if cls._cache_enabled():
+            try:
+                cached = cache.get(cls._CACHE_ALL_ROWS_KEY)
+                if isinstance(cached, dict):
+                    return cached
+            except Exception:
+                cached = None
+
+        if not cls._model_available():
+            return {}
+
+        try:
+            rows = list(
+                AppSetting.objects.all().values(
+                    "name", "value", "updated_by_id", "scope", "description", "created_at", "updated_at"
+                )
+            )
+        except Exception:
+            return {}
+
+        mapped = {
+            str(row["name"]): {
+                "value": row.get("value"),
+                "updated_by_id": row.get("updated_by_id"),
+                "scope": row.get("scope"),
+                "description": row.get("description"),
+                "created_at": row.get("created_at"),
+                "updated_at": row.get("updated_at"),
+            }
+            for row in rows
+        }
+        if cls._cache_enabled():
+            try:
+                cache.set(cls._CACHE_ALL_ROWS_KEY, mapped, timeout=None)
+            except Exception:
+                return mapped
+        return mapped
+
+    @classmethod
+    def get_effective_raw(cls, name: str, hardcoded_default: Any = None) -> Any:
+        """Resolve setting precedence: hardcoded < django settings < env < DB AppSetting."""
+        value = hardcoded_default
+
+        if hasattr(settings, name):
+            configured = getattr(settings, name)
+            if configured is not None:
+                value = configured
+
+        env_value = os.getenv(name)
+        if env_value is not None and str(env_value).strip() != "":
+            value = env_value
+
+        db_value = cls.get_raw(name, default=None, require_override=True)
+        if db_value is not None and str(db_value).strip() != "":
+            value = db_value
+
+        return value
+
     @staticmethod
     def _resolve_updated_by_id(updated_by: Any) -> Any:
         if updated_by is None:
@@ -33,9 +112,15 @@ class AppSettingService:
             return updated_by
         return None
 
-    @staticmethod
-    def _is_runtime_override(record: Any) -> bool:
-        return getattr(record, "updated_by_id", None) is not None
+    @classmethod
+    def _is_runtime_override(cls, record: Any) -> bool:
+        if record is None:
+            return False
+        updated_by_id = record.get("updated_by_id") if isinstance(record, dict) else getattr(record, "updated_by_id", None)
+        if updated_by_id is not None:
+            return True
+        description = record.get("description") if isinstance(record, dict) else getattr(record, "description", "")
+        return cls._RUNTIME_OVERRIDE_MARKER in str(description or "")
 
     @staticmethod
     def _model_available() -> bool:
@@ -43,20 +128,12 @@ class AppSettingService:
 
     @classmethod
     def get_raw(cls, name: str, default: Any = None, *, require_override: bool = False) -> Any:
-        if not cls._model_available():
+        row = cls._load_all_rows().get(name)
+        if row is None:
             return default
-        try:
-            if require_override:
-                record = AppSetting.objects.filter(name=name).only("value", "updated_by_id").first()
-            else:
-                record = AppSetting.objects.filter(name=name).only("value").first()
-        except Exception:
+        if require_override and not cls._is_runtime_override(row):
             return default
-        if record is None:
-            return default
-        if require_override and not cls._is_runtime_override(record):
-            return default
-        return record.value
+        return row.get("value")
 
     @classmethod
     def set_raw(
@@ -67,20 +144,25 @@ class AppSettingService:
         scope: str = AppSettingScope.BACKEND,
         description: str = "",
         updated_by=None,
+        force_override: bool = False,
     ) -> None:
         if not cls._model_available():
             return
         try:
+            final_description = description or ""
+            if force_override and cls._RUNTIME_OVERRIDE_MARKER not in final_description:
+                final_description = f"{final_description}\n{cls._RUNTIME_OVERRIDE_MARKER}".strip()
             AppSetting.objects.update_or_create(
                 name=name,
                 defaults={
                     "value": value,
                     "scope": scope,
-                    "description": description or "",
+                    "description": final_description,
                     # Persist FK by id to support token-like auth users without a concrete model instance.
                     "updated_by_id": cls._resolve_updated_by_id(updated_by),
                 },
             )
+            cls.invalidate_cache()
         except Exception:
             logger.exception("Failed to persist AppSetting '%s'", name)
             return
@@ -91,19 +173,58 @@ class AppSettingService:
             return
         try:
             AppSetting.objects.filter(name=name).delete()
+            cls.invalidate_cache()
         except Exception:
             logger.exception("Failed to delete AppSetting '%s'", name)
             return
 
     @classmethod
     def get_scoped_values(cls, scopes: Iterable[str]) -> dict[str, str]:
-        if not cls._model_available():
-            return {}
-        try:
-            rows = AppSetting.objects.filter(scope__in=list(scopes)).values("name", "value")
-        except Exception:
-            return {}
-        return {str(row["name"]): str(row["value"]) for row in rows}
+        allowed_scopes = set(scopes)
+        rows = cls._load_all_rows()
+        return {
+            str(name): str(payload.get("value") or "")
+            for name, payload in rows.items()
+            if str(payload.get("scope") or "") in allowed_scopes
+        }
+
+    @classmethod
+    def get_metadata(
+        cls,
+        name: str,
+        *,
+        hardcoded_default: Any = None,
+        fallback_scope: str = AppSettingScope.BACKEND,
+        fallback_description: str = "",
+        effective_value: Any = None,
+    ) -> dict[str, Any]:
+        row = cls._load_all_rows().get(name)
+        runtime_override = cls._is_runtime_override(row)
+
+        if effective_value is None:
+            effective_value = cls.get_effective_raw(name, hardcoded_default)
+
+        env_value = os.getenv(name)
+        source = "hardcoded"
+        if runtime_override:
+            source = "database"
+        elif env_value is not None and str(env_value).strip() != "":
+            source = "env"
+        elif hasattr(settings, name):
+            source = "django"
+
+        return {
+            "name": name,
+            "value": row.get("value") if row else None,
+            "effectiveValue": effective_value,
+            "defaultValue": hardcoded_default,
+            "scope": row.get("scope") if row else fallback_scope,
+            "description": row.get("description") if row else fallback_description,
+            "source": source,
+            "updatedAt": row.get("updated_at") if row else None,
+            "updatedById": row.get("updated_by_id") if row else None,
+            "isOverridden": bool(runtime_override),
+        }
 
     @staticmethod
     def parse_bool(value: Any, default: bool = False) -> bool:

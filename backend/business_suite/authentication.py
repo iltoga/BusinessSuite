@@ -48,7 +48,9 @@ def ensure_mock_user() -> User:
 
 class JwtOrMockAuthentication(JWTAuthentication):
     def authenticate(self, request):
-        if getattr(settings, "MOCK_AUTH_ENABLED", False):
+        from core.services.app_setting_service import AppSettingService
+
+        if AppSettingService.parse_bool(AppSettingService.get_effective_raw("MOCK_AUTH_ENABLED", False), False):
             # Check query param for mock-token (useful for EventSource or generic downloads)
             token_param = getattr(request, "query_params", getattr(request, "GET", {})).get("token")
             if token_param == "mock-token":

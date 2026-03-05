@@ -601,7 +601,7 @@ describe('ServerManagementComponent - Cache Controls', () => {
       expect(component.aiWorkflowDraft()['OPENAI_DEFAULT_MODEL']).toBe('gpt-5');
     });
 
-    it('should autosave primary model by updating provider and provider default', () => {
+    it('should autosave primary model without mutating provider failover defaults', () => {
       component.aiWorkflowStatus.set({
         aiModels: {
           provider: 'openrouter',
@@ -660,7 +660,7 @@ describe('ServerManagementComponent - Cache Controls', () => {
       expect(req.request.method).toBe('PATCH');
       expect(req.request.body.settings).toEqual({
         LLM_PROVIDER: 'groq',
-        GROQ_DEFAULT_MODEL: 'meta-llama/llama-4-maverick-17b-128e-instruct',
+        LLM_DEFAULT_MODEL: 'meta-llama/llama-4-maverick-17b-128e-instruct',
       });
       req.flush({
         aiModels: {
@@ -669,8 +669,8 @@ describe('ServerManagementComponent - Cache Controls', () => {
           defaultModel: 'meta-llama/llama-4-maverick-17b-128e-instruct',
           settingsMap: {
             LLM_PROVIDER: 'groq',
-            GROQ_DEFAULT_MODEL: 'meta-llama/llama-4-maverick-17b-128e-instruct',
-            LLM_DEFAULT_MODEL: 'openai/gpt-5-mini',
+            GROQ_DEFAULT_MODEL: 'meta-llama/llama-4-scout-17b-16e-instruct',
+            LLM_DEFAULT_MODEL: 'meta-llama/llama-4-maverick-17b-128e-instruct',
           },
           runtimeSettings: [],
           workflowBindings: [],
@@ -686,7 +686,7 @@ describe('ServerManagementComponent - Cache Controls', () => {
 
       expect(component.aiWorkflowDraft()['LLM_PROVIDER']).toBe('groq');
       expect(component.aiWorkflowDraft()['GROQ_DEFAULT_MODEL']).toBe(
-        'meta-llama/llama-4-maverick-17b-128e-instruct',
+        'meta-llama/llama-4-scout-17b-16e-instruct',
       );
     });
   });

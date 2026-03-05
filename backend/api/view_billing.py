@@ -828,7 +828,7 @@ class InvoiceViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                 "currentProvider": AIRuntimeSettingsService.get_llm_provider(),
                 "currentModel": AIRuntimeSettingsService.get_llm_default_model(),
                 "runtimeSettings": runtime_settings,
-                "maxWorkers": getattr(django_settings, "INVOICE_IMPORT_MAX_WORKERS", 3),
+                "maxWorkers": AppSettingService.parse_int(AppSettingService.get_effective_raw("INVOICE_IMPORT_MAX_WORKERS", 3), 3),
                 "supportedFormats": [".pdf", ".xlsx", ".xls", ".docx", ".doc"],
             }
         )
