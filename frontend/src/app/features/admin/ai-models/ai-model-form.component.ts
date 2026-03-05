@@ -3,7 +3,18 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardButtonComponent } from '@/shared/components/button';
+import { extractServerErrorMessage } from '@/shared/utils/form-errors';
+
+interface OpenRouterModelResult {
+  provider?: string;
+  model_id?: string;
+  modelId?: string;
+  name?: string;
+  description?: string;
+  modality?: string;
+}
 
 @Component({
   selector: 'app-ai-model-form',
@@ -18,10 +29,13 @@ export class AiModelFormComponent implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly toast = inject(GlobalToastService);
 
   readonly isEdit = signal(false);
   readonly modelId = signal<number | null>(null);
-  readonly searchResults = signal<any[]>([]);
+  readonly searchResults = signal<OpenRouterModelResult[]>([]);
+  readonly isSaving = signal(false);
+  readonly saveError = signal<string | null>(null);
 
   readonly form = this.fb.group({
     provider: ['openrouter', Validators.required],
@@ -58,20 +72,49 @@ export class AiModelFormComponent implements OnInit {
       return;
     }
     const params = new HttpParams().set('q', q).set('limit', 10);
-    this.http.get<{ results: any[] }>('/api/ai-models/openrouter-search/', { params }).subscribe((resp) => {
+    this.http.get<{ results: OpenRouterModelResult[] }>('/api/ai-models/openrouter-search/', { params }).subscribe((resp) => {
       this.searchResults.set(resp.results ?? []);
     });
   }
 
-  useResult(row: any): void {
-    this.form.patchValue(row);
+  useResult(row: OpenRouterModelResult): void {
+    const modelId = row.model_id ?? row.modelId ?? '';
+    this.form.patchValue({
+      provider: row.provider ?? this.form.controls.provider.value,
+      model_id: modelId,
+      name: row.name ?? '',
+      description: row.description ?? '',
+      modality: row.modality ?? '',
+    });
+    this.form.controls.model_id.markAsTouched();
+    this.saveError.set(null);
   }
 
   save(): void {
+    this.form.markAllAsTouched();
+    if (this.form.invalid) {
+      this.toast.error('Please fill in all required fields before saving.');
+      return;
+    }
+
+    this.saveError.set(null);
+    this.isSaving.set(true);
+
     const payload = this.form.getRawValue();
     const id = this.modelId();
     const req = id ? this.http.put(`/api/ai-models/${id}/`, payload) : this.http.post('/api/ai-models/', payload);
-    req.subscribe(() => this.router.navigate(['/admin/ai-models']));
+    req.subscribe({
+      next: () => {
+        this.isSaving.set(false);
+        this.router.navigate(['/admin/ai-models']);
+      },
+      error: (error) => {
+        this.isSaving.set(false);
+        const message = extractServerErrorMessage(error) || 'Unable to save AI model.';
+        this.saveError.set(message);
+        this.toast.error(message);
+      },
+    });
   }
 
   delete(): void {
