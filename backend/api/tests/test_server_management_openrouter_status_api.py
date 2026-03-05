@@ -217,6 +217,38 @@ class ServerManagementOpenRouterStatusApiTests(TestCase):
         self.assertIn(AIUsageFeature.PASSPORT_CHECK_API, feature_names)
 
     @override_settings(
+        OPENROUTER_API_KEY="test-key",
+        OPENAI_API_KEY="openai-test-key",
+        LLM_PROVIDER="openrouter",
+        LLM_DEFAULT_MODEL="google/gemini-3-flash-preview",
+        OPENROUTER_DEFAULT_MODEL="openai/gpt-4.1-mini",
+        LLM_AUTO_FALLBACK_ENABLED=True,
+        LLM_FALLBACK_PROVIDER_ORDER=["openrouter", "openai"],
+    )
+    def test_openrouter_status_allows_openrouter_in_failover_order_when_primary_is_openrouter(self):
+        response = self.client.get("/api/server-management/openrouter-status/")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(
+            payload["aiModels"]["failover"]["configuredProviderOrder"],
+            ["openrouter", "openai"],
+        )
+        self.assertEqual(
+            payload["aiModels"]["failover"]["effectiveProviderOrder"],
+            ["openrouter", "openai"],
+        )
+
+        invoice_feature = next(
+            feature
+            for feature in payload["aiModels"]["features"]
+            if feature["feature"] == AIUsageFeature.INVOICE_IMPORT_AI_PARSER
+        )
+        self.assertEqual(invoice_feature["failoverProviders"][0]["provider"], "openrouter")
+        self.assertEqual(invoice_feature["failoverProviders"][0]["model"], "openai/gpt-4.1-mini")
+        self.assertTrue(invoice_feature["failoverProviders"][0]["active"])
+
+    @override_settings(
         OPENROUTER_API_KEY="",
         LLM_PROVIDER="openrouter",
         OPENROUTER_DEFAULT_MODEL="openai/gpt-5-mini",

@@ -186,7 +186,7 @@
               <label class="inline-flex items-center gap-2 text-xs">
                 <input
                   type="checkbox"
-                  [disabled]="aiWorkflowSaving() || providerKey === getAiSettingValue('LLM_PROVIDER')"
+                  [disabled]="aiWorkflowSaving()"
                   [checked]="getDraftFallbackProviderOrder().includes(providerKey)"
                   (change)="toggleFallbackProvider(providerKey, $any($event.target).checked)"
                 />
