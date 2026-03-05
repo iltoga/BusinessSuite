@@ -124,6 +124,12 @@ export class MenuService {
           visible: () => this.authService.isInAdminGroup(),
         },
         {
+          id: 'admin-application-settings',
+          label: 'Application Settings',
+          route: '/admin/application-settings',
+          visible: () => this.authService.isInAdminGroup(),
+        },
+        {
           id: 'admin-system-costs',
           label: 'System Costs',
           route: '/admin/systemcosts',
