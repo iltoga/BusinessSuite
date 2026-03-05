@@ -1154,7 +1154,7 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             for candidate in fallback_candidates:
                 if candidate not in provider_names:
                     continue
-                if candidate == primary_provider or candidate in configured:
+                if candidate in configured:
                     continue
                 configured.append(candidate)
             return configured
