@@ -74,6 +74,15 @@ export const adminRoutes: Routes = [
       ),
   },
   {
+    path: 'application-settings',
+    title: 'Application Settings',
+    canActivate: [adminGroupGuard],
+    loadComponent: () =>
+      import('./application-settings/application-settings.component').then(
+        (c) => c.ApplicationSettingsComponent,
+      ),
+  },
+  {
     path: 'systemcosts',
     title: 'System Costs',
     canActivate: [adminGroupGuard],

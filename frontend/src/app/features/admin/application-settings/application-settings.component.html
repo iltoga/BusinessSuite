@@ -1,0 +1,120 @@
+<div class="space-y-6">
+  <div class="flex flex-wrap items-start justify-between gap-3">
+    <h1 class="text-2xl font-bold tracking-tight">Application Settings</h1>
+  </div>
+
+  <z-card class="p-6">
+    <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+      <h3 class="text-lg font-medium">Manage Settings</h3>
+      <button
+        z-button
+        zType="outline"
+        class="w-full sm:w-auto"
+        (click)="loadAppSettings()"
+        [zDisabled]="appSettingsLoading()"
+      >
+        @if (appSettingsLoading()) {
+          <span>Refreshing...</span>
+        } @else {
+          <span>Refresh</span>
+        }
+      </button>
+    </div>
+
+    <div class="grid grid-cols-1 gap-2 rounded border border-border/70 bg-muted/20 p-3 lg:grid-cols-5">
+      <input
+        class="h-9 rounded-md border border-input bg-background px-2 text-xs"
+        placeholder="NAME"
+        [value]="appSettingDraft().name"
+        (input)="setAppSettingDraftField('name', $event)"
+      />
+      <input
+        class="h-9 rounded-md border border-input bg-background px-2 text-xs"
+        placeholder="Value"
+        [value]="appSettingDraft().value"
+        (input)="setAppSettingDraftField('value', $event)"
+      />
+      <select
+        class="h-9 rounded-md border border-input bg-background px-2 text-xs"
+        [value]="appSettingDraft().scope"
+        (change)="setAppSettingDraftField('scope', $event)"
+      >
+        <option value="backend">backend</option>
+        <option value="frontend">frontend</option>
+        <option value="both">both</option>
+      </select>
+      <button z-button zType="default" class="h-9 text-xs" (click)="createAppSetting()">Save</button>
+      <input
+        class="h-9 rounded-md border border-input bg-background px-2 text-xs lg:col-span-5"
+        placeholder="Description (optional)"
+        [value]="appSettingDraft().description"
+        (input)="setAppSettingDraftField('description', $event)"
+      />
+    </div>
+
+    <div class="mt-4 overflow-x-auto">
+      <table class="min-w-full text-[11px] leading-4">
+        <thead>
+          <tr class="border-b border-border/70 text-left text-muted-foreground">
+            <th class="px-1.5 py-1">Name</th>
+            <th class="px-1.5 py-1">DB Value</th>
+            <th class="px-1.5 py-1">Effective</th>
+            <th class="px-1.5 py-1">Source</th>
+            <th class="px-1.5 py-1">Scope</th>
+            <th class="px-1.5 py-1 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of appSettings(); track item.name) {
+            <tr class="border-b border-border/40 align-middle">
+              <td class="px-1.5 py-1 font-mono whitespace-nowrap">{{ item.name }}</td>
+              <td class="px-1.5 py-1">
+                <input
+                  #settingValue
+                  class="h-7 w-44 rounded-md border border-input bg-background px-1.5 font-mono text-[11px]"
+                  [value]="item.value ?? ''"
+                />
+              </td>
+              <td class="px-1.5 py-1 font-mono whitespace-nowrap">{{ item.effectiveValue }}</td>
+              <td class="px-1.5 py-1 whitespace-nowrap">{{ item.source }}</td>
+              <td class="px-1.5 py-1 whitespace-nowrap">{{ item.scope }}</td>
+              <td class="px-1.5 py-1 text-right">
+                <button
+                  z-dropdown
+                  [zDropdownMenu]="rowActionsMenu"
+                  z-button
+                  zType="ghost"
+                  zSize="sm"
+                  type="button"
+                  class="h-7 w-7 p-0"
+                  aria-label="Setting actions"
+                  aria-haspopup="menu"
+                >
+                  <z-icon zType="ellipsis-vertical" />
+                </button>
+
+                <z-dropdown-menu-content #rowActionsMenu class="z-50 min-w-40">
+                  <button
+                    z-dropdown-menu-item
+                    type="button"
+                    (click)="updateAppSetting(item, settingValue.value)"
+                  >
+                    Save
+                  </button>
+                  <button z-dropdown-menu-item variant="destructive" type="button" (click)="deleteAppSetting(item.name)">
+                    Delete
+                  </button>
+                </z-dropdown-menu-content>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <p class="mt-2 text-xs text-muted-foreground">
+      Deleting a DB setting falls back automatically to env, Django setting, or hardcoded defaults
+      based on precedence.
+    </p>
+  </z-card>
+</div>
