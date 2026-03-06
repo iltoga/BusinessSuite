@@ -204,6 +204,26 @@ class AIClient:
             return sticky
         return requested_provider
 
+    def _provider_default_model(self, provider: str) -> str:
+        if provider == "openrouter":
+            return (
+                AIRuntimeSettingsService.get_openrouter_default_model()
+                or AIRuntimeSettingsService.get_llm_default_model()
+                or "google/gemini-3-flash-preview"
+            )
+        if provider == "openai":
+            configured_provider = AIRuntimeSettingsService.get_llm_provider()
+            if configured_provider == "openai":
+                return (
+                    AIRuntimeSettingsService.get_llm_default_model()
+                    or AIRuntimeSettingsService.get_openai_default_model()
+                    or "gpt-4o-mini"
+                )
+            return AIRuntimeSettingsService.get_openai_default_model() or "gpt-4o-mini"
+        if provider == "groq":
+            return AIRuntimeSettingsService.get_groq_default_model()
+        return ""
+
     def _configured_fallback_order(self, primary_provider: str) -> list[str]:
         values = AIRuntimeSettingsService.get_fallback_provider_order()
         if not values and primary_provider == "groq":
@@ -215,18 +235,45 @@ class AIClient:
             if normalized not in self.SUPPORTED_PROVIDERS:
                 logger.warning("Ignoring unsupported fallback provider '%s'.", provider)
                 continue
-            if normalized == primary_provider or normalized in deduped:
+            if normalized in deduped:
                 continue
             deduped.append(normalized)
         return deduped
 
-    def _fallback_candidates(self, primary_provider: str) -> list[str]:
+    def _fallback_candidates(self, primary_provider: str, primary_model: str) -> list[tuple[str, str]]:
         if not self._router_enabled():
             return []
-        candidates: list[str] = []
+
+        candidates: list[tuple[str, str]] = []
+        seen: set[tuple[str, str]] = set()
+        primary = (primary_provider, str(primary_model or "").strip())
+
+        configured_models = AIRuntimeSettingsService.get_fallback_model_order()
+        for model_id in configured_models:
+            provider = AIRuntimeSettingsService.get_provider_for_model(model_id)
+            if not provider:
+                continue
+            normalized_model = str(model_id).strip()
+            route = (provider, normalized_model)
+            if route == primary or route in seen:
+                continue
+            if not self._is_provider_available(provider):
+                logger.warning("Skipping fallback model '%s' because provider '%s' is unavailable.", normalized_model, provider)
+                continue
+            seen.add(route)
+            candidates.append(route)
+
+        if candidates:
+            return candidates
+
         for provider in self._configured_fallback_order(primary_provider):
             if self._is_provider_available(provider):
-                candidates.append(provider)
+                model = self._provider_default_model(provider)
+                route = (provider, str(model or "").strip())
+                if not route[1] or route == primary or route in seen:
+                    continue
+                seen.add(route)
+                candidates.append(route)
             else:
                 logger.warning("Skipping fallback provider '%s' because it is not configured.", provider)
         return candidates
@@ -281,7 +328,7 @@ class AIClient:
             or AIRuntimeSettingsService.get_llm_default_model()
             or "google/gemini-3-flash-preview"
         )
-        model = self._model_override or effective_default_model
+        model = self._model_override_for_provider("openrouter") or effective_default_model
 
         base_url = AIRuntimeSettingsService.get("OPENROUTER_API_BASE_URL")
         timeout = self._timeout_override or AIRuntimeSettingsService.get_openrouter_timeout()
@@ -313,7 +360,7 @@ class AIClient:
         else:
             default_model = openai_default_model or "gpt-4o-mini"
 
-        model = self._model_override or default_model
+        model = self._model_override_for_provider("openai") or default_model
         timeout = self._timeout_override or AIRuntimeSettingsService.get_openai_timeout()
         client = OpenAI(
             api_key=api_key,
@@ -338,7 +385,7 @@ class AIClient:
             raise ValueError("Groq API key not configured. Set GROQ_API_KEY in settings or .env file.")
 
         default_model = AIRuntimeSettingsService.get_groq_default_model()
-        model = self._model_override or default_model
+        model = self._model_override_for_provider("groq") or default_model
         timeout = self._timeout_override or float(getattr(settings, "GROQ_TIMEOUT", 120.0))
         client = Groq(api_key=api_key, timeout=timeout)
         logger.info("Initialized AI client with Groq (model: %s, timeout: %ss)", model, timeout)
@@ -375,12 +422,16 @@ class AIClient:
         if response_format:
             request_kwargs["response_format"] = response_format
 
-        attempted_providers = [self.provider_key] + self._fallback_candidates(self.provider_key)
+        attempted_routes = [(self.provider_key, self.model)] + self._fallback_candidates(
+            self.provider_key,
+            self.model,
+        )
         last_error: Optional[AIConnectionError] = None
 
-        for index, provider in enumerate(attempted_providers):
+        for index, (provider, model) in enumerate(attempted_routes):
             if provider != self.provider_key:
                 self._activate_provider(provider)
+            self.model = model
 
             try:
                 result = self._chat_completion_single_attempt(
@@ -392,15 +443,17 @@ class AIClient:
                 return result
             except AIConnectionError as exc:
                 last_error = exc
-                is_last_attempt = index >= len(attempted_providers) - 1
+                is_last_attempt = index >= len(attempted_routes) - 1
                 should_retry = exc.error_code in self.RETRIABLE_ERROR_CODES and not is_last_attempt
                 if not should_retry:
                     raise
                 logger.warning(
-                    "AI provider '%s' failed with %s. Retrying with fallback provider '%s'.",
+                    "AI provider '%s' model '%s' failed with %s. Retrying with fallback provider '%s' model '%s'.",
                     self.provider_key,
+                    self.model,
                     exc.error_code,
-                    attempted_providers[index + 1],
+                    attempted_routes[index + 1][0],
+                    attempted_routes[index + 1][1],
                 )
 
         if last_error is not None:
@@ -445,6 +498,20 @@ class AIClient:
         if self.provider_key == "groq" and groq is not None:
             return getattr(groq, name, fallback)
         return fallback
+
+    def _model_override_for_provider(self, provider: str) -> str | None:
+        normalized_override = str(self._model_override or "").strip()
+        if not normalized_override:
+            return None
+
+        normalized_provider = self._normalize_provider(provider, strict=False)
+        matching_provider = AIRuntimeSettingsService.get_provider_for_model(
+            normalized_override,
+            fallback=normalized_provider,
+        )
+        if matching_provider != normalized_provider:
+            return None
+        return normalized_override
 
     @staticmethod
     def _extract_provider_error_code(exc: BaseException) -> str:

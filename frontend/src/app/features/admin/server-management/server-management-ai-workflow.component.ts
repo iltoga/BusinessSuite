@@ -41,7 +41,8 @@ export class ServerManagementAiWorkflowComponent {
     this.facade.onPrimaryModelValueChange(value);
   readonly getAiSettingValue = (name: string | null | undefined) =>
     this.facade.getAiSettingValue(name);
-  readonly getAiSettingBool = (name: string | null | undefined) => this.facade.getAiSettingBool(name);
+  readonly getAiSettingBool = (name: string | null | undefined) =>
+    this.facade.getAiSettingBool(name);
   readonly setAiSettingNumberFromEvent = (name: string, event: Event) =>
     this.facade.setAiSettingNumberFromEvent(name, event);
   readonly onModelSettingComboboxChange = (
@@ -53,10 +54,18 @@ export class ServerManagementAiWorkflowComponent {
   readonly setAiSettingBoolFromEvent = (name: string, event: Event) =>
     this.facade.setAiSettingBoolFromEvent(name, event);
   readonly getProviderKeys = () => this.facade.getProviderKeys();
-  readonly getDraftFallbackProviderOrder = () => this.facade.getDraftFallbackProviderOrder();
-  readonly toggleFallbackProvider = (provider: string, enabled: boolean) =>
-    this.facade.toggleFallbackProvider(provider, enabled);
-  readonly getProviderDisplayName = (provider: string) => this.facade.getProviderDisplayName(provider);
+  readonly getDraftFallbackModelOrder = () => this.facade.getDraftFallbackModelOrder();
+  readonly addFallbackModel = (value: string | string[] | null) =>
+    this.facade.addFallbackModel(value);
+  readonly removeFallbackModel = (index: number) => this.facade.removeFallbackModel(index);
+  readonly moveFallbackModel = (index: number, direction: -1 | 1) =>
+    this.facade.moveFallbackModel(index, direction);
+  readonly getProviderDisplayName = (provider: string) =>
+    this.facade.getProviderDisplayName(provider);
+  readonly getProviderForModelLabel = (modelId: string) =>
+    this.facade.getProviderForModelLabel(modelId);
+  readonly getConfiguredFailoverOrderLabel = (status: any) =>
+    this.facade.getConfiguredFailoverOrderLabel(status);
   readonly getFeatureProvider = (feature: any) => this.facade.getFeatureProvider(feature);
   readonly findModelDefinitionForSetting = (
     settingName: string | null | undefined,
@@ -66,5 +75,6 @@ export class ServerManagementAiWorkflowComponent {
   readonly formatModelCapabilities = (model: any) => this.facade.formatModelCapabilities(model);
   readonly getFailoverProviderBadgeType = (provider: any) =>
     this.facade.getFailoverProviderBadgeType(provider);
-  readonly getFailoverProviderStatus = (provider: any) => this.facade.getFailoverProviderStatus(provider);
+  readonly getFailoverProviderStatus = (provider: any) =>
+    this.facade.getFailoverProviderStatus(provider);
 }

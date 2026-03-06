@@ -109,6 +109,12 @@ AI_RUNTIME_SETTING_DEFINITIONS: dict[str, RuntimeSettingDefinition] = {
         scope=AppSettingScope.BACKEND,
         description="Comma-separated provider order used for failover.",
     ),
+    "LLM_FALLBACK_MODEL_ORDER": RuntimeSettingDefinition(
+        name="LLM_FALLBACK_MODEL_ORDER",
+        value_type="list",
+        scope=AppSettingScope.BACKEND,
+        description="Comma-separated model order used for failover retries.",
+    ),
     "LLM_FALLBACK_STICKY_SECONDS": RuntimeSettingDefinition(
         name="LLM_FALLBACK_STICKY_SECONDS",
         value_type="int",
@@ -457,6 +463,10 @@ class AIRuntimeSettingsService:
                 AIRuntimeSettingsService._default_from_settings_and_env("LLM_FALLBACK_PROVIDER_ORDER", []),
                 [],
             ),
+            "LLM_FALLBACK_MODEL_ORDER": AppSettingService.parse_list(
+                AIRuntimeSettingsService._default_from_settings_and_env("LLM_FALLBACK_MODEL_ORDER", []),
+                [],
+            ),
             "LLM_FALLBACK_STICKY_SECONDS": int(
                 AIRuntimeSettingsService._default_from_settings_and_env("LLM_FALLBACK_STICKY_SECONDS", 3600)
             ),
@@ -719,6 +729,21 @@ class AIRuntimeSettingsService:
         return providers
 
     @classmethod
+    def get_fallback_model_order(cls) -> list[str]:
+        model_ids = cls._all_model_ids()
+        models: list[str] = []
+        seen: set[str] = set()
+        for model in cls.get("LLM_FALLBACK_MODEL_ORDER"):
+            normalized = str(model).strip()
+            if not normalized or normalized in seen:
+                continue
+            if model_ids and normalized not in model_ids:
+                continue
+            seen.add(normalized)
+            models.append(normalized)
+        return models
+
+    @classmethod
     def get_fallback_sticky_seconds(cls) -> int:
         value = int(cls.get("LLM_FALLBACK_STICKY_SECONDS"))
         return value if value > 0 else 3600
@@ -944,6 +969,13 @@ class AIRuntimeSettingsService:
             if invalid:
                 raise ValueError(f"LLM_FALLBACK_PROVIDER_ORDER contains unsupported providers: {invalid}.")
             normalized_updates["LLM_FALLBACK_PROVIDER_ORDER"] = ",".join(dict.fromkeys(providers))
+
+        if "LLM_FALLBACK_MODEL_ORDER" in normalized_updates:
+            models = AppSettingService.parse_list(normalized_updates["LLM_FALLBACK_MODEL_ORDER"], [])
+            unknown = [model for model in models if model not in model_ids]
+            if unknown:
+                raise ValueError(f"LLM_FALLBACK_MODEL_ORDER contains unknown models: {unknown}.")
+            normalized_updates["LLM_FALLBACK_MODEL_ORDER"] = ",".join(dict.fromkeys(models))
 
         for name, normalized_value in normalized_updates.items():
             if name in _MODEL_SETTING_KEYS and normalized_value and normalized_value not in model_ids:
