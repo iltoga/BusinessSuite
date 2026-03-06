@@ -170,14 +170,23 @@ export class HelpService {
   }
 
   setContextForPath(path: string) {
+    const normalizedPath = String(path || '')
+      .split('?')[0]
+      .split('#')[0];
+
+    if (/^\/products\/[^/]+\/edit$/.test(normalizedPath)) {
+      this.setContextById('/products/new');
+      return;
+    }
+
     // Match by longest prefix
     let match: HelpContext | null = null;
     let matchLen = -1;
     for (const [id, ctx] of this.registry.entries()) {
-      if (path === id && id.length > matchLen) {
+      if (normalizedPath === id && id.length > matchLen) {
         match = ctx;
         matchLen = id.length;
-      } else if (path.startsWith(id) && id.length > matchLen) {
+      } else if (normalizedPath.startsWith(id) && id.length > matchLen) {
         match = ctx;
         matchLen = id.length;
       }

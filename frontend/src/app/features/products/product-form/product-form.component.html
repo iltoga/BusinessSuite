@@ -37,7 +37,13 @@
         <div class="p-6">
           <div class="grid gap-6 md:grid-cols-12">
             <div class="md:col-span-6 space-y-2">
-              <label class="text-sm font-medium">Name</label>
+              <label class="text-sm font-medium inline-flex items-center gap-1"
+                >Name
+                <z-icon
+                  zType="info"
+                  class="h-3.5 w-3.5 text-muted-foreground"
+                  [zTooltip]="fieldTooltips['name']"
+              /></label>
               <input
                 z-input
                 formControlName="name"
@@ -49,7 +55,13 @@
               />
             </div>
             <div class="md:col-span-6 space-y-2">
-              <label class="text-sm font-medium">Code</label>
+              <label class="text-sm font-medium inline-flex items-center gap-1"
+                >Code
+                <z-icon
+                  zType="info"
+                  class="h-3.5 w-3.5 text-muted-foreground"
+                  [zTooltip]="fieldTooltips['code']"
+              /></label>
               <input
                 z-input
                 formControlName="code"
@@ -61,7 +73,13 @@
               />
             </div>
             <div class="md:col-span-3 space-y-2">
-              <label class="text-sm font-medium">Product type</label>
+              <label class="text-sm font-medium inline-flex items-center gap-1"
+                >Product type
+                <z-icon
+                  zType="info"
+                  class="h-3.5 w-3.5 text-muted-foreground"
+                  [zTooltip]="fieldTooltips['productType']"
+              /></label>
               <select
                 class="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus:ring-2 focus:ring-ring focus:outline-none"
                 formControlName="productType"
@@ -74,7 +92,13 @@
               </select>
             </div>
             <div class="md:col-span-3 space-y-2">
-              <label class="text-sm font-medium">Currency</label>
+              <label class="text-sm font-medium inline-flex items-center gap-1"
+                >Currency
+                <z-icon
+                  zType="info"
+                  class="h-3.5 w-3.5 text-muted-foreground"
+                  [zTooltip]="fieldTooltips['currency']"
+              /></label>
               <input
                 z-input
                 formControlName="currency"
@@ -91,7 +115,13 @@
               <p class="text-xs text-muted-foreground">Use 2-3 letters (e.g. IDR, USD, EUR).</p>
             </div>
             <div class="md:col-span-3 space-y-2">
-              <label class="text-sm font-medium">Base price</label>
+              <label class="text-sm font-medium inline-flex items-center gap-1"
+                >Base price
+                <z-icon
+                  zType="info"
+                  class="h-3.5 w-3.5 text-muted-foreground"
+                  [zTooltip]="fieldTooltips['basePrice']"
+              /></label>
               <input
                 z-input
                 formControlName="basePrice"
@@ -106,7 +136,13 @@
               />
             </div>
             <div class="md:col-span-3 space-y-2">
-              <label class="text-sm font-medium">Retail price</label>
+              <label class="text-sm font-medium inline-flex items-center gap-1"
+                >Retail price
+                <z-icon
+                  zType="info"
+                  class="h-3.5 w-3.5 text-muted-foreground"
+                  [zTooltip]="fieldTooltips['retailPrice']"
+              /></label>
               <input
                 z-input
                 formControlName="retailPrice"
@@ -126,7 +162,13 @@
               }
             </div>
             <div class="md:col-span-3 space-y-2">
-              <label class="text-sm font-medium">Validity (days)</label>
+              <label class="text-sm font-medium inline-flex items-center gap-1"
+                >Validity (days)
+                <z-icon
+                  zType="info"
+                  class="h-3.5 w-3.5 text-muted-foreground"
+                  [zTooltip]="fieldTooltips['validity']"
+              /></label>
               <input
                 z-input
                 formControlName="validity"
@@ -141,7 +183,13 @@
             </div>
 
             <div class="md:col-span-6 space-y-2">
-              <label class="text-sm font-medium">{{ documentsMinValidityLabel() }}</label>
+              <label class="text-sm font-medium inline-flex items-center gap-1"
+                >{{ documentsMinValidityLabel() }}
+                <z-icon
+                  zType="info"
+                  class="h-3.5 w-3.5 text-muted-foreground"
+                  [zTooltip]="fieldTooltips['documentsMinValidity']"
+              /></label>
               <input
                 z-input
                 formControlName="documentsMinValidity"
@@ -157,7 +205,13 @@
             </div>
 
             <div class="md:col-span-6 space-y-2">
-              <label class="text-sm font-medium">{{ applicationWindowDaysLabel() }}</label>
+              <label class="text-sm font-medium inline-flex items-center gap-1"
+                >{{ applicationWindowDaysLabel() }}
+                <z-icon
+                  zType="info"
+                  class="h-3.5 w-3.5 text-muted-foreground"
+                  [zTooltip]="fieldTooltips['applicationWindowDays']"
+              /></label>
               <input
                 z-input
                 formControlName="applicationWindowDays"
@@ -173,7 +227,13 @@
             </div>
 
             <div class="md:col-span-12 space-y-2">
-              <label class="text-sm font-medium">Description</label>
+              <label class="text-sm font-medium inline-flex items-center gap-1"
+                >Description
+                <z-icon
+                  zType="info"
+                  class="h-3.5 w-3.5 text-muted-foreground"
+                  [zTooltip]="fieldTooltips['description']"
+              /></label>
               <textarea
                 z-input
                 formControlName="description"
@@ -185,6 +245,11 @@
             <div class="md:col-span-12 space-y-2">
               <label class="text-sm font-medium"
                 >AI Validation Prompt
+                <z-icon
+                  zType="info"
+                  class="h-3.5 w-3.5 text-muted-foreground"
+                  [zTooltip]="fieldTooltips['validationPrompt']"
+                />
                 <span class="text-muted-foreground font-normal">(optional)</span></label
               >
               <textarea
@@ -211,14 +276,28 @@
         </div>
         <div class="p-6">
           <div class="flex flex-col gap-4">
+            <div class="text-sm font-medium inline-flex items-center gap-1">
+              Required documents
+              <z-icon
+                zType="info"
+                class="h-3.5 w-3.5 text-muted-foreground"
+                [zTooltip]="fieldTooltips['requiredDocumentIds']"
+              />
+            </div>
             <app-sortable-multi-select
-              [label]="'Required documents'"
               [options]="requiredOptions()"
               [selectedIds]="form.get('requiredDocumentIds')?.value ?? []"
               (selectedIdsChange)="onRequiredDocsChange($event)"
             />
+            <div class="text-sm font-medium inline-flex items-center gap-1 mt-2">
+              Optional documents
+              <z-icon
+                zType="info"
+                class="h-3.5 w-3.5 text-muted-foreground"
+                [zTooltip]="fieldTooltips['optionalDocumentIds']"
+              />
+            </div>
             <app-sortable-multi-select
-              [label]="'Optional documents'"
               [options]="optionalOptions()"
               [selectedIds]="form.get('optionalDocumentIds')?.value ?? []"
               (selectedIdsChange)="onOptionalDocsChange($event)"
@@ -272,7 +351,13 @@
 
                 <div class="grid gap-3 md:grid-cols-2">
                   <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium">Step</label>
+                    <label class="text-sm font-medium inline-flex items-center gap-1"
+                      >Step
+                      <z-icon
+                        zType="info"
+                        class="h-3.5 w-3.5 text-muted-foreground"
+                        [zTooltip]="fieldTooltips['taskStep']"
+                    /></label>
                     <input
                       z-input
                       formControlName="step"
@@ -284,7 +369,13 @@
                     />
                   </div>
                   <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium">Task name</label>
+                    <label class="text-sm font-medium inline-flex items-center gap-1"
+                      >Task name
+                      <z-icon
+                        zType="info"
+                        class="h-3.5 w-3.5 text-muted-foreground"
+                        [zTooltip]="fieldTooltips['taskName']"
+                    /></label>
                     <input
                       z-input
                       formControlName="name"
@@ -295,15 +386,33 @@
                     />
                   </div>
                   <div class="md:col-span-2 flex flex-col gap-2">
-                    <label class="text-sm font-medium">Description</label>
+                    <label class="text-sm font-medium inline-flex items-center gap-1"
+                      >Description
+                      <z-icon
+                        zType="info"
+                        class="h-3.5 w-3.5 text-muted-foreground"
+                        [zTooltip]="fieldTooltips['taskDescription']"
+                    /></label>
                     <textarea z-input formControlName="description" rows="2"></textarea>
                   </div>
                   <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium">Cost</label>
+                    <label class="text-sm font-medium inline-flex items-center gap-1"
+                      >Cost
+                      <z-icon
+                        zType="info"
+                        class="h-3.5 w-3.5 text-muted-foreground"
+                        [zTooltip]="fieldTooltips['taskCost']"
+                    /></label>
                     <input z-input formControlName="cost" type="number" min="0" />
                   </div>
                   <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium">Duration (days)</label>
+                    <label class="text-sm font-medium inline-flex items-center gap-1"
+                      >Duration (days)
+                      <z-icon
+                        zType="info"
+                        class="h-3.5 w-3.5 text-muted-foreground"
+                        [zTooltip]="fieldTooltips['taskDuration']"
+                    /></label>
                     <input
                       z-input
                       formControlName="duration"
@@ -317,7 +426,13 @@
                     />
                   </div>
                   <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium">Add task to calendar</label>
+                    <label class="text-sm font-medium inline-flex items-center gap-1"
+                      >Add task to calendar
+                      <z-icon
+                        zType="info"
+                        class="h-3.5 w-3.5 text-muted-foreground"
+                        [zTooltip]="fieldTooltips['taskAddToCalendar']"
+                    /></label>
                     <input
                       type="checkbox"
                       class="h-4 w-4 rounded border-muted-foreground/40 text-primary"
@@ -325,7 +440,13 @@
                     />
                   </div>
                   <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium">Notify user</label>
+                    <label class="text-sm font-medium inline-flex items-center gap-1"
+                      >Notify user
+                      <z-icon
+                        zType="info"
+                        class="h-3.5 w-3.5 text-muted-foreground"
+                        [zTooltip]="fieldTooltips['taskNotifyCustomer']"
+                    /></label>
                     <input
                       type="checkbox"
                       class="h-4 w-4 rounded border-muted-foreground/40 text-primary"
@@ -334,7 +455,13 @@
                   </div>
                   @if (task.get('addTaskToCalendar')?.value) {
                     <div class="flex flex-col gap-2">
-                      <label class="text-sm font-medium">Notify days before</label>
+                      <label class="text-sm font-medium inline-flex items-center gap-1"
+                        >Notify days before
+                        <z-icon
+                          zType="info"
+                          class="h-3.5 w-3.5 text-muted-foreground"
+                          [zTooltip]="fieldTooltips['taskNotifyDaysBefore']"
+                      /></label>
                       <input
                         z-input
                         formControlName="notifyDaysBefore"
@@ -350,7 +477,13 @@
                       />
                     </div>
                     <div class="flex flex-col gap-2">
-                      <label class="text-sm font-medium">Business days?</label>
+                      <label class="text-sm font-medium inline-flex items-center gap-1"
+                        >Business days?
+                        <z-icon
+                          zType="info"
+                          class="h-3.5 w-3.5 text-muted-foreground"
+                          [zTooltip]="fieldTooltips['taskDurationIsBusinessDays']"
+                      /></label>
                       <input
                         type="checkbox"
                         class="h-4 w-4 rounded border-muted-foreground/40 text-primary"
@@ -359,7 +492,13 @@
                     </div>
                   }
                   <div class="flex flex-col gap-2">
-                    <label class="text-sm font-medium">Last step</label>
+                    <label class="text-sm font-medium inline-flex items-center gap-1"
+                      >Last step
+                      <z-icon
+                        zType="info"
+                        class="h-3.5 w-3.5 text-muted-foreground"
+                        [zTooltip]="fieldTooltips['taskLastStep']"
+                    /></label>
                     <input
                       type="checkbox"
                       class="h-4 w-4 rounded border-muted-foreground/40 text-primary"
