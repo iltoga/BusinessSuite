@@ -281,7 +281,7 @@ class AIClient:
             or AIRuntimeSettingsService.get_llm_default_model()
             or "google/gemini-3-flash-preview"
         )
-        model = self._model_override or effective_default_model
+        model = self._model_override_for_provider("openrouter") or effective_default_model
 
         base_url = AIRuntimeSettingsService.get("OPENROUTER_API_BASE_URL")
         timeout = self._timeout_override or AIRuntimeSettingsService.get_openrouter_timeout()
@@ -313,7 +313,7 @@ class AIClient:
         else:
             default_model = openai_default_model or "gpt-4o-mini"
 
-        model = self._model_override or default_model
+        model = self._model_override_for_provider("openai") or default_model
         timeout = self._timeout_override or AIRuntimeSettingsService.get_openai_timeout()
         client = OpenAI(
             api_key=api_key,
@@ -338,7 +338,7 @@ class AIClient:
             raise ValueError("Groq API key not configured. Set GROQ_API_KEY in settings or .env file.")
 
         default_model = AIRuntimeSettingsService.get_groq_default_model()
-        model = self._model_override or default_model
+        model = self._model_override_for_provider("groq") or default_model
         timeout = self._timeout_override or float(getattr(settings, "GROQ_TIMEOUT", 120.0))
         client = Groq(api_key=api_key, timeout=timeout)
         logger.info("Initialized AI client with Groq (model: %s, timeout: %ss)", model, timeout)
@@ -445,6 +445,20 @@ class AIClient:
         if self.provider_key == "groq" and groq is not None:
             return getattr(groq, name, fallback)
         return fallback
+
+    def _model_override_for_provider(self, provider: str) -> str | None:
+        normalized_override = str(self._model_override or "").strip()
+        if not normalized_override:
+            return None
+
+        normalized_provider = self._normalize_provider(provider, strict=False)
+        matching_provider = AIRuntimeSettingsService.get_provider_for_model(
+            normalized_override,
+            fallback=normalized_provider,
+        )
+        if matching_provider != normalized_provider:
+            return None
+        return normalized_override
 
     @staticmethod
     def _extract_provider_error_code(exc: BaseException) -> str:
