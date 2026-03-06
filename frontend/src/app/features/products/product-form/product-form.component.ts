@@ -26,6 +26,7 @@ import { ZardCardComponent } from '@/shared/components/card';
 import { FormErrorSummaryComponent } from '@/shared/components/form-error-summary/form-error-summary.component';
 import { ZardIconComponent } from '@/shared/components/icon';
 import { ZardInputDirective } from '@/shared/components/input';
+import { ZardTooltipImports } from '@/shared/components/tooltip';
 import {
   SortableMultiSelectComponent,
   type SortableOption,
@@ -45,6 +46,7 @@ type ProductTask = NonNullable<ProductDetail['tasks']>[number];
     ZardCardComponent,
     SortableMultiSelectComponent,
     ZardIconComponent,
+    ...ZardTooltipImports,
     FormErrorSummaryComponent,
   ],
   templateUrl: './product-form.component.html',
@@ -124,6 +126,35 @@ export class ProductFormComponent implements OnInit {
     tasks: 'Tasks',
   };
 
+  readonly fieldTooltips: Record<string, string> = {
+    name: 'Display name shown to your team when selecting this product.',
+    code: 'Unique internal code used in search, reports, and references.',
+    productType: 'Controls visa-specific labels and related workflow expectations.',
+    currency: '2-3 letter currency code used for pricing (for example IDR or USD).',
+    basePrice: 'Your internal/base cost for this product.',
+    retailPrice: 'Customer-facing price. It must be equal to or higher than base price.',
+    validity: 'How many days the product outcome remains valid (optional).',
+    documentsMinValidity:
+      'Minimum remaining validity required for supporting documents (for visa, usually passport validity).',
+    applicationWindowDays:
+      "How many days before expiry of the customer's Stay Permit this product can be submitted or renewed.",
+    description: 'Internal notes that explain what this product is for.',
+    validationPrompt:
+      'Optional AI instruction added to document validation for applications that use this product.',
+    requiredDocumentIds: 'Documents that must be provided before the application can be completed.',
+    optionalDocumentIds: 'Documents that are helpful but not mandatory for this product.',
+    taskStep: 'Execution order in the workflow. Each step number must be unique.',
+    taskName: 'Short task title shown in timelines and task lists.',
+    taskDescription: 'Extra instructions for the team handling this step.',
+    taskCost: 'Optional internal cost for this individual task.',
+    taskDuration: 'Expected duration for this task in days.',
+    taskAddToCalendar: 'When enabled, this step creates a calendar due event.',
+    taskNotifyCustomer: 'Sends customer notifications for calendar-enabled tasks.',
+    taskNotifyDaysBefore: 'How many days before due date customer reminders are sent.',
+    taskDurationIsBusinessDays: 'Use business days instead of calendar days for task duration.',
+    taskLastStep: 'Marks the final workflow step. Only one task can be the last step.',
+  };
+
   readonly hasMultipleLastSteps = computed(() => {
     const tasks = this.tasksArray.controls;
     return tasks.filter((group) => group.get('lastStep')?.value).length > 1;
@@ -197,7 +228,9 @@ export class ProductFormComponent implements OnInit {
 
   normalizeCurrency(): void {
     const control = this.form.get('currency');
-    const raw = String(control?.value ?? '').trim().toUpperCase();
+    const raw = String(control?.value ?? '')
+      .trim()
+      .toUpperCase();
     control?.setValue(raw, { emitEvent: false });
   }
 
@@ -327,7 +360,10 @@ export class ProductFormComponent implements OnInit {
       productType: rawValue.productType as ProductCreateUpdate.ProductTypeEnum,
       basePrice: rawValue.basePrice !== null ? String(rawValue.basePrice) : null,
       retailPrice: rawValue.retailPrice !== null ? String(rawValue.retailPrice) : undefined,
-      currency: String(rawValue.currency ?? '').trim().toUpperCase() || undefined,
+      currency:
+        String(rawValue.currency ?? '')
+          .trim()
+          .toUpperCase() || undefined,
       validity: rawValue.validity,
       documentsMinValidity: rawValue.documentsMinValidity,
       applicationWindowDays: rawValue.applicationWindowDays,
