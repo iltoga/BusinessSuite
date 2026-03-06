@@ -1,5 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  EventEmitter,
+  Input,
+  OnChanges,
+  Output,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import type { ApplicationWorkflow } from '@/core/services/applications.service';
@@ -39,8 +46,15 @@ interface DocumentCollectionStatus {
   templateUrl: './application-workflow-timeline.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ApplicationWorkflowTimelineComponent {
+export class ApplicationWorkflowTimelineComponent implements OnChanges {
   private readonly workflowTimezone = 'Asia/Singapore';
+
+  private readonly workflowDueDateCache = new Map<number, Date | null>();
+  private readonly workflowStatusOptionsCache = new Map<number, ZardComboboxOption[]>();
+  private readonly workflowCanRollbackCache = new Map<number, boolean>();
+  private readonly workflowDueDateEditableCache = new Map<number, boolean>();
+  private readonly workflowEditableCache = new Map<number, boolean>();
+  private readonly workflowStatusGuardMessageCache = new Map<number, string | null>();
 
   @Input({ required: true }) canReopen = false;
   @Input({ required: true }) workflowAction: string | null = null;
@@ -65,6 +79,10 @@ export class ApplicationWorkflowTimelineComponent {
     workflowId: number;
     status: string | null;
   }>();
+
+  ngOnChanges(): void {
+    this.rebuildWorkflowCaches();
+  }
 
   getWorkflowStatusVariant(
     status: string,
@@ -101,21 +119,27 @@ export class ApplicationWorkflowTimelineComponent {
   }
 
   getWorkflowDueDateAsDate(workflow: ApplicationWorkflow): Date | null {
-    return this.parseApiDate(workflow.dueDate);
+    return this.workflowDueDateCache.get(workflow.id) ?? null;
   }
 
   getWorkflowStatusOptions(workflow: ApplicationWorkflow): ZardComboboxOption[] {
-    const options: ZardComboboxOption[] = [
-      { value: 'pending', label: 'Pending' },
-      { value: 'processing', label: 'Processing' },
-      { value: 'completed', label: 'Completed' },
-      { value: 'rejected', label: 'Rejected' },
-    ];
-    return options.map((option) => ({
-      ...option,
-      disabled:
-        option.value !== workflow.status && this.isWorkflowStatusChangeBlocked(workflow, option.value),
-    }));
+    return this.workflowStatusOptionsCache.get(workflow.id) ?? [];
+  }
+
+  canRollback(workflow: ApplicationWorkflow): boolean {
+    return this.workflowCanRollbackCache.get(workflow.id) ?? false;
+  }
+
+  isDueDateEditable(workflow: ApplicationWorkflow): boolean {
+    return this.workflowDueDateEditableCache.get(workflow.id) ?? false;
+  }
+
+  isEditable(workflow: ApplicationWorkflow): boolean {
+    return this.workflowEditableCache.get(workflow.id) ?? false;
+  }
+
+  workflowStatusGuardMessage(workflow: ApplicationWorkflow): string | null {
+    return this.workflowStatusGuardMessageCache.get(workflow.id) ?? null;
   }
 
   getTimelineGapLabel(days: number | null): string {
@@ -140,7 +164,10 @@ export class ApplicationWorkflowTimelineComponent {
     return workflows[index - 1] ?? null;
   }
 
-  private isWorkflowStatusChangeBlocked(workflow: ApplicationWorkflow, nextStatus: string): boolean {
+  private isWorkflowStatusChangeBlocked(
+    workflow: ApplicationWorkflow,
+    nextStatus: string,
+  ): boolean {
     if (nextStatus === 'rejected') {
       return false;
     }
@@ -221,5 +248,43 @@ export class ApplicationWorkflowTimelineComponent {
       return null;
     }
     return date;
+  }
+
+  private rebuildWorkflowCaches(): void {
+    this.workflowDueDateCache.clear();
+    this.workflowStatusOptionsCache.clear();
+    this.workflowCanRollbackCache.clear();
+    this.workflowDueDateEditableCache.clear();
+    this.workflowEditableCache.clear();
+    this.workflowStatusGuardMessageCache.clear();
+
+    for (const item of this.timelineItems) {
+      const workflow = item.workflow;
+      this.workflowDueDateCache.set(workflow.id, this.parseApiDate(workflow.dueDate));
+      this.workflowStatusOptionsCache.set(workflow.id, this.buildWorkflowStatusOptions(workflow));
+      this.workflowCanRollbackCache.set(workflow.id, this.canRollbackWorkflow(workflow));
+      this.workflowDueDateEditableCache.set(workflow.id, this.isWorkflowDueDateEditable(workflow));
+      this.workflowEditableCache.set(workflow.id, this.isWorkflowEditable(workflow));
+      this.workflowStatusGuardMessageCache.set(
+        workflow.id,
+        this.getWorkflowStatusGuardMessage(workflow),
+      );
+    }
+  }
+
+  private buildWorkflowStatusOptions(workflow: ApplicationWorkflow): ZardComboboxOption[] {
+    const options: ZardComboboxOption[] = [
+      { value: 'pending', label: 'Pending' },
+      { value: 'processing', label: 'Processing' },
+      { value: 'completed', label: 'Completed' },
+      { value: 'rejected', label: 'Rejected' },
+    ];
+
+    return options.map((option) => ({
+      ...option,
+      disabled:
+        option.value !== workflow.status &&
+        this.isWorkflowStatusChangeBlocked(workflow, option.value),
+    }));
   }
 }

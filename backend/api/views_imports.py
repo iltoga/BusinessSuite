@@ -116,7 +116,7 @@ from django.db.models import (
     Value,
     When,
 )
-from django.db.models.functions import Coalesce
+from django.db.models.functions import Coalesce, Lower, NullIf
 from django.http import FileResponse, HttpResponse, JsonResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404
 from django.urls import reverse

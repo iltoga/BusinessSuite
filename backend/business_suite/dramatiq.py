@@ -1,17 +1,17 @@
 from __future__ import annotations
 
+import importlib
 import os
 from urllib.parse import urlparse, urlunparse
 
 import django
 import dramatiq
+from core.telemetry.dramatiq_tracing import DramatiqTracingMiddleware
 from django.apps import apps
 from django.conf import settings
 from dramatiq.brokers.redis import RedisBroker
 from dramatiq.results import Results
 from dramatiq.results.backends.redis import RedisBackend
-
-from core.telemetry.dramatiq_tracing import DramatiqTracingMiddleware
 
 _LOOPBACK_HOSTS = {"localhost", "127.0.0.1", "::1"}
 
@@ -121,8 +121,7 @@ def setup() -> RedisBroker:
                 backend=RedisBackend(
                     url=_build_results_redis_url(),
                     namespace=str(
-                        getattr(settings, "DRAMATIQ_RESULTS_NAMESPACE", "dramatiq:results")
-                        or "dramatiq:results"
+                        getattr(settings, "DRAMATIQ_RESULTS_NAMESPACE", "dramatiq:results") or "dramatiq:results"
                     ),
                 ),
                 store_results=bool(getattr(settings, "DRAMATIQ_RESULTS_STORE_RESULTS", True)),
@@ -132,9 +131,10 @@ def setup() -> RedisBroker:
     dramatiq.set_broker(broker)
 
     # Import actors so dramatiq can discover them.
-    from core.tasks import (  # noqa: F401
+    from admin_tools import tasks as admin_tasks  # noqa: F401
+    from core.tasks import (
         ai_usage,
-        calendar_reminders,
+        calendar_reminders,  # noqa: F401
         calendar_sync,
         cron_jobs,
         document_categorization,
@@ -143,11 +143,22 @@ def setup() -> RedisBroker:
         local_resilience,
         ocr,
     )
-    from admin_tools import tasks as admin_tasks  # noqa: F401
     from customer_applications import tasks as customer_application_tasks  # noqa: F401
     from customers import tasks as customer_tasks  # noqa: F401
     from invoices.tasks import document_jobs, download_jobs, import_jobs  # noqa: F401
     from products.tasks import product_excel_jobs  # noqa: F401
+
+    # `core.signals_calendar` imports `core.tasks.calendar_sync` during `django.setup()`,
+    # which can happen before the Redis broker is created above. If that occurs, those
+    # actors are bound to Dramatiq's default broker instead of the runtime Redis broker.
+    # Reload only when the current broker is missing the calendar sync actors.
+    expected_calendar_sync_actors = {
+        "core.tasks.calendar_sync.create_google_event_task",
+        "core.tasks.calendar_sync.update_google_event_task",
+        "core.tasks.calendar_sync.delete_google_event_task",
+    }
+    if not expected_calendar_sync_actors.issubset(set(broker.actors.keys())):
+        importlib.reload(calendar_sync)
 
     return broker
 

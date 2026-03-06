@@ -29,15 +29,18 @@
       </div>
 
       <div *ngIf="!documentsLoading">
-        <div formArrayName="documents" class="space-y-4">
+        <div class="space-y-4">
           @for (docGroup of documentsArray.controls; track $index) {
-            <div [formGroupName]="$index" class="p-4 border rounded-lg bg-card text-card-foreground shadow-sm">
+            <div
+              [formGroup]="$any(docGroup)"
+              class="p-4 border rounded-lg bg-card text-card-foreground shadow-sm"
+            >
               <div class="flex items-end gap-4">
                 <div class="grow">
                   <label class="text-sm font-medium block mb-1">Document Type</label>
                   <z-combobox
                     formControlName="docTypeId"
-                    [options]="getFilteredDocumentTypes($index)"
+                    [options]="filteredDocumentTypeOptions[$index] ?? documentTypeOptions"
                     [searchable]="true"
                     placeholder="Select document type..."
                     [zWidth]="'full'"

@@ -1,14 +1,18 @@
-import os
-import importlib
 import hashlib
+import importlib
+import os
+import subprocess
+import sys
 from unittest.mock import patch
 
 from business_suite.settings.base import _default_dramatiq_workers
 from business_suite.settings.cache_backends import build_prod_redis_caches
 from core.tasks.runtime import QUEUE_DEFAULT, QUEUE_DOC_CONVERSION, QUEUE_LOW, QUEUE_REALTIME, QUEUE_SCHEDULED
-from django.core.exceptions import ImproperlyConfigured
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 from django.test import SimpleTestCase, override_settings
+from invoices.tasks.document_jobs import run_invoice_document_job
+from invoices.tasks.download_jobs import run_invoice_download_job
 
 
 class RedisCacheSettingsTests(SimpleTestCase):
@@ -92,6 +96,11 @@ class DramatiqSettingsTests(SimpleTestCase):
         self.assertEqual(QUEUE_SCHEDULED, "scheduled")
         self.assertEqual(QUEUE_LOW, "low")
         self.assertEqual(QUEUE_DOC_CONVERSION, "doc_conversion")
+
+    def test_invoice_document_jobs_default_to_doc_conversion_queue(self):
+        self.assertEqual(getattr(settings, "DRAMATIQ_INVOICE_DOC_QUEUE", ""), QUEUE_DOC_CONVERSION)
+        self.assertEqual(run_invoice_document_job.actor.queue_name, QUEUE_DOC_CONVERSION)
+        self.assertEqual(run_invoice_download_job.actor.queue_name, QUEUE_DOC_CONVERSION)
 
     def test_document_validator_model_defaults_to_llm_default_when_unset(self):
         snapshot = self._load_base_settings_snapshot(
@@ -233,6 +242,64 @@ class DramatiqSettingsTests(SimpleTestCase):
         }
         missing = expected - actor_names
         self.assertFalse(missing, f"Missing Dramatiq actors: {sorted(missing)}")
+
+    def test_worker_style_import_registers_calendar_sync_actors(self):
+        backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+        env = os.environ.copy()
+        env.setdefault("DJANGO_SETTINGS_MODULE", "business_suite.settings.dev")
+        env.setdefault("MEDIA_ROOT", "./media")
+        env.setdefault("SECRET_KEY", "django-insecure-dev-only")
+
+        code = (
+            "import business_suite.dramatiq as runtime; "
+            "names=sorted(name for name in runtime.broker.actors.keys() if 'calendar' in name); "
+            "print('ACTORS_START'); "
+            "[print(name) for name in names]; "
+            "print('ACTORS_END')"
+        )
+        result = subprocess.run(
+            [sys.executable, "-c", code],
+            cwd=backend_dir,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        output = result.stdout
+        self.assertIn("core.tasks.calendar_sync.create_google_event_task", output)
+        self.assertIn("core.tasks.calendar_sync.update_google_event_task", output)
+        self.assertIn("core.tasks.calendar_sync.delete_google_event_task", output)
+
+    def test_worker_style_import_binds_signal_task_lookup_to_runtime_broker(self):
+        backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+        env = os.environ.copy()
+        env.setdefault("DJANGO_SETTINGS_MODULE", "business_suite.settings.dev")
+        env.setdefault("MEDIA_ROOT", "./media")
+        env.setdefault("SECRET_KEY", "django-insecure-dev-only")
+
+        code = (
+            "import business_suite.dramatiq as runtime; "
+            "import core.signals_calendar as sc; "
+            "print(sc._send_calendar_task.__name__); "
+            "print(runtime.broker.get_actor(sc.CREATE_GOOGLE_EVENT_TASK_NAME).actor_name); "
+            "print(runtime.broker.get_actor(sc.UPDATE_GOOGLE_EVENT_TASK_NAME).actor_name); "
+            "print(runtime.broker.get_actor(sc.DELETE_GOOGLE_EVENT_TASK_NAME).actor_name)"
+        )
+        result = subprocess.run(
+            [sys.executable, "-c", code],
+            cwd=backend_dir,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        output = result.stdout
+        self.assertIn("_send_calendar_task", output)
+        self.assertIn("core.tasks.calendar_sync.create_google_event_task", output)
+        self.assertIn("core.tasks.calendar_sync.update_google_event_task", output)
+        self.assertIn("core.tasks.calendar_sync.delete_google_event_task", output)
 
     def test_results_middleware_is_registered_on_broker(self):
         from business_suite import dramatiq as dramatiq_runtime

@@ -56,21 +56,21 @@ import {
 } from '@/shared/components/skeleton';
 import { ZardTooltipImports } from '@/shared/components/tooltip';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
-import { downloadBlob } from '@/shared/utils/file-download';
-import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 import {
   buildLocalFilePreview,
   inferPreviewTypeFromUrl,
 } from '@/shared/utils/document-preview-source';
+import { downloadBlob } from '@/shared/utils/file-download';
+import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 import { Subscription } from 'rxjs';
 
 import { MultiFileUploadComponent } from '@/shared/components/multi-file-upload/multi-file-upload.component';
+import { ApplicationWorkflowTimelineComponent } from './application-workflow-timeline.component';
 import {
   CategorizationProgressComponent,
   type CategorizationApplyMapping,
   type CategorizationFileResult,
 } from './categorization-progress/categorization-progress.component';
-import { ApplicationWorkflowTimelineComponent } from './application-workflow-timeline.component';
 
 interface TimelineWorkflowItem {
   workflow: ApplicationWorkflow;
@@ -296,6 +296,13 @@ export class ApplicationDetailComponent implements OnInit {
 
     return taskName ? `Next Deadline (${taskName})` : 'Next Deadline: —';
   });
+  readonly passportImportPending = computed(() => {
+    const app = this.application();
+    if (!app || !this.pendingPassportRefreshEnabled) {
+      return false;
+    }
+    return this.isPassportConfigured(app) && !this.hasPassportDocument(app);
+  });
   readonly stayPermitSubmissionWindow = computed(() => {
     const app = this.application();
     if (!app || app.product?.productType !== 'visa') {
@@ -344,6 +351,14 @@ export class ApplicationDetailComponent implements OnInit {
     return options;
   });
   readonly canNotifyCustomer = computed(() => this.customerNotificationOptions().length > 0);
+  readonly canRollbackWorkflowFn = (workflow: ApplicationWorkflow) =>
+    this.canRollbackWorkflow(workflow);
+  readonly isWorkflowDueDateEditableFn = (workflow: ApplicationWorkflow) =>
+    this.isWorkflowDueDateEditable(workflow);
+  readonly isWorkflowEditableFn = (workflow: ApplicationWorkflow) =>
+    this.isWorkflowEditable(workflow);
+  readonly getWorkflowStatusGuardMessageFn = (workflow: ApplicationWorkflow) =>
+    this.getWorkflowStatusGuardMessage(workflow);
 
   // PDF Merge and Selection
   readonly localUploadedDocuments = signal<ApplicationDocument[]>([]);
@@ -389,6 +404,11 @@ export class ApplicationDetailComponent implements OnInit {
   private readonly workflowTimezone = 'Asia/Singapore';
 
   private pollTimer: number | null = null;
+  private pendingPassportRefreshTimer: number | null = null;
+  private pendingPassportRefreshEnabled = false;
+  private pendingPassportRefreshAttempts = 0;
+  private readonly pendingPassportRefreshMaxAttempts = 10;
+  private readonly pendingPassportRefreshIntervalMs = 1200;
   private readonly ocrNoDataText = 'No OCR extracted data yet.';
 
   @HostListener('window:keydown', ['$event'])
@@ -515,6 +535,8 @@ export class ApplicationDetailComponent implements OnInit {
     const id = Number(this.route.snapshot.paramMap.get('id'));
     const st = this.isBrowser ? (window as any).history.state || {} : {};
     this.originSearchQuery.set(st.searchQuery ?? null);
+    this.pendingPassportRefreshEnabled = Boolean(st.awaitPassportImport);
+    this.pendingPassportRefreshAttempts = 0;
     const page = Number(st.page);
     if (Number.isFinite(page) && page > 0) {
       this.originPage.set(Math.floor(page));
@@ -533,6 +555,7 @@ export class ApplicationDetailComponent implements OnInit {
           window.clearTimeout(this.pollTimer);
         }
       }
+      this.clearPendingPassportRefresh();
       this.clearUploadPreview();
       this.clearExistingPreview();
       this.categorizationSub?.unsubscribe();
@@ -663,8 +686,7 @@ export class ApplicationDetailComponent implements OnInit {
           outcome.provider,
           outcome.model,
         );
-        const runtimeSuffix =
-          this.isDevelopmentMode && runtimeLabel ? ` [${runtimeLabel}]` : '';
+        const runtimeSuffix = this.isDevelopmentMode && runtimeLabel ? ` [${runtimeLabel}]` : '';
         this.toast.error(
           `AI validation failed${runtimeSuffix}: ${this.buildPreUploadValidationReason(outcome.result) || 'See details below.'}`,
         );
@@ -1381,8 +1403,7 @@ export class ApplicationDetailComponent implements OnInit {
           status,
         });
         const shouldReload =
-          !patched ||
-          (!appliedApplication && (status === 'completed' || status === 'rejected'));
+          !patched || (!appliedApplication && (status === 'completed' || status === 'rejected'));
         if (shouldReload) {
           this.loadApplication(app.id);
         }
@@ -1627,11 +1648,17 @@ export class ApplicationDetailComponent implements OnInit {
     }
 
     const runtime = this.extractValidationRuntimeMetadata(doc.aiValidationResult ?? null);
-    const runtimeLabel = this.formatAiRuntimeLabel(runtime.providerName, runtime.provider, runtime.model);
+    const runtimeLabel = this.formatAiRuntimeLabel(
+      runtime.providerName,
+      runtime.provider,
+      runtime.model,
+    );
     if (!runtimeLabel) {
       return baseMessage;
     }
-    return baseMessage ? `${baseMessage}\nAI runtime: ${runtimeLabel}` : `AI runtime: ${runtimeLabel}`;
+    return baseMessage
+      ? `${baseMessage}\nAI runtime: ${runtimeLabel}`
+      : `AI runtime: ${runtimeLabel}`;
   }
 
   /**
@@ -1835,8 +1862,7 @@ export class ApplicationDetailComponent implements OnInit {
       ...raw,
       notifyCustomer:
         raw?.notifyCustomer ?? raw?.notifyCustomerToo ?? raw?.notify_customer_too ?? false,
-      notifyCustomerChannel:
-        raw?.notifyCustomerChannel ?? raw?.notify_customer_channel ?? null,
+      notifyCustomerChannel: raw?.notifyCustomerChannel ?? raw?.notify_customer_channel ?? null,
       readyForInvoice: raw?.readyForInvoice ?? raw?.ready_for_invoice ?? undefined,
     };
   }
@@ -1932,9 +1958,7 @@ export class ApplicationDetailComponent implements OnInit {
       return {
         ...current,
         workflows: nextWorkflows,
-        ...(options?.syncApplicationDueDate
-          ? { dueDate: options.syncApplicationDueDate }
-          : {}),
+        ...(options?.syncApplicationDueDate ? { dueDate: options.syncApplicationDueDate } : {}),
       };
     });
     return didPatch;
@@ -1967,7 +1991,8 @@ export class ApplicationDetailComponent implements OnInit {
         };
       }
 
-      const nextDueDate = previousIndex >= 0 ? nextWorkflows[previousIndex]?.dueDate : current.dueDate;
+      const nextDueDate =
+        previousIndex >= 0 ? nextWorkflows[previousIndex]?.dueDate : current.dueDate;
       return {
         ...current,
         workflows: nextWorkflows,
@@ -2023,22 +2048,85 @@ export class ApplicationDetailComponent implements OnInit {
     });
   }
 
-  private loadApplication(id: number): void {
-    this.isLoading.set(true);
+  private loadApplication(id: number, options?: { silent?: boolean }): void {
+    if (!options?.silent) {
+      this.isLoading.set(true);
+    }
     this.applicationsService.getApplication(id).subscribe({
       next: (data) => {
         const normalized = this.normalizeApplicationPayload(data);
         this.application.set(normalized);
         this.editableNotes.set(normalized?.notes ?? '');
-        this.isLoading.set(false);
+        this.handlePendingPassportRefresh(id, normalized);
+        if (!options?.silent) {
+          this.isLoading.set(false);
+        }
         this.isSavingMeta.set(false);
       },
       error: (error) => {
+        if (options?.silent && this.pendingPassportRefreshEnabled) {
+          this.schedulePendingPassportRefresh(id);
+          return;
+        }
         this.toast.error(extractServerErrorMessage(error) || 'Failed to load application');
         this.isLoading.set(false);
         this.isSavingMeta.set(false);
       },
     });
+  }
+
+  private handlePendingPassportRefresh(id: number, application: ApplicationDetail): void {
+    if (!this.pendingPassportRefreshEnabled) {
+      return;
+    }
+
+    if (!this.isPassportConfigured(application) || this.hasPassportDocument(application)) {
+      this.clearPendingPassportRefresh();
+      return;
+    }
+
+    if (this.pendingPassportRefreshAttempts >= this.pendingPassportRefreshMaxAttempts) {
+      this.clearPendingPassportRefresh();
+      return;
+    }
+
+    this.schedulePendingPassportRefresh(id);
+  }
+
+  private schedulePendingPassportRefresh(id: number): void {
+    if (!this.isBrowser || !this.pendingPassportRefreshEnabled) {
+      this.clearPendingPassportRefresh();
+      return;
+    }
+
+    if (this.pendingPassportRefreshTimer) {
+      window.clearTimeout(this.pendingPassportRefreshTimer);
+    }
+
+    this.pendingPassportRefreshTimer = window.setTimeout(() => {
+      this.pendingPassportRefreshTimer = null;
+      this.pendingPassportRefreshAttempts += 1;
+      this.loadApplication(id, { silent: true });
+    }, this.pendingPassportRefreshIntervalMs);
+  }
+
+  private clearPendingPassportRefresh(): void {
+    this.pendingPassportRefreshEnabled = false;
+    this.pendingPassportRefreshAttempts = 0;
+    if (this.pendingPassportRefreshTimer && this.isBrowser) {
+      window.clearTimeout(this.pendingPassportRefreshTimer);
+    }
+    this.pendingPassportRefreshTimer = null;
+  }
+
+  private isPassportConfigured(application: ApplicationDetail): boolean {
+    return this.getConfiguredDocumentNames(application).has('Passport');
+  }
+
+  private hasPassportDocument(application: ApplicationDetail): boolean {
+    return (application.documents ?? []).some(
+      (document) => (document.docType?.name ?? '').trim().toLowerCase() === 'passport',
+    );
   }
 
   private isReadyForInvoice(app: ApplicationDetail): boolean {

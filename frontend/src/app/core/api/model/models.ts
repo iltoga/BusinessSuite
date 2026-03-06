@@ -1,5 +1,7 @@
 export * from './admin-push-notification-send';
 export * from './admin-whatsapp-test-send';
+export * from './ai-model';
+export * from './ai-model-capabilities';
 export * from './async-job';
 export * from './calendar-reminder';
 export * from './calendar-reminder-bulk-create';

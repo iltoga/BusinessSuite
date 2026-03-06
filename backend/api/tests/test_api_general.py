@@ -190,6 +190,24 @@ class CustomerListAPITestCase(TestCase):
         self.assertFalse(expired_item["passportExpiringSoon"])
         self.assertTrue(expiring_item["passportExpiringSoon"])
 
+    def test_customer_list_supports_case_insensitive_last_name_ordering(self):
+        Customer.objects.create(customer_type="person", first_name="Stefano", last_name="GALASSI")
+        Customer.objects.create(customer_type="person", first_name="Aliaksei", last_name="Chaichyts")
+        Customer.objects.create(customer_type="person", first_name="Anna", last_name="abramov")
+
+        url = reverse("customers-list")
+        response = self.client.get(
+            url,
+            {"ordering": "sort_last_name,sort_first_name,sort_company_name"},
+        )
+        self.assertEqual(response.status_code, 200)
+
+        names = [item["fullName"] for item in response.json()["results"][:3]]
+        self.assertEqual(
+            names,
+            ["Anna abramov", "Aliaksei Chaichyts", "Stefano GALASSI"],
+        )
+
     def test_toggle_active_endpoint(self):
         customer = Customer.objects.create(customer_type="person", first_name="Active", last_name="User")
         url = reverse("customers-toggle-active", args=[customer.id])
@@ -345,6 +363,33 @@ class CustomerApplicationDetailAPITestCase(TestCase):
             payload["documents"][0]["file"],
             "https://example.test/documents/passport.pdf",
         )
+
+    def test_application_update_preserves_invoice_flags_in_response(self):
+        invoice = Invoice.objects.create(
+            customer=self.customer,
+            invoice_date=timezone.now().date(),
+            due_date=timezone.now().date(),
+            created_by=self.user,
+            updated_by=self.user,
+        )
+        InvoiceApplication.objects.create(
+            invoice=invoice,
+            product=self.product,
+            customer_application=self.application,
+            amount="100.00",
+        )
+
+        url = reverse("customer-applications-detail", kwargs={"pk": self.application.pk})
+        response = self.client.patch(
+            url,
+            data=json.dumps({"notes": "Updated notes"}),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["hasInvoice"])
+        self.assertEqual(payload["invoiceId"], invoice.id)
 
     def test_application_detail_ktp_sponsor_actions_skip_remote_exists_probe(self):
         ktp_doc_type = DocumentType.objects.create(name="KTP Sponsor", has_file=True)

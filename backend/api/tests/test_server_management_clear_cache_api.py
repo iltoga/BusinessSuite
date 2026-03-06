@@ -1,9 +1,9 @@
 from unittest.mock import MagicMock, patch
 
+from core.models.local_resilience import LocalResilienceSettings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.test import TestCase, override_settings
-from core.models.local_resilience import LocalResilienceSettings
 from rest_framework.test import APIClient
 
 
@@ -111,6 +111,41 @@ class ServerManagementClearCacheApiTests(TestCase):
         payload = response.json()
         self.assertFalse(payload["ok"])
         self.assertIn("Failed to run cache health check", payload["message"])
+
+    @patch("api.views_admin.services.get_calendar_sync_health_status")
+    def test_calendar_sync_health_returns_payload(self, calendar_health_mock):
+        calendar_health_mock.return_value = {
+            "ok": False,
+            "severity": "critical",
+            "message": "Detected stuck pending events.",
+            "checkedAt": "2026-03-06T09:00:00+00:00",
+            "thresholdMinutes": 5,
+            "sampleLimit": 20,
+            "counts": {
+                "applicationEvents": 12,
+                "pending": 4,
+                "failed": 0,
+                "stuckPending": 2,
+            },
+            "stuckPendingSamples": [{"id": "evt-1"}],
+        }
+
+        response = self.client.get("/api/server-management/calendar-sync-health/?stuck_after_minutes=5&sample_limit=20")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertFalse(payload["ok"])
+        self.assertEqual(payload["severity"], "critical")
+        self.assertEqual(payload["counts"]["stuckPending"], 2)
+        calendar_health_mock.assert_called_once_with(stuck_after_minutes=5, sample_limit=20)
+
+    def test_calendar_sync_health_rejects_invalid_query_params(self):
+        response = self.client.get("/api/server-management/calendar-sync-health/?stuck_after_minutes=abc")
+
+        self.assertEqual(response.status_code, 400)
+        payload = response.json()
+        self.assertFalse(payload["ok"])
+        self.assertIn("Invalid stuck_after_minutes", payload["message"])
 
     def test_local_resilience_get_returns_defaults(self):
         response = self.client.get("/api/server-management/local-resilience/")

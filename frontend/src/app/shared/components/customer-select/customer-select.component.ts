@@ -15,7 +15,21 @@ import {
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 
 import { CustomersService } from '@/core/api/api/customers.service';
+import type { Customer } from '@/core/api/model/customer';
 import { ZardComboboxComponent, type ZardComboboxOption } from '@/shared/components/combobox';
+
+type CustomerOptionSource = Pick<
+  Customer,
+  'id' | 'fullNameWithCompany' | 'fullName' | 'firstName' | 'lastName' | 'companyName'
+>;
+
+interface CustomerSelectOption extends ZardComboboxOption {
+  sortLastName: string;
+  sortFirstName: string;
+  sortCompanyName: string;
+}
+
+const CUSTOMER_ORDERING = 'sort_last_name,sort_first_name,sort_company_name';
 
 @Component({
   selector: 'app-customer-select',
@@ -50,7 +64,7 @@ export class CustomerSelectComponent implements ControlValueAccessor {
   readonly selectedIdChange = output<number | null>();
 
   readonly isLoading = signal(false);
-  readonly options = signal<ZardComboboxOption[]>([]);
+  readonly options = signal<CustomerSelectOption[]>([]);
   readonly internalValue = signal<string | null>(null);
   readonly isCvaDisabled = signal(false);
 
@@ -152,10 +166,10 @@ export class CustomerSelectComponent implements ControlValueAccessor {
 
   private loadCustomers(search?: string): void {
     this.isLoading.set(true);
-    this.customersService.customersList(undefined, 1, this.pageSize(), search).subscribe({
+    this.customersService.customersList(CUSTOMER_ORDERING, 1, this.pageSize(), search).subscribe({
       next: (response) => {
-        const items = response.results ?? [];
-        this.options.set(items.map((customer) => this.mapCustomerOption(customer)));
+        const items = (response.results ?? []) as CustomerOptionSource[];
+        this.options.set(this.sortCustomerOptions(items.map((customer) => this.mapCustomerOption(customer))));
         this.isLoading.set(false);
         const currentValue = this.internalValue();
         if (currentValue) {
@@ -179,18 +193,12 @@ export class CustomerSelectComponent implements ControlValueAccessor {
     this.customersService.customersRetrieve(customerId).subscribe({
       next: (customer) => {
         const nextOption = this.mapCustomerOption(customer);
-        this.options.update((current) => [nextOption, ...current]);
+        this.options.update((current) => this.sortCustomerOptions([...current, nextOption]));
       },
     });
   }
 
-  private mapCustomerOption(customer: {
-    id: number;
-    fullNameWithCompany?: string | null;
-    fullName?: string | null;
-    firstName?: string | null;
-    lastName?: string | null;
-  }): ZardComboboxOption {
+  private mapCustomerOption(customer: CustomerOptionSource): CustomerSelectOption {
     const label =
       customer.fullNameWithCompany ||
       customer.fullName ||
@@ -200,6 +208,40 @@ export class CustomerSelectComponent implements ControlValueAccessor {
     return {
       value: String(customer.id),
       label,
+      sortLastName: this.toSortKey(
+        customer.lastName ||
+          customer.companyName ||
+          customer.firstName ||
+          customer.fullName ||
+          customer.fullNameWithCompany,
+      ),
+      sortFirstName: this.toSortKey(
+        customer.firstName ||
+          customer.companyName ||
+          customer.fullName ||
+          customer.fullNameWithCompany,
+      ),
+      sortCompanyName: this.toSortKey(customer.companyName),
     };
+  }
+
+  private sortCustomerOptions(options: CustomerSelectOption[]): CustomerSelectOption[] {
+    return [...options].sort((left, right) => {
+      return (
+        this.compareSortFields(left.sortLastName, right.sortLastName) ||
+        this.compareSortFields(left.sortFirstName, right.sortFirstName) ||
+        this.compareSortFields(left.sortCompanyName, right.sortCompanyName) ||
+        this.compareSortFields(left.label, right.label) ||
+        left.value.localeCompare(right.value)
+      );
+    });
+  }
+
+  private compareSortFields(left: string, right: string): number {
+    return left.localeCompare(right, undefined, { sensitivity: 'base' });
+  }
+
+  private toSortKey(value?: string | null): string {
+    return value?.trim() ?? '';
   }
 }

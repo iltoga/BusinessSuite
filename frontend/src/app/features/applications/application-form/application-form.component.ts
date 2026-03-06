@@ -6,6 +6,7 @@ import { ProductsService } from '@/core/api/api/products.service';
 import type { Customer } from '@/core/api/model/customer';
 import type { DocApplicationCreateUpdate } from '@/core/api/model/doc-application-create-update';
 import { GlobalToastService } from '@/core/services/toast.service';
+import { FormNavigationFacadeService } from '@/features/shared/services/form-navigation-facade.service';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
 import { ZardComboboxComponent, type ZardComboboxOption } from '@/shared/components/combobox';
@@ -39,9 +40,19 @@ import {
   Validators,
 } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { map, pairwise, startWith, Subject, takeUntil } from 'rxjs';
+import {
+  distinctUntilChanged,
+  finalize,
+  map,
+  of,
+  pairwise,
+  shareReplay,
+  startWith,
+  Subject,
+  takeUntil,
+  type Observable,
+} from 'rxjs';
 import { ApplicationFormDocumentsSectionComponent } from './application-form-documents-section.component';
-import { FormNavigationFacadeService } from '@/features/shared/services/form-navigation-facade.service';
 
 interface ApplicationDocumentTypeOption {
   id: number;
@@ -80,6 +91,7 @@ interface ApplicationFormNavigationState {
   returnUrl?: string;
   customerId?: number;
   page?: number;
+  awaitPassportImport?: boolean;
 }
 
 @Component({
@@ -121,6 +133,8 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
   private formNavigationFacade = inject(FormNavigationFacadeService);
 
   private destroy$ = new Subject<void>();
+  private productDocumentsCache = new Map<number, ProductDocumentsAdapter>();
+  private productDocumentsRequests = new Map<number, Observable<ProductDocumentsAdapter>>();
 
   readonly selectedCustomer = signal<Customer | null>(null);
   readonly documentTypes = signal<ApplicationDocumentTypeOption[]>([]);
@@ -241,7 +255,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
       // Load customer detail when customer ID changes
       this.form
         .get('customer')
-        ?.valueChanges.pipe(takeUntil(this.destroy$))
+        ?.valueChanges.pipe(distinctUntilChanged(), takeUntil(this.destroy$))
         .subscribe((customerId) => {
           if (customerId) {
             this.loadCustomerDetail(Number(customerId));
@@ -259,7 +273,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
       // Load product documents when product changes
       this.form
         .get('product')
-        ?.valueChanges.pipe(takeUntil(this.destroy$))
+        ?.valueChanges.pipe(distinctUntilChanged(), takeUntil(this.destroy$))
         .subscribe((productId) => {
           if (!productId) {
             this.documentsArray.clear();
@@ -301,7 +315,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
 
     this.form
       .get('product')
-      ?.valueChanges.pipe(takeUntil(this.destroy$))
+      ?.valueChanges.pipe(distinctUntilChanged(), takeUntil(this.destroy$))
       .subscribe((productId) => {
         if (!productId) return;
         const numericProductId = Number(productId);
@@ -400,9 +414,9 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
     this.documentsLoading.set(true);
     this.documentsPanelOpen.set(true);
 
-    this.productsService.productsGetProductByIdRetrieve(productId).subscribe({
+    this.getProductDocuments(productId).subscribe({
       next: (rawData) => {
-        const data = this.adaptProductDocuments(rawData);
+        const data = rawData;
         const deadlineTask = data.calendarTask;
         // Do not clear an already computed label from productsRetrieve() if this
         // lighter endpoint does not include task details.
@@ -506,9 +520,9 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
   }
 
   private tryAutoDueDateCalculation(productId: number): void {
-    this.productsService.productsGetProductByIdRetrieve(productId).subscribe({
-      next: (productLookupResponse) => {
-        const task = this.getCalendarTaskFromProduct(productLookupResponse);
+    this.getProductDocuments(productId).subscribe({
+      next: (productDetails) => {
+        const task = this.getCalendarTaskFromProduct(productDetails);
         this.nextDeadlineTaskName.set(this.getTaskName(task));
         const doc = this.toDateOnly(this.form.get('docDate')?.value);
         if (!doc) return;
@@ -530,6 +544,33 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
         });
       },
     });
+  }
+
+  private getProductDocuments(productId: number): Observable<ProductDocumentsAdapter> {
+    const cached = this.productDocumentsCache.get(productId);
+    if (cached) {
+      return of(cached);
+    }
+
+    const inflight = this.productDocumentsRequests.get(productId);
+    if (inflight) {
+      return inflight;
+    }
+
+    const request$ = this.productsService.productsGetProductByIdRetrieve(productId).pipe(
+      map((rawData) => this.adaptProductDocuments(rawData)),
+      map((data) => {
+        this.productDocumentsCache.set(productId, data);
+        return data;
+      }),
+      finalize(() => {
+        this.productDocumentsRequests.delete(productId);
+      }),
+      shareReplay(1),
+    );
+
+    this.productDocumentsRequests.set(productId, request$);
+    return request$;
   }
 
   private getCalendarTaskFromProduct(product: unknown): ApplicationCalendarTaskOption | null {
@@ -671,6 +712,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
             this.toast.success('Application created');
             const id = application?.id;
             if (id) {
+              detailState['awaitPassportImport'] = this.shouldAwaitPassportImport(application);
               this.router.navigate(['/applications', id], { state: detailState });
             } else {
               this.router.navigate(['/applications'], {
@@ -761,8 +803,11 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
     const docDate = this.toDateOnly(source?.['docDate'] ?? source?.['doc_date']) ?? new Date();
     const dueDate = this.toDateOnly(source?.['dueDate'] ?? source?.['due_date']) ?? docDate;
     const notifyCustomerRaw =
-      source?.['notifyCustomer'] ?? source?.['notifyCustomerToo'] ?? source?.['notify_customer_too'];
-    const notifyChannelRaw = source?.['notifyCustomerChannel'] ?? source?.['notify_customer_channel'];
+      source?.['notifyCustomer'] ??
+      source?.['notifyCustomerToo'] ??
+      source?.['notify_customer_too'];
+    const notifyChannelRaw =
+      source?.['notifyCustomerChannel'] ?? source?.['notify_customer_channel'];
     const notifyCustomerChannel: 'whatsapp' | 'email' =
       notifyChannelRaw === 'email' ? 'email' : 'whatsapp';
 
@@ -809,10 +854,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
           .filter((task): task is ApplicationCalendarTaskOption => !!task)
       : [];
 
-    const calendarTask =
-      explicitTask ??
-      tasks.find((task) => task.addTaskToCalendar) ??
-      null;
+    const calendarTask = explicitTask ?? tasks.find((task) => task.addTaskToCalendar) ?? null;
 
     return {
       requiredDocuments: this.adaptDocumentTypes(
@@ -886,6 +928,43 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  }
+
+  private shouldAwaitPassportImport(application: unknown): boolean {
+    const raw = this.toRecord(application);
+    if (!raw) {
+      return false;
+    }
+
+    const product = this.toRecord(raw['product']);
+    const documents = Array.isArray(raw['documents']) ? raw['documents'] : [];
+    const configuredDocumentNames = new Set(
+      [
+        ...this.parseDocumentNames(product?.['requiredDocuments'] ?? product?.['required_documents']),
+        ...this.parseDocumentNames(product?.['optionalDocuments'] ?? product?.['optional_documents']),
+      ].map((name) => name.toLowerCase()),
+    );
+
+    if (!configuredDocumentNames.has('passport')) {
+      return false;
+    }
+
+    return !documents.some((document) => {
+      const rawDocument = this.toRecord(document);
+      const docType = this.toRecord(rawDocument?.['docType'] ?? rawDocument?.['doc_type']);
+      const docTypeName = docType?.['name'];
+      return typeof docTypeName === 'string' && docTypeName.trim().toLowerCase() === 'passport';
+    });
+  }
+
+  private parseDocumentNames(value: unknown): string[] {
+    if (typeof value !== 'string' || !value.trim()) {
+      return [];
+    }
+    return value
+      .split(',')
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
   }
 
   private diffInDays(from: Date, to: Date): number {

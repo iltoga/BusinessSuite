@@ -1,5 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  EventEmitter,
+  Input,
+  OnChanges,
+  Output,
+} from '@angular/core';
 import { FormArray, ReactiveFormsModule } from '@angular/forms';
 
 import { ZardButtonComponent } from '@/shared/components/button';
@@ -21,7 +28,7 @@ import { ZardIconComponent } from '@/shared/components/icon';
   templateUrl: './application-form-documents-section.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ApplicationFormDocumentsSectionComponent {
+export class ApplicationFormDocumentsSectionComponent implements OnChanges {
   @Input({ required: true }) documentsArray!: FormArray;
   @Input({ required: true }) documentsLoading = false;
   @Input({ required: true }) documentsPanelOpen = false;
@@ -29,16 +36,26 @@ export class ApplicationFormDocumentsSectionComponent {
   @Input({ required: true }) selectedDocTypeIds: string[] = [];
   @Input({ required: true }) productSelected = false;
 
+  filteredDocumentTypeOptions: Array<ZardComboboxOption[] | undefined> = [];
+
   @Output() readonly addDocument = new EventEmitter<void>();
   @Output() readonly removeDocument = new EventEmitter<number>();
 
-  getFilteredDocumentTypes(index: number): ZardComboboxOption[] {
-    const allOptions = this.documentTypeOptions;
-    const currentSelected = String(this.documentsArray.at(index)?.get('docTypeId')?.value || '');
-    const otherSelected = this.selectedDocTypeIds.filter((_, i) => i !== index);
+  ngOnChanges(): void {
+    this.rebuildFilteredDocumentTypeOptions();
+  }
 
-    return allOptions.filter(
-      (opt) => opt.value === currentSelected || !otherSelected.includes(opt.value),
-    );
+  private rebuildFilteredDocumentTypeOptions(): void {
+    const allOptions = this.documentTypeOptions;
+    this.filteredDocumentTypeOptions = this.documentsArray.controls.map((docGroup, index) => {
+      const currentSelected = String(docGroup.get('docTypeId')?.value || '');
+      const otherSelected = this.selectedDocTypeIds.filter(
+        (_, selectedIndex) => selectedIndex !== index,
+      );
+
+      return allOptions.filter(
+        (opt) => opt.value === currentSelected || !otherSelected.includes(opt.value),
+      );
+    });
   }
 }

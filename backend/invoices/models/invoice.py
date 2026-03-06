@@ -1,12 +1,14 @@
 # models.py
+from decimal import Decimal
+
 from customer_applications.models.doc_application import DocApplication
 from customers.models import Customer
 from django.conf import settings
 from django.contrib.postgres.search import SearchVector, TrigramSimilarity
 from django.core.cache import cache
 from django.db import models
-from django.db.models import Q, Sum
-from django.db.models.functions import Cast
+from django.db.models import Prefetch, Q, Sum, Value
+from django.db.models.functions import Cast, Coalesce
 from django.utils import timezone
 from products.models import Product
 
@@ -16,7 +18,38 @@ class InvoiceQuerySet(models.QuerySet):
     Custom queryset for Invoice model.
     """
 
-    pass
+    def with_payment_totals(self):
+        total_paid_field = models.DecimalField(max_digits=12, decimal_places=2)
+        return self.annotate(
+            total_paid=Coalesce(
+                Sum("invoice_applications__payments__amount"),
+                Value(0, output_field=total_paid_field),
+                output_field=total_paid_field,
+            )
+        )
+
+    def for_document_generation(self):
+        paid_amount_field = models.DecimalField(max_digits=10, decimal_places=2)
+        invoice_applications_queryset = (
+            InvoiceApplication.objects.select_related(
+                "product",
+                "customer_application",
+                "customer_application__customer",
+            )
+            .annotate(
+                annotated_paid_amount=Coalesce(
+                    Sum("payments__amount"),
+                    Value(0, output_field=paid_amount_field),
+                    output_field=paid_amount_field,
+                )
+            )
+            .prefetch_related("payments")
+        )
+        return (
+            self.select_related("customer")
+            .with_payment_totals()
+            .prefetch_related(Prefetch("invoice_applications", queryset=invoice_applications_queryset))
+        )
 
 
 class InvoiceManager(models.Manager):
@@ -59,6 +92,12 @@ class InvoiceManager(models.Manager):
         #     | models.Q(status__icontains=query)
         #     | (models.Q(invoice_date__year=year_query) if year_query is not None else models.Q())
         # )
+
+    def with_payment_totals(self):
+        return self.get_queryset().with_payment_totals()
+
+    def for_document_generation(self):
+        return self.get_queryset().for_document_generation()
 
 
 class Invoice(models.Model):
@@ -146,6 +185,14 @@ class Invoice(models.Model):
         if hasattr(self, "total_paid"):
             return self.total_paid or 0
 
+        prefetched_objects = getattr(self, "_prefetched_objects_cache", {})
+        prefetched_invoice_applications = prefetched_objects.get("invoice_applications")
+        if prefetched_invoice_applications is not None:
+            return sum(
+                (application.paid_amount for application in prefetched_invoice_applications),
+                start=Decimal("0"),
+            )
+
         if self.pk:  # Check if the Invoice instance has been saved
             return (
                 self.invoice_applications.annotate(total_payment=Sum("payments__amount")).aggregate(
@@ -166,6 +213,11 @@ class Invoice(models.Model):
 
     @property
     def is_payment_complete(self):
+        prefetched_objects = getattr(self, "_prefetched_objects_cache", {})
+        prefetched_invoice_applications = prefetched_objects.get("invoice_applications")
+        if prefetched_invoice_applications is not None:
+            return any(application.is_payment_complete for application in prefetched_invoice_applications)
+
         return self.invoice_applications.payment_complete().exists()
 
     @property

@@ -4,11 +4,9 @@ from api.serializers.customer_serializer import CustomerSerializer
 from api.serializers.doc_workflow_serializer import DocWorkflowSerializer, TaskSerializer
 from api.serializers.document_serializer import DocumentSerializer
 from api.serializers.product_serializer import ProductSerializer
-from customer_applications.services.stay_permit_submission_window_service import (
-    StayPermitSubmissionWindowService,
-)
-from django.core.exceptions import ValidationError as DjangoValidationError
 from customer_applications.models import DocApplication
+from customer_applications.services.stay_permit_submission_window_service import StayPermitSubmissionWindowService
+from django.core.exceptions import ValidationError as DjangoValidationError
 from invoices.models.invoice import InvoiceApplication
 from rest_framework import serializers
 
@@ -352,9 +350,7 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
                 {"product": "This product is invoice-only and does not support customer applications."}
             )
 
-        should_validate_submission_window = (
-            self.instance is None or "doc_date" in attrs or "product" in attrs
-        )
+        should_validate_submission_window = self.instance is None or "doc_date" in attrs or "product" in attrs
         if should_validate_submission_window:
             try:
                 StayPermitSubmissionWindowService().validate_doc_date(
@@ -380,8 +376,7 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         from customer_applications.models.doc_workflow import DocWorkflow
         from customer_applications.models.document import Document
-        from django.core.files import File
-        from django.core.files.storage import default_storage
+        from django.db import transaction
         from django.utils import timezone
         from products.models.document_type import DocumentType
         from products.models.task import Task
@@ -465,9 +460,17 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
             step1.due_date = application.due_date or step1.calculate_workflow_due_date()
             step1.save()
 
-        # Perform auto-import
         if has_auto_passport:
-            self._auto_import_passport(application, user)
+            from customer_applications.tasks import auto_import_passport_task
+
+            transaction.on_commit(
+                lambda: auto_import_passport_task(
+                    application_id=application.id,
+                    user_id=user.id,
+                )
+            )
+
+        self._prime_detail_caches(application)
 
         return application
 
@@ -517,7 +520,31 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
                     updated_by=user,
                 )
 
+        self._prime_detail_caches(application)
+
         return application
+
+    def _prime_detail_caches(self, application) -> None:
+        product = getattr(application, "product", None)
+        if product is not None:
+            product_prefetched = getattr(product, "_prefetched_objects_cache", None) or {}
+            product_prefetched["tasks"] = list(product.tasks.all().order_by("step"))
+            product._prefetched_objects_cache = product_prefetched
+
+        documents = list(application.documents.select_related("doc_type", "created_by", "updated_by").all())
+        workflows = list(application.workflows.select_related("task", "created_by", "updated_by").all())
+        prefetched = getattr(application, "_prefetched_objects_cache", None) or {}
+        prefetched.update(
+            {
+                "documents": documents,
+                "workflows": workflows,
+            }
+        )
+        application._prefetched_objects_cache = prefetched
+        application.total_required_documents = sum(1 for document in documents if document.required)
+        application.completed_required_documents = sum(
+            1 for document in documents if document.required and document.completed
+        )
 
     def _can_auto_import_passport(self, application) -> bool:
         """Check if passport can be auto-imported for this application."""
@@ -555,115 +582,3 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
             return True
 
         return False
-
-    def _auto_import_passport(self, application, user):
-        """Replicates legacy auto-import logic from DocApplicationCreateView."""
-        from core.models.country_code import CountryCode
-        from customer_applications.models.document import Document, get_upload_to
-        from django.core.files import File
-        from django.core.files.storage import default_storage
-        from django.utils import timezone
-        from products.models.document_type import DocumentType
-
-        passport_doc_type = DocumentType.objects.get(name="Passport")
-        customer = application.customer
-
-        # Helper for detail string
-        def fmt_date(d):
-            if not d:
-                return None
-            return d.isoformat() if hasattr(d, "isoformat") else str(d)
-
-        # 1. Try customer profile first
-        if customer.passport_file and customer.passport_number and default_storage.exists(customer.passport_file.name):
-            try:
-                # Extract metadata like in legacy view, prioritizing model fields over passport_metadata
-                mrz_meta = customer.passport_metadata or {}
-
-                def get_val(attr, meta_key):
-                    val = getattr(customer, attr, None)
-                    return val if val else mrz_meta.get(meta_key)
-
-                trimmed_metadata = {
-                    "number": customer.passport_number,
-                    "issue_date_yyyy_mm_dd": fmt_date(get_val("passport_issue_date", "issue_date_yyyy_mm_dd")),
-                    "expiration_date_yyyy_mm_dd": fmt_date(
-                        get_val("passport_expiration_date", "expiration_date_yyyy_mm_dd")
-                    ),
-                    "date_of_birth_yyyy_mm_dd": fmt_date(get_val("birthdate", "date_of_birth_yyyy_mm_dd")),
-                    "birth_place": get_val("birth_place", "birth_place"),
-                    "sex": customer.gender or mrz_meta.get("sex") or mrz_meta.get("mrz_sex"),
-                }
-
-                alpha3 = customer.nationality.alpha3_code if customer.nationality else mrz_meta.get("nationality")
-
-                country_obj = CountryCode.objects.get_country_code_by_alpha3_code(alpha3) if alpha3 else None
-                country_name = country_obj.country if country_obj else alpha3
-                trimmed_metadata["nationality"] = country_name
-                trimmed_metadata["country"] = mrz_meta.get("country") or mrz_meta.get("issuing_country") or country_name
-
-                details_parts = []
-                if customer.birth_place:
-                    details_parts.append(f"Birth Place: {customer.birth_place}")
-                if customer.birthdate:
-                    details_parts.append(f"Birthdate: {customer.birthdate}")
-                if country_name:
-                    details_parts.append(f"Nationality: {country_name}")
-                if customer.passport_issue_date:
-                    details_parts.append(f"Issue Date: {customer.passport_issue_date}")
-
-                doc = Document(
-                    doc_application=application,
-                    doc_type=passport_doc_type,
-                    doc_number=customer.passport_number,
-                    expiration_date=customer.passport_expiration_date,
-                    details="\n".join(details_parts),
-                    ai_validation=False,
-                    metadata=trimmed_metadata,
-                    completed=True,
-                    required=True,  # Passports are usually required if present
-                    created_by=user,
-                    created_at=timezone.now(),
-                    updated_at=timezone.now(),
-                )
-
-                with customer.passport_file.open("rb") as f:
-                    file = File(f)
-                    file_name = os.path.basename(customer.passport_file.name)
-                    upload_path = get_upload_to(doc, file_name)
-                    saved_path = default_storage.save(upload_path, file)
-                    doc.file = saved_path
-                    doc.file_link = default_storage.url(saved_path)
-                    doc.save()
-                return
-            except Exception:
-                pass
-
-        # 2. Try previous application
-        previous_doc = (
-            Document.objects.filter(doc_application__customer=customer, doc_type=passport_doc_type)
-            .exclude(doc_application=application)
-            .order_by("-created_at")
-            .first()
-        )
-        if previous_doc and previous_doc.file and not previous_doc.is_expired:
-            try:
-                new_doc = Document(
-                    doc_application=application,
-                    doc_type=passport_doc_type,
-                    file=previous_doc.file,
-                    file_link=previous_doc.file_link,
-                    doc_number=previous_doc.doc_number,
-                    expiration_date=previous_doc.expiration_date,
-                    ai_validation=previous_doc.ai_validation,
-                    metadata=previous_doc.metadata,
-                    completed=previous_doc.completed,
-                    required=previous_doc.required,
-                    details=previous_doc.details,
-                    created_by=user,
-                    created_at=timezone.now(),
-                    updated_at=timezone.now(),
-                )
-                new_doc.save()
-            except Exception:
-                pass

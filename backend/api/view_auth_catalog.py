@@ -1,5 +1,6 @@
 from .views_imports import *
 
+
 class TokenAuthView(TokenObtainPairView):
     authentication_classes = []
     permission_classes = [AllowAny]
@@ -133,7 +134,7 @@ class HolidayViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
 
 class AiModelViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsStaffOrAdminGroup]
     queryset = AiModel.objects.all()
     serializer_class = AiModelSerializer
     pagination_class = None
@@ -146,11 +147,6 @@ class AiModelViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     def catalog(self, request):
         return Response(AIRuntimeSettingsService.get_model_catalog())
 
-    def get_permissions(self):
-        if self.action in ["create", "update", "partial_update", "destroy"]:
-            return [IsAuthenticated(), IsStaffOrAdminGroup()]
-        return super().get_permissions()
-
     @extend_schema(
         parameters=[
             OpenApiParameter(name="q", type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, required=False),
@@ -160,9 +156,15 @@ class AiModelViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     @action(detail=False, methods=["get"], url_path="openrouter-search")
     def openrouter_search(self, request):
         query = str(request.query_params.get("q") or "").strip().lower()
-        limit = min(max(int(request.query_params.get("limit") or 20), 1), 50)
+        raw_limit = request.query_params.get("limit")
+        try:
+            limit = min(max(int(raw_limit or 20), 1), 50)
+        except (TypeError, ValueError):
+            return self.error_response("Invalid limit parameter.", status.HTTP_400_BAD_REQUEST)
         api_key = getattr(settings, "OPENROUTER_API_KEY", None)
-        base_url = str(AIRuntimeSettingsService.get("OPENROUTER_API_BASE_URL") or "https://openrouter.ai/api/v1").rstrip("/")
+        base_url = str(
+            AIRuntimeSettingsService.get("OPENROUTER_API_BASE_URL") or "https://openrouter.ai/api/v1"
+        ).rstrip("/")
 
         if not api_key:
             return Response({"results": [], "message": "OPENROUTER_API_KEY is not configured."}, status=200)
@@ -214,7 +216,6 @@ class AiModelViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                 break
 
         return Response({"results": results})
-
 
 
 class LettersViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
@@ -456,14 +457,38 @@ class DocumentTypeViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
+    @staticmethod
+    def _with_case_insensitive_name_sorting(queryset):
+        return queryset.annotate(
+            sort_last_name=Coalesce(
+                NullIf(Lower("last_name"), Value("")),
+                NullIf(Lower("company_name"), Value("")),
+                NullIf(Lower("first_name"), Value("")),
+                Value(""),
+            ),
+            sort_first_name=Coalesce(
+                NullIf(Lower("first_name"), Value("")),
+                NullIf(Lower("company_name"), Value("")),
+                Value(""),
+            ),
+            sort_company_name=Coalesce(
+                NullIf(Lower("company_name"), Value("")),
+                Value(""),
+            ),
+        )
+
     def get_queryset(self):
-        queryset = Customer.objects.select_related("nationality").all()
+        queryset = self._with_case_insensitive_name_sorting(
+            Customer.objects.select_related("nationality").all()
+        )
 
         # Only apply search and active filters for the list action
         if self.action == "list":
             query = self.request.query_params.get("q") or self.request.query_params.get("search")
             if query:
-                queryset = Customer.objects.search_customers(query).select_related("nationality")
+                queryset = self._with_case_insensitive_name_sorting(
+                    Customer.objects.search_customers(query).select_related("nationality")
+                )
 
             status_param = self.request.query_params.get("status")
             if status_param:
@@ -482,7 +507,17 @@ class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     pagination_class = StandardResultsSetPagination
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["first_name", "last_name", "email", "company_name", "passport_number"]
-    ordering_fields = ["first_name", "last_name", "email", "company_name", "passport_number", "created_at"]
+    ordering_fields = [
+        "first_name",
+        "last_name",
+        "email",
+        "company_name",
+        "passport_number",
+        "created_at",
+        "sort_last_name",
+        "sort_first_name",
+        "sort_company_name",
+    ]
     ordering = ["-created_at"]
 
     @action(detail=False, methods=["get"], url_path="search")
@@ -514,7 +549,9 @@ class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     def uninvoiced_applications(self, request, pk=None):
         customer = self.get_object()
         applications = (
-            customer.doc_applications.filter(invoice_applications__isnull=True, product__uses_customer_app_workflow=True)
+            customer.doc_applications.filter(
+                invoice_applications__isnull=True, product__uses_customer_app_workflow=True
+            )
             .select_related("customer", "product")
             .prefetch_related("invoice_applications__invoice")
             .distinct()
@@ -528,7 +565,8 @@ class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     def applications_history(self, request, pk=None):
         customer = self.get_object()
         applications = (
-            customer.doc_applications.filter(product__uses_customer_app_workflow=True).select_related("customer", "product")
+            customer.doc_applications.filter(product__uses_customer_app_workflow=True)
+            .select_related("customer", "product")
             .prefetch_related(
                 Prefetch(
                     "invoice_applications",
@@ -559,7 +597,6 @@ class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     @extend_schema(
         request=PassportCheckSerializer,
         responses={202: OpenApiResponse(description="Job ID for SSE tracking")},
-        operation_id="customers_check_passport_create",
     )
     @action(detail=False, methods=["post"], url_path="check-passport", parser_classes=[MultiPartParser, FormParser])
     def check_passport(self, request):

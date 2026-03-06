@@ -2,6 +2,7 @@
 README.md
 api.base.service.ts
 api.module.ts
+api/ai-models.service.ts
 api/api-token-auth.service.ts
 api/api.ts
 api/async-jobs.service.ts
@@ -37,6 +38,8 @@ git_push.sh
 index.ts
 model/admin-push-notification-send.ts
 model/admin-whatsapp-test-send.ts
+model/ai-model-capabilities.ts
+model/ai-model.ts
 model/async-job.ts
 model/calendar-reminder-bulk-create.ts
 model/calendar-reminder-create.ts

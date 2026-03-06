@@ -1,3 +1,5 @@
+export * from './ai-models.service';
+import { AiModelsService } from './ai-models.service';
 export * from './api-token-auth.service';
 import { ApiTokenAuthService } from './api-token-auth.service';
 export * from './async-jobs.service';
@@ -54,4 +56,4 @@ export * from './v1.service';
 import { V1Service } from './v1.service';
 export * from './workflow-notifications.service';
 import { WorkflowNotificationsService } from './workflow-notifications.service';
-export const APIS = [ApiTokenAuthService, AsyncJobsService, BackupsService, CalendarService, CalendarRemindersService, ComputeService, CountryCodesService, CustomerApplicationsService, CustomersService, DashboardStatsService, DocumentOcrService, DocumentTypesService, DocumentsService, HolidaysService, InvoicesService, LettersService, MockService, OcrService, PaymentsService, ProductsService, PushNotificationsService, ServerManagementService, SyncService, TasksService, UserProfileService, UserSettingsService, V1Service, WorkflowNotificationsService];
+export const APIS = [AiModelsService, ApiTokenAuthService, AsyncJobsService, BackupsService, CalendarService, CalendarRemindersService, ComputeService, CountryCodesService, CustomerApplicationsService, CustomersService, DashboardStatsService, DocumentOcrService, DocumentTypesService, DocumentsService, HolidaysService, InvoicesService, LettersService, MockService, OcrService, PaymentsService, ProductsService, PushNotificationsService, ServerManagementService, SyncService, TasksService, UserProfileService, UserSettingsService, V1Service, WorkflowNotificationsService];

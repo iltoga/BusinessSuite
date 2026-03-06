@@ -1,6 +1,12 @@
+from core.models import AiModel
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
-from core.models import AiModel
+
+class AiModelCapabilitiesSerializer(serializers.Serializer):
+    vision = serializers.BooleanField()
+    fileUpload = serializers.BooleanField()
+    reasoning = serializers.BooleanField()
 
 
 class AiModelSerializer(serializers.ModelSerializer):
@@ -31,7 +37,8 @@ class AiModelSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
-    def get_capabilities(self, obj: AiModel):
+    @extend_schema_field(AiModelCapabilitiesSerializer)
+    def get_capabilities(self, obj: AiModel) -> dict[str, bool]:
         return {
             "vision": bool(obj.vision),
             "fileUpload": bool(obj.file_upload),

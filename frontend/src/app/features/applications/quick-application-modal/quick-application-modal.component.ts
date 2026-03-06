@@ -139,39 +139,34 @@ export class QuickApplicationModalComponent {
       .customerApplicationsCreate(payload as any)
       .pipe(
         switchMap((newApp: any) => {
-          return this.applicationsApi.customerApplicationsRetrieve(newApp.id).pipe(
-            switchMap((detail: any) => {
-              const status = String(detail?.status ?? '').toLowerCase();
-              const canForceClose = detail?.canForceClose !== false;
-              if (status === 'completed' || !canForceClose) {
-                return of({ application: detail, forceClosed: false });
-              }
+          const status = String(newApp?.status ?? '').toLowerCase();
+          const canForceClose = newApp?.canForceClose !== false;
+          if (status === 'completed' || !canForceClose) {
+            return of({ application: newApp, forceClosed: false });
+          }
 
-              // Prepare a minimal payload for force-close that matches the expected serializer
-              const forceClosePayload = {
-                ...detail,
-                customer: detail.customer?.id ?? detail.customer,
-                product: detail.product?.id ?? detail.product,
-              };
+          // Prepare a minimal payload for force-close that matches the expected serializer
+          const forceClosePayload = {
+            ...newApp,
+            customer: newApp.customer?.id ?? newApp.customer,
+            product: newApp.product?.id ?? newApp.product,
+          };
 
-              return this.applicationsApi
-                .customerApplicationsForceCloseCreate(detail.id, forceClosePayload)
-                .pipe(
-                  map((forceClosedDetail: any) => ({
-                    application: forceClosedDetail ?? detail,
-                    forceClosed: true,
-                  })),
-                  catchError((error) => {
-                    const message = extractServerErrorMessage(error)?.toLowerCase() ?? '';
-                    if (message.includes('already completed')) {
-                      return of({ application: detail, forceClosed: false });
-                    }
-                    throw error;
-                  }),
-                );
-            }),
-            catchError(() => of({ application: newApp, forceClosed: false })),
-          );
+          return this.applicationsApi
+            .customerApplicationsForceCloseCreate(newApp.id, forceClosePayload)
+            .pipe(
+              map((forceClosedDetail: any) => ({
+                application: forceClosedDetail ?? newApp,
+                forceClosed: true,
+              })),
+              catchError((error) => {
+                const message = extractServerErrorMessage(error)?.toLowerCase() ?? '';
+                if (message.includes('already completed')) {
+                  return of({ application: newApp, forceClosed: false });
+                }
+                throw error;
+              }),
+            );
         }),
       )
       .subscribe({

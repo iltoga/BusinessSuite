@@ -1,7 +1,8 @@
+import logging
 import os
 
-from core.services.google_calendar_event_colors import GoogleCalendarEventColors
 from core.services.app_setting_service import AppSettingService
+from core.services.google_calendar_event_colors import GoogleCalendarEventColors
 from django.conf import settings
 from rest_framework.exceptions import APIException
 
@@ -29,6 +30,8 @@ SERVICE_ACCOUNT_FILE = getattr(
 TIMEZONE = str(AppSettingService.get_effective_raw("GOOGLE_TIMEZONE", "Asia/Makassar") or "Asia/Makassar")
 DEFAULT_CALENDAR_ID = str(AppSettingService.get_effective_raw("GOOGLE_CALENDAR_ID", "primary") or "primary")
 DEFAULT_TASKLIST_ID = str(AppSettingService.get_effective_raw("GOOGLE_TASKLIST_ID", "@default") or "@default")
+
+logger = logging.getLogger(__name__)
 
 
 class GoogleClient:
@@ -167,7 +170,17 @@ class GoogleClient:
             event_body["end"] = {"dateTime": end_time, "timeZone": TIMEZONE}
 
         try:
+            logger.debug(
+                "google_calendar_create_request calendar_id=%s body=%s",
+                calendar_id,
+                event_body,
+            )
             event = self.calendar_service.events().insert(calendarId=calendar_id, body=event_body).execute()
+            logger.debug(
+                "google_calendar_create_response calendar_id=%s response=%s",
+                calendar_id,
+                event,
+            )
             return event
         except HttpError as e:
             raise APIException(f"Google Calendar Create Error: {str(e)}")
@@ -223,7 +236,19 @@ class GoogleClient:
                 body.setdefault("end", {})["timeZone"] = TIMEZONE
                 body["end"].pop("date", None)
 
+            logger.debug(
+                "google_calendar_update_request calendar_id=%s event_id=%s body=%s",
+                calendar_id,
+                event_id,
+                body,
+            )
             event = self.calendar_service.events().patch(calendarId=calendar_id, eventId=event_id, body=body).execute()
+            logger.debug(
+                "google_calendar_update_response calendar_id=%s event_id=%s response=%s",
+                calendar_id,
+                event_id,
+                event,
+            )
             return event
         except HttpError as e:
             raise APIException(f"Google Calendar Update Error: {str(e)}")
@@ -244,7 +269,18 @@ class GoogleClient:
         if calendar_id is None:
             calendar_id = DEFAULT_CALENDAR_ID
         try:
-            self.calendar_service.events().delete(calendarId=calendar_id, eventId=event_id).execute()
+            logger.debug(
+                "google_calendar_delete_request calendar_id=%s event_id=%s",
+                calendar_id,
+                event_id,
+            )
+            result = self.calendar_service.events().delete(calendarId=calendar_id, eventId=event_id).execute()
+            logger.debug(
+                "google_calendar_delete_response calendar_id=%s event_id=%s response=%s",
+                calendar_id,
+                event_id,
+                result,
+            )
             return True
         except HttpError as e:
             raise APIException(f"Google Calendar Delete Error: {str(e)}")

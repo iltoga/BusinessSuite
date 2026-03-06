@@ -1,4 +1,5 @@
 # Admin Tools API ViewSets
+import ast
 import datetime
 import json
 import logging
@@ -6,7 +7,6 @@ import os
 import re
 import shutil
 import tarfile
-import ast
 from collections.abc import Mapping
 
 import requests
@@ -22,11 +22,11 @@ from api.serializers.ui_settings_serializer import UiSettingsSerializer
 from api.utils.redis_sse import iter_replay_and_live_events
 from api.utils.sse_auth import sse_token_auth_required
 from api.views import ApiErrorHandlingMixin
-from core.models.ai_request_usage import AIRequestUsage
 from core.models import AppSetting
+from core.models.ai_request_usage import AIRequestUsage
 from core.services.ai_runtime_settings_service import AI_RUNTIME_SETTING_DEFINITIONS, AIRuntimeSettingsService
-from core.services.app_setting_service import AppSettingScope, AppSettingService
 from core.services.ai_usage_service import AIUsageFeature
+from core.services.app_setting_service import AppSettingScope, AppSettingService
 from core.services.local_resilience_service import LocalResilienceService
 from core.services.redis_streams import format_sse_event, resolve_last_event_id, stream_user_key
 from core.services.ui_settings_service import UiSettingsService
@@ -110,7 +110,9 @@ def _stream_admin_events(
                 yield format_sse_event(data={"message": f"Error: {exc}"})
                 return
 
-        for stream_event in iter_replay_and_live_events(stream_key=stream_user_key(user_id), last_event_id=replay_cursor):
+        for stream_event in iter_replay_and_live_events(
+            stream_key=stream_user_key(user_id), last_event_id=replay_cursor
+        ):
             if stream_event is None:
                 yield ": keepalive\n\n"
                 continue
@@ -170,7 +172,13 @@ def backup_restore_sse(request):
         user_id=request.user.id,
         replay_cursor=replay_cursor,
         start_new=not replay_mode,
-        accepted_events={"restore_started", "restore_progress", "restore_message", "restore_finished", "restore_failed"},
+        accepted_events={
+            "restore_started",
+            "restore_progress",
+            "restore_message",
+            "restore_finished",
+            "restore_failed",
+        },
         enqueue_callback=lambda: admin_tasks.run_restore_stream.delay(
             user_id=request.user.id,
             archive_path=gz_path,
@@ -482,7 +490,13 @@ class BackupsViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             user_id=request.user.id,
             replay_cursor=replay_cursor,
             start_new=not replay_mode,
-            accepted_events={"restore_started", "restore_progress", "restore_message", "restore_finished", "restore_failed"},
+            accepted_events={
+                "restore_started",
+                "restore_progress",
+                "restore_message",
+                "restore_finished",
+                "restore_failed",
+            },
             enqueue_callback=lambda: admin_tasks.run_restore_stream.delay(
                 user_id=request.user.id,
                 archive_path=gz_path,
@@ -570,6 +584,71 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                 {
                     "ok": False,
                     "message": "Failed to run cache health check",
+                    "errors": [str(e)],
+                },
+                status=500,
+            )
+
+    @extend_schema(
+        summary="Run calendar sync health check",
+        parameters=[
+            OpenApiParameter(
+                name="stuck_after_minutes",
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                description="Pending sync threshold in minutes.",
+                required=False,
+            ),
+            OpenApiParameter(
+                name="sample_limit",
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.QUERY,
+                description="Maximum number of stuck event samples returned.",
+                required=False,
+            ),
+        ],
+        responses={200: OpenApiTypes.OBJECT},
+    )
+    @action(detail=False, methods=["get"], url_path="calendar-sync-health")
+    def calendar_sync_health(self, request):
+        """Report stuck pending application calendar sync events."""
+        try:
+            raw_stuck_after = request.query_params.get("stuck_after_minutes", "5")
+            raw_sample_limit = request.query_params.get("sample_limit", "20")
+            try:
+                stuck_after_minutes = int(raw_stuck_after)
+            except (TypeError, ValueError):
+                return Response(
+                    {
+                        "ok": False,
+                        "message": "Invalid stuck_after_minutes parameter",
+                    },
+                    status=400,
+                )
+
+            try:
+                sample_limit = int(raw_sample_limit)
+            except (TypeError, ValueError):
+                return Response(
+                    {
+                        "ok": False,
+                        "message": "Invalid sample_limit parameter",
+                    },
+                    status=400,
+                )
+
+            return Response(
+                services.get_calendar_sync_health_status(
+                    stuck_after_minutes=stuck_after_minutes,
+                    sample_limit=sample_limit,
+                )
+            )
+        except Exception as e:
+            logger.error("Failed to run calendar sync health check: %s", e, exc_info=True)
+            return Response(
+                {
+                    "ok": False,
+                    "message": "Failed to run calendar sync health check",
                     "errors": [str(e)],
                 },
                 status=500,
@@ -678,7 +757,11 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
         except Exception as e:
             return Response({"ok": False, "message": str(e)}, status=500)
 
-    @extend_schema(summary="List and create application settings", request=OpenApiTypes.OBJECT, responses={200: OpenApiTypes.OBJECT})
+    @extend_schema(
+        summary="List and create application settings",
+        request=OpenApiTypes.OBJECT,
+        responses={200: OpenApiTypes.OBJECT},
+    )
     @action(detail=False, methods=["get", "post"], url_path="app-settings")
     def app_settings(self, request):
         if request.method.lower() == "post":
@@ -734,9 +817,22 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             )
         return Response({"items": items})
 
-    @extend_schema(summary="Update or delete single application setting", request=OpenApiTypes.OBJECT, responses={200: OpenApiTypes.OBJECT})
+    @extend_schema(
+        summary="Update or delete single application setting",
+        parameters=[
+            OpenApiParameter(
+                name="name",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.PATH,
+                description="Case-insensitive application setting name.",
+                required=True,
+            ),
+        ],
+        request=OpenApiTypes.OBJECT,
+        responses={200: OpenApiTypes.OBJECT},
+    )
     @action(detail=False, methods=["patch", "delete"], url_path=r"app-settings/(?P<name>[^/.]+)")
-    def app_setting_item(self, request, name=None):
+    def app_setting_item(self, request, name: str | None = None):
         setting_name = str(name or "").strip().upper()
         if not setting_name:
             return Response({"detail": "Invalid setting name."}, status=HTTP_400_BAD_REQUEST)
@@ -778,7 +874,11 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
 
         current = AppSetting.objects.filter(name=setting_name).first()
         scope = str(payload.get("scope") or (current.scope if current else AppSettingScope.BACKEND)).strip().lower()
-        description = str(payload.get("description") if payload.get("description") is not None else (current.description if current else "")).strip()
+        description = str(
+            payload.get("description")
+            if payload.get("description") is not None
+            else (current.description if current else "")
+        ).strip()
         if scope not in {AppSettingScope.BACKEND, AppSettingScope.FRONTEND, AppSettingScope.BOTH}:
             return Response({"detail": "scope must be backend, frontend, or both."}, status=HTTP_400_BAD_REQUEST)
 
@@ -799,7 +899,11 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                 description=description or "",
                 updated_by=request.user,
             )
-        effective_value = AIRuntimeSettingsService.get(setting_name) if definition else AppSettingService.get_effective_raw(setting_name, None)
+        effective_value = (
+            AIRuntimeSettingsService.get(setting_name)
+            if definition
+            else AppSettingService.get_effective_raw(setting_name, None)
+        )
         metadata = AppSettingService.get_metadata(
             setting_name,
             hardcoded_default=AIRuntimeSettingsService.defaults().get(setting_name) if definition else None,
@@ -823,6 +927,7 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
         usage_tracking_unavailable = False
 
         if request.method.lower() == "patch":
+
             def _as_mapping(value):
                 if isinstance(value, list) and len(value) == 1:
                     value = value[0]
@@ -844,9 +949,7 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             if updates is None:
                 updates = _as_mapping(payload.get("updates"))
             if updates is None:
-                updates = {
-                    name: value for name, value in payload.items() if name not in {"settings", "updates"}
-                }
+                updates = {name: value for name, value in payload.items() if name not in {"settings", "updates"}}
 
             if not isinstance(updates, dict):
                 return Response({"detail": "Invalid payload. Expected an object."}, status=HTTP_400_BAD_REQUEST)
@@ -1008,7 +1111,9 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             ]
 
         api_key = getattr(settings, "OPENROUTER_API_KEY", None)
-        base_url = str(AIRuntimeSettingsService.get("OPENROUTER_API_BASE_URL") or "https://openrouter.ai/api/v1").rstrip("/")
+        base_url = str(
+            AIRuntimeSettingsService.get("OPENROUTER_API_BASE_URL") or "https://openrouter.ai/api/v1"
+        ).rstrip("/")
         timeout = float(getattr(settings, "OPENROUTER_HEALTHCHECK_TIMEOUT", 10.0))
         now = timezone.now()
 
@@ -1167,6 +1272,22 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
         configured_fallback_order = _configured_fallback_order_for(current_provider)
         effective_fallback_order = _effective_fallback_order_for(current_provider)
 
+        def _provider_default_model(provider_key: str) -> str:
+            if provider_key == "openrouter":
+                if current_provider == "openrouter":
+                    configured_default_model = global_default_model or openrouter_default_model
+                else:
+                    configured_default_model = openrouter_default_model
+                return configured_default_model or "google/gemini-3-flash-preview"
+            if provider_key == "openai":
+                if current_provider == "openai":
+                    return global_default_model or openai_default_model or "gpt-5-mini"
+                else:
+                    return openai_default_model or "gpt-5-mini"
+            if provider_key == "groq":
+                return groq_default_model or "meta-llama/llama-4-scout-17b-16e-instruct"
+            return global_default_model or "google/gemini-3-flash-preview"
+
         def _configured_fallback_model_order_for(primary_provider: str) -> list[dict]:
             configured: list[dict] = []
             seen: set[tuple[str, str]] = set()
@@ -1209,33 +1330,16 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
 
         def _effective_fallback_model_order_for(primary_provider: str) -> list[dict]:
             configured = _configured_fallback_model_order_for(primary_provider)
-            return [
-                row
-                for row in configured
-                if router_enabled and provider_availability.get(row.get("provider"))
-            ]
+            return [row for row in configured if router_enabled and provider_availability.get(row.get("provider"))]
 
         configured_fallback_model_order = _configured_fallback_model_order_for(current_provider)
         effective_fallback_model_order = _effective_fallback_model_order_for(current_provider)
 
-        def _provider_default_model(provider_key: str) -> str:
-            if provider_key == "openrouter":
-                if current_provider == "openrouter":
-                    configured_default_model = global_default_model or openrouter_default_model
-                else:
-                    configured_default_model = openrouter_default_model
-                return configured_default_model or "google/gemini-3-flash-preview"
-            if provider_key == "openai":
-                if current_provider == "openai":
-                    return global_default_model or openai_default_model or "gpt-5-mini"
-                else:
-                    return openai_default_model or "gpt-5-mini"
-            if provider_key == "groq":
-                return groq_default_model or "meta-llama/llama-4-scout-17b-16e-instruct"
-            return global_default_model or "google/gemini-3-flash-preview"
-
         def _feature_primary_provider(model_override: str | None) -> str:
-            return AIRuntimeSettingsService.get_provider_for_model(model_override, fallback=current_provider) or current_provider
+            return (
+                AIRuntimeSettingsService.get_provider_for_model(model_override, fallback=current_provider)
+                or current_provider
+            )
 
         def _feature_primary_model(*, model_override: str | None, primary_provider: str) -> str:
             return (model_override or "").strip() or _provider_default_model(primary_provider)
@@ -1323,9 +1427,7 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                 model_strategy="Uses DOCUMENT_CATEGORIZER_MODEL (or request override) as pass-1 model.",
                 model_override=document_categorizer_model,
                 model_failover=document_categorizer_model_high,
-                model_failover_strategy=(
-                    "When pass 1 has no match, retries with DOCUMENT_CATEGORIZER_MODEL_HIGH."
-                ),
+                model_failover_strategy=("When pass 1 has no match, retries with DOCUMENT_CATEGORIZER_MODEL_HIGH."),
             ),
             _feature_usage_row(
                 feature_name=AIUsageFeature.DOCUMENT_AI_VALIDATOR,

@@ -4,6 +4,215 @@ info:
   version: 1.0.0
   description: API for BusinessSuite ERP/CRM
 paths:
+  /api/ai-models/:
+    get:
+      operationId: aiModelsList
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - ai-models
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AiModel'
+          description: ''
+    post:
+      operationId: aiModelsCreate
+      tags:
+      - ai-models
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AiModel'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AiModel'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AiModel'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/AiModel'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiModel'
+          description: ''
+  /api/ai-models/{id}/:
+    get:
+      operationId: aiModelsRetrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this ai model.
+        required: true
+      tags:
+      - ai-models
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiModel'
+          description: ''
+    put:
+      operationId: aiModelsUpdate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this ai model.
+        required: true
+      tags:
+      - ai-models
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AiModel'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AiModel'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AiModel'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/AiModel'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiModel'
+          description: ''
+    patch:
+      operationId: aiModelsPartialUpdate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this ai model.
+        required: true
+      tags:
+      - ai-models
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AiModel'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AiModel'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AiModel'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/AiModel'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiModel'
+          description: ''
+    delete:
+      operationId: aiModelsDestroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this ai model.
+        required: true
+      tags:
+      - ai-models
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/ai-models/catalog/:
+    get:
+      operationId: aiModelsCatalogRetrieve
+      tags:
+      - ai-models
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiModel'
+          description: ''
+  /api/ai-models/openrouter-search/:
+    get:
+      operationId: aiModelsOpenrouterSearchRetrieve
+      parameters:
+      - in: query
+        name: limit
+        schema:
+          type: integer
+      - in: query
+        name: q
+        schema:
+          type: string
+      tags:
+      - ai-models
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiModel'
+          description: ''
   /api/api-token-auth/:
     post:
       operationId: apiTokenAuthCreate
@@ -1834,6 +2043,24 @@ paths:
       responses:
         '200':
           description: No response body
+  /api/document-ocr/stream/{jobId}/:
+    get:
+      operationId: documentOcrStreamRetrieve
+      parameters:
+      - in: path
+        name: jobId
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - document-ocr
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
   /api/document-types/:
     get:
       operationId: documentTypesList
@@ -3326,6 +3553,24 @@ paths:
       responses:
         '200':
           description: No response body
+  /api/ocr/stream/{jobId}/:
+    get:
+      operationId: ocrStreamRetrieve
+      parameters:
+      - in: path
+        name: jobId
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - ocr
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
   /api/payments/:
     get:
       operationId: paymentsList
@@ -4181,11 +4426,156 @@ paths:
               schema:
                 $ref: '#/components/schemas/WebPushSubscription'
           description: ''
+  /api/server-management/app-settings/:
+    get:
+      operationId: serverManagementAppSettingsRetrieve
+      summary: List and create application settings
+      tags:
+      - server-management
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+    post:
+      operationId: serverManagementAppSettingsCreate
+      summary: List and create application settings
+      tags:
+      - server-management
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+          '*/*':
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/server-management/app-settings/{name}/:
+    patch:
+      operationId: serverManagementAppSettingsPartialUpdate
+      summary: Update or delete single application setting
+      parameters:
+      - in: path
+        name: name
+        schema:
+          type: string
+        description: Case-insensitive application setting name.
+        required: true
+      tags:
+      - server-management
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+          '*/*':
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+    delete:
+      operationId: serverManagementAppSettingsDestroy
+      summary: Update or delete single application setting
+      parameters:
+      - in: path
+        name: name
+        schema:
+          type: string
+        description: Case-insensitive application setting name.
+        required: true
+      tags:
+      - server-management
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/server-management/cache-health/:
     get:
       operationId: serverManagementCacheHealthRetrieve
       description: Run a live cache round-trip and Redis connectivity probe.
       summary: Run live cache health check
+      tags:
+      - server-management
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/server-management/calendar-sync-health/:
+    get:
+      operationId: serverManagementCalendarSyncHealthRetrieve
+      description: Report stuck pending application calendar sync events.
+      summary: Run calendar sync health check
+      parameters:
+      - in: query
+        name: sample_limit
+        schema:
+          type: integer
+        description: Maximum number of stuck event samples returned.
+      - in: query
+        name: stuck_after_minutes
+        schema:
+          type: integer
+        description: Pending sync threshold in minutes.
       tags:
       - server-management
       security:
@@ -4339,8 +4729,11 @@ paths:
   /api/server-management/openrouter-status/:
     get:
       operationId: serverManagementOpenrouterStatusRetrieve
-      description: Return OpenRouter credit status and AI model usage by feature.
-      summary: Get OpenRouter status and AI model usage
+      description: |-
+        Return OpenRouter credit status and AI model usage by feature.
+
+        PATCH accepts DB overrides for supported AI runtime setting names.
+      summary: Get or update OpenRouter status and AI model usage
       tags:
       - server-management
       security:
@@ -4348,6 +4741,58 @@ paths:
       - cookieAuth: []
       responses:
         '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+    patch:
+      operationId: serverManagementOpenrouterStatusPartialUpdate
+      description: |-
+        Return OpenRouter credit status and AI model usage by feature.
+
+        PATCH accepts DB overrides for supported AI runtime setting names.
+      summary: Get or update OpenRouter status and AI model usage
+      tags:
+      - server-management
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+          '*/*':
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+        '400':
           content:
             application/json:
               schema:
@@ -4826,6 +5271,215 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserSettings'
+          description: ''
+  /api/v1/ai-models/:
+    get:
+      operationId: v1AiModelsList
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AiModel'
+          description: ''
+    post:
+      operationId: v1AiModelsCreate
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AiModel'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AiModel'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AiModel'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/AiModel'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiModel'
+          description: ''
+  /api/v1/ai-models/{id}/:
+    get:
+      operationId: v1AiModelsRetrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this ai model.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiModel'
+          description: ''
+    put:
+      operationId: v1AiModelsUpdate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this ai model.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AiModel'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AiModel'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AiModel'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/AiModel'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiModel'
+          description: ''
+    patch:
+      operationId: v1AiModelsPartialUpdate
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this ai model.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AiModel'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AiModel'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AiModel'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/AiModel'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiModel'
+          description: ''
+    delete:
+      operationId: v1AiModelsDestroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this ai model.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/ai-models/catalog/:
+    get:
+      operationId: v1AiModelsCatalogRetrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiModel'
+          description: ''
+  /api/v1/ai-models/openrouter-search/:
+    get:
+      operationId: v1AiModelsOpenrouterSearchRetrieve
+      parameters:
+      - in: query
+        name: limit
+        schema:
+          type: integer
+      - in: query
+        name: q
+        schema:
+          type: string
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiModel'
           description: ''
   /api/v1/api-token-auth/:
     post:
@@ -6575,7 +7229,7 @@ paths:
           description: ''
   /api/v1/customers/check-passport/:
     post:
-      operationId: customersCheckPassportCreate2
+      operationId: v1CustomersCheckPassportCreate
       description: |-
         Check passport uploadability asynchronously.
         Returns an AsyncJob ID to track progress via SSE.
@@ -6642,6 +7296,24 @@ paths:
   /api/v1/document-ocr/status/{jobId}/:
     get:
       operationId: v1DocumentOcrStatusRetrieve
+      parameters:
+      - in: path
+        name: jobId
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/document-ocr/stream/{jobId}/:
+    get:
+      operationId: v1DocumentOcrStreamRetrieve
       parameters:
       - in: path
         name: jobId
@@ -8149,6 +8821,24 @@ paths:
       responses:
         '200':
           description: No response body
+  /api/v1/ocr/stream/{jobId}/:
+    get:
+      operationId: v1OcrStreamRetrieve
+      parameters:
+      - in: path
+        name: jobId
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
   /api/v1/payments/:
     get:
       operationId: v1PaymentsList
@@ -9004,11 +9694,156 @@ paths:
               schema:
                 $ref: '#/components/schemas/WebPushSubscription'
           description: ''
+  /api/v1/server-management/app-settings/:
+    get:
+      operationId: v1ServerManagementAppSettingsRetrieve
+      summary: List and create application settings
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+    post:
+      operationId: v1ServerManagementAppSettingsCreate
+      summary: List and create application settings
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+          '*/*':
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/server-management/app-settings/{name}/:
+    patch:
+      operationId: v1ServerManagementAppSettingsPartialUpdate
+      summary: Update or delete single application setting
+      parameters:
+      - in: path
+        name: name
+        schema:
+          type: string
+        description: Case-insensitive application setting name.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+          '*/*':
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+    delete:
+      operationId: v1ServerManagementAppSettingsDestroy
+      summary: Update or delete single application setting
+      parameters:
+      - in: path
+        name: name
+        schema:
+          type: string
+        description: Case-insensitive application setting name.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/server-management/cache-health/:
     get:
       operationId: v1ServerManagementCacheHealthRetrieve
       description: Run a live cache round-trip and Redis connectivity probe.
       summary: Run live cache health check
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/server-management/calendar-sync-health/:
+    get:
+      operationId: v1ServerManagementCalendarSyncHealthRetrieve
+      description: Report stuck pending application calendar sync events.
+      summary: Run calendar sync health check
+      parameters:
+      - in: query
+        name: sample_limit
+        schema:
+          type: integer
+        description: Maximum number of stuck event samples returned.
+      - in: query
+        name: stuck_after_minutes
+        schema:
+          type: integer
+        description: Pending sync threshold in minutes.
       tags:
       - v1
       security:
@@ -9162,8 +9997,11 @@ paths:
   /api/v1/server-management/openrouter-status/:
     get:
       operationId: v1ServerManagementOpenrouterStatusRetrieve
-      description: Return OpenRouter credit status and AI model usage by feature.
-      summary: Get OpenRouter status and AI model usage
+      description: |-
+        Return OpenRouter credit status and AI model usage by feature.
+
+        PATCH accepts DB overrides for supported AI runtime setting names.
+      summary: Get or update OpenRouter status and AI model usage
       tags:
       - v1
       security:
@@ -9171,6 +10009,58 @@ paths:
       - cookieAuth: []
       responses:
         '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+    patch:
+      operationId: v1ServerManagementOpenrouterStatusPartialUpdate
+      description: |-
+        Return OpenRouter credit status and AI model usage by feature.
+
+        PATCH accepts DB overrides for supported AI runtime setting names.
+      summary: Get or update OpenRouter status and AI model usage
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+          '*/*':
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+        '400':
           content:
             application/json:
               schema:
@@ -10248,6 +11138,107 @@ components:
           type: string
           default: WhatsApp test message from Revis Bali CRM.
           maxLength: 1000
+    AiModel:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        provider:
+          enum:
+          - openrouter
+          - openai
+          - groq
+          type: string
+          description: |-
+            * `openrouter` - OpenRouter
+            * `openai` - OpenAI
+            * `groq` - Groq
+          x-spec-enum-id: 8e115a4a25e5b1e5
+        model_id:
+          type: string
+          maxLength: 255
+        name:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+        vision:
+          type: boolean
+        file_upload:
+          type: boolean
+        reasoning:
+          type: boolean
+        context_length:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+          nullable: true
+        max_completion_tokens:
+          type: integer
+          maximum: 2147483647
+          minimum: -2147483648
+          nullable: true
+        modality:
+          type: string
+          maxLength: 120
+        prompt_price_per_token:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,12})?$
+          nullable: true
+        completion_price_per_token:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,12})?$
+          nullable: true
+        image_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,12})?$
+          nullable: true
+        request_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,12})?$
+          nullable: true
+        source:
+          type: string
+          maxLength: 32
+        raw_metadata: {}
+        capabilities:
+          allOf:
+          - $ref: '#/components/schemas/AiModelCapabilities'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - capabilities
+      - created_at
+      - id
+      - model_id
+      - name
+      - provider
+      - updated_at
+    AiModelCapabilities:
+      type: object
+      properties:
+        vision:
+          type: boolean
+        fileUpload:
+          type: boolean
+        reasoning:
+          type: boolean
+      required:
+      - fileUpload
+      - reasoning
+      - vision
     AsyncJob:
       type: object
       properties:
@@ -11096,6 +12087,9 @@ components:
           allOf:
           - $ref: '#/components/schemas/Task'
           readOnly: true
+        ready_for_invoice:
+          type: boolean
+          readOnly: true
         has_invoice:
           type: boolean
           readOnly: true
@@ -11129,6 +12123,7 @@ components:
       - notify_customer_channel
       - notify_customer_too
       - product
+      - ready_for_invoice
       - status
       - str_field
       - updated_at
@@ -11250,11 +12245,6 @@ components:
           readOnly: true
         ready_for_invoice:
           type: boolean
-          description: |-
-            Check if application is ready for invoicing.
-
-            Ready if all required documents are completed OR if the application
-            has been marked as completed (e.g. force closed).
           readOnly: true
         can_force_close:
           type: boolean

@@ -40,6 +40,12 @@ class OCRJob(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(
+                fields=["created_by", "status", "-created_at", "-id"],
+                name="core_ocrjob_guard_idx",
+            ),
+        ]
 
     def __str__(self) -> str:
         return f"OCRJob {self.id} ({self.status})"

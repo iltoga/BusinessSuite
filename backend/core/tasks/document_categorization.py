@@ -1,21 +1,26 @@
 import traceback as tb_module
 
-from core.services.ai_document_categorizer import AIDocumentCategorizer, get_document_types_for_prompt
 from core.services.ai_client import get_ai_user_message, is_ai_timeout_exception
+from core.services.ai_document_categorizer import AIDocumentCategorizer, get_document_types_for_prompt
 from core.services.logger_service import Logger
 from core.tasks.idempotency import acquire_task_lock, build_task_lock_key, release_task_lock
+from core.tasks.runtime import QUEUE_REALTIME, db_task, retry_on_transient_external_failure
 from customer_applications.models import DocumentCategorizationItem, DocumentCategorizationJob
 from django.core.files.storage import default_storage
 from django.db import transaction
 from django.utils import timezone
-from core.tasks.runtime import QUEUE_REALTIME, db_task
 from products.models.document_type import DocumentType
 
 logger = Logger.get_logger(__name__)
 
 
-@db_task(queue=QUEUE_REALTIME)
-def run_document_categorization_item(item_id: str) -> None:
+@db_task(
+    context=True,
+    queue=QUEUE_REALTIME,
+    queue_defaults=True,
+    retry_when=retry_on_transient_external_failure,
+)
+def run_document_categorization_item(item_id: str, task=None) -> None:
     """Categorize a single uploaded file using AI vision (two-pass) and validate."""
     lock_key = build_task_lock_key(namespace="doc_categorization_item", item_id=str(item_id))
     lock_token = acquire_task_lock(lock_key)
@@ -142,6 +147,32 @@ def run_document_categorization_item(item_id: str) -> None:
                 item.save(update_fields=["result", "validation_status", "validation_result", "updated_at"])
 
         except Exception as exc:
+            if task and task.retries > 0 and retry_on_transient_external_failure(task.retries_used, exc):
+                user_message = get_ai_user_message(exc)
+                logger.warning(
+                    "Document categorization retry scheduled for item %s on attempt %s/%s. retries_remaining=%s time_limit_ms=%s error=%s",
+                    item_id,
+                    getattr(task, "attempt", "?"),
+                    getattr(task, "max_retries", 0) + 1 if task else "?",
+                    task.retries,
+                    getattr(task, "time_limit_ms", None),
+                    exc,
+                )
+                current_result = item.result if isinstance(item.result, dict) else {}
+                current_result.update(
+                    {
+                        "stage": "retrying",
+                        "ai_validation_enabled": False,
+                        "retryable_error": user_message,
+                    }
+                )
+                item.status = DocumentCategorizationItem.STATUS_PROCESSING
+                item.error_message = user_message
+                item.traceback = ""
+                item.result = current_result
+                item.save(update_fields=["status", "error_message", "traceback", "result", "updated_at"])
+                raise
+
             full_traceback = tb_module.format_exc()
             logger.error("Document categorization failed for %s: %s\n%s", item.filename, exc, full_traceback)
             item.status = DocumentCategorizationItem.STATUS_ERROR

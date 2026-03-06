@@ -1,6 +1,10 @@
 from datetime import date
 from unittest.mock import patch
 
+from api.async_controls import build_guard_counter_key
+from core.models import AsyncJob, DocumentOCRJob, OCRJob
+from core.tasks import cron_jobs
+from customers.models import Customer
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
@@ -8,14 +12,9 @@ from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
+from invoices.models import Invoice, InvoiceDownloadJob, InvoiceImportJob
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient
-
-from api.async_controls import build_guard_counter_key
-from core.tasks import cron_jobs
-from core.models import AsyncJob, DocumentOCRJob, OCRJob
-from customers.models import Customer
-from invoices.models import Invoice, InvoiceDownloadJob, InvoiceImportJob
 
 User = get_user_model()
 
@@ -100,6 +99,36 @@ class CronExecAuthorizationTests(TestCase):
         clear_cache_enqueue_mock.assert_called_once()
 
 
+class AiModelAuthorizationTests(TestCase):
+    def setUp(self):
+        self.staff_user = User.objects.create_user("ai-model-staff", "ai-model-staff@example.com", "pass", is_staff=True)
+        self.regular_user = User.objects.create_user("ai-model-user", "ai-model-user@example.com", "pass")
+
+        self.staff_client = APIClient()
+        self.staff_client.force_authenticate(self.staff_user)
+
+        self.regular_client = APIClient()
+        self.regular_client.force_authenticate(self.regular_user)
+
+    def test_ai_model_read_endpoints_require_staff_or_admin_permissions(self):
+        for path in (
+            "/api/ai-models/",
+            "/api/ai-models/catalog/",
+            "/api/ai-models/openrouter-search/",
+        ):
+            response = self.regular_client.get(path)
+            self.assertEqual(response.status_code, 403, path)
+
+        self.assertEqual(self.staff_client.get("/api/ai-models/").status_code, 200)
+        self.assertEqual(self.staff_client.get("/api/ai-models/catalog/").status_code, 200)
+
+    def test_openrouter_search_rejects_non_numeric_limit(self):
+        response = self.staff_client.get("/api/ai-models/openrouter-search/?limit=foo")
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data["error"], "Invalid limit parameter.")
+
+
 class AsyncOwnershipAuthorizationTests(TestCase):
     def setUp(self):
         self.owner = User.objects.create_user("owner", "owner@example.com", "pass")
@@ -160,6 +189,22 @@ class AsyncOwnershipAuthorizationTests(TestCase):
         allowed = self.owner_client.get(reverse("api-ocr-status", kwargs={"job_id": str(ocr_job.id)}))
         self.assertEqual(allowed.status_code, 200)
 
+    def test_ocr_stream_endpoint_is_owner_scoped(self):
+        ocr_job = OCRJob.objects.create(
+            status=OCRJob.STATUS_QUEUED,
+            progress=0,
+            file_path="tmpfiles/ocr-stream-test.pdf",
+            file_url="/uploads/tmpfiles/ocr-stream-test.pdf",
+            created_by=self.owner,
+        )
+
+        denied = self.other_client.get(reverse("api-ocr-stream", kwargs={"job_id": str(ocr_job.id)}))
+        self.assertEqual(denied.status_code, 404)
+
+        allowed = self.owner_client.get(reverse("api-ocr-stream", kwargs={"job_id": str(ocr_job.id)}))
+        self.assertEqual(allowed.status_code, 200)
+        self.assertTrue(allowed.get("Content-Type", "").startswith("text/event-stream"))
+
     def test_document_ocr_status_endpoint_is_owner_scoped(self):
         document_job = DocumentOCRJob.objects.create(
             status=DocumentOCRJob.STATUS_QUEUED,
@@ -174,6 +219,22 @@ class AsyncOwnershipAuthorizationTests(TestCase):
 
         allowed = self.owner_client.get(reverse("api-document-ocr-status", kwargs={"job_id": str(document_job.id)}))
         self.assertEqual(allowed.status_code, 200)
+
+    def test_document_ocr_stream_endpoint_is_owner_scoped(self):
+        document_job = DocumentOCRJob.objects.create(
+            status=DocumentOCRJob.STATUS_QUEUED,
+            progress=0,
+            file_path="tmpfiles/document-ocr-stream-test.pdf",
+            file_url="/uploads/tmpfiles/document-ocr-stream-test.pdf",
+            created_by=self.owner,
+        )
+
+        denied = self.other_client.get(reverse("api-document-ocr-stream", kwargs={"job_id": str(document_job.id)}))
+        self.assertEqual(denied.status_code, 404)
+
+        allowed = self.owner_client.get(reverse("api-document-ocr-stream", kwargs={"job_id": str(document_job.id)}))
+        self.assertEqual(allowed.status_code, 200)
+        self.assertTrue(allowed.get("Content-Type", "").startswith("text/event-stream"))
 
     def test_invoice_import_status_endpoint_is_owner_scoped(self):
         import_job = InvoiceImportJob.objects.create(
@@ -217,10 +278,14 @@ class AsyncOwnershipAuthorizationTests(TestCase):
             created_by=self.owner,
         )
 
-        denied = self.other_client.get(reverse("invoices-download-async-status", kwargs={"job_id": str(download_job.id)}))
+        denied = self.other_client.get(
+            reverse("invoices-download-async-status", kwargs={"job_id": str(download_job.id)})
+        )
         self.assertEqual(denied.status_code, 404)
 
-        allowed = self.owner_client.get(reverse("invoices-download-async-status", kwargs={"job_id": str(download_job.id)}))
+        allowed = self.owner_client.get(
+            reverse("invoices-download-async-status", kwargs={"job_id": str(download_job.id)})
+        )
         self.assertEqual(allowed.status_code, 200)
         self.assertEqual(allowed.data["job_id"], str(download_job.id))
 
@@ -240,7 +305,9 @@ class AsyncOwnershipAuthorizationTests(TestCase):
             created_by=self.owner,
         )
 
-        denied = self.other_client.get(reverse("invoices-download-async-stream", kwargs={"job_id": str(download_job.id)}))
+        denied = self.other_client.get(
+            reverse("invoices-download-async-stream", kwargs={"job_id": str(download_job.id)})
+        )
         self.assertEqual(denied.status_code, 404)
 
 
@@ -274,7 +341,9 @@ class ExpensiveAsyncEnqueueIdempotencyTests(TestCase):
 
     @patch("api.views._latest_inflight_job", return_value=None)
     @patch("api.views._get_enqueue_guard_token", return_value=("guard:lock:key", None))
-    def test_product_export_start_records_lock_contention_and_429_observability(self, _guard_token_mock, _inflight_mock):
+    def test_product_export_start_records_lock_contention_and_429_observability(
+        self, _guard_token_mock, _inflight_mock
+    ):
         response = self.client.post("/api/products/export/start/", {"search_query": "visa"}, format="json")
 
         self.assertEqual(response.status_code, 429)
@@ -345,6 +414,7 @@ class ExpensiveAsyncEnqueueIdempotencyTests(TestCase):
         self.assertEqual(first.status_code, 202)
         first_job_id = first.data["job_id"]
         self.assertTrue(first.data["queued"])
+        self.assertTrue(first.data["stream_url"].endswith(f"/api/ocr/stream/{first_job_id}/"))
         enqueue_mock.assert_called_once()
 
         passport_two = SimpleUploadedFile("passport.png", b"png-bytes-2", content_type="image/png")
@@ -353,6 +423,7 @@ class ExpensiveAsyncEnqueueIdempotencyTests(TestCase):
         self.assertEqual(second.data["job_id"], first_job_id)
         self.assertFalse(second.data["queued"])
         self.assertTrue(second.data["deduplicated"])
+        self.assertTrue(second.data["stream_url"].endswith(f"/api/ocr/stream/{first_job_id}/"))
         self.assertEqual(OCRJob.objects.filter(created_by=self.user).count(), 1)
         enqueue_mock.assert_called_once()
         storage_save_mock.assert_called_once()
@@ -361,14 +432,13 @@ class ExpensiveAsyncEnqueueIdempotencyTests(TestCase):
     @patch("api.views.default_storage.url", return_value="/uploads/tmpfiles/document.pdf")
     @patch("api.views.default_storage.save", return_value="tmpfiles/document.pdf")
     @patch("api.views.run_document_ocr_job")
-    def test_document_ocr_check_reuses_existing_inflight_job(
-        self, enqueue_mock, storage_save_mock, storage_url_mock
-    ):
+    def test_document_ocr_check_reuses_existing_inflight_job(self, enqueue_mock, storage_save_mock, storage_url_mock):
         document_one = SimpleUploadedFile("document.pdf", b"pdf-bytes", content_type="application/pdf")
         first = self.client.post("/api/document-ocr/check/", {"file": document_one}, format="multipart")
         self.assertEqual(first.status_code, 202)
         first_job_id = first.data["job_id"]
         self.assertTrue(first.data["queued"])
+        self.assertTrue(first.data["stream_url"].endswith(f"/api/document-ocr/stream/{first_job_id}/"))
         enqueue_mock.assert_called_once()
 
         document_two = SimpleUploadedFile("document.pdf", b"pdf-bytes-2", content_type="application/pdf")
@@ -377,6 +447,7 @@ class ExpensiveAsyncEnqueueIdempotencyTests(TestCase):
         self.assertEqual(second.data["job_id"], first_job_id)
         self.assertFalse(second.data["queued"])
         self.assertTrue(second.data["deduplicated"])
+        self.assertTrue(second.data["stream_url"].endswith(f"/api/document-ocr/stream/{first_job_id}/"))
         self.assertEqual(DocumentOCRJob.objects.filter(created_by=self.user).count(), 1)
         enqueue_mock.assert_called_once()
         storage_save_mock.assert_called_once()

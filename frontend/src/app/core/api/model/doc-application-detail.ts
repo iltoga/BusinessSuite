@@ -41,6 +41,7 @@ export interface DocApplicationDetail {
     readonly isApplicationCompleted: boolean;
     readonly hasNextTask: boolean;
     readonly nextTask: Task;
+    readonly readyForInvoice: boolean;
     readonly hasInvoice: boolean;
     readonly invoiceId: number | null;
     readonly strField: string;

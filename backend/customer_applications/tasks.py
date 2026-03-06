@@ -12,6 +12,7 @@ from django.utils import timezone
 from core.tasks.runtime import (
     QUEUE_DEFAULT,
     QUEUE_LOW,
+    QUEUE_REALTIME,
     QUEUE_SCHEDULED,
     crontab,
     db_periodic_task,
@@ -172,6 +173,153 @@ def cleanup_application_storage_folder_task(*, folder_path: str) -> None:
             type(exc).__name__,
             str(exc),
         )
+
+
+def _try_auto_import_passport(*, application_id: int, user_id: int | None = None) -> dict[str, object]:
+    from core.models.country_code import CountryCode
+    from customer_applications.models.document import Document, get_upload_to
+    from django.core.files import File
+    from products.models.document_type import DocumentType
+
+    application = (
+        DocApplication.objects.select_related("customer", "customer__nationality", "product")
+        .filter(pk=application_id)
+        .first()
+    )
+    if not application:
+        return {"status": "skipped", "reason": "application_missing"}
+
+    user = User.objects.filter(pk=user_id).first() if user_id else None
+    if user is None:
+        user = application.updated_by or application.created_by
+
+    try:
+        passport_doc_type = DocumentType.objects.get(name="Passport")
+    except DocumentType.DoesNotExist:
+        return {"status": "skipped", "reason": "passport_doc_type_missing"}
+
+    existing_passport = Document.objects.filter(
+        doc_application=application,
+        doc_type=passport_doc_type,
+    ).exists()
+    if existing_passport:
+        return {"status": "skipped", "reason": "passport_already_present"}
+
+    customer = application.customer
+    all_docs = (application.product.required_documents or "") + "," + (application.product.optional_documents or "")
+    doc_names = [d.strip() for d in all_docs.split(",") if d.strip()]
+    if passport_doc_type.name not in doc_names:
+        return {"status": "skipped", "reason": "passport_not_configured"}
+
+    def fmt_date(value):
+        if not value:
+            return None
+        return value.isoformat() if hasattr(value, "isoformat") else str(value)
+
+    def _save_document(document: Document) -> None:
+        document._skip_application_status_sync = True
+        document.save()
+        application.save()
+
+    if customer.passport_file and customer.passport_number and default_storage.exists(customer.passport_file.name):
+        try:
+            mrz_meta = customer.passport_metadata or {}
+
+            def get_val(attr, meta_key):
+                val = getattr(customer, attr, None)
+                return val if val else mrz_meta.get(meta_key)
+
+            trimmed_metadata = {
+                "number": customer.passport_number,
+                "issue_date_yyyy_mm_dd": fmt_date(get_val("passport_issue_date", "issue_date_yyyy_mm_dd")),
+                "expiration_date_yyyy_mm_dd": fmt_date(
+                    get_val("passport_expiration_date", "expiration_date_yyyy_mm_dd")
+                ),
+                "date_of_birth_yyyy_mm_dd": fmt_date(get_val("birthdate", "date_of_birth_yyyy_mm_dd")),
+                "birth_place": get_val("birth_place", "birth_place"),
+                "sex": customer.gender or mrz_meta.get("sex") or mrz_meta.get("mrz_sex"),
+            }
+
+            alpha3 = customer.nationality.alpha3_code if customer.nationality else mrz_meta.get("nationality")
+            country_obj = CountryCode.objects.get_country_code_by_alpha3_code(alpha3) if alpha3 else None
+            country_name = country_obj.country if country_obj else alpha3
+            trimmed_metadata["nationality"] = country_name
+            trimmed_metadata["country"] = mrz_meta.get("country") or mrz_meta.get("issuing_country") or country_name
+
+            details_parts = []
+            if customer.birth_place:
+                details_parts.append(f"Birth Place: {customer.birth_place}")
+            if customer.birthdate:
+                details_parts.append(f"Birthdate: {customer.birthdate}")
+            if country_name:
+                details_parts.append(f"Nationality: {country_name}")
+            if customer.passport_issue_date:
+                details_parts.append(f"Issue Date: {customer.passport_issue_date}")
+
+            document = Document(
+                doc_application=application,
+                doc_type=passport_doc_type,
+                doc_number=customer.passport_number,
+                expiration_date=customer.passport_expiration_date,
+                details="\n".join(details_parts),
+                ai_validation=False,
+                metadata=trimmed_metadata,
+                completed=True,
+                required=True,
+                created_by=user,
+                updated_by=user,
+                created_at=timezone.now(),
+                updated_at=timezone.now(),
+            )
+
+            with customer.passport_file.open("rb") as passport_file:
+                file = File(passport_file)
+                file_name = os.path.basename(customer.passport_file.name)
+                upload_path = get_upload_to(document, file_name)
+                saved_path = default_storage.save(upload_path, file)
+                document.file = saved_path
+                document.file_link = default_storage.url(saved_path)
+                _save_document(document)
+            return {"status": "ok", "source": "customer_profile"}
+        except Exception:
+            logger.exception("Passport auto-import from customer profile failed for application #%s", application_id)
+
+    previous_doc = (
+        Document.objects.filter(doc_application__customer=customer, doc_type=passport_doc_type)
+        .exclude(doc_application=application)
+        .order_by("-created_at")
+        .first()
+    )
+    if previous_doc and previous_doc.file and not previous_doc.is_expired:
+        try:
+            document = Document(
+                doc_application=application,
+                doc_type=passport_doc_type,
+                file=previous_doc.file,
+                file_link=previous_doc.file_link,
+                doc_number=previous_doc.doc_number,
+                expiration_date=previous_doc.expiration_date,
+                ai_validation=previous_doc.ai_validation,
+                metadata=previous_doc.metadata,
+                completed=previous_doc.completed,
+                required=previous_doc.required,
+                details=previous_doc.details,
+                created_by=user,
+                updated_by=user,
+                created_at=timezone.now(),
+                updated_at=timezone.now(),
+            )
+            _save_document(document)
+            return {"status": "ok", "source": "previous_application"}
+        except Exception:
+            logger.exception("Passport auto-import from previous application failed for application #%s", application_id)
+
+    return {"status": "skipped", "reason": "no_import_source"}
+
+
+@db_task(queue=QUEUE_REALTIME)
+def auto_import_passport_task(*, application_id: int, user_id: int | None = None) -> dict[str, object]:
+    return _try_auto_import_passport(application_id=application_id, user_id=user_id)
 
 
 def _append_provider_message(existing: str, new_line: str) -> str:

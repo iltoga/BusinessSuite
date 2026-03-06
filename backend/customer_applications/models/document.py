@@ -317,7 +317,12 @@ def post_delete_document_storage_signal(sender, instance, **kwargs):
 @receiver(post_save, sender=Document)
 def update_doc_application_status_on_document_save(sender, instance, **kwargs):
     doc_application = instance.doc_application
-    if doc_application and doc_application.status != DocApplication.STATUS_COMPLETED:
+    skip_application_status_sync = bool(getattr(instance, "_skip_application_status_sync", False))
+    if (
+        doc_application
+        and not skip_application_status_sync
+        and doc_application.status != DocApplication.STATUS_COMPLETED
+    ):
         # Recalculate status when documents change so the application leaves pending once requirements are met.
         doc_application.save()
     _queue_visa_submission_window_sync(instance, operation="save")

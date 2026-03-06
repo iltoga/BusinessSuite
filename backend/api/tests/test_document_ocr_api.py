@@ -1,11 +1,10 @@
 from unittest.mock import patch
 
+from core.models import DocumentOCRJob
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
-
-from core.models import DocumentOCRJob
 
 
 @override_settings(
@@ -33,6 +32,7 @@ class DocumentOcrApiTests(TestCase):
         self.assertEqual(response.status_code, 202)
         self.assertTrue(response.data["queued"])
         self.assertEqual(response.data["status"], "queued")
+        self.assertTrue(response.data["stream_url"].endswith(f"/api/document-ocr/stream/{response.data['job_id']}/"))
         enqueue_mock.assert_called_once()
 
     def test_document_ocr_status_returns_structured_payload_when_result_text_is_json(self):

@@ -8,16 +8,22 @@ from core.services.ai_client import AIConnectionError
 from core.services.logger_service import Logger
 from core.services.ocr_preview_storage import upload_ocr_preview_bytes
 from core.tasks.idempotency import acquire_task_lock, build_task_lock_key, release_task_lock
+from core.tasks.progress import persist_progress
+from core.tasks.runtime import QUEUE_REALTIME, db_task, retry_on_transient_external_failure
 from core.utils.imgutils import convert_and_resize_image
 from core.utils.passport_ocr import extract_mrz_data, extract_passport_with_ai
 from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import SimpleUploadedFile
-from core.tasks.runtime import QUEUE_REALTIME, db_task
 
 logger = Logger.get_logger(__name__)
 
 
-@db_task(retries=2, retry_delay=10, context=True, queue=QUEUE_REALTIME)
+@db_task(
+    context=True,
+    queue=QUEUE_REALTIME,
+    queue_defaults=True,
+    retry_when=retry_on_transient_external_failure,
+)
 def run_ocr_job(job_id: str, task=None) -> None:
     lock_key = build_task_lock_key(namespace="ocr_job", item_id=str(job_id))
     lock_token = acquire_task_lock(lock_key)
@@ -38,11 +44,13 @@ def run_ocr_job(job_id: str, task=None) -> None:
             logger.info("Skipping OCR job already in terminal state: job_id=%s status=%s", job_id, job.status)
             return
 
-        job.status = OCRJob.STATUS_PROCESSING
-        job.progress = 5
-        job.error_message = ""
-        job.traceback = ""
-        job.save(update_fields=["status", "progress", "error_message", "traceback", "updated_at"])
+        persist_progress(
+            job,
+            status=OCRJob.STATUS_PROCESSING,
+            progress=5,
+            force=True,
+            extra_fields={"error_message": "", "traceback": ""},
+        )
 
         logger.info(f"Processing file: {job.file_path}")
 
@@ -62,8 +70,7 @@ def run_ocr_job(job_id: str, task=None) -> None:
             if not file_type:
                 file_type = uploaded_file.content_type
 
-            job.progress = 35
-            job.save(update_fields=["progress", "updated_at"])
+            persist_progress(job, progress=35, force=True)
 
             use_ai = bool(job.request_params.get("use_ai"))
             logger.info(f"Extracting data (use_ai={use_ai})")
@@ -73,8 +80,7 @@ def run_ocr_job(job_id: str, task=None) -> None:
             else:
                 mrz_data = extract_mrz_data(uploaded_file)
 
-            job.progress = 75
-            job.save(update_fields=["progress", "updated_at"])
+            persist_progress(job, progress=75, force=True)
 
             img_preview = bool(job.request_params.get("img_preview"))
             resize = bool(job.request_params.get("resize"))
@@ -121,11 +127,17 @@ def run_ocr_job(job_id: str, task=None) -> None:
         except AIConnectionError as exc:
             if task and task.retries > 0:
                 logger.warning(
-                    f"OCR job {job_id} encountered AI connection error. Retrying in 10s... ({task.retries} left)"
+                    "OCR job %s hit a transient AI failure on attempt %s/%s. retries_remaining=%s time_limit_ms=%s error=%s",
+                    job_id,
+                    getattr(task, "attempt", "?"),
+                    getattr(task, "max_retries", 0) + 1 if task else "?",
+                    task.retries,
+                    getattr(task, "time_limit_ms", None),
+                    exc,
                 )
                 job.error_message = f"AI connection error, retrying... ({task.retries} left)"
                 job.save(update_fields=["error_message", "updated_at"])
-                raise exc  # Re-raise to trigger Dramatiq retry
+                raise
 
             logger.error(f"OCR job {job_id} failed after retries: {str(exc)}")
             job.status = OCRJob.STATUS_FAILED
