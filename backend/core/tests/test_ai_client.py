@@ -191,15 +191,16 @@ class AIClientJsonParsingTests(TestCase):
 
     @override_settings(
         OPENROUTER_API_KEY="openrouter-test-key",
-        OPENAI_API_KEY="openai-test-key",
         LLM_PROVIDER="openrouter",
+        LLM_DEFAULT_MODEL="qwen/qwen3.5-flash-02-23",
+        OPENROUTER_DEFAULT_MODEL="google/gemini-3-flash-preview",
         LLM_AUTO_FALLBACK_ENABLED=True,
-        LLM_FALLBACK_PROVIDER_ORDER=["openai"],
+        LLM_FALLBACK_PROVIDER_ORDER=["openrouter"],
         LLM_FALLBACK_STICKY_CACHE_KEY="tests:ai_client:sticky:provider_model_preserved",
     )
     @patch(OPENAI_PATCH_TARGET)
     @patch(ENQUEUE_PATCH_TARGET)
-    def test_fallback_provider_uses_its_own_default_model_when_override_belongs_to_primary_provider(
+    def test_provider_failover_can_retry_same_provider_with_provider_default_failover_model(
         self,
         mock_enqueue,
         mock_openai,
@@ -209,25 +210,25 @@ class AIClientJsonParsingTests(TestCase):
         openrouter_client = MagicMock()
         openrouter_client.chat.completions.create.side_effect = _build_rate_limit_error(ai_client_module.openai)
 
-        openai_client = MagicMock()
-        openai_client.chat.completions.create.return_value = _build_mock_response("ok")
+        openrouter_fallback_client = MagicMock()
+        openrouter_fallback_client.chat.completions.create.return_value = _build_mock_response("ok")
 
-        mock_openai.side_effect = [openrouter_client, openai_client]
+        mock_openai.side_effect = [openrouter_client, openrouter_fallback_client]
 
         client = AIClient(model="google/gemini-2.5-flash-lite")
         result = client.chat_completion(messages=[{"role": "user", "content": "test"}])
 
         self.assertEqual(result, "ok")
-        self.assertEqual(client.provider_key, "openai")
-        self.assertEqual(client.model, "gpt-4o-mini")
+        self.assertEqual(client.provider_key, "openrouter")
+        self.assertEqual(client.model, "google/gemini-3-flash-preview")
 
         first_model = openrouter_client.chat.completions.create.call_args.kwargs["model"]
-        second_model = openai_client.chat.completions.create.call_args.kwargs["model"]
+        second_model = openrouter_fallback_client.chat.completions.create.call_args.kwargs["model"]
         self.assertEqual(first_model, "google/gemini-2.5-flash-lite")
-        self.assertEqual(second_model, "gpt-4o-mini")
+        self.assertEqual(second_model, "google/gemini-3-flash-preview")
 
         providers = [call.kwargs["provider"] for call in mock_enqueue.call_args_list]
-        self.assertEqual(providers, ["openrouter", "openai"])
+        self.assertEqual(providers, ["openrouter", "openrouter"])
 
     @override_settings(
         GROQ_API_KEY="",

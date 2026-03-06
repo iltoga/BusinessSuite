@@ -41,7 +41,7 @@
           <z-badge
             [zType]="
               aiStatus.aiModels.failover.enabled
-                ? aiStatus.aiModels.failover.effectiveProviderOrder.length > 0
+                ? (aiStatus.aiModels.failover.effectiveModelOrder || []).length > 0
                   ? 'default'
                   : 'secondary'
                 : 'destructive'
@@ -49,10 +49,10 @@
           >
             @if (!aiStatus.aiModels.failover.enabled) {
               Disabled
-            } @else if (aiStatus.aiModels.failover.effectiveProviderOrder.length > 0) {
-              Active ({{ aiStatus.aiModels.failover.effectiveProviderOrder.length }})
+            } @else if ((aiStatus.aiModels.failover.effectiveModelOrder || []).length > 0) {
+              Active ({{ (aiStatus.aiModels.failover.effectiveModelOrder || []).length }})
             } @else {
-              No Available Providers
+              No Available Models
             }
           </z-badge>
         </div>
@@ -60,11 +60,7 @@
       <div>
         <label class="text-sm font-medium text-muted-foreground">Configured Failover Order</label>
         <p class="mt-1 rounded bg-muted p-2 font-mono text-xs wrap-break-word">
-          {{
-            aiStatus.aiModels.failover.configuredProviderOrder.length > 0
-              ? aiStatus.aiModels.failover.configuredProviderOrder.join(' -> ')
-              : 'None'
-          }}
+          {{ getConfiguredFailoverOrderLabel(aiStatus) }}
         </p>
       </div>
     </div>
@@ -110,60 +106,6 @@
             (change)="setAiSettingNumberFromEvent('LLM_FALLBACK_STICKY_SECONDS', $event)"
           />
         </div>
-
-        <div>
-          <label class="text-xs font-medium uppercase tracking-wide text-muted-foreground"
-            >OpenRouter Failover Model</label
-          >
-          <app-typeahead-combobox
-            class="mt-1 block"
-            [placeholder]="'Select OpenRouter model...'"
-            [searchPlaceholder]="'Search OpenRouter model...'"
-            [emptyText]="'No OpenRouter models found.'"
-            [value]="getAiSettingValue('OPENROUTER_DEFAULT_MODEL')"
-            [disabled]="aiWorkflowSaving()"
-            [zWidth]="'full'"
-            [pageSize]="aiModelTypeaheadPageSize"
-            [loadOptions]="openrouterModelLoader"
-            (valueChange)="onModelSettingComboboxChange('OPENROUTER_DEFAULT_MODEL', $event)"
-          ></app-typeahead-combobox>
-        </div>
-
-        <div>
-          <label class="text-xs font-medium uppercase tracking-wide text-muted-foreground"
-            >OpenAI Failover Model</label
-          >
-          <app-typeahead-combobox
-            class="mt-1 block"
-            [placeholder]="'Select OpenAI model...'"
-            [searchPlaceholder]="'Search OpenAI model...'"
-            [emptyText]="'No OpenAI models found.'"
-            [value]="getAiSettingValue('OPENAI_DEFAULT_MODEL')"
-            [disabled]="aiWorkflowSaving()"
-            [zWidth]="'full'"
-            [pageSize]="aiModelTypeaheadPageSize"
-            [loadOptions]="openaiModelLoader"
-            (valueChange)="onModelSettingComboboxChange('OPENAI_DEFAULT_MODEL', $event)"
-          ></app-typeahead-combobox>
-        </div>
-
-        <div>
-          <label class="text-xs font-medium uppercase tracking-wide text-muted-foreground"
-            >Groq Failover Model</label
-          >
-          <app-typeahead-combobox
-            class="mt-1 block"
-            [placeholder]="'Select Groq model...'"
-            [searchPlaceholder]="'Search Groq model...'"
-            [emptyText]="'No Groq models found.'"
-            [value]="getAiSettingValue('GROQ_DEFAULT_MODEL')"
-            [disabled]="aiWorkflowSaving()"
-            [zWidth]="'full'"
-            [pageSize]="aiModelTypeaheadPageSize"
-            [loadOptions]="groqModelLoader"
-            (valueChange)="onModelSettingComboboxChange('GROQ_DEFAULT_MODEL', $event)"
-          ></app-typeahead-combobox>
-        </div>
       </div>
 
       <div class="mt-4 rounded border border-border/70 bg-background p-3">
@@ -174,24 +116,72 @@
             [disabled]="aiWorkflowSaving()"
             (change)="setAiSettingBoolFromEvent('LLM_AUTO_FALLBACK_ENABLED', $event)"
           />
-          Enable Provider Failover Router
+          Enable AI Failover Router
         </label>
 
         <div class="mt-3">
           <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Fallback Provider Order
+            Fallback Model Order
           </p>
-          <div class="mt-2 flex flex-wrap gap-3">
-            @for (providerKey of getProviderKeys(); track providerKey) {
-              <label class="inline-flex items-center gap-2 text-xs">
-                <input
-                  type="checkbox"
-                  [disabled]="aiWorkflowSaving()"
-                  [checked]="getDraftFallbackProviderOrder().includes(providerKey)"
-                  (change)="toggleFallbackProvider(providerKey, $any($event.target).checked)"
-                />
-                <span>{{ getProviderDisplayName(providerKey) }}</span>
-              </label>
+          <div class="mt-2 rounded border border-border/70 bg-muted/20 p-3">
+            <div class="flex items-start gap-2">
+              <app-typeahead-combobox
+                class="block min-w-0 flex-1"
+                [placeholder]="'Add failover model...'"
+                [searchPlaceholder]="'Search provider or model... '"
+                [emptyText]="'No models found.'"
+                [value]="''"
+                [disabled]="aiWorkflowSaving()"
+                [zWidth]="'full'"
+                [pageSize]="aiModelTypeaheadPageSize"
+                [loadOptions]="allProviderModelLoader"
+                (valueChange)="addFallbackModel($event)"
+              ></app-typeahead-combobox>
+            </div>
+
+            @if (getDraftFallbackModelOrder().length === 0) {
+              <p class="mt-3 text-xs text-muted-foreground">No failover models configured.</p>
+            } @else {
+              <div class="mt-3 space-y-2">
+                @for (modelId of getDraftFallbackModelOrder(); track modelId; let idx = $index) {
+                  <div
+                    class="flex flex-wrap items-center justify-between gap-2 rounded border border-border/70 bg-background p-2"
+                  >
+                    <div class="min-w-0">
+                      <p class="text-xs font-medium">{{ getProviderForModelLabel(modelId) }}</p>
+                      <p class="font-mono text-xs wrap-break-word">{{ modelId }}</p>
+                    </div>
+                    <div class="flex items-center gap-1">
+                      <button
+                        z-button
+                        zType="outline"
+                        [zDisabled]="aiWorkflowSaving() || idx === 0"
+                        (click)="moveFallbackModel(idx, -1)"
+                      >
+                        ↑
+                      </button>
+                      <button
+                        z-button
+                        zType="outline"
+                        [zDisabled]="
+                          aiWorkflowSaving() || idx === getDraftFallbackModelOrder().length - 1
+                        "
+                        (click)="moveFallbackModel(idx, 1)"
+                      >
+                        ↓
+                      </button>
+                      <button
+                        z-button
+                        zType="outline"
+                        [zDisabled]="aiWorkflowSaving()"
+                        (click)="removeFallbackModel(idx)"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                }
+              </div>
             }
           </div>
         </div>
@@ -214,13 +204,17 @@
                 >
                 <p class="mt-2 text-xs">
                   Provider:
-                  <span class="font-medium">{{ getProviderDisplayName(getFeatureProvider(feature)) }}</span>
+                  <span class="font-medium">{{
+                    getProviderDisplayName(getFeatureProvider(feature))
+                  }}</span>
                 </p>
                 @if (feature.modelSettingName) {
                   @if (feature.modelSettingName === 'LLM_DEFAULT_MODEL') {
                     <p class="mt-2 text-xs">
                       Model:
-                      <span class="font-mono wrap-break-word">{{ getPrimaryModelValue() || feature.primaryModel }}</span>
+                      <span class="font-mono wrap-break-word">{{
+                        getPrimaryModelValue() || feature.primaryModel
+                      }}</span>
                     </p>
                     <p class="mt-1 text-xs text-muted-foreground">
                       Uses the global Primary Runtime Model from Runtime Defaults.
@@ -238,13 +232,17 @@
                         [zWidth]="'full'"
                         [pageSize]="aiModelTypeaheadPageSize"
                         [loadOptions]="allProviderModelLoader"
-                        (valueChange)="onModelSettingComboboxChange(feature.modelSettingName, $event)"
+                        (valueChange)="
+                          onModelSettingComboboxChange(feature.modelSettingName, $event)
+                        "
                       ></app-typeahead-combobox>
                       <button
                         z-button
                         zType="outline"
                         class="h-10 shrink-0"
-                        [zDisabled]="aiWorkflowSaving() || !getAiSettingValue(feature.modelSettingName)"
+                        [zDisabled]="
+                          aiWorkflowSaving() || !getAiSettingValue(feature.modelSettingName)
+                        "
                         (click)="resetAiWorkflowSetting(feature.modelSettingName)"
                       >
                         Reset
@@ -253,7 +251,9 @@
                     @if (!getAiSettingValue(feature.modelSettingName)) {
                       <p class="mt-2 text-xs text-muted-foreground">
                         Inheriting primary model:
-                        <span class="font-mono wrap-break-word">{{ feature.primaryModel || getPrimaryModelValue() || 'n/a' }}</span>
+                        <span class="font-mono wrap-break-word">{{
+                          feature.primaryModel || getPrimaryModelValue() || 'n/a'
+                        }}</span>
                       </p>
                     }
                   }
@@ -285,7 +285,9 @@
                   >Failover Providers</label
                 >
                 @if (feature.failoverProviders.length === 0) {
-                  <p class="mt-2 text-xs text-muted-foreground">No failover providers configured.</p>
+                  <p class="mt-2 text-xs text-muted-foreground">
+                    No failover providers configured.
+                  </p>
                 } @else {
                   <div class="mt-2 space-y-2">
                     @for (failover of feature.failoverProviders; track failover.provider) {
@@ -294,7 +296,9 @@
                       >
                         <div class="min-w-0">
                           <p class="text-xs font-medium">{{ failover.providerName }}</p>
-                          <p class="text-xs font-mono wrap-break-word">{{ failover.model || 'n/a' }}</p>
+                          <p class="text-xs font-mono wrap-break-word">
+                            {{ failover.model || 'n/a' }}
+                          </p>
                         </div>
                         <z-badge [zType]="getFailoverProviderBadgeType(failover)">
                           {{ getFailoverProviderStatus(failover) }}
@@ -306,37 +310,41 @@
               </div>
             </div>
 
-              @if (feature.modelFailoverSettingName) {
-                <div class="mt-3 rounded border border-border/70 bg-background p-3">
-                  <label class="text-xs font-medium uppercase tracking-wide text-muted-foreground"
-                    >Model Failover</label
+            @if (feature.modelFailoverSettingName) {
+              <div class="mt-3 rounded border border-border/70 bg-background p-3">
+                <label class="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                  >Model Failover</label
+                >
+                <div class="mt-2 flex items-start gap-2">
+                  <app-typeahead-combobox
+                    class="block min-w-0 flex-1"
+                    [placeholder]="'Select failover provider/model...'"
+                    [searchPlaceholder]="'Search provider or model...'"
+                    [emptyText]="'No models found.'"
+                    [value]="getAiSettingValue(feature.modelFailoverSettingName)"
+                    [disabled]="aiWorkflowSaving()"
+                    [zWidth]="'full'"
+                    [pageSize]="aiModelTypeaheadPageSize"
+                    [loadOptions]="allProviderModelLoader"
+                    (valueChange)="
+                      onModelSettingComboboxChange(feature.modelFailoverSettingName, $event)
+                    "
+                  ></app-typeahead-combobox>
+                  <button
+                    z-button
+                    zType="outline"
+                    class="h-10 shrink-0"
+                    [zDisabled]="
+                      aiWorkflowSaving() || !getAiSettingValue(feature.modelFailoverSettingName)
+                    "
+                    (click)="resetAiWorkflowSetting(feature.modelFailoverSettingName)"
                   >
-                  <div class="mt-2 flex items-start gap-2">
-                    <app-typeahead-combobox
-                      class="block min-w-0 flex-1"
-                      [placeholder]="'Select failover provider/model...'"
-                      [searchPlaceholder]="'Search provider or model...'"
-                      [emptyText]="'No models found.'"
-                      [value]="getAiSettingValue(feature.modelFailoverSettingName)"
-                      [disabled]="aiWorkflowSaving()"
-                      [zWidth]="'full'"
-                      [pageSize]="aiModelTypeaheadPageSize"
-                      [loadOptions]="allProviderModelLoader"
-                      (valueChange)="onModelSettingComboboxChange(feature.modelFailoverSettingName, $event)"
-                    ></app-typeahead-combobox>
-                    <button
-                      z-button
-                      zType="outline"
-                      class="h-10 shrink-0"
-                      [zDisabled]="aiWorkflowSaving() || !getAiSettingValue(feature.modelFailoverSettingName)"
-                      (click)="resetAiWorkflowSetting(feature.modelFailoverSettingName)"
-                    >
-                      Reset
-                    </button>
-                  </div>
-                  @if (
-                    findModelDefinitionForSetting(
-                      feature.modelFailoverSettingName,
+                    Reset
+                  </button>
+                </div>
+                @if (
+                  findModelDefinitionForSetting(
+                    feature.modelFailoverSettingName,
                     getFeatureProvider(feature),
                     getAiSettingValue(feature.modelFailoverSettingName)
                   );

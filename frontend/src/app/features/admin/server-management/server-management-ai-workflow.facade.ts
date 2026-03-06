@@ -111,9 +111,11 @@ export class ServerManagementAiWorkflowFacade {
     if (typeof value === 'boolean') {
       return value;
     }
-    return String(value ?? '')
-      .trim()
-      .toLowerCase() === 'true';
+    return (
+      String(value ?? '')
+        .trim()
+        .toLowerCase() === 'true'
+    );
   }
 
   setAiSettingFromEvent(name: string | null | undefined, event: Event): void {
@@ -212,6 +214,21 @@ export class ServerManagementAiWorkflowFacade {
     );
   }
 
+  getDraftFallbackModelOrder(): string[] {
+    const raw = this.aiWorkflowDraft()['LLM_FALLBACK_MODEL_ORDER'];
+    if (Array.isArray(raw)) {
+      return raw.map((item) => String(item).trim()).filter(Boolean);
+    }
+    if (raw === null || raw === undefined) {
+      return [];
+    }
+    return String(raw)
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean);
+  }
+
+  // Backward-compatible helpers kept for older component wrappers.
   getDraftFallbackProviderOrder(): string[] {
     const raw = this.aiWorkflowDraft()['LLM_FALLBACK_PROVIDER_ORDER'];
     if (Array.isArray(raw)) {
@@ -240,6 +257,70 @@ export class ServerManagementAiWorkflowFacade {
     );
   }
 
+  addFallbackModel(value: string | string[] | null): void {
+    const modelId = this.normalizeTypeaheadValue(value);
+    if (!modelId) {
+      return;
+    }
+    const current = this.getDraftFallbackModelOrder();
+    if (current.includes(modelId)) {
+      return;
+    }
+    const next = [...current, modelId];
+    this.patchAiWorkflowSettings(
+      { LLM_FALLBACK_MODEL_ORDER: next },
+      { errorPrefix: 'Failed to update fallback models' },
+    );
+  }
+
+  removeFallbackModel(index: number): void {
+    const current = this.getDraftFallbackModelOrder();
+    if (index < 0 || index >= current.length) {
+      return;
+    }
+    const next = current.filter((_, idx) => idx !== index);
+    this.patchAiWorkflowSettings(
+      { LLM_FALLBACK_MODEL_ORDER: next },
+      { errorPrefix: 'Failed to update fallback models' },
+    );
+  }
+
+  moveFallbackModel(index: number, direction: -1 | 1): void {
+    const current = this.getDraftFallbackModelOrder();
+    const targetIndex = index + direction;
+    if (index < 0 || index >= current.length || targetIndex < 0 || targetIndex >= current.length) {
+      return;
+    }
+    const next = [...current];
+    const [item] = next.splice(index, 1);
+    next.splice(targetIndex, 0, item);
+    this.patchAiWorkflowSettings(
+      { LLM_FALLBACK_MODEL_ORDER: next },
+      { errorPrefix: 'Failed to reorder fallback models' },
+    );
+  }
+
+  getProviderForModelLabel(modelId: string): string {
+    const provider = this.getProviderForModel(modelId, this.getCurrentPrimaryProvider());
+    if (!provider) {
+      return 'Unknown Provider';
+    }
+    return this.getProviderDisplayName(provider);
+  }
+
+  getConfiguredFailoverOrderLabel(status: AiWorkflowStatusResponse | null): string {
+    const configured = status?.aiModels?.failover?.configuredModelOrder ?? [];
+    if (!configured.length) {
+      return 'None';
+    }
+    return (
+      configured
+        .map((entry) => entry.model)
+        .filter(Boolean)
+        .join(' -> ') || 'None'
+    );
+  }
+
   getModelProviderCatalogMap(): Record<string, AiModelProviderCatalog> {
     return this.aiWorkflowStatus()?.aiModels.modelCatalog.providers ?? {};
   }
@@ -257,11 +338,15 @@ export class ServerManagementAiWorkflowFacade {
   }
 
   getCurrentPrimaryProvider(): string {
-    const candidate = String(this.getAiSettingValue('LLM_PROVIDER') || '').trim().toLowerCase();
+    const candidate = String(this.getAiSettingValue('LLM_PROVIDER') || '')
+      .trim()
+      .toLowerCase();
     if (candidate) {
       return candidate;
     }
-    return String(this.aiWorkflowStatus()?.aiModels.provider || 'openrouter').trim().toLowerCase();
+    return String(this.aiWorkflowStatus()?.aiModels.provider || 'openrouter')
+      .trim()
+      .toLowerCase();
   }
 
   getAllProviderModels(): AiProviderModelOption[] {
@@ -327,7 +412,9 @@ export class ServerManagementAiWorkflowFacade {
   getFeatureProvider(feature: AiWorkflowFeature): string {
     const settingName = feature.providerSettingName;
     if (settingName) {
-      const selected = String(this.aiWorkflowDraft()[settingName] ?? '').trim().toLowerCase();
+      const selected = String(this.aiWorkflowDraft()[settingName] ?? '')
+        .trim()
+        .toLowerCase();
       if (selected) {
         return selected;
       }
@@ -352,7 +439,9 @@ export class ServerManagementAiWorkflowFacade {
     if (!normalizedModelId) {
       return null;
     }
-    return this.getModelsForProvider(provider).find((model) => model.id === normalizedModelId) ?? null;
+    return (
+      this.getModelsForProvider(provider).find((model) => model.id === normalizedModelId) ?? null
+    );
   }
 
   findModelDefinitionForSetting(
@@ -364,10 +453,17 @@ export class ServerManagementAiWorkflowFacade {
     if (!normalizedModelId) {
       return null;
     }
-    const preferredProvider = String(providerFallback ?? '').trim().toLowerCase() || null;
+    const preferredProvider =
+      String(providerFallback ?? '')
+        .trim()
+        .toLowerCase() || null;
     const provider = this.getProviderForModel(normalizedModelId, preferredProvider);
     if (!provider) {
-      return this.getModelsForSetting(settingName, providerFallback).find((model) => model.id === normalizedModelId) ?? null;
+      return (
+        this.getModelsForSetting(settingName, providerFallback).find(
+          (model) => model.id === normalizedModelId,
+        ) ?? null
+      );
     }
     return this.findModelDefinition(provider, normalizedModelId);
   }
@@ -525,7 +621,8 @@ export class ServerManagementAiWorkflowFacade {
       display: `${providerName} | ${model.name}`,
       code: providerName,
       description: model.id,
-      search: `${providerName} ${provider} ${model.name} ${model.id} ${model.description}`.toLowerCase(),
+      search:
+        `${providerName} ${provider} ${model.name} ${model.id} ${model.description}`.toLowerCase(),
     };
   }
 
@@ -556,7 +653,10 @@ export class ServerManagementAiWorkflowFacade {
       const modelFailoverRaw = feature?.modelFailover ?? {};
       const provider = String(feature?.provider ?? aiModelsRaw?.provider ?? 'unknown');
       const providerName = String(
-        feature?.providerName ?? feature?.primaryProviderName ?? aiModelsRaw?.providerName ?? provider,
+        feature?.providerName ??
+          feature?.primaryProviderName ??
+          aiModelsRaw?.providerName ??
+          provider,
       );
       const primaryProvider = String(feature?.primaryProvider ?? provider);
       const primaryProviderName = String(feature?.primaryProviderName ?? providerName);
@@ -650,6 +750,20 @@ export class ServerManagementAiWorkflowFacade {
             : [],
           effectiveProviderOrder: Array.isArray(failoverRaw?.effectiveProviderOrder)
             ? failoverRaw.effectiveProviderOrder.map((provider: unknown) => String(provider))
+            : [],
+          configuredModelOrder: Array.isArray(failoverRaw?.configuredModelOrder)
+            ? failoverRaw.configuredModelOrder.map((entry: any) => ({
+                provider: String(entry?.provider ?? ''),
+                providerName: String(entry?.providerName ?? entry?.provider ?? ''),
+                model: String(entry?.model ?? ''),
+              }))
+            : [],
+          effectiveModelOrder: Array.isArray(failoverRaw?.effectiveModelOrder)
+            ? failoverRaw.effectiveModelOrder.map((entry: any) => ({
+                provider: String(entry?.provider ?? ''),
+                providerName: String(entry?.providerName ?? entry?.provider ?? ''),
+                model: String(entry?.model ?? ''),
+              }))
             : [],
           stickySeconds:
             typeof failoverRaw?.stickySeconds === 'number' ? failoverRaw.stickySeconds : undefined,

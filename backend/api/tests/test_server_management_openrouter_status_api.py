@@ -303,6 +303,7 @@ class ServerManagementOpenRouterStatusApiTests(TestCase):
                     "LLM_PROVIDER": "openai",
                     "LLM_DEFAULT_MODEL": "gpt-5-mini",
                     "LLM_FALLBACK_PROVIDER_ORDER": ["openrouter"],
+                    "LLM_FALLBACK_MODEL_ORDER": ["google/gemini-3-flash-preview"],
                 }
             },
             format="json",
@@ -314,6 +315,10 @@ class ServerManagementOpenRouterStatusApiTests(TestCase):
         self.assertEqual(payload["aiModels"]["settingsMap"]["LLM_PROVIDER"], "openai")
         self.assertEqual(payload["aiModels"]["settingsMap"]["LLM_DEFAULT_MODEL"], "gpt-5-mini")
         self.assertEqual(payload["aiModels"]["settingsMap"]["LLM_FALLBACK_PROVIDER_ORDER"], ["openrouter"])
+        self.assertEqual(
+            payload["aiModels"]["settingsMap"]["LLM_FALLBACK_MODEL_ORDER"],
+            ["google/gemini-3-flash-preview"],
+        )
 
         provider_setting = AppSetting.objects.get(name="LLM_PROVIDER")
         self.assertEqual(provider_setting.value, "openai")

@@ -83,6 +83,16 @@ export interface AiWorkflowStatusResponse {
       enabled: boolean;
       configuredProviderOrder: string[];
       effectiveProviderOrder: string[];
+      configuredModelOrder?: Array<{
+        provider: string;
+        providerName: string;
+        model: string;
+      }>;
+      effectiveModelOrder?: Array<{
+        provider: string;
+        providerName: string;
+        model: string;
+      }>;
       stickySeconds?: number;
     };
     features: AiWorkflowFeature[];

@@ -99,6 +99,20 @@ class AIRuntimeSettingsServiceTests(TestCase):
             "openrouter",
         )
 
+    def test_update_runtime_settings_validates_fallback_model_order(self):
+        AIRuntimeSettingsService.update_runtime_settings(
+            {"LLM_FALLBACK_MODEL_ORDER": ["google/gemini-3-flash-preview", "gpt-5-mini"]}
+        )
+        self.assertEqual(
+            AIRuntimeSettingsService.get_fallback_model_order(),
+            ["google/gemini-3-flash-preview", "gpt-5-mini"],
+        )
+
+        with self.assertRaises(ValueError):
+            AIRuntimeSettingsService.update_runtime_settings(
+                {"LLM_FALLBACK_MODEL_ORDER": ["missing/not-real-model"]}
+            )
+
     @override_settings(
         LLM_PROVIDER="openrouter",
         LLM_DEFAULT_MODEL="google/gemini-3-flash-preview",

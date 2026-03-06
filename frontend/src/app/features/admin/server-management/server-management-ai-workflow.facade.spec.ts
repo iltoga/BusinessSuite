@@ -134,4 +134,41 @@ describe('ServerManagementAiWorkflowFacade', () => {
 
     httpMock.expectNone('/api/server-management/openrouter-status/');
   });
+
+  it('adds failover model to ordered list', () => {
+    facade.aiWorkflowStatus.set(buildAiWorkflowStatus({ LLM_FALLBACK_MODEL_ORDER: ['gpt-5-mini'] }));
+    facade.aiWorkflowDraft.set({ LLM_FALLBACK_MODEL_ORDER: ['gpt-5-mini'] });
+
+    facade.addFallbackModel('google/gemini-3-flash-preview');
+
+    const req = httpMock.expectOne('/api/server-management/openrouter-status/');
+    expect(req.request.method).toBe('PATCH');
+    expect(req.request.body.settings).toEqual({
+      LLM_FALLBACK_MODEL_ORDER: ['gpt-5-mini', 'google/gemini-3-flash-preview'],
+    });
+    req.flush(
+      buildAiWorkflowStatus({
+        LLM_FALLBACK_MODEL_ORDER: ['gpt-5-mini', 'google/gemini-3-flash-preview'],
+      }),
+    );
+  });
+
+  it('reorders failover model list', () => {
+    facade.aiWorkflowStatus.set(
+      buildAiWorkflowStatus({ LLM_FALLBACK_MODEL_ORDER: ['gpt-5-mini', 'google/gemini-3-flash-preview'] }),
+    );
+    facade.aiWorkflowDraft.set({ LLM_FALLBACK_MODEL_ORDER: ['gpt-5-mini', 'google/gemini-3-flash-preview'] });
+
+    facade.moveFallbackModel(1, -1);
+
+    const req = httpMock.expectOne('/api/server-management/openrouter-status/');
+    expect(req.request.body.settings).toEqual({
+      LLM_FALLBACK_MODEL_ORDER: ['google/gemini-3-flash-preview', 'gpt-5-mini'],
+    });
+    req.flush(
+      buildAiWorkflowStatus({
+        LLM_FALLBACK_MODEL_ORDER: ['google/gemini-3-flash-preview', 'gpt-5-mini'],
+      }),
+    );
+  });
 });
