@@ -41,8 +41,8 @@ table[z-table] td:nth-child(5) {
 }
 
 table[z-table] thead {
-  background-color: hsl(var(--muted) / 0.5);
-  border-bottom: 2px solid hsl(var(--border));
+  background-color: color-mix(in oklab, var(--muted) 50%, transparent);
+  border-bottom: 2px solid var(--border);
 }
 
 table[z-table] th {
@@ -50,7 +50,7 @@ table[z-table] th {
   text-transform: uppercase;
   font-size: 0.75rem;
   letter-spacing: 0.05em;
-  color: hsl(var(--muted-foreground));
+  color: var(--muted-foreground);
   padding: 0.75rem 1rem;
   text-align: left;
 }
@@ -63,12 +63,12 @@ table[z-table] td {
 }
 
 table[z-table] tbody tr {
-  border-bottom: 1px solid hsl(var(--border) / 0.5);
+  border-bottom: 1px solid color-mix(in oklab, var(--border) 50%, transparent);
   transition: background-color 0.15s ease-in-out;
 }
 
 table[z-table] tbody tr:hover {
-  background-color: hsl(var(--accent) / 0.3);
+  background-color: color-mix(in oklab, var(--accent) 30%, transparent);
 }
 
 table[z-table] tbody tr:last-child {

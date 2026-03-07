@@ -131,10 +131,10 @@
   .app-detail-table tbody tr {
     display: grid;
     gap: 0.625rem;
-    border: 1px solid hsl(var(--border));
+    border: 1px solid var(--border);
     border-radius: 0.75rem;
     padding: 0.75rem;
-    background: hsl(var(--card));
+    background: var(--card);
   }
 
   .app-uploaded-docs-table tbody tr.uploaded-doc-row-expired {
@@ -161,7 +161,7 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: hsl(var(--muted-foreground));
+    color: var(--muted-foreground);
   }
 
   .app-uploaded-docs-table tbody tr td.uploaded-doc-sort-cell,
@@ -171,7 +171,7 @@
 
   .app-uploaded-docs-table tbody tr td.uploaded-doc-sort-cell::before,
   .app-uploaded-docs-table tbody tr td.uploaded-doc-select-cell::before {
-    color: hsl(var(--primary));
+    color: var(--primary);
   }
 
   .app-uploaded-docs-table tbody tr td.uploaded-doc-actions-cell,
@@ -179,12 +179,12 @@
     grid-template-columns: 1fr;
     margin-top: 0.125rem;
     padding-top: 0.5rem;
-    border-top: 1px dashed hsl(var(--border));
+    border-top: 1px dashed var(--border);
   }
 
   .app-uploaded-docs-table tbody tr td.uploaded-doc-actions-cell::before,
   .app-detail-table tbody tr td.app-doc-actions-cell::before {
-    color: hsl(var(--primary));
+    color: var(--primary);
   }
 
   .app-uploaded-docs-table tbody tr td.uploaded-doc-actions-cell > div,

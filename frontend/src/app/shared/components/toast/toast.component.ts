@@ -15,6 +15,7 @@ import { NgxSonnerToaster } from 'ngx-sonner';
 import { toastVariants, type ZardToastVariants } from './toast.variants';
 
 import { mergeClasses } from '@/shared/utils/merge-classes';
+import { ThemeService } from '@/core/services/theme.service';
 
 @Component({
   selector: 'z-toast, z-toaster',
@@ -40,6 +41,7 @@ import { mergeClasses } from '@/shared/utils/merge-classes';
 })
 export class ZardToastComponent {
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly themeService = inject(ThemeService);
 
   readonly class = input<ClassValue>('');
   readonly variant = input<ZardToastVariants['variant']>('default');
@@ -60,20 +62,14 @@ export class ZardToastComponent {
     mergeClasses('toaster group', toastVariants({ variant: this.variant() }), this.class()),
   );
 
-  // Resolve 'system' to a concrete theme for SSR safety
+  // Resolve 'system' to the app theme so toasts stay in sync with explicit user overrides.
   readonly effectiveTheme = computed(() => {
     const t = this.theme();
     if (t !== 'system') return t;
 
-    // If not in browser (SSR), default to 'light' to avoid theme resolution errors
+    // If not in browser (SSR), default to 'light' to avoid theme resolution errors.
     if (!isPlatformBrowser(this.platformId)) return 'light';
 
-    // In browser, resolve based on prefers-color-scheme
-    try {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      return prefersDark ? 'dark' : 'light';
-    } catch {
-      return 'light';
-    }
+    return this.themeService.isDarkMode() ? 'dark' : 'light';
   });
 }

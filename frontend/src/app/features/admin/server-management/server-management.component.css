@@ -63,10 +63,10 @@
   .diagnostic-row {
     display: grid;
     gap: 0.625rem;
-    border: 1px solid hsl(var(--border));
+    border: 1px solid var(--border);
     border-radius: 0.75rem;
     padding: 0.75rem;
-    background-color: hsl(var(--card));
+    background-color: var(--card);
   }
 
   .diagnostic-row td {
@@ -88,7 +88,7 @@
     line-height: 1.2;
     letter-spacing: 0.04em;
     text-transform: uppercase;
-    color: hsl(var(--muted-foreground));
+    color: var(--muted-foreground);
   }
 
   .diagnostic-path-cell {
@@ -101,17 +101,17 @@
   .diagnostic-issues-cell {
     grid-template-columns: 1fr;
     padding: 0.625rem;
-    border: 1px solid hsl(var(--primary) / 0.22);
+    border: 1px solid color-mix(in oklab, var(--primary) 22%, transparent);
     border-radius: 0.625rem;
     background: linear-gradient(
       180deg,
-      hsl(var(--primary) / 0.09) 0%,
-      hsl(var(--primary) / 0.04) 100%
+      color-mix(in oklab, var(--primary) 9%, transparent) 0%,
+      color-mix(in oklab, var(--primary) 4%, transparent) 100%
     );
   }
 
   .diagnostic-issues-cell::before {
-    color: hsl(var(--primary));
+    color: var(--primary);
     font-weight: 700;
   }
 }

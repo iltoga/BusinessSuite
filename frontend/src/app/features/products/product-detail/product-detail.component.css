@@ -12,13 +12,13 @@
 .base-price-chip {
   display: inline-flex;
   align-items: center;
-  border: 1px solid hsl(var(--border));
+  border: 1px solid var(--border);
   border-radius: 9999px;
   padding: 0.25rem 0.75rem;
   font-size: 1rem;
   font-weight: 700;
-  color: hsl(var(--foreground));
-  background: hsl(var(--accent) / 0.25);
+  color: var(--foreground);
+  background: color-mix(in oklab, var(--accent) 25%, transparent);
 }
 
 .task-cell {
@@ -34,5 +34,5 @@
 .task-description {
   font-size: 0.75rem;
   line-height: 1rem;
-  color: hsl(var(--muted-foreground));
+  color: var(--muted-foreground);
 }

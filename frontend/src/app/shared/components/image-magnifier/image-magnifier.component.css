@@ -38,14 +38,14 @@
   top: 8px;
   left: 8px;
   z-index: 4;
-  background-color: rgb(255 255 255 / 85%);
-  border: 1px solid rgb(0 0 0 / 8%);
+  background-color: color-mix(in oklab, var(--background) 85%, transparent);
+  border: 1px solid color-mix(in oklab, var(--foreground) 8%, transparent);
 }
 
 .image-magnifier-lens {
   position: absolute;
   z-index: 2;
-  border: 2px solid rgb(255 255 255 / 70%);
+  border: 2px solid color-mix(in oklab, var(--background) 70%, transparent);
   border-radius: 9999px;
   box-shadow: 0 6px 18px rgb(0 0 0 / 30%);
   pointer-events: none;
