@@ -38,6 +38,11 @@ import {
 } from '@/core/services/document-categorization.service';
 import { DocumentsService } from '@/core/services/documents.service';
 import { GlobalToastService } from '@/core/services/toast.service';
+import {
+  getDocumentAiValidationBadge,
+  isCategorizationPipelineTerminal,
+  type PipelineBadgeState,
+} from '@/core/utils/document-categorization-pipeline';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
@@ -337,6 +342,8 @@ export class ApplicationDetailComponent implements OnInit {
       lastDate,
       firstDateIso: this.formatDateForApi(firstDate),
       lastDateIso: this.formatDateForApi(lastDate),
+      firstDateDisplay: this.formatDateForDisplay(this.formatDateForApi(firstDate)),
+      lastDateDisplay: this.formatDateForDisplay(this.formatDateForApi(lastDate)),
     };
   });
   readonly customerNotificationOptions = computed<ZardComboboxOption[]>(() => {
@@ -1544,7 +1551,7 @@ export class ApplicationDetailComponent implements OnInit {
 
   canCreateInvoice(): boolean {
     const app = this.application();
-    return !!(app && this.isReadyForInvoice(app));
+    return !!(app && !app.hasInvoice);
   }
 
   createInvoice(): void {
@@ -1560,6 +1567,25 @@ export class ApplicationDetailComponent implements OnInit {
         page: this.originPage() ?? undefined,
       },
     });
+  }
+
+  customerDetailLink(): Array<string | number> {
+    const customerId = this.application()?.customer?.id;
+    return ['/customers', customerId ?? ''];
+  }
+
+  customerDetailState(): Record<string, unknown> {
+    const app = this.application();
+    const currentState = this.isBrowser ? ((history.state as Record<string, unknown> | null) ?? {}) : {};
+    return {
+      from: 'application-detail',
+      applicationId: app?.id,
+      customerId: app?.customer?.id,
+      returnUrl: app ? `/applications/${app.id}` : '/applications',
+      returnState: { ...currentState },
+      searchQuery: this.originSearchQuery(),
+      page: this.originPage() ?? undefined,
+    };
   }
 
   getApplicationStatusVariant(
@@ -1629,14 +1655,40 @@ export class ApplicationDetailComponent implements OnInit {
   }
 
   isDocumentAiValid(doc: ApplicationDocument): boolean {
-    return doc.aiValidationStatus === 'valid' && this.getDocumentExpirationState(doc) === 'ok';
+    return this.getDocumentAiCheckBadge(doc)?.label === 'Valid' && this.getDocumentExpirationState(doc) === 'ok';
   }
 
   isDocumentAiInvalid(doc: ApplicationDocument): boolean {
-    return doc.aiValidationStatus === 'invalid' || this.getDocumentExpirationState(doc) !== 'ok';
+    const badge = this.getDocumentAiCheckBadge(doc);
+    return badge?.label === 'Invalid' || badge?.label === 'Error' || this.getDocumentExpirationState(doc) !== 'ok';
+  }
+
+  getDocumentAiCheckBadge(doc: ApplicationDocument): PipelineBadgeState | null {
+    return getDocumentAiValidationBadge(doc, this.getActiveCategorizationResultForDocument(doc.id));
   }
 
   getDocumentValidationTooltip(doc: ApplicationDocument): string {
+    const activePipelineResult = this.getActiveCategorizationResultForDocument(doc.id);
+    if (activePipelineResult?.validationStatus === 'invalid' || activePipelineResult?.validationStatus === 'error') {
+      const details = [
+        activePipelineResult.validationReasoning ?? '',
+        ...(activePipelineResult.validationNegativeIssues ?? []),
+      ]
+        .map((entry) => entry.trim())
+        .filter(Boolean);
+      const runtimeLabel = this.formatAiRuntimeLabel(
+        activePipelineResult.validationProviderName ?? null,
+        activePipelineResult.validationProvider ?? null,
+        activePipelineResult.validationModel ?? null,
+      );
+      if (!this.isDevelopmentMode || !runtimeLabel) {
+        return details.join('\n');
+      }
+      return details.length > 0
+        ? `${details.join('\n')}\nAI runtime: ${runtimeLabel}`
+        : `AI runtime: ${runtimeLabel}`;
+    }
+
     if (!this.isDocumentAiInvalid(doc)) {
       return '';
     }
@@ -1659,6 +1711,14 @@ export class ApplicationDetailComponent implements OnInit {
     return baseMessage
       ? `${baseMessage}\nAI runtime: ${runtimeLabel}`
       : `AI runtime: ${runtimeLabel}`;
+  }
+
+  private getActiveCategorizationResultForDocument(
+    documentId: number,
+  ): CategorizationFileResult | null {
+    return (
+      this.categorizationResults().find((result) => result.documentId === documentId) ?? null
+    );
   }
 
   /**
@@ -1734,7 +1794,7 @@ export class ApplicationDetailComponent implements OnInit {
         !this.isDateInRange(value, submissionWindow.firstDate, submissionWindow.lastDate)
       ) {
         this.toast.error(
-          `Application date must be between ${submissionWindow.firstDateIso} and ${submissionWindow.lastDateIso} (inclusive) based on stay permit expiration.`,
+          `Application date must be between ${submissionWindow.firstDateDisplay} and ${submissionWindow.lastDateDisplay} (inclusive) based on stay permit expiration.`,
         );
         return;
       }
@@ -2129,11 +2189,6 @@ export class ApplicationDetailComponent implements OnInit {
     );
   }
 
-  private isReadyForInvoice(app: ApplicationDetail): boolean {
-    const readyFlag = typeof app.readyForInvoice === 'boolean' ? app.readyForInvoice : true;
-    return readyFlag && !app.hasInvoice;
-  }
-
   private calculateGapDays(
     previous: ApplicationWorkflow,
     current: ApplicationWorkflow,
@@ -2392,14 +2447,14 @@ export class ApplicationDetailComponent implements OnInit {
     }
 
     if (expirationState === 'expired') {
-      return `Document expired on ${this.formatDateForApi(expirationDate)}.`;
+      return `Document expired on ${this.formatDateForDisplay(this.formatDateForApi(expirationDate))}.`;
     }
 
     const thresholdRaw = Number(doc.docType?.expiringThresholdDays ?? 0);
     const thresholdDays = Number.isFinite(thresholdRaw) ? Math.max(0, thresholdRaw) : 0;
     return (
       'Document is expiring soon: expiration date ' +
-      `${this.formatDateForApi(expirationDate)} is within ${thresholdDays} days.`
+      `${this.formatDateForDisplay(this.formatDateForApi(expirationDate))} is within ${thresholdDays} days.`
     );
   }
 
@@ -2675,14 +2730,11 @@ export class ApplicationDetailComponent implements OnInit {
     this.categorizationSub = this.categorizationService.watchCategorizationJob(jobId).subscribe({
       next: (event: CategorizationSseEvent) => this.handleCategorizationEvent(event),
       error: () => {
-        this.categorizationStatusMessage.set('Connection lost. Check results manually.');
-        this.categorizationComplete.set(true);
+        this.categorizationStatusMessage.set('Connection lost. Waiting for the final pipeline state.');
+        this.maybeFinalizeCategorizationFromClientState();
       },
       complete: () => {
-        // Stream ended — if not already marked complete, mark it now
-        if (!this.categorizationComplete()) {
-          this.categorizationComplete.set(true);
-        }
+        this.maybeFinalizeCategorizationFromClientState();
       },
     });
   }
@@ -3036,20 +3088,7 @@ export class ApplicationDetailComponent implements OnInit {
       return;
     }
 
-    const isTerminal = (result: CategorizationFileResult): boolean => {
-      if (result.status === 'error' || result.pipelineStage === 'error') {
-        return true;
-      }
-      if (result.aiValidationEnabled === false) {
-        return result.pipelineStage === 'categorized' || result.pipelineStage === 'validated';
-      }
-      if (result.validationStatus === 'valid' || result.validationStatus === 'invalid') {
-        return true;
-      }
-      return false;
-    };
-
-    if (!results.every(isTerminal)) {
+    if (!results.every((result) => isCategorizationPipelineTerminal(result))) {
       return;
     }
 
@@ -3057,7 +3096,7 @@ export class ApplicationDetailComponent implements OnInit {
     this.categorizationProcessedFiles.set(total);
     this.categorizationProgressPercentOverride.set(100);
     const currentMessage = this.categorizationStatusMessage().trim();
-    if (!currentMessage || /processing|categorizing|validating|uploading/i.test(currentMessage)) {
+    if (!currentMessage || /processing|categorizing|validating|uploading|connection lost/i.test(currentMessage)) {
       this.categorizationStatusMessage.set('Processing complete');
     }
   }

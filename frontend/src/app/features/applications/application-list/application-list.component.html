@@ -47,9 +47,12 @@
         (columnFilterChange)="onColumnFilterChange($event)"
       >
         <ng-template #columnCustomer let-row>
-          <a [routerLink]="['/customers', row.customer?.id]" class="font-medium hover:underline">{{
-            row.customer?.fullName
-          }}</a>
+          <a
+            [routerLink]="['/applications', row.id]"
+            [state]="applicationDetailState(row)"
+            class="font-medium hover:underline"
+            >{{ row.customer?.fullName }}</a
+          >
         </ng-template>
         <ng-template #columnProduct let-row>
           <div class="flex items-center gap-2">

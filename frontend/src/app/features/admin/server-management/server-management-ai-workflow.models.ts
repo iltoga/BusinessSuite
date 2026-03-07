@@ -2,6 +2,7 @@ export interface AiWorkflowFailoverProvider {
   provider: string;
   providerName: string;
   model: string;
+  timeoutSeconds?: number;
   available: boolean;
   active: boolean;
 }
@@ -25,6 +26,8 @@ export interface AiWorkflowFeature {
   providerSettingName?: string | null;
   modelSettingName?: string | null;
   modelFailoverSettingName?: string | null;
+  primaryTimeoutSettingName?: string | null;
+  primaryTimeoutSeconds?: number;
   failoverProviders: AiWorkflowFailoverProvider[];
   modelFailover: AiWorkflowModelFailover;
 }
@@ -66,6 +69,17 @@ export interface AiWorkflowBinding {
   providerSettingName?: string | null;
   modelSettingName?: string | null;
   modelFailoverSettingName?: string | null;
+  timeoutSettingName?: string | null;
+}
+
+export interface AiWorkflowFailoverChainStep {
+  model: string;
+  timeoutSeconds: number;
+}
+
+export interface AiWorkflowFailoverChainEntry extends AiWorkflowFailoverChainStep {
+  provider: string;
+  providerName: string;
 }
 
 export interface AiWorkflowStatusResponse {
@@ -87,12 +101,16 @@ export interface AiWorkflowStatusResponse {
         provider: string;
         providerName: string;
         model: string;
+        timeoutSeconds?: number;
       }>;
       effectiveModelOrder?: Array<{
         provider: string;
         providerName: string;
         model: string;
+        timeoutSeconds?: number;
       }>;
+      configuredModelChain?: AiWorkflowFailoverChainEntry[];
+      effectiveModelChain?: AiWorkflowFailoverChainEntry[];
       stickySeconds?: number;
     };
     features: AiWorkflowFeature[];

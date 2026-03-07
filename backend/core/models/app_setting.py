@@ -18,6 +18,7 @@ class AppSetting(models.Model):
     value = models.TextField(default="", blank=True)
     scope = models.CharField(max_length=16, choices=SCOPE_CHOICES, default=SCOPE_BACKEND)
     description = models.TextField(default="", blank=True)
+    is_runtime_override = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     updated_by = models.ForeignKey(

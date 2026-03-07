@@ -102,7 +102,7 @@ class DramatiqSettingsTests(SimpleTestCase):
         self.assertEqual(run_invoice_document_job.actor.queue_name, QUEUE_DOC_CONVERSION)
         self.assertEqual(run_invoice_download_job.actor.queue_name, QUEUE_DOC_CONVERSION)
 
-    def test_document_validator_model_defaults_to_llm_default_when_unset(self):
+    def test_document_validator_model_remains_blank_when_unset(self):
         snapshot = self._load_base_settings_snapshot(
             env_updates={
                 "LLM_PROVIDER": "openrouter",
@@ -111,7 +111,7 @@ class DramatiqSettingsTests(SimpleTestCase):
             },
             fields=["DOCUMENT_VALIDATOR_MODEL"],
         )
-        self.assertEqual(snapshot["DOCUMENT_VALIDATOR_MODEL"], "test/vision-model")
+        self.assertEqual(snapshot["DOCUMENT_VALIDATOR_MODEL"], "")
 
     def test_llm_default_model_stays_on_env_value_when_provider_is_groq(self):
         snapshot = self._load_base_settings_snapshot(
@@ -135,7 +135,7 @@ class DramatiqSettingsTests(SimpleTestCase):
         )
         self.assertEqual(snapshot["LLM_DEFAULT_MODEL"], "google/gemini-3-flash-preview")
 
-    def test_openrouter_only_model_overrides_fallback_to_llm_default_for_non_openrouter_provider(self):
+    def test_workflow_model_overrides_preserve_explicit_values_across_provider_switches(self):
         snapshot = self._load_base_settings_snapshot(
             env_updates={
                 "LLM_PROVIDER": "groq",
@@ -153,12 +153,12 @@ class DramatiqSettingsTests(SimpleTestCase):
                 "CHECK_PASSPORT_MODEL",
             ],
         )
-        self.assertEqual(snapshot["DOCUMENT_CATEGORIZER_MODEL"], snapshot["LLM_DEFAULT_MODEL"])
-        self.assertEqual(snapshot["DOCUMENT_CATEGORIZER_MODEL_HIGH"], snapshot["LLM_DEFAULT_MODEL"])
-        self.assertEqual(snapshot["DOCUMENT_VALIDATOR_MODEL"], snapshot["LLM_DEFAULT_MODEL"])
-        self.assertEqual(snapshot["CHECK_PASSPORT_MODEL"], snapshot["LLM_DEFAULT_MODEL"])
+        self.assertEqual(snapshot["DOCUMENT_CATEGORIZER_MODEL"], "openrouter/specific-model")
+        self.assertEqual(snapshot["DOCUMENT_CATEGORIZER_MODEL_HIGH"], "openrouter/high-model")
+        self.assertEqual(snapshot["DOCUMENT_VALIDATOR_MODEL"], "openrouter/validator-model")
+        self.assertEqual(snapshot["CHECK_PASSPORT_MODEL"], "openrouter/passport-model")
 
-    def test_openrouter_only_model_overrides_fallback_to_llm_default_when_unset(self):
+    def test_workflow_model_overrides_remain_blank_when_unset(self):
         snapshot = self._load_base_settings_snapshot(
             env_updates={
                 "LLM_PROVIDER": "openrouter",
@@ -175,10 +175,10 @@ class DramatiqSettingsTests(SimpleTestCase):
                 "CHECK_PASSPORT_MODEL",
             ],
         )
-        self.assertEqual(snapshot["DOCUMENT_CATEGORIZER_MODEL"], "google/gemini-2.5-flash-lite")
-        self.assertEqual(snapshot["DOCUMENT_CATEGORIZER_MODEL_HIGH"], "google/gemini-2.5-flash-lite")
-        self.assertEqual(snapshot["DOCUMENT_VALIDATOR_MODEL"], "google/gemini-2.5-flash-lite")
-        self.assertEqual(snapshot["CHECK_PASSPORT_MODEL"], "google/gemini-2.5-flash-lite")
+        self.assertEqual(snapshot["DOCUMENT_CATEGORIZER_MODEL"], "")
+        self.assertEqual(snapshot["DOCUMENT_CATEGORIZER_MODEL_HIGH"], "")
+        self.assertEqual(snapshot["DOCUMENT_VALIDATOR_MODEL"], "")
+        self.assertEqual(snapshot["CHECK_PASSPORT_MODEL"], "")
 
     def test_jwt_signing_key_uses_secret_key_when_long_enough(self):
         long_secret = "a-very-long-secret-key-for-jwt-signing-1234567890"

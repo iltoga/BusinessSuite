@@ -61,3 +61,48 @@ describe('ApplicationDetailComponent pending passport refresh', () => {
     expect(component.loadApplication).not.toHaveBeenCalled();
   });
 });
+
+describe('ApplicationDetailComponent invoice availability', () => {
+  it('allows invoice creation for uninvoiced applications regardless of readiness', () => {
+    const component = Object.create(ApplicationDetailComponent.prototype) as any;
+    component.application = () => ({
+      hasInvoice: false,
+      readyForInvoice: false,
+    });
+
+    expect(component.canCreateInvoice()).toBe(true);
+  });
+
+  it('blocks invoice creation when an invoice already exists', () => {
+    const component = Object.create(ApplicationDetailComponent.prototype) as any;
+    component.application = () => ({
+      hasInvoice: true,
+      readyForInvoice: true,
+    });
+
+    expect(component.canCreateInvoice()).toBe(false);
+  });
+});
+
+describe('ApplicationDetailComponent customer navigation', () => {
+  it('builds customer detail navigation state with a return target to the application', () => {
+    const component = Object.create(ApplicationDetailComponent.prototype) as any;
+    component.isBrowser = false;
+    component.application = () => ({
+      id: 314,
+      customer: { id: 99 },
+    });
+    component.originSearchQuery = () => 'stefano';
+    component.originPage = () => 2;
+
+    expect(component.customerDetailState()).toEqual({
+      from: 'application-detail',
+      applicationId: 314,
+      customerId: 99,
+      returnUrl: '/applications/314',
+      returnState: {},
+      searchQuery: 'stefano',
+      page: 2,
+    });
+  });
+});

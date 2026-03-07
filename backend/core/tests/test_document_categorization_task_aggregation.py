@@ -125,6 +125,32 @@ class DocumentCategorizationTaskAggregationTests(TestCase):
         self.assertEqual(job.progress, 50)
         self.assertEqual(job.status, DocumentCategorizationJob.STATUS_PROCESSING)
 
+    def test_job_stays_processing_while_ai_validation_is_still_running(self):
+        job = DocumentCategorizationJob.objects.create(
+            doc_application=self.application,
+            status=DocumentCategorizationJob.STATUS_PROCESSING,
+            total_files=1,
+        )
+        DocumentCategorizationItem.objects.create(
+            job=job,
+            sort_index=0,
+            filename="one.pdf",
+            file_path="tmp/one.pdf",
+            status=DocumentCategorizationItem.STATUS_CATEGORIZED,
+            result={"stage": "validating", "ai_validation_enabled": True},
+            validation_status="",
+        )
+
+        _update_categorization_job_counts(job.id)
+
+        job.refresh_from_db()
+        self.assertEqual(job.total_files, 1)
+        self.assertEqual(job.processed_files, 0)
+        self.assertEqual(job.success_count, 0)
+        self.assertEqual(job.error_count, 0)
+        self.assertEqual(job.progress, 0)
+        self.assertEqual(job.status, DocumentCategorizationJob.STATUS_PROCESSING)
+
     def test_recompute_is_idempotent_on_retries(self):
         job = DocumentCategorizationJob.objects.create(
             doc_application=self.application,

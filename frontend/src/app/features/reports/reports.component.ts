@@ -21,6 +21,7 @@ import {
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
 import { ZardTableComponent } from '@/shared/components/table';
+import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 
 type ReportChartType =
   | 'revenueMonthly'
@@ -107,6 +108,7 @@ const CHART_TYPES_BY_SLUG = {
     ZardButtonComponent,
     ZardCardComponent,
     ZardTableComponent,
+    AppDatePipe,
   ],
   templateUrl: './reports.component.html',
   styleUrls: ['./reports.component.css'],

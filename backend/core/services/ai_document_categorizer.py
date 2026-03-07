@@ -88,9 +88,9 @@ VALIDATION_SCHEMA = {
             ],
             "description": (
                 "Concise operational summary for the validation verdict. "
-                "For invalid results, prefer short sectioned output using: "
+                "For invalid results, prefer one plain-text line using: "
                 "'missing data', 'invalid data', 'notes', and 'to do or to ask'. "
-                "Can be plain text or a structured object/array."
+                "Do not use markdown bullets or line breaks. Can be plain text or a structured object/array."
             ),
         },
         "extracted_expiration_date": {
@@ -125,6 +125,8 @@ VALIDATION_SCHEMA = {
 
 
 _REASONING_SECTION_ORDER = ("missing data", "invalid data", "notes", "to do or to ask")
+_REASONING_SECTION_SEPARATOR = " | "
+_REASONING_ITEM_SEPARATOR = "; "
 _MISSING_DATA_HINTS = (
     "missing",
     "not visible",
@@ -337,23 +339,21 @@ def _build_reasoning_sections_from_issues(
 
 
 def _render_reasoning_sections(sections: dict[str, list[str]]) -> str:
-    lines: list[str] = []
+    parts: list[str] = []
     for section in _REASONING_SECTION_ORDER:
         items = sections.get(section, [])
         if not items:
             continue
-        lines.append(f"{section}:")
-        for item in items[:4]:
-            lines.append(f"- {item}")
-    return "\n".join(lines).strip()
+        parts.append(f"{section}: {_REASONING_ITEM_SEPARATOR.join(items[:4])}")
+    return _REASONING_SECTION_SEPARATOR.join(parts).strip()
 
 
 def format_validation_reasoning(valid: bool, reasoning: object, negative_issues: object) -> str:
     """
     Normalize validation reasoning to concise, operator-friendly text.
 
-    For invalid documents, always emit optional sections in this order:
-    missing data, invalid data, notes, to do or to ask.
+    For invalid documents, emit a single tooltip-safe plain-text line using
+    the section order: missing data, invalid data, notes, to do or to ask.
     """
     reasoning_text = _stringify_reasoning(reasoning)
     normalized_reasoning = _normalize_text(reasoning_text)
@@ -367,12 +367,7 @@ def format_validation_reasoning(valid: bool, reasoning: object, negative_issues:
     if rendered:
         return rendered
 
-    return (
-        "notes:\n"
-        "- Validation failed.\n"
-        "to do or to ask:\n"
-        "- Review the document and upload a corrected version."
-    )
+    return "notes: Validation failed. | to do or to ask: Review the document and upload a corrected version."
 
 
 def extract_validation_expiration_date(validation_result: dict) -> date | None:
@@ -526,7 +521,12 @@ class AIDocumentCategorizer:
         self.model = model or AIRuntimeSettingsService.get_document_categorizer_model()
         self.provider_order = provider_order
         self.feature_name = feature_name
-        self.timeout = float(timeout or getattr(settings, "DOCUMENT_CATEGORIZATION_TIMEOUT", 30.0))
+        resolved_timeout = timeout
+        if resolved_timeout is None:
+            resolved_timeout = AIRuntimeSettingsService.get_timeout_for_feature(self.feature_name)
+        if resolved_timeout is None:
+            resolved_timeout = getattr(settings, "DOCUMENT_CATEGORIZATION_TIMEOUT", 30.0)
+        self.timeout = float(resolved_timeout)
         self._client = None
 
     def _get_client(self) -> AIClient:
@@ -816,7 +816,14 @@ class AIDocumentCategorizer:
             }
 
         validator_model = model or AIRuntimeSettingsService.get_document_validator_model()
-        validation_timeout = float(timeout or getattr(settings, "DOCUMENT_VALIDATION_TIMEOUT", 30.0))
+        validation_timeout = timeout
+        if validation_timeout is None:
+            validation_timeout = AIRuntimeSettingsService.get_timeout_for_feature(
+                AIUsageFeature.DOCUMENT_AI_VALIDATOR
+            )
+        if validation_timeout is None:
+            validation_timeout = getattr(settings, "DOCUMENT_VALIDATION_TIMEOUT", 30.0)
+        validation_timeout = float(validation_timeout)
         client = AIClient(
             model=validator_model,
             feature_name=AIUsageFeature.DOCUMENT_AI_VALIDATOR,
@@ -885,9 +892,10 @@ class AIDocumentCategorizer:
             "AND has no major negative issues.\n"
             "List each specific negative issue found in 'negative_issues' (empty array if none).\n"
             "Provide an overall confidence score (0.0-1.0).\n"
-            "For invalid results, keep 'reasoning' concise and structured using only these optional sections, "
-            "in this order: missing data, invalid data, notes, to do or to ask.\n"
-            "Use short bullet lines ('- ...') under each included section and skip empty sections.\n"
+            "For invalid results, set 'reasoning' to one plain-text line using only the non-empty sections "
+            "missing data, invalid data, notes, to do or to ask, in that order.\n"
+            "Format it exactly like: 'missing data: ... | invalid data: ... | notes: ... | to do or to ask: ...'.\n"
+            "Separate multiple items inside one section with '; '. Do not use markdown, bullets, or line breaks.\n"
             "For valid results, keep 'reasoning' to one short sentence.\n"
             "Always include 'extracted_expiration_date', 'extracted_doc_number', and "
             "'extracted_details_markdown'."

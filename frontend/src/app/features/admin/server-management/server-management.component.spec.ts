@@ -40,10 +40,19 @@ describe('ServerManagementComponent - Cache Controls', () => {
       ),
       serverManagementLocalResiliencePartialUpdate: vi
         .fn()
-        .mockReturnValue(of({ enabled: true, encryptionRequired: true, desktopMode: 'localPrimary', vaultEpoch: 1 })),
+        .mockReturnValue(
+          of({
+            enabled: true,
+            encryptionRequired: true,
+            desktopMode: 'localPrimary',
+            vaultEpoch: 1,
+          }),
+        ),
       serverManagementLocalResilienceResetVaultCreate: vi
         .fn()
-        .mockReturnValue(of({ ok: true, message: 'Local media vault reset requested', vaultEpoch: 2 })),
+        .mockReturnValue(
+          of({ ok: true, message: 'Local media vault reset requested', vaultEpoch: 2 }),
+        ),
       serverManagementCacheHealthRetrieve: vi.fn().mockReturnValue(
         of({
           ok: true,
@@ -124,10 +133,18 @@ describe('ServerManagementComponent - Cache Controls', () => {
         cacheBackend: 'django_redis.cache.RedisCache',
       });
 
-      expect(mockServerManagementService.serverManagementLocalResilienceRetrieve).toHaveBeenCalledTimes(1);
-      expect(mockServerManagementService.serverManagementOpenrouterStatusRetrieve).toHaveBeenCalledTimes(1);
-      expect(mockServerManagementService.serverManagementCacheHealthRetrieve).toHaveBeenCalledTimes(1);
-      expect(mockServerManagementService.serverManagementUiSettingsRetrieve).toHaveBeenCalledTimes(1);
+      expect(
+        mockServerManagementService.serverManagementLocalResilienceRetrieve,
+      ).toHaveBeenCalledTimes(1);
+      expect(
+        mockServerManagementService.serverManagementOpenrouterStatusRetrieve,
+      ).toHaveBeenCalledTimes(1);
+      expect(mockServerManagementService.serverManagementCacheHealthRetrieve).toHaveBeenCalledTimes(
+        1,
+      );
+      expect(mockServerManagementService.serverManagementUiSettingsRetrieve).toHaveBeenCalledTimes(
+        1,
+      );
 
       expect(component.cacheStatus()).toEqual({
         enabled: true,
@@ -144,10 +161,18 @@ describe('ServerManagementComponent - Cache Controls', () => {
       const req = httpMock.expectOne('/api/cache/status/');
       req.error(new ProgressEvent('error'));
 
-      expect(mockServerManagementService.serverManagementLocalResilienceRetrieve).toHaveBeenCalledTimes(1);
-      expect(mockServerManagementService.serverManagementOpenrouterStatusRetrieve).toHaveBeenCalledTimes(1);
-      expect(mockServerManagementService.serverManagementCacheHealthRetrieve).toHaveBeenCalledTimes(1);
-      expect(mockServerManagementService.serverManagementUiSettingsRetrieve).toHaveBeenCalledTimes(1);
+      expect(
+        mockServerManagementService.serverManagementLocalResilienceRetrieve,
+      ).toHaveBeenCalledTimes(1);
+      expect(
+        mockServerManagementService.serverManagementOpenrouterStatusRetrieve,
+      ).toHaveBeenCalledTimes(1);
+      expect(mockServerManagementService.serverManagementCacheHealthRetrieve).toHaveBeenCalledTimes(
+        1,
+      );
+      expect(mockServerManagementService.serverManagementUiSettingsRetrieve).toHaveBeenCalledTimes(
+        1,
+      );
 
       expect(mockToastService.error).toHaveBeenCalledWith('Failed to load cache status');
       expect(component.cacheStatus()).toBeNull();
@@ -299,7 +324,9 @@ describe('ServerManagementComponent - Cache Controls', () => {
     it('should run cache probe and update health state', () => {
       component.runCacheHealthCheck();
 
-      expect(mockServerManagementService.serverManagementCacheHealthRetrieve).toHaveBeenCalledTimes(1);
+      expect(mockServerManagementService.serverManagementCacheHealthRetrieve).toHaveBeenCalledTimes(
+        1,
+      );
       expect(component.cacheHealth()?.writeReadDeleteOk).toBe(true);
       expect(mockToastService.success).toHaveBeenCalledWith('Cache probe succeeded.');
     });
@@ -402,6 +429,7 @@ describe('ServerManagementComponent - Cache Controls', () => {
 
       expect(text).toContain('Cache status not loaded yet');
     });
+
   });
 
   describe('Backward Compatibility', () => {
@@ -459,7 +487,10 @@ describe('ServerManagementComponent - Cache Controls', () => {
           provider: 'openrouter',
           providerName: 'OpenRouter',
           defaultModel: 'google/gemini-3-flash-preview',
-          settingsMap: { LLM_PROVIDER: 'openrouter', LLM_DEFAULT_MODEL: 'google/gemini-3-flash-preview' },
+          settingsMap: {
+            LLM_PROVIDER: 'openrouter',
+            LLM_DEFAULT_MODEL: 'google/gemini-3-flash-preview',
+          },
           runtimeSettings: [],
           workflowBindings: [],
           modelCatalog: { providers: {} },
@@ -601,16 +632,16 @@ describe('ServerManagementComponent - Cache Controls', () => {
       expect(component.aiWorkflowDraft()['OPENAI_DEFAULT_MODEL']).toBe('gpt-5');
     });
 
-    it('should autosave primary model without mutating provider failover defaults', () => {
+    it('should autosave the active groq primary model via GROQ_DEFAULT_MODEL', () => {
       component.aiWorkflowStatus.set({
         aiModels: {
-          provider: 'openrouter',
-          providerName: 'OpenRouter',
-          defaultModel: 'openai/gpt-5-mini',
+          provider: 'groq',
+          providerName: 'Groq',
+          defaultModel: 'meta-llama/llama-4-maverick-17b-128e-instruct',
           settingsMap: {
-            LLM_PROVIDER: 'openrouter',
-            OPENROUTER_DEFAULT_MODEL: 'openai/gpt-5-mini',
-            LLM_DEFAULT_MODEL: 'openai/gpt-5-mini',
+            LLM_PROVIDER: 'groq',
+            LLM_DEFAULT_MODEL: 'google/gemini-3-flash-preview',
+            GROQ_DEFAULT_MODEL: 'meta-llama/llama-4-maverick-17b-128e-instruct',
           },
           runtimeSettings: [],
           workflowBindings: [],
@@ -649,9 +680,9 @@ describe('ServerManagementComponent - Cache Controls', () => {
         },
       });
       component.aiWorkflowDraft.set({
-        LLM_PROVIDER: 'openrouter',
-        OPENROUTER_DEFAULT_MODEL: 'openai/gpt-5-mini',
-        LLM_DEFAULT_MODEL: 'openai/gpt-5-mini',
+        LLM_PROVIDER: 'groq',
+        LLM_DEFAULT_MODEL: 'google/gemini-3-flash-preview',
+        GROQ_DEFAULT_MODEL: 'meta-llama/llama-4-maverick-17b-128e-instruct',
       });
 
       component.onPrimaryModelValueChange('meta-llama/llama-4-maverick-17b-128e-instruct');
@@ -660,7 +691,7 @@ describe('ServerManagementComponent - Cache Controls', () => {
       expect(req.request.method).toBe('PATCH');
       expect(req.request.body.settings).toEqual({
         LLM_PROVIDER: 'groq',
-        LLM_DEFAULT_MODEL: 'meta-llama/llama-4-maverick-17b-128e-instruct',
+        GROQ_DEFAULT_MODEL: 'meta-llama/llama-4-maverick-17b-128e-instruct',
       });
       req.flush({
         aiModels: {
@@ -669,8 +700,8 @@ describe('ServerManagementComponent - Cache Controls', () => {
           defaultModel: 'meta-llama/llama-4-maverick-17b-128e-instruct',
           settingsMap: {
             LLM_PROVIDER: 'groq',
-            GROQ_DEFAULT_MODEL: 'meta-llama/llama-4-scout-17b-16e-instruct',
-            LLM_DEFAULT_MODEL: 'meta-llama/llama-4-maverick-17b-128e-instruct',
+            GROQ_DEFAULT_MODEL: 'meta-llama/llama-4-maverick-17b-128e-instruct',
+            LLM_DEFAULT_MODEL: 'google/gemini-3-flash-preview',
           },
           runtimeSettings: [],
           workflowBindings: [],
@@ -686,7 +717,10 @@ describe('ServerManagementComponent - Cache Controls', () => {
 
       expect(component.aiWorkflowDraft()['LLM_PROVIDER']).toBe('groq');
       expect(component.aiWorkflowDraft()['GROQ_DEFAULT_MODEL']).toBe(
-        'meta-llama/llama-4-scout-17b-16e-instruct',
+        'meta-llama/llama-4-maverick-17b-128e-instruct',
+      );
+      expect(component.aiWorkflowDraft()['LLM_DEFAULT_MODEL']).toBe(
+        'google/gemini-3-flash-preview',
       );
     });
   });

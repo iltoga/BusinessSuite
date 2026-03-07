@@ -21,6 +21,7 @@ import { ZardComboboxComponent, type ZardComboboxOption } from '@/shared/compone
 import { ZardDialogService } from '@/shared/components/dialog';
 import { ZardInputDirective } from '@/shared/components/input';
 import { GlobalToastService } from '@/core/services/toast.service';
+import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 import {
   WorkflowNotificationsStreamEvent,
   WorkflowNotificationsStreamService,
@@ -36,6 +37,7 @@ import { Subscription, catchError, finalize, map, of, Subject, switchMap } from 
     ZardButtonComponent,
     ZardComboboxComponent,
     ZardInputDirective,
+    AppDatePipe,
   ],
   templateUrl: './workflow-notifications.component.html',
   styleUrls: ['./workflow-notifications.component.css'],

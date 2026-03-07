@@ -74,6 +74,13 @@ class _ProviderContext:
     timeout: float
 
 
+@dataclass(frozen=True)
+class _AttemptRoute:
+    provider_key: str
+    model: str
+    timeout: float | None = None
+
+
 class AIClient:
     """
     Base AI client for OpenRouter/OpenAI/Groq API.
@@ -117,7 +124,8 @@ class AIClient:
         self._explicit_provider_requested = provider is not None or use_openrouter is not None
 
         self._requested_provider = self._resolve_requested_provider(provider=provider, use_openrouter=use_openrouter)
-        self._provider_contexts: dict[str, _ProviderContext] = {}
+        self._provider_contexts: dict[tuple[str, float | None], _ProviderContext] = {}
+        self._initial_timeout_override = self._resolve_initial_timeout_override()
 
         # Compatibility attributes used by services/tests.
         self.provider_key = self._requested_provider
@@ -129,7 +137,7 @@ class AIClient:
         self.use_openrouter = False
 
         initial_provider = self._resolve_initial_provider(self._requested_provider)
-        self._activate_provider(initial_provider)
+        self._activate_provider(initial_provider, timeout_override=self._initial_timeout_override)
 
     @classmethod
     def _normalize_provider(cls, provider: Optional[str], *, strict: bool = False) -> str:
@@ -156,6 +164,12 @@ class AIClient:
         if normalized != str(configured).strip().lower():
             logger.warning("Unknown LLM_PROVIDER '%s'. Falling back to 'openrouter'.", configured)
         return normalized
+
+    def _resolve_initial_timeout_override(self) -> float | None:
+        if self._timeout_override is not None:
+            return self._timeout_override
+        feature_timeout = AIRuntimeSettingsService.get_timeout_for_feature(self.feature_name)
+        return feature_timeout if feature_timeout and feature_timeout > 0 else None
 
     @staticmethod
     def _sticky_cache_key() -> str:
@@ -240,28 +254,34 @@ class AIClient:
             deduped.append(normalized)
         return deduped
 
-    def _fallback_candidates(self, primary_provider: str, primary_model: str) -> list[tuple[str, str]]:
+    def _fallback_candidates(self, primary_provider: str, primary_model: str) -> list[_AttemptRoute]:
         if not self._router_enabled():
             return []
 
-        candidates: list[tuple[str, str]] = []
+        candidates: list[_AttemptRoute] = []
         seen: set[tuple[str, str]] = set()
         primary = (primary_provider, str(primary_model or "").strip())
 
-        configured_models = AIRuntimeSettingsService.get_fallback_model_order()
-        for model_id in configured_models:
-            provider = AIRuntimeSettingsService.get_provider_for_model(model_id)
-            if not provider:
-                continue
-            normalized_model = str(model_id).strip()
-            route = (provider, normalized_model)
+        configured_chain = AIRuntimeSettingsService.get_fallback_model_chain()
+        for step in configured_chain:
+            route = (step.provider, step.model)
             if route == primary or route in seen:
                 continue
-            if not self._is_provider_available(provider):
-                logger.warning("Skipping fallback model '%s' because provider '%s' is unavailable.", normalized_model, provider)
+            if not self._is_provider_available(step.provider):
+                logger.warning(
+                    "Skipping fallback model '%s' because provider '%s' is unavailable.",
+                    step.model,
+                    step.provider,
+                )
                 continue
             seen.add(route)
-            candidates.append(route)
+            candidates.append(
+                _AttemptRoute(
+                    provider_key=step.provider,
+                    model=step.model,
+                    timeout=step.timeout_seconds,
+                )
+            )
 
         if candidates:
             return candidates
@@ -273,10 +293,25 @@ class AIClient:
                 if not route[1] or route == primary or route in seen:
                     continue
                 seen.add(route)
-                candidates.append(route)
+                candidates.append(
+                    _AttemptRoute(
+                        provider_key=provider,
+                        model=route[1],
+                        timeout=self._provider_timeout_for_route(provider),
+                    )
+                )
             else:
                 logger.warning("Skipping fallback provider '%s' because it is not configured.", provider)
         return candidates
+
+    def _provider_timeout_for_route(self, provider: str) -> float:
+        if provider == "openrouter":
+            return AIRuntimeSettingsService.get_openrouter_timeout()
+        if provider == "openai":
+            return AIRuntimeSettingsService.get_openai_timeout()
+        if provider == "groq":
+            return float(getattr(settings, "GROQ_TIMEOUT", 120.0))
+        return 120.0
 
     def _api_key_for_provider(self, provider: str) -> Optional[str]:
         if self._api_key_override and provider == self._requested_provider:
@@ -295,20 +330,21 @@ class AIClient:
             return False
         return bool(self._api_key_for_provider(provider))
 
-    def _create_provider_context(self, provider: str) -> _ProviderContext:
+    def _create_provider_context(self, provider: str, *, timeout_override: float | None = None) -> _ProviderContext:
         if provider == "openrouter":
-            return self._create_openrouter_context()
+            return self._create_openrouter_context(timeout_override=timeout_override)
         if provider == "openai":
-            return self._create_openai_context()
+            return self._create_openai_context(timeout_override=timeout_override)
         if provider == "groq":
-            return self._create_groq_context()
+            return self._create_groq_context(timeout_override=timeout_override)
         raise ValueError(f"Unsupported LLM provider '{provider}'.")
 
-    def _activate_provider(self, provider: str) -> None:
-        context = self._provider_contexts.get(provider)
+    def _activate_provider(self, provider: str, *, timeout_override: float | None = None) -> None:
+        cache_key = (provider, timeout_override)
+        context = self._provider_contexts.get(cache_key)
         if context is None:
-            context = self._create_provider_context(provider)
-            self._provider_contexts[provider] = context
+            context = self._create_provider_context(provider, timeout_override=timeout_override)
+            self._provider_contexts[cache_key] = context
 
         self.provider_key = context.provider_key
         self.provider_name = context.provider_name
@@ -318,7 +354,7 @@ class AIClient:
         self.timeout = context.timeout
         self.use_openrouter = self.provider_key == "openrouter"
 
-    def _create_openrouter_context(self) -> _ProviderContext:
+    def _create_openrouter_context(self, *, timeout_override: float | None = None) -> _ProviderContext:
         api_key = self._api_key_for_provider("openrouter")
         if not api_key:
             raise ValueError("OpenRouter API key not configured. Set OPENROUTER_API_KEY in settings or .env file.")
@@ -331,7 +367,7 @@ class AIClient:
         model = self._model_override_for_provider("openrouter") or effective_default_model
 
         base_url = AIRuntimeSettingsService.get("OPENROUTER_API_BASE_URL")
-        timeout = self._timeout_override or AIRuntimeSettingsService.get_openrouter_timeout()
+        timeout = timeout_override or self._timeout_override or AIRuntimeSettingsService.get_openrouter_timeout()
         client = OpenAI(
             api_key=api_key,
             base_url=base_url,
@@ -347,7 +383,7 @@ class AIClient:
             timeout=timeout,
         )
 
-    def _create_openai_context(self) -> _ProviderContext:
+    def _create_openai_context(self, *, timeout_override: float | None = None) -> _ProviderContext:
         api_key = self._api_key_for_provider("openai")
         if not api_key:
             raise ValueError("OpenAI API key not configured. Set OPENAI_API_KEY in settings or .env file.")
@@ -361,7 +397,7 @@ class AIClient:
             default_model = openai_default_model or "gpt-4o-mini"
 
         model = self._model_override_for_provider("openai") or default_model
-        timeout = self._timeout_override or AIRuntimeSettingsService.get_openai_timeout()
+        timeout = timeout_override or self._timeout_override or AIRuntimeSettingsService.get_openai_timeout()
         client = OpenAI(
             api_key=api_key,
             timeout=timeout,
@@ -376,7 +412,7 @@ class AIClient:
             timeout=timeout,
         )
 
-    def _create_groq_context(self) -> _ProviderContext:
+    def _create_groq_context(self, *, timeout_override: float | None = None) -> _ProviderContext:
         if Groq is None:
             raise ValueError("groq library is not installed. Install `groq` package to use LLM_PROVIDER='groq'.")
 
@@ -386,7 +422,7 @@ class AIClient:
 
         default_model = AIRuntimeSettingsService.get_groq_default_model()
         model = self._model_override_for_provider("groq") or default_model
-        timeout = self._timeout_override or float(getattr(settings, "GROQ_TIMEOUT", 120.0))
+        timeout = timeout_override or self._timeout_override or float(getattr(settings, "GROQ_TIMEOUT", 120.0))
         client = Groq(api_key=api_key, timeout=timeout)
         logger.info("Initialized AI client with Groq (model: %s, timeout: %ss)", model, timeout)
         return _ProviderContext(
@@ -422,16 +458,21 @@ class AIClient:
         if response_format:
             request_kwargs["response_format"] = response_format
 
-        attempted_routes = [(self.provider_key, self.model)] + self._fallback_candidates(
-            self.provider_key,
-            self.model,
-        )
+        attempted_routes = [
+            _AttemptRoute(
+                provider_key=self.provider_key,
+                model=self.model,
+                timeout=self._initial_timeout_override,
+            )
+        ] + self._fallback_candidates(self.provider_key, self.model)
         last_error: Optional[AIConnectionError] = None
 
-        for index, (provider, model) in enumerate(attempted_routes):
-            if provider != self.provider_key:
-                self._activate_provider(provider)
-            self.model = model
+        for index, route in enumerate(attempted_routes):
+            if route.provider_key != self.provider_key or (
+                route.timeout is not None and route.timeout != self.timeout
+            ):
+                self._activate_provider(route.provider_key, timeout_override=route.timeout)
+            self.model = route.model
 
             try:
                 result = self._chat_completion_single_attempt(
@@ -448,12 +489,13 @@ class AIClient:
                 if not should_retry:
                     raise
                 logger.warning(
-                    "AI provider '%s' model '%s' failed with %s. Retrying with fallback provider '%s' model '%s'.",
+                    "AI provider '%s' model '%s' failed with %s. Retrying with fallback provider '%s' model '%s' (timeout=%ss).",
                     self.provider_key,
                     self.model,
                     exc.error_code,
-                    attempted_routes[index + 1][0],
-                    attempted_routes[index + 1][1],
+                    attempted_routes[index + 1].provider_key,
+                    attempted_routes[index + 1].model,
+                    attempted_routes[index + 1].timeout or self.timeout,
                 )
 
         if last_error is not None:

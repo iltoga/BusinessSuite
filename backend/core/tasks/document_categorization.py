@@ -12,6 +12,29 @@ from django.utils import timezone
 from products.models.document_type import DocumentType
 
 logger = Logger.get_logger(__name__)
+_TERMINAL_VALIDATION_STATUSES = {"valid", "invalid", "error"}
+
+
+def _get_categorization_item_result(item: DocumentCategorizationItem) -> dict:
+    return item.result if isinstance(item.result, dict) else {}
+
+
+def categorization_item_ai_validation_enabled(item: DocumentCategorizationItem) -> bool:
+    return bool(_get_categorization_item_result(item).get("ai_validation_enabled"))
+
+
+def categorization_item_has_terminal_validation(item: DocumentCategorizationItem) -> bool:
+    if not categorization_item_ai_validation_enabled(item):
+        return True
+    return str(item.validation_status or "").strip().lower() in _TERMINAL_VALIDATION_STATUSES
+
+
+def categorization_item_is_terminal(item: DocumentCategorizationItem) -> bool:
+    if item.status == DocumentCategorizationItem.STATUS_ERROR:
+        return True
+    if item.status != DocumentCategorizationItem.STATUS_CATEGORIZED:
+        return False
+    return categorization_item_has_terminal_validation(item)
 
 
 @db_task(
@@ -239,6 +262,9 @@ def _run_validation_step(
 
     except Exception as exc:
         user_message = get_ai_user_message(exc)
+        runtime_provider = str(getattr(exc, "ai_provider", "") or "").strip().lower() or None
+        runtime_provider_name = str(getattr(exc, "ai_provider_name", "") or "").strip() or None
+        runtime_model = str(getattr(exc, "ai_model", "") or "").strip() or None
         logger.error(
             "Document validation failed for %s: %s (timeout=%s)",
             item.filename,
@@ -246,16 +272,25 @@ def _run_validation_step(
             is_ai_timeout_exception(exc),
             exc_info=True,
         )
-        # Skip AI validation on provider/timeout failures so uploads stay unblocked.
-        item.validation_status = ""
-        item.validation_result = None
+        item.validation_status = "error"
+        item.validation_result = {
+            "valid": False,
+            "confidence": 0,
+            "positive_analysis": "",
+            "negative_issues": [user_message],
+            "reasoning": user_message,
+            "extracted_expiration_date": None,
+            "extracted_doc_number": None,
+            "extracted_details_markdown": None,
+            "error_type": "timeout" if is_ai_timeout_exception(exc) else "provider_error",
+            "ai_provider": runtime_provider,
+            "ai_provider_name": runtime_provider_name or runtime_provider,
+            "ai_model": runtime_model,
+        }
         current_result = item.result or {}
-        current_result["stage"] = "categorized"
-        current_result["ai_validation_enabled"] = False
-        current_result["validation_skipped_reason"] = (
-            "ai_timeout" if is_ai_timeout_exception(exc) else "ai_provider_error"
-        )
-        current_result["validation_skipped_message"] = user_message
+        current_result["stage"] = "validated"
+        current_result["ai_validation_enabled"] = True
+        current_result["validation_failed"] = True
         item.result = current_result
         item.save(update_fields=["validation_status", "validation_result", "result", "updated_at"])
 
@@ -283,13 +318,17 @@ def _update_categorization_job_counts(job_id) -> None:
     """Atomically recompute parent job counters from item states."""
     job = DocumentCategorizationJob.objects.select_for_update().get(id=job_id)
 
-    items = DocumentCategorizationItem.objects.filter(job_id=job_id)
-    items_count = items.count()
+    items = list(DocumentCategorizationItem.objects.filter(job_id=job_id))
+    items_count = len(items)
     if job.total_files != items_count:
         job.total_files = items_count
 
-    success_count = items.filter(status=DocumentCategorizationItem.STATUS_CATEGORIZED).count()
-    error_count = items.filter(status=DocumentCategorizationItem.STATUS_ERROR).count()
+    success_count = sum(
+        1
+        for item in items
+        if item.status == DocumentCategorizationItem.STATUS_CATEGORIZED and categorization_item_is_terminal(item)
+    )
+    error_count = sum(1 for item in items if item.status == DocumentCategorizationItem.STATUS_ERROR)
     processed_files = success_count + error_count
 
     job.success_count = success_count

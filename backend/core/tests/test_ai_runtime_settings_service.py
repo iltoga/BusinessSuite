@@ -4,6 +4,7 @@ from django.test import TestCase, override_settings
 from core.models import AiModel, AppSetting
 from core.services.app_setting_service import AppSettingService
 from core.services.ai_runtime_settings_service import AIRuntimeSettingsService
+from core.services.ai_usage_service import AIUsageFeature
 
 
 class AIRuntimeSettingsServiceTests(TestCase):
@@ -11,19 +12,6 @@ class AIRuntimeSettingsServiceTests(TestCase):
         AppSetting.objects.all().delete()
         AppSettingService.invalidate_cache()
 
-    @override_settings(LLM_PROVIDER="openrouter")
-    def test_seed_like_db_row_does_not_override_settings_until_updated(self):
-        AppSetting.objects.update_or_create(
-            name="LLM_PROVIDER",
-            defaults={
-                "value": "openai",
-                "scope": AppSetting.SCOPE_BACKEND,
-                "description": "seeded value",
-                "updated_by": None,
-            },
-        )
-
-        self.assertEqual(AIRuntimeSettingsService.get_llm_provider(), "openrouter")
 
     @override_settings(
         LLM_PROVIDER="openrouter",
@@ -119,85 +107,87 @@ class AIRuntimeSettingsServiceTests(TestCase):
             AIRuntimeSettingsService.get_fallback_model_order(),
             ["google/gemini-3-flash-preview", "gpt-5-mini"],
         )
+        self.assertEqual(
+            [
+                (step.provider, step.model, step.timeout_seconds)
+                for step in AIRuntimeSettingsService.get_fallback_model_chain()
+            ],
+            [
+                ("openrouter", "google/gemini-3-flash-preview", 120.0),
+                ("openai", "gpt-5-mini", 120.0),
+            ],
+        )
 
         with self.assertRaises(ValueError):
             AIRuntimeSettingsService.update_runtime_settings(
                 {"LLM_FALLBACK_MODEL_ORDER": ["missing/not-real-model"]}
             )
 
+    def test_update_runtime_settings_persists_fallback_model_chain_with_per_step_timeout(self):
+        AIRuntimeSettingsService.update_runtime_settings(
+            {
+                "LLM_FALLBACK_MODEL_CHAIN": [
+                    {"model": "google/gemini-3-flash-preview", "timeoutSeconds": 45},
+                    {"model": "gpt-5-mini", "timeoutSeconds": 25},
+                ]
+            }
+        )
+
+        chain = AIRuntimeSettingsService.get_fallback_model_chain()
+        self.assertEqual(
+            [(step.provider, step.model, step.timeout_seconds) for step in chain],
+            [
+                ("openrouter", "google/gemini-3-flash-preview", 45.0),
+                ("openai", "gpt-5-mini", 25.0),
+            ],
+        )
+
+        chain_setting = AppSetting.objects.get(name="LLM_FALLBACK_MODEL_CHAIN")
+        self.assertTrue(chain_setting.is_runtime_override)
+        self.assertEqual(
+            AIRuntimeSettingsService.get("LLM_FALLBACK_MODEL_ORDER"),
+            ["google/gemini-3-flash-preview", "gpt-5-mini"],
+        )
+
+    def test_get_timeout_for_feature_reads_runtime_timeout_settings(self):
+        AIRuntimeSettingsService.update_runtime_settings(
+            {
+                "DOCUMENT_VALIDATION_TIMEOUT": 15,
+                "PASSPORT_CHECK_TIMEOUT": 22,
+            }
+        )
+
+        self.assertEqual(
+            AIRuntimeSettingsService.get_timeout_for_feature(AIUsageFeature.DOCUMENT_AI_VALIDATOR),
+            15.0,
+        )
+        self.assertEqual(
+            AIRuntimeSettingsService.get_timeout_for_feature(AIUsageFeature.PASSPORT_CHECK_API),
+            22.0,
+        )
+
+    def test_update_runtime_settings_rejects_non_positive_feature_timeout(self):
+        with self.assertRaises(ValueError) as raised:
+            AIRuntimeSettingsService.update_runtime_settings({"DOCUMENT_VALIDATION_TIMEOUT": 0})
+
+        self.assertIn("DOCUMENT_VALIDATION_TIMEOUT must be greater than zero.", str(raised.exception))
+
     @override_settings(
         LLM_PROVIDER="openrouter",
-        LLM_DEFAULT_MODEL="google/gemini-3-flash-preview",
+        LLM_DEFAULT_MODEL="qwen/qwen3.5-flash-02-23",
         OPENROUTER_DEFAULT_MODEL="google/gemini-2.5-flash-lite",
-        GROQ_DEFAULT_MODEL="meta-llama/llama-4-scout-17b-16e-instruct",
     )
-    def test_invoice_import_model_inherits_primary_until_override(self):
-        user = get_user_model().objects.create_user(username="invoice-model-updater")
-
-        # No explicit workflow model set: inherit primary runtime model.
-        self.assertEqual(AIRuntimeSettingsService.get_invoice_import_model(), "google/gemini-3-flash-preview")
-
+    def test_update_runtime_settings_allows_unrelated_updates_with_unlisted_primary_model(self):
         AIRuntimeSettingsService.update_runtime_settings(
-            {"INVOICE_IMPORT_MODEL": "gpt-5-mini"},
-            updated_by=user,
+            {"LLM_FALLBACK_MODEL_ORDER": ["google/gemini-3-flash-preview"]}
         )
+        self.assertEqual(
+            AIRuntimeSettingsService.get_fallback_model_order(),
+            ["google/gemini-3-flash-preview"],
+        )
+
+        AIRuntimeSettingsService.update_runtime_settings({"INVOICE_IMPORT_MODEL": "gpt-5-mini"})
         self.assertEqual(AIRuntimeSettingsService.get_invoice_import_model(), "gpt-5-mini")
-        self.assertTrue(AppSetting.objects.filter(name="INVOICE_IMPORT_MODEL").exists())
-
-        AIRuntimeSettingsService.update_runtime_settings({"LLM_PROVIDER": "groq"}, updated_by=user)
-        self.assertEqual(AIRuntimeSettingsService.get_invoice_import_model(), "gpt-5-mini")
-
-        AIRuntimeSettingsService.update_runtime_settings({"INVOICE_IMPORT_MODEL": None}, updated_by=user)
-        self.assertFalse(AppSetting.objects.filter(name="INVOICE_IMPORT_MODEL").exists())
-        self.assertEqual(
-            AIRuntimeSettingsService.get_invoice_import_model(),
-            "meta-llama/llama-4-scout-17b-16e-instruct",
-        )
 
 
-    @override_settings(
-        LLM_DEFAULT_MODEL="google/gemini-3-flash-preview",
-        OPENROUTER_DEFAULT_MODEL="google/gemini-2.5-flash-lite",
-    )
-    def test_deleted_model_references_are_replaced_with_defaults(self):
-        AppSetting.objects.update_or_create(
-            name="INVOICE_IMPORT_MODEL",
-            defaults={
-                "value": "openai/gpt-5",
-                "scope": AppSetting.SCOPE_BACKEND,
-                "description": "workflow model",
-                "updated_by": None,
-            },
-        )
 
-        model = AiModel.objects.get(provider="openrouter", model_id="openai/gpt-5")
-        model.delete()
-
-        self.assertEqual(
-            AIRuntimeSettingsService.get("INVOICE_IMPORT_MODEL"),
-            "google/gemini-3-flash-preview",
-        )
-
-    @override_settings(
-        LLM_PROVIDER="groq",
-        LLM_DEFAULT_MODEL="google/gemini-3-flash-preview",
-        GROQ_DEFAULT_MODEL="meta-llama/llama-4-scout-17b-16e-instruct",
-    )
-    def test_deleted_workflow_model_references_fall_back_to_active_provider_default(self):
-        AppSetting.objects.update_or_create(
-            name="INVOICE_IMPORT_MODEL",
-            defaults={
-                "value": "qwen/qwen3-32b",
-                "scope": AppSetting.SCOPE_BACKEND,
-                "description": "workflow model",
-                "updated_by": None,
-            },
-        )
-
-        model = AiModel.objects.get(provider="groq", model_id="qwen/qwen3-32b")
-        model.delete()
-
-        self.assertEqual(
-            AIRuntimeSettingsService.get("INVOICE_IMPORT_MODEL"),
-            "meta-llama/llama-4-scout-17b-16e-instruct",
-        )

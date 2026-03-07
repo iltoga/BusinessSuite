@@ -445,7 +445,7 @@
             <tr *ngFor="let row of d.invoice_profit_data" class="border-t">
               <td class="p-2">{{ row.invoice_number }}</td>
               <td class="p-2">{{ row.customer_name }}</td>
-              <td class="p-2">{{ row.invoice_date | date }}</td>
+              <td class="p-2">{{ row.invoice_date | appDate }}</td>
               <td class="p-2 text-right">{{ row.total_amount_formatted }}</td>
               <td class="p-2 text-right">{{ row.profit_formatted }}</td>
               <td class="p-2 text-right">{{ row.profit_margin_percent }}%</td>
@@ -530,7 +530,7 @@
           <tr *ngFor="let row of d.invoices" class="border-t">
             <td class="p-2">{{ row.invoice_number }}</td>
             <td class="p-2">{{ row.customer_name }}</td>
-            <td class="p-2">{{ row.invoice_date | date }}</td>
+            <td class="p-2">{{ row.invoice_date | appDate }}</td>
             <td class="p-2 text-right">{{ row.total_amount_formatted }}</td>
             <td class="p-2 text-right">{{ row.total_due_formatted }}</td>
           </tr>

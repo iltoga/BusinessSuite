@@ -541,6 +541,8 @@ export class InvoiceFormComponent implements OnInit {
         const payload = (response ?? null) as Record<string, any> | null;
         const customerId = payload?.['customer']?.id ?? null;
         const sourceLine = payload?.['invoiceApplication'] ?? payload?.['invoice_application'] ?? null;
+        const sourceApplication =
+          payload?.['sourceApplication'] ?? payload?.['source_application'] ?? null;
         const sourceApplicationId = sourceLine?.['customerApplication'] ?? sourceLine?.['customer_application'] ?? null;
         const sourceProductId = sourceLine?.['product'] ?? null;
 
@@ -558,7 +560,7 @@ export class InvoiceFormComponent implements OnInit {
 
         this.fetchBillableProducts(customerId).subscribe({
           next: (rows) => {
-            this.billableProducts.set(rows);
+            this.billableProducts.set(this.ensureSourceApplicationIncluded(rows, sourceApplication));
             this.invoiceApplications.clear();
             this.addLineItem(
               {
@@ -713,6 +715,76 @@ export class InvoiceFormComponent implements OnInit {
         } as BillableProductRow;
       })
       .filter((row: BillableProductRow | null): row is BillableProductRow => row !== null);
+  }
+
+  private ensureSourceApplicationIncluded(
+    rows: BillableProductRow[],
+    rawSourceApplication: unknown,
+  ): BillableProductRow[] {
+    const sourceApplication = this.toDocApplicationInvoice(rawSourceApplication);
+    const sourceApplicationId = Number(sourceApplication?.id ?? 0);
+    const sourceProduct = sourceApplication?.product as Product | null | undefined;
+    const sourceProductId = Number(sourceProduct?.id ?? 0);
+
+    if (!sourceApplication || !sourceApplicationId || !sourceProductId || !sourceProduct) {
+      return rows;
+    }
+
+    const existingRowIndex = rows.findIndex((row) => row.product.id === sourceProductId);
+    if (existingRowIndex === -1) {
+      return this.sortBillableRows([
+        ...rows,
+        {
+          product: sourceProduct,
+          pendingApplications: [sourceApplication],
+          pendingApplicationsCount: 1,
+          hasPendingApplications: true,
+        },
+      ]);
+    }
+
+    const existingRow = rows[existingRowIndex];
+    if (existingRow.pendingApplications.some((application) => application.id === sourceApplicationId)) {
+      return rows;
+    }
+
+    const updatedRow: BillableProductRow = {
+      ...existingRow,
+      pendingApplications: [sourceApplication, ...existingRow.pendingApplications],
+      pendingApplicationsCount: existingRow.pendingApplicationsCount + 1,
+      hasPendingApplications: true,
+    };
+
+    return rows.map((row, index) => (index === existingRowIndex ? updatedRow : row));
+  }
+
+  private toDocApplicationInvoice(value: unknown): DocApplicationInvoice | null {
+    if (!value || typeof value !== 'object') {
+      return null;
+    }
+
+    const candidate = value as Partial<DocApplicationInvoice> & {
+      product?: Partial<Product> | null;
+    };
+    if (typeof candidate.id !== 'number') {
+      return null;
+    }
+    if (!candidate.product || typeof candidate.product.id !== 'number') {
+      return null;
+    }
+
+    return candidate as DocApplicationInvoice;
+  }
+
+  private sortBillableRows(rows: BillableProductRow[]): BillableProductRow[] {
+    return [...rows].sort((left, right) => {
+      if (left.hasPendingApplications !== right.hasPendingApplications) {
+        return left.hasPendingApplications ? -1 : 1;
+      }
+      return (left.product.name ?? '').localeCompare(right.product.name ?? '', undefined, {
+        sensitivity: 'base',
+      });
+    });
   }
 
   private toIsoDate(value: Date | string | null): string | null {

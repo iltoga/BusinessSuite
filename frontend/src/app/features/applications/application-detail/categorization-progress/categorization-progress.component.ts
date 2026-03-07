@@ -7,7 +7,9 @@ import {
   isDevMode,
   input,
   output,
+  PLATFORM_ID,
   signal,
+  inject,
 } from '@angular/core';
 
 import { ZardBadgeComponent } from '@/shared/components/badge';
@@ -16,6 +18,14 @@ import { ZardCardComponent } from '@/shared/components/card';
 import { ZardIconComponent } from '@/shared/components/icon';
 import { ZardTableComponent } from '@/shared/components/table';
 import { ZardTooltipImports } from '@/shared/components/tooltip';
+import { GlobalToastService } from '@/core/services/toast.service';
+import {
+  getCategorizationResultStatusBadge,
+  getCategorizationValidationBadge,
+  isCategorizationPipelineTerminal,
+  type PipelineBadgeState,
+  type CategorizationValidationStatus,
+} from '@/core/utils/document-categorization-pipeline';
 
 export interface CategorizationFileResult {
   itemId: string;
@@ -37,7 +47,7 @@ export interface CategorizationFileResult {
   reasoning: string;
   error: string | null;
   categorizationPass: number | null;
-  validationStatus: 'valid' | 'invalid' | 'pending' | null;
+  validationStatus: CategorizationValidationStatus;
   validationReasoning: string | null;
   validationNegativeIssues: string[] | null;
   validationProvider?: string | null;
@@ -66,7 +76,11 @@ export interface CategorizationApplyMapping {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CategorizationProgressComponent {
+  private readonly platformId = inject(PLATFORM_ID);
+  private readonly toast = inject(GlobalToastService);
+
   readonly isDevelopmentMode = isDevMode();
+  readonly isBrowser = this.platformId === 'browser';
   readonly totalFiles = input.required<number>();
   readonly processedFiles = input<number>(0);
   readonly progressPercentOverride = input<number | null>(null);
@@ -108,9 +122,24 @@ export class CategorizationProgressComponent {
   readonly invalidResults = computed(() =>
     this.results().filter((r) => r.validationStatus === 'invalid'),
   );
+  readonly validationErrorResults = computed(() =>
+    this.results().filter((r) => r.validationStatus === 'error'),
+  );
+  readonly hasUnresolvedResults = computed(() => {
+    const total = this.totalFiles();
+    const results = this.results();
+    if (total <= 0 || results.length < total) {
+      return true;
+    }
+    return results.some((result) => !isCategorizationPipelineTerminal(result));
+  });
 
   readonly canApply = computed(
-    () => this.isComplete() && this.categorizedResults().length > 0 && !this.isApplying(),
+    () =>
+      this.isComplete() &&
+      !this.hasUnresolvedResults() &&
+      this.categorizedResults().length > 0 &&
+      !this.isApplying(),
   );
 
   readonly applyLabel = computed(() => {
@@ -238,6 +267,14 @@ export class CategorizationProgressComponent {
     }
   }
 
+  getResultStatusBadge(result: CategorizationFileResult): PipelineBadgeState {
+    return getCategorizationResultStatusBadge(result);
+  }
+
+  getValidationBadge(result: CategorizationFileResult): PipelineBadgeState | null {
+    return getCategorizationValidationBadge(result);
+  }
+
   getPipelineTrack(result: CategorizationFileResult): string {
     const upload = result.pipelineStage === 'uploading' ? 'Upload ⏳' : 'Upload ✓';
 
@@ -261,7 +298,7 @@ export class CategorizationProgressComponent {
       validate = 'Validate ⏳';
     } else if (result.validationStatus === 'valid') {
       validate = 'Validate ✓';
-    } else if (result.validationStatus === 'invalid') {
+    } else if (result.validationStatus === 'invalid' || result.validationStatus === 'error') {
       validate = 'Validate ✗';
     }
 
@@ -283,7 +320,55 @@ export class CategorizationProgressComponent {
       return reasoning;
     }
 
-    return reasoning ? `${reasoning}\nAI runtime: ${runtime}` : `AI runtime: ${runtime}`;
+    return reasoning ? `${reasoning} | AI runtime: ${runtime}` : `AI runtime: ${runtime}`;
+  }
+
+  async copyValidationTooltip(result: CategorizationFileResult): Promise<void> {
+    const payload = this.getValidationTooltip(result).trim();
+    if (!payload) {
+      this.toast.error('Nothing to copy');
+      return;
+    }
+
+    const copied = await this.copyToClipboard(payload);
+    if (copied) {
+      this.toast.success('Validation details copied');
+      return;
+    }
+
+    this.toast.error('Could not copy validation details');
+  }
+
+  private async copyToClipboard(text: string): Promise<boolean> {
+    if (!this.isBrowser || !text) {
+      return false;
+    }
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+    } catch {
+      // Fallback below for browsers or shells without navigator.clipboard support.
+    }
+
+    try {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'fixed';
+      textarea.style.top = '-1000px';
+      textarea.style.left = '-1000px';
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      const copied = document.execCommand('copy');
+      document.body.removeChild(textarea);
+      return copied;
+    } catch {
+      return false;
+    }
   }
 
   private formatAiRuntimeLabel(

@@ -36,7 +36,15 @@
           Application #{{ application()!.id }} — {{ application()!.product.name }}
         </h1>
         <p class="text-sm text-muted-foreground">
-          Customer: {{ application()!.customer.fullName }}
+          Customer:
+          <a
+            [routerLink]="customerDetailLink()"
+            [state]="customerDetailState()"
+            class="inline-flex items-center gap-1 font-medium underline decoration-muted-foreground/50 underline-offset-4 transition-colors hover:text-foreground"
+          >
+            <span>{{ application()!.customer.fullName }}</span>
+            <z-icon zType="arrow-up-right" class="h-3.5 w-3.5" />
+          </a>
         </p>
       </div>
       <div class="application-header-actions flex w-full flex-wrap gap-2 sm:w-auto">
@@ -119,8 +127,8 @@
           <div class="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
             Visa submission window:
             <span class="font-medium"
-              >{{ stayPermitSubmissionWindow()!.firstDateIso }} to
-              {{ stayPermitSubmissionWindow()!.lastDateIso }}</span
+              >{{ stayPermitSubmissionWindow()!.firstDateDisplay }} to
+              {{ stayPermitSubmissionWindow()!.lastDateDisplay }}</span
             >
             (inclusive).
           </div>
@@ -338,27 +346,20 @@
                       }
                     </td>
                     <td class="py-3" data-label="AI Check">
-                      @if (isDocumentAiValid(doc)) {
-                        <z-badge zType="success" [zTooltip]="getDocumentValidationTooltip(doc)"
-                          >✅ Valid</z-badge
+                      @let aiCheckBadge = getDocumentAiCheckBadge(doc);
+                      @if (aiCheckBadge) {
+                        <z-badge
+                          [zType]="$any(aiCheckBadge.type)"
+                          [zTooltip]="getDocumentValidationTooltip(doc) || null"
                         >
-                      } @else if (isDocumentAiInvalid(doc)) {
-                        <z-badge zType="destructive" [zTooltip]="getDocumentValidationTooltip(doc)"
-                          >⚠️ Invalid</z-badge
-                        >
-                      } @else if (
-                        doc.aiValidationStatus === 'pending' ||
-                        doc.aiValidationStatus === 'validating'
-                      ) {
-                        <z-badge zType="outline"
-                          ><z-icon
-                            zType="loader-circle"
-                            class="mr-1 h-3.5 w-3.5 text-muted-foreground app-circle-spinner"
-                          />
-                          Checking…</z-badge
-                        >
-                      } @else if (doc.aiValidationStatus === 'error') {
-                        <z-badge zType="destructive">Error</z-badge>
+                          @if (aiCheckBadge.showSpinner) {
+                            <z-icon
+                              zType="loader-circle"
+                              class="mr-1 h-3.5 w-3.5 text-muted-foreground app-circle-spinner"
+                            />
+                          }
+                          {{ aiCheckBadge.label }}
+                        </z-badge>
                       } @else {
                         <span class="text-muted-foreground">—</span>
                       }

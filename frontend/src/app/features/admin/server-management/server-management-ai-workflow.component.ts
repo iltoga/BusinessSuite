@@ -6,7 +6,9 @@ import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
 import { TypeaheadComboboxComponent } from '@/shared/components/typeahead-combobox';
 
+import { ServerManagementAiWorkflowFailoverChainComponent } from './server-management-ai-workflow-failover-chain.component';
 import { ServerManagementAiWorkflowFacade } from './server-management-ai-workflow.facade';
+import { ServerManagementAiWorkflowFeatureCardComponent } from './server-management-ai-workflow-feature-card.component';
 
 @Component({
   selector: 'app-server-management-ai-workflow',
@@ -17,6 +19,8 @@ import { ServerManagementAiWorkflowFacade } from './server-management-ai-workflo
     ZardButtonComponent,
     ZardBadgeComponent,
     TypeaheadComboboxComponent,
+    ServerManagementAiWorkflowFailoverChainComponent,
+    ServerManagementAiWorkflowFeatureCardComponent,
   ],
   templateUrl: './server-management-ai-workflow.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -54,12 +58,6 @@ export class ServerManagementAiWorkflowComponent {
   readonly setAiSettingBoolFromEvent = (name: string, event: Event) =>
     this.facade.setAiSettingBoolFromEvent(name, event);
   readonly getProviderKeys = () => this.facade.getProviderKeys();
-  readonly getDraftFallbackModelOrder = () => this.facade.getDraftFallbackModelOrder();
-  readonly addFallbackModel = (value: string | string[] | null) =>
-    this.facade.addFallbackModel(value);
-  readonly removeFallbackModel = (index: number) => this.facade.removeFallbackModel(index);
-  readonly moveFallbackModel = (index: number, direction: -1 | 1) =>
-    this.facade.moveFallbackModel(index, direction);
   readonly getProviderDisplayName = (provider: string) =>
     this.facade.getProviderDisplayName(provider);
   readonly getProviderForModelLabel = (modelId: string) =>

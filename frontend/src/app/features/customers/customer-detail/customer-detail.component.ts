@@ -134,7 +134,7 @@ export class CustomerDetailComponent implements OnInit {
       }
     }
 
-    // B or Left Arrow --> Back to list
+    // B or Left Arrow --> Back
     if (
       (event.key === 'B' || event.key === 'ArrowLeft') &&
       !event.ctrlKey &&
@@ -142,20 +142,14 @@ export class CustomerDetailComponent implements OnInit {
       !event.metaKey
     ) {
       event.preventDefault();
-      const customer = this.customer();
-      this.router.navigate(['/customers'], {
-        state: {
-          focusTable: true,
-          focusId: customer ? customer.id : undefined,
-          searchQuery: this.originSearchQuery(),
-          page: this.originPage() ?? undefined,
-        },
-      });
+      this.goBack();
     }
   }
 
   readonly originSearchQuery = signal<string | null>(null);
   readonly originPage = signal<number | null>(null);
+  readonly returnUrl = signal<string | null>(null);
+  readonly returnState = signal<Record<string, unknown> | null>(null);
 
   constructor() {
     effect(() => {
@@ -172,6 +166,12 @@ export class CustomerDetailComponent implements OnInit {
     // capture searchQuery if navigated from a list
     const st = this.isBrowser ? (window as any).history.state || {} : {};
     this.originSearchQuery.set(st.searchQuery ?? null);
+    this.returnUrl.set(typeof st.returnUrl === 'string' && st.returnUrl.startsWith('/') ? st.returnUrl : null);
+    this.returnState.set(
+      st.returnState && typeof st.returnState === 'object'
+        ? (st.returnState as Record<string, unknown>)
+        : null,
+    );
     const page = Number(st.page);
     if (Number.isFinite(page) && page > 0) {
       this.originPage.set(Math.floor(page));
@@ -268,8 +268,31 @@ export class CustomerDetailComponent implements OnInit {
     });
   }
 
+  goBack(): void {
+    const returnUrl = this.returnUrl();
+    if (returnUrl) {
+      this.router.navigateByUrl(returnUrl, {
+        state: this.returnState() ?? {
+          searchQuery: this.originSearchQuery(),
+          page: this.originPage() ?? undefined,
+        },
+      });
+      return;
+    }
+
+    const customer = this.customer();
+    this.router.navigate(['/customers'], {
+      state: {
+        focusTable: true,
+        focusId: customer ? customer.id : undefined,
+        searchQuery: this.originSearchQuery(),
+        page: this.originPage() ?? undefined,
+      },
+    });
+  }
+
   canCreateInvoice(application: CustomerApplicationHistory): boolean {
-    return !!application.readyForInvoice && !application.hasInvoice;
+    return !application.hasInvoice;
   }
 
   getStatusBadgeType(status: string): any {

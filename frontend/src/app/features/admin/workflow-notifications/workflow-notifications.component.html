@@ -10,7 +10,7 @@
         ></span>
         <span class="text-xs font-medium text-foreground">{{ liveStatusText() }}</span>
         <span class="text-xs text-muted-foreground">
-          Last update: {{ lastUpdatedAt() ? (lastUpdatedAt() | date: 'mediumTime') : '--' }}
+          Last update: {{ lastUpdatedAt() ? (lastUpdatedAt() | appDate: 'time') : '--' }}
         </span>
       </div>
     </div>
@@ -44,7 +44,9 @@
             <td class="p-2" data-label="Status">{{ item.status }}</td>
             <td class="p-2" data-label="Recipient">{{ item.recipient }}</td>
             <td class="p-2" data-label="Subject">{{ item.subject }}</td>
-            <td class="p-2" data-label="Scheduled">{{ item.scheduled_for || '-' }}</td>
+            <td class="p-2" data-label="Scheduled">
+              {{ item.scheduled_for ? (item.scheduled_for | appDate: 'datetime') : '-' }}
+            </td>
             <td class="p-2 notification-actions-cell" data-label="Actions">
               <div class="notification-actions flex flex-wrap gap-2">
                 <button z-button zSize="sm" [disabled]="isResending(item.id)" (click)="resend(item.id)">

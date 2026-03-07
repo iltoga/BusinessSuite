@@ -41,6 +41,9 @@
       @if (invalidResults().length > 0) {
         <span class="text-destructive">🛡 {{ invalidResults().length }} invalid</span>
       }
+      @if (validationErrorResults().length > 0) {
+        <span class="text-destructive">🛡 {{ validationErrorResults().length }} validation error</span>
+      }
     </div>
     @if (unmatchedResults().length > 0) {
       <p class="text-xs text-muted-foreground">
@@ -120,33 +123,54 @@
                 }
               </td>
               <td class="py-1.5">
-                @if (result.documentId) {
-                  <z-badge zType="success">Matched</z-badge>
-                } @else if (result.status === 'categorized') {
-                  <z-badge
-                    zType="warning"
-                    [zTooltip]="'Recognized, but no document slot for this type in the application'"
-                    >No Slot</z-badge
-                  >
-                } @else if (result.status === 'error') {
-                  <z-badge zType="destructive">Error</z-badge>
-                } @else if (result.status === 'uploading') {
-                  <z-badge zType="secondary">Uploading</z-badge>
-                } @else if (result.status === 'processing') {
-                  <z-badge zType="secondary">Processing</z-badge>
-                } @else {
-                  <z-badge zType="secondary">Queued</z-badge>
-                }
+                @let statusBadge = getResultStatusBadge(result);
+                <z-badge
+                  [zType]="$any(statusBadge.type)"
+                  [zTooltip]="
+                    statusBadge.label === 'No Slot'
+                      ? 'Recognized, but no document slot for this type in the application'
+                      : null
+                  "
+                >
+                  @if (statusBadge.showSpinner) {
+                    <z-icon
+                      zType="loader-circle"
+                      class="mr-1 h-3.5 w-3.5 text-muted-foreground app-circle-spinner"
+                    />
+                  }
+                  {{ statusBadge.label }}
+                </z-badge>
               </td>
               <td class="py-1.5">
-                @if (result.validationStatus === 'valid') {
-                  <z-badge zType="success">Valid</z-badge>
-                } @else if (result.validationStatus === 'invalid') {
-                  <z-badge zType="destructive" [zTooltip]="getValidationTooltip(result)"
-                    >Invalid</z-badge
+                @let validationBadge = getValidationBadge(result);
+                @if (validationBadge?.label === 'Invalid') {
+                  <z-badge
+                    [zType]="$any(validationBadge!.type)"
+                    [zTooltip]="getValidationTooltip(result)"
+                    (click)="copyValidationTooltip(result)"
+                    title="Click to copy validation details"
                   >
-                } @else if (result.validationStatus === 'pending') {
-                  <z-badge zType="secondary">Validating…</z-badge>
+                    {{ validationBadge!.label }}
+                  </z-badge>
+                } @else if (validationBadge?.label === 'Error') {
+                  <z-badge
+                    [zType]="$any(validationBadge!.type)"
+                    [zTooltip]="getValidationTooltip(result)"
+                    (click)="copyValidationTooltip(result)"
+                    title="Click to copy validation details"
+                  >
+                    {{ validationBadge!.label }}
+                  </z-badge>
+                } @else if (validationBadge) {
+                  <z-badge [zType]="$any(validationBadge!.type)">
+                    @if (validationBadge.showSpinner) {
+                      <z-icon
+                        zType="loader-circle"
+                        class="mr-1 h-3.5 w-3.5 text-muted-foreground app-circle-spinner"
+                      />
+                    }
+                    {{ validationBadge!.label }}
+                  </z-badge>
                 } @else {
                   <span class="text-muted-foreground">—</span>
                 }

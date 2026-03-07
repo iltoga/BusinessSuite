@@ -1242,7 +1242,7 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
 
         router_enabled = AIRuntimeSettingsService.get_auto_fallback_enabled()
         fallback_candidates = AIRuntimeSettingsService.get_fallback_provider_order()
-        fallback_model_candidates = AIRuntimeSettingsService.get_fallback_model_order()
+        fallback_model_chain = AIRuntimeSettingsService.get_fallback_model_chain()
         fallback_sticky_seconds = AIRuntimeSettingsService.get_fallback_sticky_seconds()
 
         def _provider_info(provider_key: str) -> dict:
@@ -1274,10 +1274,7 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
 
         def _provider_default_model(provider_key: str) -> str:
             if provider_key == "openrouter":
-                if current_provider == "openrouter":
-                    configured_default_model = global_default_model or openrouter_default_model
-                else:
-                    configured_default_model = openrouter_default_model
+                configured_default_model = openrouter_default_model or global_default_model
                 return configured_default_model or "google/gemini-3-flash-preview"
             if provider_key == "openai":
                 if current_provider == "openai":
@@ -1291,11 +1288,14 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
         def _configured_fallback_model_order_for(primary_provider: str) -> list[dict]:
             configured: list[dict] = []
             seen: set[tuple[str, str]] = set()
-            for model in fallback_model_candidates:
-                model_id = str(model).strip()
+            for step in fallback_model_chain:
+                model_id = str(step.model).strip()
                 if not model_id:
                     continue
-                provider_key = AIRuntimeSettingsService.get_provider_for_model(model_id, fallback=primary_provider)
+                provider_key = AIRuntimeSettingsService.get_provider_for_model(
+                    model_id,
+                    fallback=primary_provider,
+                )
                 if not provider_key:
                     continue
                 route = (provider_key, model_id)
@@ -1307,23 +1307,7 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                         "provider": provider_key,
                         "providerName": _provider_display_name(provider_key),
                         "model": model_id,
-                    }
-                )
-
-            if configured:
-                return configured
-
-            for provider in _configured_fallback_order_for(primary_provider):
-                model_id = _provider_default_model(provider)
-                route = (provider, model_id)
-                if not model_id or route in seen:
-                    continue
-                seen.add(route)
-                configured.append(
-                    {
-                        "provider": provider,
-                        "providerName": _provider_display_name(provider),
-                        "model": model_id,
+                        "timeoutSeconds": float(step.timeout_seconds),
                     }
                 )
             return configured
@@ -1346,17 +1330,39 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
 
         def _feature_failover_providers(*, primary_provider: str) -> list[dict]:
             entries: list[dict] = []
-            configured_order = _configured_fallback_order_for(primary_provider)
-            effective_order = set(_effective_fallback_order_for(primary_provider))
-            for provider in configured_order:
+            configured_chain = _configured_fallback_model_order_for(primary_provider)
+            if not configured_chain:
+                for provider in _configured_fallback_order_for(primary_provider):
+                    entries.append(
+                        {
+                            "provider": provider,
+                            "providerName": _provider_display_name(provider),
+                            "model": _provider_default_model(provider),
+                            "timeoutSeconds": None,
+                            "available": bool(provider_availability.get(provider)),
+                            "active": provider in _effective_fallback_order_for(primary_provider),
+                        }
+                    )
+                return entries
+            effective_chain = {
+                (
+                    str(row.get("provider", "")).strip(),
+                    str(row.get("model", "")).strip(),
+                )
+                for row in _effective_fallback_model_order_for(primary_provider)
+            }
+            for row in configured_chain:
+                provider = str(row.get("provider", "")).strip()
+                model = str(row.get("model", "")).strip()
                 available = bool(provider_availability.get(provider))
                 entries.append(
                     {
                         "provider": provider,
                         "providerName": _provider_display_name(provider),
-                        "model": _provider_default_model(provider),
+                        "model": model,
+                        "timeoutSeconds": row.get("timeoutSeconds"),
                         "available": available,
-                        "active": provider in effective_order,
+                        "active": (provider, model) in effective_chain,
                     }
                 )
             return entries
@@ -1377,6 +1383,8 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                 model_override=model_override,
                 primary_provider=feature_provider,
             )
+            primary_timeout_setting_name = binding.get("timeoutSettingName")
+            primary_timeout_seconds = AIRuntimeSettingsService.get_timeout_for_feature(feature_name)
             normalized_failover_model = (model_failover or "").strip()
             has_model_failover = bool(normalized_failover_model and normalized_failover_model != primary_model)
             return {
@@ -1396,6 +1404,8 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                 "providerSettingName": binding.get("providerSettingName"),
                 "modelSettingName": binding.get("modelSettingName"),
                 "modelFailoverSettingName": binding.get("modelFailoverSettingName"),
+                "primaryTimeoutSettingName": primary_timeout_setting_name,
+                "primaryTimeoutSeconds": primary_timeout_seconds,
                 "failoverProviders": _feature_failover_providers(primary_provider=feature_provider),
                 "modelFailover": {
                     "enabled": has_model_failover,
@@ -1467,6 +1477,8 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
                 "effectiveProviderOrder": effective_fallback_order,
                 "configuredModelOrder": configured_fallback_model_order,
                 "effectiveModelOrder": effective_fallback_model_order,
+                "configuredModelChain": configured_fallback_model_order,
+                "effectiveModelChain": effective_fallback_model_order,
                 "stickySeconds": fallback_sticky_seconds,
                 "providers": [
                     {

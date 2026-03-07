@@ -10,6 +10,7 @@ import {
   AiModelDefinition,
   AiModelProviderCatalog,
   AiProviderModelOption,
+  AiWorkflowFailoverChainStep,
   AiWorkflowFailoverProvider,
   AiWorkflowFeature,
   AiWorkflowStatusResponse,
@@ -147,8 +148,11 @@ export class ServerManagementAiWorkflowFacade {
   }
 
   getPrimaryModelValue(): string {
+    const currentProvider = this.getCurrentPrimaryProvider();
+    const primarySettingName =
+      currentProvider === 'groq' ? 'GROQ_DEFAULT_MODEL' : 'LLM_DEFAULT_MODEL';
     return (
-      this.getAiSettingValue('LLM_DEFAULT_MODEL') ||
+      this.getAiSettingValue(primarySettingName) ||
       this.aiWorkflowStatus()?.aiModels.defaultModel ||
       ''
     );
@@ -165,10 +169,16 @@ export class ServerManagementAiWorkflowFacade {
       return;
     }
 
-    const updates: Record<string, unknown> = {
-      LLM_PROVIDER: provider,
-      LLM_DEFAULT_MODEL: modelId,
-    };
+    const updates: Record<string, unknown> =
+      provider === 'groq'
+        ? {
+            LLM_PROVIDER: provider,
+            GROQ_DEFAULT_MODEL: modelId,
+          }
+        : {
+            LLM_PROVIDER: provider,
+            LLM_DEFAULT_MODEL: modelId,
+          };
 
     this.patchAiWorkflowSettings(updates, {
       errorPrefix: 'Failed to update primary runtime model',
@@ -214,13 +224,34 @@ export class ServerManagementAiWorkflowFacade {
     );
   }
 
+  getDraftFallbackModelChain(): AiWorkflowFailoverChainStep[] {
+    const raw = this.aiWorkflowDraft()['LLM_FALLBACK_MODEL_CHAIN'];
+    if (Array.isArray(raw)) {
+      return raw
+        .map((item) => this.normalizeFallbackChainStep(item))
+        .filter((item): item is AiWorkflowFailoverChainStep => item !== null);
+    }
+
+    const legacyRaw = this.aiWorkflowDraft()['LLM_FALLBACK_MODEL_ORDER'];
+    const legacyOrder = Array.isArray(legacyRaw)
+      ? legacyRaw.map((item) => String(item).trim()).filter(Boolean)
+      : String(legacyRaw ?? '')
+          .split(',')
+          .map((value) => value.trim())
+          .filter(Boolean);
+    return legacyOrder.map((model) => ({
+      model,
+      timeoutSeconds: this.getDefaultTimeoutForModel(model),
+    }));
+  }
+
   getDraftFallbackModelOrder(): string[] {
     const raw = this.aiWorkflowDraft()['LLM_FALLBACK_MODEL_ORDER'];
     if (Array.isArray(raw)) {
       return raw.map((item) => String(item).trim()).filter(Boolean);
     }
     if (raw === null || raw === undefined) {
-      return [];
+      return this.getDraftFallbackModelChain().map((step) => step.model);
     }
     return String(raw)
       .split(',')
@@ -258,35 +289,49 @@ export class ServerManagementAiWorkflowFacade {
   }
 
   addFallbackModel(value: string | string[] | null): void {
+    this.addFallbackChainStep(value);
+  }
+
+  addFallbackChainStep(value: string | string[] | null): void {
     const modelId = this.normalizeTypeaheadValue(value);
     if (!modelId) {
       return;
     }
-    const current = this.getDraftFallbackModelOrder();
-    if (current.includes(modelId)) {
+    const current = this.getDraftFallbackModelChain();
+    if (current.some((step) => step.model === modelId)) {
       return;
     }
-    const next = [...current, modelId];
+    const next = [
+      ...current,
+      {
+        model: modelId,
+        timeoutSeconds: this.getDefaultTimeoutForModel(modelId),
+      },
+    ];
     this.patchAiWorkflowSettings(
-      { LLM_FALLBACK_MODEL_ORDER: next },
-      { errorPrefix: 'Failed to update fallback models' },
+      { LLM_FALLBACK_MODEL_CHAIN: next },
+      { errorPrefix: 'Failed to update fallback chain' },
     );
   }
 
   removeFallbackModel(index: number): void {
-    const current = this.getDraftFallbackModelOrder();
+    this.removeFallbackChainStep(index);
+  }
+
+  removeFallbackChainStep(index: number): void {
+    const current = this.getDraftFallbackModelChain();
     if (index < 0 || index >= current.length) {
       return;
     }
     const next = current.filter((_, idx) => idx !== index);
     this.patchAiWorkflowSettings(
-      { LLM_FALLBACK_MODEL_ORDER: next },
-      { errorPrefix: 'Failed to update fallback models' },
+      { LLM_FALLBACK_MODEL_CHAIN: next },
+      { errorPrefix: 'Failed to update fallback chain' },
     );
   }
 
   moveFallbackModel(index: number, direction: -1 | 1): void {
-    const current = this.getDraftFallbackModelOrder();
+    const current = this.getDraftFallbackModelChain();
     const targetIndex = index + direction;
     if (index < 0 || index >= current.length || targetIndex < 0 || targetIndex >= current.length) {
       return;
@@ -295,8 +340,77 @@ export class ServerManagementAiWorkflowFacade {
     const [item] = next.splice(index, 1);
     next.splice(targetIndex, 0, item);
     this.patchAiWorkflowSettings(
-      { LLM_FALLBACK_MODEL_ORDER: next },
-      { errorPrefix: 'Failed to reorder fallback models' },
+      { LLM_FALLBACK_MODEL_CHAIN: next },
+      { errorPrefix: 'Failed to reorder fallback chain' },
+    );
+  }
+
+  reorderFallbackChain(previousIndex: number, currentIndex: number): void {
+    const current = this.getDraftFallbackModelChain();
+    if (
+      previousIndex < 0 ||
+      currentIndex < 0 ||
+      previousIndex >= current.length ||
+      currentIndex >= current.length ||
+      previousIndex === currentIndex
+    ) {
+      return;
+    }
+    const next = [...current];
+    const [item] = next.splice(previousIndex, 1);
+    next.splice(currentIndex, 0, item);
+    this.patchAiWorkflowSettings(
+      { LLM_FALLBACK_MODEL_CHAIN: next },
+      { errorPrefix: 'Failed to reorder fallback chain' },
+    );
+  }
+
+  updateFallbackChainModel(index: number, value: string | string[] | null): void {
+    const modelId = this.normalizeTypeaheadValue(value);
+    if (!modelId) {
+      return;
+    }
+    const current = this.getDraftFallbackModelChain();
+    if (index < 0 || index >= current.length) {
+      return;
+    }
+    if (current.some((step, stepIndex) => stepIndex !== index && step.model === modelId)) {
+      return;
+    }
+    const next = current.map((step, stepIndex) =>
+      stepIndex === index
+        ? {
+            model: modelId,
+            timeoutSeconds: step.timeoutSeconds || this.getDefaultTimeoutForModel(modelId),
+          }
+        : step,
+    );
+    this.patchAiWorkflowSettings(
+      { LLM_FALLBACK_MODEL_CHAIN: next },
+      { errorPrefix: 'Failed to update fallback model' },
+    );
+  }
+
+  updateFallbackChainTimeout(index: number, rawValue: number | string): void {
+    const timeoutSeconds = Number(rawValue);
+    if (!Number.isFinite(timeoutSeconds) || timeoutSeconds <= 0) {
+      return;
+    }
+    const current = this.getDraftFallbackModelChain();
+    if (index < 0 || index >= current.length) {
+      return;
+    }
+    const next = current.map((step, stepIndex) =>
+      stepIndex === index
+        ? {
+            ...step,
+            timeoutSeconds,
+          }
+        : step,
+    );
+    this.patchAiWorkflowSettings(
+      { LLM_FALLBACK_MODEL_CHAIN: next },
+      { errorPrefix: 'Failed to update fallback timeout' },
     );
   }
 
@@ -309,13 +423,15 @@ export class ServerManagementAiWorkflowFacade {
   }
 
   getConfiguredFailoverOrderLabel(status: AiWorkflowStatusResponse | null): string {
-    const configured = status?.aiModels?.failover?.configuredModelOrder ?? [];
+    const configured = status?.aiModels?.failover?.configuredModelChain ?? [];
     if (!configured.length) {
       return 'None';
     }
     return (
       configured
-        .map((entry) => entry.model)
+        .map((entry) =>
+          entry.timeoutSeconds ? `${entry.model} (${entry.timeoutSeconds}s)` : entry.model,
+        )
         .filter(Boolean)
         .join(' -> ') || 'None'
     );
@@ -410,16 +526,21 @@ export class ServerManagementAiWorkflowFacade {
   }
 
   getFeatureProvider(feature: AiWorkflowFeature): string {
-    const settingName = feature.providerSettingName;
-    if (settingName) {
-      const selected = String(this.aiWorkflowDraft()[settingName] ?? '')
-        .trim()
-        .toLowerCase();
-      if (selected) {
-        return selected;
+    const modelSettingName = String(feature.modelSettingName ?? '').trim();
+    if (modelSettingName && modelSettingName !== 'LLM_DEFAULT_MODEL') {
+      const selectedModel = this.getAiSettingValue(modelSettingName);
+      const selectedProvider = this.getProviderForModel(
+        selectedModel,
+        feature.primaryProvider || this.getCurrentPrimaryProvider(),
+      );
+      if (selectedProvider) {
+        return selectedProvider;
       }
     }
-    return feature.primaryProvider || this.aiWorkflowStatus()?.aiModels.provider || 'openrouter';
+    if (modelSettingName === 'LLM_DEFAULT_MODEL') {
+      return this.getCurrentPrimaryProvider();
+    }
+    return feature.primaryProvider || this.getCurrentPrimaryProvider();
   }
 
   formatModelCapabilities(model: AiModelDefinition): string {
@@ -572,6 +693,33 @@ export class ServerManagementAiWorkflowFacade {
     return null;
   }
 
+  private getDefaultTimeoutForModel(modelId: string): number {
+    const provider = this.getProviderForModel(modelId, this.getCurrentPrimaryProvider());
+    if (provider === 'openai') {
+      return Number(this.aiWorkflowDraft()['OPENAI_TIMEOUT'] ?? 120) || 120;
+    }
+    if (provider === 'openrouter') {
+      return Number(this.aiWorkflowDraft()['OPENROUTER_TIMEOUT'] ?? 120) || 120;
+    }
+    return 120;
+  }
+
+  private normalizeFallbackChainStep(raw: unknown): AiWorkflowFailoverChainStep | null {
+    if (!raw || typeof raw !== 'object') {
+      return null;
+    }
+    const candidate = raw as Record<string, unknown>;
+    const model = String(candidate['model'] ?? '').trim();
+    const timeoutSeconds = Number(candidate['timeoutSeconds'] ?? candidate['timeout'] ?? 0);
+    if (!model || !Number.isFinite(timeoutSeconds) || timeoutSeconds <= 0) {
+      return null;
+    }
+    return {
+      model,
+      timeoutSeconds,
+    };
+  }
+
   private queryTypeaheadModelOptions({
     query,
     page = 1,
@@ -677,12 +825,21 @@ export class ServerManagementAiWorkflowFacade {
         providerSettingName: feature?.providerSettingName ?? null,
         modelSettingName: feature?.modelSettingName ?? null,
         modelFailoverSettingName: feature?.modelFailoverSettingName ?? null,
+        primaryTimeoutSettingName: feature?.primaryTimeoutSettingName ?? null,
+        primaryTimeoutSeconds:
+          typeof feature?.primaryTimeoutSeconds === 'number'
+            ? feature.primaryTimeoutSeconds
+            : Number(feature?.primaryTimeoutSeconds ?? 0) || undefined,
         failoverProviders: failoverProvidersRaw.map((providerRow: any) => {
           const providerKey = String(providerRow?.provider ?? 'unknown');
           return {
             provider: providerKey,
             providerName: String(providerRow?.providerName ?? providerKey),
             model: String(providerRow?.model ?? ''),
+            timeoutSeconds:
+              typeof providerRow?.timeoutSeconds === 'number'
+                ? providerRow.timeoutSeconds
+                : undefined,
             available: Boolean(providerRow?.available),
             active: Boolean(providerRow?.active),
           };
@@ -709,6 +866,7 @@ export class ServerManagementAiWorkflowFacade {
       providerSettingName: item?.providerSettingName ?? null,
       modelSettingName: item?.modelSettingName ?? null,
       modelFailoverSettingName: item?.modelFailoverSettingName ?? null,
+      timeoutSettingName: item?.timeoutSettingName ?? null,
     }));
 
     const providersRaw =
@@ -756,6 +914,10 @@ export class ServerManagementAiWorkflowFacade {
                 provider: String(entry?.provider ?? ''),
                 providerName: String(entry?.providerName ?? entry?.provider ?? ''),
                 model: String(entry?.model ?? ''),
+                timeoutSeconds:
+                  typeof entry?.timeoutSeconds === 'number'
+                    ? entry.timeoutSeconds
+                    : Number(entry?.timeoutSeconds ?? 0) || undefined,
               }))
             : [],
           effectiveModelOrder: Array.isArray(failoverRaw?.effectiveModelOrder)
@@ -763,6 +925,32 @@ export class ServerManagementAiWorkflowFacade {
                 provider: String(entry?.provider ?? ''),
                 providerName: String(entry?.providerName ?? entry?.provider ?? ''),
                 model: String(entry?.model ?? ''),
+                timeoutSeconds:
+                  typeof entry?.timeoutSeconds === 'number'
+                    ? entry.timeoutSeconds
+                    : Number(entry?.timeoutSeconds ?? 0) || undefined,
+              }))
+            : [],
+          configuredModelChain: Array.isArray(failoverRaw?.configuredModelChain)
+            ? failoverRaw.configuredModelChain.map((entry: any) => ({
+                provider: String(entry?.provider ?? ''),
+                providerName: String(entry?.providerName ?? entry?.provider ?? ''),
+                model: String(entry?.model ?? ''),
+                timeoutSeconds:
+                  typeof entry?.timeoutSeconds === 'number'
+                    ? entry.timeoutSeconds
+                    : Number(entry?.timeoutSeconds ?? 0) || 120,
+              }))
+            : [],
+          effectiveModelChain: Array.isArray(failoverRaw?.effectiveModelChain)
+            ? failoverRaw.effectiveModelChain.map((entry: any) => ({
+                provider: String(entry?.provider ?? ''),
+                providerName: String(entry?.providerName ?? entry?.provider ?? ''),
+                model: String(entry?.model ?? ''),
+                timeoutSeconds:
+                  typeof entry?.timeoutSeconds === 'number'
+                    ? entry.timeoutSeconds
+                    : Number(entry?.timeoutSeconds ?? 0) || 120,
               }))
             : [],
           stickySeconds:

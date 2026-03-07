@@ -56,7 +56,14 @@ class AppSettingService:
         try:
             rows = list(
                 AppSetting.objects.all().values(
-                    "name", "value", "updated_by_id", "scope", "description", "created_at", "updated_at"
+                    "name",
+                    "value",
+                    "updated_by_id",
+                    "scope",
+                    "description",
+                    "is_runtime_override",
+                    "created_at",
+                    "updated_at",
                 )
             )
         except Exception:
@@ -68,6 +75,7 @@ class AppSettingService:
                 "updated_by_id": row.get("updated_by_id"),
                 "scope": row.get("scope"),
                 "description": row.get("description"),
+                "is_runtime_override": bool(row.get("is_runtime_override")),
                 "created_at": row.get("created_at"),
                 "updated_at": row.get("updated_at"),
             }
@@ -116,6 +124,11 @@ class AppSettingService:
     def _is_runtime_override(cls, record: Any) -> bool:
         if record is None:
             return False
+        explicit_flag = (
+            record.get("is_runtime_override") if isinstance(record, dict) else getattr(record, "is_runtime_override", None)
+        )
+        if explicit_flag is not None:
+            return bool(explicit_flag)
         updated_by_id = record.get("updated_by_id") if isinstance(record, dict) else getattr(record, "updated_by_id", None)
         if updated_by_id is not None:
             return True
@@ -158,6 +171,7 @@ class AppSettingService:
                     "value": value,
                     "scope": scope,
                     "description": final_description,
+                    "is_runtime_override": bool(force_override),
                     # Persist FK by id to support token-like auth users without a concrete model instance.
                     "updated_by_id": cls._resolve_updated_by_id(updated_by),
                 },

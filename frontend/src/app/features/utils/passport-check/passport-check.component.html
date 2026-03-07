@@ -162,7 +162,7 @@
         <div>
           <span class="block text-gray-500 dark:text-gray-400">Expiration Date</span>
           <span class="font-medium text-gray-900 dark:text-white">{{
-            result()?.passport_data?.expiration_date || '—'
+            result()?.passport_data?.expiration_date ? (result()?.passport_data?.expiration_date | appDate) : '—'
           }}</span>
         </div>
       </div>

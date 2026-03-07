@@ -41,18 +41,7 @@
         @if (isSuperuser()) {
           <button z-button zType="destructive" (click)="onDelete()">Delete</button>
         }
-        <a
-          z-button
-          zType="ghost"
-          [routerLink]="'/customers'"
-          [state]="{
-            focusTable: true,
-            focusId: customer()!.id,
-            searchQuery: originSearchQuery(),
-            page: originPage()
-          }"
-          >Back to list</a
-        >
+        <button z-button zType="ghost" (click)="goBack()">Back</button>
       </div>
     </div>
 

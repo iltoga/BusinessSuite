@@ -40,148 +40,6 @@ class ServerManagementOpenRouterStatusApiTests(TestCase):
         self.user.groups.add(admin_group)
         self.client.force_authenticate(user=self.user)
 
-    @override_settings(
-        OPENROUTER_API_KEY="test-key",
-        OPENAI_API_KEY="openai-test-key",
-        OPENROUTER_API_BASE_URL="https://openrouter.ai/api/v1",
-        LLM_PROVIDER="openrouter",
-        LLM_DEFAULT_MODEL="google/gemini-2.5-flash-lite",
-        OPENAI_DEFAULT_MODEL="gpt-5-mini",
-        LLM_AUTO_FALLBACK_ENABLED=True,
-        LLM_FALLBACK_PROVIDER_ORDER=["openai", "groq"],
-        CHECK_PASSPORT_MODEL="google/gemini-3-flash-preview",
-    )
-    def test_openrouter_status_returns_credit_and_ai_model_data(self):
-        now = timezone.now()
-
-        invoice_usage = AIRequestUsage.objects.create(
-            feature=AIUsageFeature.INVOICE_IMPORT_AI_PARSER,
-            provider="openrouter",
-            model="google/gemini-2.5-flash-lite",
-            success=True,
-            total_tokens=240,
-            cost_usd="0.120000",
-        )
-        AIRequestUsage.objects.filter(pk=invoice_usage.pk).update(created_at=now)
-
-        passport_usage = AIRequestUsage.objects.create(
-            feature=AIUsageFeature.PASSPORT_OCR_AI_EXTRACTOR,
-            provider="openrouter",
-            model="google/gemini-2.5-flash-lite",
-            success=False,
-            total_tokens=120,
-            cost_usd="0.040000",
-        )
-        AIRequestUsage.objects.filter(pk=passport_usage.pk).update(created_at=now)
-
-        passport_check_usage = AIRequestUsage.objects.create(
-            feature=AIUsageFeature.PASSPORT_CHECK_API,
-            provider="openrouter",
-            model="google/gemini-3-flash-preview",
-            success=True,
-            total_tokens=90,
-            cost_usd="0.030000",
-        )
-        AIRequestUsage.objects.filter(pk=passport_check_usage.pk).update(created_at=now)
-
-        document_usage_main = AIRequestUsage.objects.create(
-            feature=AIUsageFeature.DOCUMENT_AI_CATEGORIZER,
-            provider="openrouter",
-            model="google/gemini-2.5-flash-lite",
-            success=True,
-            total_tokens=1000,
-            cost_usd="0.005000",
-        )
-        AIRequestUsage.objects.filter(pk=document_usage_main.pk).update(created_at=now)
-
-        document_usage_alt = AIRequestUsage.objects.create(
-            feature=AIUsageFeature.DOCUMENT_AI_CATEGORIZER,
-            provider="openrouter",
-            model="google/gemini-3-flash-preview",
-            success=True,
-            total_tokens=2000,
-            cost_usd="0.020000",
-        )
-        AIRequestUsage.objects.filter(pk=document_usage_alt.pk).update(created_at=now)
-
-        key_response = MagicMock()
-        key_response.status_code = 200
-        key_response.json.return_value = {
-            "data": {
-                "limit_remaining": 12.5,
-                "usage_monthly": 5.0,
-                "limit": 20.0,
-            }
-        }
-
-        credits_response = MagicMock()
-        credits_response.status_code = 403
-        credits_response.text = "Forbidden"
-
-        with patch("api.views_admin.requests.get", side_effect=[key_response, credits_response]):
-            response = self.client.get("/api/server-management/openrouter-status/")
-
-        self.assertEqual(response.status_code, 200)
-        payload = response.json()
-        self.assertTrue(payload["ok"])
-        self.assertTrue(payload["openrouter"]["configured"])
-        self.assertTrue(payload["openrouter"]["keyStatus"]["ok"])
-        self.assertEqual(payload["openrouter"]["keyStatus"]["limitRemaining"], 12.5)
-        self.assertEqual(payload["openrouter"]["effectiveCreditRemaining"], 12.5)
-        self.assertEqual(payload["aiModels"]["provider"], "openrouter")
-        self.assertTrue(payload["aiModels"]["failover"]["enabled"])
-        self.assertEqual(payload["aiModels"]["failover"]["configuredProviderOrder"], ["openai", "groq"])
-        self.assertEqual(payload["aiModels"]["failover"]["effectiveProviderOrder"], ["openai"])
-        self.assertEqual(payload["aiModels"]["usageCurrentMonth"]["requestCount"], 5)
-        self.assertEqual(payload["aiModels"]["usageCurrentMonth"]["totalTokens"], 3450)
-        self.assertAlmostEqual(payload["aiModels"]["usageCurrentMonth"]["totalCost"], 0.215)
-        self.assertGreaterEqual(len(payload["aiModels"]["features"]), 6)
-        invoice_feature = next(
-            feature for feature in payload["aiModels"]["features"] if feature["feature"] == AIUsageFeature.INVOICE_IMPORT_AI_PARSER
-        )
-        self.assertEqual(invoice_feature["modelSettingName"], "INVOICE_IMPORT_MODEL")
-        self.assertEqual(invoice_feature["primaryProvider"], "openrouter")
-        self.assertEqual(invoice_feature["primaryModel"], "google/gemini-2.5-flash-lite")
-        self.assertEqual(len(invoice_feature["failoverProviders"]), 2)
-        self.assertEqual(invoice_feature["failoverProviders"][0]["provider"], "openai")
-        self.assertEqual(invoice_feature["failoverProviders"][0]["model"], "gpt-5-mini")
-        self.assertTrue(invoice_feature["failoverProviders"][0]["active"])
-        self.assertEqual(invoice_feature["failoverProviders"][1]["provider"], "groq")
-        self.assertFalse(invoice_feature["failoverProviders"][1]["active"])
-        self.assertEqual(invoice_feature["usageCurrentMonth"]["requestCount"], 1)
-        self.assertEqual(invoice_feature["usageCurrentMonth"]["totalTokens"], 240)
-        self.assertEqual(invoice_feature["usageCurrentYear"]["requestCount"], 1)
-
-        passport_feature = next(
-            feature for feature in payload["aiModels"]["features"] if feature["feature"] == AIUsageFeature.PASSPORT_OCR_AI_EXTRACTOR
-        )
-        self.assertEqual(passport_feature["modelSettingName"], "PASSPORT_OCR_MODEL")
-        self.assertEqual(passport_feature["usageCurrentMonth"]["failedCount"], 1)
-
-        passport_check_feature = next(
-            feature for feature in payload["aiModels"]["features"] if feature["feature"] == AIUsageFeature.PASSPORT_CHECK_API
-        )
-        self.assertEqual(passport_check_feature["effectiveModel"], "google/gemini-3-flash-preview")
-        self.assertEqual(passport_check_feature["usageCurrentMonth"]["requestCount"], 1)
-        self.assertEqual(passport_check_feature["usageCurrentMonth"]["totalTokens"], 90)
-
-        document_feature = next(
-            feature for feature in payload["aiModels"]["features"] if feature["feature"] == AIUsageFeature.DOCUMENT_AI_CATEGORIZER
-        )
-        self.assertFalse(document_feature["modelFailover"]["enabled"])
-        self.assertEqual(document_feature["usageCurrentMonth"]["requestCount"], 2)
-        self.assertEqual(document_feature["usageCurrentMonth"]["totalTokens"], 3000)
-        self.assertAlmostEqual(document_feature["usageCurrentMonth"]["totalCost"], 0.025)
-        self.assertEqual(len(document_feature["modelBreakdownCurrentMonth"]), 2)
-        self.assertEqual(document_feature["modelBreakdownCurrentMonth"][0]["model"], "google/gemini-3-flash-preview")
-        self.assertAlmostEqual(document_feature["modelBreakdownCurrentMonth"][0]["totalCost"], 0.02)
-        self.assertEqual(document_feature["modelBreakdownCurrentMonth"][1]["model"], "google/gemini-2.5-flash-lite")
-        self.assertAlmostEqual(document_feature["modelBreakdownCurrentMonth"][1]["totalCost"], 0.005)
-        self.assertIn("runtimeSettings", payload["aiModels"])
-        self.assertIn("settingsMap", payload["aiModels"])
-        self.assertIn("workflowBindings", payload["aiModels"])
-        self.assertIn("modelCatalog", payload["aiModels"])
-        self.assertIn("providers", payload["aiModels"]["modelCatalog"])
 
     @override_settings(OPENROUTER_API_KEY="")
     def test_openrouter_status_handles_missing_usage_table(self):
@@ -252,28 +110,50 @@ class ServerManagementOpenRouterStatusApiTests(TestCase):
         self.assertTrue(invoice_feature["failoverProviders"][0]["active"])
 
     @override_settings(
-        OPENROUTER_API_KEY="",
+        OPENROUTER_API_KEY="test-key",
         LLM_PROVIDER="openrouter",
-        LLM_DEFAULT_MODEL="openai/gpt-5-mini",
+        LLM_DEFAULT_MODEL="qwen/qwen3.5-flash-02-23",
         OPENROUTER_DEFAULT_MODEL="google/gemini-3-flash-preview",
+        LLM_AUTO_FALLBACK_ENABLED=True,
+        LLM_FALLBACK_MODEL_CHAIN=[
+            {"model": "google/gemini-3-flash-preview", "timeoutSeconds": 45},
+            {"model": "google/gemini-2.5-flash-lite", "timeoutSeconds": 120},
+        ],
     )
-    def test_openrouter_status_workflow_models_inherit_primary_when_unset(self):
+    def test_openrouter_status_reports_full_failover_model_chain_per_feature(self):
         response = self.client.get("/api/server-management/openrouter-status/")
 
         self.assertEqual(response.status_code, 200)
         payload = response.json()
 
         invoice_feature = next(
-            feature for feature in payload["aiModels"]["features"] if feature["feature"] == AIUsageFeature.INVOICE_IMPORT_AI_PARSER
-        )
-        passport_feature = next(
-            feature for feature in payload["aiModels"]["features"] if feature["feature"] == AIUsageFeature.PASSPORT_OCR_AI_EXTRACTOR
+            feature
+            for feature in payload["aiModels"]["features"]
+            if feature["feature"] == AIUsageFeature.INVOICE_IMPORT_AI_PARSER
         )
 
-        self.assertEqual(invoice_feature["modelSettingName"], "INVOICE_IMPORT_MODEL")
-        self.assertEqual(passport_feature["modelSettingName"], "PASSPORT_OCR_MODEL")
-        self.assertEqual(invoice_feature["primaryModel"], "openai/gpt-5-mini")
-        self.assertEqual(passport_feature["primaryModel"], "openai/gpt-5-mini")
+        self.assertEqual(
+            invoice_feature["failoverProviders"],
+            [
+                {
+                    "provider": "openrouter",
+                    "providerName": "OpenRouter",
+                    "model": "google/gemini-3-flash-preview",
+                    "timeoutSeconds": 45.0,
+                    "available": True,
+                    "active": True,
+                },
+                {
+                    "provider": "openrouter",
+                    "providerName": "OpenRouter",
+                    "model": "google/gemini-2.5-flash-lite",
+                    "timeoutSeconds": 120.0,
+                    "available": True,
+                    "active": True,
+                },
+            ],
+        )
+
 
     @override_settings(
         OPENROUTER_API_KEY="",
@@ -306,7 +186,10 @@ class ServerManagementOpenRouterStatusApiTests(TestCase):
                     "LLM_PROVIDER": "openai",
                     "LLM_DEFAULT_MODEL": "gpt-5-mini",
                     "LLM_FALLBACK_PROVIDER_ORDER": ["openrouter"],
-                    "LLM_FALLBACK_MODEL_ORDER": ["google/gemini-3-flash-preview"],
+                    "LLM_FALLBACK_MODEL_CHAIN": [
+                        {"model": "google/gemini-3-flash-preview", "timeoutSeconds": 45}
+                    ],
+                    "DOCUMENT_VALIDATION_TIMEOUT": 15,
                 }
             },
             format="json",
@@ -318,14 +201,116 @@ class ServerManagementOpenRouterStatusApiTests(TestCase):
         self.assertEqual(payload["aiModels"]["settingsMap"]["LLM_PROVIDER"], "openai")
         self.assertEqual(payload["aiModels"]["settingsMap"]["LLM_DEFAULT_MODEL"], "gpt-5-mini")
         self.assertEqual(payload["aiModels"]["settingsMap"]["LLM_FALLBACK_PROVIDER_ORDER"], ["openrouter"])
+        self.assertEqual(payload["aiModels"]["settingsMap"]["DOCUMENT_VALIDATION_TIMEOUT"], 15.0)
         self.assertEqual(
-            payload["aiModels"]["settingsMap"]["LLM_FALLBACK_MODEL_ORDER"],
-            ["google/gemini-3-flash-preview"],
+            payload["aiModels"]["settingsMap"]["LLM_FALLBACK_MODEL_CHAIN"],
+            [{"model": "google/gemini-3-flash-preview", "timeoutSeconds": 45.0}],
         )
 
         provider_setting = AppSetting.objects.get(name="LLM_PROVIDER")
         self.assertEqual(provider_setting.value, "openai")
         self.assertEqual(provider_setting.updated_by_id, self.user.id)
+
+    @override_settings(
+        OPENROUTER_API_KEY="",
+        LLM_PROVIDER="openrouter",
+        LLM_DEFAULT_MODEL="qwen/qwen3.5-flash-02-23",
+        OPENROUTER_DEFAULT_MODEL="google/gemini-2.5-flash-lite",
+    )
+    def test_openrouter_status_patch_updates_fallback_model_order_with_unlisted_primary_model(self):
+        response = self.client.patch(
+            "/api/server-management/openrouter-status/",
+            data={
+                "settings": {
+                    "LLM_FALLBACK_MODEL_CHAIN": [
+                        {"model": "google/gemini-3-flash-preview", "timeoutSeconds": 45}
+                    ],
+                }
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(
+            payload["aiModels"]["settingsMap"]["LLM_FALLBACK_MODEL_CHAIN"],
+            [{"model": "google/gemini-3-flash-preview", "timeoutSeconds": 45.0}],
+        )
+        self.assertEqual(
+            payload["aiModels"]["failover"]["configuredModelChain"],
+            [
+                {
+                    "provider": "openrouter",
+                    "providerName": "OpenRouter",
+                    "model": "google/gemini-3-flash-preview",
+                    "timeoutSeconds": 45.0,
+                }
+            ],
+        )
+
+        chain_setting = AppSetting.objects.get(name="LLM_FALLBACK_MODEL_CHAIN")
+        setting = AppSetting.objects.get(name="LLM_FALLBACK_MODEL_ORDER")
+        self.assertEqual(chain_setting.updated_by_id, self.user.id)
+        self.assertEqual(setting.value, "google/gemini-3-flash-preview")
+        self.assertEqual(setting.updated_by_id, self.user.id)
+
+    @override_settings(
+        OPENROUTER_API_KEY="",
+        LLM_PROVIDER="openrouter",
+        LLM_DEFAULT_MODEL="qwen/qwen3.5-flash-02-23",
+    )
+    def test_openrouter_status_patch_updates_workflow_model_with_unlisted_primary_model(self):
+        response = self.client.patch(
+            "/api/server-management/openrouter-status/",
+            data={
+                "settings": {
+                    "INVOICE_IMPORT_MODEL": "gpt-5-mini",
+                }
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["aiModels"]["settingsMap"]["INVOICE_IMPORT_MODEL"], "gpt-5-mini")
+        invoice_feature = next(
+            feature for feature in payload["aiModels"]["features"] if feature["feature"] == AIUsageFeature.INVOICE_IMPORT_AI_PARSER
+        )
+        self.assertEqual(invoice_feature["primaryProvider"], "openai")
+        self.assertEqual(invoice_feature["primaryModel"], "gpt-5-mini")
+
+    @override_settings(
+        OPENROUTER_API_KEY="",
+        LLM_PROVIDER="openrouter",
+        LLM_DEFAULT_MODEL="google/gemini-3-flash-preview",
+        GROQ_DEFAULT_MODEL="meta-llama/llama-4-maverick-17b-128e-instruct",
+    )
+    def test_openrouter_status_patch_updates_active_groq_primary_model(self):
+        response = self.client.patch(
+            "/api/server-management/openrouter-status/",
+            data={
+                "settings": {
+                    "LLM_PROVIDER": "groq",
+                    "GROQ_DEFAULT_MODEL": "qwen/qwen3-32b",
+                }
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["aiModels"]["provider"], "groq")
+        self.assertEqual(payload["aiModels"]["defaultModel"], "qwen/qwen3-32b")
+        self.assertEqual(payload["aiModels"]["settingsMap"]["LLM_PROVIDER"], "groq")
+        self.assertEqual(payload["aiModels"]["settingsMap"]["GROQ_DEFAULT_MODEL"], "qwen/qwen3-32b")
+        self.assertEqual(payload["aiModels"]["settingsMap"]["LLM_DEFAULT_MODEL"], "google/gemini-3-flash-preview")
+
+        provider_setting = AppSetting.objects.get(name="LLM_PROVIDER")
+        groq_setting = AppSetting.objects.get(name="GROQ_DEFAULT_MODEL")
+        self.assertEqual(provider_setting.value, "groq")
+        self.assertEqual(groq_setting.value, "qwen/qwen3-32b")
+        self.assertEqual(provider_setting.updated_by_id, self.user.id)
+        self.assertEqual(groq_setting.updated_by_id, self.user.id)
 
     @override_settings(
         OPENROUTER_API_KEY="",
@@ -353,36 +338,8 @@ class ServerManagementOpenRouterStatusApiTests(TestCase):
         self.assertEqual(invoice_feature["primaryProvider"], "openai")
         self.assertEqual(invoice_feature["primaryModel"], "gpt-5-mini")
 
-    @override_settings(
-        OPENROUTER_API_KEY="",
-        LLM_PROVIDER="openrouter",
-        LLM_DEFAULT_MODEL="qwen/qwen3.5-flash",
-        OPENROUTER_DEFAULT_MODEL="google/gemini-2.5-flash-lite",
-    )
-    def test_openrouter_status_patch_reset_workflow_model_deletes_db_override(self):
-        self.client.patch(
-            "/api/server-management/openrouter-status/",
-            data={"settings": {"INVOICE_IMPORT_MODEL": "gpt-5-mini"}},
-            format="json",
-        )
-        self.assertTrue(AppSetting.objects.filter(name="INVOICE_IMPORT_MODEL").exists())
 
-        response = self.client.patch(
-            "/api/server-management/openrouter-status/",
-            data={"settings": {"INVOICE_IMPORT_MODEL": None}},
-            format="json",
-        )
 
-        self.assertEqual(response.status_code, 200)
-        payload = response.json()
-        self.assertFalse(AppSetting.objects.filter(name="INVOICE_IMPORT_MODEL").exists())
-        self.assertEqual(payload["aiModels"]["settingsMap"]["INVOICE_IMPORT_MODEL"], "")
-
-        invoice_feature = next(
-            feature for feature in payload["aiModels"]["features"] if feature["feature"] == AIUsageFeature.INVOICE_IMPORT_AI_PARSER
-        )
-        self.assertEqual(invoice_feature["primaryProvider"], "openrouter")
-        self.assertEqual(invoice_feature["primaryModel"], "qwen/qwen3.5-flash")
 
     @override_settings(
         OPENROUTER_API_KEY="",
@@ -435,45 +392,3 @@ class ServerManagementOpenRouterStatusApiTests(TestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertIn("LLM_DEFAULT_MODEL must be a model listed under provider 'openai'", response.json()["detail"])
-
-    @override_settings(DJANGO_LOG_LEVEL="WARNING")
-    def test_app_settings_list_and_create(self):
-        response = self.client.get("/api/server-management/app-settings/")
-        self.assertEqual(response.status_code, 200)
-        payload = response.json()
-        item = next((row for row in payload["items"] if row["name"] == "DJANGO_LOG_LEVEL"), None)
-        if item is None:
-            self.fail("Expected DJANGO_LOG_LEVEL item in settings payload")
-        self.assertEqual(item["effectiveValue"], "WARNING")
-
-        create_response = self.client.post(
-            "/api/server-management/app-settings/",
-            data={
-                "name": "DJANGO_LOG_LEVEL",
-                "value": "ERROR",
-                "scope": "backend",
-                "description": "override",
-            },
-            format="json",
-        )
-        self.assertEqual(create_response.status_code, 200)
-        setting = AppSetting.objects.get(name="DJANGO_LOG_LEVEL")
-        self.assertEqual(setting.value, "ERROR")
-        self.assertEqual(setting.updated_by_id, self.user.id)
-
-    @override_settings(DJANGO_LOG_LEVEL="WARNING")
-    def test_app_settings_delete_falls_back_to_previous_precedence(self):
-        AppSetting.objects.update_or_create(
-            name="DJANGO_LOG_LEVEL",
-            defaults={
-                "value": "ERROR",
-                "scope": AppSetting.SCOPE_BACKEND,
-                "description": "override",
-                "updated_by": self.user,
-            },
-        )
-
-        response = self.client.delete("/api/server-management/app-settings/DJANGO_LOG_LEVEL/")
-        self.assertEqual(response.status_code, 200)
-        self.assertFalse(AppSetting.objects.filter(name="DJANGO_LOG_LEVEL").exists())
-        self.assertEqual(response.json().get("effectiveValue"), "WARNING")

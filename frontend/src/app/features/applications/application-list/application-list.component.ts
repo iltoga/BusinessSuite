@@ -233,12 +233,7 @@ export class ApplicationListComponent implements OnInit {
       variant: 'default',
       action: (item) =>
         this.router.navigate(['/applications', item.id], {
-          state: {
-            from: 'applications',
-            focusId: item.id,
-            searchQuery: this.query(),
-            page: this.page(),
-          },
+          state: this.applicationDetailState(item),
         }),
     },
     {
@@ -253,7 +248,7 @@ export class ApplicationListComponent implements OnInit {
       icon: 'plus',
       variant: 'success',
       shortcut: 'i',
-      isVisible: (item) => Boolean(item.readyForInvoice),
+      isVisible: (item) => this.canCreateInvoice(item),
       action: (item) =>
         this.router.navigate(['/invoices', 'new'], {
           queryParams: { applicationId: item.id },
@@ -305,6 +300,15 @@ export class ApplicationListComponent implements OnInit {
         item.hasInvoice ? this.confirmDeleteWithInvoice(item) : this.confirmDelete(item),
     },
   ]);
+
+  applicationDetailState(item: DocApplicationSerializerWithRelations): Record<string, unknown> {
+    return {
+      from: 'applications',
+      focusId: item.id,
+      searchQuery: this.query(),
+      page: this.page(),
+    };
+  }
 
   readonly totalPages = computed(() => {
     const total = this.totalItems();
@@ -518,6 +522,10 @@ export class ApplicationListComponent implements OnInit {
 
   canForceClose(row: DocApplicationSerializerWithRelations): boolean {
     return !!row.canForceClose && row.status !== 'completed' && row.status !== 'rejected';
+  }
+
+  canCreateInvoice(row: DocApplicationSerializerWithRelations): boolean {
+    return !row.hasInvoice;
   }
 
   confirmForceClose(row: DocApplicationSerializerWithRelations) {

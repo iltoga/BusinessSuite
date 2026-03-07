@@ -116,3 +116,34 @@ class DocumentCategorizationApplyTests(TestCase):
         self.assertEqual(self.document.ai_validation_status, Document.AI_VALIDATION_VALID)
         self.assertTrue(self.document.ai_validation)
         self.assertEqual(self.document.ai_validation_result, self.item.validation_result)
+
+    def test_apply_rejects_job_while_validation_is_still_running(self):
+        self.item.validation_status = ""
+        self.item.validation_result = None
+        self.item.result = {
+            "document_type": self.doc_type.name,
+            "document_type_id": self.doc_type.id,
+            "confidence": 0.97,
+            "reasoning": "Looks like ITK.",
+            "pass_used": 1,
+            "ai_validation_enabled": True,
+            "stage": "validating",
+        }
+        self.item.save(update_fields=["validation_status", "validation_result", "result", "updated_at"])
+
+        url = reverse("api-categorization-apply", kwargs={"job_id": str(self.job.id)})
+        payload = {
+            "mappings": [
+                {
+                    "item_id": str(self.item.id),
+                    "document_id": self.document.id,
+                }
+            ]
+        }
+
+        response = self.client.post(url, data=json.dumps(payload), content_type="application/json")
+
+        self.assertEqual(response.status_code, 409, response.content)
+        body = response.json()
+        self.assertEqual(body["code"], "processing_incomplete")
+        self.assertIn("still running", body["errors"]["detail"][0])

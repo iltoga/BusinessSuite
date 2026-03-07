@@ -30,7 +30,7 @@ export interface CategorizationFileResult {
   reasoning: string;
   error: string | null;
   categorizationPass: number | null;
-  validationStatus: 'valid' | 'invalid' | 'pending' | null;
+  validationStatus: 'valid' | 'invalid' | 'pending' | 'error' | null;
   validationReasoning: string | null;
   validationNegativeIssues: string[] | null;
   validationProvider?: string | null;

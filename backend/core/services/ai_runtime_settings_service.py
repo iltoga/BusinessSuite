@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 from dataclasses import dataclass
 from typing import Any
@@ -16,6 +17,13 @@ class RuntimeSettingDefinition:
     value_type: str
     scope: str
     description: str
+
+
+@dataclass(frozen=True)
+class FallbackModelChainStep:
+    provider: str
+    model: str
+    timeout_seconds: float
 
 
 AI_RUNTIME_SETTING_DEFINITIONS: dict[str, RuntimeSettingDefinition] = {
@@ -97,6 +105,42 @@ AI_RUNTIME_SETTING_DEFINITIONS: dict[str, RuntimeSettingDefinition] = {
         scope=AppSettingScope.BACKEND,
         description="Minimum AI confidence threshold for passport uploadability acceptance.",
     ),
+    "INVOICE_IMPORT_TIMEOUT": RuntimeSettingDefinition(
+        name="INVOICE_IMPORT_TIMEOUT",
+        value_type="float",
+        scope=AppSettingScope.BACKEND,
+        description="Primary-attempt timeout in seconds for invoice import AI parser requests.",
+    ),
+    "PASSPORT_OCR_TIMEOUT": RuntimeSettingDefinition(
+        name="PASSPORT_OCR_TIMEOUT",
+        value_type="float",
+        scope=AppSettingScope.BACKEND,
+        description="Primary-attempt timeout in seconds for passport OCR AI extractor requests.",
+    ),
+    "DOCUMENT_CATEGORIZATION_TIMEOUT": RuntimeSettingDefinition(
+        name="DOCUMENT_CATEGORIZATION_TIMEOUT",
+        value_type="float",
+        scope=AppSettingScope.BACKEND,
+        description="Primary-attempt timeout in seconds for document categorization AI requests.",
+    ),
+    "DOCUMENT_VALIDATION_TIMEOUT": RuntimeSettingDefinition(
+        name="DOCUMENT_VALIDATION_TIMEOUT",
+        value_type="float",
+        scope=AppSettingScope.BACKEND,
+        description="Primary-attempt timeout in seconds for document validation AI requests.",
+    ),
+    "DOCUMENT_OCR_TIMEOUT": RuntimeSettingDefinition(
+        name="DOCUMENT_OCR_TIMEOUT",
+        value_type="float",
+        scope=AppSettingScope.BACKEND,
+        description="Primary-attempt timeout in seconds for document OCR structured extraction AI requests.",
+    ),
+    "PASSPORT_CHECK_TIMEOUT": RuntimeSettingDefinition(
+        name="PASSPORT_CHECK_TIMEOUT",
+        value_type="float",
+        scope=AppSettingScope.BACKEND,
+        description="Primary-attempt timeout in seconds for passport check AI requests.",
+    ),
     "LLM_AUTO_FALLBACK_ENABLED": RuntimeSettingDefinition(
         name="LLM_AUTO_FALLBACK_ENABLED",
         value_type="bool",
@@ -114,6 +158,12 @@ AI_RUNTIME_SETTING_DEFINITIONS: dict[str, RuntimeSettingDefinition] = {
         value_type="list",
         scope=AppSettingScope.BACKEND,
         description="Comma-separated model order used for failover retries.",
+    ),
+    "LLM_FALLBACK_MODEL_CHAIN": RuntimeSettingDefinition(
+        name="LLM_FALLBACK_MODEL_CHAIN",
+        value_type="json",
+        scope=AppSettingScope.BACKEND,
+        description="Ordered failover chain with per-model timeout settings.",
     ),
     "LLM_FALLBACK_STICKY_SECONDS": RuntimeSettingDefinition(
         name="LLM_FALLBACK_STICKY_SECONDS",
@@ -328,36 +378,42 @@ _WORKFLOW_BINDINGS = [
         "providerSettingName": "LLM_PROVIDER",
         "modelSettingName": "INVOICE_IMPORT_MODEL",
         "modelFailoverSettingName": None,
+        "timeoutSettingName": "INVOICE_IMPORT_TIMEOUT",
     },
     {
         "feature": AIUsageFeature.PASSPORT_OCR_AI_EXTRACTOR,
         "providerSettingName": "LLM_PROVIDER",
         "modelSettingName": "PASSPORT_OCR_MODEL",
         "modelFailoverSettingName": None,
+        "timeoutSettingName": "PASSPORT_OCR_TIMEOUT",
     },
     {
         "feature": AIUsageFeature.DOCUMENT_AI_CATEGORIZER,
         "providerSettingName": "LLM_PROVIDER",
         "modelSettingName": "DOCUMENT_CATEGORIZER_MODEL",
         "modelFailoverSettingName": "DOCUMENT_CATEGORIZER_MODEL_HIGH",
+        "timeoutSettingName": "DOCUMENT_CATEGORIZATION_TIMEOUT",
     },
     {
         "feature": AIUsageFeature.DOCUMENT_AI_VALIDATOR,
         "providerSettingName": "LLM_PROVIDER",
         "modelSettingName": "DOCUMENT_VALIDATOR_MODEL",
         "modelFailoverSettingName": None,
+        "timeoutSettingName": "DOCUMENT_VALIDATION_TIMEOUT",
     },
     {
         "feature": AIUsageFeature.DOCUMENT_OCR_AI_EXTRACTOR,
         "providerSettingName": "LLM_PROVIDER",
         "modelSettingName": "DOCUMENT_OCR_STRUCTURED_MODEL",
         "modelFailoverSettingName": None,
+        "timeoutSettingName": "DOCUMENT_OCR_TIMEOUT",
     },
     {
         "feature": AIUsageFeature.PASSPORT_CHECK_API,
         "providerSettingName": "LLM_PROVIDER",
         "modelSettingName": "CHECK_PASSPORT_MODEL",
         "modelFailoverSettingName": None,
+        "timeoutSettingName": "PASSPORT_CHECK_TIMEOUT",
     },
 ]
 
@@ -377,6 +433,20 @@ _MODEL_SETTING_KEYS = {
 
 _PROVIDER_OPTIONS = {"openrouter", "openai", "groq"}
 _PROVIDER_PRIORITY = ("openrouter", "openai", "groq")
+_WORKFLOW_TIMEOUT_DEFAULTS = {
+    "INVOICE_IMPORT_TIMEOUT": 120.0,
+    "PASSPORT_OCR_TIMEOUT": 120.0,
+    "DOCUMENT_CATEGORIZATION_TIMEOUT": 30.0,
+    "DOCUMENT_VALIDATION_TIMEOUT": 30.0,
+    "DOCUMENT_OCR_TIMEOUT": 120.0,
+    "PASSPORT_CHECK_TIMEOUT": 120.0,
+}
+_TIMEOUT_SETTING_KEYS = set(_WORKFLOW_TIMEOUT_DEFAULTS)
+_TIMEOUT_SETTING_BY_FEATURE = {
+    str(binding["feature"]): str(binding["timeoutSettingName"])
+    for binding in _WORKFLOW_BINDINGS
+    if binding.get("timeoutSettingName")
+}
 
 
 class AIRuntimeSettingsService:
@@ -392,16 +462,119 @@ class AIRuntimeSettingsService:
             return env_value
         return value
 
-    @staticmethod
-    def defaults() -> dict[str, Any]:
+    @classmethod
+    def _provider_timeout_default(cls, provider: str) -> float:
+        normalized_provider = str(provider or "").strip().lower()
+        if normalized_provider == "openrouter":
+            return float(cls._default_from_settings_and_env("OPENROUTER_TIMEOUT", 120.0))
+        if normalized_provider == "openai":
+            return float(cls._default_from_settings_and_env("OPENAI_TIMEOUT", 120.0))
+        if normalized_provider == "groq":
+            return float(cls._default_from_settings_and_env("GROQ_TIMEOUT", 120.0))
+        return 120.0
+
+    @classmethod
+    def _normalize_fallback_model_chain(
+        cls,
+        raw_value: Any,
+        *,
+        strict: bool = False,
+    ) -> list[dict[str, Any]]:
+        parsed = AppSettingService.parse_json_like(raw_value)
+        if isinstance(parsed, dict):
+            parsed = parsed.get("steps") or parsed.get("items") or []
+        if isinstance(parsed, str):
+            parsed = AppSettingService.parse_list(parsed, [])
+        if not isinstance(parsed, (list, tuple)):
+            parsed = []
+
+        model_ids = cls._all_model_ids()
+        normalized_steps: list[dict[str, Any]] = []
+        seen: set[tuple[str, str]] = set()
+
+        for raw_step in parsed:
+            if isinstance(raw_step, str):
+                step_model = raw_step.strip()
+                raw_timeout = None
+            elif isinstance(raw_step, dict):
+                step_model = str(
+                    raw_step.get("model")
+                    or raw_step.get("model_id")
+                    or raw_step.get("modelId")
+                    or raw_step.get("value")
+                    or ""
+                ).strip()
+                raw_timeout = (
+                    raw_step.get("timeoutSeconds")
+                    or raw_step.get("timeout_seconds")
+                    or raw_step.get("timeout")
+                )
+            else:
+                if strict:
+                    raise ValueError("LLM_FALLBACK_MODEL_CHAIN entries must be strings or objects.")
+                continue
+
+            if not step_model:
+                if strict:
+                    raise ValueError("LLM_FALLBACK_MODEL_CHAIN entries must include a model.")
+                continue
+            if step_model not in model_ids:
+                if strict:
+                    raise ValueError(f"LLM_FALLBACK_MODEL_CHAIN contains unknown model '{step_model}'.")
+                continue
+
+            provider = cls.get_provider_for_model(step_model)
+            if not provider:
+                if strict:
+                    raise ValueError(f"Unable to resolve provider for fallback model '{step_model}'.")
+                continue
+
+            default_timeout = cls._provider_timeout_default(provider)
+            if raw_timeout in (None, ""):
+                timeout_seconds = default_timeout
+            else:
+                try:
+                    timeout_seconds = float(raw_timeout)
+                except (TypeError, ValueError):
+                    if strict:
+                        raise ValueError(
+                            f"Fallback timeout for model '{step_model}' must be a positive number."
+                        ) from None
+                    timeout_seconds = default_timeout
+            if timeout_seconds <= 0:
+                if strict:
+                    raise ValueError(
+                        f"Fallback timeout for model '{step_model}' must be greater than zero."
+                    )
+                timeout_seconds = default_timeout
+
+            dedupe_key = (provider, step_model)
+            if dedupe_key in seen:
+                continue
+            seen.add(dedupe_key)
+            normalized_steps.append(
+                {
+                    "model": step_model,
+                    "timeoutSeconds": timeout_seconds,
+                }
+            )
+
+        return normalized_steps
+
+    @classmethod
+    def _fallback_chain_from_model_order(cls, model_ids: list[str]) -> list[dict[str, Any]]:
+        return cls._normalize_fallback_model_chain(model_ids, strict=False)
+
+    @classmethod
+    def defaults(cls) -> dict[str, Any]:
         llm_provider = (
-            str(AIRuntimeSettingsService._default_from_settings_and_env("LLM_PROVIDER", "openrouter") or "openrouter")
+            str(cls._default_from_settings_and_env("LLM_PROVIDER", "openrouter") or "openrouter")
             .strip()
             .lower()
         )
         llm_default_model = (
             str(
-                AIRuntimeSettingsService._default_from_settings_and_env(
+                cls._default_from_settings_and_env(
                     "LLM_DEFAULT_MODEL",
                     "google/gemini-3-flash-preview",
                 )
@@ -411,7 +584,7 @@ class AIRuntimeSettingsService:
         )
         groq_default_model = (
             str(
-                AIRuntimeSettingsService._default_from_settings_and_env(
+                cls._default_from_settings_and_env(
                     "GROQ_DEFAULT_MODEL",
                     "meta-llama/llama-4-scout-17b-16e-instruct",
                 )
@@ -419,60 +592,105 @@ class AIRuntimeSettingsService:
             ).strip()
             or "meta-llama/llama-4-scout-17b-16e-instruct"
         )
+        fallback_model_order = AppSettingService.parse_list(
+            cls._default_from_settings_and_env("LLM_FALLBACK_MODEL_ORDER", []),
+            [],
+        )
+        raw_fallback_chain = cls._default_from_settings_and_env("LLM_FALLBACK_MODEL_CHAIN", None)
+        fallback_model_chain = (
+            cls._normalize_fallback_model_chain(raw_fallback_chain, strict=False)
+            if raw_fallback_chain not in (None, "")
+            else cls._fallback_chain_from_model_order(fallback_model_order)
+        )
+        fallback_model_order = [step["model"] for step in fallback_model_chain] or fallback_model_order
         return {
             "LLM_PROVIDER": llm_provider,
             "LLM_DEFAULT_MODEL": llm_default_model,
             "GROQ_DEFAULT_MODEL": groq_default_model,
             "OPENROUTER_DEFAULT_MODEL": (
-                str(AIRuntimeSettingsService._default_from_settings_and_env("OPENROUTER_DEFAULT_MODEL", llm_default_model) or "").strip()
+                str(cls._default_from_settings_and_env("OPENROUTER_DEFAULT_MODEL", llm_default_model) or "").strip()
                 or llm_default_model
             ),
             "OPENAI_DEFAULT_MODEL": (
-                str(AIRuntimeSettingsService._default_from_settings_and_env("OPENAI_DEFAULT_MODEL", "gpt-5-mini") or "").strip()
+                str(cls._default_from_settings_and_env("OPENAI_DEFAULT_MODEL", "gpt-5-mini") or "").strip()
                 or "gpt-5-mini"
             ),
             "INVOICE_IMPORT_MODEL": str(
-                AIRuntimeSettingsService._default_from_settings_and_env("INVOICE_IMPORT_MODEL", "") or ""
+                cls._default_from_settings_and_env("INVOICE_IMPORT_MODEL", "") or ""
             ).strip(),
             "PASSPORT_OCR_MODEL": str(
-                AIRuntimeSettingsService._default_from_settings_and_env("PASSPORT_OCR_MODEL", "") or ""
+                cls._default_from_settings_and_env("PASSPORT_OCR_MODEL", "") or ""
             ).strip(),
             "DOCUMENT_CATEGORIZER_MODEL": str(
-                AIRuntimeSettingsService._default_from_settings_and_env("DOCUMENT_CATEGORIZER_MODEL", "") or ""
+                cls._default_from_settings_and_env("DOCUMENT_CATEGORIZER_MODEL", "") or ""
             ).strip(),
             "DOCUMENT_CATEGORIZER_MODEL_HIGH": str(
-                AIRuntimeSettingsService._default_from_settings_and_env("DOCUMENT_CATEGORIZER_MODEL_HIGH", "") or ""
+                cls._default_from_settings_and_env("DOCUMENT_CATEGORIZER_MODEL_HIGH", "") or ""
             ).strip(),
             "DOCUMENT_VALIDATOR_MODEL": str(
-                AIRuntimeSettingsService._default_from_settings_and_env("DOCUMENT_VALIDATOR_MODEL", "") or ""
+                cls._default_from_settings_and_env("DOCUMENT_VALIDATOR_MODEL", "") or ""
             ).strip(),
             "DOCUMENT_OCR_STRUCTURED_MODEL": str(
-                AIRuntimeSettingsService._default_from_settings_and_env("DOCUMENT_OCR_STRUCTURED_MODEL", "") or ""
+                cls._default_from_settings_and_env("DOCUMENT_OCR_STRUCTURED_MODEL", "") or ""
             ).strip(),
             "CHECK_PASSPORT_MODEL": str(
-                AIRuntimeSettingsService._default_from_settings_and_env("CHECK_PASSPORT_MODEL", "") or ""
+                cls._default_from_settings_and_env("CHECK_PASSPORT_MODEL", "") or ""
             ).strip(),
             "CHECK_PASSPORT_AI_MIN_CONFIDENCE_FOR_UPLOAD": float(
-                AIRuntimeSettingsService._default_from_settings_and_env("CHECK_PASSPORT_AI_MIN_CONFIDENCE_FOR_UPLOAD", 0.95)
+                cls._default_from_settings_and_env("CHECK_PASSPORT_AI_MIN_CONFIDENCE_FOR_UPLOAD", 0.95)
+            ),
+            "INVOICE_IMPORT_TIMEOUT": float(
+                cls._default_from_settings_and_env(
+                    "INVOICE_IMPORT_TIMEOUT",
+                    _WORKFLOW_TIMEOUT_DEFAULTS["INVOICE_IMPORT_TIMEOUT"],
+                )
+            ),
+            "PASSPORT_OCR_TIMEOUT": float(
+                cls._default_from_settings_and_env(
+                    "PASSPORT_OCR_TIMEOUT",
+                    _WORKFLOW_TIMEOUT_DEFAULTS["PASSPORT_OCR_TIMEOUT"],
+                )
+            ),
+            "DOCUMENT_CATEGORIZATION_TIMEOUT": float(
+                cls._default_from_settings_and_env(
+                    "DOCUMENT_CATEGORIZATION_TIMEOUT",
+                    _WORKFLOW_TIMEOUT_DEFAULTS["DOCUMENT_CATEGORIZATION_TIMEOUT"],
+                )
+            ),
+            "DOCUMENT_VALIDATION_TIMEOUT": float(
+                cls._default_from_settings_and_env(
+                    "DOCUMENT_VALIDATION_TIMEOUT",
+                    _WORKFLOW_TIMEOUT_DEFAULTS["DOCUMENT_VALIDATION_TIMEOUT"],
+                )
+            ),
+            "DOCUMENT_OCR_TIMEOUT": float(
+                cls._default_from_settings_and_env(
+                    "DOCUMENT_OCR_TIMEOUT",
+                    _WORKFLOW_TIMEOUT_DEFAULTS["DOCUMENT_OCR_TIMEOUT"],
+                )
+            ),
+            "PASSPORT_CHECK_TIMEOUT": float(
+                cls._default_from_settings_and_env(
+                    "PASSPORT_CHECK_TIMEOUT",
+                    _WORKFLOW_TIMEOUT_DEFAULTS["PASSPORT_CHECK_TIMEOUT"],
+                )
             ),
             "LLM_AUTO_FALLBACK_ENABLED": AppSettingService.parse_bool(
-                AIRuntimeSettingsService._default_from_settings_and_env("LLM_AUTO_FALLBACK_ENABLED", True),
+                cls._default_from_settings_and_env("LLM_AUTO_FALLBACK_ENABLED", True),
                 True,
             ),
             "LLM_FALLBACK_PROVIDER_ORDER": AppSettingService.parse_list(
-                AIRuntimeSettingsService._default_from_settings_and_env("LLM_FALLBACK_PROVIDER_ORDER", []),
+                cls._default_from_settings_and_env("LLM_FALLBACK_PROVIDER_ORDER", []),
                 [],
             ),
-            "LLM_FALLBACK_MODEL_ORDER": AppSettingService.parse_list(
-                AIRuntimeSettingsService._default_from_settings_and_env("LLM_FALLBACK_MODEL_ORDER", []),
-                [],
-            ),
+            "LLM_FALLBACK_MODEL_ORDER": fallback_model_order,
+            "LLM_FALLBACK_MODEL_CHAIN": fallback_model_chain,
             "LLM_FALLBACK_STICKY_SECONDS": int(
-                AIRuntimeSettingsService._default_from_settings_and_env("LLM_FALLBACK_STICKY_SECONDS", 3600)
+                cls._default_from_settings_and_env("LLM_FALLBACK_STICKY_SECONDS", 3600)
             ),
             "LLM_FALLBACK_STICKY_CACHE_KEY": (
                 str(
-                    AIRuntimeSettingsService._default_from_settings_and_env(
+                    cls._default_from_settings_and_env(
                         "LLM_FALLBACK_STICKY_CACHE_KEY",
                         "ai:router:sticky_provider",
                     )
@@ -482,7 +700,7 @@ class AIRuntimeSettingsService:
             ),
             "OPENROUTER_API_BASE_URL": (
                 str(
-                    AIRuntimeSettingsService._default_from_settings_and_env(
+                    cls._default_from_settings_and_env(
                         "OPENROUTER_API_BASE_URL",
                         "https://openrouter.ai/api/v1",
                     )
@@ -490,116 +708,117 @@ class AIRuntimeSettingsService:
                 ).strip()
                 or "https://openrouter.ai/api/v1"
             ),
-            "OPENROUTER_TIMEOUT": float(AIRuntimeSettingsService._default_from_settings_and_env("OPENROUTER_TIMEOUT", 120.0)),
-            "OPENAI_TIMEOUT": float(AIRuntimeSettingsService._default_from_settings_and_env("OPENAI_TIMEOUT", 120.0)),
+            "OPENROUTER_TIMEOUT": float(cls._default_from_settings_and_env("OPENROUTER_TIMEOUT", 120.0)),
+            "OPENAI_TIMEOUT": float(cls._default_from_settings_and_env("OPENAI_TIMEOUT", 120.0)),
             "DRAMATIQ_REDIS_URL": str(
-                AIRuntimeSettingsService._default_from_settings_and_env("DRAMATIQ_REDIS_URL", "") or ""
+                cls._default_from_settings_and_env("DRAMATIQ_REDIS_URL", "") or ""
             ).strip(),
-            "REDIS_URL": str(AIRuntimeSettingsService._default_from_settings_and_env("REDIS_URL", "") or "").strip(),
-            "REDIS_HOST": str(AIRuntimeSettingsService._default_from_settings_and_env("REDIS_HOST", "") or "").strip(),
-            "REDIS_PORT": int(AIRuntimeSettingsService._default_from_settings_and_env("REDIS_PORT", 6379)),
-            "DRAMATIQ_REDIS_DB": int(AIRuntimeSettingsService._default_from_settings_and_env("DRAMATIQ_REDIS_DB", 0)),
+            "REDIS_URL": str(cls._default_from_settings_and_env("REDIS_URL", "") or "").strip(),
+            "REDIS_HOST": str(cls._default_from_settings_and_env("REDIS_HOST", "") or "").strip(),
+            "REDIS_PORT": int(cls._default_from_settings_and_env("REDIS_PORT", 6379)),
+            "DRAMATIQ_REDIS_DB": int(cls._default_from_settings_and_env("DRAMATIQ_REDIS_DB", 0)),
             "DRAMATIQ_NAMESPACE": str(
-                AIRuntimeSettingsService._default_from_settings_and_env("DRAMATIQ_NAMESPACE", "dramatiq:queue")
+                cls._default_from_settings_and_env("DRAMATIQ_NAMESPACE", "dramatiq:queue")
                 or "dramatiq:queue"
             ).strip()
             or "dramatiq:queue",
             "DRAMATIQ_RESULTS_ENABLED": AppSettingService.parse_bool(
-                AIRuntimeSettingsService._default_from_settings_and_env("DRAMATIQ_RESULTS_ENABLED", True),
+                cls._default_from_settings_and_env("DRAMATIQ_RESULTS_ENABLED", True),
                 True,
             ),
             "DRAMATIQ_RESULTS_STORE_RESULTS": AppSettingService.parse_bool(
-                AIRuntimeSettingsService._default_from_settings_and_env("DRAMATIQ_RESULTS_STORE_RESULTS", True),
+                cls._default_from_settings_and_env("DRAMATIQ_RESULTS_STORE_RESULTS", True),
                 True,
             ),
             "DRAMATIQ_RESULTS_TTL_MS": int(
-                AIRuntimeSettingsService._default_from_settings_and_env("DRAMATIQ_RESULTS_TTL_MS", 300000)
+                cls._default_from_settings_and_env("DRAMATIQ_RESULTS_TTL_MS", 300000)
             ),
             "DRAMATIQ_RESULTS_NAMESPACE": str(
-                AIRuntimeSettingsService._default_from_settings_and_env("DRAMATIQ_RESULTS_NAMESPACE", "dramatiq:results")
+                cls._default_from_settings_and_env("DRAMATIQ_RESULTS_NAMESPACE", "dramatiq:results")
                 or "dramatiq:results"
             ).strip()
             or "dramatiq:results",
             "DRAMATIQ_RESULTS_REDIS_URL": str(
-                AIRuntimeSettingsService._default_from_settings_and_env("DRAMATIQ_RESULTS_REDIS_URL", "") or ""
+                cls._default_from_settings_and_env("DRAMATIQ_RESULTS_REDIS_URL", "") or ""
             ).strip(),
 
 
             "AUDIT_ENABLED": AppSettingService.parse_bool(
-                AIRuntimeSettingsService._default_from_settings_and_env("AUDIT_ENABLED", True),
+                cls._default_from_settings_and_env("AUDIT_ENABLED", True),
                 True,
             ),
             "AUDIT_WATCH_AUTH_EVENTS": AppSettingService.parse_bool(
-                AIRuntimeSettingsService._default_from_settings_and_env("AUDIT_WATCH_AUTH_EVENTS", True),
+                cls._default_from_settings_and_env("AUDIT_WATCH_AUTH_EVENTS", True),
                 True,
             ),
             "AUDIT_FORWARD_TO_LOKI": AppSettingService.parse_bool(
-                AIRuntimeSettingsService._default_from_settings_and_env("AUDIT_FORWARD_TO_LOKI", True),
+                cls._default_from_settings_and_env("AUDIT_FORWARD_TO_LOKI", True),
                 True,
             ),
             "AUDITLOG_RETENTION_DAYS": int(
-                AIRuntimeSettingsService._default_from_settings_and_env("AUDITLOG_RETENTION_DAYS", 14)
+                cls._default_from_settings_and_env("AUDITLOG_RETENTION_DAYS", 14)
             ),
             "AUDITLOG_RETENTION_SCHEDULE": str(
-                AIRuntimeSettingsService._default_from_settings_and_env("AUDITLOG_RETENTION_SCHEDULE", "04:00")
+                cls._default_from_settings_and_env("AUDITLOG_RETENTION_SCHEDULE", "04:00")
                 or ""
             ).strip(),
             "DJANGO_LOG_LEVEL": str(
-                AIRuntimeSettingsService._default_from_settings_and_env("DJANGO_LOG_LEVEL", "INFO") or "INFO"
+                cls._default_from_settings_and_env("DJANGO_LOG_LEVEL", "INFO") or "INFO"
             ).strip()
             or "INFO",
             "DJANGO_DEBUG": AppSettingService.parse_bool(
-                AIRuntimeSettingsService._default_from_settings_and_env("DJANGO_DEBUG", False),
+                cls._default_from_settings_and_env("DJANGO_DEBUG", False),
                 False,
             ),
             "DISABLE_DJANGO_VIEWS": AppSettingService.parse_bool(
-                AIRuntimeSettingsService._default_from_settings_and_env("DISABLE_DJANGO_VIEWS", False),
+                cls._default_from_settings_and_env("DISABLE_DJANGO_VIEWS", False),
                 False,
             ),
             "MOCK_AUTH_ENABLED": AppSettingService.parse_bool(
-                AIRuntimeSettingsService._default_from_settings_and_env("MOCK_AUTH_ENABLED", False),
+                cls._default_from_settings_and_env("MOCK_AUTH_ENABLED", False),
                 False,
             ),
             "INVOICE_IMPORT_MAX_WORKERS": int(
-                AIRuntimeSettingsService._default_from_settings_and_env("INVOICE_IMPORT_MAX_WORKERS", 3)
+                cls._default_from_settings_and_env("INVOICE_IMPORT_MAX_WORKERS", 3)
             ),
             "DATE_FORMAT_JS": str(
-                AIRuntimeSettingsService._default_from_settings_and_env("DATE_FORMAT_JS", "dd-MM-yyyy") or "dd-MM-yyyy"
+                cls._default_from_settings_and_env("DATE_FORMAT_JS", "dd-MM-yyyy") or "dd-MM-yyyy"
             ).strip()
             or "dd-MM-yyyy",
             "BASE_CURRENCY": str(
-                AIRuntimeSettingsService._default_from_settings_and_env("BASE_CURRENCY", "IDR") or "IDR"
+                cls._default_from_settings_and_env("BASE_CURRENCY", "IDR") or "IDR"
             ).strip()
             or "IDR",
             "DEFAULT_DOCUMENT_LANGUAGE_CODE": str(
-                AIRuntimeSettingsService._default_from_settings_and_env("DEFAULT_DOCUMENT_LANGUAGE_CODE", "id") or "id"
+                cls._default_from_settings_and_env("DEFAULT_DOCUMENT_LANGUAGE_CODE", "id") or "id"
             ).strip()
             or "id",
             "DEFAULT_CUSTOMER_EMAIL": str(
-                AIRuntimeSettingsService._default_from_settings_and_env("DEFAULT_CUSTOMER_EMAIL", "sample_email@gmail.com")
+                cls._default_from_settings_and_env("DEFAULT_CUSTOMER_EMAIL", "sample_email@gmail.com")
                 or "sample_email@gmail.com"
             ).strip()
             or "sample_email@gmail.com",
             "GOOGLE_TIMEZONE": str(
-                AIRuntimeSettingsService._default_from_settings_and_env("GOOGLE_TIMEZONE", "Asia/Makassar")
+                cls._default_from_settings_and_env("GOOGLE_TIMEZONE", "Asia/Makassar")
                 or "Asia/Makassar"
             ).strip()
             or "Asia/Makassar",
             "GOOGLE_CALENDAR_ID": str(
-                AIRuntimeSettingsService._default_from_settings_and_env("GOOGLE_CALENDAR_ID", "primary") or "primary"
+                cls._default_from_settings_and_env("GOOGLE_CALENDAR_ID", "primary") or "primary"
             ).strip()
             or "primary",
             "GOOGLE_TASKLIST_ID": str(
-                AIRuntimeSettingsService._default_from_settings_and_env("GOOGLE_TASKLIST_ID", "@default") or "@default"
+                cls._default_from_settings_and_env("GOOGLE_TASKLIST_ID", "@default") or "@default"
             ).strip()
             or "@default",
             "USE_CLOUD_STORAGE": AppSettingService.parse_bool(
-                AIRuntimeSettingsService._default_from_settings_and_env("USE_CLOUD_STORAGE", False),
+                cls._default_from_settings_and_env("USE_CLOUD_STORAGE", False),
                 False,
             ),
         }
-    @staticmethod
-    def _coerce_value(name: str, raw_value: Any, default_value: Any) -> Any:
+
+    @classmethod
+    def _coerce_value(cls, name: str, raw_value: Any, default_value: Any) -> Any:
         definition = AI_RUNTIME_SETTING_DEFINITIONS[name]
         if definition.value_type == "bool":
             return AppSettingService.parse_bool(raw_value, bool(default_value))
@@ -609,6 +828,10 @@ class AIRuntimeSettingsService:
             return AppSettingService.parse_float(raw_value, float(default_value))
         if definition.value_type == "list":
             return AppSettingService.parse_list(raw_value, list(default_value or []))
+        if definition.value_type == "json":
+            if name == "LLM_FALLBACK_MODEL_CHAIN":
+                return cls._normalize_fallback_model_chain(raw_value, strict=False)
+            return AppSettingService.parse_json_like(raw_value)
         return str(raw_value if raw_value is not None else default_value).strip()
 
     @classmethod
@@ -732,6 +955,20 @@ class AIRuntimeSettingsService:
         return float(cls.get("CHECK_PASSPORT_AI_MIN_CONFIDENCE_FOR_UPLOAD"))
 
     @classmethod
+    def get_timeout_setting_name_for_feature(cls, feature: str | None) -> str | None:
+        normalized = str(feature or "").strip()
+        return _TIMEOUT_SETTING_BY_FEATURE.get(normalized)
+
+    @classmethod
+    def get_timeout_for_feature(cls, feature: str | None) -> float | None:
+        setting_name = cls.get_timeout_setting_name_for_feature(feature)
+        if not setting_name:
+            return None
+        value = float(cls.get(setting_name))
+        default_value = _WORKFLOW_TIMEOUT_DEFAULTS.get(setting_name, 120.0)
+        return value if value > 0 else default_value
+
+    @classmethod
     def get_auto_fallback_enabled(cls) -> bool:
         return bool(cls.get("LLM_AUTO_FALLBACK_ENABLED"))
 
@@ -750,19 +987,33 @@ class AIRuntimeSettingsService:
         return providers
 
     @classmethod
+    def get_fallback_model_chain(cls) -> list[FallbackModelChainStep]:
+        raw_chain = cls.get("LLM_FALLBACK_MODEL_CHAIN")
+        normalized_chain = cls._normalize_fallback_model_chain(raw_chain, strict=False)
+        if not normalized_chain:
+            normalized_chain = cls._fallback_chain_from_model_order(
+                AppSettingService.parse_list(cls.get("LLM_FALLBACK_MODEL_ORDER"), [])
+            )
+
+        result: list[FallbackModelChainStep] = []
+        for step in normalized_chain:
+            model = str(step.get("model") or "").strip()
+            provider = cls.get_provider_for_model(model)
+            timeout_seconds = float(step.get("timeoutSeconds") or 0)
+            if not model or not provider or timeout_seconds <= 0:
+                continue
+            result.append(
+                FallbackModelChainStep(
+                    provider=provider,
+                    model=model,
+                    timeout_seconds=timeout_seconds,
+                )
+            )
+        return result
+
+    @classmethod
     def get_fallback_model_order(cls) -> list[str]:
-        model_ids = cls._all_model_ids()
-        models: list[str] = []
-        seen: set[str] = set()
-        for model in cls.get("LLM_FALLBACK_MODEL_ORDER"):
-            normalized = str(model).strip()
-            if not normalized or normalized in seen:
-                continue
-            if model_ids and normalized not in model_ids:
-                continue
-            seen.add(normalized)
-            models.append(normalized)
-        return models
+        return [step.model for step in cls.get_fallback_model_chain()]
 
     @classmethod
     def get_fallback_sticky_seconds(cls) -> int:
@@ -919,6 +1170,9 @@ class AIRuntimeSettingsService:
         if definition.value_type == "list":
             values = AppSettingService.parse_list(value, [])
             return ",".join(values)
+        if definition.value_type == "json":
+            normalized_json = cls._coerce_value(name, value, [])
+            return json.dumps(normalized_json)
         return str(value if value is not None else "").strip()
 
 
@@ -1005,6 +1259,22 @@ class AIRuntimeSettingsService:
             else:
                 AppSettingService.delete_raw(setting_name)
 
+        chain_without_deleted_model = [
+            {"model": step.model, "timeoutSeconds": step.timeout_seconds}
+            for step in cls.get_fallback_model_chain()
+            if step.model != normalized_deleted_model_id
+        ]
+        if chain_without_deleted_model != [
+            {"model": step.model, "timeoutSeconds": step.timeout_seconds}
+            for step in cls.get_fallback_model_chain()
+        ]:
+            cls.update_runtime_settings(
+                {
+                    "LLM_FALLBACK_MODEL_CHAIN": chain_without_deleted_model,
+                },
+                updated_by=None,
+            )
+
     @classmethod
     def update_runtime_settings(cls, updates: dict[str, Any], updated_by=None) -> dict[str, Any]:
         if not isinstance(updates, dict):
@@ -1013,7 +1283,7 @@ class AIRuntimeSettingsService:
         model_ids = cls._all_model_ids()
         model_ids_by_provider = cls._model_ids_by_provider()
         defaults = cls.defaults()
-        normalized_updates: dict[str, str] = {}
+        normalized_updates: dict[str, Any] = {}
         cleared_setting_names: set[str] = set()
         for name, raw_value in updates.items():
             if name not in AI_RUNTIME_SETTING_DEFINITIONS:
@@ -1021,26 +1291,45 @@ class AIRuntimeSettingsService:
             if raw_value is None:
                 cleared_setting_names.add(name)
                 continue
-            normalized_updates[name] = cls._normalize_for_storage(name, raw_value)
+            normalized_updates[name] = raw_value
+
+        if "LLM_FALLBACK_MODEL_CHAIN" in normalized_updates:
+            chain = cls._normalize_fallback_model_chain(
+                normalized_updates["LLM_FALLBACK_MODEL_CHAIN"],
+                strict=True,
+            )
+            normalized_updates["LLM_FALLBACK_MODEL_CHAIN"] = chain
+            normalized_updates["LLM_FALLBACK_MODEL_ORDER"] = [step["model"] for step in chain]
+            cleared_setting_names.discard("LLM_FALLBACK_MODEL_ORDER")
+        elif "LLM_FALLBACK_MODEL_ORDER" in normalized_updates:
+            models = AppSettingService.parse_list(normalized_updates["LLM_FALLBACK_MODEL_ORDER"], [])
+            unknown = [model for model in models if model not in model_ids]
+            if unknown:
+                raise ValueError(f"LLM_FALLBACK_MODEL_ORDER contains unknown models: {unknown}.")
+            deduped_models = list(dict.fromkeys(models))
+            normalized_updates["LLM_FALLBACK_MODEL_ORDER"] = deduped_models
+            normalized_updates["LLM_FALLBACK_MODEL_CHAIN"] = cls._fallback_chain_from_model_order(
+                deduped_models
+            )
+            cleared_setting_names.discard("LLM_FALLBACK_MODEL_CHAIN")
+
+        if "LLM_FALLBACK_MODEL_CHAIN" in cleared_setting_names:
+            cleared_setting_names.add("LLM_FALLBACK_MODEL_ORDER")
+        if "LLM_FALLBACK_MODEL_ORDER" in cleared_setting_names:
+            cleared_setting_names.add("LLM_FALLBACK_MODEL_CHAIN")
 
         if "LLM_PROVIDER" in normalized_updates:
-            provider = normalized_updates["LLM_PROVIDER"]
+            provider = str(normalized_updates["LLM_PROVIDER"]).strip().lower()
             if provider not in _PROVIDER_OPTIONS:
                 raise ValueError("LLM_PROVIDER must be one of: openrouter, openai, groq.")
+            normalized_updates["LLM_PROVIDER"] = provider
 
         if "LLM_FALLBACK_PROVIDER_ORDER" in normalized_updates:
             providers = AppSettingService.parse_list(normalized_updates["LLM_FALLBACK_PROVIDER_ORDER"], [])
             invalid = [provider for provider in providers if provider not in _PROVIDER_OPTIONS]
             if invalid:
                 raise ValueError(f"LLM_FALLBACK_PROVIDER_ORDER contains unsupported providers: {invalid}.")
-            normalized_updates["LLM_FALLBACK_PROVIDER_ORDER"] = ",".join(dict.fromkeys(providers))
-
-        if "LLM_FALLBACK_MODEL_ORDER" in normalized_updates:
-            models = AppSettingService.parse_list(normalized_updates["LLM_FALLBACK_MODEL_ORDER"], [])
-            unknown = [model for model in models if model not in model_ids]
-            if unknown:
-                raise ValueError(f"LLM_FALLBACK_MODEL_ORDER contains unknown models: {unknown}.")
-            normalized_updates["LLM_FALLBACK_MODEL_ORDER"] = ",".join(dict.fromkeys(models))
+            normalized_updates["LLM_FALLBACK_PROVIDER_ORDER"] = list(dict.fromkeys(providers))
 
         for name, normalized_value in normalized_updates.items():
             if name in _MODEL_SETTING_KEYS and normalized_value and normalized_value not in model_ids:
@@ -1049,50 +1338,71 @@ class AIRuntimeSettingsService:
         openrouter_model_ids = model_ids_by_provider.get("openrouter", set())
         openai_model_ids = model_ids_by_provider.get("openai", set())
         groq_model_ids = model_ids_by_provider.get("groq", set())
+        llm_provider_changed = "LLM_PROVIDER" in normalized_updates or "LLM_PROVIDER" in cleared_setting_names
+        llm_default_updated = "LLM_DEFAULT_MODEL" in normalized_updates
         if "LLM_PROVIDER" in normalized_updates:
-            effective_llm_provider = normalized_updates["LLM_PROVIDER"]
+            effective_llm_provider = str(normalized_updates["LLM_PROVIDER"]).strip().lower()
         elif "LLM_PROVIDER" in cleared_setting_names:
             effective_llm_provider = str(defaults.get("LLM_PROVIDER") or "openrouter").strip().lower()
         else:
             effective_llm_provider = cls.get_llm_provider()
         if "LLM_DEFAULT_MODEL" in normalized_updates:
-            effective_llm_default_model = normalized_updates["LLM_DEFAULT_MODEL"]
+            effective_llm_default_model = str(normalized_updates["LLM_DEFAULT_MODEL"]).strip()
         elif "LLM_DEFAULT_MODEL" in cleared_setting_names:
             effective_llm_default_model = str(defaults.get("LLM_DEFAULT_MODEL") or "").strip()
         else:
             effective_llm_default_model = cls.get_llm_default_model()
 
-        if effective_llm_default_model and effective_llm_default_model not in model_ids:
+        should_validate_llm_default = llm_provider_changed or llm_default_updated
+        if should_validate_llm_default and effective_llm_default_model and effective_llm_default_model not in model_ids:
             raise ValueError("LLM_DEFAULT_MODEL must be listed in configured AI models.")
-        if effective_llm_provider == "openrouter" and effective_llm_default_model not in openrouter_model_ids:
-            raise ValueError(
-                "LLM_DEFAULT_MODEL must be a model listed under provider 'openrouter' when LLM_PROVIDER is 'openrouter'."
-            )
-        if effective_llm_provider == "openai" and effective_llm_default_model not in openai_model_ids:
-            raise ValueError(
-                "LLM_DEFAULT_MODEL must be a model listed under provider 'openai' when LLM_PROVIDER is 'openai'."
-            )
+        if effective_llm_default_model in model_ids:
+            if effective_llm_provider == "openrouter" and effective_llm_default_model not in openrouter_model_ids:
+                raise ValueError(
+                    "LLM_DEFAULT_MODEL must be a model listed under provider 'openrouter' when LLM_PROVIDER is 'openrouter'."
+                )
+            if effective_llm_provider == "openai" and effective_llm_default_model not in openai_model_ids:
+                raise ValueError(
+                    "LLM_DEFAULT_MODEL must be a model listed under provider 'openai' when LLM_PROVIDER is 'openai'."
+                )
+        elif llm_provider_changed and effective_llm_default_model:
+            raise ValueError("LLM_DEFAULT_MODEL must be listed in configured AI models.")
 
-        openrouter_default = normalized_updates.get("OPENROUTER_DEFAULT_MODEL")
+        openrouter_default = str(normalized_updates.get("OPENROUTER_DEFAULT_MODEL") or "").strip()
         if openrouter_default and openrouter_default not in openrouter_model_ids:
             raise ValueError("OPENROUTER_DEFAULT_MODEL must be a model listed under provider 'openrouter'.")
 
-        openai_default = normalized_updates.get("OPENAI_DEFAULT_MODEL")
+        openai_default = str(normalized_updates.get("OPENAI_DEFAULT_MODEL") or "").strip()
         if openai_default and openai_default not in openai_model_ids:
             raise ValueError("OPENAI_DEFAULT_MODEL must be a model listed under provider 'openai'.")
 
-        groq_default = normalized_updates.get("GROQ_DEFAULT_MODEL")
+        groq_default = str(normalized_updates.get("GROQ_DEFAULT_MODEL") or "").strip()
         if groq_default and groq_default not in groq_model_ids:
             raise ValueError("GROQ_DEFAULT_MODEL must be a model listed under provider 'groq'.")
+
+        for name in _TIMEOUT_SETTING_KEYS:
+            if name not in normalized_updates:
+                continue
+            try:
+                normalized_timeout = float(normalized_updates[name])
+            except (TypeError, ValueError):
+                raise ValueError(f"{name} must be a positive number.") from None
+            if normalized_timeout <= 0:
+                raise ValueError(f"{name} must be greater than zero.")
+            normalized_updates[name] = normalized_timeout
 
         for name in cleared_setting_names:
             AppSettingService.delete_raw(name)
 
+        serialized_updates = {
+            name: cls._normalize_for_storage(name, normalized_value)
+            for name, normalized_value in normalized_updates.items()
+        }
         for name, normalized_value in normalized_updates.items():
             definition = AI_RUNTIME_SETTING_DEFINITIONS[name]
             AppSettingService.set_raw(
                 name=name,
-                value=normalized_value,
+                value=serialized_updates[name],
                 scope=definition.scope,
                 description=definition.description,
                 updated_by=updated_by,

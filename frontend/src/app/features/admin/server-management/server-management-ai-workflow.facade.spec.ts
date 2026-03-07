@@ -9,7 +9,60 @@ import { GlobalToastService } from '@/core/services/toast.service';
 
 import { ServerManagementAiWorkflowFacade } from './server-management-ai-workflow.facade';
 
-const buildAiWorkflowStatus = (settingsMap: Record<string, unknown> = {}) => ({
+const buildModelCatalog = () => ({
+  providers: {
+    openrouter: {
+      name: 'OpenRouter',
+      models: [
+        {
+          id: 'google/gemini-3-flash-preview',
+          name: 'Gemini 3 Flash Preview',
+          description: 'OpenRouter Gemini',
+          capabilities: { vision: true, fileUpload: true, reasoning: true },
+        },
+        {
+          id: 'google/gemini-2.5-flash-lite',
+          name: 'Gemini 2.5 Flash Lite',
+          description: 'OpenRouter Gemini Lite',
+          capabilities: { vision: true, fileUpload: true, reasoning: true },
+        },
+      ],
+    },
+    groq: {
+      name: 'Groq',
+      models: [
+        {
+          id: 'qwen/qwen3-32b',
+          name: 'Qwen 3 32B',
+          description: 'Groq Qwen',
+          capabilities: { vision: false, fileUpload: false, reasoning: true },
+        },
+        {
+          id: 'meta-llama/llama-4-maverick-17b-128e-instruct',
+          name: 'Llama 4 Maverick 17B',
+          description: 'Groq Llama',
+          capabilities: { vision: true, fileUpload: false, reasoning: true },
+        },
+      ],
+    },
+    openai: {
+      name: 'OpenAI Direct',
+      models: [
+        {
+          id: 'gpt-5-mini',
+          name: 'GPT-5 Mini',
+          description: 'OpenAI GPT-5 Mini',
+          capabilities: { vision: true, fileUpload: true, reasoning: true },
+        },
+      ],
+    },
+  },
+});
+
+const buildAiWorkflowStatus = (
+  settingsMap: Record<string, unknown> = {},
+  overrides: Partial<Record<string, unknown>> = {},
+) => ({
   aiModels: {
     provider: 'openrouter',
     providerName: 'OpenRouter',
@@ -17,13 +70,14 @@ const buildAiWorkflowStatus = (settingsMap: Record<string, unknown> = {}) => ({
     settingsMap,
     runtimeSettings: [],
     workflowBindings: [],
-    modelCatalog: { providers: {} },
+    modelCatalog: buildModelCatalog(),
     failover: {
       enabled: true,
       configuredProviderOrder: [],
       effectiveProviderOrder: [],
     },
     features: [],
+    ...overrides,
   },
 });
 
@@ -47,7 +101,9 @@ describe('ServerManagementAiWorkflowFacade', () => {
     };
 
     mockServerManagementService = {
-      serverManagementOpenrouterStatusRetrieve: vi.fn().mockReturnValue(of(buildAiWorkflowStatus())),
+      serverManagementOpenrouterStatusRetrieve: vi
+        .fn()
+        .mockReturnValue(of(buildAiWorkflowStatus())),
     };
 
     await TestBed.configureTestingModule({
@@ -136,39 +192,270 @@ describe('ServerManagementAiWorkflowFacade', () => {
   });
 
   it('adds failover model to ordered list', () => {
-    facade.aiWorkflowStatus.set(buildAiWorkflowStatus({ LLM_FALLBACK_MODEL_ORDER: ['gpt-5-mini'] }));
-    facade.aiWorkflowDraft.set({ LLM_FALLBACK_MODEL_ORDER: ['gpt-5-mini'] });
+    facade.aiWorkflowStatus.set(
+      buildAiWorkflowStatus({
+        LLM_FALLBACK_MODEL_CHAIN: [{ model: 'gpt-5-mini', timeoutSeconds: 120 }],
+      }),
+    );
+    facade.aiWorkflowDraft.set({
+      LLM_FALLBACK_MODEL_CHAIN: [{ model: 'gpt-5-mini', timeoutSeconds: 120 }],
+    });
 
     facade.addFallbackModel('google/gemini-3-flash-preview');
 
     const req = httpMock.expectOne('/api/server-management/openrouter-status/');
     expect(req.request.method).toBe('PATCH');
     expect(req.request.body.settings).toEqual({
-      LLM_FALLBACK_MODEL_ORDER: ['gpt-5-mini', 'google/gemini-3-flash-preview'],
+      LLM_FALLBACK_MODEL_CHAIN: [
+        { model: 'gpt-5-mini', timeoutSeconds: 120 },
+        { model: 'google/gemini-3-flash-preview', timeoutSeconds: 120 },
+      ],
     });
     req.flush(
       buildAiWorkflowStatus({
-        LLM_FALLBACK_MODEL_ORDER: ['gpt-5-mini', 'google/gemini-3-flash-preview'],
+        LLM_FALLBACK_MODEL_CHAIN: [
+          { model: 'gpt-5-mini', timeoutSeconds: 120 },
+          { model: 'google/gemini-3-flash-preview', timeoutSeconds: 120 },
+        ],
       }),
     );
   });
 
   it('reorders failover model list', () => {
     facade.aiWorkflowStatus.set(
-      buildAiWorkflowStatus({ LLM_FALLBACK_MODEL_ORDER: ['gpt-5-mini', 'google/gemini-3-flash-preview'] }),
+      buildAiWorkflowStatus({
+        LLM_FALLBACK_MODEL_CHAIN: [
+          { model: 'gpt-5-mini', timeoutSeconds: 120 },
+          { model: 'google/gemini-3-flash-preview', timeoutSeconds: 120 },
+        ],
+      }),
     );
-    facade.aiWorkflowDraft.set({ LLM_FALLBACK_MODEL_ORDER: ['gpt-5-mini', 'google/gemini-3-flash-preview'] });
+    facade.aiWorkflowDraft.set({
+      LLM_FALLBACK_MODEL_CHAIN: [
+        { model: 'gpt-5-mini', timeoutSeconds: 120 },
+        { model: 'google/gemini-3-flash-preview', timeoutSeconds: 120 },
+      ],
+    });
 
-    facade.moveFallbackModel(1, -1);
+    facade.reorderFallbackChain(1, 0);
 
     const req = httpMock.expectOne('/api/server-management/openrouter-status/');
     expect(req.request.body.settings).toEqual({
-      LLM_FALLBACK_MODEL_ORDER: ['google/gemini-3-flash-preview', 'gpt-5-mini'],
+      LLM_FALLBACK_MODEL_CHAIN: [
+        { model: 'google/gemini-3-flash-preview', timeoutSeconds: 120 },
+        { model: 'gpt-5-mini', timeoutSeconds: 120 },
+      ],
     });
     req.flush(
       buildAiWorkflowStatus({
-        LLM_FALLBACK_MODEL_ORDER: ['google/gemini-3-flash-preview', 'gpt-5-mini'],
+        LLM_FALLBACK_MODEL_CHAIN: [
+          { model: 'google/gemini-3-flash-preview', timeoutSeconds: 120 },
+          { model: 'gpt-5-mini', timeoutSeconds: 120 },
+        ],
       }),
     );
+  });
+
+  it('reads the active groq primary model from GROQ_DEFAULT_MODEL', () => {
+    facade.aiWorkflowStatus.set(
+      buildAiWorkflowStatus(
+        {
+          LLM_PROVIDER: 'groq',
+          LLM_DEFAULT_MODEL: 'google/gemini-3-flash-preview',
+          GROQ_DEFAULT_MODEL: 'qwen/qwen3-32b',
+        },
+        {
+          provider: 'groq',
+          providerName: 'Groq',
+          defaultModel: 'qwen/qwen3-32b',
+        },
+      ),
+    );
+    facade.aiWorkflowDraft.set({
+      LLM_PROVIDER: 'groq',
+      LLM_DEFAULT_MODEL: 'google/gemini-3-flash-preview',
+      GROQ_DEFAULT_MODEL: 'qwen/qwen3-32b',
+    });
+
+    expect(facade.getPrimaryModelValue()).toBe('qwen/qwen3-32b');
+  });
+
+  it('updates the active groq primary model without mutating the non-groq default', () => {
+    facade.aiWorkflowStatus.set(
+      buildAiWorkflowStatus(
+        {
+          LLM_PROVIDER: 'groq',
+          LLM_DEFAULT_MODEL: 'google/gemini-3-flash-preview',
+          GROQ_DEFAULT_MODEL: 'meta-llama/llama-4-maverick-17b-128e-instruct',
+        },
+        {
+          provider: 'groq',
+          providerName: 'Groq',
+          defaultModel: 'meta-llama/llama-4-maverick-17b-128e-instruct',
+        },
+      ),
+    );
+    facade.aiWorkflowDraft.set({
+      LLM_PROVIDER: 'groq',
+      LLM_DEFAULT_MODEL: 'google/gemini-3-flash-preview',
+      GROQ_DEFAULT_MODEL: 'meta-llama/llama-4-maverick-17b-128e-instruct',
+    });
+
+    facade.onPrimaryModelValueChange('qwen/qwen3-32b');
+
+    const req = httpMock.expectOne('/api/server-management/openrouter-status/');
+    expect(req.request.method).toBe('PATCH');
+    expect(req.request.body.settings).toEqual({
+      LLM_PROVIDER: 'groq',
+      GROQ_DEFAULT_MODEL: 'qwen/qwen3-32b',
+    });
+    req.flush(
+      buildAiWorkflowStatus(
+        {
+          LLM_PROVIDER: 'groq',
+          LLM_DEFAULT_MODEL: 'google/gemini-3-flash-preview',
+          GROQ_DEFAULT_MODEL: 'qwen/qwen3-32b',
+        },
+        {
+          provider: 'groq',
+          providerName: 'Groq',
+          defaultModel: 'qwen/qwen3-32b',
+        },
+      ),
+    );
+
+    expect(facade.getPrimaryModelValue()).toBe('qwen/qwen3-32b');
+    expect(facade.getAiSettingValue('LLM_DEFAULT_MODEL')).toBe('google/gemini-3-flash-preview');
+  });
+
+  it('keeps the primary model unchanged when adding a failover model', () => {
+    facade.aiWorkflowStatus.set(
+      buildAiWorkflowStatus(
+        {
+          LLM_PROVIDER: 'groq',
+          LLM_DEFAULT_MODEL: 'google/gemini-3-flash-preview',
+          GROQ_DEFAULT_MODEL: 'qwen/qwen3-32b',
+          LLM_FALLBACK_MODEL_CHAIN: [],
+        },
+        {
+          provider: 'groq',
+          providerName: 'Groq',
+          defaultModel: 'qwen/qwen3-32b',
+        },
+      ),
+    );
+    facade.aiWorkflowDraft.set({
+      LLM_PROVIDER: 'groq',
+      LLM_DEFAULT_MODEL: 'google/gemini-3-flash-preview',
+      GROQ_DEFAULT_MODEL: 'qwen/qwen3-32b',
+      LLM_FALLBACK_MODEL_CHAIN: [],
+    });
+
+    facade.addFallbackModel('google/gemini-3-flash-preview');
+
+    const req = httpMock.expectOne('/api/server-management/openrouter-status/');
+    expect(req.request.method).toBe('PATCH');
+    expect(req.request.body.settings).toEqual({
+      LLM_FALLBACK_MODEL_CHAIN: [
+        { model: 'google/gemini-3-flash-preview', timeoutSeconds: 120 },
+      ],
+    });
+    req.flush(
+      buildAiWorkflowStatus(
+        {
+          LLM_PROVIDER: 'groq',
+          LLM_DEFAULT_MODEL: 'google/gemini-3-flash-preview',
+          GROQ_DEFAULT_MODEL: 'qwen/qwen3-32b',
+          LLM_FALLBACK_MODEL_CHAIN: [
+            { model: 'google/gemini-3-flash-preview', timeoutSeconds: 120 },
+          ],
+        },
+        {
+          provider: 'groq',
+          providerName: 'Groq',
+          defaultModel: 'qwen/qwen3-32b',
+        },
+      ),
+    );
+
+    expect(facade.getPrimaryModelValue()).toBe('qwen/qwen3-32b');
+  });
+
+  it('preserves multiple failover rows for the same provider when normalizing workflow status', () => {
+    mockServerManagementService.serverManagementOpenrouterStatusRetrieve.mockReturnValue(
+      of(
+        buildAiWorkflowStatus(
+          {
+            LLM_PROVIDER: 'openrouter',
+            LLM_DEFAULT_MODEL: 'qwen/qwen3.5-flash-02-23',
+          },
+          {
+            features: [
+              {
+                feature: 'Invoice Import AI Parser',
+                purpose: 'Extracts invoice/customer data from uploaded invoice files.',
+                modelStrategy: 'Uses INVOICE_IMPORT_MODEL for this workflow.',
+                provider: 'openrouter',
+                providerName: 'OpenRouter',
+                primaryProvider: 'openrouter',
+                primaryProviderName: 'OpenRouter',
+                primaryModel: 'qwen/qwen3.5-flash-02-23',
+                effectiveModel: 'qwen/qwen3.5-flash-02-23',
+                modelSettingName: 'INVOICE_IMPORT_MODEL',
+                primaryTimeoutSettingName: 'INVOICE_IMPORT_TIMEOUT',
+                primaryTimeoutSeconds: 15,
+                failoverProviders: [
+                  {
+                    provider: 'openrouter',
+                    providerName: 'OpenRouter',
+                    model: 'google/gemini-3-flash-preview',
+                    timeoutSeconds: 45,
+                    available: true,
+                    active: true,
+                  },
+                  {
+                    provider: 'openrouter',
+                    providerName: 'OpenRouter',
+                    model: 'google/gemini-2.5-flash-lite',
+                    timeoutSeconds: 120,
+                    available: true,
+                    active: true,
+                  },
+                ],
+                modelFailover: {
+                  enabled: false,
+                  model: null,
+                  strategy: null,
+                },
+              },
+            ],
+          },
+        ),
+      ),
+    );
+
+    facade.loadAiWorkflowStatus();
+
+    const feature = facade.aiWorkflowStatus()?.aiModels.features[0];
+    expect(feature?.failoverProviders).toEqual([
+      {
+        provider: 'openrouter',
+        providerName: 'OpenRouter',
+        model: 'google/gemini-3-flash-preview',
+        timeoutSeconds: 45,
+        available: true,
+        active: true,
+      },
+      {
+        provider: 'openrouter',
+        providerName: 'OpenRouter',
+        model: 'google/gemini-2.5-flash-lite',
+        timeoutSeconds: 120,
+        available: true,
+        active: true,
+      },
+    ]);
+    expect(feature?.primaryTimeoutSettingName).toBe('INVOICE_IMPORT_TIMEOUT');
+    expect(feature?.primaryTimeoutSeconds).toBe(15);
   });
 });

@@ -1084,30 +1084,24 @@ if not OPENAI_DEFAULT_MODEL:
     OPENAI_DEFAULT_MODEL = "gpt-5-mini"
 
 # Optional workflow-specific runtime overrides.
-# When unset, runtime settings service falls back to the active primary model.
+# When unset, AIRuntimeSettingsService resolves the effective model from the
+# active primary runtime or the workflow-specific fallback chain.
 INVOICE_IMPORT_MODEL = (os.getenv("INVOICE_IMPORT_MODEL", "") or "").strip()
 PASSPORT_OCR_MODEL = (os.getenv("PASSPORT_OCR_MODEL", "") or "").strip()
 
 
-def _resolve_openrouter_model_override(setting_name: str) -> str:
-    """
-    Dedicated model overrides are OpenRouter-oriented.
-    When provider is not openrouter, force global LLM_DEFAULT_MODEL.
-    """
-    if LLM_PROVIDER != "openrouter":
-        return LLM_DEFAULT_MODEL
-    candidate = (os.getenv(setting_name, "") or "").strip()
-    return candidate or LLM_DEFAULT_MODEL
+def _read_optional_workflow_model_override(setting_name: str) -> str:
+    return (os.getenv(setting_name, "") or "").strip()
 
 
 # Dedicated model for document categorization; must support image input.
-DOCUMENT_CATEGORIZER_MODEL = _resolve_openrouter_model_override("DOCUMENT_CATEGORIZER_MODEL")
+DOCUMENT_CATEGORIZER_MODEL = _read_optional_workflow_model_override("DOCUMENT_CATEGORIZER_MODEL")
 # Higher-tier fallback model for categorization second pass.
-DOCUMENT_CATEGORIZER_MODEL_HIGH = _resolve_openrouter_model_override("DOCUMENT_CATEGORIZER_MODEL_HIGH")
+DOCUMENT_CATEGORIZER_MODEL_HIGH = _read_optional_workflow_model_override("DOCUMENT_CATEGORIZER_MODEL_HIGH")
 # Dedicated model for document validation (positive/negative prompt analysis); must support image input.
-DOCUMENT_VALIDATOR_MODEL = _resolve_openrouter_model_override("DOCUMENT_VALIDATOR_MODEL")
+DOCUMENT_VALIDATOR_MODEL = _read_optional_workflow_model_override("DOCUMENT_VALIDATOR_MODEL")
 # Model used by PassportUploadabilityService.
-CHECK_PASSPORT_MODEL = _resolve_openrouter_model_override("CHECK_PASSPORT_MODEL")
+CHECK_PASSPORT_MODEL = _read_optional_workflow_model_override("CHECK_PASSPORT_MODEL")
 
 # Automatic provider failover router settings.
 LLM_AUTO_FALLBACK_ENABLED = _parse_bool(os.getenv("LLM_AUTO_FALLBACK_ENABLED", "True"))

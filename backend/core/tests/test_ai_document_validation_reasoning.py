@@ -26,10 +26,11 @@ class ValidationReasoningFormatTests(SimpleTestCase):
             negative_issues=["Passenger name is not visible on the itinerary."],
         )
 
-        self.assertIn("missing data:", output)
-        self.assertIn("- Passenger name is not visible on the itinerary.", output)
-        self.assertNotIn("invalid data:", output)
-        self.assertIn("to do or to ask:", output)
+        self.assertEqual(
+            output,
+            "missing data: Passenger name is not visible on the itinerary. | "
+            "to do or to ask: Request a replacement document that includes the missing data listed above.",
+        )
         self.assertNotIn("While the document contains", output)
 
     def test_formats_invalid_data_sections_when_issue_is_present_but_wrong(self):
@@ -39,10 +40,9 @@ class ValidationReasoningFormatTests(SimpleTestCase):
             negative_issues=["Passport expiration date is expired."],
         )
 
-        self.assertIn("invalid data:", output)
-        self.assertIn("- Passport expiration date is expired.", output)
+        self.assertIn("invalid data: Passport expiration date is expired.", output)
         self.assertNotIn("missing data:", output)
-        self.assertIn("to do or to ask:", output)
+        self.assertIn(" | to do or to ask: Correct or replace the invalid data listed above.", output)
 
     def test_keeps_structured_sections_and_adds_action_when_missing(self):
         output = format_validation_reasoning(
@@ -51,9 +51,11 @@ class ValidationReasoningFormatTests(SimpleTestCase):
             negative_issues=[],
         )
 
-        self.assertIn("missing data:", output)
-        self.assertIn("- Passenger full name", output)
-        self.assertIn("to do or to ask:", output)
+        self.assertEqual(
+            output,
+            "missing data: Passenger full name | "
+            "to do or to ask: Request a replacement document that includes the missing data listed above.",
+        )
 
     def test_returns_short_default_for_valid_result_without_reasoning(self):
         output = format_validation_reasoning(valid=True, reasoning="", negative_issues=[])
@@ -69,8 +71,9 @@ class ValidationReasoningFormatTests(SimpleTestCase):
             negative_issues=[],
         )
 
-        self.assertIn("missing data:", output)
-        self.assertIn("- Passenger name is not visible on the document.", output)
-        self.assertIn("notes:", output)
-        self.assertIn("- Travel details are otherwise readable.", output)
-        self.assertIn("to do or to ask:", output)
+        self.assertEqual(
+            output,
+            "missing data: Passenger name is not visible on the document. | "
+            "notes: Travel details are otherwise readable. | "
+            "to do or to ask: Request a replacement document that includes the missing data listed above.",
+        )
