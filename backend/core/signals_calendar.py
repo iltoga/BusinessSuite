@@ -5,6 +5,7 @@ from core.models.calendar_event import CalendarEvent
 from django.db import transaction
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -28,12 +29,23 @@ def _log_dispatched_message(task_name: str, message, **kwargs):
     )
 
 
+def _mark_calendar_sync_dispatch_failed(event_id: str, *, task_name: str, exc: Exception) -> None:
+    error_message = f"{task_name} enqueue failed: {type(exc).__name__}: {exc}"
+    CalendarEvent.objects.filter(pk=event_id).update(
+        sync_status=CalendarEvent.SYNC_STATUS_FAILED,
+        sync_error=error_message,
+        updated_at=timezone.now(),
+    )
+
+
 @receiver(post_save, sender=CalendarEvent)
 def queue_calendar_event_sync(sender, instance: CalendarEvent, created: bool, raw: bool = False, **kwargs):
     if raw:
         return
 
     def _enqueue():
+        task_name = "create_google_event_task" if created else "update_google_event_task"
+        actor_name = CREATE_GOOGLE_EVENT_TASK_NAME if created else UPDATE_GOOGLE_EVENT_TASK_NAME
         logger.debug(
             "calendar_sync_enqueue event_id=%s created=%s google_event_id=%s calendar_id=%s",
             instance.pk,
@@ -42,13 +54,10 @@ def queue_calendar_event_sync(sender, instance: CalendarEvent, created: bool, ra
             instance.google_calendar_id,
         )
         try:
-            if created:
-                message = _send_calendar_task(CREATE_GOOGLE_EVENT_TASK_NAME, event_id=instance.pk)
-                _log_dispatched_message("create_google_event_task", message, event_id=instance.pk)
-            else:
-                message = _send_calendar_task(UPDATE_GOOGLE_EVENT_TASK_NAME, event_id=instance.pk)
-                _log_dispatched_message("update_google_event_task", message, event_id=instance.pk)
+            message = _send_calendar_task(actor_name, event_id=instance.pk)
+            _log_dispatched_message(task_name, message, event_id=instance.pk)
         except Exception as exc:
+            _mark_calendar_sync_dispatch_failed(instance.pk, task_name=task_name, exc=exc)
             logger.error(
                 "calendar_sync_dispatch_failed event_id=%s created=%s error_type=%s error=%s",
                 instance.pk,
@@ -60,6 +69,11 @@ def queue_calendar_event_sync(sender, instance: CalendarEvent, created: bool, ra
     try:
         transaction.on_commit(_enqueue)
     except Exception as exc:
+        _mark_calendar_sync_dispatch_failed(
+            instance.pk,
+            task_name="create_google_event_task" if created else "update_google_event_task",
+            exc=exc,
+        )
         logger.error(
             "calendar_sync_enqueue_failed event_id=%s created=%s error_type=%s error=%s",
             instance.pk,

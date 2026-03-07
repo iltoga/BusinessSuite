@@ -633,6 +633,27 @@ class AIRuntimeSettingsService:
         return values
 
     @classmethod
+    def _first_available_model_for_provider(cls, provider: str) -> str:
+        catalog = cls.get_model_catalog()
+        providers = catalog.get("providers", {}) if isinstance(catalog, dict) else {}
+        provider_data = providers.get(provider, {}) if isinstance(providers, dict) else {}
+        models = provider_data.get("models", []) if isinstance(provider_data, dict) else []
+        for model in models:
+            model_id = str(model.get("id") or "").strip()
+            if model_id:
+                return model_id
+        return ""
+
+    @classmethod
+    def _pick_available_model_for_provider(cls, provider: str, *candidates: Any) -> str:
+        available_ids = cls._model_ids_by_provider().get(provider, set())
+        for candidate in candidates:
+            normalized = str(candidate or "").strip()
+            if normalized and normalized in available_ids:
+                return normalized
+        return cls._first_available_model_for_provider(provider)
+
+    @classmethod
     def get_llm_provider(cls) -> str:
         provider = str(cls.get("LLM_PROVIDER") or "openrouter").strip().lower()
         return provider if provider in {"openrouter", "openai", "groq"} else "openrouter"
@@ -908,18 +929,62 @@ class AIRuntimeSettingsService:
             return
 
         defaults = cls.defaults()
+        active_provider = cls.get_llm_provider()
+        safe_openrouter_default = cls._pick_available_model_for_provider(
+            "openrouter",
+            cls.get_openrouter_default_model(),
+            defaults.get("OPENROUTER_DEFAULT_MODEL"),
+            defaults.get("LLM_DEFAULT_MODEL"),
+        )
+        safe_openai_default = cls._pick_available_model_for_provider(
+            "openai",
+            cls.get_openai_default_model(),
+            defaults.get("OPENAI_DEFAULT_MODEL"),
+        )
+        safe_groq_default = cls._pick_available_model_for_provider(
+            "groq",
+            cls.get_groq_default_model(),
+            defaults.get("GROQ_DEFAULT_MODEL"),
+        )
+        if active_provider == "openai":
+            safe_llm_default = cls._pick_available_model_for_provider(
+                "openai",
+                cls.get_llm_default_model(),
+                safe_openai_default,
+                defaults.get("OPENAI_DEFAULT_MODEL"),
+                defaults.get("LLM_DEFAULT_MODEL"),
+            )
+            safe_workflow_default = safe_llm_default or safe_openai_default
+        elif active_provider == "groq":
+            safe_llm_default = cls._pick_available_model_for_provider(
+                "openrouter",
+                cls.get_llm_default_model(),
+                defaults.get("LLM_DEFAULT_MODEL"),
+                safe_openrouter_default,
+            ) or safe_openai_default
+            safe_workflow_default = safe_groq_default
+        else:
+            safe_llm_default = cls._pick_available_model_for_provider(
+                "openrouter",
+                cls.get_llm_default_model(),
+                safe_openrouter_default,
+                defaults.get("OPENROUTER_DEFAULT_MODEL"),
+                defaults.get("LLM_DEFAULT_MODEL"),
+            )
+            safe_workflow_default = safe_llm_default or safe_openrouter_default
+
         replacement_map = {
-            "LLM_DEFAULT_MODEL": str(defaults.get("LLM_DEFAULT_MODEL") or "").strip(),
-            "GROQ_DEFAULT_MODEL": str(defaults.get("GROQ_DEFAULT_MODEL") or "").strip(),
-            "OPENROUTER_DEFAULT_MODEL": str(defaults.get("OPENROUTER_DEFAULT_MODEL") or "").strip(),
-            "OPENAI_DEFAULT_MODEL": str(defaults.get("OPENAI_DEFAULT_MODEL") or "").strip(),
-            "INVOICE_IMPORT_MODEL": str(defaults.get("LLM_DEFAULT_MODEL") or "").strip(),
-            "PASSPORT_OCR_MODEL": str(defaults.get("LLM_DEFAULT_MODEL") or "").strip(),
-            "DOCUMENT_CATEGORIZER_MODEL": str(defaults.get("LLM_DEFAULT_MODEL") or "").strip(),
-            "DOCUMENT_CATEGORIZER_MODEL_HIGH": str(defaults.get("LLM_DEFAULT_MODEL") or "").strip(),
-            "DOCUMENT_VALIDATOR_MODEL": str(defaults.get("LLM_DEFAULT_MODEL") or "").strip(),
-            "DOCUMENT_OCR_STRUCTURED_MODEL": str(defaults.get("LLM_DEFAULT_MODEL") or "").strip(),
-            "CHECK_PASSPORT_MODEL": str(defaults.get("LLM_DEFAULT_MODEL") or "").strip(),
+            "LLM_DEFAULT_MODEL": safe_llm_default,
+            "GROQ_DEFAULT_MODEL": safe_groq_default,
+            "OPENROUTER_DEFAULT_MODEL": safe_openrouter_default,
+            "OPENAI_DEFAULT_MODEL": safe_openai_default,
+            "INVOICE_IMPORT_MODEL": safe_workflow_default,
+            "PASSPORT_OCR_MODEL": safe_workflow_default,
+            "DOCUMENT_CATEGORIZER_MODEL": safe_workflow_default,
+            "DOCUMENT_CATEGORIZER_MODEL_HIGH": safe_workflow_default,
+            "DOCUMENT_VALIDATOR_MODEL": safe_workflow_default,
+            "DOCUMENT_OCR_STRUCTURED_MODEL": safe_workflow_default,
+            "CHECK_PASSPORT_MODEL": safe_workflow_default,
         }
 
         for setting_name in _MODEL_SETTING_KEYS:
@@ -984,6 +1049,12 @@ class AIRuntimeSettingsService:
         openrouter_model_ids = model_ids_by_provider.get("openrouter", set())
         openai_model_ids = model_ids_by_provider.get("openai", set())
         groq_model_ids = model_ids_by_provider.get("groq", set())
+        if "LLM_PROVIDER" in normalized_updates:
+            effective_llm_provider = normalized_updates["LLM_PROVIDER"]
+        elif "LLM_PROVIDER" in cleared_setting_names:
+            effective_llm_provider = str(defaults.get("LLM_PROVIDER") or "openrouter").strip().lower()
+        else:
+            effective_llm_provider = cls.get_llm_provider()
         if "LLM_DEFAULT_MODEL" in normalized_updates:
             effective_llm_default_model = normalized_updates["LLM_DEFAULT_MODEL"]
         elif "LLM_DEFAULT_MODEL" in cleared_setting_names:
@@ -993,6 +1064,14 @@ class AIRuntimeSettingsService:
 
         if effective_llm_default_model and effective_llm_default_model not in model_ids:
             raise ValueError("LLM_DEFAULT_MODEL must be listed in configured AI models.")
+        if effective_llm_provider == "openrouter" and effective_llm_default_model not in openrouter_model_ids:
+            raise ValueError(
+                "LLM_DEFAULT_MODEL must be a model listed under provider 'openrouter' when LLM_PROVIDER is 'openrouter'."
+            )
+        if effective_llm_provider == "openai" and effective_llm_default_model not in openai_model_ids:
+            raise ValueError(
+                "LLM_DEFAULT_MODEL must be a model listed under provider 'openai' when LLM_PROVIDER is 'openai'."
+            )
 
         openrouter_default = normalized_updates.get("OPENROUTER_DEFAULT_MODEL")
         if openrouter_default and openrouter_default not in openrouter_model_ids:

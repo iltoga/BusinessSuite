@@ -2,10 +2,15 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 
 from core.models import AiModel, AppSetting
+from core.services.app_setting_service import AppSettingService
 from core.services.ai_runtime_settings_service import AIRuntimeSettingsService
 
 
 class AIRuntimeSettingsServiceTests(TestCase):
+    def setUp(self):
+        AppSetting.objects.all().delete()
+        AppSettingService.invalidate_cache()
+
     @override_settings(LLM_PROVIDER="openrouter")
     def test_seed_like_db_row_does_not_override_settings_until_updated(self):
         AppSetting.objects.update_or_create(
@@ -20,7 +25,10 @@ class AIRuntimeSettingsServiceTests(TestCase):
 
         self.assertEqual(AIRuntimeSettingsService.get_llm_provider(), "openrouter")
 
-    @override_settings(LLM_PROVIDER="openrouter")
+    @override_settings(
+        LLM_PROVIDER="openrouter",
+        LLM_DEFAULT_MODEL="google/gemini-3-flash-preview",
+    )
     def test_updated_db_row_overrides_settings(self):
         user = get_user_model().objects.create_user(username="ai-runtime-updater")
         AppSetting.objects.update_or_create(
@@ -33,7 +41,13 @@ class AIRuntimeSettingsServiceTests(TestCase):
             },
         )
 
-        AIRuntimeSettingsService.update_runtime_settings({"LLM_PROVIDER": "openai"}, updated_by=user)
+        AIRuntimeSettingsService.update_runtime_settings(
+            {
+                "LLM_PROVIDER": "openai",
+                "LLM_DEFAULT_MODEL": "gpt-5-mini",
+            },
+            updated_by=user,
+        )
 
         self.assertEqual(AIRuntimeSettingsService.get_llm_provider(), "openai")
         setting = AppSetting.objects.get(name="LLM_PROVIDER")
@@ -61,13 +75,11 @@ class AIRuntimeSettingsServiceTests(TestCase):
         LLM_DEFAULT_MODEL="openai/gpt-5-mini",
         OPENROUTER_DEFAULT_MODEL="google/gemini-2.5-flash-lite",
     )
-    def test_update_runtime_settings_allows_primary_model_independent_of_provider_defaults(self):
-        AIRuntimeSettingsService.update_runtime_settings({"LLM_PROVIDER": "openai"})
+    def test_update_runtime_settings_rejects_provider_switch_with_incompatible_primary_model(self):
+        with self.assertRaises(ValueError) as raised:
+            AIRuntimeSettingsService.update_runtime_settings({"LLM_PROVIDER": "openai"})
 
-        self.assertEqual(AIRuntimeSettingsService.get_llm_provider(), "openai")
-        self.assertEqual(AIRuntimeSettingsService.get_llm_default_model(), "openai/gpt-5-mini")
-        self.assertEqual(AIRuntimeSettingsService.get_openrouter_default_model(), "google/gemini-2.5-flash-lite")
-
+        self.assertIn("LLM_DEFAULT_MODEL must be a model listed under provider 'openai'", str(raised.exception))
 
     @override_settings(
         OPENROUTER_TIMEOUT=60.0,
@@ -164,4 +176,28 @@ class AIRuntimeSettingsServiceTests(TestCase):
         self.assertEqual(
             AIRuntimeSettingsService.get("INVOICE_IMPORT_MODEL"),
             "google/gemini-3-flash-preview",
+        )
+
+    @override_settings(
+        LLM_PROVIDER="groq",
+        LLM_DEFAULT_MODEL="google/gemini-3-flash-preview",
+        GROQ_DEFAULT_MODEL="meta-llama/llama-4-scout-17b-16e-instruct",
+    )
+    def test_deleted_workflow_model_references_fall_back_to_active_provider_default(self):
+        AppSetting.objects.update_or_create(
+            name="INVOICE_IMPORT_MODEL",
+            defaults={
+                "value": "qwen/qwen3-32b",
+                "scope": AppSetting.SCOPE_BACKEND,
+                "description": "workflow model",
+                "updated_by": None,
+            },
+        )
+
+        model = AiModel.objects.get(provider="groq", model_id="qwen/qwen3-32b")
+        model.delete()
+
+        self.assertEqual(
+            AIRuntimeSettingsService.get("INVOICE_IMPORT_MODEL"),
+            "meta-llama/llama-4-scout-17b-16e-instruct",
         )

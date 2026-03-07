@@ -83,6 +83,26 @@ class TestGoogleCalendarAPI:
         )
 
     @pytest.mark.django_db
+    def test_application_calendar_event_create_marks_sync_failed_when_enqueue_fails(self):
+        with (
+            patch("core.signals_calendar._send_calendar_task", side_effect=RuntimeError("broker unavailable")),
+            patch("django.db.transaction.on_commit", side_effect=lambda callback: callback()),
+        ):
+            event = CalendarEvent.objects.create(
+                id="evt-async-create-failed",
+                source=CalendarEvent.SOURCE_APPLICATION,
+                title="Application Event",
+                description="async create failure",
+                start_date="2026-03-10",
+                end_date="2026-03-11",
+            )
+
+        event.refresh_from_db()
+        assert event.sync_status == CalendarEvent.SYNC_STATUS_FAILED
+        assert "broker unavailable" in event.sync_error
+        assert "create_google_event_task enqueue failed" in event.sync_error
+
+    @pytest.mark.django_db
     def test_application_calendar_event_update_enqueues_async_task(self):
         """CalendarEvent update always dispatches an async Dramatiq task."""
         event = CalendarEvent.objects.create(

@@ -9,6 +9,7 @@ from rest_framework.test import APIClient
 
 from core.models import AppSetting
 from core.models.ai_request_usage import AIRequestUsage
+from core.services.app_setting_service import AppSettingService
 from core.services.ai_usage_service import AIUsageFeature
 
 
@@ -26,6 +27,8 @@ from core.services.ai_usage_service import AIUsageFeature
 )
 class ServerManagementOpenRouterStatusApiTests(TestCase):
     def setUp(self):
+        AppSetting.objects.all().delete()
+        AppSettingService.invalidate_cache()
         self.client = APIClient()
         user_model = get_user_model()
         self.user = user_model.objects.create_superuser(
@@ -423,17 +426,15 @@ class ServerManagementOpenRouterStatusApiTests(TestCase):
         LLM_PROVIDER="openrouter",
         LLM_DEFAULT_MODEL="openai/gpt-5-mini",
     )
-    def test_openrouter_status_patch_allows_provider_switch_with_independent_primary_model(self):
+    def test_openrouter_status_patch_rejects_provider_switch_with_incompatible_primary_model(self):
         response = self.client.patch(
             "/api/server-management/openrouter-status/",
             data={"settings": {"LLM_PROVIDER": "openai"}},
             format="json",
         )
 
-        self.assertEqual(response.status_code, 200)
-        payload = response.json()
-        self.assertEqual(payload["aiModels"]["settingsMap"]["LLM_PROVIDER"], "openai")
-        self.assertEqual(payload["aiModels"]["settingsMap"]["LLM_DEFAULT_MODEL"], "openai/gpt-5-mini")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("LLM_DEFAULT_MODEL must be a model listed under provider 'openai'", response.json()["detail"])
 
     @override_settings(DJANGO_LOG_LEVEL="WARNING")
     def test_app_settings_list_and_create(self):
