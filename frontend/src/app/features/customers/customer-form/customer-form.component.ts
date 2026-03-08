@@ -3,16 +3,14 @@ import { HttpResponse } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
-  DestroyRef,
-  HostListener,
-  OnInit,
   computed,
   inject,
   signal,
+  type OnInit,
 } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators, type FormGroup } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Subscription } from 'rxjs';
+import { Observable, Subscription } from 'rxjs';
 
 import {
   CustomersService,
@@ -21,7 +19,10 @@ import {
 } from '@/core/services/customers.service';
 import { OcrService, type OcrStatusResponse } from '@/core/services/ocr.service';
 import { SseService } from '@/core/services/sse.service';
-import { GlobalToastService } from '@/core/services/toast.service';
+import {
+  BaseFormComponent,
+  BaseFormConfig,
+} from '@/shared/core/base-form.component';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
 import { ZardCheckboxComponent } from '@/shared/components/checkbox';
@@ -38,6 +39,52 @@ import {
 } from '@/shared/utils/document-preview-source';
 import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/utils/form-errors';
 
+// Type definitions for DTOs
+interface CustomerCreateDto {
+  [key: string]: unknown;
+  customerType: string;
+  firstName?: string;
+  lastName?: string;
+  companyName?: string;
+  gender?: string;
+  nationality?: string;
+  birthdate?: string | null;
+  birthPlace?: string;
+  passportNumber?: string;
+  passportIssueDate?: string | null;
+  passportExpirationDate?: string | null;
+  npwp?: string;
+  email?: string;
+  telephone?: string;
+  whatsapp?: string;
+  telegram?: string;
+  facebook?: string;
+  instagram?: string;
+  twitter?: string;
+  addressBali?: string;
+  addressAbroad?: string;
+  notifyDocumentsExpiration?: boolean;
+  notifyBy?: string;
+  active?: boolean;
+  title?: string;
+  passportMetadata?: Record<string, unknown> | null;
+}
+
+interface CustomerUpdateDto extends CustomerCreateDto {
+  id?: number;
+}
+
+/**
+ * Customer form component
+ * 
+ * Extends BaseFormComponent to inherit common form patterns:
+ * - Keyboard shortcuts (Ctrl/Cmd+S to save, Escape to cancel)
+ * - Edit mode detection from route
+ * - Server error handling
+ * - Loading states
+ * 
+ * Note: This component has extensive OCR functionality that is component-specific
+ */
 @Component({
   selector: 'app-customer-form',
   standalone: true,
@@ -59,22 +106,18 @@ import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/uti
   styleUrls: ['./customer-form.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class CustomerFormComponent implements OnInit {
-  private fb = inject(FormBuilder);
-  private route = inject(ActivatedRoute);
-  private router = inject(Router);
-  private customersService = inject(CustomersService);
-  private ocrService = inject(OcrService);
-  private sseService = inject(SseService);
-  private toast = inject(GlobalToastService);
-  private destroyRef = inject(DestroyRef);
+export class CustomerFormComponent extends BaseFormComponent<
+  CustomerDetail,
+  CustomerCreateDto,
+  CustomerUpdateDto
+> implements OnInit {
+  private readonly customersService = inject(CustomersService);
+  private readonly ocrService = inject(OcrService);
+  private readonly sseService = inject(SseService);
 
-  readonly isLoading = signal(false);
-  readonly isEditMode = signal(false);
-  readonly customer = signal<CustomerDetail | null>(null);
+  // Customer-specific state
   readonly countries = signal<CountryCode[]>([]);
-  readonly isPerson = signal(true); // Track if customer type is 'person'
-
+  readonly isPerson = signal(true);
   readonly submitted = signal(false);
   readonly passportFile = signal<File | null>(null);
   readonly passportFilePreviewUrl = signal<string | null>(null);
@@ -103,85 +146,15 @@ export class CustomerFormComponent implements OnInit {
   readonly ocrData = signal<OcrStatusResponse | null>(null);
   readonly passportMetadata = signal<Record<string, unknown> | null>(null);
 
-  @HostListener('window:keydown', ['$event'])
-  handleGlobalKeydown(event: KeyboardEvent): void {
-    // Esc --> Cancel
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      this.onCancel();
-      return;
-    }
+  // Customer reference for template compatibility
+  readonly customer = signal<CustomerDetail | null>(null);
 
-    // cmd+s (mac) or ctrl+s (windows/linux) --> save
-    const isSaveKey = (event.ctrlKey || event.metaKey) && (event.key === 's' || event.key === 'S');
-    if (isSaveKey) {
-      event.preventDefault();
-      this.onSubmit();
-      return;
-    }
-
-    // Only trigger B/Left Arrow if no input is focused (to avoid interference with typing)
-    const activeElement = document.activeElement;
-    const isInput =
-      activeElement instanceof HTMLInputElement ||
-      activeElement instanceof HTMLTextAreaElement ||
-      (activeElement instanceof HTMLElement && activeElement.isContentEditable);
-
-    if (isInput) return;
-
-    // B or Left Arrow --> Back to list
-    if (
-      (event.key === 'B' || event.key === 'ArrowLeft') &&
-      !event.ctrlKey &&
-      !event.altKey &&
-      !event.metaKey
-    ) {
-      event.preventDefault();
-      this.onCancel();
-    }
-  }
-
+  // OCR tracking
   private ocrPollTimer: number | null = null;
   private ocrStreamSubscription: Subscription | null = null;
 
-  form = this.fb.group(
-    {
-      customer_type: ['person'],
-      title: [''],
-      first_name: ['', [Validators.pattern('^([A-Z][a-zA-Z\\s\\-]*)$')]],
-      last_name: [''],
-      company_name: [''],
-      gender: [''],
-      nationality: [''],
-      birthdate: [null as Date | null],
-      birth_place: [''],
-      passport_number: [''],
-      passport_issue_date: [null as Date | null],
-      passport_expiration_date: [null as Date | null],
-      npwp: [''],
-      email: ['', Validators.email],
-      telephone: [''],
-      whatsapp: [''],
-      telegram: [''],
-      facebook: [''],
-      instagram: [''],
-      twitter: [''],
-      address_bali: [''],
-      address_abroad: [''],
-      notify_documents_expiration: [false],
-      notify_by: [''],
-      active: [true],
-    },
-    {
-      validators: [
-        this.passportDatesValidator.bind(this),
-        this.birthDateValidator.bind(this),
-        this.notificationValidator.bind(this),
-      ],
-    },
-  );
-
-  readonly formErrorLabels: Record<string, string> = {
+  // Form error labels
+  override readonly formErrorLabels: Record<string, string> = {
     customer_type: 'Customer Type',
     title: 'Title',
     first_name: 'First Name',
@@ -237,7 +210,7 @@ export class CustomerFormComponent implements OnInit {
     { value: 'Telephone', label: 'Telephone' },
   ];
 
-  // Nationality options (for z-combobox)
+  // Nationality options
   readonly nationalityOptions = computed<ZardComboboxOption[]>(() => {
     const list = this.countries() ?? [];
     const opts: ZardComboboxOption[] = [{ value: '', label: '---------' }];
@@ -247,14 +220,299 @@ export class CustomerFormComponent implements OnInit {
     return opts;
   });
 
-  ngOnInit(): void {
+  constructor() {
+    super();
+    this.config = {
+      entityType: 'customers',
+      entityLabel: 'Customer',
+    } as BaseFormConfig<CustomerDetail, CustomerCreateDto, CustomerUpdateDto>;
+  }
+
+  /**
+   * Build the customer form
+   */
+  protected override buildForm(): FormGroup {
+    return this.fb.group(
+      {
+        customer_type: ['person'],
+        title: [''],
+        first_name: ['', [Validators.pattern('^([A-Z][a-zA-Z\\s\\-]*)$')]],
+        last_name: [''],
+        company_name: [''],
+        gender: [''],
+        nationality: [''],
+        birthdate: [null as Date | null],
+        birth_place: [''],
+        passport_number: [''],
+        passport_issue_date: [null as Date | null],
+        passport_expiration_date: [null as Date | null],
+        npwp: [''],
+        email: ['', Validators.email],
+        telephone: [''],
+        whatsapp: [''],
+        telegram: [''],
+        facebook: [''],
+        instagram: [''],
+        twitter: [''],
+        address_bali: [''],
+        address_abroad: [''],
+        notify_documents_expiration: [false],
+        notify_by: [''],
+        active: [true],
+      },
+      {
+        validators: [
+          this.passportDatesValidator.bind(this),
+          this.birthDateValidator.bind(this),
+          this.notificationValidator.bind(this),
+        ],
+      },
+    );
+  }
+
+  /**
+   * Load customer for edit mode
+   */
+  protected override loadItem(id: number): Observable<CustomerDetail> {
+    return this.customersService.getCustomer(id);
+  }
+
+  /**
+   * Create DTO from form value
+   */
+  protected override createDto(): CustomerCreateDto {
+    return this.buildPayload();
+  }
+
+  /**
+   * Update DTO from form value
+   */
+  protected override updateDto(): CustomerUpdateDto {
+    return this.buildPayload();
+  }
+
+  /**
+   * Save new customer
+   */
+  protected override saveCreate(dto: CustomerCreateDto): Observable<any> {
+    const file = this.passportFile();
+    const requestPayload = file ? this.buildFormData(dto, file) : dto;
+    return this.customersService.createCustomer(requestPayload);
+  }
+
+  /**
+   * Update existing customer
+   */
+  protected override saveUpdate(dto: CustomerUpdateDto): Observable<any> {
+    const file = this.passportFile();
+    const requestPayload = file ? this.buildFormData(dto, file) : dto;
+    return this.customersService.updateCustomer(this.itemId!, requestPayload as any);
+  }
+
+  /**
+   * Initialize component
+   */
+  override ngOnInit(): void {
+    // Call base ngOnInit for standard initialization
+    super.ngOnInit();
+
     // Load countries for the nationality dropdown
     this.customersService.getCountries().subscribe({
       next: (data) => this.countries.set(data),
       error: () => this.toast.error('Failed to load countries'),
     });
 
-    // Re-run group validators when related fields change.
+    // Re-run group validators when related fields change
+    this.setupValueChangeSubscriptions();
+
+    // Set up conditional validation based on customer_type changes
+    this.form.get('customer_type')?.valueChanges.subscribe((customerType) => {
+      this.updateConditionalValidators(customerType ?? 'person');
+    });
+
+    // Initial validation setup
+    this.updateConditionalValidators(this.form.get('customer_type')?.value ?? 'person');
+
+    // Cleanup on destroy
+    this.destroyRef.onDestroy(() => {
+      this.clearPassportFilePreview();
+      this.clearOcrAsyncTracking();
+    });
+  }
+
+  /**
+   * Patch form with customer data - override to handle date conversion
+   */
+  protected override patchForm(customer: CustomerDetail): void {
+    // Set existing passport preview if available
+    this.setExistingPassportPreview(customer.passportFile);
+    
+    // Update isPerson based on loaded data
+    this.isPerson.set(customer.customerType === 'person');
+    
+    // Helper function to parse date strings to Date objects
+    const parseDate = (dateString: string | null | undefined): Date | null => {
+      if (!dateString) return null;
+      const parsed = new Date(dateString);
+      return isNaN(parsed.getTime()) ? null : parsed;
+    };
+
+    this.form.patchValue({
+      customer_type: customer.customerType ?? 'person',
+      title: customer.title ?? '',
+      first_name: customer.firstName ?? '',
+      last_name: customer.lastName ?? '',
+      company_name: customer.companyName ?? '',
+      gender: customer.gender ?? '',
+      nationality: customer.nationality ?? '',
+      birthdate: parseDate(customer.birthdate),
+      birth_place: customer.birthPlace ?? '',
+      passport_number: customer.passportNumber ?? '',
+      passport_issue_date: parseDate(customer.passportIssueDate),
+      passport_expiration_date: parseDate(customer.passportExpirationDate),
+      npwp: customer.npwp ?? '',
+      email: customer.email ?? '',
+      telephone: customer.telephone ?? '',
+      whatsapp: customer.whatsapp ?? '',
+      telegram: customer.telegram ?? '',
+      facebook: customer.facebook ?? '',
+      instagram: customer.instagram ?? '',
+      twitter: customer.twitter ?? '',
+      address_bali: customer.addressBali ?? '',
+      address_abroad: customer.addressAbroad ?? '',
+      notify_documents_expiration: customer.notifyDocumentsExpiration ?? false,
+      notify_by: customer.notifyBy ?? '',
+      active: customer.active ?? true,
+    }, { emitEvent: false });
+  }
+
+  /**
+   * Handle keyboard shortcuts - extends base class
+   */
+  override handleGlobalKeydown(event: KeyboardEvent): void {
+    // Call base for standard shortcuts
+    super.handleGlobalKeydown(event);
+  }
+
+  /**
+   * Cancel and go back - override to preserve navigation state
+   */
+  override onCancel(): void {
+    const idParam = this.route.snapshot.paramMap.get('id');
+    const st = (history.state as any) || {};
+    const state: Record<string, unknown> = { focusTable: true };
+    if (idParam) {
+      const id = Number(idParam);
+      if (id) state['focusId'] = id;
+    }
+    if (st.searchQuery) state['searchQuery'] = st.searchQuery;
+    const page = Number(st.page);
+    if (Number.isFinite(page) && page > 0) {
+      state['page'] = Math.floor(page);
+    }
+    this.router.navigate(['/customers'], { state });
+  }
+
+  /**
+   * Handle passport file selection
+   */
+  onPassportFileSelected(file: File): void {
+    this.setPassportFilePreview(file);
+    this.passportFile.set(file);
+    this.passportPreviewUrl.set(null);
+    this.ocrMessage.set(null);
+    this.ocrMessageTone.set(null);
+  }
+
+  /**
+   * Handle passport file clear
+   */
+  onPassportFileCleared(): void {
+    this.clearPassportFilePreview();
+    this.passportFile.set(null);
+    this.passportPreviewUrl.set(null);
+    this.ocrMessage.set(null);
+    this.ocrMessageTone.set(null);
+  }
+
+  /**
+   * Handle paste passport from clipboard
+   */
+  onPastePassport(event: ClipboardEvent): void {
+    if (!this.isPerson()) {
+      this.toast.error('Passport import is only available for person customers');
+      event.preventDefault();
+      return;
+    }
+
+    const items = event.clipboardData?.items;
+    if (!items) {
+      return;
+    }
+
+    for (const item of Array.from(items)) {
+      if (item.type?.includes('image')) {
+        const file = item.getAsFile();
+        if (!file) {
+          continue;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+          this.passportPastePreviewUrl.set(String(reader.result));
+        };
+        reader.readAsDataURL(file);
+        this.passportPasteStatus.set('Uploading...');
+        this.passportFile.set(file);
+        this.runPassportImport(file);
+        event.preventDefault();
+        break;
+      }
+    }
+  }
+
+  /**
+   * Toggle AI usage for OCR
+   */
+  onToggleUseAi(event: Event): void {
+    const target = event.target as HTMLInputElement | null;
+    this.ocrUseAi.set(Boolean(target?.checked));
+  }
+
+  /**
+   * Run passport import
+   */
+  onPassportImport(): void {
+    if (!this.isPerson()) {
+      this.toast.error('Passport import is only available for person customers');
+      return;
+    }
+    const file = this.passportFile();
+    if (!file) {
+      this.ocrMessage.set('No file selected');
+      this.ocrMessageTone.set('error');
+      return;
+    }
+    this.runPassportImport(file);
+  }
+
+  /**
+   * Format name field
+   */
+  formatName(controlName: 'first_name' | 'last_name'): void {
+    const control = this.form.get(controlName);
+    const value = control?.value;
+    if (value && typeof value === 'string' && value.trim().length > 0) {
+      const trimmed = value.trim();
+      const formatted = trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+      if (formatted !== value) {
+        control.setValue(formatted, { emitEvent: false });
+        control.updateValueAndValidity();
+      }
+    }
+  }
+
+  // Private methods for OCR and form handling
+  private setupValueChangeSubscriptions(): void {
     this.form.get('passport_issue_date')?.valueChanges.subscribe(() => {
       this.form.updateValueAndValidity({ onlySelf: false, emitEvent: false });
     });
@@ -270,85 +528,6 @@ export class CustomerFormComponent implements OnInit {
     this.form.get('notify_by')?.valueChanges.subscribe(() => {
       this.form.updateValueAndValidity({ onlySelf: false, emitEvent: false });
     });
-
-    // Set up conditional validation based on customer_type changes
-    this.form.get('customer_type')?.valueChanges.subscribe((customerType) => {
-      this.updateConditionalValidators(customerType ?? 'person');
-    });
-
-    // Initial validation setup
-    this.updateConditionalValidators(this.form.get('customer_type')?.value ?? 'person');
-
-    // Load customer data if in edit mode
-    const idParam = this.route.snapshot.paramMap.get('id');
-    if (idParam) {
-      this.isEditMode.set(true);
-      const id = Number(idParam);
-      this.isLoading.set(true);
-      this.customersService.getCustomer(id).subscribe({
-        next: (data) => {
-          this.customer.set(data);
-          this.setExistingPassportPreview(data.passportFile);
-          // Update isPerson immediately based on loaded data
-          this.isPerson.set(data.customerType === 'person');
-          this.form.patchValue({
-            customer_type: data.customerType ?? 'person',
-            title: data.title ?? '',
-            first_name: data.firstName ?? '',
-            last_name: data.lastName ?? '',
-            company_name: data.companyName ?? '',
-            gender: data.gender ?? '',
-            nationality: data.nationality ?? '',
-            birthdate: data.birthdate ? new Date(data.birthdate) : null,
-            birth_place: data.birthPlace ?? '',
-            passport_number: data.passportNumber ?? '',
-            passport_issue_date: data.passportIssueDate ? new Date(data.passportIssueDate) : null,
-            passport_expiration_date: data.passportExpirationDate
-              ? new Date(data.passportExpirationDate)
-              : null,
-            npwp: data.npwp ?? '',
-            email: data.email ?? '',
-            telephone: data.telephone ?? '',
-            whatsapp: data.whatsapp ?? '',
-            telegram: data.telegram ?? '',
-            facebook: data.facebook ?? '',
-            instagram: data.instagram ?? '',
-            twitter: data.twitter ?? '',
-            address_bali: data.addressBali ?? '',
-            address_abroad: data.addressAbroad ?? '',
-            notify_documents_expiration: data.notifyDocumentsExpiration ?? false,
-            notify_by: data.notifyBy ?? '',
-            active: data.active ?? true,
-          });
-          this.isLoading.set(false);
-        },
-        error: () => {
-          this.toast.error('Failed to load customer');
-          this.isLoading.set(false);
-        },
-      });
-    }
-
-    this.destroyRef.onDestroy(() => {
-      this.clearPassportFilePreview();
-      this.clearOcrAsyncTracking();
-    });
-  }
-
-  onPassportFileSelected(file: File): void {
-    this.setPassportFilePreview(file);
-    this.passportFile.set(file);
-    this.passportPreviewUrl.set(null);
-    this.ocrMessage.set(null);
-    this.ocrMessageTone.set(null);
-  }
-
-  onPassportFileCleared(): void {
-    this.clearPassportFilePreview();
-    this.passportFile.set(null);
-    this.passportPreviewUrl.set(null);
-    this.ocrMessage.set(null);
-    this.ocrMessageTone.set(null);
   }
 
   private setPassportFilePreview(file: File): void {
@@ -396,57 +575,6 @@ export class CustomerFormComponent implements OnInit {
       const filename = withoutQuery.split('/').pop() ?? '';
       return decodeURIComponent(filename) || 'passport-file';
     }
-  }
-
-  onPastePassport(event: ClipboardEvent): void {
-    if (!this.isPerson()) {
-      this.toast.error('Passport import is only available for person customers');
-      event.preventDefault();
-      return;
-    }
-
-    const items = event.clipboardData?.items;
-    if (!items) {
-      return;
-    }
-
-    for (const item of Array.from(items)) {
-      if (item.type?.includes('image')) {
-        const file = item.getAsFile();
-        if (!file) {
-          continue;
-        }
-        const reader = new FileReader();
-        reader.onload = () => {
-          this.passportPastePreviewUrl.set(String(reader.result));
-        };
-        reader.readAsDataURL(file);
-        this.passportPasteStatus.set('Uploading...');
-        this.passportFile.set(file);
-        this.runPassportImport(file);
-        event.preventDefault();
-        break;
-      }
-    }
-  }
-
-  onToggleUseAi(event: Event): void {
-    const target = event.target as HTMLInputElement | null;
-    this.ocrUseAi.set(Boolean(target?.checked));
-  }
-
-  onPassportImport(): void {
-    if (!this.isPerson()) {
-      this.toast.error('Passport import is only available for person customers');
-      return;
-    }
-    const file = this.passportFile();
-    if (!file) {
-      this.ocrMessage.set('No file selected');
-      this.ocrMessageTone.set('error');
-      return;
-    }
-    this.runPassportImport(file);
   }
 
   private runPassportImport(file: File): void {
@@ -880,43 +1008,7 @@ export class CustomerFormComponent implements OnInit {
     companyNameControl?.updateValueAndValidity({ emitEvent: false });
   }
 
-  formatName(controlName: 'first_name' | 'last_name'): void {
-    const control = this.form.get(controlName);
-    const value = control?.value;
-    if (value && typeof value === 'string' && value.trim().length > 0) {
-      const trimmed = value.trim();
-      const formatted = trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
-      if (formatted !== value) {
-        control.setValue(formatted, { emitEvent: false });
-        control.updateValueAndValidity();
-      }
-    }
-  }
-
-  onCancel(): void {
-    const idParam = this.route.snapshot.paramMap.get('id');
-    const st = (history.state as any) || {};
-    const state: Record<string, unknown> = { focusTable: true };
-    if (idParam) {
-      const id = Number(idParam);
-      if (id) state['focusId'] = id;
-    }
-    if (st.searchQuery) state['searchQuery'] = st.searchQuery;
-    const page = Number(st.page);
-    if (Number.isFinite(page) && page > 0) {
-      state['page'] = Math.floor(page);
-    }
-    this.router.navigate(['/customers'], { state });
-  }
-
-  onSubmit(): void {
-    this.submitted.set(true);
-
-    if (this.form.invalid) {
-      this.toast.error('Please fix validation errors');
-      return;
-    }
-
+  private buildPayload(): CustomerCreateDto {
     const rawValue = this.form.getRawValue();
 
     // Use a helper to format dates consistently in local time (YYYY-MM-DD)
@@ -928,72 +1020,34 @@ export class CustomerFormComponent implements OnInit {
       return `${year}-${month}-${day}`;
     };
 
-    // Construct payload with camelCase keys expected by the API
-    const payload = {
-      ...rawValue,
+    return {
       customerType: rawValue.customer_type,
       firstName: rawValue.first_name,
       lastName: rawValue.last_name,
       companyName: rawValue.company_name,
-      addressBali: rawValue.address_bali,
-      addressAbroad: rawValue.address_abroad,
+      gender: rawValue.gender,
+      nationality: rawValue.nationality,
       birthdate: formatDate(rawValue.birthdate),
+      birthPlace: rawValue.birth_place,
       passportNumber: rawValue.passport_number,
       passportIssueDate: formatDate(rawValue.passport_issue_date),
       passportExpirationDate: formatDate(rawValue.passport_expiration_date),
-      birthPlace: rawValue.birth_place,
+      npwp: rawValue.npwp,
+      email: rawValue.email,
+      telephone: rawValue.telephone,
+      whatsapp: rawValue.whatsapp,
+      telegram: rawValue.telegram,
+      facebook: rawValue.facebook,
+      instagram: rawValue.instagram,
+      twitter: rawValue.twitter,
+      addressBali: rawValue.address_bali,
+      addressAbroad: rawValue.address_abroad,
       notifyDocumentsExpiration: rawValue.notify_documents_expiration,
       notifyBy: rawValue.notify_by,
+      active: rawValue.active,
+      title: rawValue.title,
       passportMetadata: this.passportMetadata(),
     };
-    this.isLoading.set(true);
-
-    const file = this.passportFile();
-    const requestPayload = file ? this.buildFormData(payload, file) : payload;
-    const sourceState = (history.state as any) || {};
-    const detailNavigationState: Record<string, unknown> = {
-      from: sourceState.from ?? 'customers',
-      searchQuery: sourceState.searchQuery ?? null,
-    };
-    const sourcePage = Number(sourceState.page);
-    if (Number.isFinite(sourcePage) && sourcePage > 0) {
-      detailNavigationState['page'] = Math.floor(sourcePage);
-    }
-
-    if (this.isEditMode()) {
-      const id = Number(this.route.snapshot.paramMap.get('id'));
-      this.customersService.updateCustomer(id, requestPayload).subscribe({
-        next: (data) => {
-          this.toast.success('Customer updated');
-          this.router.navigate(['/customers', data.id], { state: detailNavigationState });
-        },
-        error: (error) => {
-          applyServerErrorsToForm(this.form, error);
-          this.form.markAllAsTouched();
-          const message = extractServerErrorMessage(error);
-          this.toast.error(
-            message ? `Failed to update customer: ${message}` : 'Failed to update customer',
-          );
-          this.isLoading.set(false);
-        },
-      });
-    } else {
-      this.customersService.createCustomer(requestPayload).subscribe({
-        next: (data) => {
-          this.toast.success('Customer created');
-          this.router.navigate(['/customers', data.id], { state: detailNavigationState });
-        },
-        error: (error) => {
-          applyServerErrorsToForm(this.form, error);
-          this.form.markAllAsTouched();
-          const message = extractServerErrorMessage(error);
-          this.toast.error(
-            message ? `Failed to create customer: ${message}` : 'Failed to create customer',
-          );
-          this.isLoading.set(false);
-        },
-      });
-    }
   }
 
   private buildFormData(payload: Record<string, unknown>, file: File): FormData {

@@ -1,4 +1,6 @@
+import { describe, it, expect } from 'vitest';
 import { ApplicationListComponent } from './application-list.component';
+import { signal } from '@angular/core';
 
 describe('ApplicationListComponent invoice availability', () => {
   it('allows invoice creation for uninvoiced pending applications', () => {
@@ -25,11 +27,13 @@ describe('ApplicationListComponent invoice availability', () => {
 describe('ApplicationListComponent navigation state', () => {
   it('builds application detail state from the current list filters', () => {
     const component = Object.create(ApplicationListComponent.prototype) as ApplicationListComponent & {
-      query: () => string;
-      page: () => number;
+      query: { (): string; set: (val: string) => void };
+      page: { (): number; set: (val: number) => void };
     };
-    component.query = () => 'stefano';
-    component.page = () => 3;
+    
+    // Initialize signals properly
+    component.query = signal('stefano') as any;
+    component.page = signal(3) as any;
 
     expect(component.applicationDetailState({ id: 314 } as never)).toEqual({
       from: 'applications',

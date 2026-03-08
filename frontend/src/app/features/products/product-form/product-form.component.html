@@ -24,7 +24,7 @@
   @if (isLoading()) {
     <div class="text-muted-foreground">Loading...</div>
   } @else {
-    <form [formGroup]="form" (ngSubmit)="save()" class="space-y-6">
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="space-y-6">
       <app-form-error-summary [form]="form" [labels]="formErrorLabels" />
 
       <z-card class="overflow-hidden">

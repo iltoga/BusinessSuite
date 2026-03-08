@@ -1,6 +1,6 @@
 <!-- Progress header -->
 <z-card
-  class="rounded-lg border bg-card py-0 gap-0 [&_[data-slot=card-content]]:p-4 [&_[data-slot=card-content]]:space-y-4"
+  class="rounded-lg border bg-card py-0 gap-0 **:data-[slot=card-content]:p-4 **:data-[slot=card-content]:space-y-4"
 >
   <div class="flex items-center justify-between">
     <h4 class="text-sm font-semibold">AI Document Categorization</h4>
@@ -42,7 +42,9 @@
         <span class="text-destructive">🛡 {{ invalidResults().length }} invalid</span>
       }
       @if (validationErrorResults().length > 0) {
-        <span class="text-destructive">🛡 {{ validationErrorResults().length }} validation error</span>
+        <span class="text-destructive"
+          >🛡 {{ validationErrorResults().length }} validation error</span
+        >
       }
     </div>
     @if (unmatchedResults().length > 0) {

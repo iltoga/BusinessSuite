@@ -29,370 +29,379 @@
 } @else if (!customer()) {
   <div class="text-muted-foreground">Customer not found.</div>
 } @else {
-  <div class="space-y-6">
-    <!-- Header -->
-    <div class="flex flex-wrap items-start justify-between gap-4">
-      <div>
-        <h1 class="text-2xl font-semibold">Customer ID #{{ customer()!.id }}</h1>
-        <p class="text-sm text-muted-foreground">Customer detail</p>
-      </div>
-      <div class="customer-detail-header-actions flex w-full flex-wrap gap-2 sm:w-auto">
-        <button z-button zType="outline" (click)="onEdit()">Edit</button>
-        @if (isSuperuser()) {
-          <button z-button zType="destructive" (click)="onDelete()">Delete</button>
-        }
-        <button z-button zType="ghost" (click)="goBack()">Back</button>
+  <div class="customer-detail-container -m-3 sm:-m-6 space-y-4">
+    <!-- Sticky Header -->
+    <div class="customer-header sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b py-2 isolate">
+      <div class="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 class="text-2xl font-semibold">Customer ID #{{ customer()!.id }}</h1>
+          <p class="text-sm text-muted-foreground">
+            @if (customer()!.title) {
+              {{ customer()!.title }}.
+            }
+            @if (customer()!.firstName || customer()!.lastName) {
+              {{ customer()!.firstName }} {{ customer()!.lastName }}
+            } @else {
+              {{ customer()!.fullName }}
+            }
+            @if (customer()!.customerType === 'company' && customer()!.companyName) {
+              <span class="text-muted-foreground">· {{ customer()!.companyName }}</span>
+            }
+          </p>
+        </div>
+        <div class="customer-header-actions flex w-full flex-wrap gap-2 sm:w-auto">
+          <button z-button zType="outline" (click)="onEdit()">Edit</button>
+          @if (isSuperuser()) {
+            <button z-button zType="destructive" (click)="onDelete()">Delete</button>
+          }
+          <button z-button zType="ghost" (click)="goBack()">Back</button>
+        </div>
       </div>
     </div>
 
-    <!-- Identity Section -->
-    <z-card class="p-4 sm:p-6">
-      <div class="mb-4">
-        <h3 class="text-lg font-semibold mb-3 border-b pb-2">Identity</h3>
-        <div class="text-xl mb-2">
-          @if (customer()!.title) {
-            {{ customer()!.title }}.
-          }
-          @if (customer()!.firstName || customer()!.lastName) {
-            {{ customer()!.firstName }} {{ customer()!.lastName }}
-          } @else {
-            {{ customer()!.fullName }}
-          }
-        </div>
-        @if (customer()!.customerType === 'company' && customer()!.companyName) {
-          <div class="text-sm text-muted-foreground mb-3">
-            Company: {{ customer()!.companyName }}
-          </div>
-        }
-        <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <dt class="text-sm font-medium text-muted-foreground">Customer Type</dt>
-            <dd class="text-sm">{{ customer()!.customerType | titlecase }}</dd>
-          </div>
-          @if (customer()!.nationality) {
+    <!-- Main Grid Layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <!-- Left Column - Identity & Contact -->
+      <div class="lg:col-span-2 space-y-4">
+        <!-- Identity & Contact Combined Card -->
+        <z-card class="p-4 sm:p-5">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Identity Section -->
             <div>
-              <dt class="text-sm font-medium text-muted-foreground">Nationality</dt>
-              <dd class="text-sm">{{ customer()!.nationality }}</dd>
+              <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                Identity
+              </h3>
+              <dl class="space-y-2.5">
+                <div class="grid grid-cols-2 gap-2">
+                  <dt class="text-sm text-muted-foreground">Type</dt>
+                  <dd class="text-sm font-medium">{{ customer()!.customerType | titlecase }}</dd>
+                </div>
+                @if (customer()!.nationality) {
+                  <div class="grid grid-cols-2 gap-2">
+                    <dt class="text-sm text-muted-foreground">Nationality</dt>
+                    <dd class="text-sm">{{ customer()!.nationality }}</dd>
+                  </div>
+                }
+                @if (customer()!.birthPlace) {
+                  <div class="grid grid-cols-2 gap-2">
+                    <dt class="text-sm text-muted-foreground">Birth Place</dt>
+                    <dd class="text-sm">{{ customer()!.birthPlace }}</dd>
+                  </div>
+                }
+                @if (customer()!.birthdate) {
+                  <div class="grid grid-cols-2 gap-2">
+                    <dt class="text-sm text-muted-foreground">Birthdate</dt>
+                    <dd class="text-sm">{{ customer()!.birthdate | appDate }}</dd>
+                  </div>
+                }
+              </dl>
             </div>
-          }
-          @if (customer()!.birthPlace) {
+
+            <!-- Contact Section -->
             <div>
-              <dt class="text-sm font-medium text-muted-foreground">Birth Place</dt>
-              <dd class="text-sm">{{ customer()!.birthPlace }}</dd>
+              <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                Contact
+              </h3>
+              <dl class="space-y-2.5">
+                <div class="grid grid-cols-2 gap-2">
+                  <dt class="text-sm text-muted-foreground">Email</dt>
+                  <dd class="text-sm">{{ customer()!.email || '—' }}</dd>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <dt class="text-sm text-muted-foreground">Telephone</dt>
+                  <dd class="text-sm">{{ customer()!.telephone || '—' }}</dd>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <dt class="text-sm text-muted-foreground">Whatsapp</dt>
+                  <dd class="text-sm">{{ customer()!.whatsapp || '—' }}</dd>
+                </div>
+                @if (customer()!.telegram) {
+                  <div class="grid grid-cols-2 gap-2">
+                    <dt class="text-sm text-muted-foreground">Telegram</dt>
+                    <dd class="text-sm">{{ customer()!.telegram }}</dd>
+                  </div>
+                }
+                @if (customer()!.npwp) {
+                  <div class="grid grid-cols-2 gap-2">
+                    <dt class="text-sm text-muted-foreground">NPWP</dt>
+                    <dd class="text-sm">{{ customer()!.npwp }}</dd>
+                  </div>
+                }
+              </dl>
             </div>
-          }
-          @if (customer()!.birthdate) {
-            <div>
-              <dt class="text-sm font-medium text-muted-foreground">Birthdate</dt>
-              <dd class="text-sm">{{ customer()!.birthdate | appDate }}</dd>
-            </div>
-          }
-        </dl>
-      </div>
-    </z-card>
+          </div>
 
-    <!-- Contact & Payment Section -->
-    <z-card class="p-4 sm:p-6">
-      <div class="mb-4">
-        <h3 class="text-lg font-semibold mb-3 border-b pb-2">Contact & Payment</h3>
-        <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <dt class="text-sm font-medium text-muted-foreground">Email</dt>
-            <dd class="text-sm">{{ customer()!.email || '—' }}</dd>
-          </div>
-          <div>
-            <dt class="text-sm font-medium text-muted-foreground">Telephone</dt>
-            <dd class="text-sm">{{ customer()!.telephone || '—' }}</dd>
-          </div>
-          <div>
-            <dt class="text-sm font-medium text-muted-foreground">Whatsapp</dt>
-            <dd class="text-sm">{{ customer()!.whatsapp || '—' }}</dd>
-          </div>
-          <div>
-            <dt class="text-sm font-medium text-muted-foreground">Telegram</dt>
-            <dd class="text-sm">{{ customer()!.telegram || '—' }}</dd>
-          </div>
-          @if (customer()!.npwp) {
-            <div>
-              <dt class="text-sm font-medium text-muted-foreground">NPWP</dt>
-              <dd class="text-sm">{{ customer()!.npwp }}</dd>
-            </div>
-          }
-        </dl>
-      </div>
-
-      <!-- Address Section -->
-      <div class="mb-4">
-        <h4 class="text-md font-semibold mb-3 border-b pb-2">Address</h4>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <strong class="text-sm font-medium">Address in Bali</strong>
-            <div class="text-sm text-muted-foreground">{{ customer()!.addressBali || '—' }}</div>
-          </div>
-          <div>
-            <strong class="text-sm font-medium">Address Abroad</strong>
-            <div class="text-sm text-muted-foreground">{{ customer()!.addressAbroad || '—' }}</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Notifications Section -->
-      <div>
-        <h4 class="text-md font-semibold mb-3 border-b pb-2">Notifications</h4>
-        <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <dt class="text-sm font-medium text-muted-foreground">Notify Expiration</dt>
-            <dd class="text-sm">{{ customer()!.notifyDocumentsExpiration ? 'Yes' : 'No' }}</dd>
-          </div>
-          <div>
-            <dt class="text-sm font-medium text-muted-foreground">Notify By</dt>
-            <dd class="text-sm">{{ customer()!.notifyBy || '—' }}</dd>
-          </div>
-        </dl>
-      </div>
-    </z-card>
-
-    <!-- Passport Details Section -->
-    <z-card class="p-4 sm:p-6">
-      <div class="mb-4 border-b pb-2">
-        <h3 class="text-lg font-semibold">Passport Details</h3>
-      </div>
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Passport Image -->
-        <div>
-          @if (customer()!.passportFile) {
-            <app-image-magnifier
-              [src]="customer()!.passportFile"
-              [href]="customer()!.passportFile"
-              alt="Passport Image"
-              [imageClass]="'w-full max-w-sm h-auto rounded-lg shadow-sm border'"
-            />
-            <div class="mt-2 text-xs text-muted-foreground">
+          <!-- Address Section -->
+          <div class="mt-4 pt-4 border-t">
+            <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+              Address
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                File:
-                <a
-                  [href]="customer()!.passportFile"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="text-primary hover:underline"
-                  >{{ customer()!.passportFile | slice: -40 }}</a
+                <div class="text-xs text-muted-foreground mb-1">Address in Bali</div>
+                <div class="text-sm">{{ customer()!.addressBali || '—' }}</div>
+              </div>
+              <div>
+                <div class="text-xs text-muted-foreground mb-1">Address Abroad</div>
+                <div class="text-sm">{{ customer()!.addressAbroad || '—' }}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Notifications Section -->
+          <div class="mt-4 pt-4 border-t">
+            <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+              Notifications
+            </h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div class="flex items-center gap-2">
+                <div class="text-sm text-muted-foreground">Notify Expiration:</div>
+                <z-badge [zType]="customer()!.notifyDocumentsExpiration ? 'success' : 'outline'">
+                  {{ customer()!.notifyDocumentsExpiration ? 'Yes' : 'No' }}
+                </z-badge>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="text-sm text-muted-foreground">Notify By:</div>
+                <span class="text-sm">{{ customer()!.notifyBy || '—' }}</span>
+              </div>
+            </div>
+          </div>
+        </z-card>
+
+        <!-- Applications Section -->
+        <z-card class="p-4 sm:p-5">
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <h3 class="text-lg font-semibold">Applications</h3>
+            <button type="button" z-button zType="outline" zSize="sm" (click)="onCreateApplication()">
+              New application
+            </button>
+          </div>
+
+          <div class="flex flex-wrap gap-2 mb-4">
+            @for (option of applicationFilterOptions; track option.value) {
+              <button
+                type="button"
+                z-button
+                zSize="sm"
+                [zType]="applicationsFilter() === option.value ? 'default' : 'outline'"
+                (click)="onApplicationsFilterChange(option.value)"
+              >
+                {{ option.label }}
+              </button>
+            }
+          </div>
+
+          @if (pagedApplications().length > 0) {
+            <div class="overflow-x-auto customer-applications-table-wrap">
+              <table class="customer-applications-table w-full border-collapse">
+                <thead>
+                  <tr class="border-b">
+                    <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">#ID</th>
+                    <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
+                      Product
+                    </th>
+                    <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Type</th>
+                    <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
+                      Doc Date
+                    </th>
+                    <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
+                      Status
+                    </th>
+                    <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
+                      Invoice Status
+                    </th>
+                    <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
+                      Payment
+                    </th>
+                    <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (app of pagedApplications(); track app.id) {
+                    <tr
+                      class="border-b hover:bg-muted/50 cursor-pointer customer-application-row"
+                      role="button"
+                      tabindex="0"
+                      (click)="openApplicationDetails(app.id)"
+                      (keydown.enter)="openApplicationDetails(app.id)"
+                      (keydown.space)="$event.preventDefault(); openApplicationDetails(app.id)"
+                    >
+                      <td class="py-3 px-4 text-sm" data-label="ID">
+                        <span class="text-primary font-medium">{{ app.id }}</span>
+                      </td>
+                      <td class="py-3 px-4 text-sm" data-label="Product">
+                        <span class="text-primary">{{ app.product.name }}</span>
+                      </td>
+                      <td class="py-3 px-4 text-sm" data-label="Type">
+                        {{ app.product.productTypeDisplay || (app.product.productType | titlecase) }}
+                      </td>
+                      <td class="py-3 px-4 text-sm" data-label="Doc Date">
+                        {{ app.docDate | appDate }}
+                      </td>
+                      <td class="py-3 px-4 text-sm" data-label="Status">
+                        <z-badge [zType]="getStatusBadgeType(app.status)">{{
+                          app.statusDisplay || (app.status | titlecase)
+                        }}</z-badge>
+                      </td>
+                      <td class="py-3 px-4 text-sm" data-label="Invoice Status">
+                        @if (app.hasInvoice && app.invoiceId) {
+                          <div class="flex items-center gap-2">
+                            <z-badge zType="secondary">
+                              {{ app.invoiceStatusDisplay || (app.invoiceStatus | titlecase) }}
+                            </z-badge>
+                            <span class="text-xs text-muted-foreground">#{{ app.invoiceId }}</span>
+                          </div>
+                        } @else {
+                          <span class="text-muted-foreground">Uninvoiced</span>
+                        }
+                      </td>
+                      <td class="py-3 px-4 text-sm" data-label="Payment">
+                        <z-badge [zType]="getPaymentStatusBadgeType(app.paymentStatus)">
+                          {{ app.paymentStatusDisplay }}
+                        </z-badge>
+                      </td>
+                      <td class="py-3 px-4 text-sm app-history-actions-cell" data-label="Actions">
+                        <div class="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            z-button
+                            zType="outline"
+                            zSize="sm"
+                            (click)="$event.stopPropagation(); openApplicationDetails(app.id)"
+                          >
+                            View Application
+                          </button>
+                          @if (app.hasInvoice && app.invoiceId) {
+                            <a
+                              z-button
+                              zType="outline"
+                              zSize="sm"
+                              [routerLink]="['/invoices', app.invoiceId]"
+                              [state]="invoiceNavigationState()"
+                              (click)="$event.stopPropagation()"
+                            >
+                              View Invoice
+                            </a>
+                          } @else if (canCreateInvoice(app)) {
+                            <button
+                              type="button"
+                              z-button
+                              zType="success"
+                              zSize="sm"
+                              (click)="$event.stopPropagation(); onCreateInvoice(app.id)"
+                            >
+                              Create Invoice
+                            </button>
+                          } @else {
+                            <z-badge zType="warning">Not Ready</z-badge>
+                          }
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+
+            <div class="applications-pagination mt-4 flex flex-wrap items-center justify-between gap-3">
+              <div class="text-sm text-muted-foreground">
+                Showing {{ applicationsStartIndex() }}-{{ applicationsEndIndex() }} of
+                {{ totalApplications() }}
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  z-button
+                  zType="outline"
+                  zSize="sm"
+                  [disabled]="!hasPreviousApplicationsPage()"
+                  (click)="goToPreviousApplicationsPage()"
                 >
+                  Previous
+                </button>
+                <span class="text-sm text-muted-foreground">
+                  Page {{ applicationsPage() }} / {{ totalApplicationsPages() }}
+                </span>
+                <button
+                  type="button"
+                  z-button
+                  zType="outline"
+                  zSize="sm"
+                  [disabled]="!hasNextApplicationsPage()"
+                  (click)="goToNextApplicationsPage()"
+                >
+                  Next
+                </button>
               </div>
             </div>
           } @else {
-            <div class="text-muted-foreground text-sm">No passport file uploaded.</div>
+            <div class="text-muted-foreground text-sm">No applications found for this filter.</div>
           }
-        </div>
+        </z-card>
+      </div>
 
-        <!-- Passport Information -->
-        <div>
-          <table class="customer-passport-table w-full">
-            <tbody>
+      <!-- Right Column - Passport & Quick Info -->
+      <div class="space-y-4">
+        <!-- Passport Card -->
+        <z-card class="p-4 sm:p-5">
+          <div class="mb-4">
+            <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+              Passport Details
+            </h3>
+          </div>
+          <div class="space-y-4">
+            <!-- Passport Image -->
+            @if (customer()!.passportFile) {
+              <div class="passport-image-wrapper p-4 bg-background rounded-lg border">
+                <app-image-magnifier
+                  [src]="customer()!.passportFile"
+                  [href]="customer()!.passportFile"
+                  alt="Passport Image"
+                  [imageClass]="'w-full h-auto rounded shadow-sm'"
+                />
+                <div class="mt-2 text-xs text-muted-foreground">
+                  <div>
+                    File:
+                    <a
+                      [href]="customer()!.passportFile"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="text-primary hover:underline"
+                      >{{ customer()!.passportFile | slice: -40 }}</a
+                    >
+                  </div>
+                </div>
+              </div>
+            } @else {
+              <div class="text-muted-foreground text-sm">No passport file uploaded.</div>
+            }
+
+            <!-- Passport Information -->
+            <div class="pt-3 border-t space-y-2.5">
               @if (customer()!.passportNumber) {
-                <tr>
-                  <th scope="row" class="text-left py-2 text-sm font-medium">Passport Number</th>
-                  <td class="text-left py-2 text-sm" data-label="Passport Number">
-                    {{ customer()!.passportNumber }}
-                  </td>
-                </tr>
+                <div class="grid grid-cols-[1fr_1.2fr] gap-2">
+                  <dt class="text-xs text-muted-foreground">Passport Number</dt>
+                  <dd class="text-sm font-medium">{{ customer()!.passportNumber }}</dd>
+                </div>
               }
               @if (customer()!.passportIssueDate) {
-                <tr>
-                  <th scope="row" class="text-left py-2 text-sm font-medium">
-                    Passport Issue Date
-                  </th>
-                  <td class="text-left py-2 text-sm" data-label="Passport Issue Date">
-                    {{ customer()!.passportIssueDate | appDate }}
-                  </td>
-                </tr>
+                <div class="grid grid-cols-[1fr_1.2fr] gap-2">
+                  <dt class="text-xs text-muted-foreground">Issue Date</dt>
+                  <dd class="text-sm">{{ customer()!.passportIssueDate | appDate }}</dd>
+                </div>
               }
               @if (customer()!.passportExpirationDate) {
-                <tr>
-                  <th scope="row" class="text-left py-2 text-sm font-medium">
-                    Passport Expiration Date
-                  </th>
-                  <td class="text-left py-2 text-sm" data-label="Passport Expiration Date">
-                    {{ customer()!.passportExpirationDate | appDate }}
-                  </td>
-                </tr>
+                <div class="grid grid-cols-[1fr_1.2fr] gap-2">
+                  <dt class="text-xs text-muted-foreground">Expiration Date</dt>
+                  <dd class="text-sm">{{ customer()!.passportExpirationDate | appDate }}</dd>
+                </div>
               }
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </z-card>
-
-    <!-- Applications Section -->
-    <z-card class="p-4 sm:p-6">
-      <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <h3 class="text-lg font-semibold border-b pb-2">Applications</h3>
-        <button type="button" z-button zType="outline" zSize="sm" (click)="onCreateApplication()">
-          New application
-        </button>
-      </div>
-
-      <div class="flex flex-wrap gap-2 mb-4">
-        @for (option of applicationFilterOptions; track option.value) {
-          <button
-            type="button"
-            z-button
-            zSize="sm"
-            [zType]="applicationsFilter() === option.value ? 'default' : 'outline'"
-            (click)="onApplicationsFilterChange(option.value)"
-          >
-            {{ option.label }}
-          </button>
-        }
-      </div>
-
-      @if (pagedApplications().length > 0) {
-        <div class="overflow-x-auto customer-applications-table-wrap">
-          <table class="customer-applications-table w-full border-collapse">
-            <thead>
-              <tr class="border-b">
-                <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">#ID</th>
-                <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
-                  Product
-                </th>
-                <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Type</th>
-                <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
-                  Doc Date
-                </th>
-                <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
-                  Status
-                </th>
-                <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
-                  Invoice Status
-                </th>
-                <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
-                  Payment
-                </th>
-                <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (app of pagedApplications(); track app.id) {
-                <tr
-                  class="border-b hover:bg-muted/50 cursor-pointer customer-application-row"
-                  role="button"
-                  tabindex="0"
-                  (click)="openApplicationDetails(app.id)"
-                  (keydown.enter)="openApplicationDetails(app.id)"
-                  (keydown.space)="$event.preventDefault(); openApplicationDetails(app.id)"
-                >
-                  <td class="py-3 px-4 text-sm" data-label="ID">
-                    <span class="text-primary font-medium">{{ app.id }}</span>
-                  </td>
-                  <td class="py-3 px-4 text-sm" data-label="Product">
-                    <span class="text-primary">{{ app.product.name }}</span>
-                  </td>
-                  <td class="py-3 px-4 text-sm" data-label="Type">
-                    {{ app.product.productTypeDisplay || (app.product.productType | titlecase) }}
-                  </td>
-                  <td class="py-3 px-4 text-sm" data-label="Doc Date">
-                    {{ app.docDate | appDate }}
-                  </td>
-                  <td class="py-3 px-4 text-sm" data-label="Status">
-                    <z-badge [zType]="getStatusBadgeType(app.status)">{{
-                      app.statusDisplay || (app.status | titlecase)
-                    }}</z-badge>
-                  </td>
-                  <td class="py-3 px-4 text-sm" data-label="Invoice Status">
-                    @if (app.hasInvoice && app.invoiceId) {
-                      <div class="flex items-center gap-2">
-                        <z-badge zType="secondary">
-                          {{ app.invoiceStatusDisplay || (app.invoiceStatus | titlecase) }}
-                        </z-badge>
-                        <span class="text-xs text-muted-foreground">#{{ app.invoiceId }}</span>
-                      </div>
-                    } @else {
-                      <span class="text-muted-foreground">Uninvoiced</span>
-                    }
-                  </td>
-                  <td class="py-3 px-4 text-sm" data-label="Payment">
-                    <z-badge [zType]="getPaymentStatusBadgeType(app.paymentStatus)">
-                      {{ app.paymentStatusDisplay }}
-                    </z-badge>
-                  </td>
-                  <td class="py-3 px-4 text-sm app-history-actions-cell" data-label="Actions">
-                    <div class="flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        z-button
-                        zType="outline"
-                        zSize="sm"
-                        (click)="$event.stopPropagation(); openApplicationDetails(app.id)"
-                      >
-                        View Application
-                      </button>
-                      @if (app.hasInvoice && app.invoiceId) {
-                        <a
-                          z-button
-                          zType="outline"
-                          zSize="sm"
-                          [routerLink]="['/invoices', app.invoiceId]"
-                          [state]="invoiceNavigationState()"
-                          (click)="$event.stopPropagation()"
-                        >
-                          View Invoice
-                        </a>
-                      } @else if (canCreateInvoice(app)) {
-                        <button
-                          type="button"
-                          z-button
-                          zType="success"
-                          zSize="sm"
-                          (click)="$event.stopPropagation(); onCreateInvoice(app.id)"
-                        >
-                          Create Invoice
-                        </button>
-                      } @else {
-                        <z-badge zType="warning">Not Ready</z-badge>
-                      }
-                    </div>
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-
-        <div class="applications-pagination mt-4 flex flex-wrap items-center justify-between gap-3">
-          <div class="text-sm text-muted-foreground">
-            Showing {{ applicationsStartIndex() }}-{{ applicationsEndIndex() }} of
-            {{ totalApplications() }}
+            </div>
           </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              z-button
-              zType="outline"
-              zSize="sm"
-              [disabled]="!hasPreviousApplicationsPage()"
-              (click)="goToPreviousApplicationsPage()"
-            >
-              Previous
-            </button>
-            <span class="text-sm text-muted-foreground">
-              Page {{ applicationsPage() }} / {{ totalApplicationsPages() }}
-            </span>
-            <button
-              type="button"
-              z-button
-              zType="outline"
-              zSize="sm"
-              [disabled]="!hasNextApplicationsPage()"
-              (click)="goToNextApplicationsPage()"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      } @else {
-        <div class="text-muted-foreground text-sm">No applications found for this filter.</div>
-      }
-    </z-card>
+        </z-card>
+      </div>
+    </div>
   </div>
 }

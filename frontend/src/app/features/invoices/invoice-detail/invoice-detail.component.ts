@@ -9,9 +9,10 @@ import {
   inject,
   signal,
   viewChild,
-  type OnInit,
+  type TemplateRef,
 } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { Observable } from 'rxjs';
 
 import {
   InvoicesService,
@@ -21,7 +22,10 @@ import {
   type Payment,
 } from '@/core/api';
 import { ConfigService } from '@/core/services/config.service';
-import { GlobalToastService } from '@/core/services/toast.service';
+import {
+  BaseDetailComponent,
+  BaseDetailConfig,
+} from '@/shared/core/base-detail.component';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
@@ -37,6 +41,15 @@ import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 import { PaymentModalComponent } from '../payment-modal/payment-modal.component';
 
+/**
+ * Invoice detail component
+ * 
+ * Extends BaseDetailComponent to inherit common detail view patterns:
+ * - Keyboard shortcuts (E for edit, D for delete, B/Left for back)
+ * - Navigation state management (returnUrl, searchQuery, page)
+ * - Loading states
+ * - Delete confirmation
+ */
 @Component({
   selector: 'app-invoice-detail',
   standalone: true,
@@ -58,20 +71,18 @@ import { PaymentModalComponent } from '../payment-modal/payment-modal.component'
   styleUrls: ['./invoice-detail.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class InvoiceDetailComponent implements OnInit {
-  private route = inject(ActivatedRoute);
-  private router = inject(Router);
-  private invoicesApi = inject(InvoicesService);
-  private paymentsApi = inject(PaymentsService);
-  private toast = inject(GlobalToastService);
-  private platformId = inject(PLATFORM_ID);
-  private locale = inject(LOCALE_ID);
-  private configService = inject(ConfigService);
+export class InvoiceDetailComponent extends BaseDetailComponent<InvoiceDetail> {
+  private readonly invoicesApi = inject(InvoicesService);
+  private readonly paymentsApi = inject(PaymentsService);
+  private readonly locale = inject(LOCALE_ID);
+  private readonly configService = inject(ConfigService);
 
-  readonly invoice = signal<InvoiceDetail | null>(null);
-  readonly isLoading = signal(false);
-  readonly originSearchQuery = signal<string | null>(null);
-  readonly originPage = signal<number | null>(null);
+  // Expose item as invoice for template compatibility
+  get invoice() {
+    return this.item;
+  }
+
+  // Invoice-specific state
   readonly paymentModalOpen = signal(false);
   readonly selectedApplication = signal<InvoiceApplicationDetail | null>(null);
   readonly selectedApplications = signal<InvoiceApplicationDetail[]>([]);
@@ -81,9 +92,10 @@ export class InvoiceDetailComponent implements OnInit {
   readonly isDeletingPayment = signal(false);
   private readonly downloadDropdown = viewChild(InvoiceDownloadDropdownComponent);
 
-  readonly totalDue = computed(() => this.invoice()?.totalDueAmount ?? 0);
+  // Computed properties
+  readonly totalDue = computed(() => this.item()?.totalDueAmount ?? 0);
   readonly dueApplications = computed(() =>
-    (this.invoice()?.invoiceApplications ?? []).filter((app) => this.hasDue(app)),
+    (this.item()?.invoiceApplications ?? []).filter((app) => this.hasDue(app)),
   );
   readonly hasMultipleDueApplications = computed(() => this.dueApplications().length > 1);
   readonly deletePaymentMessage = computed(() => {
@@ -97,49 +109,49 @@ export class InvoiceDetailComponent implements OnInit {
     return `Delete payment of ${amount} dated ${date}? This will update invoice totals.`;
   });
 
-  goBack(): void {
-    const st = history.state as any;
-    const invoice = this.invoice();
-
-    const focusState: Record<string, unknown> = {
-      focusTable: true,
-      focusId: invoice?.id,
-      searchQuery: this.originSearchQuery(),
-    };
-    if (this.originPage()) {
-      focusState['page'] = this.originPage();
-    }
-
-    if (st?.from === 'applications') {
-      this.router.navigate(['/applications'], { state: focusState });
-      return;
-    }
-
-    if (typeof st?.returnUrl === 'string' && st.returnUrl.startsWith('/')) {
-      this.router.navigateByUrl(st.returnUrl, {
-        state: {
-          searchQuery: st.searchQuery ?? this.originSearchQuery(),
-          page: st.page ?? this.originPage() ?? null,
-        },
-      });
-      return;
-    }
-
-    if (st?.from === 'customer-detail' && st?.customerId) {
-      this.router.navigate(['/customers', st.customerId], {
-        state: {
-          searchQuery: st.searchQuery ?? this.originSearchQuery(),
-          page: st.page ?? this.originPage() ?? null,
-        },
-      });
-      return;
-    }
-
-    this.router.navigate(['/invoices'], { state: focusState });
+  constructor() {
+    super();
+    this.config = {
+      entityType: 'invoices',
+      entityLabel: 'Invoice',
+      enableDelete: false, // Invoice delete handled differently
+    } as BaseDetailConfig<InvoiceDetail>;
   }
 
-  @HostListener('window:keydown', ['$event'])
-  handleGlobalKeydown(event: KeyboardEvent): void {
+  /**
+   * Load invoice from service
+   */
+  protected override loadItem(id: number): Observable<InvoiceDetail> {
+    return this.invoicesApi.invoicesRetrieve(id);
+  }
+
+  /**
+   * Delete invoice - not implemented in base, handled separately
+   */
+  protected override deleteItem(id: number): Observable<any> {
+    // Invoice deletion is more complex and handled via dialog
+    // This is a placeholder to satisfy the base class contract
+    throw new Error('Invoice deletion requires special handling');
+  }
+
+  /**
+   * Initialize component
+   */
+  override ngOnInit(): void {
+    if (!this.isBrowser) return;
+
+    this.restoreNavigationState();
+
+    const idParam = this.route.snapshot.paramMap.get('id');
+    if (idParam) {
+      this.loadInvoice(Number(idParam));
+    }
+  }
+
+  /**
+   * Handle keyboard shortcuts
+   */
+  override handleGlobalKeydown(event: KeyboardEvent): void {
     const activeElement = document.activeElement;
     const isInput =
       activeElement instanceof HTMLInputElement ||
@@ -149,13 +161,13 @@ export class InvoiceDetailComponent implements OnInit {
     if (isInput) return;
     if (event.repeat) return;
 
-    const invoice = this.invoice();
+    const invoice = this.item();
     if (!invoice) return;
 
     // E --> Edit
     if (event.key === 'E' && !event.ctrlKey && !event.altKey && !event.metaKey) {
       event.preventDefault();
-      this.navigateToEdit(invoice.id);
+      this.onEdit();
     }
 
     // B or Left Arrow --> Back to list
@@ -182,10 +194,34 @@ export class InvoiceDetailComponent implements OnInit {
     }
   }
 
+  /**
+   * Navigate to edit invoice
+   */
+  onEdit(): void {
+    const invoice = this.item();
+    if (!invoice) return;
+    this.router.navigate(['/invoices', invoice.id, 'edit'], {
+      state: {
+        from: history.state?.from,
+        customerId: history.state?.customerId,
+        returnUrl: history.state?.returnUrl,
+        focusId: invoice.id,
+        searchQuery: this.originSearchQuery(),
+        page: this.originPage() ?? undefined,
+      },
+    });
+  }
+
+  /**
+   * Check if application has due amount
+   */
   hasDue(app: InvoiceApplicationDetail): boolean {
     return Number(app.dueAmount) > 0;
   }
 
+  /**
+   * Get application product code
+   */
   getApplicationProductCode(app: InvoiceApplicationDetail): string {
     const lineProduct = app.product as { code?: string | null } | null;
     const customerApplication = app.customerApplication as
@@ -194,6 +230,9 @@ export class InvoiceDetailComponent implements OnInit {
     return lineProduct?.code ?? customerApplication?.product?.code ?? '—';
   }
 
+  /**
+   * Get application product name
+   */
   getApplicationProductName(app: InvoiceApplicationDetail): string {
     const lineProduct = app.product as { name?: string | null } | null;
     const customerApplication = app.customerApplication as
@@ -202,6 +241,9 @@ export class InvoiceDetailComponent implements OnInit {
     return lineProduct?.name ?? customerApplication?.product?.name ?? '—';
   }
 
+  /**
+   * Get application customer name
+   */
   getApplicationCustomerName(app: InvoiceApplicationDetail): string {
     const customerApplication = app.customerApplication as
       | { customer?: { fullName?: string | null } | null }
@@ -209,8 +251,11 @@ export class InvoiceDetailComponent implements OnInit {
     return customerApplication?.customer?.fullName ?? 'Unlinked line item';
   }
 
+  /**
+   * Open linked application
+   */
   openLinkedApplication(applicationId: number): void {
-    const invoiceId = this.invoice()?.id;
+    const invoiceId = this.item()?.id;
     if (!invoiceId || !applicationId) {
       return;
     }
@@ -227,23 +272,9 @@ export class InvoiceDetailComponent implements OnInit {
     });
   }
 
-  ngOnInit(): void {
-    if (!isPlatformBrowser(this.platformId)) {
-      return;
-    }
-    const st = (window as any).history.state || {};
-    this.originSearchQuery.set(st.searchQuery ?? null);
-    const page = Number(st.page);
-    if (Number.isFinite(page) && page > 0) {
-      this.originPage.set(Math.floor(page));
-    }
-
-    const idParam = this.route.snapshot.paramMap.get('id');
-    if (idParam) {
-      this.loadInvoice(Number(idParam));
-    }
-  }
-
+  /**
+   * Open payment modal for application
+   */
   openPaymentModal(app: InvoiceApplicationDetail): void {
     this.selectedApplication.set(app);
     this.selectedApplications.set([]);
@@ -251,19 +282,9 @@ export class InvoiceDetailComponent implements OnInit {
     this.paymentModalOpen.set(true);
   }
 
-  navigateToEdit(invoiceId: number): void {
-    this.router.navigate(['/invoices', invoiceId, 'edit'], {
-      state: {
-        from: history.state?.from,
-        customerId: history.state?.customerId,
-        returnUrl: history.state?.returnUrl,
-        focusId: invoiceId,
-        searchQuery: this.originSearchQuery(),
-        page: this.originPage() ?? undefined,
-      },
-    });
-  }
-
+  /**
+   * Open full payment modal for all due applications
+   */
   openFullPaymentModal(): void {
     this.selectedApplication.set(null);
     this.selectedApplications.set(this.dueApplications());
@@ -271,6 +292,9 @@ export class InvoiceDetailComponent implements OnInit {
     this.paymentModalOpen.set(true);
   }
 
+  /**
+   * Open edit payment modal
+   */
   openEditPaymentModal(app: InvoiceApplicationDetail, payment: Payment): void {
     this.selectedApplication.set(app);
     this.selectedApplications.set([]);
@@ -278,16 +302,25 @@ export class InvoiceDetailComponent implements OnInit {
     this.paymentModalOpen.set(true);
   }
 
+  /**
+   * Request delete payment
+   */
   requestDeletePayment(payment: Payment): void {
     this.paymentToDelete.set(payment);
     this.paymentDeleteOpen.set(true);
   }
 
+  /**
+   * Cancel delete payment
+   */
   cancelDeletePayment(): void {
     this.paymentDeleteOpen.set(false);
     this.paymentToDelete.set(null);
   }
 
+  /**
+   * Confirm delete payment
+   */
   confirmDeletePayment(): void {
     const payment = this.paymentToDelete();
     if (!payment || this.isDeletingPayment()) {
@@ -303,7 +336,7 @@ export class InvoiceDetailComponent implements OnInit {
         this.paymentDeleteOpen.set(false);
         this.paymentToDelete.set(null);
 
-        const id = this.invoice()?.id;
+        const id = this.item()?.id;
         if (id) {
           this.loadInvoice(id);
         }
@@ -320,6 +353,9 @@ export class InvoiceDetailComponent implements OnInit {
     });
   }
 
+  /**
+   * Close payment modal
+   */
   closePaymentModal(): void {
     this.paymentModalOpen.set(false);
     this.selectedApplication.set(null);
@@ -327,14 +363,20 @@ export class InvoiceDetailComponent implements OnInit {
     this.selectedPayment.set(null);
   }
 
+  /**
+   * Handle payment saved
+   */
   onPaymentSaved(): void {
-    const id = this.invoice()?.id;
+    const id = this.item()?.id;
     if (id) {
       this.loadInvoice(id);
     }
     this.closePaymentModal();
   }
 
+  /**
+   * Get status badge variant
+   */
   statusVariant(
     status?: string | null,
   ): 'default' | 'secondary' | 'success' | 'warning' | 'destructive' {
@@ -356,12 +398,18 @@ export class InvoiceDetailComponent implements OnInit {
     }
   }
 
+  /**
+   * Get payment status variant
+   */
   paymentStatusVariant(
     status?: string | null,
   ): 'default' | 'secondary' | 'success' | 'warning' | 'destructive' {
     return this.statusVariant(status);
   }
 
+  /**
+   * Format currency value
+   */
   formatCurrency(value?: string | number | null): string {
     if (value === null || value === undefined || value === '') return '—';
     const n = Number(value);
@@ -373,6 +421,26 @@ export class InvoiceDetailComponent implements OnInit {
     }).format(n);
   }
 
+  /**
+   * Load invoice
+   */
+  private loadInvoice(id: number): void {
+    this.isLoading.set(true);
+    this.invoicesApi.invoicesRetrieve(id).subscribe({
+      next: (invoice: InvoiceDetail) => {
+        this.item.set(invoice);
+        this.isLoading.set(false);
+      },
+      error: () => {
+        this.toast.error('Failed to load invoice');
+        this.isLoading.set(false);
+      },
+    });
+  }
+
+  /**
+   * Format date for display
+   */
   private formatDateForDisplay(value: string | null | undefined): string {
     if (!value) {
       return '—';
@@ -388,6 +456,9 @@ export class InvoiceDetailComponent implements OnInit {
     );
   }
 
+  /**
+   * Parse API date
+   */
   private parseApiDate(value: string): Date | null {
     const trimmed = value.trim();
     if (!trimmed) {
@@ -411,25 +482,14 @@ export class InvoiceDetailComponent implements OnInit {
     return date;
   }
 
+  /**
+   * Normalize date format
+   */
   private normalizeDateFormat(format: string | null | undefined): string {
     const normalized = (format ?? '').trim();
     if (['dd-MM-yyyy', 'yyyy-MM-dd', 'dd/MM/yyyy', 'MM/dd/yyyy'].includes(normalized)) {
       return normalized;
     }
     return 'dd-MM-yyyy';
-  }
-
-  private loadInvoice(id: number): void {
-    this.isLoading.set(true);
-    this.invoicesApi.invoicesRetrieve(id).subscribe({
-      next: (invoice: InvoiceDetail) => {
-        this.invoice.set(invoice);
-        this.isLoading.set(false);
-      },
-      error: () => {
-        this.toast.error('Failed to load invoice');
-        this.isLoading.set(false);
-      },
-    });
   }
 }

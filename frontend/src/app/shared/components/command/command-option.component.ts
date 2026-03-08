@@ -25,6 +25,7 @@ import { mergeClasses, transform } from '@/shared/utils/merge-classes';
   imports: [ZardIconComponent],
   template: `
     <div
+      class="z-command-option"
       [class]="classes()"
       [class.hidden]="!shouldShow()"
       [attr.role]="'option'"
@@ -70,7 +71,7 @@ export class ZardCommandOptionComponent {
 
   protected readonly classes = computed(() => {
     const baseClasses = commandItemVariants({ variant: this.variant() });
-    const selectedClasses = this.isSelected() ? 'bg-accent text-accent-foreground' : '';
+    const selectedClasses = this.isSelected() ? 'bg-muted text-foreground' : '';
     return mergeClasses(baseClasses, selectedClasses, this.class());
   });
 

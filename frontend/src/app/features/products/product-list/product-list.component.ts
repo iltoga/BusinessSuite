@@ -2,27 +2,26 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
-  DestroyRef,
   computed,
   ElementRef,
-  HostListener,
   inject,
   PLATFORM_ID,
   signal,
   viewChild,
-  type OnInit,
   type TemplateRef,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
-import { Subject, catchError, Observable, of, switchMap, takeWhile } from 'rxjs';
+import { Subject, catchError, of, switchMap, takeWhile } from 'rxjs';
 
 import { ProductsService, type Product } from '@/core/api';
-import { AuthService } from '@/core/services/auth.service';
+import { JobService } from '@/core/services/job.service';
 import { ConfigService } from '@/core/services/config.service';
 import { ProductImportExportService } from '@/core/services/product-import-export.service';
-import { SseService } from '@/core/services/sse.service';
-import { GlobalToastService } from '@/core/services/toast.service';
+import {
+  BaseListComponent,
+  BaseListConfig,
+} from '@/shared/core/base-list.component';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import {
   BulkDeleteDialogComponent,
@@ -50,6 +49,16 @@ import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 import { downloadBlob } from '@/shared/utils/file-download';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 
+/**
+ * Product list component
+ * 
+ * Extends BaseListComponent to inherit common list patterns:
+ * - Keyboard shortcuts (N for new, B/Left for back)
+ * - Navigation state restoration
+ * - Pagination, sorting, search
+ * - Focus management
+ * - Bulk delete support
+ */
 @Component({
   selector: 'app-product-list',
   standalone: true,
@@ -73,18 +82,32 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
   styleUrls: ['./product-list.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ProductListComponent implements OnInit {
-  private productsApi = inject(ProductsService);
-  private productImportExportApi = inject(ProductImportExportService);
-  private sseService = inject(SseService);
-  private authService = inject(AuthService);
-  private configService = inject(ConfigService);
-  private toast = inject(GlobalToastService);
-  private platformId = inject(PLATFORM_ID);
-  private router = inject(Router);
-  private readonly destroyRef = inject(DestroyRef);
+export class ProductListComponent extends BaseListComponent<Product> {
+  private readonly productsApi = inject(ProductsService);
+  private readonly productImportExportApi = inject(ProductImportExportService);
+  private readonly jobService = inject(JobService);
+  private readonly configService = inject(ConfigService);
   private readonly loadProductsTrigger$ = new Subject<void>();
 
+  // Expose products for template compatibility
+  get products() {
+    return this.items;
+  }
+
+  // Product-specific state
+  readonly includeDeprecated = signal(false);
+  readonly exportInProgress = signal(false);
+  readonly exportProgress = signal<number | null>(null);
+  readonly importInProgress = signal(false);
+  readonly importProgress = signal<number | null>(null);
+  readonly basePricesVisible = signal(false);
+
+  // Product delete dialog state
+  readonly productDeleteOpen = signal(false);
+  readonly productDeleteData = signal<ProductDeletePreviewData | null>(null);
+  readonly pendingDelete = signal<Product | null>(null);
+
+  // Template references
   private readonly nameTemplate =
     viewChild.required<TemplateRef<{ $implicit: Product; value: any; row: Product }>>(
       'nameTemplate',
@@ -117,10 +140,90 @@ export class ProductListComponent implements OnInit {
     );
   private readonly importFileInput = viewChild<ElementRef<HTMLInputElement>>('importFileInput');
 
-  // Access the data table for focus management
-  private readonly dataTable = viewChild.required(DataTableComponent);
+  // Product-specific bulk delete query
+  private readonly productBulkDeleteQuery = signal<string>('');
+
+  // Columns configuration
+  readonly columns = computed<ColumnConfig<Product>[]>(() => [
+    { key: 'code', header: 'Code', sortable: true, sortKey: 'code' },
+    { key: 'name', header: 'Name', sortable: true, sortKey: 'name', template: this.nameTemplate() },
+    { key: 'description', header: 'Description', template: this.descriptionTemplate() },
+    {
+      key: 'productType',
+      header: 'Type',
+      sortable: true,
+      sortKey: 'product_type',
+      template: this.typeTemplate(),
+    },
+    {
+      key: 'basePrice',
+      header: 'Base Price',
+      sortable: true,
+      sortKey: 'base_price',
+      headerActionTemplate: this.basePriceHeaderTemplate(),
+      template: this.priceTemplate(),
+    },
+    {
+      key: 'retailPrice',
+      header: 'Retail Price',
+      sortable: true,
+      sortKey: 'retail_price',
+      template: this.retailPriceTemplate(),
+    },
+    {
+      key: 'unitProfit',
+      header: 'Unit Profit',
+      template: this.profitTemplate(),
+    },
+    {
+      key: 'createdAt',
+      header: 'Added/Updated',
+      sortable: true,
+      sortKey: 'created_at',
+      template: this.createdAtTemplate(),
+    },
+    { key: 'actions', header: 'Actions' },
+  ]);
+
+  // Actions configuration
+  override readonly actions = computed<DataTableAction<Product>[]>(() => [
+    {
+      label: 'View',
+      icon: 'eye',
+      variant: 'default',
+      action: (item) => this.navigateToDetail(item.id),
+    },
+    {
+      label: 'Edit',
+      icon: 'settings',
+      variant: 'warning',
+      action: (item) => this.navigateToEdit(item.id),
+    },
+    {
+      label: 'Delete',
+      icon: 'trash',
+      variant: 'destructive',
+      isDestructive: true,
+      isVisible: () => this.isSuperuser(),
+      action: (item) => this.requestDelete(item),
+    },
+  ]);
+
+  // Row class for deprecated products
+  readonly rowClassFn = (row: Product): string => (row.deprecated ? 'opacity-60' : '');
 
   constructor() {
+    super();
+    this.config = {
+      entityType: 'products',
+      entityLabel: 'Products',
+      defaultPageSize: 10,
+      defaultOrdering: 'name',
+      enableBulkDelete: true,
+      enableDelete: true,
+    } as BaseListConfig<Product>;
+
+    // Setup load trigger with rxjs pattern
     this.loadProductsTrigger$
       .pipe(
         switchMap(() => {
@@ -152,204 +255,33 @@ export class ProductListComponent implements OnInit {
           return;
         }
 
-        this.products.set(response.results ?? []);
+        this.items.set(response.results ?? []);
         this.totalItems.set(response.count ?? 0);
         this.isLoading.set(false);
-
-        const table = this.dataTable();
-        if (table) {
-          const focusId = this.focusIdOnInit();
-          if (focusId) {
-            this.focusIdOnInit.set(null);
-            table.focusRowById(focusId);
-          } else if (this.focusTableOnInit()) {
-            this.focusTableOnInit.set(false);
-            table.focusFirstRowIfNone();
-          }
-        }
+        this.focusAfterLoad();
       });
   }
 
-  readonly products = signal<Product[]>([]);
-  readonly isLoading = signal(false);
-  readonly query = signal('');
-  readonly page = signal(1);
-  readonly pageSize = signal(10);
-  readonly totalItems = signal(0);
-  readonly ordering = signal<string | undefined>('name');
-  readonly includeDeprecated = signal(false);
-  readonly isSuperuser = this.authService.isSuperuser;
-
-  readonly bulkDeleteOpen = signal(false);
-  readonly bulkDeleteData = signal<BulkDeleteDialogData | null>(null);
-  private readonly bulkDeleteQuery = signal<string>('');
-
-  readonly productDeleteOpen = signal(false);
-  readonly productDeleteData = signal<ProductDeletePreviewData | null>(null);
-  readonly pendingDelete = signal<Product | null>(null);
-
-  readonly bulkDeleteLabel = computed(() =>
-    this.query().trim() ? 'Delete Selected Products' : 'Delete All Products',
-  );
-  readonly exportInProgress = signal(false);
-  readonly exportProgress = signal<number | null>(null);
-  readonly importInProgress = signal(false);
-  readonly importProgress = signal<number | null>(null);
-  readonly basePricesVisible = signal(false);
-
-  // When navigating back to the list we may want to focus a specific id or the table
-  private readonly focusTableOnInit = signal(false);
-  private readonly focusIdOnInit = signal<number | null>(null);
-
-  readonly columns = computed<ColumnConfig<Product>[]>(() => [
-    { key: 'code', header: 'Code', sortable: true, sortKey: 'code' },
-    { key: 'name', header: 'Name', sortable: true, sortKey: 'name', template: this.nameTemplate() },
-    { key: 'description', header: 'Description', template: this.descriptionTemplate() },
-    {
-      key: 'productType', // property name on the model (camelCase)
-      header: 'Type',
-      sortable: true,
-      sortKey: 'product_type', // server uses snake_case for ordering
-      template: this.typeTemplate(),
-    },
-
-    {
-      key: 'basePrice', // property name on the model (camelCase)
-      header: 'Base Price',
-      sortable: true,
-      sortKey: 'base_price', // server uses snake_case for ordering
-      headerActionTemplate: this.basePriceHeaderTemplate(),
-      template: this.priceTemplate(),
-    },
-    {
-      key: 'retailPrice',
-      header: 'Retail Price',
-      sortable: true,
-      sortKey: 'retail_price',
-      template: this.retailPriceTemplate(),
-    },
-    {
-      key: 'unitProfit',
-      header: 'Unit Profit',
-      template: this.profitTemplate(),
-    },
-    {
-      key: 'createdAt',
-      header: 'Added/Updated',
-      sortable: true,
-      sortKey: 'created_at',
-      template: this.createdAtTemplate(),
-    },
-    { key: 'actions', header: 'Actions' },
-  ]);
-
-  readonly actions = computed<DataTableAction<Product>[]>(() => [
-    {
-      label: 'View',
-      icon: 'eye',
-      variant: 'default',
-      action: (item) =>
-        this.router.navigate(['/products', item.id], {
-          state: {
-            from: 'products',
-            focusId: item.id,
-            searchQuery: this.query(),
-            page: this.page(),
-          },
-        }),
-    },
-    {
-      label: 'Edit',
-      icon: 'settings',
-      variant: 'warning',
-      action: (item) =>
-        this.router.navigate(['/products', item.id, 'edit'], {
-          state: {
-            from: 'products',
-            focusId: item.id,
-            searchQuery: this.query(),
-            page: this.page(),
-          },
-        }),
-    },
-    {
-      label: 'Delete',
-      icon: 'trash',
-      variant: 'destructive',
-      isDestructive: true,
-      isVisible: () => this.isSuperuser(),
-      action: (item) => this.requestDelete(item),
-    },
-  ]);
-
-  readonly totalPages = computed(() => {
-    const total = this.totalItems();
-    const size = this.pageSize();
-    return Math.max(1, Math.ceil(total / size));
-  });
-
-  readonly rowClassFn = (row: Product): string => (row.deprecated ? 'opacity-60' : '');
-
-  @HostListener('window:keydown', ['$event'])
-  handleGlobalKeydown(event: KeyboardEvent): void {
-    const activeElement = document.activeElement as HTMLElement | null;
-    const isInput =
-      activeElement instanceof HTMLInputElement ||
-      activeElement instanceof HTMLTextAreaElement ||
-      (activeElement && activeElement.isContentEditable);
-
-    if (isInput) return;
-
-    // Shift+N for New Product
-    if (event.key === 'N' && !event.ctrlKey && !event.altKey && !event.metaKey) {
-      event.preventDefault();
-      this.router.navigate(['/products', 'new'], {
-        state: { from: 'products', searchQuery: this.query(), page: this.page() },
-      });
-    }
+  /**
+   * Load products from service
+   */
+  protected override loadItems(): void {
+    if (!this.isBrowser) return;
+    this.loadProductsTrigger$.next();
   }
 
-  ngOnInit(): void {
-    if (!isPlatformBrowser(this.platformId)) {
-      return;
-    }
-    const st = (window as any).history.state || {};
-    this.focusTableOnInit.set(Boolean(st.focusTable));
-    this.focusIdOnInit.set(st.focusId ? Number(st.focusId) : null);
-    const restoredPage = Number(st.page);
-    if (Number.isFinite(restoredPage) && restoredPage > 0) {
-      this.page.set(Math.floor(restoredPage));
-    }
-    if (st.searchQuery) {
-      this.query.set(String(st.searchQuery));
-    }
-    this.loadProducts();
-  }
-
-  onQueryChange(value: string): void {
-    this.query.set(value.trim());
-    this.page.set(1);
-    this.loadProducts();
-  }
-
-  onPageChange(page: number): void {
-    this.page.set(page);
-    this.loadProducts();
-  }
-
-  onSortChange(sort: SortEvent): void {
-    const ordering = sort.direction === 'desc' ? `-${sort.column}` : sort.column;
-    this.ordering.set(ordering);
-    this.page.set(1);
-    this.loadProducts();
-  }
-
+  /**
+   * Handle toggle include deprecated
+   */
   onToggleIncludeDeprecated(value: boolean): void {
     this.includeDeprecated.set(value);
     this.page.set(1);
-    this.loadProducts();
+    this.loadItems();
   }
 
+  /**
+   * Request delete for a product
+   */
   requestDelete(product: Product): void {
     if (!this.isSuperuser()) {
       return;
@@ -370,6 +302,9 @@ export class ProductListComponent implements OnInit {
     });
   }
 
+  /**
+   * Handle product delete confirmation
+   */
   onProductDeleteConfirmed(result: ProductDeleteDialogResult): void {
     const product = this.pendingDelete();
     if (!product) {
@@ -383,7 +318,7 @@ export class ProductListComponent implements OnInit {
       next: () => {
         this.toast.success(result.forceDelete ? 'Product force deleted' : 'Product deleted');
         this.resetProductDeleteDialog();
-        this.loadProducts();
+        this.loadItems();
       },
       error: (error) => {
         const message = extractServerErrorMessage(error);
@@ -395,18 +330,24 @@ export class ProductListComponent implements OnInit {
     });
   }
 
+  /**
+   * Handle product delete cancellation
+   */
   onProductDeleteCancelled(): void {
     this.resetProductDeleteDialog();
   }
 
-  openBulkDeleteDialog(): void {
+  /**
+   * Open bulk delete dialog
+   */
+  override openBulkDeleteDialog(): void {
     const query = this.query().trim();
     const mode = query ? 'selected' : 'all';
     const detailsText = query
       ? 'This will permanently remove all matching product records and their associated tasks from the database.'
       : 'This will permanently remove all product records and their associated tasks from the database.';
 
-    this.bulkDeleteQuery.set(query);
+    this.productBulkDeleteQuery.set(query);
     this.bulkDeleteData.set({
       entityLabel: 'Products',
       totalCount: this.totalItems(),
@@ -417,8 +358,11 @@ export class ProductListComponent implements OnInit {
     this.bulkDeleteOpen.set(true);
   }
 
+  /**
+   * Handle bulk delete confirmation
+   */
   onBulkDeleteConfirmed(): void {
-    const query = this.bulkDeleteQuery();
+    const query = this.productBulkDeleteQuery();
 
     this.productsApi.productsBulkDeleteCreate({ searchQuery: query || '' } as any).subscribe({
       next: (response) => {
@@ -427,8 +371,8 @@ export class ProductListComponent implements OnInit {
         this.toast.success(`Deleted ${count} product(s)`);
         this.bulkDeleteOpen.set(false);
         this.bulkDeleteData.set(null);
-        this.bulkDeleteQuery.set('');
-        this.loadProducts();
+        this.productBulkDeleteQuery.set('');
+        this.loadItems();
       },
       error: (error) => {
         const message = extractServerErrorMessage(error);
@@ -441,12 +385,18 @@ export class ProductListComponent implements OnInit {
     });
   }
 
-  onBulkDeleteCancelled(): void {
+  /**
+   * Handle bulk delete cancellation
+   */
+  override onBulkDeleteCancelled(): void {
     this.bulkDeleteOpen.set(false);
     this.bulkDeleteData.set(null);
-    this.bulkDeleteQuery.set('');
+    this.productBulkDeleteQuery.set('');
   }
 
+  /**
+   * Start product export
+   */
   startExport(): void {
     if (this.exportInProgress()) {
       return;
@@ -474,6 +424,9 @@ export class ProductListComponent implements OnInit {
     });
   }
 
+  /**
+   * Open import file picker
+   */
   openImportPicker(): void {
     if (this.importInProgress()) {
       return;
@@ -486,6 +439,9 @@ export class ProductListComponent implements OnInit {
     input.click();
   }
 
+  /**
+   * Handle import file selection
+   */
   onImportFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement | null;
     const file = input?.files?.[0];
@@ -522,17 +478,26 @@ export class ProductListComponent implements OnInit {
     });
   }
 
+  /**
+   * Get product type label
+   */
   productTypeLabel(type?: string | null): string {
     if (type === 'visa') return 'Visa';
     if (type === 'other') return 'Other';
     return type ?? '—';
   }
 
+  /**
+   * Toggle base price visibility
+   */
   toggleBasePriceVisibility(event?: Event): void {
     event?.stopPropagation();
     this.basePricesVisible.update((visible) => !visible);
   }
 
+  /**
+   * Resolve currency for a product
+   */
   resolveCurrency(row?: Product | null): string {
     const configured = String(this.configService.settings.baseCurrency ?? 'IDR')
       .trim()
@@ -546,6 +511,9 @@ export class ProductListComponent implements OnInit {
     return currency;
   }
 
+  /**
+   * Format currency value
+   */
   formatCurrency(value?: string | number | null, currencyCode?: string): string {
     if (value === null || value === undefined || value === '') return '—';
     const n = Number(value);
@@ -562,6 +530,9 @@ export class ProductListComponent implements OnInit {
     }
   }
 
+  /**
+   * Format base price with visibility toggle
+   */
   formatBasePrice(value?: string | number | null, row?: Product): string {
     if (!this.basePricesVisible()) {
       return '****';
@@ -569,12 +540,18 @@ export class ProductListComponent implements OnInit {
     return this.formatCurrency(value, this.resolveCurrency(row));
   }
 
+  /**
+   * Get retail price value
+   */
   retailPriceValue(row: Product): string | number | null {
     const retail = (row as any).retailPrice ?? (row as any).retail_price;
     const base = (row as any).basePrice ?? (row as any).base_price;
     return retail ?? base ?? null;
   }
 
+  /**
+   * Calculate unit profit
+   */
   unitProfitValue(row: Product): number {
     const retail = Number(this.retailPriceValue(row) ?? 0);
     const base = Number((row as any).basePrice ?? (row as any).base_price ?? 0);
@@ -584,6 +561,88 @@ export class ProductListComponent implements OnInit {
     return retail - base;
   }
 
+  /**
+   * Watch export job progress
+   */
+  private watchExportJob(jobId: string): void {
+    this.jobService.watchJob(jobId).subscribe({
+      next: (job) => {
+        this.exportProgress.set(Number(job.progress ?? 0));
+
+        if (job.status === 'completed') {
+          this.downloadExport(jobId);
+          this.exportInProgress.set(false);
+          this.exportProgress.set(null);
+        } else if (job.status === 'failed') {
+          this.toast.error(job.errorMessage || 'Product export failed');
+          this.exportInProgress.set(false);
+          this.exportProgress.set(null);
+        }
+      },
+      error: () => {
+        this.toast.error('Failed to track export progress');
+        this.exportInProgress.set(false);
+        this.exportProgress.set(null);
+      },
+    });
+  }
+
+  /**
+   * Watch import job progress
+   */
+  private watchImportJob(jobId: string): void {
+    this.jobService.watchJob(jobId).subscribe({
+      next: (job) => {
+        this.importProgress.set(Number(job.progress ?? 0));
+        if (job.status === 'completed') {
+          this.toast.success('Import completed successfully');
+          this.importInProgress.set(false);
+          this.importProgress.set(null);
+          this.loadItems();
+        } else if (job.status === 'failed') {
+          this.toast.error(job.errorMessage || 'Product import failed');
+          this.importInProgress.set(false);
+          this.importProgress.set(null);
+        }
+      },
+      error: () => {
+        this.toast.error('Failed to track import progress');
+        this.importInProgress.set(false);
+        this.importProgress.set(null);
+      },
+    });
+  }
+
+  /**
+   * Download export file
+   */
+  private downloadExport(jobId: string): void {
+    this.productImportExportApi.downloadExport(jobId).subscribe({
+      next: (response) => {
+        const blob = response.body;
+        if (blob) {
+          downloadBlob(blob, `products-export-${jobId}.xlsx`);
+          this.toast.success('Export completed successfully');
+        }
+      },
+      error: () => {
+        this.toast.error('Failed to download export file');
+      },
+    });
+  }
+
+  /**
+   * Reset product delete dialog
+   */
+  private resetProductDeleteDialog(): void {
+    this.productDeleteOpen.set(false);
+    this.productDeleteData.set(null);
+    this.pendingDelete.set(null);
+  }
+
+  /**
+   * Map product delete preview response
+   */
   private mapProductDeletePreview(response: unknown, product: Product): ProductDeletePreviewData {
     const payload: any = response ?? {};
     const relatedCounts: any = payload.relatedCounts ?? payload.related_counts ?? {};
@@ -667,122 +726,29 @@ export class ProductListComponent implements OnInit {
     };
   }
 
+  /**
+   * Convert value to array
+   */
   private asArray<T>(value: unknown): T[] {
     return Array.isArray(value) ? (value as T[]) : [];
   }
 
+  /**
+   * Convert value to number
+   */
   private asNumber(value: unknown): number {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : 0;
   }
 
+  /**
+   * Convert value to nullable number
+   */
   private asNullableNumber(value: unknown): number | null {
     if (value === null || value === undefined || value === '') {
       return null;
     }
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : null;
-  }
-
-  private resetProductDeleteDialog(): void {
-    this.productDeleteOpen.set(false);
-    this.productDeleteData.set(null);
-    this.pendingDelete.set(null);
-  }
-
-  private watchExportJob(jobId: string): void {
-    this.watchJob(jobId).subscribe({
-      next: (job: any) => {
-        this.exportProgress.set(Number(job?.progress ?? 0));
-
-        if (job?.status === 'completed') {
-          this.downloadExport(jobId);
-          this.exportInProgress.set(false);
-          this.exportProgress.set(null);
-        } else if (job?.status === 'failed') {
-          this.toast.error(job?.errorMessage || job?.error_message || 'Product export failed');
-          this.exportInProgress.set(false);
-          this.exportProgress.set(null);
-        }
-      },
-      error: () => {
-        this.toast.error('Failed to track export progress');
-        this.exportInProgress.set(false);
-        this.exportProgress.set(null);
-      },
-    });
-  }
-
-  private watchImportJob(jobId: string): void {
-    this.watchJob(jobId).subscribe({
-      next: (job: any) => {
-        this.importProgress.set(Number(job?.progress ?? 0));
-        if (job?.status === 'completed') {
-          const result = (job?.result ?? {}) as Record<string, unknown>;
-          const created = Number(result['created'] ?? 0);
-          const updated = Number(result['updated'] ?? 0);
-          const errors = Number(result['errors'] ?? 0);
-          this.toast.success(
-            `Import completed: ${created} created, ${updated} updated, ${errors} error(s).`,
-          );
-          this.importInProgress.set(false);
-          this.importProgress.set(null);
-          this.page.set(1);
-          this.loadProducts();
-        } else if (job?.status === 'failed') {
-          this.toast.error(job?.errorMessage || job?.error_message || 'Product import failed');
-          this.importInProgress.set(false);
-          this.importProgress.set(null);
-        }
-      },
-      error: () => {
-        this.toast.error('Failed to track import progress');
-        this.importInProgress.set(false);
-        this.importProgress.set(null);
-      },
-    });
-  }
-
-  private downloadExport(jobId: string): void {
-    this.productImportExportApi.downloadExport(jobId).subscribe({
-      next: (response) => {
-        const filename = this.resolveFilename(response) || 'products_export.xlsx';
-        downloadBlob(response.body ?? new Blob(), filename);
-        this.toast.success('Product export ready');
-      },
-      error: (error) => {
-        const message = extractServerErrorMessage(error);
-        this.toast.error(
-          message ? `Failed to download export: ${message}` : 'Failed to download export',
-        );
-      },
-    });
-  }
-
-  private resolveFilename(response: {
-    headers?: { get(name: string): string | null };
-  }): string | null {
-    const contentDisposition = response.headers?.get('content-disposition');
-    if (!contentDisposition) return null;
-    const filenameStarMatch = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
-    if (filenameStarMatch?.[1]) {
-      return decodeURIComponent(filenameStarMatch[1]);
-    }
-    const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/i);
-    return filenameMatch?.[1] ?? null;
-  }
-
-  private watchJob(jobId: string): Observable<any> {
-    return this.sseService.connect<any>(`/api/async-jobs/status/${jobId}/`).pipe(
-      catchError(() => this.productImportExportApi.pollJob(jobId)),
-      takeWhile((job) => job?.status !== 'completed' && job?.status !== 'failed', true),
-    );
-  }
-
-  private loadProducts(): void {
-    if (!isPlatformBrowser(this.platformId)) {
-      return;
-    }
-    this.loadProductsTrigger$.next();
   }
 }

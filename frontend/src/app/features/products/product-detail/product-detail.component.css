@@ -2,6 +2,25 @@
   display: block;
 }
 
+.product-detail-container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Sticky header styling */
+.product-header {
+  transition: box-shadow 0.2s ease;
+}
+
+.product-header.sticky {
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+/* Ensure cards don't overlap the header */
+.product-detail-container z-card {
+  position: relative;
+}
+
 .product-identity {
   font-size: clamp(1.75rem, 3.2vw, 2.5rem);
   font-weight: 800;

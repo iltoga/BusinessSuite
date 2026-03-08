@@ -1,16 +1,19 @@
-<div class="flex flex-col gap-6">
-  <div class="flex flex-wrap items-center justify-between gap-3">
-    <div class="flex flex-col gap-1">
-      <p class="text-xs uppercase tracking-wider text-muted-foreground">Product Detail</p>
-      @if (product()) {
-        <h1 class="product-identity">{{ product()?.code }} · {{ product()?.name }}</h1>
-      }
-    </div>
-    <div class="flex items-center gap-2">
-      @if (product()) {
-        <z-button zType="warning" zSize="default" (click)="navigateToEdit(product()!.id)">Edit</z-button>
-      }
-      <z-button zType="outline" zSize="default" (click)="navigateToList(product()?.id)">Back</z-button>
+<div class="product-detail-container -m-3 sm:-m-6 space-y-4">
+  <!-- Sticky Header -->
+  <div class="product-header sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b py-2 isolate">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div class="flex flex-col gap-1">
+        <p class="text-xs uppercase tracking-wider text-muted-foreground">Product Detail</p>
+        @if (product()) {
+          <h1 class="product-identity">{{ product()?.code }} · {{ product()?.name }}</h1>
+        }
+      </div>
+      <div class="flex items-center gap-2">
+        @if (product()) {
+          <z-button zType="warning" zSize="default" (click)="navigateToEdit(product()!.id)">Edit</z-button>
+        }
+        <z-button zType="outline" zSize="default" (click)="navigateToList(product()?.id)">Back</z-button>
+      </div>
     </div>
   </div>
 

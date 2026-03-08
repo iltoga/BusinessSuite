@@ -2,8 +2,6 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
-  HostListener,
-  PLATFORM_ID,
   computed,
   inject,
   signal,
@@ -11,6 +9,7 @@ import {
 } from '@angular/core';
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { Observable } from 'rxjs';
 
 import {
   DocumentTypesService,
@@ -20,7 +19,10 @@ import {
   type ProductDetail,
 } from '@/core/api';
 import { ConfigService } from '@/core/services/config.service';
-import { GlobalToastService } from '@/core/services/toast.service';
+import {
+  BaseFormComponent,
+  BaseFormConfig,
+} from '@/shared/core/base-form.component';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
 import { FormErrorSummaryComponent } from '@/shared/components/form-error-summary/form-error-summary.component';
@@ -35,6 +37,15 @@ import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/uti
 
 type ProductTask = NonNullable<ProductDetail['tasks']>[number];
 
+/**
+ * Product form component
+ * 
+ * Extends BaseFormComponent to inherit common form patterns:
+ * - Keyboard shortcuts (Ctrl/Cmd+S to save, Escape to cancel)
+ * - Edit mode detection from route
+ * - Server error handling
+ * - Loading states
+ */
 @Component({
   selector: 'app-product-form',
   standalone: true,
@@ -53,20 +64,16 @@ type ProductTask = NonNullable<ProductDetail['tasks']>[number];
   styleUrls: ['./product-form.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ProductFormComponent implements OnInit {
-  private fb = inject(FormBuilder);
-  private route = inject(ActivatedRoute);
-  private router = inject(Router);
-  private productsApi = inject(ProductsService);
-  private documentTypesApi = inject(DocumentTypesService);
-  private configService = inject(ConfigService);
-  private toast = inject(GlobalToastService);
-  private platformId = inject(PLATFORM_ID);
+export class ProductFormComponent extends BaseFormComponent<
+  ProductDetail,
+  ProductCreateUpdate,
+  ProductCreateUpdate
+> implements OnInit {
+  private readonly productsApi = inject(ProductsService);
+  private readonly documentTypesApi = inject(DocumentTypesService);
+  private readonly configService = inject(ConfigService);
 
-  readonly isLoading = signal(false);
-  readonly isSaving = signal(false);
-  readonly isEditMode = signal(false);
-  readonly product = signal<ProductDetail | null>(null);
+  // Product-specific state
   readonly documentTypes = signal<DocumentType[]>([]);
 
   readonly requiredOptions = computed<SortableOption[]>(() =>
@@ -81,35 +88,16 @@ export class ProductFormComponent implements OnInit {
       .map((doc) => ({ id: doc.id, label: doc.name })),
   );
 
-  readonly form = this.fb.group(
-    {
-      name: ['', Validators.required],
-      code: ['', Validators.required],
-      description: [''],
-      basePrice: [0, [Validators.min(0)]],
-      retailPrice: [0, [Validators.min(0)]],
-      currency: [
-        this.configService.settings.baseCurrency ?? 'IDR',
-        [
-          Validators.required,
-          Validators.minLength(2),
-          Validators.maxLength(3),
-          Validators.pattern(/^[A-Za-z]{2,3}$/),
-        ],
-      ],
-      productType: ['visa', Validators.required],
-      validity: [null as number | null],
-      documentsMinValidity: [null as number | null],
-      applicationWindowDays: [null as number | null, [Validators.min(0)]],
-      validationPrompt: [''],
-      requiredDocumentIds: [[] as number[]],
-      optionalDocumentIds: [[] as number[]],
-      tasks: this.fb.array<FormGroup>([]),
-    },
-    { validators: [this.retailPriceValidator] },
-  );
+  readonly hasMultipleLastSteps = computed(() => {
+    const tasks = this.tasksArray.controls;
+    return tasks.filter((group) => group.get('lastStep')?.value).length > 1;
+  });
 
-  readonly formErrorLabels: Record<string, string> = {
+  // Product reference for template compatibility
+  readonly product = signal<ProductDetail | null>(null);
+
+  // Form error labels
+  override readonly formErrorLabels: Record<string, string> = {
     name: 'Name',
     code: 'Code',
     description: 'Description',
@@ -126,7 +114,8 @@ export class ProductFormComponent implements OnInit {
     tasks: 'Tasks',
   };
 
-  readonly fieldTooltips: Record<string, string> = {
+  // Field tooltips
+  override readonly fieldTooltips: Record<string, string> = {
     name: 'Display name shown to your team when selecting this product.',
     code: 'Unique internal code used in search, reports, and references.',
     productType: 'Controls visa-specific labels and related workflow expectations.',
@@ -155,155 +144,113 @@ export class ProductFormComponent implements OnInit {
     taskLastStep: 'Marks the final workflow step. Only one task can be the last step.',
   };
 
-  readonly hasMultipleLastSteps = computed(() => {
-    const tasks = this.tasksArray.controls;
-    return tasks.filter((group) => group.get('lastStep')?.value).length > 1;
-  });
-
-  @HostListener('window:keydown', ['$event'])
-  handleGlobalKeydown(event: KeyboardEvent): void {
-    // Esc --> Cancel
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      this.goBack();
-      return;
-    }
-
-    // cmd+s (mac) or ctrl+s (windows/linux) --> save
-    const isSaveKey = (event.ctrlKey || event.metaKey) && (event.key === 's' || event.key === 'S');
-    if (isSaveKey) {
-      event.preventDefault();
-      this.save();
-      return;
-    }
-
-    const activeElement = document.activeElement;
-    const isInput =
-      activeElement instanceof HTMLInputElement ||
-      activeElement instanceof HTMLTextAreaElement ||
-      (activeElement instanceof HTMLElement && activeElement.isContentEditable);
-
-    if (isInput) return;
-
-    // B or Left Arrow --> Back to list
-    if (
-      (event.key === 'B' || event.key === 'ArrowLeft') &&
-      !event.ctrlKey &&
-      !event.altKey &&
-      !event.metaKey
-    ) {
-      event.preventDefault();
-      this.goBack();
-    }
+  constructor() {
+    super();
+    this.config = {
+      entityType: 'products',
+      entityLabel: 'Product',
+    } as BaseFormConfig<ProductDetail, ProductCreateUpdate, ProductCreateUpdate>;
   }
 
-  get tasksArray(): FormArray<FormGroup> {
-    return this.form.get('tasks') as FormArray<FormGroup>;
+  /**
+   * Build the product form
+   */
+  protected override buildForm(): FormGroup {
+    return this.fb.group(
+      {
+        name: ['', Validators.required],
+        code: ['', Validators.required],
+        description: [''],
+        basePrice: [0, [Validators.min(0)]],
+        retailPrice: [0, [Validators.min(0)]],
+        currency: [
+          this.configService.settings.baseCurrency ?? 'IDR',
+          [
+            Validators.required,
+            Validators.minLength(2),
+            Validators.maxLength(3),
+            Validators.pattern(/^[A-Za-z]{2,3}$/),
+          ],
+        ],
+        productType: ['visa', Validators.required],
+        validity: [null as number | null],
+        documentsMinValidity: [null as number | null],
+        applicationWindowDays: [null as number | null, [Validators.min(0)]],
+        validationPrompt: [''],
+        requiredDocumentIds: [[] as number[]],
+        optionalDocumentIds: [[] as number[]],
+        tasks: this.fb.array<FormGroup>([]),
+      },
+      { validators: [this.retailPriceValidator] },
+    );
   }
 
-  ngOnInit(): void {
-    if (!isPlatformBrowser(this.platformId)) {
-      return;
-    }
+  /**
+   * Load product for edit mode
+   */
+  protected override loadItem(id: number): Observable<ProductDetail> {
+    return this.productsApi.productsRetrieve(id);
+  }
+
+  /**
+   * Create DTO from form value
+   */
+  protected override createDto(): ProductCreateUpdate {
+    return this.buildPayload();
+  }
+
+  /**
+   * Update DTO from form value
+   */
+  protected override updateDto(): ProductCreateUpdate {
+    return this.buildPayload();
+  }
+
+  /**
+   * Save new product
+   */
+  protected override saveCreate(dto: ProductCreateUpdate): Observable<any> {
+    return this.productsApi.productsCreate(dto);
+  }
+
+  /**
+   * Update existing product
+   */
+  protected override saveUpdate(dto: ProductCreateUpdate): Observable<any> {
+    return this.productsApi.productsUpdate(this.itemId!, dto);
+  }
+
+  /**
+   * Initialize component
+   */
+  override ngOnInit(): void {
+    // Call base ngOnInit for standard initialization
+    super.ngOnInit();
+
+    if (!this.isBrowser) return;
 
     this.loadDocumentTypes();
-
-    const idParam = this.route.snapshot.paramMap.get('id');
-    if (idParam) {
-      this.isEditMode.set(true);
-      const id = Number(idParam);
-      this.loadProduct(id);
-    } else {
-      // Tasks are optional for new products. Do not add a default empty task here.
-    }
   }
 
-  onRequiredDocsChange(ids: number[]): void {
-    this.form.get('requiredDocumentIds')?.setValue(ids);
+  /**
+   * Handle keyboard shortcuts - extends base class
+   */
+  override handleGlobalKeydown(event: KeyboardEvent): void {
+    // Call base for standard shortcuts
+    super.handleGlobalKeydown(event);
   }
 
-  onOptionalDocsChange(ids: number[]): void {
-    this.form.get('optionalDocumentIds')?.setValue(ids);
+  /**
+   * Go back to list - override to preserve navigation state
+   */
+  override onCancel(): void {
+    this.navigateBack();
   }
 
-  normalizeCurrency(): void {
-    const control = this.form.get('currency');
-    const raw = String(control?.value ?? '')
-      .trim()
-      .toUpperCase();
-    control?.setValue(raw, { emitEvent: false });
-  }
-
-  addTask(task?: Partial<ProductTask>): void {
-    const group = this.fb.group(
-      {
-        id: [task?.id ?? null],
-        step: [task?.step ?? this.tasksArray.length + 1, Validators.required],
-        name: [task?.name ?? '', Validators.required],
-        description: [task?.description ?? ''],
-        cost: [task?.cost ? Number(task.cost) : 0],
-        duration: [task?.duration ?? 0, [Validators.required, Validators.min(0)]],
-        addTaskToCalendar: [task?.addTaskToCalendar ?? false],
-        notifyCustomer: [task?.notifyCustomer ?? false],
-        durationIsBusinessDays: [task?.durationIsBusinessDays ?? true],
-        notifyDaysBefore: [task?.notifyDaysBefore ?? 0, [Validators.min(0)]],
-        lastStep: [task?.lastStep ?? false],
-      },
-      {
-        validators: [this.taskDurationValidator],
-      },
-    );
-    this.syncTaskNotifyCustomerAvailability(group);
-    this.tasksArray.push(group);
-  }
-
-  removeTask(index: number): void {
-    this.tasksArray.removeAt(index);
-    this.renumberSteps();
-  }
-
-  goBack(): void {
-    const nav = this.router.getCurrentNavigation();
-    const st = (nav && nav.extras && (nav.extras.state as any)) || (history.state as any);
-
-    const focusState: Record<string, unknown> = { focusTable: true };
-    if (st?.focusId) {
-      focusState['focusId'] = st.focusId;
-    } else if (this.product()?.id) {
-      focusState['focusId'] = this.product()?.id;
-    }
-    if (st?.searchQuery) {
-      focusState['searchQuery'] = st.searchQuery;
-    }
-    const page = Number(st?.page);
-    if (Number.isFinite(page) && page > 0) {
-      focusState['page'] = Math.floor(page);
-    }
-
-    this.router.navigate(['/products'], { state: focusState });
-  }
-
-  toggleLastStep(index: number): void {
-    this.tasksArray.controls.forEach((group, idx) => {
-      if (idx !== index) {
-        group.get('lastStep')?.setValue(false, { emitEvent: false });
-      }
-    });
-  }
-
-  documentsMinValidityLabel(): string {
-    return this.form.get('productType')?.value === 'visa'
-      ? 'Passport min validity (days)'
-      : 'Documents min validity (days)';
-  }
-
-  applicationWindowDaysLabel(): string {
-    return this.form.get('productType')?.value === 'visa'
-      ? 'Application window (days before stay permit expiry)'
-      : 'Application window (days)';
-  }
-
-  save(): void {
+  /**
+   * Save product - override to add custom validation
+   */
+  override onSubmit(): void {
     if (this.form.invalid || this.hasMultipleLastSteps()) {
       this.form.markAllAsTouched();
       this.tasksArray.controls.forEach((group) => {
@@ -340,7 +287,108 @@ export class ProductFormComponent implements OnInit {
       return;
     }
 
-    this.isSaving.set(true);
+    // Call base onSubmit
+    super.onSubmit();
+  }
+
+  /**
+   * Handle required documents change
+   */
+  onRequiredDocsChange(ids: number[]): void {
+    this.form.get('requiredDocumentIds')?.setValue(ids);
+  }
+
+  /**
+   * Handle optional documents change
+   */
+  onOptionalDocsChange(ids: number[]): void {
+    this.form.get('optionalDocumentIds')?.setValue(ids);
+  }
+
+  /**
+   * Normalize currency field
+   */
+  normalizeCurrency(): void {
+    const control = this.form.get('currency');
+    const raw = String(control?.value ?? '')
+      .trim()
+      .toUpperCase();
+    control?.setValue(raw, { emitEvent: false });
+  }
+
+  /**
+   * Add task to form array
+   */
+  addTask(task?: Partial<ProductTask>): void {
+    const group = this.fb.group(
+      {
+        id: [task?.id ?? null],
+        step: [task?.step ?? this.tasksArray.length + 1, Validators.required],
+        name: [task?.name ?? '', Validators.required],
+        description: [task?.description ?? ''],
+        cost: [task?.cost ? Number(task.cost) : 0],
+        duration: [task?.duration ?? 0, [Validators.required, Validators.min(0)]],
+        addTaskToCalendar: [task?.addTaskToCalendar ?? false],
+        notifyCustomer: [task?.notifyCustomer ?? false],
+        durationIsBusinessDays: [task?.durationIsBusinessDays ?? true],
+        notifyDaysBefore: [task?.notifyDaysBefore ?? 0, [Validators.min(0)]],
+        lastStep: [task?.lastStep ?? false],
+      },
+      {
+        validators: [this.taskDurationValidator],
+      },
+    );
+    this.syncTaskNotifyCustomerAvailability(group);
+    this.tasksArray.push(group);
+  }
+
+  /**
+   * Remove task from form array
+   */
+  removeTask(index: number): void {
+    this.tasksArray.removeAt(index);
+    this.renumberSteps();
+  }
+
+  /**
+   * Toggle last step for task
+   */
+  toggleLastStep(index: number): void {
+    this.tasksArray.controls.forEach((group, idx) => {
+      if (idx !== index) {
+        group.get('lastStep')?.setValue(false, { emitEvent: false });
+      }
+    });
+  }
+
+  /**
+   * Get documents min validity label based on product type
+   */
+  documentsMinValidityLabel(): string {
+    return this.form.get('productType')?.value === 'visa'
+      ? 'Passport min validity (days)'
+      : 'Documents min validity (days)';
+  }
+
+  /**
+   * Get application window days label based on product type
+   */
+  applicationWindowDaysLabel(): string {
+    return this.form.get('productType')?.value === 'visa'
+      ? 'Application window (days before stay permit expiry)'
+      : 'Application window (days)';
+  }
+
+  /**
+   * Get tasks form array
+   */
+  get tasksArray(): FormArray<FormGroup> {
+    return this.form.get('tasks') as FormArray<FormGroup>;
+  }
+
+  // Private methods
+
+  private buildPayload(): ProductCreateUpdate {
     const rawValue = this.form.getRawValue();
     const sourceState = (history.state as any) || {};
     const detailNavigationState: Record<string, unknown> = {
@@ -352,7 +400,7 @@ export class ProductFormComponent implements OnInit {
       detailNavigationState['page'] = Math.floor(sourcePage);
     }
 
-    const payload: ProductCreateUpdate = {
+    return {
       id: this.product()?.id ?? 0,
       name: rawValue.name ?? '',
       code: rawValue.code ?? '',
@@ -389,87 +437,12 @@ export class ProductFormComponent implements OnInit {
         return task;
       }),
     };
-
-    if (this.isEditMode() && this.product()) {
-      this.productsApi.productsUpdate(this.product()!.id, payload).subscribe({
-        next: (product: ProductCreateUpdate) => {
-          this.toast.success('Product updated successfully');
-          this.router.navigate(['/products', product.id], { state: detailNavigationState });
-        },
-        error: (error) => {
-          applyServerErrorsToForm(this.form, error);
-          this.form.markAllAsTouched();
-          const message = extractServerErrorMessage(error);
-          this.toast.error(
-            message ? `Failed to update product: ${message}` : 'Failed to update product',
-          );
-          this.isSaving.set(false);
-        },
-      });
-      return;
-    }
-
-    this.productsApi.productsCreate(payload).subscribe({
-      next: (product: ProductCreateUpdate) => {
-        this.toast.success('Product created successfully');
-        this.router.navigate(['/products', product.id], { state: detailNavigationState });
-      },
-      error: (error) => {
-        applyServerErrorsToForm(this.form, error);
-        this.form.markAllAsTouched();
-        const message = extractServerErrorMessage(error);
-        this.toast.error(
-          message ? `Failed to create product: ${message}` : 'Failed to create product',
-        );
-        this.isSaving.set(false);
-      },
-    });
   }
 
   private loadDocumentTypes(): void {
     this.documentTypesApi.documentTypesList().subscribe({
       next: (items: DocumentType[]) => this.documentTypes.set(items ?? []),
       error: () => this.toast.error('Failed to load document types'),
-    });
-  }
-
-  private loadProduct(id: number): void {
-    this.isLoading.set(true);
-    this.productsApi.productsRetrieve(id).subscribe({
-      next: (product: ProductDetail) => {
-        this.product.set(product);
-        this.form.patchValue({
-          name: product.name ?? '',
-          code: product.code ?? '',
-          description: product.description ?? '',
-          basePrice: product.basePrice ? Number(product.basePrice) : 0,
-          retailPrice: product.retailPrice
-            ? Number(product.retailPrice)
-            : Number(product.basePrice ?? 0),
-          currency: product.currency ?? this.configService.settings.baseCurrency ?? 'IDR',
-          productType: product.productType ?? 'visa',
-          validity: product.validity ?? null,
-          documentsMinValidity: product.documentsMinValidity ?? null,
-          applicationWindowDays: product.applicationWindowDays ?? null,
-          validationPrompt: product.validationPrompt ?? '',
-          requiredDocumentIds: (product.requiredDocumentTypes ?? []).map(
-            (doc: DocumentType) => doc.id,
-          ),
-          optionalDocumentIds: (product.optionalDocumentTypes ?? []).map(
-            (doc: DocumentType) => doc.id,
-          ),
-        });
-
-        this.tasksArray.clear();
-        (product.tasks ?? []).forEach((task) => this.addTask(task));
-        // Do not auto-add an empty task when the product has no tasks — tasks are optional.
-
-        this.isLoading.set(false);
-      },
-      error: () => {
-        this.toast.error('Failed to load product');
-        this.isLoading.set(false);
-      },
     });
   }
 
@@ -525,5 +498,26 @@ export class ProductFormComponent implements OnInit {
       return { retailPriceBelowBase: true };
     }
     return null;
+  }
+
+  private navigateBack(): void {
+    const nav = this.router.getCurrentNavigation();
+    const st = (nav && nav.extras && (nav.extras.state as any)) || (history.state as any);
+
+    const focusState: Record<string, unknown> = { focusTable: true };
+    if (st?.focusId) {
+      focusState['focusId'] = st.focusId;
+    } else if (this.product()?.id) {
+      focusState['focusId'] = this.product()?.id;
+    }
+    if (st?.searchQuery) {
+      focusState['searchQuery'] = st.searchQuery;
+    }
+    const page = Number(st?.page);
+    if (Number.isFinite(page) && page > 0) {
+      focusState['page'] = Math.floor(page);
+    }
+
+    this.router.navigate(['/products'], { state: focusState });
   }
 }
