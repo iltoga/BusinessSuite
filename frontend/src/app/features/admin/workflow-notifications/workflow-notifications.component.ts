@@ -1,5 +1,4 @@
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -13,11 +12,16 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  PushNotificationsService as PushNotificationsApiService,
+  WorkflowNotificationsService,
+} from '@/core/api';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardComboboxComponent, type ZardComboboxOption } from '@/shared/components/combobox';
 import { ZardDialogService } from '@/shared/components/dialog';
 import { ZardInputDirective } from '@/shared/components/input';
 import { GlobalToastService } from '@/core/services/toast.service';
+import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 import {
   WorkflowNotificationsStreamEvent,
   WorkflowNotificationsStreamService,
@@ -33,6 +37,7 @@ import { Subscription, catchError, finalize, map, of, Subject, switchMap } from 
     ZardButtonComponent,
     ZardComboboxComponent,
     ZardInputDirective,
+    AppDatePipe,
   ],
   templateUrl: './workflow-notifications.component.html',
   styleUrls: ['./workflow-notifications.component.css'],
@@ -43,7 +48,8 @@ export class WorkflowNotificationsComponent {
   @ViewChild('whatsappTestDialogTemplate', { static: true })
   whatsappTestDialogTemplate!: TemplateRef<any>;
 
-  private http = inject(HttpClient);
+  private workflowNotificationsApi = inject(WorkflowNotificationsService);
+  private pushNotificationsApi = inject(PushNotificationsApiService);
   private fb = inject(FormBuilder);
   private destroyRef = inject(DestroyRef);
   private platformId = inject(PLATFORM_ID);
@@ -113,17 +119,19 @@ export class WorkflowNotificationsComponent {
       .pipe(
         switchMap((showError) => {
           this.loading.set(true);
-          return this.http.get<any>('/api/workflow-notifications/').pipe(
-            map((res) => res?.results ?? res ?? []),
-            catchError((error) => {
-              if (showError) {
-                const message = error?.error?.error || 'Failed to load notifications';
-                this.toast.error(String(message));
-              }
-              return of(null);
-            }),
-            finalize(() => this.loading.set(false)),
-          );
+          return this.workflowNotificationsApi
+            .workflowNotificationsList(undefined, undefined, 'body' as any)
+            .pipe(
+              map((res: any) => res?.results ?? res ?? []),
+              catchError((error) => {
+                if (showError) {
+                  const message = error?.error?.error || 'Failed to load notifications';
+                  this.toast.error(String(message));
+                }
+                return of(null);
+              }),
+              finalize(() => this.loading.set(false)),
+            );
         }),
         takeUntilDestroyed(this.destroyRef),
       )
@@ -203,33 +211,41 @@ export class WorkflowNotificationsComponent {
     }
 
     this.setResending(id, true);
-    this.http.post<any>(`/api/workflow-notifications/${id}/resend/`, {}).subscribe({
-      next: (response) => {
-        this.setResending(id, false);
-        const status = String(response?.status || 'updated');
-        const reference = String(response?.external_reference || '').trim();
-        this.toast.success(
-          reference ? `Notification resent (${status}) [${reference}]` : `Notification resent (${status})`,
-        );
-        this.load(false);
-      },
-      error: (error) => {
-        this.setResending(id, false);
-        const message = error?.error?.error || 'Failed to resend notification';
-        this.toast.error(String(message));
-      },
-    });
+    this.workflowNotificationsApi
+      .workflowNotificationsResendCreate(id, {} as any, 'body' as any)
+      .subscribe({
+        next: (response: any) => {
+          this.setResending(id, false);
+          const status = String(response?.status || 'updated');
+          const reference = String(
+            response?.external_reference ?? response?.externalReference ?? '',
+          ).trim();
+          this.toast.success(
+            reference
+              ? `Notification resent (${status}) [${reference}]`
+              : `Notification resent (${status})`,
+          );
+          this.load(false);
+        },
+        error: (error) => {
+          this.setResending(id, false);
+          const message = error?.error?.error || 'Failed to resend notification';
+          this.toast.error(String(message));
+        },
+      });
   }
 
   cancel(id: number): void {
-    this.http.post(`/api/workflow-notifications/${id}/cancel/`, {}).subscribe({
-      next: () => this.load(false),
-      error: () => this.toast.error('Failed to cancel notification'),
-    });
+    this.workflowNotificationsApi
+      .workflowNotificationsCancelCreate(id, {} as any, 'body' as any)
+      .subscribe({
+        next: () => this.load(false),
+        error: () => this.toast.error('Failed to cancel notification'),
+      });
   }
 
   remove(id: number): void {
-    this.http.delete(`/api/workflow-notifications/${id}/`).subscribe({
+    this.workflowNotificationsApi.workflowNotificationsDestroy(id, 'body' as any).subscribe({
       next: () => this.load(false),
       error: () => this.toast.error('Failed to delete notification'),
     });
@@ -277,7 +293,7 @@ export class WorkflowNotificationsComponent {
   }
 
   private loadUsersForPushDialog(): void {
-    this.http.get<any[]>('/api/push-notifications/users/').subscribe({
+    this.pushNotificationsApi.pushNotificationsUsersRetrieve('body' as any).subscribe({
       next: (res) => {
         const list = Array.isArray(res) ? res : [];
         const normalized = list.map((user) => {
@@ -353,28 +369,30 @@ export class WorkflowNotificationsComponent {
     };
 
     this.sendingPush.set(true);
-    this.http.post<any>('/api/push-notifications/send-test/', payload).subscribe({
-      next: (response) => {
-        this.sendingPush.set(false);
-        const sent = Number(response?.sent || 0);
-        const failed = Number(response?.failed || 0);
-        const skipped = Number(response?.skipped || 0);
-        if (sent < 1) {
-          this.toast.error(
-            `Push was not delivered (sent=${sent}, failed=${failed}, skipped=${skipped}). Check device registration and FCM config.`,
-          );
-          return;
-        }
-        this.toast.success('Test push notification sent');
-        this.dialogRef?.close();
-        this.dialogRef = null;
-      },
-      error: (error) => {
-        this.sendingPush.set(false);
-        const message = error?.error?.error || 'Failed to send test push notification';
-        this.toast.error(String(message));
-      },
-    });
+    this.pushNotificationsApi
+      .pushNotificationsSendTestCreate(payload as any, 'body' as any)
+      .subscribe({
+        next: (response: any) => {
+          this.sendingPush.set(false);
+          const sent = Number(response?.sent || 0);
+          const failed = Number(response?.failed || 0);
+          const skipped = Number(response?.skipped || 0);
+          if (sent < 1) {
+            this.toast.error(
+              `Push was not delivered (sent=${sent}, failed=${failed}, skipped=${skipped}). Check device registration and FCM config.`,
+            );
+            return;
+          }
+          this.toast.success('Test push notification sent');
+          this.dialogRef?.close();
+          this.dialogRef = null;
+        },
+        error: (error) => {
+          this.sendingPush.set(false);
+          const message = error?.error?.error || 'Failed to send test push notification';
+          this.toast.error(String(message));
+        },
+      });
   }
 
   sendTestWhatsapp(): void {
@@ -391,21 +409,23 @@ export class WorkflowNotificationsComponent {
     };
 
     this.sendingWhatsapp.set(true);
-    this.http.post<any>('/api/push-notifications/send-test-whatsapp/', payload).subscribe({
-      next: (response) => {
-        this.sendingWhatsapp.set(false);
-        const recipient = response?.recipient || payload.to || 'default test number';
-        this.toast.success(`Test WhatsApp sent to ${recipient}`);
-        this.dialogRef?.close();
-        this.dialogRef = null;
-        this.load(false);
-      },
-      error: (error) => {
-        this.sendingWhatsapp.set(false);
-        const message = error?.error?.error || 'Failed to send test WhatsApp';
-        this.toast.error(String(message));
-      },
-    });
+    this.pushNotificationsApi
+      .pushNotificationsSendTestWhatsappCreate(payload as any, 'body' as any)
+      .subscribe({
+        next: (response: any) => {
+          this.sendingWhatsapp.set(false);
+          const recipient = response?.recipient || payload.to || 'default test number';
+          this.toast.success(`Test WhatsApp sent to ${recipient}`);
+          this.dialogRef?.close();
+          this.dialogRef = null;
+          this.load(false);
+        },
+        error: (error) => {
+          this.sendingWhatsapp.set(false);
+          const message = error?.error?.error || 'Failed to send test WhatsApp';
+          this.toast.error(String(message));
+        },
+      });
   }
 
   isResending(id: number): boolean {

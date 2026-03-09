@@ -20,18 +20,18 @@ class InvoiceTaskRuntimeIdempotencyTests(SimpleTestCase):
     def test_run_invoice_download_job_skips_when_lock_is_contended(self):
         with (
             patch("invoices.tasks.download_jobs.acquire_task_lock", return_value=None),
-            patch("invoices.tasks.download_jobs.InvoiceDownloadJob.objects.select_related") as select_related_mock,
+            patch("invoices.tasks.download_jobs.InvoiceDownloadJob.objects.get") as get_job_mock,
         ):
             _run_huey_task(run_invoice_download_job, job_id="job-300")
 
-        select_related_mock.assert_not_called()
+        get_job_mock.assert_not_called()
 
     def test_run_invoice_download_job_releases_lock_when_job_missing(self):
         with (
             patch("invoices.tasks.download_jobs.acquire_task_lock", return_value="token-1"),
             patch("invoices.tasks.download_jobs.release_task_lock") as release_lock_mock,
             patch(
-                "invoices.tasks.download_jobs.InvoiceDownloadJob.objects.select_related",
+                "invoices.tasks.download_jobs.InvoiceDownloadJob.objects.get",
                 side_effect=InvoiceDownloadJob.DoesNotExist,
             ),
         ):
@@ -90,9 +90,9 @@ class InvoiceTaskRuntimeIdempotencyTests(SimpleTestCase):
         with (
             patch("invoices.tasks.download_jobs.acquire_task_lock", return_value="token-1a"),
             patch("invoices.tasks.download_jobs.release_task_lock") as release_lock_mock,
-            patch("invoices.tasks.download_jobs.InvoiceDownloadJob.objects.select_related") as select_related_mock,
+            patch("invoices.tasks.download_jobs.InvoiceDownloadJob.objects.get") as get_job_mock,
         ):
-            select_related_mock.return_value.get.return_value = job
+            get_job_mock.return_value = job
             _run_huey_task(run_invoice_download_job, job_id="job-301")
 
         release_lock_mock.assert_called_once_with("tasks:idempotency:invoice_download_job:job-301", "token-1a")

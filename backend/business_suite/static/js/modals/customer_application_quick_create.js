@@ -55,6 +55,9 @@
     $.ajax({
       url: "/api/products/",
       method: "GET",
+      data: {
+        uses_customer_app_workflow: true,
+      },
       success: function (data) {
         var products = data && data.results ? data.results : data;
         if (Array.isArray(products)) {

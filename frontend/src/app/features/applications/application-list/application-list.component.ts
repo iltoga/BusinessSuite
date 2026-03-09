@@ -2,21 +2,23 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
-  HostListener,
-  PLATFORM_ID,
   computed,
   inject,
+  PLATFORM_ID,
   signal,
   viewChild,
-  type OnInit,
   type TemplateRef,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
+import { Subject, catchError, of, switchMap } from 'rxjs';
 
 import { CustomerApplicationsService } from '@/core/api/api/customer-applications.service';
 import { DocApplicationSerializerWithRelations } from '@/core/api/model/doc-application-serializer-with-relations';
-import { AuthService } from '@/core/services/auth.service';
-import { GlobalToastService } from '@/core/services/toast.service';
+import {
+  BaseListComponent,
+  BaseListConfig,
+} from '@/shared/core/base-list.component';
 import {
   ApplicationDeleteDialogComponent,
   type ApplicationDeleteDialogData,
@@ -43,6 +45,16 @@ import { ContextHelpDirective } from '@/shared/directives';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 
+/**
+ * Application list component
+ * 
+ * Extends BaseListComponent to inherit common list patterns:
+ * - Keyboard shortcuts (N for new, B/Left for back)
+ * - Navigation state restoration
+ * - Pagination, sorting, search
+ * - Focus management
+ * - Bulk delete support
+ */
 @Component({
   selector: 'app-application-list',
   standalone: true,
@@ -65,45 +77,24 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
   styleUrls: ['./application-list.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ApplicationListComponent implements OnInit {
-  private service = inject(CustomerApplicationsService);
-  private authService = inject(AuthService);
-  private toast = inject(GlobalToastService);
-  private router = inject(Router);
-  private platformId = inject(PLATFORM_ID);
+export class ApplicationListComponent extends BaseListComponent<DocApplicationSerializerWithRelations> {
+  private readonly service = inject(CustomerApplicationsService);
+  private readonly loadTrigger$ = new Subject<void>();
 
-  readonly items = signal<DocApplicationSerializerWithRelations[]>([]);
-  readonly isLoading = signal(false);
-  readonly query = signal('');
-  readonly page = signal(1);
-  readonly pageSize = signal(10);
-  readonly totalItems = signal(0);
-  // default ordering: ID descending
-  readonly ordering = signal<string | undefined>('-id');
+  // Application-specific state
   readonly columnFilters = signal<Record<string, string[]>>({
     product: [],
     status: [],
   });
-  readonly isSuperuser = this.authService.isSuperuser;
 
-  // When navigating back to the list we may want to focus a specific id or the table
-  private readonly focusTableOnInit = signal(false);
-  private readonly focusIdOnInit = signal<number | null>(null);
-
+  // Delete confirmation dialogs
   readonly confirmOpen = signal(false);
   readonly confirmMessage = signal('');
   readonly pendingDelete = signal<DocApplicationSerializerWithRelations | null>(null);
   readonly deleteWithInvoiceOpen = signal(false);
   readonly deleteWithInvoiceData = signal<ApplicationDeleteDialogData | null>(null);
 
-  readonly bulkDeleteOpen = signal(false);
-  readonly bulkDeleteData = signal<BulkDeleteDialogData | null>(null);
-  private readonly bulkDeleteQuery = signal<string>('');
-
-  readonly bulkDeleteLabel = computed(() =>
-    this.query().trim() ? 'Delete Selected Applications' : 'Delete All Applications',
-  );
-
+  // Template references
   private readonly customerTemplate =
     viewChild.required<
       TemplateRef<{ $implicit: DocApplicationSerializerWithRelations; value: any; row: any }>
@@ -125,9 +116,10 @@ export class ApplicationListComponent implements OnInit {
       TemplateRef<{ $implicit: DocApplicationSerializerWithRelations; value: any; row: any }>
     >('columnCreatedAt');
 
-  // Access the data table for focus management
-  private readonly dataTable = viewChild.required(DataTableComponent);
+  // Application-specific bulk delete query
+  private readonly applicationBulkDeleteQuery = signal<string>('');
 
+  // Columns configuration
   readonly columns = computed<ColumnConfig[]>(() => [
     { key: 'id', header: 'ID', sortable: true, sortKey: 'id' },
     {
@@ -152,7 +144,7 @@ export class ApplicationListComponent implements OnInit {
     },
     {
       key: 'docDate',
-      header: 'Doc Date',
+      header: 'Application Submission Date',
       sortable: true,
       sortKey: 'doc_date',
       template: this.dateTemplate(),
@@ -180,19 +172,15 @@ export class ApplicationListComponent implements OnInit {
     { key: 'actions', header: 'Actions' },
   ]);
 
-  readonly actions = computed<DataTableAction<DocApplicationSerializerWithRelations>[]>(() => [
+  // Actions configuration
+  override readonly actions = computed<DataTableAction<DocApplicationSerializerWithRelations>[]>(() => [
     {
       label: 'Manage',
       icon: 'eye',
       variant: 'default',
       action: (item) =>
         this.router.navigate(['/applications', item.id], {
-          state: {
-            from: 'applications',
-            focusId: item.id,
-            searchQuery: this.query(),
-            page: this.page(),
-          },
+          state: this.applicationDetailState(item),
         }),
     },
     {
@@ -207,16 +195,11 @@ export class ApplicationListComponent implements OnInit {
       icon: 'plus',
       variant: 'success',
       shortcut: 'i',
-      isVisible: (item) => Boolean(item.readyForInvoice),
+      isVisible: (item) => this.canCreateInvoice(item),
       action: (item) =>
         this.router.navigate(['/invoices', 'new'], {
           queryParams: { applicationId: item.id },
-          state: {
-            from: 'applications',
-            focusId: item.id,
-            searchQuery: this.query(),
-            page: this.page(),
-          },
+          state: this.applicationDetailState(item),
         }),
     },
     {
@@ -226,12 +209,7 @@ export class ApplicationListComponent implements OnInit {
       isVisible: (item) => Boolean(item.hasInvoice && item.invoiceId),
       action: (item) =>
         this.router.navigate(['/invoices', item.invoiceId], {
-          state: {
-            from: 'applications',
-            focusId: item.id,
-            searchQuery: this.query(),
-            page: this.page(),
-          },
+          state: this.applicationDetailState(item),
         }),
     },
     {
@@ -241,12 +219,7 @@ export class ApplicationListComponent implements OnInit {
       isVisible: (item) => Boolean(item.hasInvoice && item.invoiceId),
       action: (item) =>
         this.router.navigate(['/invoices', item.invoiceId, 'edit'], {
-          state: {
-            from: 'applications',
-            focusId: item.id,
-            searchQuery: this.query(),
-            page: this.page(),
-          },
+          state: this.applicationDetailState(item),
         }),
     },
     {
@@ -260,12 +233,7 @@ export class ApplicationListComponent implements OnInit {
     },
   ]);
 
-  readonly totalPages = computed(() => {
-    const total = this.totalItems();
-    const size = this.pageSize();
-    return Math.max(1, Math.ceil(total / size));
-  });
-
+  // Row class for rejected or deprecated products
   readonly rowClassFn = (row: DocApplicationSerializerWithRelations): string =>
     row.status === 'rejected'
       ? 'row-danger-soft'
@@ -273,11 +241,12 @@ export class ApplicationListComponent implements OnInit {
         ? 'opacity-60'
         : '';
 
+  // Filtered items based on column filters
   readonly filteredItems = computed(() => {
     const selectedProducts = new Set(this.columnFilters()['product'] ?? []);
     const selectedStatuses = new Set(this.columnFilters()['status'] ?? []);
 
-    return this.items().filter((item) => {
+    return this.items().filter((item: DocApplicationSerializerWithRelations) => {
       const productName = this.getProductLabel(item);
       const statusValue = this.getStatusValue(item);
 
@@ -287,6 +256,7 @@ export class ApplicationListComponent implements OnInit {
     });
   });
 
+  // Product filter options
   readonly productFilterOptions = computed<ColumnFilterOption[]>(() => {
     const unique = new Set<string>();
     for (const item of this.items()) {
@@ -298,6 +268,7 @@ export class ApplicationListComponent implements OnInit {
     return [...unique].sort((a, b) => a.localeCompare(b)).map((value) => ({ value, label: value }));
   });
 
+  // Status filter options
   readonly statusFilterOptions = computed<ColumnFilterOption[]>(() => {
     const unique = new Set<string>();
     for (const item of this.items()) {
@@ -308,61 +279,57 @@ export class ApplicationListComponent implements OnInit {
       .map((value) => ({ value, label: this.getStatusLabel(value) }));
   });
 
-  @HostListener('window:keydown', ['$event'])
-  handleGlobalKeydown(event: KeyboardEvent): void {
-    const activeElement = document.activeElement;
-    const isInput =
-      activeElement instanceof HTMLInputElement ||
-      activeElement instanceof HTMLTextAreaElement ||
-      (activeElement instanceof HTMLElement && activeElement.isContentEditable);
+  constructor() {
+    super();
+    this.config = {
+      entityType: 'applications',
+      entityLabel: 'Applications',
+      defaultPageSize: 10,
+      defaultOrdering: '-id',
+      enableBulkDelete: true,
+      enableDelete: true,
+    } as BaseListConfig<DocApplicationSerializerWithRelations>;
 
-    if (isInput) return;
+    // Setup load trigger with rxjs pattern
+    this.loadTrigger$
+      .pipe(
+        switchMap(() => {
+          this.isLoading.set(true);
+          return this.service
+            .customerApplicationsList(this.ordering(), this.page(), this.pageSize(), this.query())
+            .pipe(
+              catchError(() => {
+                this.toast.error('Failed to load applications');
+                return of(null);
+              }),
+            );
+        }),
+        takeUntilDestroyed(),
+      )
+      .subscribe((res) => {
+        if (!res) {
+          this.isLoading.set(false);
+          return;
+        }
 
-    // Shift+N for New Application
-    if (event.key === 'N' && !event.ctrlKey && !event.altKey && !event.metaKey) {
-      event.preventDefault();
-      this.router.navigate(['/applications', 'new'], {
-        state: { from: 'applications', searchQuery: this.query(), page: this.page() },
+        this.items.set(res.results ?? []);
+        this.totalItems.set(res.count ?? 0);
+        this.isLoading.set(false);
+        this.focusAfterLoad();
       });
-    }
   }
 
-  ngOnInit(): void {
-    if (!isPlatformBrowser(this.platformId)) {
-      return;
-    }
-    // Read navigation state (set by back-navigation) and remember whether we should focus the table or a specific id after load
-    const st = (window as any).history.state || {};
-    this.focusTableOnInit.set(Boolean(st.focusTable));
-    this.focusIdOnInit.set(st.focusId ? Number(st.focusId) : null);
-    const restoredPage = Number(st.page);
-    if (Number.isFinite(restoredPage) && restoredPage > 0) {
-      this.page.set(Math.floor(restoredPage));
-    }
-    if (st.searchQuery) {
-      this.query.set(String(st.searchQuery));
-    }
-    this.load();
+  /**
+   * Load applications from service
+   */
+  protected override loadItems(): void {
+    if (!this.isBrowser) return;
+    this.loadTrigger$.next();
   }
 
-  onQueryChange(value: string) {
-    this.query.set(value.trim());
-    this.page.set(1);
-    this.load();
-  }
-
-  onPageChange(page: number) {
-    this.page.set(page);
-    this.load();
-  }
-
-  onSortChange(event: SortEvent) {
-    const ordering = event.direction === 'desc' ? `-${event.column}` : event.column;
-    this.ordering.set(ordering);
-    this.page.set(1);
-    this.load();
-  }
-
+  /**
+   * Handle column filter change
+   */
   onColumnFilterChange(event: ColumnFilterChangeEvent): void {
     this.columnFilters.update((current) => ({
       ...current,
@@ -370,6 +337,9 @@ export class ApplicationListComponent implements OnInit {
     }));
   }
 
+  /**
+   * Confirm delete for an application
+   */
   confirmDelete(row: DocApplicationSerializerWithRelations) {
     if (!this.isSuperuser()) {
       return;
@@ -379,6 +349,9 @@ export class ApplicationListComponent implements OnInit {
     this.confirmOpen.set(true);
   }
 
+  /**
+   * Confirm delete with invoice
+   */
   confirmDeleteWithInvoice(row: DocApplicationSerializerWithRelations): void {
     if (!this.isSuperuser()) {
       return;
@@ -391,6 +364,9 @@ export class ApplicationListComponent implements OnInit {
     this.deleteWithInvoiceOpen.set(true);
   }
 
+  /**
+   * Confirm delete action
+   */
   confirmDeleteAction(): void {
     const row = this.pendingDelete();
     if (!row) {
@@ -400,7 +376,7 @@ export class ApplicationListComponent implements OnInit {
     this.service.customerApplicationsDestroy(row.id).subscribe({
       next: () => {
         this.toast.success('Application deleted');
-        this.load();
+        this.loadItems();
         this.confirmOpen.set(false);
         this.pendingDelete.set(null);
       },
@@ -415,6 +391,9 @@ export class ApplicationListComponent implements OnInit {
     });
   }
 
+  /**
+   * Cancel delete action
+   */
   cancelDeleteAction(): void {
     const row = this.pendingDelete();
     this.confirmOpen.set(false);
@@ -429,6 +408,9 @@ export class ApplicationListComponent implements OnInit {
     }
   }
 
+  /**
+   * Confirm delete with invoice action
+   */
   confirmDeleteWithInvoiceAction(): void {
     const row = this.pendingDelete();
     if (!row) {
@@ -438,7 +420,7 @@ export class ApplicationListComponent implements OnInit {
     this.service.customerApplicationsDestroy(row.id, true).subscribe({
       next: () => {
         this.toast.success('Application deleted');
-        this.load();
+        this.loadItems();
         this.deleteWithInvoiceOpen.set(false);
         this.deleteWithInvoiceData.set(null);
         this.pendingDelete.set(null);
@@ -455,6 +437,9 @@ export class ApplicationListComponent implements OnInit {
     });
   }
 
+  /**
+   * Cancel delete with invoice action
+   */
   cancelDeleteWithInvoiceAction(): void {
     const row = this.pendingDelete();
     this.deleteWithInvoiceOpen.set(false);
@@ -470,10 +455,23 @@ export class ApplicationListComponent implements OnInit {
     }
   }
 
+  /**
+   * Check if application can be force closed
+   */
   canForceClose(row: DocApplicationSerializerWithRelations): boolean {
     return !!row.canForceClose && row.status !== 'completed' && row.status !== 'rejected';
   }
 
+  /**
+   * Check if invoice can be created
+   */
+  canCreateInvoice(row: DocApplicationSerializerWithRelations): boolean {
+    return !row.hasInvoice;
+  }
+
+  /**
+   * Confirm force close application
+   */
   confirmForceClose(row: DocApplicationSerializerWithRelations) {
     if (!this.canForceClose(row)) {
       this.toast.error('You cannot force close this application');
@@ -484,7 +482,7 @@ export class ApplicationListComponent implements OnInit {
       this.service.customerApplicationsForceCloseCreate(row.id, row).subscribe({
         next: () => {
           this.toast.success('Application force closed');
-          this.load();
+          this.loadItems();
         },
         error: (err: any) => {
           const msg = err?.error?.detail || err?.error || 'Failed to force close application';
@@ -494,14 +492,29 @@ export class ApplicationListComponent implements OnInit {
     }
   }
 
-  openBulkDeleteDialog(): void {
+  /**
+   * Build application detail state
+   */
+  applicationDetailState(item: DocApplicationSerializerWithRelations): Record<string, unknown> {
+    return {
+      from: 'applications',
+      focusId: item.id,
+      searchQuery: this.query(),
+      page: this.page(),
+    };
+  }
+
+  /**
+   * Open bulk delete dialog
+   */
+  override openBulkDeleteDialog(): void {
     const query = this.query().trim();
     const mode = query ? 'selected' : 'all';
     const detailsText = query
       ? 'This will permanently remove all matching customer application records and their associated documents and workflows from the database.'
       : 'This will permanently remove all customer application records and their associated documents and workflows from the database.';
 
-    this.bulkDeleteQuery.set(query);
+    this.applicationBulkDeleteQuery.set(query);
     this.bulkDeleteData.set({
       entityLabel: 'Applications',
       totalCount: this.totalItems(),
@@ -512,8 +525,11 @@ export class ApplicationListComponent implements OnInit {
     this.bulkDeleteOpen.set(true);
   }
 
+  /**
+   * Handle bulk delete confirmation
+   */
   onBulkDeleteConfirmed(): void {
-    const query = this.bulkDeleteQuery();
+    const query = this.applicationBulkDeleteQuery();
 
     this.service
       .customerApplicationsBulkDeleteCreate({ searchQuery: query || '' } as any)
@@ -524,8 +540,8 @@ export class ApplicationListComponent implements OnInit {
           this.toast.success(`Deleted ${count} application(s)`);
           this.bulkDeleteOpen.set(false);
           this.bulkDeleteData.set(null);
-          this.bulkDeleteQuery.set('');
-          this.load();
+          this.applicationBulkDeleteQuery.set('');
+          this.loadItems();
         },
         error: (error) => {
           const message = extractServerErrorMessage(error);
@@ -538,54 +554,39 @@ export class ApplicationListComponent implements OnInit {
       });
   }
 
-  onBulkDeleteCancelled(): void {
+  /**
+   * Handle bulk delete cancellation
+   */
+  override onBulkDeleteCancelled(): void {
     this.bulkDeleteOpen.set(false);
     this.bulkDeleteData.set(null);
-    this.bulkDeleteQuery.set('');
+    this.applicationBulkDeleteQuery.set('');
   }
 
-  private load(): void {
-    this.isLoading.set(true);
-    this.service
-      .customerApplicationsList(this.ordering(), this.page(), this.pageSize(), this.query())
-      .subscribe({
-        next: (res) => {
-          this.items.set(res.results ?? []);
-          this.totalItems.set(res.count ?? 0);
-          this.isLoading.set(false);
-
-          // Focus table or a specific row if requested by navigation state
-          const table = this.dataTable();
-          if (table) {
-            const focusId = this.focusIdOnInit();
-            if (focusId) {
-              this.focusIdOnInit.set(null);
-              table.focusRowById(focusId);
-            } else if (this.focusTableOnInit()) {
-              this.focusTableOnInit.set(false);
-              table.focusFirstRowIfNone();
-            }
-          }
-        },
-        error: () => {
-          this.toast.error('Failed to load applications');
-          this.isLoading.set(false);
-        },
-      });
-  }
-
+  /**
+   * Get product label from item
+   */
   private getProductLabel(item: DocApplicationSerializerWithRelations): string {
     return (item as any)?.product?.name?.trim() || '';
   }
 
+  /**
+   * Check if product is deprecated
+   */
   isDeprecatedProduct(item: DocApplicationSerializerWithRelations): boolean {
     return Boolean((item as any)?.product?.deprecated);
   }
 
+  /**
+   * Get status value from item
+   */
   private getStatusValue(item: DocApplicationSerializerWithRelations): string {
     return (item?.status || 'pending').toString();
   }
 
+  /**
+   * Get status label
+   */
   private getStatusLabel(value: string): string {
     switch (value) {
       case 'completed':

@@ -7,13 +7,13 @@ from typing import Any
 
 from api.permissions import IsAdminOrManagerGroup
 from core.models.ai_request_usage import AIRequestUsage
-from django.utils import timezone
 from django.db.models import Count, Q, Sum, Value
 from django.db.models.functions import Coalesce, ExtractMonth, ExtractYear, TruncDate
+from django.utils import timezone
+from reports.services import build_invoice_status_dashboard_context
 from reports.views.application_pipeline_view import ApplicationPipelineView
 from reports.views.cash_flow_analysis_view import CashFlowAnalysisView
 from reports.views.customer_ltv_view import CustomerLifetimeValueView
-from reports.views.invoice_status_dashboard_view import InvoiceStatusDashboardView
 from reports.views.kpi_dashboard_view import KPIDashboardView
 from reports.views.monthly_invoice_detail_view import MonthlyInvoiceDetailView
 from reports.views.product_demand_forecast_view import ProductDemandForecastView
@@ -131,10 +131,8 @@ class KPIDashboardApiView(_BaseReportAPIView):
 
 
 class InvoiceStatusDashboardApiView(_BaseReportAPIView):
-    report_view_cls = InvoiceStatusDashboardView
-
     def get(self, request):
-        ctx = self.build_context(request)
+        ctx = build_invoice_status_dashboard_context()
         keys = ["status_data", "aging_data", "avg_days_to_payment", "collection_rate"]
         return Response({k: _to_json_value(ctx.get(k)) for k in keys})
 
@@ -320,10 +318,7 @@ class AICostingReportApiView(APIView):
 
         base_qs = AIRequestUsage.objects.all()
         available_years = (
-            base_qs.annotate(year=ExtractYear("created_at"))
-            .values_list("year", flat=True)
-            .order_by("year")
-            .distinct()
+            base_qs.annotate(year=ExtractYear("created_at")).values_list("year", flat=True).order_by("year").distinct()
         )
         available_years = [int(year) for year in available_years if year is not None]
         if not available_years:
@@ -448,14 +443,12 @@ class AICostingReportApiView(APIView):
         provider_breakdown_month = _group_breakdown(month_qs, "provider", "provider")
         model_breakdown_month = _group_breakdown(month_qs, "model", "model")
 
-        year_summary_row = (
-            base_qs.filter(created_at__year=selected_year).aggregate(
-                request_count=Count("id"),
-                success_count=Count("id", filter=Q(success=True)),
-                failed_count=Count("id", filter=Q(success=False)),
-                total_tokens=Coalesce(Sum("total_tokens"), 0),
-                total_cost=Coalesce(Sum("cost_usd"), Value(Decimal("0"))),
-            )
+        year_summary_row = base_qs.filter(created_at__year=selected_year).aggregate(
+            request_count=Count("id"),
+            success_count=Count("id", filter=Q(success=True)),
+            failed_count=Count("id", filter=Q(success=False)),
+            total_tokens=Coalesce(Sum("total_tokens"), 0),
+            total_cost=Coalesce(Sum("cost_usd"), Value(Decimal("0"))),
         )
         month_summary_row = month_qs.aggregate(
             request_count=Count("id"),

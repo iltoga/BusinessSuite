@@ -23,6 +23,16 @@ import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
 import { ZardTooltipImports } from '@/shared/components/tooltip';
+import { ServerManagementAiWorkflowComponent } from './server-management-ai-workflow.component';
+import { ServerManagementAiWorkflowFacade } from './server-management-ai-workflow.facade';
+import {
+  AiModelDefinition,
+  AiModelProviderCatalog,
+  AiProviderModelOption,
+  AiWorkflowFailoverProvider,
+  AiWorkflowFeature,
+  AiWorkflowStatusResponse,
+} from './server-management-ai-workflow.models';
 
 interface MediaDiagnosticResult {
   model: string;
@@ -94,6 +104,24 @@ interface UiSettingsResponse {
   } | null;
 }
 
+interface ServerActionResponse {
+  ok: boolean;
+  message: string;
+}
+
+interface MediaDiagnosticResponse {
+  ok: boolean;
+  message: string;
+  results: MediaDiagnosticResult[];
+  settings: ServerSettings | null;
+}
+
+interface MediaRepairResponse {
+  ok: boolean;
+  message: string;
+  repairs: string[];
+}
+
 @Component({
   selector: 'app-server-management',
   standalone: true,
@@ -102,6 +130,7 @@ interface UiSettingsResponse {
     ZardCardComponent,
     ZardButtonComponent,
     ZardBadgeComponent,
+    ServerManagementAiWorkflowComponent,
     ...ZardTooltipImports,
   ],
   templateUrl: './server-management.component.html',
@@ -114,6 +143,7 @@ export class ServerManagementComponent implements OnInit {
   private http = inject(HttpClient);
   private desktopBridge = inject(DesktopBridgeService);
   private toast = inject(GlobalToastService);
+  private aiWorkflowFacade = inject(ServerManagementAiWorkflowFacade);
 
   readonly isLoading = signal(false);
   readonly diagnosticResults = signal<MediaDiagnosticResult[]>([]);
@@ -131,6 +161,10 @@ export class ServerManagementComponent implements OnInit {
   readonly uiSettings = signal<UiSettingsResponse | null>(null);
   readonly uiSettingsLoading = signal(false);
   readonly uiSettingsSaving = signal(false);
+  readonly aiWorkflowStatus = this.aiWorkflowFacade.aiWorkflowStatus;
+  readonly aiWorkflowLoading = this.aiWorkflowFacade.aiWorkflowLoading;
+  readonly aiWorkflowSaving = this.aiWorkflowFacade.aiWorkflowSaving;
+  readonly aiWorkflowDraft = this.aiWorkflowFacade.aiWorkflowDraft;
   readonly isDesktop = signal(false);
   readonly desktopRuntimeStatus = signal<DesktopRuntimeStatus | null>(null);
   readonly desktopSyncStatus = signal<DesktopSyncStatus | null>(null);
@@ -138,6 +172,7 @@ export class ServerManagementComponent implements OnInit {
   readonly desktopVaultPassphrase = signal('');
   readonly desktopRuntimeLoading = signal(false);
   readonly desktopVaultLoading = signal(false);
+  readonly aiModelTypeaheadPageSize = this.aiWorkflowFacade.aiModelTypeaheadPageSize;
 
   readonly missingFilesCount = computed(
     () => this.diagnosticResults().filter((r) => !r.exists).length,
@@ -147,12 +182,18 @@ export class ServerManagementComponent implements OnInit {
     () => this.diagnosticResults().filter((r) => r.discrepancy).length,
   );
 
+  readonly allProviderModelLoader = this.aiWorkflowFacade.allProviderModelLoader;
+  readonly openrouterModelLoader = this.aiWorkflowFacade.openrouterModelLoader;
+  readonly openaiModelLoader = this.aiWorkflowFacade.openaiModelLoader;
+  readonly groqModelLoader = this.aiWorkflowFacade.groqModelLoader;
+
   ngOnInit(): void {
     this.isDesktop.set(isPlatformBrowser(this.platformId) && this.desktopBridge.isDesktop());
     this.loadCacheStatus();
     this.loadCacheHealth();
     this.loadLocalResilience();
     this.loadUiSettings();
+    this.loadAiWorkflowStatus();
     void this.loadDesktopResilienceState();
   }
 
@@ -167,12 +208,13 @@ export class ServerManagementComponent implements OnInit {
         }),
         finalize(() => this.isLoading.set(false)),
       )
-      .subscribe((response: any) => {
-        if (response.ok) {
-          this.toast.success('Cache cleared successfully');
+      .subscribe((response) => {
+        const normalized = this.normalizeServerActionResponse(response);
+        if (normalized.ok) {
+          this.toast.success(normalized.message || 'Cache cleared successfully');
           this.loadCacheHealth();
         } else {
-          this.toast.error(response.message || 'Failed to clear cache');
+          this.toast.error(normalized.message || 'Failed to clear cache');
         }
       });
   }
@@ -406,8 +448,8 @@ export class ServerManagementComponent implements OnInit {
 
   loadUiSettings(): void {
     this.uiSettingsLoading.set(true);
-    this.http
-      .get<UiSettingsResponse>('/api/server-management/ui-settings/')
+    this.serverManagementApi
+      .serverManagementUiSettingsRetrieve()
       .pipe(
         catchError(() => {
           this.toast.error('Failed to load UI settings');
@@ -415,9 +457,119 @@ export class ServerManagementComponent implements OnInit {
         }),
         finalize(() => this.uiSettingsLoading.set(false)),
       )
-      .subscribe((response: any) => {
+      .subscribe((response) => {
         this.uiSettings.set(this.normalizeUiSettings(response));
       });
+  }
+
+  loadAiWorkflowStatus(): void {
+    this.aiWorkflowFacade.loadAiWorkflowStatus();
+  }
+
+  saveAiWorkflowSettings(): void {
+    this.aiWorkflowFacade.saveAiWorkflowSettings();
+  }
+
+  resetAiWorkflowDraft(): void {
+    this.aiWorkflowFacade.resetAiWorkflowDraft();
+  }
+
+  getAiSettingValue(name: string | null | undefined): string {
+    return this.aiWorkflowFacade.getAiSettingValue(name);
+  }
+
+  getAiSettingBool(name: string | null | undefined): boolean {
+    return this.aiWorkflowFacade.getAiSettingBool(name);
+  }
+
+  setAiSettingFromEvent(name: string | null | undefined, event: Event): void {
+    this.aiWorkflowFacade.setAiSettingFromEvent(name, event);
+  }
+
+  setAiSettingNumberFromEvent(name: string, event: Event): void {
+    this.aiWorkflowFacade.setAiSettingNumberFromEvent(name, event);
+  }
+
+  setAiSettingBoolFromEvent(name: string, event: Event): void {
+    this.aiWorkflowFacade.setAiSettingBoolFromEvent(name, event);
+  }
+
+  getPrimaryModelValue(): string {
+    return this.aiWorkflowFacade.getPrimaryModelValue();
+  }
+
+  onPrimaryModelValueChange(value: string | string[] | null): void {
+    this.aiWorkflowFacade.onPrimaryModelValueChange(value);
+  }
+
+  onModelSettingComboboxChange(
+    settingName: string | null | undefined,
+    value: string | string[] | null,
+  ): void {
+    this.aiWorkflowFacade.onModelSettingComboboxChange(settingName, value);
+  }
+
+  getDraftFallbackProviderOrder(): string[] {
+    return this.aiWorkflowFacade.getDraftFallbackProviderOrder();
+  }
+
+  toggleFallbackProvider(provider: string, enabled: boolean): void {
+    this.aiWorkflowFacade.toggleFallbackProvider(provider, enabled);
+  }
+
+  getModelProviderCatalogMap(): Record<string, AiModelProviderCatalog> {
+    return this.aiWorkflowFacade.getModelProviderCatalogMap();
+  }
+
+  getProviderKeys(): string[] {
+    return this.aiWorkflowFacade.getProviderKeys();
+  }
+
+  getProviderDisplayName(provider: string): string {
+    return this.aiWorkflowFacade.getProviderDisplayName(provider);
+  }
+
+  getModelsForProvider(provider: string): AiModelDefinition[] {
+    return this.aiWorkflowFacade.getModelsForProvider(provider);
+  }
+
+  getCurrentPrimaryProvider(): string {
+    return this.aiWorkflowFacade.getCurrentPrimaryProvider();
+  }
+
+  getAllProviderModels(): AiProviderModelOption[] {
+    return this.aiWorkflowFacade.getAllProviderModels();
+  }
+
+  getModelsForSetting(
+    settingName: string | null | undefined,
+    providerFallback?: string | null | undefined,
+  ): AiModelDefinition[] {
+    return this.aiWorkflowFacade.getModelsForSetting(settingName, providerFallback);
+  }
+
+  getFeatureProvider(feature: AiWorkflowFeature): string {
+    return this.aiWorkflowFacade.getFeatureProvider(feature);
+  }
+
+  formatModelCapabilities(model: AiModelDefinition): string {
+    return this.aiWorkflowFacade.formatModelCapabilities(model);
+  }
+
+  findModelDefinition(provider: string, modelId: string | null | undefined): AiModelDefinition | null {
+    return this.aiWorkflowFacade.findModelDefinition(provider, modelId);
+  }
+
+  findModelDefinitionForSetting(
+    settingName: string | null | undefined,
+    providerFallback: string | null | undefined,
+    modelId: string | null | undefined,
+  ): AiModelDefinition | null {
+    return this.aiWorkflowFacade.findModelDefinitionForSetting(
+      settingName,
+      providerFallback,
+      modelId,
+    );
   }
 
   toggleOverlayMenuPreference(): void {
@@ -427,8 +579,8 @@ export class ServerManagementComponent implements OnInit {
     }
 
     this.uiSettingsSaving.set(true);
-    this.http
-      .patch<UiSettingsResponse>('/api/server-management/ui-settings/', {
+    this.serverManagementApi
+      .serverManagementUiSettingsPartialUpdate({
         useOverlayMenu: !current.useOverlayMenu,
       })
       .pipe(
@@ -438,7 +590,7 @@ export class ServerManagementComponent implements OnInit {
         }),
         finalize(() => this.uiSettingsSaving.set(false)),
       )
-      .subscribe((response: any) => {
+      .subscribe((response) => {
         const normalized = this.normalizeUiSettings(response);
         this.uiSettings.set(normalized);
         this.toast.success(
@@ -451,8 +603,8 @@ export class ServerManagementComponent implements OnInit {
 
   loadCacheHealth(showToast = false): void {
     this.cacheHealthLoading.set(true);
-    this.http
-      .get<CacheHealthResponse>('/api/server-management/cache-health/')
+    this.serverManagementApi
+      .serverManagementCacheHealthRetrieve()
       .pipe(
         catchError(() => {
           this.toast.error('Failed to run cache health check');
@@ -461,22 +613,23 @@ export class ServerManagementComponent implements OnInit {
         finalize(() => this.cacheHealthLoading.set(false)),
       )
       .subscribe((response) => {
-        this.cacheHealth.set(response);
+        const normalized = this.normalizeCacheHealth(response);
+        this.cacheHealth.set(normalized);
         if (showToast) {
           const userCacheIsDisabled =
             this.cacheStatus()?.enabled === false ||
-            response.userCacheEnabled === false ||
-            response.probeSkipped === true;
+            normalized.userCacheEnabled === false ||
+            normalized.probeSkipped === true;
 
           if (userCacheIsDisabled) {
             this.toast.info(
-              response.message ||
+              normalized.message ||
                 'Cache is disabled for your user. Backend connectivity can still be healthy.',
             );
-          } else if (response.ok) {
-            this.toast.success(response.message);
+          } else if (normalized.ok) {
+            this.toast.success(normalized.message);
           } else {
-            this.toast.error(response.message);
+            this.toast.error(normalized.message);
           }
         }
       });
@@ -496,10 +649,11 @@ export class ServerManagementComponent implements OnInit {
         }),
         finalize(() => this.isLoading.set(false)),
       )
-      .subscribe((response: any) => {
-        if (response.ok) {
-          this.diagnosticResults.set(response.results || []);
-          this.serverSettings.set(response.settings);
+      .subscribe((response) => {
+        const normalized = this.normalizeMediaDiagnosticResponse(response);
+        if (normalized.ok) {
+          this.diagnosticResults.set(normalized.results);
+          this.serverSettings.set(normalized.settings);
 
           const missing = this.missingFilesCount();
           const discrepancies = this.discrepancyCount();
@@ -514,7 +668,7 @@ export class ServerManagementComponent implements OnInit {
 
           this.toast.success(message);
         } else {
-          this.toast.error(response.message || 'Diagnostic failed');
+          this.toast.error(normalized.message || 'Diagnostic failed');
         }
       });
   }
@@ -537,19 +691,20 @@ export class ServerManagementComponent implements OnInit {
         }),
         finalize(() => this.isLoading.set(false)),
       )
-      .subscribe((response: any) => {
-        if (response.ok) {
-          this.repairResults.set(response.repairs || []);
+      .subscribe((response) => {
+        const normalized = this.normalizeMediaRepairResponse(response);
+        if (normalized.ok) {
+          this.repairResults.set(normalized.repairs);
 
-          if (response.repairs?.length > 0) {
-            this.toast.success(`Repaired ${response.repairs.length} media file paths`);
+          if (normalized.repairs.length > 0) {
+            this.toast.success(`Repaired ${normalized.repairs.length} media file paths`);
             // Re-run diagnostic to show updated status
             setTimeout(() => this.runMediaDiagnostic(), 1000);
           } else {
             this.toast.info('No repairs were needed or possible');
           }
         } else {
-          this.toast.error(response.message || 'Repair failed');
+          this.toast.error(normalized.message || 'Repair failed');
         }
       });
   }
@@ -575,22 +730,147 @@ export class ServerManagementComponent implements OnInit {
     return mode || 'Unknown';
   }
 
-  private normalizeLocalResilience(raw: any): LocalResilienceSettingsResponse {
+  getFailoverProviderBadgeType(provider: AiWorkflowFailoverProvider): 'default' | 'secondary' | 'destructive' {
+    return this.aiWorkflowFacade.getFailoverProviderBadgeType(provider);
+  }
+
+  getFailoverProviderStatus(provider: AiWorkflowFailoverProvider): string {
+    return this.aiWorkflowFacade.getFailoverProviderStatus(provider);
+  }
+
+  private normalizeLocalResilience(raw: unknown): LocalResilienceSettingsResponse {
+    const source = this.toRecord(raw);
     return {
-      enabled: Boolean(raw?.enabled),
-      encryptionRequired: Boolean(raw?.encryptionRequired ?? raw?.encryption_required ?? true),
-      desktopMode: String(raw?.desktopMode ?? raw?.desktop_mode ?? 'localPrimary'),
-      vaultEpoch: Number(raw?.vaultEpoch ?? raw?.vault_epoch ?? 1),
-      updatedAt: raw?.updatedAt ?? raw?.updated_at,
-      updatedBy: raw?.updatedBy ?? raw?.updated_by ?? null,
+      enabled: Boolean(source?.['enabled']),
+      encryptionRequired: Boolean(source?.['encryptionRequired'] ?? source?.['encryption_required'] ?? true),
+      desktopMode: String(source?.['desktopMode'] ?? source?.['desktop_mode'] ?? 'localPrimary'),
+      vaultEpoch: Number(source?.['vaultEpoch'] ?? source?.['vault_epoch'] ?? 1),
+      updatedAt: this.toOptionalString(source?.['updatedAt'] ?? source?.['updated_at']),
+      updatedBy: this.toRecord(source?.['updatedBy'] ?? source?.['updated_by']) as
+        | LocalResilienceSettingsResponse['updatedBy']
+        | null,
     };
   }
 
-  private normalizeUiSettings(raw: any): UiSettingsResponse {
+  private normalizeUiSettings(raw: unknown): UiSettingsResponse {
+    const source = this.toRecord(raw);
     return {
-      useOverlayMenu: Boolean(raw?.useOverlayMenu ?? raw?.use_overlay_menu ?? false),
-      updatedAt: raw?.updatedAt ?? raw?.updated_at,
-      updatedBy: raw?.updatedBy ?? raw?.updated_by ?? null,
+      useOverlayMenu: Boolean(source?.['useOverlayMenu'] ?? source?.['use_overlay_menu'] ?? false),
+      updatedAt: this.toOptionalString(source?.['updatedAt'] ?? source?.['updated_at']),
+      updatedBy: this.toRecord(source?.['updatedBy'] ?? source?.['updated_by']) as
+        | UiSettingsResponse['updatedBy']
+        | null,
     };
+  }
+
+  private normalizeCacheHealth(raw: unknown): CacheHealthResponse {
+    const source = this.toRecord(raw);
+    const redisConnectedRaw = source?.['redisConnected'] ?? source?.['redis_connected'];
+    const writeReadDeleteRaw = source?.['writeReadDeleteOk'] ?? source?.['write_read_delete_ok'];
+    return {
+      ok: Boolean(source?.['ok']),
+      message: String(source?.['message'] ?? 'Cache health check complete'),
+      checkedAt: String(source?.['checkedAt'] ?? source?.['checked_at'] ?? ''),
+      cacheBackend: String(source?.['cacheBackend'] ?? source?.['cache_backend'] ?? ''),
+      cacheLocation: String(source?.['cacheLocation'] ?? source?.['cache_location'] ?? ''),
+      redisConfigured: Boolean(source?.['redisConfigured'] ?? source?.['redis_configured'] ?? false),
+      redisConnected:
+        redisConnectedRaw === null || redisConnectedRaw === undefined
+          ? null
+          : Boolean(redisConnectedRaw),
+      userCacheEnabled:
+        source?.['userCacheEnabled'] === undefined
+          ? (source?.['user_cache_enabled'] as boolean | undefined)
+          : (source?.['userCacheEnabled'] as boolean | undefined),
+      probeSkipped:
+        source?.['probeSkipped'] === undefined
+          ? (source?.['probe_skipped'] as boolean | undefined)
+          : (source?.['probeSkipped'] as boolean | undefined),
+      writeReadDeleteOk:
+        writeReadDeleteRaw === null || writeReadDeleteRaw === undefined
+          ? null
+          : Boolean(writeReadDeleteRaw),
+      probeLatencyMs: Number(source?.['probeLatencyMs'] ?? source?.['probe_latency_ms'] ?? 0),
+      errors: Array.isArray(source?.['errors'])
+        ? (source?.['errors'] as unknown[]).map((e) => String(e))
+        : [],
+    };
+  }
+
+  private normalizeServerActionResponse(raw: unknown): ServerActionResponse {
+    const source = this.toRecord(raw);
+    return {
+      ok: Boolean(source?.['ok']),
+      message: this.toOptionalString(source?.['message']) ?? '',
+    };
+  }
+
+  private normalizeMediaDiagnosticResponse(raw: unknown): MediaDiagnosticResponse {
+    const source = this.toRecord(raw);
+    return {
+      ok: Boolean(source?.['ok']),
+      message: this.toOptionalString(source?.['message']) ?? '',
+      results: Array.isArray(source?.['results'])
+        ? (source['results'] as unknown[])
+            .map((entry) => this.normalizeMediaDiagnosticResult(entry))
+            .filter((entry): entry is MediaDiagnosticResult => !!entry)
+        : [],
+      settings: this.normalizeServerSettings(source?.['settings']),
+    };
+  }
+
+  private normalizeMediaRepairResponse(raw: unknown): MediaRepairResponse {
+    const source = this.toRecord(raw);
+    return {
+      ok: Boolean(source?.['ok']),
+      message: this.toOptionalString(source?.['message']) ?? '',
+      repairs: Array.isArray(source?.['repairs'])
+        ? (source['repairs'] as unknown[]).map((entry) => String(entry))
+        : [],
+    };
+  }
+
+  private normalizeServerSettings(raw: unknown): ServerSettings | null {
+    const source = this.toRecord(raw);
+    if (!source) {
+      return null;
+    }
+    return {
+      mediaRoot: String(source['mediaRoot'] ?? source['media_root'] ?? ''),
+      mediaUrl: String(source['mediaUrl'] ?? source['media_url'] ?? ''),
+      debug: Boolean(source['debug']),
+    };
+  }
+
+  private normalizeMediaDiagnosticResult(raw: unknown): MediaDiagnosticResult | null {
+    const source = this.toRecord(raw);
+    if (!source) {
+      return null;
+    }
+    return {
+      model: String(source['model'] ?? ''),
+      id: Number(source['id'] ?? 0),
+      field: String(source['field'] ?? ''),
+      path: String(source['path'] ?? ''),
+      absPath: String(source['absPath'] ?? source['abs_path'] ?? ''),
+      exists: Boolean(source['exists']),
+      url: String(source['url'] ?? ''),
+      fileLink: this.toOptionalString(source['fileLink'] ?? source['file_link']),
+      discrepancy: Boolean(source['discrepancy']),
+    };
+  }
+
+  private toRecord(value: unknown): Record<string, unknown> | null {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return null;
+    }
+    return value as Record<string, unknown>;
+  }
+
+  private toOptionalString(value: unknown): string | undefined {
+    if (typeof value !== 'string') {
+      return undefined;
+    }
+    return value;
   }
 }

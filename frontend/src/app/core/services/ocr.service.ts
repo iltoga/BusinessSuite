@@ -1,6 +1,6 @@
-import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { HttpClient, HttpHeaders, HttpResponse } from '@angular/common/http';
+import { inject, Injectable } from '@angular/core';
+import { map, Observable } from 'rxjs';
 
 import { AuthService } from '@/core/services/auth.service';
 
@@ -9,6 +9,7 @@ export interface OcrQueuedResponse {
   status: string;
   progress?: number;
   statusUrl?: string;
+  streamUrl?: string;
 }
 
 export interface OcrStatusResponse {
@@ -86,9 +87,18 @@ export class OcrService {
   }
 
   getOcrStatus(statusUrl: string): Observable<OcrStatusResponse> {
+    return this.getOcrStatusResponse(statusUrl).pipe(
+      map((response) => response.body as OcrStatusResponse),
+    );
+  }
+
+  getOcrStatusResponse(statusUrl: string): Observable<HttpResponse<OcrStatusResponse>> {
     const headers = this.buildHeaders();
     const normalizedUrl = statusUrl.replace(/^https?:\/\/[^/]+/, '');
-    return this.http.get<OcrStatusResponse>(normalizedUrl, { headers });
+    return this.http.get<OcrStatusResponse>(normalizedUrl, {
+      headers,
+      observe: 'response',
+    });
   }
 
   startDocumentOcr(
@@ -113,9 +123,20 @@ export class OcrService {
   }
 
   getDocumentOcrStatus(statusUrl: string): Observable<DocumentOcrStatusResponse> {
+    return this.getDocumentOcrStatusResponse(statusUrl).pipe(
+      map((response) => response.body as DocumentOcrStatusResponse),
+    );
+  }
+
+  getDocumentOcrStatusResponse(
+    statusUrl: string,
+  ): Observable<HttpResponse<DocumentOcrStatusResponse>> {
     const headers = this.buildHeaders();
     const normalizedUrl = statusUrl.replace(/^https?:\/\/[^/]+/, '');
-    return this.http.get<DocumentOcrStatusResponse>(normalizedUrl, { headers });
+    return this.http.get<DocumentOcrStatusResponse>(normalizedUrl, {
+      headers,
+      observe: 'response',
+    });
   }
 
   private buildHeaders(): HttpHeaders | undefined {

@@ -42,6 +42,12 @@ class AsyncJob(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(
+                fields=["task_name", "created_by", "status", "-created_at", "-id"],
+                name="core_asyncjob_guard_idx",
+            ),
+        ]
 
     def __str__(self):
         return f"{self.task_name} ({self.status}) - {self.id}"

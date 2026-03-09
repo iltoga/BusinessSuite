@@ -48,6 +48,12 @@ class InvoiceDocumentJob(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(
+                fields=["created_by", "status", "-created_at", "-id"],
+                name="inv_doc_guard_lookup_idx",
+            ),
+        ]
 
     def __str__(self) -> str:
         return f"InvoiceDocumentJob {self.id} ({self.status})"

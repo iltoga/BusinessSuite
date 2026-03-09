@@ -12,9 +12,9 @@
   border-width: 1px;
   height: 1rem;
   width: 1rem;
-  color: var(--color-primary-600);
-  background-color: #fff;
-  border-color: #d1d5db;
+  color: var(--primary);
+  background-color: var(--background);
+  border-color: var(--border);
 }
 
 .form-radio:checked {

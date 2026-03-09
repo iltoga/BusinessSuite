@@ -20,6 +20,28 @@ export const adminRoutes: Routes = [
         (c) => c.DocumentTypeDetailComponent,
       ),
   },
+
+  {
+    path: 'ai-models',
+    title: 'AI Models',
+    canActivate: [staffGuard],
+    loadComponent: () =>
+      import('./ai-models/ai-model-list.component').then((c) => c.AiModelListComponent),
+  },
+  {
+    path: 'ai-models/new',
+    title: 'New AI Model',
+    canActivate: [staffGuard],
+    loadComponent: () =>
+      import('./ai-models/ai-model-form.component').then((c) => c.AiModelFormComponent),
+  },
+  {
+    path: 'ai-models/:id/edit',
+    title: 'Edit AI Model',
+    canActivate: [staffGuard],
+    loadComponent: () =>
+      import('./ai-models/ai-model-form.component').then((c) => c.AiModelFormComponent),
+  },
   {
     path: 'workflow-notifications',
     title: 'Notifications Center',
@@ -49,6 +71,15 @@ export const adminRoutes: Routes = [
     loadComponent: () =>
       import('./server-management/server-management.component').then(
         (c) => c.ServerManagementComponent,
+      ),
+  },
+  {
+    path: 'application-settings',
+    title: 'Application Settings',
+    canActivate: [adminGroupGuard],
+    loadComponent: () =>
+      import('./application-settings/application-settings.component').then(
+        (c) => c.ApplicationSettingsComponent,
       ),
   },
   {

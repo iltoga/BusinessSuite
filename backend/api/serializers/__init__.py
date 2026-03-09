@@ -1,3 +1,4 @@
+from .ai_model_serializer import AiModelSerializer
 from .async_job_serializer import AsyncJobSerializer
 from .calendar_reminder_serializer import (
     CalendarReminderBulkCreateSerializer,

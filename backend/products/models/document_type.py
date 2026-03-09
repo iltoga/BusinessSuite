@@ -10,6 +10,10 @@ class DocumentType(models.Model):
     name = models.CharField(max_length=50, unique=True, db_index=True)
     description = models.CharField(max_length=500, blank=True)
     deprecated = models.BooleanField(default=False, db_index=True)
+    auto_generation = models.BooleanField(
+        default=False,
+        help_text="Whether this document type exposes a system-provided automatic generation/upload action.",
+    )
     ai_validation = models.BooleanField(default=True)
     has_expiration_date = models.BooleanField(default=False)
     expiring_threshold_days = models.PositiveIntegerField(blank=True, null=True)

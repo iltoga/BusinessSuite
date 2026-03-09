@@ -14,6 +14,8 @@ export interface RemindersStreamEvent {
   error?: string;
 }
 
+export type ReminderInboxStreamSignal = 'refresh' | 'reconnect' | 'ignore';
+
 @Injectable({
   providedIn: 'root',
 })
@@ -22,5 +24,24 @@ export class RemindersStreamService {
 
   connect(): Observable<RemindersStreamEvent> {
     return this.sseService.connect<RemindersStreamEvent>('/api/calendar-reminders/stream/');
+  }
+
+  classifyInboxSignal(
+    event: RemindersStreamEvent,
+    options: { refreshOnSnapshot?: boolean } = {},
+  ): ReminderInboxStreamSignal {
+    if (event.event === 'calendar_reminders_error') {
+      return 'reconnect';
+    }
+
+    if (event.event === 'calendar_reminders_changed') {
+      return 'refresh';
+    }
+
+    if (event.event === 'calendar_reminders_snapshot' && options.refreshOnSnapshot) {
+      return 'refresh';
+    }
+
+    return 'ignore';
   }
 }

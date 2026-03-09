@@ -6,6 +6,10 @@ import { Subscription, catchError, finalize, interval, of } from 'rxjs';
 import { AuthService } from '@/core/services/auth.service';
 import { DesktopBridgeService } from '@/core/services/desktop-bridge.service';
 import { PushNotificationsService } from '@/core/services/push-notifications.service';
+import {
+  RemindersStreamService,
+  type RemindersStreamEvent,
+} from '@/features/utils/reminders/reminders-stream.service';
 
 export interface ReminderInboxItem {
   id: number;
@@ -21,10 +25,15 @@ export interface ReminderInboxItem {
   providedIn: 'root',
 })
 export class ReminderInboxService {
+  private readonly fallbackRefreshMs = 5 * 60_000;
+  private readonly reconnectBaseDelayMs = 2_000;
+  private readonly reconnectMaxDelayMs = 30_000;
+
   private readonly http = inject(HttpClient);
   private readonly authService = inject(AuthService);
   private readonly desktopBridge = inject(DesktopBridgeService);
   private readonly pushNotifications = inject(PushNotificationsService);
+  private readonly remindersStreamService = inject(RemindersStreamService);
   private readonly ngZone = inject(NgZone);
 
   readonly unreadCount = signal(0);
@@ -33,8 +42,16 @@ export class ReminderInboxService {
   readonly hasUnread = computed(() => this.unreadCount() > 0);
 
   private started = false;
+  private hasHydratedInbox = false;
+  private refreshQueued = false;
+  private refreshQueuedShowError = false;
+  private awaitingRecoverySnapshot = false;
+  private reconnectAttempt = 0;
   private refreshTimerSubscription: Subscription | null = null;
   private pushSubscription: Subscription | null = null;
+  private streamSubscription: Subscription | null = null;
+  private activeRefreshSubscription: Subscription | null = null;
+  private streamReconnectTimeoutId: number | null = null;
 
   constructor(@Inject(PLATFORM_ID) private platformId: Object) {}
 
@@ -44,6 +61,7 @@ export class ReminderInboxService {
     }
 
     this.started = true;
+    this.subscribeToReminderStream();
     this.refresh(false);
 
     // Run the interval OUTSIDE the Angular zone so zone.js doesn't track the
@@ -51,17 +69,16 @@ export class ReminderInboxService {
     // stability check would never resolve, delaying service-worker registration
     // until the 30-second timeout (see Angular error NG0506).
     this.ngZone.runOutsideAngular(() => {
-      this.refreshTimerSubscription = interval(60_000).subscribe(() => {
+      this.refreshTimerSubscription = interval(this.fallbackRefreshMs).subscribe(() => {
         // Re-enter the zone for the actual work so signals and HTTP calls
         // trigger change detection correctly.
-        this.ngZone.run(() => this.refresh(false));
+        this.ngZone.run(() => this.handleFreshnessSignal('fallback'));
       });
     });
 
     this.pushSubscription = this.pushNotifications.incoming$.subscribe((payload) => {
-      const type = String(payload?.data?.['type'] || '').toLowerCase();
-      if (type === 'calendar_reminder') {
-        this.refresh(false);
+      if (this.isReminderPush(payload)) {
+        this.handleFreshnessSignal('push');
       }
     });
   }
@@ -72,19 +89,33 @@ export class ReminderInboxService {
     this.refreshTimerSubscription = null;
     this.pushSubscription?.unsubscribe();
     this.pushSubscription = null;
+    this.streamSubscription?.unsubscribe();
+    this.streamSubscription = null;
+    this.activeRefreshSubscription?.unsubscribe();
+    this.activeRefreshSubscription = null;
+    this.clearReconnectTimeout();
   }
 
   refresh(showError = false): void {
     if (!this.authService.isAuthenticated()) {
+      this.hasHydratedInbox = false;
+      this.refreshQueued = false;
+      this.refreshQueuedShowError = false;
       this.setUnreadCount(0);
       this.todayReminders.set([]);
+      return;
+    }
+
+    if (this.activeRefreshSubscription) {
+      this.refreshQueued = true;
+      this.refreshQueuedShowError = this.refreshQueuedShowError || showError;
       return;
     }
 
     this.isLoading.set(true);
 
     const params = new HttpParams().set('limit', 100);
-    this.http
+    this.activeRefreshSubscription = this.http
       .get<any>('/api/calendar-reminders/inbox/', {
         params,
         headers: this.buildHeaders(),
@@ -94,11 +125,26 @@ export class ReminderInboxService {
           if (showError) {
             console.error('[ReminderInboxService] Failed to load reminder inbox', error);
           }
-          return of({ unreadCount: 0, today: [] as any[] });
+          return of(null);
         }),
-        finalize(() => this.isLoading.set(false)),
+        finalize(() => {
+          this.isLoading.set(false);
+          this.activeRefreshSubscription = null;
+
+          if (this.refreshQueued) {
+            const nextShowError = this.refreshQueuedShowError;
+            this.refreshQueued = false;
+            this.refreshQueuedShowError = false;
+            this.refresh(nextShowError);
+          }
+        }),
       )
       .subscribe((response) => {
+        if (!response) {
+          return;
+        }
+
+        this.hasHydratedInbox = true;
         this.setUnreadCount(Number(response?.unreadCount ?? response?.unread_count ?? 0));
         this.todayReminders.set(
           Array.isArray(response?.today)
@@ -189,5 +235,74 @@ export class ReminderInboxService {
     const normalized = Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 0;
     this.unreadCount.set(normalized);
     this.desktopBridge.publishUnreadCount(normalized);
+  }
+
+  private subscribeToReminderStream(): void {
+    this.clearReconnectTimeout();
+    this.streamSubscription?.unsubscribe();
+    this.streamSubscription = this.remindersStreamService.connect().subscribe({
+      next: (event) => this.handleReminderStreamEvent(event),
+      error: () => this.handleReminderStreamDisconnect(),
+      complete: () => this.handleReminderStreamDisconnect(),
+    });
+  }
+
+  private handleReminderStreamEvent(event: RemindersStreamEvent): void {
+    this.reconnectAttempt = 0;
+    const signal = this.remindersStreamService.classifyInboxSignal(event, {
+      refreshOnSnapshot: this.awaitingRecoverySnapshot || !this.hasHydratedInbox,
+    });
+
+    if (signal === 'refresh') {
+      this.awaitingRecoverySnapshot = false;
+      this.handleFreshnessSignal('stream');
+      return;
+    }
+
+    if (signal === 'reconnect') {
+      this.handleReminderStreamDisconnect();
+      return;
+    }
+  }
+
+  private handleReminderStreamDisconnect(): void {
+    if (!this.started || !isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    this.awaitingRecoverySnapshot = true;
+    this.scheduleReconnect();
+  }
+
+  private scheduleReconnect(): void {
+    this.clearReconnectTimeout();
+    const delay = Math.min(
+      this.reconnectMaxDelayMs,
+      this.reconnectBaseDelayMs * 2 ** this.reconnectAttempt,
+    );
+    this.reconnectAttempt += 1;
+    this.streamReconnectTimeoutId = window.setTimeout(() => this.subscribeToReminderStream(), delay);
+  }
+
+  private clearReconnectTimeout(): void {
+    if (this.streamReconnectTimeoutId === null) {
+      return;
+    }
+
+    window.clearTimeout(this.streamReconnectTimeoutId);
+    this.streamReconnectTimeoutId = null;
+  }
+
+  private handleFreshnessSignal(source: 'push' | 'stream' | 'fallback'): void {
+    if (!this.started) {
+      return;
+    }
+
+    this.refresh(false);
+  }
+
+  private isReminderPush(payload: { data?: Record<string, string> } | null | undefined): boolean {
+    const type = String(payload?.data?.['type'] || '').toLowerCase();
+    return type === 'calendar_reminder';
   }
 }

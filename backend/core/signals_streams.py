@@ -1,19 +1,22 @@
 from __future__ import annotations
 
+from api.utils.stream_payloads import (
+    serialize_async_job_payload,
+    serialize_document_ocr_job_payload,
+    serialize_invoice_download_job_payload,
+    serialize_invoice_import_item_payload,
+    serialize_invoice_import_job_payload,
+    serialize_ocr_job_payload,
+)
+from core.models import AsyncJob, CalendarReminder, DocumentOCRJob, OCRJob
+from core.services.logger_service import Logger
+from core.services.redis_streams import publish_stream_event as _publish_stream_event
+from core.services.redis_streams import stream_file_key, stream_job_key, stream_user_key
+from customer_applications.models import Document, WorkflowNotification
+from customer_applications.models.categorization_job import DocumentCategorizationItem, DocumentCategorizationJob
 from django.db import transaction
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
-
-from core.models import AsyncJob, CalendarReminder
-from core.services.logger_service import Logger
-from core.services.redis_streams import (
-    publish_stream_event as _publish_stream_event,
-    stream_file_key,
-    stream_job_key,
-    stream_user_key,
-)
-from customer_applications.models import Document, WorkflowNotification
-from customer_applications.models.categorization_job import DocumentCategorizationItem, DocumentCategorizationJob
 from invoices.models import (
     InvoiceDocumentItem,
     InvoiceDocumentJob,
@@ -48,14 +51,7 @@ def _publish_stream_event_safe(stream_key: str, **kwargs) -> None:
 
 @receiver(post_save, sender=AsyncJob, dispatch_uid="streams_async_job_post_save")
 def streams_async_job_post_save(sender, instance: AsyncJob, created, **kwargs):
-    payload = {
-        "id": str(instance.id),
-        "status": instance.status,
-        "progress": instance.progress,
-        "message": instance.message,
-        "result": instance.result,
-        "error_message": instance.error_message,
-    }
+    payload = serialize_async_job_payload(instance)
     _publish_stream_event_safe(
         stream_job_key(instance.id),
         event="async_job_status",
@@ -66,14 +62,35 @@ def streams_async_job_post_save(sender, instance: AsyncJob, created, **kwargs):
     )
 
 
+@receiver(post_save, sender=OCRJob, dispatch_uid="streams_ocr_job_post_save")
+def streams_ocr_job_post_save(sender, instance: OCRJob, created, **kwargs):
+    payload = serialize_ocr_job_payload(instance)
+    _publish_stream_event_safe(
+        stream_job_key(instance.id),
+        event="ocr_job_changed",
+        status=instance.status,
+        payload=payload,
+        job_id=str(instance.id),
+        user_id=str(instance.created_by_id) if instance.created_by_id else None,
+    )
+
+
+@receiver(post_save, sender=DocumentOCRJob, dispatch_uid="streams_document_ocr_job_post_save")
+def streams_document_ocr_job_post_save(sender, instance: DocumentOCRJob, created, **kwargs):
+    payload = serialize_document_ocr_job_payload(instance)
+    _publish_stream_event_safe(
+        stream_job_key(instance.id),
+        event="document_ocr_job_changed",
+        status=instance.status,
+        payload=payload,
+        job_id=str(instance.id),
+        user_id=str(instance.created_by_id) if instance.created_by_id else None,
+    )
+
+
 @receiver(post_save, sender=InvoiceDownloadJob, dispatch_uid="streams_invoice_download_job_post_save")
 def streams_invoice_download_job_post_save(sender, instance: InvoiceDownloadJob, created, **kwargs):
-    payload = {
-        "jobId": str(instance.id),
-        "status": instance.status,
-        "progress": instance.progress,
-        "errorMessage": instance.error_message,
-    }
+    payload = serialize_invoice_download_job_payload(instance)
     _publish_stream_event_safe(
         stream_job_key(instance.id),
         event="invoice_download_job_changed",
@@ -86,17 +103,7 @@ def streams_invoice_download_job_post_save(sender, instance: InvoiceDownloadJob,
 
 @receiver(post_save, sender=InvoiceImportJob, dispatch_uid="streams_invoice_import_job_post_save")
 def streams_invoice_import_job_post_save(sender, instance: InvoiceImportJob, created, **kwargs):
-    payload = {
-        "jobId": str(instance.id),
-        "status": instance.status,
-        "progress": instance.progress,
-        "totalFiles": instance.total_files,
-        "processedFiles": instance.processed_files,
-        "importedCount": instance.imported_count,
-        "duplicateCount": instance.duplicate_count,
-        "errorCount": instance.error_count,
-        "errorMessage": instance.error_message,
-    }
+    payload = serialize_invoice_import_job_payload(instance)
     _publish_stream_event_safe(
         stream_job_key(instance.id),
         event="invoice_import_job_changed",
@@ -109,15 +116,7 @@ def streams_invoice_import_job_post_save(sender, instance: InvoiceImportJob, cre
 
 @receiver(post_save, sender=InvoiceImportItem, dispatch_uid="streams_invoice_import_item_post_save")
 def streams_invoice_import_item_post_save(sender, instance: InvoiceImportItem, created, **kwargs):
-    payload = {
-        "itemId": str(instance.id),
-        "jobId": str(instance.job_id),
-        "index": instance.sort_index,
-        "filename": instance.filename,
-        "status": instance.status,
-        "result": instance.result,
-        "errorMessage": instance.error_message,
-    }
+    payload = serialize_invoice_import_item_payload(instance)
     _publish_stream_event_safe(
         stream_job_key(instance.job_id),
         event="invoice_import_item_changed",
@@ -232,7 +231,11 @@ def streams_document_post_save(sender, instance: Document, created, **kwargs):
         status=instance.ai_validation_status or "pending",
         payload=payload,
         file_id=str(instance.id),
-        user_id=str(instance.updated_by_id or instance.created_by_id) if (instance.updated_by_id or instance.created_by_id) else None,
+        user_id=(
+            str(instance.updated_by_id or instance.created_by_id)
+            if (instance.updated_by_id or instance.created_by_id)
+            else None
+        ),
     )
 
 

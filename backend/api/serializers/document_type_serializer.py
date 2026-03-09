@@ -10,6 +10,7 @@ class DocumentTypeSerializer(serializers.ModelSerializer):
             "name",
             "description",
             "deprecated",
+            "auto_generation",
             "ai_validation",
             "has_expiration_date",
             "expiring_threshold_days",

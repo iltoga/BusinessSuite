@@ -20,6 +20,7 @@ import { CustomersService } from '../../../core/services/customers.service';
 import { JobService } from '../../../core/services/job.service';
 import { GlobalToastService } from '../../../core/services/toast.service';
 import { ContextHelpDirective } from '../../../shared/directives/context-help.directive';
+import { AppDatePipe } from '../../../shared/pipes/app-date-pipe';
 import { HelpService } from '../../../shared/services/help.service';
 import { buildLocalFilePreview } from '../../../shared/utils/document-preview-source';
 import { extractServerErrorMessage } from '../../../shared/utils/form-errors';
@@ -90,6 +91,7 @@ interface PassportCheckResult {
     ZardIconComponent,
     ContextHelpDirective,
     FileUploadComponent,
+    AppDatePipe,
   ],
   templateUrl: './passport-check.component.html',
   styleUrls: ['./passport-check.component.css'],

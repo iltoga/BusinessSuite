@@ -105,6 +105,10 @@
             <span class="text-sm">Deprecated</span>
           </label>
           <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" formControlName="autoGeneration" class="rounded" />
+            <span class="text-sm">Auto Generation</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" formControlName="hasExpirationDate" class="rounded" />
             <span class="text-sm">Has Expiration Date</span>
           </label>
@@ -188,9 +192,9 @@
     </div>
     <app-data-table
       #dataTable
-      [data]="documentTypes()"
-      [columns]="columns"
-      [actions]="actions"
+      [data]="items()"
+      [columns]="columns()"
+      [actions]="actions()"
       [isLoading]="isLoading()"
     />
   </z-card>

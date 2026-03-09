@@ -31,6 +31,8 @@ import { ZardDateInputComponent } from '@/shared/components/date-input';
 import { FormErrorSummaryComponent } from '@/shared/components/form-error-summary/form-error-summary.component';
 import { ZardInputDirective } from '@/shared/components/input';
 import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/utils/form-errors';
+import { InvoiceLineItemsSectionComponent } from './invoice-line-items-section.component';
+import { FormNavigationFacadeService } from '@/features/shared/services/form-navigation-facade.service';
 
 interface BillableProductRow {
   product: Product;
@@ -60,6 +62,7 @@ interface InvoiceLineInitial {
     ZardDateInputComponent,
     CustomerSelectComponent,
     FormErrorSummaryComponent,
+    InvoiceLineItemsSectionComponent,
   ],
   templateUrl: './invoice-form.component.html',
   styleUrls: ['./invoice-form.component.css'],
@@ -74,6 +77,7 @@ export class InvoiceFormComponent implements OnInit {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly http = inject(HttpClient);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly formNavigationFacade = inject(FormNavigationFacadeService);
 
   private nextLineKey = 1;
 
@@ -206,48 +210,11 @@ export class InvoiceFormComponent implements OnInit {
   }
 
   goBack(): void {
-    const st = history.state as any;
-
-    const focusState: Record<string, unknown> = { focusTable: true };
-    if (st?.focusId) {
-      focusState['focusId'] = st.focusId;
-    } else if (this.invoice()?.id) {
-      focusState['focusId'] = this.invoice()?.id;
-    }
-    if (st?.searchQuery) {
-      focusState['searchQuery'] = st.searchQuery;
-    }
-    const page = Number(st?.page);
-    if (Number.isFinite(page) && page > 0) {
-      focusState['page'] = Math.floor(page);
-    }
-
-    if (st?.from === 'applications') {
-      this.router.navigate(['/applications'], { state: focusState });
-      return;
-    }
-
-    if (typeof st?.returnUrl === 'string' && st.returnUrl.startsWith('/')) {
-      this.router.navigateByUrl(st.returnUrl, {
-        state: {
-          searchQuery: st.searchQuery ?? null,
-          page: st.page ?? null,
-        },
-      });
-      return;
-    }
-
-    if (st?.from === 'customer-detail' && st?.customerId) {
-      this.router.navigate(['/customers', st.customerId], {
-        state: {
-          searchQuery: st.searchQuery ?? null,
-          page: st.page ?? null,
-        },
-      });
-      return;
-    }
-
-    this.router.navigate(['/invoices'], { state: focusState });
+    this.formNavigationFacade.goBackFromInvoiceForm({
+      router: this.router,
+      state: history.state as any,
+      invoiceId: this.invoice()?.id ?? null,
+    });
   }
 
   addLineItem(
@@ -574,6 +541,8 @@ export class InvoiceFormComponent implements OnInit {
         const payload = (response ?? null) as Record<string, any> | null;
         const customerId = payload?.['customer']?.id ?? null;
         const sourceLine = payload?.['invoiceApplication'] ?? payload?.['invoice_application'] ?? null;
+        const sourceApplication =
+          payload?.['sourceApplication'] ?? payload?.['source_application'] ?? null;
         const sourceApplicationId = sourceLine?.['customerApplication'] ?? sourceLine?.['customer_application'] ?? null;
         const sourceProductId = sourceLine?.['product'] ?? null;
 
@@ -591,7 +560,7 @@ export class InvoiceFormComponent implements OnInit {
 
         this.fetchBillableProducts(customerId).subscribe({
           next: (rows) => {
-            this.billableProducts.set(rows);
+            this.billableProducts.set(this.ensureSourceApplicationIncluded(rows, sourceApplication));
             this.invoiceApplications.clear();
             this.addLineItem(
               {
@@ -746,6 +715,76 @@ export class InvoiceFormComponent implements OnInit {
         } as BillableProductRow;
       })
       .filter((row: BillableProductRow | null): row is BillableProductRow => row !== null);
+  }
+
+  private ensureSourceApplicationIncluded(
+    rows: BillableProductRow[],
+    rawSourceApplication: unknown,
+  ): BillableProductRow[] {
+    const sourceApplication = this.toDocApplicationInvoice(rawSourceApplication);
+    const sourceApplicationId = Number(sourceApplication?.id ?? 0);
+    const sourceProduct = sourceApplication?.product as Product | null | undefined;
+    const sourceProductId = Number(sourceProduct?.id ?? 0);
+
+    if (!sourceApplication || !sourceApplicationId || !sourceProductId || !sourceProduct) {
+      return rows;
+    }
+
+    const existingRowIndex = rows.findIndex((row) => row.product.id === sourceProductId);
+    if (existingRowIndex === -1) {
+      return this.sortBillableRows([
+        ...rows,
+        {
+          product: sourceProduct,
+          pendingApplications: [sourceApplication],
+          pendingApplicationsCount: 1,
+          hasPendingApplications: true,
+        },
+      ]);
+    }
+
+    const existingRow = rows[existingRowIndex];
+    if (existingRow.pendingApplications.some((application) => application.id === sourceApplicationId)) {
+      return rows;
+    }
+
+    const updatedRow: BillableProductRow = {
+      ...existingRow,
+      pendingApplications: [sourceApplication, ...existingRow.pendingApplications],
+      pendingApplicationsCount: existingRow.pendingApplicationsCount + 1,
+      hasPendingApplications: true,
+    };
+
+    return rows.map((row, index) => (index === existingRowIndex ? updatedRow : row));
+  }
+
+  private toDocApplicationInvoice(value: unknown): DocApplicationInvoice | null {
+    if (!value || typeof value !== 'object') {
+      return null;
+    }
+
+    const candidate = value as Partial<DocApplicationInvoice> & {
+      product?: Partial<Product> | null;
+    };
+    if (typeof candidate.id !== 'number') {
+      return null;
+    }
+    if (!candidate.product || typeof candidate.product.id !== 'number') {
+      return null;
+    }
+
+    return candidate as DocApplicationInvoice;
+  }
+
+  private sortBillableRows(rows: BillableProductRow[]): BillableProductRow[] {
+    return [...rows].sort((left, right) => {
+      if (left.hasPendingApplications !== right.hasPendingApplications) {
+        return left.hasPendingApplications ? -1 : 1;
+      }
+      return (left.product.name ?? '').localeCompare(right.product.name ?? '', undefined, {
+        sensitivity: 'base',
+      });
+    });
   }
 
   private toIsoDate(value: Date | string | null): string | null {

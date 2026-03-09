@@ -47,6 +47,7 @@ export class ProductSelectComponent implements ControlValueAccessor {
   readonly pageSize = input<number>(20);
   readonly selectedId = input<number | null>(null);
   readonly disabled = input<boolean>(false);
+  readonly usesCustomerAppWorkflow = input<boolean | undefined>(undefined);
   readonly zStatus = input<'error' | 'success' | 'warning' | 'default' | undefined>();
   readonly zWidth = input<ZardComboboxVariants['zWidth']>('default');
 
@@ -77,7 +78,7 @@ export class ProductSelectComponent implements ControlValueAccessor {
   // Loader function for Typeahead wrapper
   readonly productLoader = (q?: string, page = 1) => {
     return this.productsService
-      .productsList(undefined, true, undefined, page, this.pageSize(), q)
+      .productsList(undefined, true, undefined, page, this.pageSize(), q, this.usesCustomerAppWorkflow())
       .pipe(map((resp: any) => resp.results ?? []));
   };
 

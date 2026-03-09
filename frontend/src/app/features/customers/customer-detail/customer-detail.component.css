@@ -2,42 +2,107 @@
   display: block;
 }
 
-@media (max-width: 767px) {
-  .customer-detail-header-actions > * {
-    flex: 1 1 calc(50% - 0.25rem);
-    min-width: 0;
-  }
+.customer-detail-container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
 
-  .customer-passport-table tbody tr {
-    display: grid;
-    gap: 0.35rem;
-    padding: 0.625rem 0;
-    border-bottom: 1px solid hsl(var(--border));
-  }
+/* Sticky header styling */
+.customer-header {
+  transition: box-shadow 0.2s ease;
+}
 
-  .customer-passport-table tbody tr:last-child {
-    border-bottom: 0;
-  }
+.customer-header.sticky {
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
 
-  .customer-passport-table th {
-    display: none;
-  }
+/* Ensure cards don't overlap the header */
+.customer-detail-container z-card {
+  position: relative;
+}
 
-  .customer-passport-table td {
-    display: grid;
-    grid-template-columns: minmax(8rem, 45%) minmax(0, 1fr);
-    align-items: start;
-    gap: 0.625rem;
+/* Compact card styling */
+z-card {
+  transition: box-shadow 0.2s ease;
+}
+
+z-card:hover {
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+/* Passport image wrapper for magnifier spacing */
+.passport-image-wrapper {
+  background-color: var(--background);
+}
+
+.passport-image-wrapper app-image-magnifier {
+  display: block;
+}
+
+/* Definition list compact styling */
+dl {
+  margin: 0;
+}
+
+dt {
+  font-weight: 500;
+}
+
+/* Grid gap adjustments for compact layout */
+.grid {
+  row-gap: 1rem;
+}
+
+/* Table improvements */
+.customer-applications-table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.customer-applications-table thead th {
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background-color: var(--muted);
+  padding: 0.75rem 1rem;
+}
+
+.customer-applications-table tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+.customer-applications-table tbody td {
+  padding: 0.875rem 1rem;
+  vertical-align: middle;
+}
+
+/* Badge spacing in tables */
+.customer-applications-table z-badge {
+  white-space: nowrap;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1023px) {
+  .customer-detail-container {
     padding: 0;
   }
 
-  .customer-passport-table td::before {
-    content: attr(data-label);
-    font-size: 0.7rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: hsl(var(--muted-foreground));
+  .customer-header {
+    top: 0;
+    padding: 1rem;
+  }
+
+  z-card {
+    border-radius: 0;
+  }
+}
+
+/* Mobile responsive - keep existing responsive table behavior */
+@media (max-width: 767px) {
+  .customer-header-actions > * {
+    flex: 1 1 calc(50% - 0.25rem);
+    min-width: 0;
   }
 
   .customer-applications-table-wrap {
@@ -60,10 +125,10 @@
   .customer-applications-table .customer-application-row {
     display: grid;
     gap: 0.625rem;
-    border: 1px solid hsl(var(--border));
+    border: 1px solid var(--border);
     border-radius: 0.75rem;
     padding: 0.75rem;
-    background-color: hsl(var(--card));
+    background-color: var(--card);
   }
 
   .customer-applications-table .customer-application-row td {
@@ -82,18 +147,18 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: hsl(var(--muted-foreground));
+    color: var(--muted-foreground);
   }
 
   .customer-applications-table .customer-application-row .app-history-actions-cell {
     grid-template-columns: 1fr;
     margin-top: 0.125rem;
     padding-top: 0.5rem;
-    border-top: 1px dashed hsl(var(--border));
+    border-top: 1px dashed var(--border);
   }
 
   .customer-applications-table .customer-application-row .app-history-actions-cell::before {
-    color: hsl(var(--primary));
+    color: var(--primary);
   }
 
   .customer-applications-table .customer-application-row .app-history-actions-cell > div {
@@ -102,5 +167,32 @@
 
   .applications-pagination {
     justify-content: center;
+  }
+
+  /* Adjust grid for mobile */
+  .lg\:col-span-2 {
+    grid-column: span 1;
+  }
+
+  /* Stack cards vertically on mobile */
+  .grid.grid-cols-1.lg\:grid-cols-3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Print styles */
+@media print {
+  .customer-header {
+    position: static;
+  }
+
+  .customer-header-actions {
+    display: none;
+  }
+
+  z-card {
+    break-inside: avoid;
+    box-shadow: none;
+    border: 1px solid #ddd;
   }
 }

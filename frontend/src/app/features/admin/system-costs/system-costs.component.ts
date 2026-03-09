@@ -1,8 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
 import { catchError, EMPTY, finalize } from 'rxjs';
 
+import { ServerManagementService } from '@/core/api';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
@@ -116,7 +116,7 @@ interface OpenRouterStatusResponse {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SystemCostsComponent implements OnInit {
-  private readonly http = inject(HttpClient);
+  private readonly serverManagementApi = inject(ServerManagementService);
   private readonly toast = inject(GlobalToastService);
 
   readonly openRouterStatus = signal<OpenRouterStatusResponse | null>(null);
@@ -128,8 +128,8 @@ export class SystemCostsComponent implements OnInit {
 
   loadOpenRouterStatus(): void {
     this.openRouterLoading.set(true);
-    this.http
-      .get<OpenRouterStatusResponse>('/api/server-management/openrouter-status/')
+    this.serverManagementApi
+      .serverManagementOpenrouterStatusRetrieve()
       .pipe(
         catchError(() => {
           this.toast.error('Failed to load OpenRouter status');
@@ -138,7 +138,7 @@ export class SystemCostsComponent implements OnInit {
         finalize(() => this.openRouterLoading.set(false)),
       )
       .subscribe((response) => {
-        this.openRouterStatus.set(response);
+        this.openRouterStatus.set(response as OpenRouterStatusResponse);
       });
   }
 

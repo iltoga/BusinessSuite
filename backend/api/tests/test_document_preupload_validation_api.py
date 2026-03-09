@@ -61,6 +61,9 @@ class DocumentPreuploadValidationApiTests(TestCase):
             "extracted_expiration_date": None,
             "extracted_doc_number": None,
             "extracted_details_markdown": None,
+            "ai_provider": "openrouter",
+            "ai_provider_name": "OpenRouter",
+            "ai_model": "google/gemini-2.5-flash-lite",
         }
         upload = SimpleUploadedFile("passport.pdf", b"%PDF-1.4 fake-pdf", content_type="application/pdf")
 
@@ -80,6 +83,22 @@ class DocumentPreuploadValidationApiTests(TestCase):
             negative_issues = body["validationResult"].get("negative_issues")
         self.assertEqual(negative_issues, ["Image is blurry"])
         self.assertTrue(body["aiValidationEnabled"])
+        self.assertEqual(body["validationProvider"], "openrouter")
+        self.assertEqual(body["validationProviderName"], "OpenRouter")
+        self.assertEqual(body["validationModel"], "google/gemini-2.5-flash-lite")
+        self.assertEqual(
+            body["validationResult"].get("aiProvider") or body["validationResult"].get("ai_provider"),
+            "openrouter",
+        )
+        self.assertEqual(
+            body["validationResult"].get("aiProviderName")
+            or body["validationResult"].get("ai_provider_name"),
+            "OpenRouter",
+        )
+        self.assertEqual(
+            body["validationResult"].get("aiModel") or body["validationResult"].get("ai_model"),
+            "google/gemini-2.5-flash-lite",
+        )
 
         validate_document_mock.assert_called_once_with(
             file_bytes=b"%PDF-1.4 fake-pdf",
@@ -117,3 +136,28 @@ class DocumentPreuploadValidationApiTests(TestCase):
         self.assertEqual(body["reasoning"], "AI provider error")
         self.assertEqual(body["validationResult"]["reasoning"], "AI provider error")
         self.assertEqual(body["validationResult"]["negativeIssues"], ["AI provider error"])
+        self.assertIsNone(body.get("validationProvider"))
+        self.assertIsNone(body.get("validationProviderName"))
+        self.assertIsNone(body.get("validationModel"))
+
+    @patch("api.views_categorization.AIDocumentCategorizer.validate_document")
+    def test_validate_document_category_error_payload_keeps_runtime_metadata(self, validate_document_mock):
+        failure = Exception("OpenRouter timeout")
+        setattr(failure, "ai_provider", "openrouter")
+        setattr(failure, "ai_provider_name", "OpenRouter")
+        setattr(failure, "ai_model", "google/gemini-2.5-flash")
+        validate_document_mock.side_effect = failure
+        upload = SimpleUploadedFile("passport.pdf", b"%PDF-1.4 fake-pdf", content_type="application/pdf")
+
+        response = self.client.post(self.url, data={"file": upload})
+
+        self.assertEqual(response.status_code, 200, response.content)
+        body = response.json()
+        self.assertEqual(body["validationStatus"], "error")
+        self.assertEqual(body["validationProvider"], "openrouter")
+        self.assertEqual(body["validationProviderName"], "OpenRouter")
+        self.assertEqual(body["validationModel"], "google/gemini-2.5-flash")
+        validation_result = body["validationResult"]
+        self.assertEqual(validation_result["aiProvider"], "openrouter")
+        self.assertEqual(validation_result["aiProviderName"], "OpenRouter")
+        self.assertEqual(validation_result["aiModel"], "google/gemini-2.5-flash")

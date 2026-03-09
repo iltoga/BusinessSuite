@@ -1,4 +1,7 @@
+from api.utils.stream_payloads import normalize_async_job_payload, serialize_async_job_payload
+
 from .views_imports import *
+
 
 @csrf_exempt
 @api_view(["GET", "POST"])
@@ -48,7 +51,6 @@ def whatsapp_webhook(request):
         result.get("replies", 0),
     )
     return Response({"status": "received"}, status=status.HTTP_200_OK)
-
 
 
 class WorkflowNotificationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
@@ -1083,7 +1085,10 @@ def workflow_notifications_stream_sse(request):
                     now = time.monotonic()
                     if (now - last_fallback_refresh_at) >= fallback_refresh_interval_seconds:
                         current_notification_id, current_last_updated_at = _latest_recent_notification_state()
-                        if (current_notification_id, current_last_updated_at) != (last_notification_id, last_updated_at):
+                        if (current_notification_id, current_last_updated_at) != (
+                            last_notification_id,
+                            last_updated_at,
+                        ):
                             payload = _build_payload(
                                 event="workflow_notifications_changed",
                                 cursor=current_cursor,
@@ -1153,14 +1158,7 @@ def async_job_status_sse(request, job_id):
             yield format_sse_event(data={"error": "Job not found"})
             return
 
-        initial_payload = {
-            "id": str(job.id),
-            "status": job.status,
-            "progress": job.progress,
-            "message": job.message,
-            "result": job.result,
-            "error_message": job.error_message,
-        }
+        initial_payload = serialize_async_job_payload(job)
         yield format_sse_event(data=initial_payload)
         last_progress = job.progress
         last_status = job.status
@@ -1173,23 +1171,19 @@ def async_job_status_sse(request, job_id):
                     yield ": keepalive\n\n"
                     continue
 
-                job = job_queryset.get()
-                if job.progress == last_progress and job.status == last_status:
+                data = normalize_async_job_payload(stream_event.payload)
+                if data is None or data["status"] in [AsyncJob.STATUS_COMPLETED, AsyncJob.STATUS_FAILED]:
+                    job = job_queryset.get()
+                    data = serialize_async_job_payload(job)
+
+                if data["progress"] == last_progress and data["status"] == last_status:
                     continue
 
-                data = {
-                    "id": str(job.id),
-                    "status": job.status,
-                    "progress": job.progress,
-                    "message": job.message,
-                    "result": job.result,
-                    "error_message": job.error_message,
-                }
                 yield format_sse_event(event_id=stream_event.id, data=data)
-                last_progress = job.progress
-                last_status = job.status
+                last_progress = data["progress"]
+                last_status = data["status"]
 
-                if job.status in [AsyncJob.STATUS_COMPLETED, AsyncJob.STATUS_FAILED]:
+                if data["status"] in [AsyncJob.STATUS_COMPLETED, AsyncJob.STATUS_FAILED]:
                     return
             except AsyncJob.DoesNotExist:
                 yield format_sse_event(data={"error": "Job not found"})

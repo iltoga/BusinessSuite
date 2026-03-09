@@ -1,0 +1,40 @@
+<div class="h-full flex flex-col gap-6">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">AI Models</h1>
+    <button z-button zType="default" zSize="default" (click)="createNew()">New model</button>
+  </div>
+
+  <z-card class="bg-card rounded-lg border shadow-sm py-0 gap-0 **:data-[slot=card-content]:px-0">
+    <div class="border-b p-3 sm:p-4">
+      <app-search-toolbar
+        [query]="query()"
+        [placeholder]="'Search model name, id, provider...'"
+        [isLoading]="isLoading()"
+        (queryChange)="onQueryChange($event)"
+        (tabOut)="onEnterSearch()"
+      />
+    </div>
+
+    <div class="p-0">
+      <app-data-table
+        #dataTable
+        [columns]="columns()"
+        [data]="items()"
+        [isLoading]="isLoading()"
+        [actions]="actions()"
+        (sortChange)="onSortChange($event)"
+      />
+    </div>
+  </z-card>
+
+  <app-confirm-dialog
+    [isOpen]="showDeleteConfirm()"
+    title="Delete AI model"
+    [message]="'Are you sure you want to delete ' + (pendingDelete()?.name || 'this model') + '?'"
+    [destructive]="true"
+    confirmText="Delete"
+    cancelText="Cancel"
+    (confirmed)="confirmDelete()"
+    (cancelled)="cancelDelete()"
+  />
+</div>

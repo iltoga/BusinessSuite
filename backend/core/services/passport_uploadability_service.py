@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from typing import Any, Callable, Optional
 
 from core.services.ai_passport_parser import AIPassportParser
+from core.services.ai_runtime_settings_service import AIRuntimeSettingsService
 from core.services.ai_usage_service import AIUsageFeature
 from core.services.image_quality_service import ImageQualityService
 from core.services.logger_service import Logger
@@ -28,24 +29,20 @@ class PassportUploadabilityService:
     def __init__(
         self, check_passport_model: Optional[str] = None, ai_min_confidence_for_upload: Optional[float] = None
     ):
-        # get settings from django settings or throw if not set
-        from django.conf import settings
-
-        self.CHECK_PASSPORT_MODEL = check_passport_model or getattr(settings, "CHECK_PASSPORT_MODEL")
+        self.CHECK_PASSPORT_MODEL = check_passport_model or AIRuntimeSettingsService.get_check_passport_model()
         if not self.CHECK_PASSPORT_MODEL:
             raise ValueError("CHECK_PASSPORT_MODEL setting is required for PassportUploadabilityService")
-        self.AI_MIN_CONFIDENCE_FOR_UPLOAD = ai_min_confidence_for_upload or getattr(
-            settings, "CHECK_PASSPORT_AI_MIN_CONFIDENCE_FOR_UPLOAD"
+        self.AI_MIN_CONFIDENCE_FOR_UPLOAD = (
+            ai_min_confidence_for_upload or AIRuntimeSettingsService.get_check_passport_min_confidence()
         )
         if self.AI_MIN_CONFIDENCE_FOR_UPLOAD is None:
             raise ValueError(
                 "CHECK_PASSPORT_AI_MIN_CONFIDENCE_FOR_UPLOAD setting is required for PassportUploadabilityService"
             )
 
-        # Force this feature to use Gemini 3 Flash Preview via OpenRouter as requested.
+        # Use the globally configured provider by default; model remains feature-specific.
         self.ai_parser = AIPassportParser(
             model=self.CHECK_PASSPORT_MODEL,
-            use_openrouter=True,
             feature_name=AIUsageFeature.PASSPORT_CHECK_API,
         )
         self.image_quality_service = ImageQualityService()

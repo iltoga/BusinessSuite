@@ -24,7 +24,9 @@ class ProductManager(models.Manager):
 
 
 def default_product_currency() -> str:
-    configured = str(getattr(settings, "BASE_CURRENCY", "IDR") or "IDR").strip().upper()
+    from core.services.app_setting_service import AppSettingService
+
+    configured = str(AppSettingService.get_effective_raw("BASE_CURRENCY", "IDR") or "IDR").strip().upper()
     if configured.isalpha() and 2 <= len(configured) <= 3:
         return configured
     return "IDR"
@@ -65,6 +67,8 @@ class Product(models.Model):
     # Optional AI system prompt injected during document validation for all applications using this product
     validation_prompt = models.TextField(blank=True)
     deprecated = models.BooleanField(default=False, db_index=True)
+    # Flag to indicate if this product uses the customer app workflow, which requires additional processing and API calls.
+    # Note: This is automatically computed based on the presence of configured documents and tasks, but stored as a denormalized field for easier querying and filtering.
     uses_customer_app_workflow = models.BooleanField(default=False, db_index=True)
 
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
@@ -205,7 +209,10 @@ class Product(models.Model):
         # Block deletion if directly referenced by invoice lines or by linked applications.
         if hasattr(self, "invoice_applications") and self.invoice_applications.exists():
             return False, "Cannot delete product: related invoices exist."
-        if hasattr(self, "doc_applications") and self.doc_applications.filter(invoice_applications__isnull=False).exists():
+        if (
+            hasattr(self, "doc_applications")
+            and self.doc_applications.filter(invoice_applications__isnull=False).exists()
+        ):
             return False, "Cannot delete product: related invoices exist."
         # Alert if related applications/workflows exist
         if hasattr(self, "doc_applications") and self.doc_applications.exists():

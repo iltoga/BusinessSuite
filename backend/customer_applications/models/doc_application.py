@@ -304,9 +304,31 @@ class DocApplication(models.Model):
     def calculate_next_calendar_due_date(self, start_date=None):
         task = self.get_next_calendar_task()
         if not task:
-            return None if not self.has_configured_tasks else self.doc_date
-        base_date = start_date or timezone.localdate()
+            if not self.has_configured_tasks:
+                return None
+            base_date = start_date or self.get_first_task_start_date()
+            return base_date
+        base_date = start_date or self.get_first_task_start_date()
+        if not base_date:
+            return None
         return calculate_due_date(base_date, task.duration, task.duration_is_business_days)
+
+    def get_first_task_start_date(self):
+        if not self.has_configured_tasks:
+            return None
+
+        from customer_applications.services.stay_permit_submission_window_service import (
+            StayPermitSubmissionWindowService,
+        )
+
+        service = StayPermitSubmissionWindowService()
+        if not service.product_requires_submission_window(getattr(self, "product", None)):
+            return self.doc_date
+
+        if not self.pk:
+            return None
+
+        return service.resolve_submission_date(product=self.product, application=self)
 
     @property
     def upload_folder(self):
@@ -374,7 +396,9 @@ class DocApplication(models.Model):
         else:
             if not self.has_configured_tasks:
                 return None
-            start_date = self.doc_date
+            start_date = self.get_first_task_start_date()
+            if not start_date:
+                return None
             tasks = self.product.tasks.all()
 
         due_date = start_date
@@ -549,6 +573,19 @@ def pre_delete_doc_application_signal(sender, instance, **kwargs):
     known_event_ids = set()
     if instance.calendar_event_id:
         known_event_ids.add(instance.calendar_event_id)
+    try:
+        refs = instance.calendar_events.values_list("id", "google_event_id")
+        for local_event_id, google_event_id in refs:
+            if local_event_id:
+                known_event_ids.add(local_event_id)
+            if google_event_id:
+                known_event_ids.add(google_event_id)
+    except Exception as exc:
+        logger.warning(
+            "Failed to collect calendar event references for application #%s: %s",
+            instance.id,
+            exc,
+        )
     try:
         from customer_applications.models.workflow_notification import WorkflowNotification
 

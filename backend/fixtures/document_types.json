@@ -5,6 +5,7 @@
         "fields": {
             "name": "Address",
             "description": "Indonesian address details",
+            "auto_generation": false,
             "ai_validation": false,
             "has_expiration_date": false,
             "has_doc_number": false,
@@ -20,6 +21,7 @@
         "fields": {
             "name": "Arrival Stamp",
             "description": "Immigration arrival stamp on the passport showing entry date into Indonesia",
+            "auto_generation": false,
             "ai_validation": false,
             "has_expiration_date": false,
             "has_doc_number": false,
@@ -35,6 +37,7 @@
         "fields": {
             "name": "Bank Statement",
             "description": "Screenshot or PDF of a recent bank statement displaying bank name, account owner, account number, and balance",
+            "auto_generation": false,
             "ai_validation": false,
             "has_expiration_date": false,
             "has_doc_number": false,
@@ -50,6 +53,7 @@
         "fields": {
             "name": "Flight Ticket",
             "description": "Copy of the flight ticket out of Indonesia displaying date, flight number, and booking code",
+            "auto_generation": false,
             "ai_validation": false,
             "has_expiration_date": false,
             "has_doc_number": false,
@@ -65,6 +69,7 @@
         "fields": {
             "name": "ITK",
             "description": "Izin Tinggal Kunjungan, is a short-term visit stay permit for foreigners in Indonesia, issued upon arrival in the country",
+            "auto_generation": false,
             "ai_validation": false,
             "has_expiration_date": true,
             "has_doc_number": true,
@@ -80,6 +85,7 @@
         "fields": {
             "name": "Passport",
             "description": "Passport biodata page with a validity of at least six months (twelve months for 180-day visas)",
+            "auto_generation": false,
             "ai_validation": true,
             "has_expiration_date": true,
             "has_doc_number": true,
@@ -95,6 +101,7 @@
         "fields": {
             "name": "KTP Sponsor",
             "description": "Sponsor KTP / ID card of the Indonesian sponsor",
+            "auto_generation": true,
             "ai_validation": true,
             "has_expiration_date": true,
             "has_doc_number": true,
@@ -110,6 +117,7 @@
         "fields": {
             "name": "Proof of Payment",
             "description": "Proof of payment for the visa application fee",
+            "auto_generation": false,
             "ai_validation": false,
             "has_expiration_date": false,
             "has_doc_number": false,
@@ -125,6 +133,7 @@
         "fields": {
             "name": "Selfie Photo",
             "description": "Selfie photo taken with a cell phone camera",
+            "auto_generation": false,
             "ai_validation": false,
             "has_expiration_date": false,
             "has_doc_number": false,
@@ -140,6 +149,7 @@
         "fields": {
             "name": "Surat Permohonan dan Jaminan",
             "description": "Official letter of application and guarantee from an Indonesian sponsor (template provided)",
+            "auto_generation": true,
             "ai_validation": false,
             "has_expiration_date": false,
             "has_doc_number": false,
@@ -155,6 +165,7 @@
         "fields": {
             "name": "Invitation Letter",
             "description": "Invitation letter from event organizer or host for special-purpose visas",
+            "auto_generation": false,
             "ai_validation": false,
             "has_expiration_date": false,
             "has_doc_number": false,
@@ -170,6 +181,7 @@
         "fields": {
             "name": "Processed Visa Stamp",
             "description": "Stamp of the visa on the passport processed by immigration",
+            "auto_generation": false,
             "ai_validation": false,
             "has_expiration_date": true,
             "has_doc_number": false,

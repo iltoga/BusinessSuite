@@ -1,5 +1,6 @@
 import logging
 
+from core.services.app_setting_service import AppSettingScope, AppSettingService
 from core.services.google_calendar_event_colors import GoogleCalendarEventColors
 from core.services.ui_settings_service import UiSettingsService
 from django.conf import settings
@@ -23,16 +24,28 @@ def public_app_config(request):
         # DB table may not exist yet during initial startup/migrations.
         use_overlay_menu = False
 
-    return JsonResponse(
-        {
-            "MOCK_AUTH_ENABLED": getattr(settings, "MOCK_AUTH_ENABLED", False),
-            "useOverlayMenu": use_overlay_menu,
-            "title": global_settings.get("SITE_NAME", "BusinessSuite"),
-            "dateFormat": getattr(settings, "DATE_FORMAT_JS", "dd-MM-yyyy"),
-            "baseCurrency": getattr(settings, "BASE_CURRENCY", "IDR"),
-            "calendarTodoColorId": GoogleCalendarEventColors.todo_color_id(),
-            "calendarDoneColorId": GoogleCalendarEventColors.done_color_id(),
-            "logoFilename": global_settings.get("LOGO_FILENAME", "logo_transparent.png"),
-            "logoInvertedFilename": global_settings.get("LOGO_INVERTED_FILENAME", "logo_inverted_transparent.png"),
+    frontend_setting_overrides: dict[str, object] = {}
+    try:
+        frontend_raw = AppSettingService.get_scoped_values(
+            scopes={AppSettingScope.FRONTEND, AppSettingScope.BOTH}
+        )
+        frontend_setting_overrides = {
+            key: AppSettingService.parse_json_like(value) for key, value in frontend_raw.items()
         }
-    )
+    except Exception:
+        frontend_setting_overrides = {}
+
+    payload = {
+        "MOCK_AUTH_ENABLED": AppSettingService.parse_bool(AppSettingService.get_effective_raw("MOCK_AUTH_ENABLED", False), False),
+        "useOverlayMenu": use_overlay_menu,
+        "title": global_settings.get("SITE_NAME", "BusinessSuite"),
+        "dateFormat": str(AppSettingService.get_effective_raw("DATE_FORMAT_JS", "dd-MM-yyyy") or "dd-MM-yyyy"),
+        "baseCurrency": str(AppSettingService.get_effective_raw("BASE_CURRENCY", "IDR") or "IDR"),
+        "calendarTodoColorId": GoogleCalendarEventColors.todo_color_id(),
+        "calendarDoneColorId": GoogleCalendarEventColors.done_color_id(),
+        "logoFilename": global_settings.get("LOGO_FILENAME", "logo_transparent.png"),
+        "logoInvertedFilename": global_settings.get("LOGO_INVERTED_FILENAME", "logo_inverted_transparent.png"),
+    }
+    payload.update(frontend_setting_overrides)
+
+    return JsonResponse(payload)

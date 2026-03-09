@@ -21,6 +21,7 @@ class ApplicationCalendarService:
     PRIVATE_PROP_EVENT_KIND_KEY = "revisbali_event_kind"
     PRIVATE_PROP_ENTITY_VALUE = "customer_application"
     EVENT_KIND_TASK_DEADLINE = "task_deadline"
+    EVENT_KIND_APPLICATION_SUBMISSION = "application_submission"
     EVENT_KIND_VISA_SUBMISSION_WINDOW = "visa_submission_window"
 
     def sync_next_task_deadline(self, application, start_date=None, previous_due_date=None):
@@ -33,6 +34,7 @@ class ApplicationCalendarService:
             if application.calendar_event_id:
                 application.calendar_event_id = None
                 application.save(update_fields=["calendar_event_id", "updated_at"])
+            self._sync_application_submission_event(application)
             self._sync_visa_submission_window_event(application)
             return None
 
@@ -57,6 +59,7 @@ class ApplicationCalendarService:
                 task.id,
                 current_event.id,
             )
+            self._sync_application_submission_event(application)
             self._sync_visa_submission_window_event(application)
             return current_event
 
@@ -90,6 +93,7 @@ class ApplicationCalendarService:
             application.calendar_event_id = None
             application.save(update_fields=["calendar_event_id", "updated_at"])
 
+        self._sync_application_submission_event(application)
         self._sync_visa_submission_window_event(application)
         return event
 
@@ -133,6 +137,14 @@ class ApplicationCalendarService:
         event_ids = set()
         if application.calendar_event_id:
             event_ids.add(application.calendar_event_id)
+
+        prefetched_events = getattr(application, "_prefetched_objects_cache", {}).get("calendar_events")
+        calendar_events = prefetched_events if prefetched_events is not None else application.calendar_events.all()
+        for event in calendar_events:
+            if event.id:
+                event_ids.add(event.id)
+            if event.google_event_id:
+                event_ids.add(event.google_event_id)
 
         notification_refs = (
             WorkflowNotification.objects.filter(
@@ -249,19 +261,24 @@ class ApplicationCalendarService:
     def _get_existing_calendar_event_for_application(self, application):
         if application.calendar_event_id:
             event = CalendarEvent.objects.filter(pk=application.calendar_event_id).first()
-            if event and not self._is_visa_submission_window_event(event):
+            if event and self._event_kind(event) not in {
+                self.EVENT_KIND_APPLICATION_SUBMISSION,
+                self.EVENT_KIND_VISA_SUBMISSION_WINDOW,
+            }:
                 return event
 
-        return (
-            CalendarEvent.objects.filter(
-                application=application,
-                source=CalendarEvent.SOURCE_APPLICATION,
-            )
-            .exclude(
-                extended_properties__private__revisbali_event_kind=self.EVENT_KIND_VISA_SUBMISSION_WINDOW
-            )
-            .order_by("-updated_at", "-created_at")
-            .first()
+        events = CalendarEvent.objects.filter(
+            application=application,
+            source=CalendarEvent.SOURCE_APPLICATION,
+        ).order_by("-updated_at", "-created_at")
+        return next(
+            (
+                event
+                for event in events
+                if self._event_kind(event)
+                not in {self.EVENT_KIND_APPLICATION_SUBMISSION, self.EVENT_KIND_VISA_SUBMISSION_WINDOW}
+            ),
+            None,
         )
 
     def _build_local_event_id(self, application_id: int) -> str:
@@ -309,6 +326,97 @@ class ApplicationCalendarService:
             .first()
         )
 
+    def _sync_application_submission_event(self, application):
+        submission_date = application.doc_date
+        existing_event = self._get_application_submission_event(application)
+        if not submission_date:
+            if existing_event:
+                existing_event.delete()
+            return None
+
+        description = (
+            f"Application #{application.id}\n"
+            f"Customer: {application.customer.full_name}\n"
+            f"Product: {application.product.name}\n"
+            f"Application submission date: {submission_date.isoformat()}\n"
+            f"Application Notes: {application.notes or '-'}"
+        )
+        return self._upsert_all_day_application_event(
+            application=application,
+            event_kind=self.EVENT_KIND_APPLICATION_SUBMISSION,
+            summary=f"[Application #{application.id}] {application.customer.full_name} - Application submission",
+            description=description,
+            start_date=submission_date,
+            end_date=submission_date + timedelta(days=1),
+            color_id=GoogleCalendarEventColors.submission_color_id(),
+        )
+
+    def _upsert_all_day_application_event(
+        self,
+        *,
+        application,
+        event_kind: str,
+        summary: str,
+        description: str,
+        start_date,
+        end_date,
+        color_id: str,
+        notifications: dict | None = None,
+    ):
+        existing_event = self._get_event_by_kind(application, event_kind)
+        event_values = {
+            "title": summary,
+            "description": description,
+            "start_date": start_date,
+            "end_date": end_date,
+            "color_id": color_id,
+            "notifications": notifications or {},
+            "extended_properties": {
+                "private": self._private_properties(application, task=None, event_kind=event_kind)
+            },
+        }
+
+        if existing_event:
+            update_fields = []
+            for field_name, value in event_values.items():
+                if getattr(existing_event, field_name) != value:
+                    setattr(existing_event, field_name, value)
+                    update_fields.append(field_name)
+
+            if existing_event.sync_status != CalendarEvent.SYNC_STATUS_PENDING:
+                existing_event.sync_status = CalendarEvent.SYNC_STATUS_PENDING
+                update_fields.append("sync_status")
+
+            if existing_event.sync_error:
+                existing_event.sync_error = ""
+                update_fields.append("sync_error")
+
+            if update_fields:
+                existing_event.save(update_fields=[*update_fields, "updated_at"])
+            return existing_event
+
+        return CalendarEvent.objects.create(
+            id=self._build_local_event_id(application.id),
+            source=CalendarEvent.SOURCE_APPLICATION,
+            application=application,
+            sync_status=CalendarEvent.SYNC_STATUS_PENDING,
+            **event_values,
+        )
+
+    def _get_application_submission_event(self, application):
+        return self._get_event_by_kind(application, self.EVENT_KIND_APPLICATION_SUBMISSION)
+
+    def _get_event_by_kind(self, application, event_kind: str):
+        return (
+            CalendarEvent.objects.filter(
+                application=application,
+                source=CalendarEvent.SOURCE_APPLICATION,
+                extended_properties__private__revisbali_event_kind=event_kind,
+            )
+            .order_by("-updated_at", "-created_at")
+            .first()
+        )
+
     def _sync_visa_submission_window_event(self, application):
         try:
             window = StayPermitSubmissionWindowService().get_submission_window(
@@ -329,56 +437,14 @@ class ApplicationCalendarService:
             start_date = window.first_date
             end_date = window.last_date + timedelta(days=1)
             payload = self._build_visa_submission_window_payload(application, start_date=start_date, end_date=end_date)
-
-            event_values = {
-                "title": payload["summary"],
-                "description": payload.get("description", ""),
-                "start_date": start_date,
-                "end_date": end_date,
-                "color_id": payload.get("color_id"),
-                "notifications": {},
-                "extended_properties": payload.get("extended_properties") or {},
-            }
-
-            if existing_event:
-                update_fields = []
-                for field_name, value in event_values.items():
-                    if getattr(existing_event, field_name) != value:
-                        setattr(existing_event, field_name, value)
-                        update_fields.append(field_name)
-
-                if existing_event.sync_status != CalendarEvent.SYNC_STATUS_PENDING:
-                    existing_event.sync_status = CalendarEvent.SYNC_STATUS_PENDING
-                    update_fields.append("sync_status")
-
-                if existing_event.sync_error:
-                    existing_event.sync_error = ""
-                    update_fields.append("sync_error")
-
-                if update_fields:
-                    logger.debug(
-                        "calendar_local_update_visa_window_event application_id=%s event_id=%s fields=%s",
-                        application.id,
-                        existing_event.id,
-                        sorted(update_fields),
-                    )
-                    existing_event.save(update_fields=[*update_fields, "updated_at"])
-                return existing_event
-
-            new_event_id = self._build_local_event_id(application.id)
-            logger.debug(
-                "calendar_local_create_visa_window_event application_id=%s event_id=%s start=%s end=%s",
-                application.id,
-                new_event_id,
-                start_date,
-                end_date,
-            )
-            return CalendarEvent.objects.create(
-                id=new_event_id,
-                source=CalendarEvent.SOURCE_APPLICATION,
+            return self._upsert_all_day_application_event(
                 application=application,
-                sync_status=CalendarEvent.SYNC_STATUS_PENDING,
-                **event_values,
+                event_kind=self.EVENT_KIND_VISA_SUBMISSION_WINDOW,
+                summary=payload["summary"],
+                description=payload.get("description", ""),
+                start_date=start_date,
+                end_date=end_date,
+                color_id=payload.get("color_id"),
             )
         except Exception as exc:
             logger.exception(
@@ -413,19 +479,14 @@ class ApplicationCalendarService:
         }
 
     def _get_visa_submission_window_event(self, application):
-        return (
-            CalendarEvent.objects.filter(
-                application=application,
-                source=CalendarEvent.SOURCE_APPLICATION,
-                extended_properties__private__revisbali_event_kind=self.EVENT_KIND_VISA_SUBMISSION_WINDOW,
-            )
-            .order_by("-updated_at", "-created_at")
-            .first()
-        )
+        return self._get_event_by_kind(application, self.EVENT_KIND_VISA_SUBMISSION_WINDOW)
 
     def _is_visa_submission_window_event(self, event):
+        return self._event_kind(event) == self.EVENT_KIND_VISA_SUBMISSION_WINDOW
+
+    def _event_kind(self, event):
         private_props = (event.extended_properties or {}).get("private") or {}
-        return private_props.get(self.PRIVATE_PROP_EVENT_KIND_KEY) == self.EVENT_KIND_VISA_SUBMISSION_WINDOW
+        return private_props.get(self.PRIVATE_PROP_EVENT_KIND_KEY)
 
     def _create_notification(self, application, task, due_date, event, workflow=None):
         notify_days = task.notify_days_before or 0

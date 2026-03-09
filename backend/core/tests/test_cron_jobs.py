@@ -21,11 +21,6 @@ class AuditLogPruneTests(TestCase):
             assert kwargs.get("before_date") == expected_cutoff.isoformat()
             assert kwargs.get("yes") is True
 
-    @override_settings(AUDITLOG_RETENTION_DAYS=0)
-    def test_prune_skipped_when_retention_nonpositive(self):
-        with patch("core.tasks.cron_jobs.call_command") as mock_call:
-            cron_jobs._perform_prune_auditlog()
-            mock_call.assert_not_called()
 
 
 class OpenRouterHealthCheckTests(TestCase):

@@ -1,12 +1,14 @@
+import json
 import os
 import traceback
-import json
 
 from core.models import DocumentOCRJob
+from core.services.ai_client import get_ai_user_message
 from core.services.ai_document_ocr_service import extract_document_structured_output
 from core.services.logger_service import Logger
 from core.tasks.idempotency import acquire_task_lock, build_task_lock_key, release_task_lock
-from core.tasks.runtime import QUEUE_REALTIME, db_task
+from core.tasks.progress import persist_progress
+from core.tasks.runtime import QUEUE_DOC_CONVERSION, db_task, retry_on_transient_external_failure
 from core.utils.document_type_ai_fields import parse_structured_output_fields
 from core.utils.storage_helpers import get_local_file_path
 from invoices.services.document_parser import DocumentParser
@@ -24,16 +26,18 @@ def _extract_plain_text_with_progress(job: DocumentOCRJob, abs_path: str) -> str
         if bounded <= last_progress:
             return
         # Avoid excessive writes while still keeping UI visibly alive.
-        if bounded - last_progress < 2 and bounded < 94:
+        if bounded - last_progress < 5 and bounded < 94:
             return
         last_progress = bounded
-        job.progress = bounded
-        job.save(update_fields=["progress", "updated_at"])
+        persist_progress(job, progress=bounded, min_delta=5)
 
-    return DocumentParser.extract_text_from_file(
-        abs_path,
-        progress_callback=_on_progress,
-    ) or ""
+    return (
+        DocumentParser.extract_text_from_file(
+            abs_path,
+            progress_callback=_on_progress,
+        )
+        or ""
+    )
 
 
 def _resolve_structured_fields_for_job(job: DocumentOCRJob) -> tuple[list, str | None]:
@@ -64,8 +68,13 @@ def _resolve_structured_fields_for_job(job: DocumentOCRJob) -> tuple[list, str |
     return fallback_fields, doc_type.name
 
 
-@db_task(queue=QUEUE_REALTIME)
-def run_document_ocr_job(job_id: str) -> None:
+@db_task(
+    context=True,
+    queue=QUEUE_DOC_CONVERSION,
+    queue_defaults=True,
+    retry_when=retry_on_transient_external_failure,
+)
+def run_document_ocr_job(job_id: str, task=None) -> None:
     lock_key = build_task_lock_key(namespace="document_ocr_job", item_id=str(job_id))
     lock_token = acquire_task_lock(lock_key)
     if not lock_token:
@@ -85,19 +94,22 @@ def run_document_ocr_job(job_id: str) -> None:
             logger.info("Skipping document OCR job already in terminal state: job_id=%s status=%s", job_id, job.status)
             return
 
-        job.status = DocumentOCRJob.STATUS_PROCESSING
-        job.progress = 5
         job.error_message = ""
         job.traceback = ""
-        job.save(update_fields=["status", "progress", "error_message", "traceback", "updated_at"])
+        persist_progress(
+            job,
+            status=DocumentOCRJob.STATUS_PROCESSING,
+            progress=5,
+            force=True,
+            extra_fields={"error_message": "", "traceback": ""},
+        )
 
         try:
             with get_local_file_path(job.file_path) as abs_path:
                 if not os.path.exists(abs_path):
                     raise FileNotFoundError(f"File not found: {abs_path}")
 
-                job.progress = 35
-                job.save(update_fields=["progress", "updated_at"])
+                persist_progress(job, progress=35, force=True)
 
                 extracted_text = ""
                 structured_fields, doc_type_name = _resolve_structured_fields_for_job(job)
@@ -106,8 +118,7 @@ def run_document_ocr_job(job_id: str) -> None:
                         with open(abs_path, "rb") as source:
                             file_bytes = source.read()
 
-                        job.progress = 60
-                        job.save(update_fields=["progress", "updated_at"])
+                        persist_progress(job, progress=60, force=True)
                         structured_data = extract_document_structured_output(
                             file_bytes=file_bytes,
                             filename=os.path.basename(job.file_path),
@@ -116,23 +127,50 @@ def run_document_ocr_job(job_id: str) -> None:
                         )
                         extracted_text = json.dumps(structured_data, indent=2, ensure_ascii=False)
                     except Exception as extraction_error:
-                        logger.warning(
-                            "Structured document OCR failed for job %s; falling back to parser OCR. error=%s",
-                            job_id,
-                            extraction_error,
-                        )
-                        extracted_text = _extract_plain_text_with_progress(job, abs_path)
+                        if retry_on_transient_external_failure(0, extraction_error):
+                            if task and task.retries > 0:
+                                logger.warning(
+                                    "Structured document OCR transient failure for job %s on attempt %s/%s. retries_remaining=%s queue=%s time_limit_ms=%s error=%s",
+                                    job_id,
+                                    getattr(task, "attempt", "?"),
+                                    getattr(task, "max_retries", 0) + 1 if task else "?",
+                                    task.retries,
+                                    getattr(task, "queue_name", QUEUE_DOC_CONVERSION),
+                                    getattr(task, "time_limit_ms", None),
+                                    extraction_error,
+                                )
+                                job.error_message = f"Structured AI extraction temporarily unavailable. Retrying... ({task.retries} left)"
+                                job.save(update_fields=["error_message", "updated_at"])
+                                raise
+
+                            logger.warning(
+                                "Structured document OCR retries exhausted for job %s; falling back to parser OCR. error=%s",
+                                job_id,
+                                extraction_error,
+                            )
+                            extracted_text = _extract_plain_text_with_progress(job, abs_path)
+                            job.error_message = get_ai_user_message(extraction_error)
+                            job.save(update_fields=["error_message", "updated_at"])
+                        else:
+                            logger.warning(
+                                "Structured document OCR failed for job %s due to a non-retryable parsing/validation issue; falling back to parser OCR. error=%s",
+                                job_id,
+                                extraction_error,
+                            )
+                            extracted_text = _extract_plain_text_with_progress(job, abs_path)
+                            job.error_message = get_ai_user_message(extraction_error)
+                            job.save(update_fields=["error_message", "updated_at"])
                 else:
                     extracted_text = _extract_plain_text_with_progress(job, abs_path)
 
                 if job.progress < 95:
-                    job.progress = 95
-                    job.save(update_fields=["progress", "updated_at"])
+                    persist_progress(job, progress=95, force=True)
 
                 job.result_text = extracted_text
                 job.status = DocumentOCRJob.STATUS_COMPLETED
                 job.progress = 100
-                job.error_message = ""
+                if not extracted_text or not job.error_message:
+                    job.error_message = ""
                 job.traceback = ""
                 job.save(
                     update_fields=["status", "progress", "result_text", "error_message", "traceback", "updated_at"]
@@ -140,6 +178,24 @@ def run_document_ocr_job(job_id: str) -> None:
                 logger.info(f"Document OCR job {job_id} completed")
 
         except Exception as exc:
+            if task and task.retries > 0 and retry_on_transient_external_failure(task.retries_used, exc):
+                logger.warning(
+                    "Document OCR retry scheduled for job %s on attempt %s/%s. retries_remaining=%s queue=%s time_limit_ms=%s error=%s",
+                    job_id,
+                    getattr(task, "attempt", "?"),
+                    getattr(task, "max_retries", 0) + 1 if task else "?",
+                    task.retries,
+                    getattr(task, "queue_name", QUEUE_DOC_CONVERSION),
+                    getattr(task, "time_limit_ms", None),
+                    exc,
+                )
+                job.status = DocumentOCRJob.STATUS_PROCESSING
+                job.progress = min(95, max(5, int(job.progress or 5)))
+                job.error_message = get_ai_user_message(exc)
+                job.traceback = ""
+                job.save(update_fields=["status", "progress", "error_message", "traceback", "updated_at"])
+                raise
+
             full_traceback = traceback.format_exc()
             logger.error(f"Document OCR job {job_id} failed: {str(exc)}\n{full_traceback}")
             job.status = DocumentOCRJob.STATUS_FAILED

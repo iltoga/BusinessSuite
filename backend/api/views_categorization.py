@@ -25,7 +25,11 @@ from core.services.ai_document_categorizer import (
 from core.services.ai_client import get_ai_user_message, is_ai_timeout_exception
 from core.services.logger_service import Logger
 from core.services.redis_streams import format_sse_event, resolve_last_event_id, stream_file_key, stream_job_key
-from core.tasks.document_categorization import run_document_categorization_item
+from core.tasks.document_categorization import (
+    categorization_item_has_terminal_validation,
+    categorization_item_is_terminal,
+    run_document_categorization_item,
+)
 from customer_applications.models import DocApplication, Document, DocumentCategorizationItem, DocumentCategorizationJob
 from django.core.files.storage import default_storage
 from django.http import JsonResponse, StreamingHttpResponse
@@ -93,6 +97,28 @@ def _parse_provider_order(raw_value: Any) -> list[str] | None:
         parsed = [str(p).strip() for p in raw_value if str(p).strip()]
         return parsed or None
     return None
+
+
+def _extract_ai_runtime_metadata(payload: dict | None) -> dict[str, str | None]:
+    """Extract provider/model metadata from validation payloads."""
+    if not isinstance(payload, dict):
+        return {
+            "provider": None,
+            "provider_name": None,
+            "model": None,
+        }
+
+    provider = str(payload.get("ai_provider") or payload.get("aiProvider") or "").strip().lower() or None
+    provider_name = (
+        str(payload.get("ai_provider_name") or payload.get("aiProviderName") or "").strip() or None
+    )
+    model = str(payload.get("ai_model") or payload.get("aiModel") or "").strip() or None
+
+    return {
+        "provider": provider,
+        "provider_name": provider_name or provider,
+        "model": model,
+    }
 
 
 def _normalize_total_files(raw_total_files: Any) -> int:
@@ -463,7 +489,7 @@ def categorization_stream_sse(request, job_id):
         def _collect_updates(
             *,
             event_id: str | None = None,
-            changed_item_ids: set[int] | None = None,
+            changed_item_ids: set[str] | None = None,
         ) -> tuple[list[str], bool]:
             messages: list[str] = []
             job.refresh_from_db()
@@ -690,8 +716,15 @@ def categorization_stream_sse(request, job_id):
                     state["validating_sent"] = True
 
                 # Validation complete
-                if item.validation_status and not state["validated_sent"]:
+                if item.validation_status in {"valid", "invalid", "error"} and not state["validated_sent"]:
                     v_result = item.validation_result or {}
+                    v_runtime = _extract_ai_runtime_metadata(v_result)
+                    if item.validation_status == "valid":
+                        validation_prefix = "✅"
+                    elif item.validation_status == "invalid":
+                        validation_prefix = "⚠️"
+                    else:
+                        validation_prefix = "❌"
                     messages.append(
                         _send_event(
                             "file_validated",
@@ -701,9 +734,12 @@ def categorization_stream_sse(request, job_id):
                                 "validationStatus": item.validation_status,
                                 "validationReasoning": v_result.get("reasoning", ""),
                                 "validationNegativeIssues": v_result.get("negative_issues", []),
+                                "validationProvider": v_runtime["provider"],
+                                "validationProviderName": v_runtime["provider_name"],
+                                "validationModel": v_runtime["model"],
                                 "aiValidationEnabled": bool(result.get("ai_validation_enabled")),
                                 "validationConfidence": v_result.get("confidence", 0),
-                                "message": f"{'✅' if item.validation_status == 'valid' else '⚠️'} "
+                                "message": f"{validation_prefix} "
                                 f"{item.filename}: {item.validation_status}",
                             },
                             event_id=event_id,
@@ -728,14 +764,13 @@ def categorization_stream_sse(request, job_id):
                     )
                     state["done"] = True
 
-                if item.status == DocumentCategorizationItem.STATUS_CATEGORIZED:
-                    # Done when validation is finished or stage is back to "validated"/"categorized"
-                    if stage in ("validated", "categorized") and state["categorized_sent"]:
-                        # If validation was run, wait for validated_sent; if skipped (stage=categorized), done
-                        if stage == "validated" and state["validated_sent"]:
-                            state["done"] = True
-                        elif stage == "categorized":
-                            state["done"] = True
+                if (
+                    item.status == DocumentCategorizationItem.STATUS_CATEGORIZED
+                    and state["categorized_sent"]
+                    and categorization_item_is_terminal(item)
+                ):
+                    if categorization_item_has_terminal_validation(item):
+                        state["done"] = True
 
                 sent_states[item.id] = state
 
@@ -752,6 +787,7 @@ def categorization_stream_sse(request, job_id):
                 for item in summary_items:
                     item_result = item.result or {}
                     v_result = item.validation_result or {}
+                    v_runtime = _extract_ai_runtime_metadata(v_result)
                     results.append(
                         {
                             "itemId": str(item.id),
@@ -769,6 +805,9 @@ def categorization_stream_sse(request, job_id):
                             "validationStatus": item.validation_status or None,
                             "validationReasoning": v_result.get("reasoning", ""),
                             "validationNegativeIssues": v_result.get("negative_issues", []),
+                            "validationProvider": v_runtime["provider"],
+                            "validationProviderName": v_runtime["provider_name"],
+                            "validationModel": v_runtime["model"],
                         }
                     )
 
@@ -791,15 +830,15 @@ def categorization_stream_sse(request, job_id):
                 return messages, True
             return messages, False
 
-        def _parse_changed_item_id(stream_event) -> int | None:
+        def _parse_changed_item_id(stream_event) -> str | None:
             if stream_event.event != "categorization_item_changed":
                 return None
             payload = stream_event.payload if isinstance(stream_event.payload, dict) else {}
             raw_item_id = payload.get("itemId")
-            try:
-                return int(raw_item_id)
-            except (TypeError, ValueError):
+            if raw_item_id is None:
                 return None
+            normalized = str(raw_item_id).strip()
+            return normalized or None
 
         messages, done = _collect_updates()
         for message in messages:
@@ -812,7 +851,7 @@ def categorization_stream_sse(request, job_id):
         last_refresh_at = time.monotonic()
         last_full_refresh_at = time.monotonic()
         pending_event_id: str | None = None
-        pending_item_ids: set[int] = set()
+        pending_item_ids: set[str] = set()
         force_full_refresh = False
 
         for stream_event in iter_replay_and_live_events(stream_key=stream_key, last_event_id=replay_cursor):
@@ -902,6 +941,28 @@ def categorization_apply(request, job_id):
     mappings = validated_data.get("mappings", [])
     applied = []
     errors = []
+
+    incomplete_items = [
+        item.filename
+        for item in job.items.all().order_by("sort_index")
+        if not categorization_item_is_terminal(item)
+    ]
+    if incomplete_items:
+        pending_list = ", ".join(incomplete_items[:3])
+        if len(incomplete_items) > 3:
+            pending_list = f"{pending_list}, +{len(incomplete_items) - 3} more"
+        return Response(
+            {
+                "code": "processing_incomplete",
+                "errors": {
+                    "detail": [
+                        "Document categorization/validation is still running. "
+                        f"Wait for all files to finish before applying: {pending_list}."
+                    ]
+                },
+            },
+            status=status.HTTP_409_CONFLICT,
+        )
 
     for mapping in mappings:
         item_id = mapping["item_id"]
@@ -1048,6 +1109,7 @@ def validate_document_category(request, document_id):
             require_details=bool(doc_type.has_details),
         )
         validation_status = "valid" if validation_result.get("valid") else "invalid"
+        runtime = _extract_ai_runtime_metadata(validation_result)
         response_payload = {
             # Backward-compatible fields from the previous endpoint contract.
             "matches": validation_status == "valid",
@@ -1060,11 +1122,21 @@ def validate_document_category(request, document_id):
             "validation_status": validation_status,
             "validation_result": validation_result,
             "ai_validation_enabled": bool(doc_type.ai_validation),
+            "validation_provider": runtime["provider"],
+            "validation_provider_name": runtime["provider_name"],
+            "validation_model": runtime["model"],
         }
         return Response(response_payload)
     except Exception as exc:
         logger.error("Document validation error: %s", exc, exc_info=True)
         user_message = get_ai_user_message(exc)
+        runtime = _extract_ai_runtime_metadata(
+            {
+                "ai_provider": getattr(exc, "ai_provider", None),
+                "ai_provider_name": getattr(exc, "ai_provider_name", None),
+                "ai_model": getattr(exc, "ai_model", None),
+            }
+        )
         return Response(
             {
                 "matches": False,
@@ -1084,8 +1156,14 @@ def validate_document_category(request, document_id):
                     "extracted_doc_number": None,
                     "extracted_details_markdown": None,
                     "error_type": "timeout" if is_ai_timeout_exception(exc) else "provider_error",
+                    "ai_provider": runtime["provider"],
+                    "ai_provider_name": runtime["provider_name"],
+                    "ai_model": runtime["model"],
                 },
                 "ai_validation_enabled": bool(doc_type.ai_validation),
+                "validation_provider": runtime["provider"],
+                "validation_provider_name": runtime["provider_name"],
+                "validation_model": runtime["model"],
             }
         )
 
@@ -1161,12 +1239,16 @@ def document_validation_stream_sse(request, document_id):
                     Document.AI_VALIDATION_ERROR,
                 ):
                     v_result = document.ai_validation_result or {}
+                    v_runtime = _extract_ai_runtime_metadata(v_result)
                     yield _send_event(
                         "complete",
                         {
                             "documentId": document.id,
                             "validationStatus": current_status,
                             "validationResult": v_result,
+                            "validationProvider": v_runtime["provider"],
+                            "validationProviderName": v_runtime["provider_name"],
+                            "validationModel": v_runtime["model"],
                             "message": f"{'✅' if current_status == 'valid' else '⚠️'} "
                             f"{document.doc_type.name}: {current_status}",
                         },

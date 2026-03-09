@@ -1,6 +1,7 @@
 from datetime import date, timedelta
 from unittest.mock import patch
 
+import dramatiq
 from core.tasks.document_validation import run_document_validation
 from customer_applications.models import DocApplication, Document
 from customers.models import Customer
@@ -227,3 +228,53 @@ class DocumentValidationTaskTests(TestCase):
         self.assertEqual(self.document.ai_validation_result.get("expiration_state"), "ok")
         self.assertIsNone(self.document.ai_validation_result.get("expiration_reason"))
         self.assertTrue(self.document.ai_validation_result.get("valid"))
+
+    @patch("core.tasks.document_validation.default_storage.open")
+    @patch("core.tasks.document_validation.AIDocumentCategorizer.validate_document")
+    @patch("core.tasks.document_validation.acquire_task_lock", return_value="token-6")
+    @patch("core.tasks.document_validation.release_task_lock")
+    def test_validation_error_keeps_runtime_metadata_when_available(
+        self,
+        _release_lock_mock,
+        _acquire_lock_mock,
+        validate_document_mock,
+        storage_open_mock,
+    ):
+        storage_open_mock.return_value.__enter__.return_value.read.return_value = b"fake-file-bytes"
+        failure = Exception("Provider unavailable")
+        setattr(failure, "ai_provider", "openrouter")
+        setattr(failure, "ai_provider_name", "OpenRouter")
+        setattr(failure, "ai_model", "google/gemini-2.5-flash-lite")
+        validate_document_mock.side_effect = failure
+
+        _run_huey_task(run_document_validation, document_id=self.document.id)
+
+        self.document.refresh_from_db()
+        self.assertEqual(self.document.ai_validation_status, Document.AI_VALIDATION_ERROR)
+        self.assertEqual(self.document.ai_validation_result.get("ai_provider"), "openrouter")
+        self.assertEqual(self.document.ai_validation_result.get("ai_provider_name"), "OpenRouter")
+        self.assertEqual(self.document.ai_validation_result.get("ai_model"), "google/gemini-2.5-flash-lite")
+
+    @patch("core.tasks.document_validation.default_storage.open")
+    @patch("core.tasks.document_validation.AIDocumentCategorizer.validate_document")
+    @patch("core.tasks.document_validation.acquire_task_lock", return_value="token-7")
+    @patch("core.tasks.document_validation.release_task_lock")
+    def test_transient_ai_failure_raises_retry_before_marking_error(
+        self,
+        release_lock_mock,
+        _acquire_lock_mock,
+        validate_document_mock,
+        storage_open_mock,
+    ):
+        storage_open_mock.return_value.__enter__.return_value.read.return_value = b"fake-file-bytes"
+        validate_document_mock.side_effect = TimeoutError("provider timeout")
+
+        with self.assertRaises(dramatiq.Retry):
+            run_document_validation.actor.fn(document_id=self.document.id)
+
+        self.document.refresh_from_db()
+        self.assertEqual(self.document.ai_validation_status, Document.AI_VALIDATION_VALIDATING)
+        self.assertEqual(self.document.ai_validation_result.get("status"), "retrying")
+        self.assertEqual(self.document.ai_validation_result.get("error_type"), "provider_error")
+        self.assertEqual(self.document.ai_validation_result.get("retries_remaining"), 2)
+        release_lock_mock.assert_called_once()

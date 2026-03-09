@@ -1,6 +1,6 @@
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { CommonModule, formatDate, isPlatformBrowser } from '@angular/common';
-import { HttpClient, HttpEventType } from '@angular/common/http';
+import { HttpEventType } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -9,6 +9,7 @@ import {
   effect,
   HostListener,
   inject,
+  isDevMode,
   LOCALE_ID,
   PLATFORM_ID,
   signal,
@@ -37,6 +38,11 @@ import {
 } from '@/core/services/document-categorization.service';
 import { DocumentsService } from '@/core/services/documents.service';
 import { GlobalToastService } from '@/core/services/toast.service';
+import {
+  getDocumentAiValidationBadge,
+  isCategorizationPipelineTerminal,
+  type PipelineBadgeState,
+} from '@/core/utils/document-categorization-pipeline';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
@@ -55,15 +61,16 @@ import {
 } from '@/shared/components/skeleton';
 import { ZardTooltipImports } from '@/shared/components/tooltip';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
-import { downloadBlob } from '@/shared/utils/file-download';
-import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 import {
   buildLocalFilePreview,
   inferPreviewTypeFromUrl,
 } from '@/shared/utils/document-preview-source';
+import { downloadBlob } from '@/shared/utils/file-download';
+import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 import { Subscription } from 'rxjs';
 
 import { MultiFileUploadComponent } from '@/shared/components/multi-file-upload/multi-file-upload.component';
+import { ApplicationWorkflowTimelineComponent } from './application-workflow-timeline.component';
 import {
   CategorizationProgressComponent,
   type CategorizationApplyMapping,
@@ -75,9 +82,21 @@ interface TimelineWorkflowItem {
   gapDaysFromPrevious: number | null;
 }
 
+interface PendingStartNotice {
+  step: number;
+  taskName: string;
+  startDateDisplay: string;
+  dueDateDisplay: string | null;
+  expirationDateDisplay: string;
+  windowDays: number;
+}
+
 interface PreUploadValidationOutcome {
   status: 'valid' | 'invalid' | 'error';
   result: Record<string, unknown> | null;
+  provider: string | null;
+  providerName: string | null;
+  model: string | null;
 }
 
 @Component({
@@ -108,6 +127,7 @@ interface PreUploadValidationOutcome {
     ...ZardTooltipImports,
     MultiFileUploadComponent,
     CategorizationProgressComponent,
+    ApplicationWorkflowTimelineComponent,
   ],
   templateUrl: './application-detail.component.html',
   styleUrls: ['./application-detail.component.css'],
@@ -127,7 +147,7 @@ export class ApplicationDetailComponent implements OnInit {
   private locale = inject(LOCALE_ID);
   private configService = inject(ConfigService);
   private readonly isBrowser = isPlatformBrowser(this.platformId);
-  private http = inject(HttpClient);
+  readonly isDevelopmentMode = isDevMode();
   private categorizationService = inject(DocumentCategorizationService);
 
   readonly application = signal<ApplicationDetail | null>(null);
@@ -183,6 +203,13 @@ export class ApplicationDetailComponent implements OnInit {
   readonly preUploadValidationReason = computed(() =>
     this.buildPreUploadValidationReason(this.preUploadValidationOutcome()?.result ?? null),
   );
+  readonly preUploadValidationRuntimeLabel = computed(() => {
+    const outcome = this.preUploadValidationOutcome();
+    if (!outcome) {
+      return '';
+    }
+    return this.formatAiRuntimeLabel(outcome.providerName, outcome.provider, outcome.model);
+  });
   readonly preUploadValidationIssues = computed(() => {
     const result = this.preUploadValidationOutcome()?.result ?? null;
     const issues = result?.['negative_issues'] ?? result?.['negativeIssues'];
@@ -234,6 +261,9 @@ export class ApplicationDetailComponent implements OnInit {
   }
   readonly selectedNewDocType = signal<string | null>(null);
   readonly docTypeOptions = signal<ZardComboboxOption[]>([]);
+  readonly availableDocumentTypes = signal<
+    Array<{ id: number; name: string; isStayPermit: boolean }>
+  >([]);
   readonly filteredDocTypeOptions = computed(() => {
     const options = this.docTypeOptions();
     const app = this.application();
@@ -246,7 +276,19 @@ export class ApplicationDetailComponent implements OnInit {
         .filter((id): id is number => typeof id === 'number')
         .map((id) => String(id)),
     );
-    return options.filter((opt) => !existingDocTypeIds.has(opt.value));
+    const hasStayPermitAlready = (app.documents ?? []).some((doc) =>
+      Boolean(doc.docType?.isStayPermit),
+    );
+    const stayPermitTypeIds = new Set(
+      this.availableDocumentTypes()
+        .filter((docType) => docType.isStayPermit)
+        .map((docType) => String(docType.id)),
+    );
+    return options.filter(
+      (opt) =>
+        !existingDocTypeIds.has(opt.value) &&
+        (!hasStayPermitAlready || !stayPermitTypeIds.has(opt.value)),
+    );
   });
 
   // Computed signals for stable object references in templates
@@ -266,6 +308,12 @@ export class ApplicationDetailComponent implements OnInit {
     }
     return this.sortedWorkflows().length > 0 || !!app.nextTask || !!app.hasNextTask;
   });
+  readonly stepOneWorkflow = computed(
+    () => this.sortedWorkflows().find((workflow) => workflow.task?.step === 1) ?? null,
+  );
+  readonly isApplicationDateLocked = computed(() => this.stepOneWorkflow()?.status === 'completed');
+  readonly applicationDateLockedTooltip =
+    'Application submission date cannot be changed after Step 1 is completed.';
   readonly isDueDateLocked = computed(() => this.hasWorkflowTasks());
   readonly dueDateLockedTooltip =
     'Please update Due date in Task Timeline to change this deadline.';
@@ -282,6 +330,13 @@ export class ApplicationDetailComponent implements OnInit {
       '';
 
     return taskName ? `Next Deadline (${taskName})` : 'Next Deadline: —';
+  });
+  readonly passportImportPending = computed(() => {
+    const app = this.application();
+    if (!app || !this.pendingPassportRefreshEnabled) {
+      return false;
+    }
+    return this.isPassportConfigured(app) && !this.hasPassportDocument(app);
   });
   readonly stayPermitSubmissionWindow = computed(() => {
     const app = this.application();
@@ -317,8 +372,16 @@ export class ApplicationDetailComponent implements OnInit {
       lastDate,
       firstDateIso: this.formatDateForApi(firstDate),
       lastDateIso: this.formatDateForApi(lastDate),
+      firstDateDisplay: this.formatDateForDisplay(this.formatDateForApi(firstDate)),
+      lastDateDisplay: this.formatDateForDisplay(this.formatDateForApi(lastDate)),
     };
   });
+  readonly submissionWindowMinDate = computed(
+    () => this.stayPermitSubmissionWindow()?.firstDate ?? null,
+  );
+  readonly submissionWindowMaxDate = computed(
+    () => this.stayPermitSubmissionWindow()?.lastDate ?? null,
+  );
   readonly customerNotificationOptions = computed<ZardComboboxOption[]>(() => {
     const customer = this.application()?.customer;
     const options: ZardComboboxOption[] = [];
@@ -331,6 +394,14 @@ export class ApplicationDetailComponent implements OnInit {
     return options;
   });
   readonly canNotifyCustomer = computed(() => this.customerNotificationOptions().length > 0);
+  readonly canRollbackWorkflowFn = (workflow: ApplicationWorkflow) =>
+    this.canRollbackWorkflow(workflow);
+  readonly isWorkflowDueDateEditableFn = (workflow: ApplicationWorkflow) =>
+    this.isWorkflowDueDateEditable(workflow);
+  readonly isWorkflowEditableFn = (workflow: ApplicationWorkflow) =>
+    this.isWorkflowEditable(workflow);
+  readonly getWorkflowStatusGuardMessageFn = (workflow: ApplicationWorkflow) =>
+    this.getWorkflowStatusGuardMessage(workflow);
 
   // PDF Merge and Selection
   readonly localUploadedDocuments = signal<ApplicationDocument[]>([]);
@@ -376,6 +447,11 @@ export class ApplicationDetailComponent implements OnInit {
   private readonly workflowTimezone = 'Asia/Singapore';
 
   private pollTimer: number | null = null;
+  private pendingPassportRefreshTimer: number | null = null;
+  private pendingPassportRefreshEnabled = false;
+  private pendingPassportRefreshAttempts = 0;
+  private readonly pendingPassportRefreshMaxAttempts = 10;
+  private readonly pendingPassportRefreshIntervalMs = 1200;
   private readonly ocrNoDataText = 'No OCR extracted data yet.';
 
   @HostListener('window:keydown', ['$event'])
@@ -457,33 +533,41 @@ export class ApplicationDetailComponent implements OnInit {
       gapDaysFromPrevious: index > 0 ? this.calculateGapDays(workflows[index - 1], workflow) : null,
     }));
   });
-  readonly workflowDueDateById = computed(() => {
-    const dueDateById = new Map<number, Date | null>();
-    for (const workflow of this.sortedWorkflows()) {
-      dueDateById.set(workflow.id, workflow.dueDate ? this.parseApiDate(workflow.dueDate) : null);
+  readonly pendingStartNotice = computed<PendingStartNotice | null>(() => {
+    const app = this.application();
+    const window = this.stayPermitSubmissionWindow();
+    if (!app || !window) {
+      return null;
     }
-    return dueDateById;
-  });
-  readonly workflowStatusOptionsById = computed(() => {
-    const optionsById = new Map<number, ZardComboboxOption[]>();
-    for (const workflow of this.sortedWorkflows()) {
-      const options: ZardComboboxOption[] = [
-        { value: 'pending', label: 'Pending' },
-        { value: 'processing', label: 'Processing' },
-        { value: 'completed', label: 'Completed' },
-        { value: 'rejected', label: 'Rejected' },
-      ];
-      optionsById.set(
-        workflow.id,
-        options.map((option) => ({
-          ...option,
-          disabled:
-            option.value !== workflow.status &&
-            this.isWorkflowStatusChangeBlocked(workflow, option.value),
-        })),
-      );
+
+    const todayIso = this.formatDateForApi(new Date());
+    const today = this.parseApiDate(todayIso);
+    if (!today) {
+      return null;
     }
-    return optionsById;
+
+    const firstWorkflow = this.sortedWorkflows()[0] ?? null;
+    const scheduledStart =
+      this.parseApiDate(firstWorkflow?.startDate) ?? this.parseApiDate(window.firstDateIso);
+    if (!scheduledStart || scheduledStart.getTime() <= today.getTime()) {
+      return null;
+    }
+
+    const task = firstWorkflow?.task ?? app.nextTask;
+    if (!task) {
+      return null;
+    }
+
+    return {
+      step: task.step,
+      taskName: task.name,
+      startDateDisplay: this.formatDateForDisplay(window.firstDateIso),
+      dueDateDisplay: firstWorkflow?.dueDate
+        ? this.formatDateForDisplay(firstWorkflow.dueDate)
+        : null,
+      expirationDateDisplay: window.lastDateDisplay,
+      windowDays: Number(app.product?.applicationWindowDays ?? 0) || 0,
+    };
   });
 
   readonly canReopen = computed(() => !!this.application()?.isApplicationCompleted);
@@ -530,6 +614,8 @@ export class ApplicationDetailComponent implements OnInit {
     const id = Number(this.route.snapshot.paramMap.get('id'));
     const st = this.isBrowser ? (window as any).history.state || {} : {};
     this.originSearchQuery.set(st.searchQuery ?? null);
+    this.pendingPassportRefreshEnabled = Boolean(st.awaitPassportImport);
+    this.pendingPassportRefreshAttempts = 0;
     const page = Number(st.page);
     if (Number.isFinite(page) && page > 0) {
       this.originPage.set(Math.floor(page));
@@ -548,6 +634,7 @@ export class ApplicationDetailComponent implements OnInit {
           window.clearTimeout(this.pollTimer);
         }
       }
+      this.clearPendingPassportRefresh();
       this.clearUploadPreview();
       this.clearExistingPreview();
       this.categorizationSub?.unsubscribe();
@@ -625,10 +712,11 @@ export class ApplicationDetailComponent implements OnInit {
     const shouldPreValidate =
       this.isAiValidationEnabledForSelectedDocument() && this.validateWithAi() && !!file;
 
-    if (shouldPreValidate && file) {
+    if (shouldPreValidate) {
       const preUploadOutcome = this.preUploadValidationOutcome();
       if (!preUploadOutcome) {
-        this.runPreUploadAiValidation(document, file, formValue);
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        this.runPreUploadAiValidation(document, file!, formValue);
         return;
       }
       this.uploadDocument(
@@ -641,15 +729,9 @@ export class ApplicationDetailComponent implements OnInit {
       return;
     }
 
-    const shouldClearAiValidation =
-      !!file && this.isAiValidationEnabledForSelectedDocument() && !this.validateWithAi();
-    this.uploadDocument(
-      document,
-      formValue,
-      file,
-      shouldClearAiValidation ? '' : undefined,
-      shouldClearAiValidation ? null : undefined,
-    );
+    // 'Validate with AI' is unchecked, no file selected, or AI is not enabled for this
+    // document type: upload as-is without triggering or modifying any AI validation.
+    this.uploadDocument(document, formValue, file);
   }
 
   private runPreUploadAiValidation(
@@ -673,12 +755,27 @@ export class ApplicationDetailComponent implements OnInit {
         }
 
         this.isSaving.set(false);
+        const runtimeLabel = this.formatAiRuntimeLabel(
+          outcome.providerName,
+          outcome.provider,
+          outcome.model,
+        );
+        const runtimeSuffix = this.isDevelopmentMode && runtimeLabel ? ` [${runtimeLabel}]` : '';
         this.toast.error(
-          `AI validation failed: ${this.buildPreUploadValidationReason(outcome.result) || 'See details below.'}`,
+          `AI validation failed${runtimeSuffix}: ${this.buildPreUploadValidationReason(outcome.result) || 'See details below.'}`,
         );
       },
       error: (error) => {
         const message = extractServerErrorMessage(error) || 'AI validation failed';
+        const rawErrorPayload =
+          error && typeof error === 'object' && 'error' in error
+            ? (error as { error?: unknown }).error
+            : null;
+        const runtime = this.extractValidationRuntimeMetadata(
+          rawErrorPayload && typeof rawErrorPayload === 'object'
+            ? (rawErrorPayload as Record<string, unknown>)
+            : null,
+        );
         this.preUploadValidationOutcome.set({
           status: 'error',
           result: {
@@ -690,7 +787,13 @@ export class ApplicationDetailComponent implements OnInit {
             extracted_expiration_date: null,
             extracted_doc_number: null,
             extracted_details_markdown: null,
+            ai_provider: runtime.provider,
+            ai_provider_name: runtime.providerName,
+            ai_model: runtime.model,
           },
+          provider: runtime.provider,
+          providerName: runtime.providerName,
+          model: runtime.model,
         });
         this.aiValidationInProgress.set(false);
         this.isSaving.set(false);
@@ -741,6 +844,10 @@ export class ApplicationDetailComponent implements OnInit {
           } else {
             this.uploadProgress.set(state.progress);
             this.replaceDocument(state.document);
+            const app = this.application();
+            if (app) {
+              this.loadApplication(app.id, { silent: true });
+            }
             this.toast.success('Document updated');
             this.isSaving.set(false);
             this.closeUpload();
@@ -786,7 +893,32 @@ export class ApplicationDetailComponent implements OnInit {
             extracted_details_markdown: null,
           };
 
-    return { status, result };
+    const runtimeFromResponse = this.extractValidationRuntimeMetadata(responseRecord);
+    const runtimeFromResult = this.extractValidationRuntimeMetadata(result);
+    const provider = runtimeFromResponse.provider ?? runtimeFromResult.provider;
+    const providerName =
+      runtimeFromResponse.providerName ?? runtimeFromResult.providerName ?? provider;
+    const model = runtimeFromResponse.model ?? runtimeFromResult.model;
+
+    if (result) {
+      if (provider && !result['ai_provider']) {
+        result['ai_provider'] = provider;
+      }
+      if (providerName && !result['ai_provider_name']) {
+        result['ai_provider_name'] = providerName;
+      }
+      if (model && !result['ai_model']) {
+        result['ai_model'] = model;
+      }
+    }
+
+    return {
+      status,
+      result,
+      provider,
+      providerName,
+      model,
+    };
   }
 
   private mergeUploadFormWithValidationExtraction(
@@ -870,7 +1002,77 @@ export class ApplicationDetailComponent implements OnInit {
     if ('extractedDetailsMarkdown' in result && !('extracted_details_markdown' in result)) {
       normalized['extracted_details_markdown'] = result['extractedDetailsMarkdown'];
     }
+    if ('aiProvider' in result && !('ai_provider' in result)) {
+      normalized['ai_provider'] = result['aiProvider'];
+    }
+    if ('aiProviderName' in result && !('ai_provider_name' in result)) {
+      normalized['ai_provider_name'] = result['aiProviderName'];
+    }
+    if ('aiModel' in result && !('ai_model' in result)) {
+      normalized['ai_model'] = result['aiModel'];
+    }
     return normalized;
+  }
+
+  private extractValidationRuntimeMetadata(source: Record<string, unknown> | null): {
+    provider: string | null;
+    providerName: string | null;
+    model: string | null;
+  } {
+    if (!source) {
+      return {
+        provider: null,
+        providerName: null,
+        model: null,
+      };
+    }
+
+    const provider = this.readOptionalString(
+      source['validationProvider'] ??
+        source['validation_provider'] ??
+        source['aiProvider'] ??
+        source['ai_provider'],
+    );
+    const providerName = this.readOptionalString(
+      source['validationProviderName'] ??
+        source['validation_provider_name'] ??
+        source['aiProviderName'] ??
+        source['ai_provider_name'],
+    );
+    const model = this.readOptionalString(
+      source['validationModel'] ??
+        source['validation_model'] ??
+        source['aiModel'] ??
+        source['ai_model'],
+    );
+
+    return {
+      provider,
+      providerName: providerName ?? provider,
+      model,
+    };
+  }
+
+  private readOptionalString(value: unknown): string | null {
+    if (typeof value !== 'string') {
+      return null;
+    }
+    const normalized = value.trim();
+    return normalized || null;
+  }
+
+  private formatAiRuntimeLabel(
+    providerName: string | null,
+    provider: string | null,
+    model: string | null,
+  ): string {
+    const providerLabel = (providerName ?? provider ?? '').trim();
+    const modelLabel = (model ?? '').trim();
+
+    if (providerLabel && modelLabel) {
+      return `${providerLabel} / ${modelLabel}`;
+    }
+    return providerLabel || modelLabel;
   }
 
   private clearPreUploadValidationOutcome(): void {
@@ -1108,12 +1310,79 @@ export class ApplicationDetailComponent implements OnInit {
   }
 
   executeAction(action: DocumentAction): void {
-    const document = this.selectedDocument();
+    this.executeDocumentAction(action);
+  }
+
+  canShowAutomaticShortcut(doc: ApplicationDocument): boolean {
+    return this.getAutomaticShortcutAction(doc) !== null;
+  }
+
+  getAutomaticShortcutLabel(doc: ApplicationDocument): string {
+    return this.getAutomaticShortcutAction(doc)?.label ?? 'Run automatic document action';
+  }
+
+  getAutomaticShortcutTooltip(doc: ApplicationDocument): string {
+    const action = this.getAutomaticShortcutAction(doc);
+    if (!action) {
+      return '';
+    }
+
+    return `${action.label} without opening the upload dialog`;
+  }
+
+  runAutomaticShortcut(doc: ApplicationDocument): void {
+    const action = this.getAutomaticShortcutAction(doc);
+    if (!action) {
+      return;
+    }
+
+    this.executeDocumentAction(action, doc);
+  }
+
+  isAutomaticShortcutLoading(doc: ApplicationDocument): boolean {
+    const actionName = this.getAutomaticShortcutAction(doc)?.name;
+    return !!actionName && this.isActionLoadingFor(doc, actionName);
+  }
+
+  isActionLoadingFor(doc: ApplicationDocument, actionName: string): boolean {
+    return this.actionLoading() === this.buildActionLoadingKey(doc.id, actionName);
+  }
+
+  private getAutomaticShortcutAction(doc: ApplicationDocument): DocumentAction | null {
+    if (!doc.docType?.autoGeneration) {
+      return null;
+    }
+
+    const actions = doc.extraActions ?? [];
+    if (actions.length === 0) {
+      return null;
+    }
+
+    const preferredNames = ['auto_generate', 'upload_default'];
+    for (const name of preferredNames) {
+      const match = actions.find((action) => action.name === name);
+      if (match) {
+        return match;
+      }
+    }
+
+    return actions[0] ?? null;
+  }
+
+  private buildActionLoadingKey(documentId: number, actionName: string): string {
+    return `${documentId}:${actionName}`;
+  }
+
+  private executeDocumentAction(
+    action: DocumentAction,
+    documentOverride?: ApplicationDocument | null,
+  ): void {
+    const document = documentOverride ?? this.selectedDocument();
     if (!document) {
       return;
     }
 
-    this.actionLoading.set(action.name);
+    this.actionLoading.set(this.buildActionLoadingKey(document.id, action.name));
 
     this.applicationsService.executeDocumentAction(document.id, action.name).subscribe({
       next: (response) => {
@@ -1227,9 +1496,12 @@ export class ApplicationDetailComponent implements OnInit {
 
     this.workflowAction.set('advance');
     this.applicationsService.advanceWorkflow(app.id).subscribe({
-      next: () => {
+      next: (response) => {
+        const applied = this.applyApplicationFromActionResponse(response);
+        if (!applied) {
+          this.loadApplication(app.id);
+        }
         this.toast.success('Workflow advanced');
-        this.loadApplication(app.id);
         this.workflowAction.set(null);
       },
       error: (error) => {
@@ -1270,9 +1542,17 @@ export class ApplicationDetailComponent implements OnInit {
 
     this.workflowAction.set(`status-${workflowId}`);
     this.applicationsService.updateWorkflowStatus(app.id, workflowId, status).subscribe({
-      next: () => {
+      next: (response) => {
+        const appliedApplication = this.applyApplicationFromActionResponse(response);
+        const patched = this.patchWorkflowFromActionResponse(workflowId, response, {
+          status,
+        });
+        const shouldReload =
+          !patched || (!appliedApplication && (status === 'completed' || status === 'rejected'));
+        if (shouldReload) {
+          this.loadApplication(app.id);
+        }
         this.toast.success('Workflow status updated');
-        this.loadApplication(app.id);
         this.workflowAction.set(null);
       },
       error: (error) => {
@@ -1291,9 +1571,15 @@ export class ApplicationDetailComponent implements OnInit {
     const dueDate = this.formatDateForApi(value);
     this.workflowAction.set(`due-${workflow.id}`);
     this.applicationsService.updateWorkflowDueDate(app.id, workflow.id, dueDate).subscribe({
-      next: () => {
+      next: (response) => {
+        const patched = this.patchWorkflowFromActionResponse(workflow.id, response, {
+          dueDate,
+          syncApplicationDueDate: dueDate,
+        });
+        if (!patched) {
+          this.loadApplication(app.id);
+        }
         this.toast.success('Task due date updated');
-        this.loadApplication(app.id);
         this.workflowAction.set(null);
       },
       error: (error) => {
@@ -1319,9 +1605,15 @@ export class ApplicationDetailComponent implements OnInit {
 
     this.workflowAction.set(`rollback-${workflow.id}`);
     this.applicationsService.rollbackWorkflow(app.id, workflow.id).subscribe({
-      next: () => {
+      next: (response) => {
+        const applied = this.applyApplicationFromActionResponse(response);
+        if (!applied) {
+          const patched = this.patchRollbackLocally(workflow.id);
+          if (!patched) {
+            this.loadApplication(app.id);
+          }
+        }
         this.toast.success('Current task rolled back');
-        this.loadApplication(app.id);
         this.workflowAction.set(null);
       },
       error: (error) => {
@@ -1338,8 +1630,11 @@ export class ApplicationDetailComponent implements OnInit {
     this.workflowAction.set('reopen');
     this.applicationsService.reopenApplication(app.id).subscribe({
       next: () => {
+        const patched = this.patchReopenLocally();
+        if (!patched) {
+          this.loadApplication(app.id);
+        }
         this.toast.success('Application re-opened');
-        this.loadApplication(app.id);
         this.workflowAction.set(null);
       },
       error: (error) => {
@@ -1373,9 +1668,15 @@ export class ApplicationDetailComponent implements OnInit {
     if (confirm(`Force close application #${app.id}? This will mark it as completed.`)) {
       this.workflowAction.set('force-close');
       this.applicationsService.forceClose(app.id, app as any).subscribe({
-        next: () => {
+        next: (response) => {
+          const applied = this.applyApplicationFromActionResponse(response);
+          if (!applied) {
+            const patched = this.patchForceCloseLocally();
+            if (!patched) {
+              this.loadApplication(app.id);
+            }
+          }
           this.toast.success('Application force closed');
-          this.loadApplication(app.id);
           this.workflowAction.set(null);
         },
         error: (error) => {
@@ -1388,7 +1689,7 @@ export class ApplicationDetailComponent implements OnInit {
 
   canCreateInvoice(): boolean {
     const app = this.application();
-    return !!(app && this.isReadyForInvoice(app));
+    return !!(app && !app.hasInvoice);
   }
 
   createInvoice(): void {
@@ -1406,6 +1707,27 @@ export class ApplicationDetailComponent implements OnInit {
     });
   }
 
+  customerDetailLink(): Array<string | number> {
+    const customerId = this.application()?.customer?.id;
+    return ['/customers', customerId ?? ''];
+  }
+
+  customerDetailState(): Record<string, unknown> {
+    const app = this.application();
+    const currentState = this.isBrowser
+      ? ((history.state as Record<string, unknown> | null) ?? {})
+      : {};
+    return {
+      from: 'application-detail',
+      applicationId: app?.id,
+      customerId: app?.customer?.id,
+      returnUrl: app ? `/applications/${app.id}` : '/applications',
+      returnState: { ...currentState },
+      searchQuery: this.originSearchQuery(),
+      page: this.originPage() ?? undefined,
+    };
+  }
+
   getApplicationStatusVariant(
     status: string,
   ): 'default' | 'secondary' | 'warning' | 'success' | 'destructive' {
@@ -1419,40 +1741,6 @@ export class ApplicationDetailComponent implements OnInit {
       case 'pending':
       default:
         return 'secondary';
-    }
-  }
-
-  getWorkflowStatusVariant(
-    status: string,
-    isOverdue?: boolean,
-  ): 'default' | 'secondary' | 'warning' | 'success' | 'destructive' {
-    if (isOverdue && status !== 'completed' && status !== 'rejected') {
-      return 'destructive';
-    }
-    switch (status) {
-      case 'completed':
-        return 'success';
-      case 'processing':
-        return 'warning';
-      case 'rejected':
-        return 'destructive';
-      case 'pending':
-      default:
-        return 'secondary';
-    }
-  }
-
-  getWorkflowDotClass(status: string): string {
-    switch (status) {
-      case 'completed':
-        return 'timeline-dot-completed';
-      case 'rejected':
-        return 'timeline-dot-rejected';
-      case 'processing':
-        return 'timeline-dot-processing';
-      case 'pending':
-      default:
-        return 'timeline-dot-pending';
     }
   }
 
@@ -1483,14 +1771,6 @@ export class ApplicationDetailComponent implements OnInit {
     return !!currentWorkflow && currentWorkflow.id === workflow.id;
   }
 
-  getWorkflowDueDateAsDate(workflow: ApplicationWorkflow): Date | null {
-    return this.workflowDueDateById().get(workflow.id) ?? null;
-  }
-
-  getWorkflowStatusOptions(workflow: ApplicationWorkflow): ZardComboboxOption[] {
-    return this.workflowStatusOptionsById().get(workflow.id) ?? [];
-  }
-
   getWorkflowStatusGuardMessage(workflow: ApplicationWorkflow): string | null {
     const isBlocked =
       this.isWorkflowStatusChangeBlocked(workflow, 'processing') ||
@@ -1506,19 +1786,6 @@ export class ApplicationDetailComponent implements OnInit {
     return `Processing/Completed available on or after ${formattedDate} (GMT+8).`;
   }
 
-  getTimelineGapLabel(days: number | null): string {
-    if (days === null) {
-      return '';
-    }
-    if (days <= 0) {
-      return 'Started same day';
-    }
-    if (days === 1) {
-      return 'Started after 1 day';
-    }
-    return `Started after ${days} days`;
-  }
-
   getUploadedDocumentRowClass(doc: ApplicationDocument): Record<string, boolean> {
     const expirationState = this.getDocumentExpirationState(doc);
     return {
@@ -1528,22 +1795,78 @@ export class ApplicationDetailComponent implements OnInit {
   }
 
   isDocumentAiValid(doc: ApplicationDocument): boolean {
-    return doc.aiValidationStatus === 'valid' && this.getDocumentExpirationState(doc) === 'ok';
+    return (
+      this.getDocumentAiCheckBadge(doc)?.label === 'Valid' &&
+      this.getDocumentExpirationState(doc) === 'ok'
+    );
   }
 
   isDocumentAiInvalid(doc: ApplicationDocument): boolean {
-    return doc.aiValidationStatus === 'invalid' || this.getDocumentExpirationState(doc) !== 'ok';
+    const badge = this.getDocumentAiCheckBadge(doc);
+    return (
+      badge?.label === 'Invalid' ||
+      badge?.label === 'Error' ||
+      this.getDocumentExpirationState(doc) !== 'ok'
+    );
+  }
+
+  getDocumentAiCheckBadge(doc: ApplicationDocument): PipelineBadgeState | null {
+    return getDocumentAiValidationBadge(doc, this.getActiveCategorizationResultForDocument(doc.id));
   }
 
   getDocumentValidationTooltip(doc: ApplicationDocument): string {
+    const activePipelineResult = this.getActiveCategorizationResultForDocument(doc.id);
+    if (
+      activePipelineResult?.validationStatus === 'invalid' ||
+      activePipelineResult?.validationStatus === 'error'
+    ) {
+      const details = [
+        activePipelineResult.validationReasoning ?? '',
+        ...(activePipelineResult.validationNegativeIssues ?? []),
+      ]
+        .map((entry) => entry.trim())
+        .filter(Boolean);
+      const runtimeLabel = this.formatAiRuntimeLabel(
+        activePipelineResult.validationProviderName ?? null,
+        activePipelineResult.validationProvider ?? null,
+        activePipelineResult.validationModel ?? null,
+      );
+      if (!this.isDevelopmentMode || !runtimeLabel) {
+        return details.join('\n');
+      }
+      return details.length > 0
+        ? `${details.join('\n')}\nAI runtime: ${runtimeLabel}`
+        : `AI runtime: ${runtimeLabel}`;
+    }
+
     if (!this.isDocumentAiInvalid(doc)) {
       return '';
     }
     const expirationReason = this.getDocumentExpirationReason(doc);
-    if (expirationReason) {
-      return expirationReason;
+    const fallbackReasoning = String(doc.aiValidationResult?.['reasoning'] ?? '');
+    const baseMessage = expirationReason || fallbackReasoning;
+    if (!this.isDevelopmentMode) {
+      return baseMessage;
     }
-    return String(doc.aiValidationResult?.['reasoning'] ?? '');
+
+    const runtime = this.extractValidationRuntimeMetadata(doc.aiValidationResult ?? null);
+    const runtimeLabel = this.formatAiRuntimeLabel(
+      runtime.providerName,
+      runtime.provider,
+      runtime.model,
+    );
+    if (!runtimeLabel) {
+      return baseMessage;
+    }
+    return baseMessage
+      ? `${baseMessage}\nAI runtime: ${runtimeLabel}`
+      : `AI runtime: ${runtimeLabel}`;
+  }
+
+  private getActiveCategorizationResultForDocument(
+    documentId: number,
+  ): CategorizationFileResult | null {
+    return this.categorizationResults().find((result) => result.documentId === documentId) ?? null;
   }
 
   /**
@@ -1607,6 +1930,10 @@ export class ApplicationDetailComponent implements OnInit {
 
   onInlineDateChange(field: 'docDate' | 'dueDate', value: Date | null): void {
     if (!value) return;
+    if (field === 'docDate' && this.isApplicationDateLocked()) {
+      this.toast.error(this.applicationDateLockedTooltip);
+      return;
+    }
     if (field === 'dueDate' && this.isDueDateLocked()) {
       this.toast.error(this.dueDateLockedTooltip);
       return;
@@ -1619,7 +1946,7 @@ export class ApplicationDetailComponent implements OnInit {
         !this.isDateInRange(value, submissionWindow.firstDate, submissionWindow.lastDate)
       ) {
         this.toast.error(
-          `Application date must be between ${submissionWindow.firstDateIso} and ${submissionWindow.lastDateIso} (inclusive) based on stay permit expiration.`,
+          `Application submission date must be between ${submissionWindow.firstDateDisplay} and ${submissionWindow.lastDateDisplay} (inclusive) based on stay permit expiration.`,
         );
         return;
       }
@@ -1628,7 +1955,7 @@ export class ApplicationDetailComponent implements OnInit {
     const iso = this.formatDateForApi(value);
     this.updateApplicationPartial(
       { [field]: iso } as any,
-      `${field === 'docDate' ? 'Document' : 'Due'} date updated`,
+      `${field === 'docDate' ? 'Application submission' : 'Due'} date updated`,
     );
   }
 
@@ -1683,6 +2010,20 @@ export class ApplicationDetailComponent implements OnInit {
     const docTypeId = this.selectedNewDocType();
     const app = this.application();
     if (!docTypeId || !app) return;
+    const selectedDocType = this.availableDocumentTypes().find(
+      (doc) => String(doc.id) === String(docTypeId),
+    );
+    if (
+      selectedDocType?.isStayPermit &&
+      app.documents.some(
+        (document) =>
+          Boolean(document.docType?.isStayPermit) &&
+          String(document.docType?.id) !== String(docTypeId),
+      )
+    ) {
+      this.toast.error('Only one stay permit document type can be added to an application.');
+      return;
+    }
     const payloadDocs = app.documents.map((d) => ({ id: d.docType.id, required: d.required }));
     if (!payloadDocs.some((d) => String(d.id) === String(docTypeId))) {
       payloadDocs.push({ id: Number(docTypeId), required: true });
@@ -1718,7 +2059,7 @@ export class ApplicationDetailComponent implements OnInit {
     const app = this.application();
     if (!app || this.isSavingMeta()) return;
     this.isSavingMeta.set(true);
-    this.http.patch<any>(`/api/customer-applications/${app.id}/`, payload).subscribe({
+    this.applicationsService.updateApplicationPartial(app.id, payload).subscribe({
       next: () => {
         this.toast.success(successMessage);
         this.loadApplication(app.id);
@@ -1730,32 +2071,239 @@ export class ApplicationDetailComponent implements OnInit {
     });
   }
 
-  private loadDocumentTypes(): void {
-    this.documentTypesService.documentTypesList().subscribe({
-      next: (types) =>
-        this.docTypeOptions.set((types ?? []).map((t) => ({ value: String(t.id), label: t.name }))),
-      error: () => this.docTypeOptions.set([]),
+  private patchApplicationLocally(
+    mutator: (current: ApplicationDetail) => ApplicationDetail,
+  ): boolean {
+    const current = this.application();
+    if (!current) {
+      return false;
+    }
+    const next = mutator(current);
+    this.application.set(next);
+    return true;
+  }
+
+  private normalizeApplicationPayload(raw: any): ApplicationDetail {
+    return {
+      ...raw,
+      notifyCustomer:
+        raw?.notifyCustomer ?? raw?.notifyCustomerToo ?? raw?.notify_customer_too ?? false,
+      notifyCustomerChannel: raw?.notifyCustomerChannel ?? raw?.notify_customer_channel ?? null,
+      readyForInvoice: raw?.readyForInvoice ?? raw?.ready_for_invoice ?? undefined,
+    };
+  }
+
+  private applyApplicationFromActionResponse(response: unknown): boolean {
+    if (!response || typeof response !== 'object') {
+      return false;
+    }
+    const raw = response as Record<string, unknown>;
+    const id = Number(raw['id']);
+    const workflows = raw['workflows'];
+    const documents = raw['documents'];
+    if (!Number.isFinite(id) || !Array.isArray(workflows) || !Array.isArray(documents)) {
+      return false;
+    }
+    const normalized = this.normalizeApplicationPayload(raw);
+    this.application.set(normalized);
+    this.editableNotes.set(normalized?.notes ?? '');
+    return true;
+  }
+
+  private extractWorkflowPatchFromResponse(response: unknown): Partial<ApplicationWorkflow> {
+    if (!response || typeof response !== 'object') {
+      return {};
+    }
+    const raw = response as Record<string, unknown>;
+    const patch: Partial<ApplicationWorkflow> = {};
+    const status = raw['status'];
+    const dueDate = raw['dueDate'] ?? raw['due_date'];
+    const completionDate = raw['completionDate'] ?? raw['completion_date'];
+    const startDate = raw['startDate'] ?? raw['start_date'];
+    const isCurrentStep = raw['isCurrentStep'] ?? raw['is_current_step'];
+    const isOverdue = raw['isOverdue'] ?? raw['is_overdue'];
+    const hasNotes = raw['hasNotes'] ?? raw['has_notes'];
+
+    if (typeof status === 'string' && status.trim()) {
+      patch.status = status;
+    }
+    if (typeof dueDate === 'string' && dueDate.trim()) {
+      patch.dueDate = dueDate;
+    }
+    if (typeof completionDate === 'string') {
+      patch.completionDate = completionDate;
+    } else if (completionDate === null) {
+      patch.completionDate = null;
+    }
+    if (typeof startDate === 'string' && startDate.trim()) {
+      patch.startDate = startDate;
+    }
+    if (typeof isCurrentStep === 'boolean') {
+      patch.isCurrentStep = isCurrentStep;
+    }
+    if (typeof isOverdue === 'boolean') {
+      patch.isOverdue = isOverdue;
+    }
+    if (typeof hasNotes === 'boolean') {
+      patch.hasNotes = hasNotes;
+    }
+
+    return patch;
+  }
+
+  private patchWorkflowFromActionResponse(
+    workflowId: number,
+    response: unknown,
+    options?: {
+      status?: string;
+      dueDate?: string;
+      syncApplicationDueDate?: string;
+    },
+  ): boolean {
+    const responsePatch = this.extractWorkflowPatchFromResponse(response);
+    const statusFallback = options?.status;
+    const dueDateFallback = options?.dueDate;
+    let didPatch = false;
+
+    this.patchApplicationLocally((current) => {
+      const workflows = current.workflows ?? [];
+      const index = workflows.findIndex((item) => item.id === workflowId);
+      if (index < 0) {
+        return current;
+      }
+      didPatch = true;
+      const nextWorkflows = [...workflows];
+      const existing = nextWorkflows[index]!;
+      nextWorkflows[index] = {
+        ...existing,
+        ...responsePatch,
+        ...(statusFallback ? { status: statusFallback } : {}),
+        ...(dueDateFallback ? { dueDate: dueDateFallback } : {}),
+      };
+
+      return {
+        ...current,
+        workflows: nextWorkflows,
+        ...(options?.syncApplicationDueDate ? { dueDate: options.syncApplicationDueDate } : {}),
+      };
+    });
+    return didPatch;
+  }
+
+  private patchRollbackLocally(removedWorkflowId: number): boolean {
+    return this.patchApplicationLocally((current) => {
+      const workflows = current.workflows ?? [];
+      const removing = workflows.find((item) => item.id === removedWorkflowId);
+      if (!removing) {
+        return current;
+      }
+
+      const nextWorkflows = workflows.filter((item) => item.id !== removedWorkflowId);
+      let previousIndex = -1;
+      let previousStep = Number.NEGATIVE_INFINITY;
+      for (let i = 0; i < nextWorkflows.length; i += 1) {
+        const step = nextWorkflows[i]?.task?.step ?? Number.NEGATIVE_INFINITY;
+        if (step < removing.task.step && step >= previousStep) {
+          previousStep = step;
+          previousIndex = i;
+        }
+      }
+      if (previousIndex >= 0) {
+        const previous = nextWorkflows[previousIndex]!;
+        nextWorkflows[previousIndex] = {
+          ...previous,
+          status: 'pending',
+          isCurrentStep: true,
+        };
+      }
+
+      const nextDueDate =
+        previousIndex >= 0 ? nextWorkflows[previousIndex]?.dueDate : current.dueDate;
+      return {
+        ...current,
+        workflows: nextWorkflows,
+        dueDate: nextDueDate ?? current.dueDate ?? null,
+      };
     });
   }
 
-  private loadApplication(id: number): void {
-    this.isLoading.set(true);
+  private patchReopenLocally(): boolean {
+    return this.patchApplicationLocally((current) => {
+      const workflows = [...(current.workflows ?? [])];
+      let lastIndex = -1;
+      let lastStep = Number.NEGATIVE_INFINITY;
+      for (let i = 0; i < workflows.length; i += 1) {
+        const step = workflows[i]?.task?.step ?? Number.NEGATIVE_INFINITY;
+        if (step >= lastStep) {
+          lastStep = step;
+          lastIndex = i;
+        }
+      }
+      if (lastIndex >= 0) {
+        const last = workflows[lastIndex]!;
+        if (last.status === 'completed') {
+          workflows[lastIndex] = {
+            ...last,
+            status: 'processing',
+          };
+        }
+      }
+
+      return {
+        ...current,
+        status: 'processing',
+        isApplicationCompleted: false,
+        workflows,
+      };
+    });
+  }
+
+  private patchForceCloseLocally(): boolean {
+    return this.patchApplicationLocally((current) => ({
+      ...current,
+      status: 'completed',
+      isApplicationCompleted: true,
+    }));
+  }
+
+  private loadDocumentTypes(): void {
+    this.documentTypesService.documentTypesList().subscribe({
+      next: (types) => {
+        const normalized = (types ?? []).map((t) => ({
+          id: Number(t.id),
+          name: t.name,
+          isStayPermit: Boolean(t.isStayPermit),
+        }));
+        this.availableDocumentTypes.set(normalized);
+        this.docTypeOptions.set(normalized.map((t) => ({ value: String(t.id), label: t.name })));
+      },
+      error: () => {
+        this.availableDocumentTypes.set([]);
+        this.docTypeOptions.set([]);
+      },
+    });
+  }
+
+  private loadApplication(id: number, options?: { silent?: boolean }): void {
+    if (!options?.silent) {
+      this.isLoading.set(true);
+    }
     this.applicationsService.getApplication(id).subscribe({
       next: (data) => {
-        const normalized = {
-          ...data,
-          notifyCustomer:
-            data?.notifyCustomer ?? data?.notifyCustomerToo ?? data?.notify_customer_too ?? false,
-          notifyCustomerChannel:
-            data?.notifyCustomerChannel ?? data?.notify_customer_channel ?? null,
-          readyForInvoice: data?.readyForInvoice ?? data?.ready_for_invoice ?? undefined,
-        };
+        const normalized = this.normalizeApplicationPayload(data);
         this.application.set(normalized);
         this.editableNotes.set(normalized?.notes ?? '');
-        this.isLoading.set(false);
+        this.handlePendingPassportRefresh(id, normalized);
+        if (!options?.silent) {
+          this.isLoading.set(false);
+        }
         this.isSavingMeta.set(false);
       },
       error: (error) => {
+        if (options?.silent && this.pendingPassportRefreshEnabled) {
+          this.schedulePendingPassportRefresh(id);
+          return;
+        }
         this.toast.error(extractServerErrorMessage(error) || 'Failed to load application');
         this.isLoading.set(false);
         this.isSavingMeta.set(false);
@@ -1763,9 +2311,58 @@ export class ApplicationDetailComponent implements OnInit {
     });
   }
 
-  private isReadyForInvoice(app: ApplicationDetail): boolean {
-    const readyFlag = typeof app.readyForInvoice === 'boolean' ? app.readyForInvoice : true;
-    return readyFlag && !app.hasInvoice;
+  private handlePendingPassportRefresh(id: number, application: ApplicationDetail): void {
+    if (!this.pendingPassportRefreshEnabled) {
+      return;
+    }
+
+    if (!this.isPassportConfigured(application) || this.hasPassportDocument(application)) {
+      this.clearPendingPassportRefresh();
+      return;
+    }
+
+    if (this.pendingPassportRefreshAttempts >= this.pendingPassportRefreshMaxAttempts) {
+      this.clearPendingPassportRefresh();
+      return;
+    }
+
+    this.schedulePendingPassportRefresh(id);
+  }
+
+  private schedulePendingPassportRefresh(id: number): void {
+    if (!this.isBrowser || !this.pendingPassportRefreshEnabled) {
+      this.clearPendingPassportRefresh();
+      return;
+    }
+
+    if (this.pendingPassportRefreshTimer) {
+      window.clearTimeout(this.pendingPassportRefreshTimer);
+    }
+
+    this.pendingPassportRefreshTimer = window.setTimeout(() => {
+      this.pendingPassportRefreshTimer = null;
+      this.pendingPassportRefreshAttempts += 1;
+      this.loadApplication(id, { silent: true });
+    }, this.pendingPassportRefreshIntervalMs);
+  }
+
+  private clearPendingPassportRefresh(): void {
+    this.pendingPassportRefreshEnabled = false;
+    this.pendingPassportRefreshAttempts = 0;
+    if (this.pendingPassportRefreshTimer && this.isBrowser) {
+      window.clearTimeout(this.pendingPassportRefreshTimer);
+    }
+    this.pendingPassportRefreshTimer = null;
+  }
+
+  private isPassportConfigured(application: ApplicationDetail): boolean {
+    return this.getConfiguredDocumentNames(application).has('Passport');
+  }
+
+  private hasPassportDocument(application: ApplicationDetail): boolean {
+    return (application.documents ?? []).some(
+      (document) => (document.docType?.name ?? '').trim().toLowerCase() === 'passport',
+    );
   }
 
   private calculateGapDays(
@@ -2026,14 +2623,14 @@ export class ApplicationDetailComponent implements OnInit {
     }
 
     if (expirationState === 'expired') {
-      return `Document expired on ${this.formatDateForApi(expirationDate)}.`;
+      return `Document expired on ${this.formatDateForDisplay(this.formatDateForApi(expirationDate))}.`;
     }
 
     const thresholdRaw = Number(doc.docType?.expiringThresholdDays ?? 0);
     const thresholdDays = Number.isFinite(thresholdRaw) ? Math.max(0, thresholdRaw) : 0;
     return (
       'Document is expiring soon: expiration date ' +
-      `${this.formatDateForApi(expirationDate)} is within ${thresholdDays} days.`
+      `${this.formatDateForDisplay(this.formatDateForApi(expirationDate))} is within ${thresholdDays} days.`
     );
   }
 
@@ -2309,14 +2906,13 @@ export class ApplicationDetailComponent implements OnInit {
     this.categorizationSub = this.categorizationService.watchCategorizationJob(jobId).subscribe({
       next: (event: CategorizationSseEvent) => this.handleCategorizationEvent(event),
       error: () => {
-        this.categorizationStatusMessage.set('Connection lost. Check results manually.');
-        this.categorizationComplete.set(true);
+        this.categorizationStatusMessage.set(
+          'Connection lost. Waiting for the final pipeline state.',
+        );
+        this.maybeFinalizeCategorizationFromClientState();
       },
       complete: () => {
-        // Stream ended — if not already marked complete, mark it now
-        if (!this.categorizationComplete()) {
-          this.categorizationComplete.set(true);
-        }
+        this.maybeFinalizeCategorizationFromClientState();
       },
     });
   }
@@ -2376,6 +2972,9 @@ export class ApplicationDetailComponent implements OnInit {
           validationStatus: null,
           validationReasoning: null,
           validationNegativeIssues: null,
+          validationProvider: null,
+          validationProviderName: null,
+          validationModel: null,
         };
         if (idx >= 0) {
           current[idx] = { ...current[idx], ...next };
@@ -2462,6 +3061,9 @@ export class ApplicationDetailComponent implements OnInit {
                 validationStatus: null,
                 validationReasoning: null,
                 validationNegativeIssues: null,
+                validationProvider: null,
+                validationProviderName: null,
+                validationModel: null,
               },
             ]);
           } else {
@@ -2502,6 +3104,9 @@ export class ApplicationDetailComponent implements OnInit {
           validationStatus: null,
           validationReasoning: null,
           validationNegativeIssues: null,
+          validationProvider: null,
+          validationProviderName: null,
+          validationModel: null,
         };
         if (idx >= 0) {
           results[idx] = result;
@@ -2533,6 +3138,9 @@ export class ApplicationDetailComponent implements OnInit {
           validationStatus: null,
           validationReasoning: null,
           validationNegativeIssues: null,
+          validationProvider: null,
+          validationProviderName: null,
+          validationModel: null,
         };
         if (idx >= 0) {
           results[idx] = errorResult;
@@ -2591,6 +3199,9 @@ export class ApplicationDetailComponent implements OnInit {
                 : results[idx].aiValidationEnabled,
             validationReasoning: event.data['validationReasoning'] ?? null,
             validationNegativeIssues: event.data['validationNegativeIssues'] ?? null,
+            validationProvider: event.data['validationProvider'] ?? null,
+            validationProviderName: event.data['validationProviderName'] ?? null,
+            validationModel: event.data['validationModel'] ?? null,
           };
           this.categorizationResults.set(results);
         }
@@ -2631,6 +3242,9 @@ export class ApplicationDetailComponent implements OnInit {
             validationStatus: r.validationStatus ?? null,
             validationReasoning: r.validationReasoning ?? null,
             validationNegativeIssues: r.validationNegativeIssues ?? null,
+            validationProvider: r.validationProvider ?? null,
+            validationProviderName: r.validationProviderName ?? null,
+            validationModel: r.validationModel ?? null,
           }));
           this.categorizationResults.set(finalResults);
         }
@@ -2652,20 +3266,7 @@ export class ApplicationDetailComponent implements OnInit {
       return;
     }
 
-    const isTerminal = (result: CategorizationFileResult): boolean => {
-      if (result.status === 'error' || result.pipelineStage === 'error') {
-        return true;
-      }
-      if (result.aiValidationEnabled === false) {
-        return result.pipelineStage === 'categorized' || result.pipelineStage === 'validated';
-      }
-      if (result.validationStatus === 'valid' || result.validationStatus === 'invalid') {
-        return true;
-      }
-      return false;
-    };
-
-    if (!results.every(isTerminal)) {
+    if (!results.every((result) => isCategorizationPipelineTerminal(result))) {
       return;
     }
 
@@ -2673,7 +3274,10 @@ export class ApplicationDetailComponent implements OnInit {
     this.categorizationProcessedFiles.set(total);
     this.categorizationProgressPercentOverride.set(100);
     const currentMessage = this.categorizationStatusMessage().trim();
-    if (!currentMessage || /processing|categorizing|validating|uploading/i.test(currentMessage)) {
+    if (
+      !currentMessage ||
+      /processing|categorizing|validating|uploading|connection lost/i.test(currentMessage)
+    ) {
       this.categorizationStatusMessage.set('Processing complete');
     }
   }

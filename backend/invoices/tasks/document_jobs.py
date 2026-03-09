@@ -5,17 +5,27 @@ from zipfile import ZIP_DEFLATED, ZipFile
 
 from core.services.logger_service import Logger
 from core.tasks.idempotency import acquire_task_lock, build_task_lock_key, release_task_lock
+from core.tasks.progress import persist_progress
+from core.tasks.runtime import QUEUE_DOC_CONVERSION, db_task
 from core.utils.pdf_converter import PDFConverter, PDFConverterError
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.utils.text import slugify
-from core.tasks.runtime import QUEUE_REALTIME, db_task
-from invoices.models import InvoiceDocumentItem, InvoiceDocumentJob
+from invoices.models import Invoice, InvoiceDocumentItem, InvoiceDocumentJob
 from invoices.services.InvoiceService import InvoiceService
 
 logger = Logger.get_logger(__name__)
-INVOICE_DOC_QUEUE = str(getattr(settings, "DRAMATIQ_INVOICE_DOC_QUEUE", QUEUE_REALTIME) or QUEUE_REALTIME).strip()
+INVOICE_DOC_QUEUE = str(
+    getattr(settings, "DRAMATIQ_INVOICE_DOC_QUEUE", QUEUE_DOC_CONVERSION) or QUEUE_DOC_CONVERSION
+).strip()
+
+
+def _load_document_ready_invoices(invoice_ids: list[int]) -> dict[int, Invoice]:
+    if not invoice_ids:
+        return {}
+
+    return {invoice.id: invoice for invoice in Invoice.objects.for_document_generation().filter(id__in=invoice_ids)}
 
 
 @db_task(queue=INVOICE_DOC_QUEUE)
@@ -37,11 +47,9 @@ def run_invoice_document_job(job_id: str) -> None:
             logger.info("Skipping invoice document job already finalized: job_id=%s status=%s", job_id, job.status)
             return
 
-        job.status = InvoiceDocumentJob.STATUS_PROCESSING
-        job.progress = 5
-        job.save(update_fields=["status", "progress", "updated_at"])
+        persist_progress(job, status=InvoiceDocumentJob.STATUS_PROCESSING, progress=5, force=True)
 
-        items = list(job.items.select_related("invoice").order_by("sort_index"))
+        items = list(job.items.order_by("sort_index"))
         items_count = len(items)
         if job.total_invoices != items_count:
             job.total_invoices = items_count
@@ -77,6 +85,7 @@ def run_invoice_document_job(job_id: str) -> None:
         zip_buffer = BytesIO()
         completed_items = 0
         failed_items = 0
+        invoices_by_id = _load_document_ready_invoices([item.invoice_id for item in items])
 
         try:
             with ZipFile(zip_buffer, "w", ZIP_DEFLATED) as zip_file:
@@ -85,7 +94,10 @@ def run_invoice_document_job(job_id: str) -> None:
                     item.save(update_fields=["status", "updated_at"])
 
                     try:
-                        invoice = item.invoice
+                        invoice = invoices_by_id.get(item.invoice_id)
+                        if invoice is None:
+                            invoice = Invoice.objects.for_document_generation().get(id=item.invoice_id)
+                            invoices_by_id[item.invoice_id] = invoice
                         service = InvoiceService(invoice)
 
                         if invoice.total_paid_amount == 0 or invoice.is_payment_complete:
@@ -127,10 +139,20 @@ def run_invoice_document_job(job_id: str) -> None:
                         item.save(update_fields=["status", "error_message", "traceback", "updated_at"])
                         failed_items += 1
 
-                    job.processed_invoices = index
+                    new_progress = job.progress
                     if job.total_invoices:
-                        job.progress = min(100, int((job.processed_invoices / job.total_invoices) * 100))
-                    job.save(update_fields=["processed_invoices", "progress", "updated_at"])
+                        new_progress = min(100, int((index / job.total_invoices) * 100))
+                    should_persist = index >= job.total_invoices or abs(new_progress - int(job.progress or 0)) >= 5
+                    if should_persist:
+                        persist_progress(
+                            job,
+                            progress=new_progress,
+                            min_delta=5,
+                            force=True,
+                            extra_fields={"processed_invoices": index},
+                        )
+                    else:
+                        job.processed_invoices = index
 
             saved_path = ""
             if completed_items > 0:

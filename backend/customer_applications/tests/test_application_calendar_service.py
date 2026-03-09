@@ -1,14 +1,13 @@
 from datetime import date
 from unittest.mock import patch
 
-from django.contrib.auth import get_user_model
-from django.test import TestCase, override_settings
-
 from core.models.calendar_event import CalendarEvent
 from core.services.google_calendar_event_colors import GoogleCalendarEventColors
 from customer_applications.models import DocApplication, Document, WorkflowNotification
 from customer_applications.services.application_calendar_service import ApplicationCalendarService
 from customers.models import Customer
+from django.contrib.auth import get_user_model
+from django.test import TestCase, override_settings
 from products.models import DocumentType, Product, Task
 
 User = get_user_model()
@@ -50,7 +49,7 @@ class ApplicationCalendarServiceTests(TestCase):
         )
 
     def test_sync_creates_local_calendar_event_with_pinned_application_id(self):
-        with patch("core.signals_calendar.create_google_event_task") as create_sync_mock:
+        with patch("core.signals_calendar._send_calendar_task") as send_task_mock:
             with self.captureOnCommitCallbacks(execute=True):
                 event = ApplicationCalendarService().sync_next_task_deadline(self.application)
 
@@ -63,16 +62,26 @@ class ApplicationCalendarServiceTests(TestCase):
         )
         self.assertEqual(event.extended_properties["private"]["revisbali_entity"], "customer_application")
         self.assertEqual(event.source, CalendarEvent.SOURCE_APPLICATION)
-        create_sync_mock.assert_called_once_with(event_id=event.id)
+        self.assertEqual(send_task_mock.call_count, 2)
+        send_task_mock.assert_any_call(
+            "core.tasks.calendar_sync.create_google_event_task",
+            event_id=event.id,
+        )
 
         self.application.refresh_from_db()
         self.assertEqual(self.application.calendar_event_id, event.id)
 
+        submission_event = CalendarEvent.objects.filter(
+            application=self.application,
+            source=CalendarEvent.SOURCE_APPLICATION,
+            extended_properties__private__revisbali_event_kind="application_submission",
+        ).first()
+        self.assertIsNotNone(submission_event)
+        self.assertEqual(submission_event.start_date.isoformat(), "2026-01-10")
+        self.assertEqual(submission_event.color_id, GoogleCalendarEventColors.submission_color_id())
+
     def test_sync_updates_existing_calendar_event_when_due_date_changes(self):
-        with (
-            patch("core.signals_calendar.create_google_event_task") as create_sync_mock,
-            patch("core.signals_calendar.update_google_event_task") as update_sync_mock,
-        ):
+        with (patch("core.signals_calendar._send_calendar_task") as send_task_mock,):
             with self.captureOnCommitCallbacks(execute=True):
                 old_event = ApplicationCalendarService().sync_next_task_deadline(self.application)
 
@@ -89,15 +98,37 @@ class ApplicationCalendarServiceTests(TestCase):
         self.assertEqual(old_event.id, updated_event.id)
         self.assertEqual(updated_event.start_date.isoformat(), "2026-01-25")
         self.assertTrue(CalendarEvent.objects.filter(pk=old_event.id).exists())
-        self.assertEqual(CalendarEvent.objects.filter(application=self.application).count(), 1)
-        create_sync_mock.assert_called_once_with(event_id=old_event.id)
-        update_sync_mock.assert_called_once_with(event_id=old_event.id)
+        self.assertEqual(CalendarEvent.objects.filter(application=self.application).count(), 2)
+        assert send_task_mock.call_args_list[0].args == ("core.tasks.calendar_sync.create_google_event_task",)
+        assert send_task_mock.call_args_list[0].kwargs == {"event_id": old_event.id}
+        assert send_task_mock.call_args_list[1].args == ("core.tasks.calendar_sync.create_google_event_task",)
+        assert send_task_mock.call_args_list[2].args == ("core.tasks.calendar_sync.update_google_event_task",)
+        assert send_task_mock.call_args_list[2].kwargs == {"event_id": old_event.id}
 
         self.application.refresh_from_db()
         self.assertEqual(self.application.calendar_event_id, updated_event.id)
 
+    def test_sync_updates_submission_event_when_application_date_changes(self):
+        with (
+            patch("core.signals_calendar._send_calendar_task"),
+            patch("django.db.transaction.on_commit", side_effect=lambda callback: callback()),
+        ):
+            ApplicationCalendarService().sync_next_task_deadline(self.application)
+
+            self.application.doc_date = date(2026, 1, 12)
+            self.application.save(update_fields=["doc_date", "updated_at"])
+            ApplicationCalendarService().sync_next_task_deadline(self.application)
+
+        submission_event = CalendarEvent.objects.get(
+            application=self.application,
+            source=CalendarEvent.SOURCE_APPLICATION,
+            extended_properties__private__revisbali_event_kind="application_submission",
+        )
+        self.assertEqual(submission_event.start_date.isoformat(), "2026-01-12")
+        self.assertEqual(submission_event.color_id, GoogleCalendarEventColors.submission_color_id())
+
     def test_sync_keeps_existing_events_when_no_next_calendar_task(self):
-        with patch("core.signals_calendar.create_google_event_task"):
+        with patch("core.tasks.calendar_sync.create_google_event_task"):
             with self.captureOnCommitCallbacks(execute=True):
                 old_event = ApplicationCalendarService().sync_next_task_deadline(self.application)
 
@@ -189,7 +220,7 @@ class VisaSubmissionWindowCalendarServiceTests(TestCase):
         ).first()
 
     def test_sync_creates_visa_submission_window_event(self):
-        with patch("core.signals_calendar.create_google_event_task"):
+        with patch("core.tasks.calendar_sync.create_google_event_task"):
             with self.captureOnCommitCallbacks(execute=True):
                 ApplicationCalendarService().sync_next_task_deadline(self.application)
 
@@ -201,8 +232,9 @@ class VisaSubmissionWindowCalendarServiceTests(TestCase):
         self.assertEqual(visa_event.notifications, {})
 
     def test_sync_updates_existing_visa_submission_window_event(self):
-        with patch("core.signals_calendar.create_google_event_task"), patch(
-            "core.signals_calendar.update_google_event_task"
+        with (
+            patch("core.tasks.calendar_sync.create_google_event_task"),
+            patch("core.tasks.calendar_sync.update_google_event_task"),
         ):
             with self.captureOnCommitCallbacks(execute=True):
                 ApplicationCalendarService().sync_next_task_deadline(self.application)
@@ -224,7 +256,7 @@ class VisaSubmissionWindowCalendarServiceTests(TestCase):
         self.assertEqual(updated_event.end_date.isoformat(), "2026-02-11")
 
     def test_sync_removes_visa_submission_window_event_when_calendar_disabled(self):
-        with patch("core.signals_calendar.create_google_event_task"):
+        with patch("core.tasks.calendar_sync.create_google_event_task"):
             with self.captureOnCommitCallbacks(execute=True):
                 ApplicationCalendarService().sync_next_task_deadline(self.application)
 
@@ -238,7 +270,7 @@ class VisaSubmissionWindowCalendarServiceTests(TestCase):
 
     def test_sync_logs_and_continues_when_visa_window_subsync_fails(self):
         with (
-            patch("core.signals_calendar.create_google_event_task"),
+            patch("core.tasks.calendar_sync.create_google_event_task"),
             patch(
                 "customer_applications.services.application_calendar_service.ApplicationCalendarService._get_visa_submission_window_event",
                 side_effect=RuntimeError("boom"),

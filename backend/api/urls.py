@@ -87,6 +87,7 @@ router.register(r"calendar-reminders", views.CalendarReminderViewSet, basename="
 router.register(r"async-jobs", views.AsyncJobViewSet, basename="async-jobs")
 router.register(r"push-notifications", views.PushNotificationViewSet, basename="push-notifications")
 router.register(r"holidays", views.HolidayViewSet, basename="holidays")
+router.register(r"ai-models", views.AiModelViewSet, basename="ai-models")
 router.register(r"sync", SyncViewSet, basename="sync")
 
 urlpatterns = [
@@ -105,6 +106,7 @@ urlpatterns = [
     path("backups/restore/", backup_restore_sse, name="api-backup-restore-sse"),
     path("ocr/check/", views.OCRViewSet.as_view({"post": "check"}), name="api-ocr-check"),
     path("ocr/status/<uuid:job_id>/", views.OCRViewSet.as_view({"get": "status"}), name="api-ocr-status"),
+    path("ocr/stream/<uuid:job_id>/", views.OCRViewSet.as_view({"get": "stream"}), name="api-ocr-stream"),
     path(
         "document-ocr/check/",
         views.DocumentOCRViewSet.as_view({"post": "check"}),
@@ -114,6 +116,11 @@ urlpatterns = [
         "document-ocr/status/<uuid:job_id>/",
         views.DocumentOCRViewSet.as_view({"get": "status"}),
         name="api-document-ocr-status",
+    ),
+    path(
+        "document-ocr/stream/<uuid:job_id>/",
+        views.DocumentOCRViewSet.as_view({"get": "stream"}),
+        name="api-document-ocr-stream",
     ),
     path(
         "calendar-reminders/stream/",

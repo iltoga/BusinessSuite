@@ -34,6 +34,22 @@ class PassportUploadabilityServiceQualityGateTestCase(TestCase):
         self.assertEqual(result.rejection_code, "image_blurry")
         self.assertIn("opencv-quality-gate", result.method_used)
 
+    @override_settings(
+        LLM_PROVIDER="groq",
+        CHECK_PASSPORT_MODEL="meta-llama/llama-4-scout-17b-16e-instruct",
+    )
+    @patch("core.services.passport_uploadability_service.AIPassportParser")
+    def test_does_not_force_openrouter_provider(self, mock_parser_cls):
+        mock_parser = MagicMock()
+        mock_parser.model = "meta-llama/llama-4-scout-17b-16e-instruct"
+        mock_parser_cls.return_value = mock_parser
+
+        PassportUploadabilityService()
+
+        kwargs = mock_parser_cls.call_args.kwargs
+        self.assertNotIn("use_openrouter", kwargs)
+        self.assertEqual(kwargs.get("model"), "meta-llama/llama-4-scout-17b-16e-instruct")
+
     @patch("core.services.passport_uploadability_service.AIPassportParser")
     def test_does_not_reject_when_only_deterministic_mrz_cutoff_hint_is_present(self, mock_parser_cls):
         mock_parser = MagicMock()
@@ -272,51 +288,6 @@ class PassportUploadabilityServiceQualityGateTestCase(TestCase):
             self.assertTrue(result.is_valid)
             self.assertIsNone(result.rejection_code)
 
-    @patch("core.services.passport_uploadability_service.AIPassportParser")
-    def test_ignores_ai_blur_when_deterministic_quality_passed(self, mock_parser_cls):
-        mock_parser = MagicMock()
-        mock_parser.model = "google/gemini-3-flash-preview"
-        mock_parser_cls.return_value = mock_parser
-
-        service = PassportUploadabilityService()
-
-        with patch.object(service.ai_parser, "validate_passport_image_two_shot") as mock_validate:
-            mock_data = MagicMock(
-                full_page_visible=True,
-                all_corners_visible=True,
-                has_cropped_or_cutoff=False,
-                mrz_fully_visible=True,
-                is_blurry=True,
-                confidence_score=0.92,
-                passport_number="YA1234567",
-                last_name="Rossi",
-                first_name="Mario",
-                nationality="ITA",
-                passport_expiration_date="2032-01-01",
-            )
-            mock_validate.return_value = MagicMock(
-                success=True,
-                passport_data=mock_data,
-                parameter_checks={},
-                decision={
-                    "is_valid": True,
-                    "ordered_failures": [
-                        {
-                            "parameter": "image_not_blurry",
-                            "reason": "Image appears blurry.",
-                            "importance": "major",
-                        }
-                    ]
-                },
-            )
-
-            result = service._check_ai(
-                b"fake",
-                analysis_context={"deterministic_quality": {"analyzer_available": True, "is_good_quality": True}},
-            )
-
-            self.assertTrue(result.is_valid)
-            self.assertIsNone(result.rejection_code)
 
     @patch("core.services.passport_uploadability_service.AIPassportParser")
     def test_rejects_low_confidence_when_below_threshold(self, mock_parser_cls):

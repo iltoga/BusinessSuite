@@ -94,6 +94,12 @@ export class MenuService {
           visible: () => this.canAccessStaffAdminItems(),
         },
         {
+          id: 'admin-ai-models',
+          label: 'AI Models',
+          route: '/admin/ai-models',
+          visible: () => this.canAccessStaffAdminItems(),
+        },
+        {
           id: 'admin-holidays',
           label: 'National Holidays',
           route: '/admin/holidays',
@@ -115,6 +121,12 @@ export class MenuService {
           id: 'admin-server',
           label: 'Server Management',
           route: '/admin/server',
+          visible: () => this.authService.isInAdminGroup(),
+        },
+        {
+          id: 'admin-application-settings',
+          label: 'Application Settings',
+          route: '/admin/application-settings',
           visible: () => this.authService.isInAdminGroup(),
         },
         {

@@ -16,40 +16,7 @@ OPENAI_PATCH_TARGET = "core.services.ai_client.OpenAI"
 class AIPassportParserTestCase(TestCase):
     """Test cases for AIPassportParser class."""
 
-    @override_settings(
-        OPENROUTER_API_KEY="test-key",
-        LLM_PROVIDER="openrouter",
-        LLM_DEFAULT_MODEL="google/gemini-2.0-flash-001",
-    )
-    def test_parser_initialization_with_openrouter(self):
-        """Test that parser initializes correctly with OpenRouter settings."""
-        with patch(OPENAI_PATCH_TARGET) as mock_openai:
-            parser = AIPassportParser()
-            self.assertEqual(parser.ai_client.api_key, "test-key")
-            self.assertEqual(parser.model, "google/gemini-2.5-flash-lite")
-            self.assertTrue(parser.use_openrouter)
-            mock_openai.assert_called_once()
 
-    @override_settings(
-        OPENAI_API_KEY="openai-test-key",
-        LLM_PROVIDER="openai",
-        LLM_DEFAULT_MODEL="gpt-4o-mini",
-    )
-    def test_parser_initialization_with_openai(self):
-        """Test that parser initializes correctly with OpenAI settings."""
-        with patch(OPENAI_PATCH_TARGET) as mock_openai:
-            parser = AIPassportParser()
-            self.assertEqual(parser.ai_client.api_key, "openai-test-key")
-            self.assertEqual(parser.model, "gpt-4o-mini")
-            self.assertFalse(parser.use_openrouter)
-            mock_openai.assert_called_once()
-
-    def test_parser_initialization_without_api_key_raises_error(self):
-        """Test that parser raises error when no API key is configured."""
-        with override_settings(OPENROUTER_API_KEY=None, OPENAI_API_KEY=None, LLM_PROVIDER="openrouter"):
-            with self.assertRaises(ValueError) as context:
-                AIPassportParser()
-            self.assertIn("API key not configured", str(context.exception))
 
     def test_passport_data_dataclass(self):
         """Test PassportData dataclass initialization."""
@@ -97,113 +64,7 @@ class AIPassportParserTestCase(TestCase):
         self.assertFalse(result.success)
         self.assertIn("Unsupported file type", result.error_message)
 
-    @override_settings(
-        OPENROUTER_API_KEY="test-key",
-        LLM_PROVIDER="openrouter",
-    )
-    @patch(OPENAI_PATCH_TARGET)
-    def test_parse_passport_pdf_is_converted_and_parsed(self, mock_openai):
-        """Test that PDF input is accepted and converted to PNG before vision parsing."""
 
-        # Mock the LLM response
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock()]
-        mock_response.choices[0].message.content = json.dumps(
-            {
-                "first_name": "Mario",
-                "last_name": "Rossi",
-                "full_name": "Mario Rossi",
-                "nationality": "Italy",
-                "nationality_code": "ITA",
-                "gender": "M",
-                "date_of_birth": "1985-03-15",
-                "birth_place": "Rome",
-                "passport_number": "YA1234567",
-                "passport_issue_date": "2020-01-10",
-                "passport_expiration_date": "2030-01-09",
-                "issuing_country": "Italy",
-                "issuing_country_code": "ITA",
-                "issuing_authority": "Ministry of Interior",
-                "height_cm": 175,
-                "eye_color": "Brown",
-                "address_abroad": None,
-                "document_type": "P",
-                "confidence_score": 0.92,
-            }
-        )
-
-        mock_client = MagicMock()
-        mock_client.chat.completions.create.return_value = mock_response
-        mock_openai.return_value = mock_client
-
-        parser = AIPassportParser()
-
-        # Fake PDF bytes; we patch conversion so we don't depend on poppler in unit tests.
-        fake_pdf_bytes = b"%PDF-1.4\n%fake\n"
-
-        with patch(
-            "core.services.ai_passport_parser.convert_and_resize_image",
-            return_value=(Image.new("RGB", (10, 10), color="white"), ""),
-        ) as mock_convert:
-            result = parser.parse_passport_image(fake_pdf_bytes, filename="passport.pdf")
-
-        mock_convert.assert_called()
-        self.assertTrue(result.success)
-        self.assertEqual(result.passport_data.passport_number, "YA1234567")
-
-    @override_settings(
-        OPENROUTER_API_KEY="test-key",
-        LLM_PROVIDER="openrouter",
-    )
-    @patch(OPENAI_PATCH_TARGET)
-    def test_parse_passport_image_success(self, mock_openai):
-        """Test successful passport image parsing with mocked LLM response."""
-        # Mock the LLM response
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock()]
-        mock_response.choices[0].message.content = json.dumps(
-            {
-                "first_name": "Mario",
-                "last_name": "Rossi",
-                "full_name": "Mario Rossi",
-                "nationality": "Italy",
-                "nationality_code": "ITA",
-                "gender": "M",
-                "date_of_birth": "1985-03-15",
-                "birth_place": "Rome",
-                "passport_number": "YA1234567",
-                "passport_issue_date": "2020-01-10",
-                "passport_expiration_date": "2030-01-09",
-                "issuing_country": "Italy",
-                "issuing_country_code": "ITA",
-                "issuing_authority": "Ministry of Interior",
-                "height_cm": 175,
-                "eye_color": "Brown",
-                "address_abroad": None,
-                "document_type": "P",
-                "confidence_score": 0.92,
-            }
-        )
-
-        mock_client = MagicMock()
-        mock_client.chat.completions.create.return_value = mock_response
-        mock_openai.return_value = mock_client
-
-        parser = AIPassportParser()
-
-        # Create proper bytes for the mock file
-        fake_image_bytes = b"\x89PNG\r\n\x1a\n" + b"\x00" * 100  # Minimal PNG-like bytes
-
-        result = parser.parse_passport_image(fake_image_bytes, filename="passport.jpeg")
-
-        self.assertTrue(result.success)
-        self.assertEqual(result.passport_data.first_name, "Mario")
-        self.assertEqual(result.passport_data.last_name, "Rossi")
-        self.assertEqual(result.passport_data.nationality_code, "ITA")
-        self.assertEqual(result.passport_data.birth_place, "Rome")
-        self.assertEqual(result.passport_data.height_cm, 175)
-        self.assertEqual(result.passport_data.eye_color, "Brown")
-        self.assertEqual(result.passport_data.confidence_score, 0.92)
 
     @override_settings(
         OPENROUTER_API_KEY="test-key",

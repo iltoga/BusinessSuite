@@ -199,6 +199,21 @@ html.app-brand-ready img[data-app-logo] {
   opacity: 0.7; /* match opacity-70 */
 }
 
+/* Keep combobox selection readable across light and dark themes. */
+.z-command-option[aria-selected='true'],
+.z-command-option[data-selected='true'] {
+  background-color: var(--color-muted);
+  color: var(--color-foreground);
+}
+
+.z-command-option[aria-selected='true'] .text-xs.opacity-60,
+.z-command-option[data-selected='true'] .text-xs.opacity-60,
+.z-command-option[aria-selected='true'] .product-select-description,
+.z-command-option[data-selected='true'] .product-select-description {
+  color: inherit;
+  opacity: 0.8;
+}
+
 /* Normalize all loader-circle spinners to rotate in place around the SVG center. */
 @keyframes app-circle-spin {
   from {
@@ -224,4 +239,13 @@ html.app-brand-ready img[data-app-logo] {
   transform-origin: center;
   transform-box: fill-box;
   will-change: transform;
+}
+
+/* Remove top padding from main element for detail views with sticky headers */
+main:has(.application-header),
+main:has(.invoice-header),
+main:has(.product-header),
+main:has(.customer-header),
+main:has(.document-type-header) {
+  padding-top: 0 !important;
 }

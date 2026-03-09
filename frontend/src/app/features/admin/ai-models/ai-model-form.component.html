@@ -1,0 +1,231 @@
+<div class="p-4 space-y-4">
+  <h1 class="text-xl font-semibold">{{ isEdit() ? 'Edit AI Model' : 'New AI Model' }}</h1>
+
+  <form [formGroup]="form" class="grid gap-6">
+    <!-- OpenRouter Model Search -->
+    <div>
+      <label class="text-sm font-medium">Search OpenRouter Models</label>
+      <z-combobox
+        class="mt-1"
+        [options]="modelOptions()"
+        [placeholder]="'Type to search models...'"
+        [searchPlaceholder]="'Search models...'"
+        [emptyText]="isLoadingModels() ? 'Searching...' : 'No models found. Try a different search term.'"
+        [disabled]="isLoadingModels()"
+        [zWidth]="'full'"
+        (searchChange)="onModelSearchChange($event)"
+        (zComboSelected)="onModelSelected($event)"
+      />
+      <p class="mt-1 text-xs text-muted-foreground">
+        Select a model to auto-populate all fields with data from OpenRouter.
+      </p>
+    </div>
+
+    <!-- Basic Information -->
+    <div class="space-y-3">
+      <h3 class="text-sm font-semibold text-foreground">Basic Information</h3>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-sm font-medium">Provider</label>
+          <input
+            class="mt-1 w-full rounded-md border px-3 py-2 text-sm"
+            formControlName="provider"
+            placeholder="Provider"
+          />
+        </div>
+        <div>
+          <label class="text-sm font-medium">Model ID</label>
+          <input
+            class="mt-1 w-full rounded-md border px-3 py-2 text-sm"
+            formControlName="model_id"
+            placeholder="Model ID"
+          />
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-sm font-medium">Name</label>
+          <input
+            class="mt-1 w-full rounded-md border px-3 py-2 text-sm"
+            formControlName="name"
+            placeholder="Model name"
+          />
+          @if (form.controls.name.invalid && form.controls.name.touched) {
+          <p class="mt-1 text-xs text-destructive">Name is required.</p>
+          }
+        </div>
+        <div>
+          <label class="text-sm font-medium">Provider Name</label>
+          <input
+            class="mt-1 w-full rounded-md border px-3 py-2 text-sm"
+            formControlName="provider_name"
+            placeholder="Provider name"
+          />
+        </div>
+      </div>
+
+      <div>
+        <label class="text-sm font-medium">Description</label>
+        <textarea
+          class="mt-1 w-full rounded-md border px-3 py-2 text-sm"
+          formControlName="description"
+          placeholder="Model description"
+          rows="3"
+        ></textarea>
+      </div>
+    </div>
+
+    <!-- Architecture -->
+    <div class="space-y-3">
+      <h3 class="text-sm font-semibold text-foreground">Architecture</h3>
+      <div class="grid grid-cols-3 gap-3">
+        <div>
+          <label class="text-sm font-medium">Modality</label>
+          <input
+            class="mt-1 w-full rounded-md border px-3 py-2 text-sm"
+            formControlName="modality"
+            placeholder="Modality"
+          />
+        </div>
+        <div>
+          <label class="text-sm font-medium">Architecture Modality</label>
+          <input
+            class="mt-1 w-full rounded-md border px-3 py-2 text-sm"
+            formControlName="architecture_modality"
+            placeholder="Architecture modality"
+          />
+        </div>
+        <div>
+          <label class="text-sm font-medium">Tokenizer</label>
+          <input
+            class="mt-1 w-full rounded-md border px-3 py-2 text-sm"
+            formControlName="architecture_tokenizer"
+            placeholder="Tokenizer"
+          />
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-sm font-medium">Instruct Type</label>
+          <input
+            class="mt-1 w-full rounded-md border px-3 py-2 text-sm"
+            formControlName="instruct_type"
+            placeholder="Instruct type"
+          />
+        </div>
+        <div>
+          <label class="text-sm font-medium">Top Provider ID</label>
+          <input
+            class="mt-1 w-full rounded-md border px-3 py-2 text-sm"
+            formControlName="top_provider_id"
+            placeholder="Top provider ID"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- Capabilities -->
+    <div class="space-y-2">
+      <label class="text-sm font-medium">Capabilities</label>
+      <div class="flex gap-4">
+        <label class="flex items-center gap-2">
+          <input type="checkbox" formControlName="vision" class="h-4 w-4" />
+          <span class="text-sm">Vision</span>
+        </label>
+        <label class="flex items-center gap-2">
+          <input type="checkbox" formControlName="file_upload" class="h-4 w-4" />
+          <span class="text-sm">File Upload</span>
+        </label>
+        <label class="flex items-center gap-2">
+          <input type="checkbox" formControlName="reasoning" class="h-4 w-4" />
+          <span class="text-sm">Reasoning</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Context & Tokens -->
+    <div class="space-y-3">
+      <h3 class="text-sm font-semibold text-foreground">Context & Tokens</h3>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-sm font-medium">Context Length</label>
+          <input
+            type="number"
+            class="mt-1 w-full rounded-md border px-3 py-2 text-sm"
+            formControlName="context_length"
+            placeholder="Context length"
+          />
+        </div>
+        <div>
+          <label class="text-sm font-medium">Max Completion Tokens</label>
+          <input
+            type="number"
+            class="mt-1 w-full rounded-md border px-3 py-2 text-sm"
+            formControlName="max_completion_tokens"
+            placeholder="Max tokens"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- Pricing -->
+    <div class="space-y-3">
+      <h3 class="text-sm font-semibold text-foreground">Pricing (per 1M tokens)</h3>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-sm font-medium">Prompt Price (per 1M tokens)</label>
+          <input
+            class="mt-1 w-full rounded-md border px-3 py-2 text-sm"
+            formControlName="prompt_price_per_token"
+            placeholder="e.g., 0.16"
+          />
+        </div>
+        <div>
+          <label class="text-sm font-medium">Completion Price (per 1M tokens)</label>
+          <input
+            class="mt-1 w-full rounded-md border px-3 py-2 text-sm"
+            formControlName="completion_price_per_token"
+            placeholder="e.g., 1.30"
+          />
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-sm font-medium">Image Price (per 1M tokens)</label>
+          <input
+            class="mt-1 w-full rounded-md border px-3 py-2 text-sm"
+            formControlName="image_price"
+            placeholder="Image price"
+          />
+        </div>
+        <div>
+          <label class="text-sm font-medium">Request Price (per 1M tokens)</label>
+          <input
+            class="mt-1 w-full rounded-md border px-3 py-2 text-sm"
+            formControlName="request_price"
+            placeholder="Request price"
+          />
+        </div>
+      </div>
+    </div>
+  </form>
+
+  @if (saveError()) {
+  <div class="rounded-md bg-destructive/10 p-3">
+    <p class="text-sm text-destructive">{{ saveError() }}</p>
+  </div>
+  }
+
+  <div class="flex gap-2 border-t pt-4">
+    <button z-button variant="default" [disabled]="isSaving()" (click)="onSubmit()">
+      {{ isSaving() ? 'Saving...' : 'Save' }}
+    </button>
+    @if (isEdit()) {
+    <button z-button variant="destructive" (click)="delete()">Delete</button>
+    }
+    <a z-button variant="outline" routerLink="/admin/ai-models">Cancel</a>
+  </div>
+</div>

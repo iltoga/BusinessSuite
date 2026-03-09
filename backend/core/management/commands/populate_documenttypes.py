@@ -11,6 +11,7 @@ class Command(BaseCommand):
             {
                 "name": "Address",
                 "description": "Indonesian address details",
+                "auto_generation": False,
                 "ai_validation": False,
                 "has_expiration_date": False,
                 "has_doc_number": False,
@@ -21,6 +22,7 @@ class Command(BaseCommand):
             {
                 "name": "Arrival Stamp",
                 "description": "Immigration arrival stamp on the passport showing entry date into Indonesia",
+                "auto_generation": False,
                 "ai_validation": False,
                 "has_expiration_date": False,
                 "has_doc_number": False,
@@ -31,6 +33,7 @@ class Command(BaseCommand):
             {
                 "name": "Bank Statement",
                 "description": "Screenshot or PDF of a recent bank statement displaying bank name, account owner, account number, and balance",
+                "auto_generation": False,
                 "ai_validation": False,
                 "has_expiration_date": False,
                 "has_doc_number": False,
@@ -41,6 +44,7 @@ class Command(BaseCommand):
             {
                 "name": "Flight Ticket",
                 "description": "Copy of the flight ticket out of Indonesia displaying date, flight number, and booking code",
+                "auto_generation": False,
                 "ai_validation": False,
                 "has_expiration_date": False,
                 "has_doc_number": False,
@@ -51,6 +55,7 @@ class Command(BaseCommand):
             {
                 "name": "ITK",
                 "description": "Izin Tinggal Kunjungan, is a short-term visit stay permit for foreigners in Indonesia, issued upon arrival in the country",
+                "auto_generation": False,
                 "ai_validation": False,
                 "has_expiration_date": True,
                 "has_doc_number": True,
@@ -61,6 +66,7 @@ class Command(BaseCommand):
             {
                 "name": "Passport",
                 "description": "Passport biodata page with a validity of at least six months (twelve months for 180-day visas)",
+                "auto_generation": False,
                 "ai_validation": True,
                 "has_expiration_date": True,
                 "has_doc_number": True,
@@ -71,6 +77,7 @@ class Command(BaseCommand):
             {
                 "name": "KTP Sponsor",
                 "description": "Sponsor KTP / ID card of the Indonesian sponsor",
+                "auto_generation": True,
                 "ai_validation": True,
                 "has_expiration_date": True,
                 "has_doc_number": True,
@@ -81,6 +88,7 @@ class Command(BaseCommand):
             {
                 "name": "Proof of Payment",
                 "description": "Proof of payment for the visa application fee",
+                "auto_generation": False,
                 "ai_validation": False,
                 "has_expiration_date": False,
                 "has_doc_number": False,
@@ -91,6 +99,7 @@ class Command(BaseCommand):
             {
                 "name": "Selfie Photo",
                 "description": "Selfie photo taken with a cell phone camera",
+                "auto_generation": False,
                 "ai_validation": False,
                 "has_expiration_date": False,
                 "has_doc_number": False,
@@ -101,6 +110,7 @@ class Command(BaseCommand):
             {
                 "name": "Surat Permohonan dan Jaminan",
                 "description": "Official letter of application and guarantee from an Indonesian sponsor (template provided)",
+                "auto_generation": True,
                 "ai_validation": False,
                 "has_expiration_date": False,
                 "has_doc_number": False,
@@ -111,6 +121,7 @@ class Command(BaseCommand):
             {
                 "name": "Invitation Letter",
                 "description": "Invitation letter from event organizer or host for special-purpose visas",
+                "auto_generation": False,
                 "ai_validation": False,
                 "has_expiration_date": False,
                 "has_doc_number": False,
@@ -121,6 +132,7 @@ class Command(BaseCommand):
             {
                 "name": "Processed Visa Stamp",
                 "description": "Stamp of the visa on the passport processed by immigration",
+                "auto_generation": False,
                 "ai_validation": False,
                 "has_expiration_date": True,
                 "has_doc_number": False,

@@ -8,7 +8,7 @@
         if (!container) return;
         var currentProvider = container.dataset.currentProvider || '';
         var currentModel = container.dataset.currentModel || '';
-        var llmConfigUrl = container.dataset.llmConfigUrl || '/static/llm_models.json';
+        var llmConfigUrl = container.dataset.llmConfigUrl || '/api/ai-models/catalog/';
 
         const dropZone = document.getElementById('dropZone');
         const fileInput = document.getElementById('fileInput');

@@ -12,29 +12,29 @@
   width: 0.5rem;
   height: 0.5rem;
   border-radius: 9999px;
-  background-color: hsl(var(--primary));
-  box-shadow: 0 0 0 0 hsl(var(--primary) / 0.35);
+  background-color: var(--primary);
+  box-shadow: 0 0 0 0 color-mix(in oklab, var(--primary) 35%, transparent);
   animation: reminder-live-pulse 1.8s ease-in-out infinite;
 }
 
 .reminder-live-dot--loading {
-  background-color: hsl(var(--accent-foreground));
+  background-color: var(--accent-foreground);
 }
 
 .reminder-live-dot--offline {
-  background-color: hsl(var(--muted-foreground));
+  background-color: var(--muted-foreground);
   box-shadow: none;
   animation: none;
 }
 
 @keyframes reminder-live-pulse {
   0% {
-    box-shadow: 0 0 0 0 hsl(var(--primary) / 0.35);
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--primary) 35%, transparent);
   }
   70% {
-    box-shadow: 0 0 0 6px hsl(var(--primary) / 0);
+    box-shadow: 0 0 0 6px transparent;
   }
   100% {
-    box-shadow: 0 0 0 0 hsl(var(--primary) / 0);
+    box-shadow: 0 0 0 0 transparent;
   }
 }

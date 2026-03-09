@@ -4,12 +4,11 @@ from api.serializers.customer_serializer import CustomerSerializer
 from api.serializers.doc_workflow_serializer import DocWorkflowSerializer, TaskSerializer
 from api.serializers.document_serializer import DocumentSerializer
 from api.serializers.product_serializer import ProductSerializer
-from customer_applications.services.stay_permit_submission_window_service import (
-    StayPermitSubmissionWindowService,
-)
-from django.core.exceptions import ValidationError as DjangoValidationError
 from customer_applications.models import DocApplication
+from customer_applications.services.stay_permit_submission_window_service import StayPermitSubmissionWindowService
+from django.core.exceptions import ValidationError as DjangoValidationError
 from invoices.models.invoice import InvoiceApplication
+from products.models.document_type import DocumentType
 from rest_framework import serializers
 
 
@@ -329,9 +328,109 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id"]
 
+    def _get_step_one_workflow(self, application: DocApplication):
+        return (
+            application.workflows.select_related("task")
+            .filter(task__step=1)
+            .order_by("task__step", "created_at", "id")
+            .first()
+        )
+
+    def _calculate_due_date_for_doc_date(self, *, doc_date, product=None, application: DocApplication | None = None):
+        if not doc_date:
+            return None
+
+        window_service = StayPermitSubmissionWindowService()
+        if application is None:
+            if window_service.product_requires_submission_window(product):
+                return None
+            next_calendar_task = product.tasks.filter(add_task_to_calendar=True).order_by("step").first() if product else None
+            if next_calendar_task:
+                from core.utils.dateutils import calculate_due_date
+
+                return calculate_due_date(
+                    doc_date,
+                    next_calendar_task.duration,
+                    next_calendar_task.duration_is_business_days,
+                )
+            return doc_date if product and product.tasks.exists() else None
+
+        target = application or DocApplication(product=product, doc_date=doc_date)
+        original_doc_date = getattr(target, "doc_date", None)
+        original_product = getattr(target, "product", None)
+
+        target.doc_date = doc_date
+        if product is not None:
+            target.product = product
+
+        try:
+            start_date = target.get_first_task_start_date()
+            return target.calculate_next_calendar_due_date(start_date=start_date)
+        finally:
+            if application is not None:
+                target.doc_date = original_doc_date
+                target.product = original_product
+
+    def _validate_single_stay_permit_document_type(self, document_types) -> None:
+        if not document_types:
+            return
+
+        document_type_ids: list[int] = []
+        for item in document_types:
+            raw_id = item.get("doc_type_id") or item.get("id")
+            try:
+                document_type_ids.append(int(raw_id))
+            except (TypeError, ValueError):
+                continue
+
+        if not document_type_ids:
+            return
+
+        document_types_by_id = DocumentType.objects.in_bulk(document_type_ids)
+        stay_permit_names: list[str] = []
+        for doc_type_id in document_type_ids:
+            doc_type = document_types_by_id.get(doc_type_id)
+            if doc_type and doc_type.is_stay_permit and doc_type.name not in stay_permit_names:
+                stay_permit_names.append(doc_type.name)
+
+        if len(stay_permit_names) > 1:
+            raise serializers.ValidationError(
+                {
+                    "document_types": [
+                        "Only one stay permit document type can be added to an application. "
+                        f"Selected: {', '.join(stay_permit_names)}."
+                    ]
+                }
+            )
+
     def validate(self, attrs):
         doc_date = attrs.get("doc_date") or getattr(self.instance, "doc_date", None)
-        due_date = attrs.get("due_date") or getattr(self.instance, "due_date", None)
+        due_date = attrs.get("due_date")
+        product = attrs.get("product") or getattr(self.instance, "product", None)
+        document_types = attrs.get("document_types")
+        doc_date_changed = (
+            self.instance is not None
+            and "doc_date" in attrs
+            and attrs.get("doc_date") != getattr(self.instance, "doc_date", None)
+        )
+
+        if doc_date_changed:
+            step_one_workflow = self._get_step_one_workflow(self.instance)
+            if step_one_workflow and step_one_workflow.status == step_one_workflow.STATUS_COMPLETED:
+                raise serializers.ValidationError(
+                    {"doc_date": "Application submission date cannot be changed after step 1 is completed."}
+                )
+
+        if due_date is None:
+            if doc_date_changed:
+                due_date = self._calculate_due_date_for_doc_date(
+                    doc_date=doc_date,
+                    product=product,
+                    application=self.instance,
+                )
+            else:
+                due_date = getattr(self.instance, "due_date", None)
+
         if due_date and doc_date and due_date < doc_date:
             raise serializers.ValidationError({"due_date": "Due date cannot be before document date."})
 
@@ -343,7 +442,6 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
             notify_customer_channel = self.instance.notify_customer_channel
 
         customer = attrs.get("customer") or getattr(self.instance, "customer", None)
-        product = attrs.get("product") or getattr(self.instance, "product", None)
 
         if product and getattr(product, "deprecated", False):
             raise serializers.ValidationError({"product": "Deprecated products cannot be used for applications."})
@@ -352,9 +450,9 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
                 {"product": "This product is invoice-only and does not support customer applications."}
             )
 
-        should_validate_submission_window = (
-            self.instance is None or "doc_date" in attrs or "product" in attrs
-        )
+        self._validate_single_stay_permit_document_type(document_types)
+
+        should_validate_submission_window = self.instance is None or "doc_date" in attrs or "product" in attrs
         if should_validate_submission_window:
             try:
                 StayPermitSubmissionWindowService().validate_doc_date(
@@ -380,8 +478,10 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         from customer_applications.models.doc_workflow import DocWorkflow
         from customer_applications.models.document import Document
-        from django.core.files import File
-        from django.core.files.storage import default_storage
+        from customer_applications.services.stay_permit_workflow_schedule_service import (
+            StayPermitWorkflowScheduleService,
+        )
+        from django.db import transaction
         from django.utils import timezone
         from products.models.document_type import DocumentType
         from products.models.task import Task
@@ -391,19 +491,10 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
 
         # Create application
         if not validated_data.get("due_date"):
-            product = validated_data.get("product")
-            doc_date = validated_data.get("doc_date")
-            next_calendar_task = (
-                product.tasks.filter(add_task_to_calendar=True).order_by("step").first() if product else None
+            validated_data["due_date"] = self._calculate_due_date_for_doc_date(
+                doc_date=validated_data.get("doc_date"),
+                product=validated_data.get("product"),
             )
-            if next_calendar_task:
-                from core.utils.dateutils import calculate_due_date
-
-                validated_data["due_date"] = calculate_due_date(
-                    doc_date, next_calendar_task.duration, next_calendar_task.duration_is_business_days
-                )
-            else:
-                validated_data["due_date"] = doc_date
 
         validated_data["created_by"] = user
         application = DocApplication.objects.create(**validated_data)
@@ -451,73 +542,141 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
         if placeholder_documents:
             Document.objects.bulk_create(placeholder_documents)
 
-        # Create the first workflow step (step 1) if it exists
+        # Create the first workflow step immediately only when the application can already start.
         task = Task.objects.filter(product=application.product, step=1).first()
         if task:
-            step1 = DocWorkflow(
-                start_date=timezone.now().date(),
-                task=task,
-                doc_application=application,
-                created_by=user,
-                status=DocWorkflow.STATUS_PENDING,
-            )
-            # Keep step 1 in sync with the application due date selected/saved at creation time.
-            step1.due_date = application.due_date or step1.calculate_workflow_due_date()
-            step1.save()
+            start_date = application.get_first_task_start_date()
+            if start_date:
+                step1 = DocWorkflow(
+                    start_date=start_date,
+                    task=task,
+                    doc_application=application,
+                    created_by=user,
+                    status=DocWorkflow.STATUS_PENDING,
+                )
+                step1.due_date = application.calculate_next_calendar_due_date(start_date=start_date) or start_date
+                step1.save()
 
-        # Perform auto-import
+        StayPermitWorkflowScheduleService().sync(application=application, actor_user_id=user.id)
+
         if has_auto_passport:
-            self._auto_import_passport(application, user)
+            from customer_applications.tasks import auto_import_passport_task
+
+            transaction.on_commit(
+                lambda: auto_import_passport_task(
+                    application_id=application.id,
+                    user_id=user.id,
+                )
+            )
+
+        self._prime_detail_caches(application)
 
         return application
 
     def update(self, instance, validated_data):
+        from customer_applications.models.doc_workflow import DocWorkflow
         from customer_applications.models.document import Document
+        from customer_applications.services.stay_permit_workflow_schedule_service import (
+            StayPermitWorkflowScheduleService,
+        )
+        from django.db import transaction
         from django.utils import timezone
         from products.models.document_type import DocumentType
 
         document_types = validated_data.pop("document_types", None)
-        application = super().update(instance, validated_data)
+        doc_date_changed = (
+            "doc_date" in validated_data and validated_data.get("doc_date") != getattr(instance, "doc_date", None)
+        )
+        if doc_date_changed and "due_date" not in validated_data:
+            validated_data["due_date"] = self._calculate_due_date_for_doc_date(
+                doc_date=validated_data.get("doc_date"),
+                product=validated_data.get("product") or getattr(instance, "product", None),
+                application=instance,
+            )
 
-        if document_types is not None:
-            desired: dict[int, bool] = {}
-            for dt in document_types:
-                doc_type_id = dt.get("doc_type_id") or dt.get("id")
-                if not doc_type_id:
-                    continue
-                desired[int(doc_type_id)] = bool(dt.get("required", True))
+        step_one_workflow = self._get_step_one_workflow(instance) if doc_date_changed else None
+        user = self.context.get("request").user if self.context.get("request") else None
 
-            existing_docs = Document.objects.filter(doc_application=application)
-            existing_by_type = {doc.doc_type_id: doc for doc in existing_docs}
+        with transaction.atomic():
+            application = super().update(instance, validated_data)
 
-            # Remove only pending placeholder docs that are no longer requested.
-            for doc in existing_docs:
-                if doc.doc_type_id not in desired and not doc.completed:
-                    doc.delete()
+            if doc_date_changed and step_one_workflow:
+                start_date = application.get_first_task_start_date()
+                if start_date:
+                    step_one_workflow.start_date = start_date
+                    step_one_workflow.due_date = (
+                        application.calculate_next_calendar_due_date(start_date=start_date) or start_date
+                    )
+                    step_one_workflow.updated_by = user
+                    step_one_workflow.save()
 
-            user = self.context.get("request").user if self.context.get("request") else None
-            for doc_type_id, required in desired.items():
-                existing = existing_by_type.get(doc_type_id)
-                if existing:
-                    if existing.required != required:
-                        existing.required = required
-                        existing.updated_by = user
-                        existing.updated_at = timezone.now()
-                        existing.save(update_fields=["required", "updated_by", "updated_at"])
-                    continue
-                try:
-                    doc_type = DocumentType.objects.get(pk=doc_type_id)
-                except DocumentType.DoesNotExist:
-                    raise serializers.ValidationError({"document_types": f"Invalid document type id: {doc_type_id}"})
-                Document.objects.create(
-                    doc_application=application,
-                    doc_type=doc_type,
-                    required=required,
-                    created_by=user,
-                    updated_by=user,
-                )
+            if document_types is not None:
+                desired: dict[int, bool] = {}
+                for dt in document_types:
+                    doc_type_id = dt.get("doc_type_id") or dt.get("id")
+                    if not doc_type_id:
+                        continue
+                    desired[int(doc_type_id)] = bool(dt.get("required", True))
+
+                existing_docs = Document.objects.filter(doc_application=application)
+                existing_by_type = {doc.doc_type_id: doc for doc in existing_docs}
+
+                # Remove only pending placeholder docs that are no longer requested.
+                for doc in existing_docs:
+                    if doc.doc_type_id not in desired and not doc.completed:
+                        doc.delete()
+
+                for doc_type_id, required in desired.items():
+                    existing = existing_by_type.get(doc_type_id)
+                    if existing:
+                        if existing.required != required:
+                            existing.required = required
+                            existing.updated_by = user
+                            existing.updated_at = timezone.now()
+                            existing.save(update_fields=["required", "updated_by", "updated_at"])
+                        continue
+                    try:
+                        doc_type = DocumentType.objects.get(pk=doc_type_id)
+                    except DocumentType.DoesNotExist:
+                        raise serializers.ValidationError({"document_types": f"Invalid document type id: {doc_type_id}"})
+                    Document.objects.create(
+                        doc_application=application,
+                        doc_type=doc_type,
+                        required=required,
+                        created_by=user,
+                        updated_by=user,
+                    )
+
+            StayPermitWorkflowScheduleService().sync(
+                application=application,
+                actor_user_id=getattr(user, "id", None),
+            )
+
+            self._prime_detail_caches(application)
 
         return application
+
+    def _prime_detail_caches(self, application) -> None:
+        product = getattr(application, "product", None)
+        if product is not None:
+            product_prefetched = getattr(product, "_prefetched_objects_cache", None) or {}
+            product_prefetched["tasks"] = list(product.tasks.all().order_by("step"))
+            product._prefetched_objects_cache = product_prefetched
+
+        documents = list(application.documents.select_related("doc_type", "created_by", "updated_by").all())
+        workflows = list(application.workflows.select_related("task", "created_by", "updated_by").all())
+        prefetched = getattr(application, "_prefetched_objects_cache", None) or {}
+        prefetched.update(
+            {
+                "documents": documents,
+                "workflows": workflows,
+            }
+        )
+        application._prefetched_objects_cache = prefetched
+        application.total_required_documents = sum(1 for document in documents if document.required)
+        application.completed_required_documents = sum(
+            1 for document in documents if document.required and document.completed
+        )
 
     def _can_auto_import_passport(self, application) -> bool:
         """Check if passport can be auto-imported for this application."""
@@ -555,115 +714,3 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
             return True
 
         return False
-
-    def _auto_import_passport(self, application, user):
-        """Replicates legacy auto-import logic from DocApplicationCreateView."""
-        from core.models.country_code import CountryCode
-        from customer_applications.models.document import Document, get_upload_to
-        from django.core.files import File
-        from django.core.files.storage import default_storage
-        from django.utils import timezone
-        from products.models.document_type import DocumentType
-
-        passport_doc_type = DocumentType.objects.get(name="Passport")
-        customer = application.customer
-
-        # Helper for detail string
-        def fmt_date(d):
-            if not d:
-                return None
-            return d.isoformat() if hasattr(d, "isoformat") else str(d)
-
-        # 1. Try customer profile first
-        if customer.passport_file and customer.passport_number and default_storage.exists(customer.passport_file.name):
-            try:
-                # Extract metadata like in legacy view, prioritizing model fields over passport_metadata
-                mrz_meta = customer.passport_metadata or {}
-
-                def get_val(attr, meta_key):
-                    val = getattr(customer, attr, None)
-                    return val if val else mrz_meta.get(meta_key)
-
-                trimmed_metadata = {
-                    "number": customer.passport_number,
-                    "issue_date_yyyy_mm_dd": fmt_date(get_val("passport_issue_date", "issue_date_yyyy_mm_dd")),
-                    "expiration_date_yyyy_mm_dd": fmt_date(
-                        get_val("passport_expiration_date", "expiration_date_yyyy_mm_dd")
-                    ),
-                    "date_of_birth_yyyy_mm_dd": fmt_date(get_val("birthdate", "date_of_birth_yyyy_mm_dd")),
-                    "birth_place": get_val("birth_place", "birth_place"),
-                    "sex": customer.gender or mrz_meta.get("sex") or mrz_meta.get("mrz_sex"),
-                }
-
-                alpha3 = customer.nationality.alpha3_code if customer.nationality else mrz_meta.get("nationality")
-
-                country_obj = CountryCode.objects.get_country_code_by_alpha3_code(alpha3) if alpha3 else None
-                country_name = country_obj.country if country_obj else alpha3
-                trimmed_metadata["nationality"] = country_name
-                trimmed_metadata["country"] = mrz_meta.get("country") or mrz_meta.get("issuing_country") or country_name
-
-                details_parts = []
-                if customer.birth_place:
-                    details_parts.append(f"Birth Place: {customer.birth_place}")
-                if customer.birthdate:
-                    details_parts.append(f"Birthdate: {customer.birthdate}")
-                if country_name:
-                    details_parts.append(f"Nationality: {country_name}")
-                if customer.passport_issue_date:
-                    details_parts.append(f"Issue Date: {customer.passport_issue_date}")
-
-                doc = Document(
-                    doc_application=application,
-                    doc_type=passport_doc_type,
-                    doc_number=customer.passport_number,
-                    expiration_date=customer.passport_expiration_date,
-                    details="\n".join(details_parts),
-                    ai_validation=False,
-                    metadata=trimmed_metadata,
-                    completed=True,
-                    required=True,  # Passports are usually required if present
-                    created_by=user,
-                    created_at=timezone.now(),
-                    updated_at=timezone.now(),
-                )
-
-                with customer.passport_file.open("rb") as f:
-                    file = File(f)
-                    file_name = os.path.basename(customer.passport_file.name)
-                    upload_path = get_upload_to(doc, file_name)
-                    saved_path = default_storage.save(upload_path, file)
-                    doc.file = saved_path
-                    doc.file_link = default_storage.url(saved_path)
-                    doc.save()
-                return
-            except Exception:
-                pass
-
-        # 2. Try previous application
-        previous_doc = (
-            Document.objects.filter(doc_application__customer=customer, doc_type=passport_doc_type)
-            .exclude(doc_application=application)
-            .order_by("-created_at")
-            .first()
-        )
-        if previous_doc and previous_doc.file and not previous_doc.is_expired:
-            try:
-                new_doc = Document(
-                    doc_application=application,
-                    doc_type=passport_doc_type,
-                    file=previous_doc.file,
-                    file_link=previous_doc.file_link,
-                    doc_number=previous_doc.doc_number,
-                    expiration_date=previous_doc.expiration_date,
-                    ai_validation=previous_doc.ai_validation,
-                    metadata=previous_doc.metadata,
-                    completed=previous_doc.completed,
-                    required=previous_doc.required,
-                    details=previous_doc.details,
-                    created_by=user,
-                    created_at=timezone.now(),
-                    updated_at=timezone.now(),
-                )
-                new_doc.save()
-            except Exception:
-                pass

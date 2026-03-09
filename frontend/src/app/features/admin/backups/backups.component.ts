@@ -2,9 +2,8 @@ import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   inject,
-  OnDestroy,
-  OnInit,
   signal,
   TemplateRef,
   ViewChild,
@@ -15,6 +14,10 @@ import { catchError, EMPTY, finalize, of, Subscription } from 'rxjs';
 import { BackupsService } from '@/core/api';
 import { AuthService } from '@/core/services/auth.service';
 import { SseService } from '@/core/services/sse.service';
+import {
+  BaseListComponent,
+  BaseListConfig,
+} from '@/shared/core/base-list.component';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
@@ -38,6 +41,17 @@ interface Backup {
   selected?: boolean;
 }
 
+/**
+ * Backups component
+ * 
+ * Extends BaseListComponent to inherit common list patterns:
+ * - Keyboard shortcuts (N for new, B/Left for back)
+ * - Navigation state restoration
+ * - Pagination, sorting, search
+ * - Focus management
+ * 
+ * Note: This component has complex SSE and file upload logic that is component-specific
+ */
 @Component({
   selector: 'app-backups',
   standalone: true,
@@ -57,20 +71,19 @@ interface Backup {
   styleUrls: ['./backups.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class BackupsComponent implements OnInit, OnDestroy {
+export class BackupsComponent extends BaseListComponent<Backup> {
   @ViewChild('selectTemplate', { static: true }) selectTemplate!: TemplateRef<any>;
   @ViewChild('statusTemplate', { static: true }) statusTemplate!: TemplateRef<any>;
   @ViewChild('sizeTemplate', { static: true }) sizeTemplate!: TemplateRef<any>;
   @ViewChild('actionsTemplate', { static: true }) actionsTemplate!: TemplateRef<any>;
   @ViewChild('createdAtTemplate', { static: true }) createdAtTemplate!: TemplateRef<any>;
 
-  private backupsApi = inject(BackupsService);
-  private sseService = inject(SseService);
-  private authService = inject(AuthService);
-  private toast = inject(GlobalToastService);
+  private readonly backupsApi = inject(BackupsService);
+  private readonly sseService = inject(SseService);
+  readonly canRestoreBackups = inject(AuthService).isInAdminGroup;
 
-  readonly backups = signal<Backup[]>([]);
-  readonly isLoading = signal(true);
+  // Backups-specific state
+  private sseSubscription: Subscription | null = null;
   readonly isOperationRunning = signal(false);
   readonly logMessages = signal<string[]>([]);
   readonly includeUsers = signal(false);
@@ -79,7 +92,6 @@ export class BackupsComponent implements OnInit, OnDestroy {
   readonly uploadHelperText = signal<string | null>(null);
   readonly operationProgress = signal<number | null>(null);
   readonly operationLabel = signal<string>('Operation progress');
-  readonly canRestoreBackups = this.authService.isInAdminGroup;
 
   // Selection state
   readonly selectedFiles = signal<string[]>([]);
@@ -87,6 +99,17 @@ export class BackupsComponent implements OnInit, OnDestroy {
 
   // Live log accordion open by default
   readonly logOpen = signal(true);
+
+  // Columns configuration
+  readonly columns = computed<ColumnConfig<Backup>[]>(() => [
+    { key: 'select', header: '', sortable: false, template: this.selectTemplate },
+    { key: 'filename', header: 'Filename', sortable: true },
+    { key: 'createdAt', header: 'Created', sortable: true, template: this.createdAtTemplate },
+    { key: 'type', header: 'Type', sortable: true },
+    { key: 'size', header: 'Size', sortable: true, template: this.sizeTemplate },
+    { key: 'status', header: 'Status', sortable: false, template: this.statusTemplate },
+    { key: 'actions', header: '', template: this.actionsTemplate },
+  ]);
 
   // bridge property for ngModel two-way binding on <z-checkbox>
   get selectAllFlag(): boolean {
@@ -96,42 +119,18 @@ export class BackupsComponent implements OnInit, OnDestroy {
     this.onSelectAllChange(val);
   }
 
-  private sseSubscription: Subscription | null = null;
-
-  toggleLogOpen(): void {
-    this.logOpen.update((v) => !v);
+  constructor() {
+    super();
+    this.config = {
+      entityType: 'admin/backups',
+      entityLabel: 'Backups',
+    } as BaseListConfig<Backup>;
   }
 
-  columns: ColumnConfig[] = [
-    { key: 'select', header: '', sortable: false },
-    { key: 'filename', header: 'Filename', sortable: true },
-    { key: 'createdAt', header: 'Created', sortable: true },
-    { key: 'type', header: 'Type', sortable: true },
-    { key: 'size', header: 'Size', sortable: true },
-    { key: 'status', header: 'Status', sortable: false },
-    { key: 'actions', header: '' },
-  ];
-
-  ngOnInit(): void {
-    // Set templates after view init
-    this.columns[0].template = this.selectTemplate;
-    this.columns[2].template = this.createdAtTemplate;
-    this.columns[4].template = this.sizeTemplate;
-    this.columns[5].template = this.statusTemplate;
-    this.columns[6].template = this.actionsTemplate;
-
-    this.loadBackups();
-  }
-
-  ngOnDestroy(): void {
-    this.clearSseSubscription();
-  }
-
-  toggleIncludeUsers(): void {
-    this.includeUsers.update((v) => !v);
-  }
-
-  private loadBackups(): void {
+  /**
+   * Load backups from API
+   */
+  protected override loadItems(): void {
     this.isLoading.set(true);
     this.backupsApi
       .backupsRetrieve()
@@ -143,10 +142,51 @@ export class BackupsComponent implements OnInit, OnDestroy {
         finalize(() => this.isLoading.set(false)),
       )
       .subscribe((response: any) => {
-        this.backups.set(response?.backups?.map((b: Backup) => ({ ...b, selected: false })) || []);
+        const backups = response?.backups?.map((b: Backup) => ({ ...b, selected: false })) || [];
+        this.items.set(backups);
+        this.totalItems.set(backups.length);
+        this.focusAfterLoad();
       });
   }
 
+  /**
+   * Initialize component
+   */
+  override ngOnInit(): void {
+    super.ngOnInit();
+
+    // Set column templates
+    this.columns()[0].template = this.selectTemplate;
+    this.columns()[2].template = this.createdAtTemplate;
+    this.columns()[4].template = this.sizeTemplate;
+    this.columns()[5].template = this.statusTemplate;
+    this.columns()[6].template = this.actionsTemplate;
+  }
+
+  /**
+   * Destroy component
+   */
+  ngOnDestroy(): void {
+    this.clearSseSubscription();
+  }
+
+  /**
+   * Toggle log open
+   */
+  toggleLogOpen(): void {
+    this.logOpen.update((v) => !v);
+  }
+
+  /**
+   * Toggle include users
+   */
+  toggleIncludeUsers(): void {
+    this.includeUsers.update((v) => !v);
+  }
+
+  /**
+   * Start backup
+   */
   startBackup(): void {
     if (this.isOperationRunning()) {
       return;
@@ -175,7 +215,7 @@ export class BackupsComponent implements OnInit, OnDestroy {
             this.isOperationRunning.set(false);
             this.operationProgress.set(100);
             this.toast.success('Backup completed successfully');
-            this.loadBackups();
+            this.loadItems();
             this.clearSseSubscription();
             setTimeout(() => this.operationProgress.set(null), 1500);
           }
@@ -189,6 +229,9 @@ export class BackupsComponent implements OnInit, OnDestroy {
       });
   }
 
+  /**
+   * Restore backup
+   */
   restoreBackup(filename: string): void {
     if (!this.canRestoreBackups()) {
       this.toast.error('Only users in admin group can restore backups');
@@ -246,6 +289,9 @@ export class BackupsComponent implements OnInit, OnDestroy {
       });
   }
 
+  /**
+   * Download backup
+   */
   downloadBackup(filename: string): void {
     this.backupsApi
       .backupsDownloadRetrieve(filename)
@@ -256,7 +302,6 @@ export class BackupsComponent implements OnInit, OnDestroy {
         }),
       )
       .subscribe((response: any) => {
-        // Create download link
         const blob = new Blob([response], { type: 'application/octet-stream' });
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -267,6 +312,9 @@ export class BackupsComponent implements OnInit, OnDestroy {
       });
   }
 
+  /**
+   * Upload backup
+   */
   uploadBackup(file: File): void {
     const formData = new FormData();
     formData.append('backup_file', file);
@@ -306,7 +354,7 @@ export class BackupsComponent implements OnInit, OnDestroy {
         this.uploadProgress.set(100);
         this.uploadHelperText.set('Upload complete');
         this.toast.success('Backup uploaded successfully');
-        this.loadBackups();
+        this.loadItems();
         setTimeout(() => this.uploadProgress.set(null), 1500);
       } else {
         this.uploadProgress.set(null);
@@ -325,12 +373,18 @@ export class BackupsComponent implements OnInit, OnDestroy {
     xhr.send(formData);
   }
 
+  /**
+   * Clear upload selection
+   */
   clearUploadSelection(): void {
     this.uploadFileName.set(null);
     this.uploadProgress.set(null);
     this.uploadHelperText.set(null);
   }
 
+  /**
+   * Delete all backups
+   */
   deleteAllBackups(): void {
     if (!confirm('Are you sure you want to delete ALL backups? This action cannot be undone.')) {
       return;
@@ -349,13 +403,16 @@ export class BackupsComponent implements OnInit, OnDestroy {
       .subscribe((response: any) => {
         if (response.ok) {
           this.toast.success(`Deleted ${response.deleted} backup files`);
-          this.loadBackups();
+          this.loadItems();
         } else {
           this.toast.error(response.error || 'Delete failed');
         }
       });
   }
 
+  /**
+   * Delete backup
+   */
   deleteBackup(filename: string): void {
     if (!confirm(`Are you sure you want to delete "${filename}"? This action cannot be undone.`)) {
       return;
@@ -374,11 +431,9 @@ export class BackupsComponent implements OnInit, OnDestroy {
       .subscribe((response: any) => {
         if (response.ok) {
           this.toast.success(`Deleted ${response.deleted}`);
-          this.loadBackups();
-          // remove from selectedFiles if present
+          this.loadItems();
           this.selectedFiles.set(this.selectedFiles().filter((f) => f !== filename));
-          // update "Select all" flag
-          const allSelected = this.backups().every((b) => b.selected);
+          const allSelected = this.items().every((b) => b.selected);
           this.selectAllValue.set(allSelected);
         } else {
           this.toast.error(response.error || 'Delete failed');
@@ -386,12 +441,18 @@ export class BackupsComponent implements OnInit, OnDestroy {
       });
   }
 
+  /**
+   * Handle select all change
+   */
   onSelectAllChange(checked: boolean): void {
     this.selectAllValue.set(checked);
-    this.backups.update((backups) => backups.map((b) => ({ ...b, selected: checked })));
-    this.selectedFiles.set(checked ? this.backups().map((b) => b.filename) : []);
+    this.items.update((backups) => backups.map((b) => ({ ...b, selected: checked })));
+    this.selectedFiles.set(checked ? this.items().map((b) => b.filename) : []);
   }
 
+  /**
+   * Handle item select change
+   */
   onItemSelectChange(item: Backup, selected: boolean): void {
     item.selected = selected;
     if (selected) {
@@ -401,13 +462,15 @@ export class BackupsComponent implements OnInit, OnDestroy {
     } else {
       this.selectedFiles.set(this.selectedFiles().filter((f) => f !== item.filename));
     }
-    // update "Select all" flag
-    const allSelected = this.backups().every((b) => b.selected);
+    const allSelected = this.items().every((b) => b.selected);
     this.selectAllValue.set(allSelected);
   }
 
+  /**
+   * Delete selected backups
+   */
   deleteSelectedBackups(): void {
-    const selectedFilenames = this.backups()
+    const selectedFilenames = this.items()
       .filter((b) => b.selected)
       .map((b) => b.filename);
     if (!selectedFilenames.length) return;
@@ -438,14 +501,17 @@ export class BackupsComponent implements OnInit, OnDestroy {
           } else {
             this.toast.info(`Deleted ${deletedCount} backup(s), ${errorCount} failed`);
           }
-          this.backups.update((backups) => backups.map((b) => ({ ...b, selected: false })));
+          this.items.update((backups) => backups.map((b) => ({ ...b, selected: false })));
           this.selectedFiles.set([]);
           this.selectAllValue.set(false);
-          this.loadBackups();
+          this.loadItems();
         }
       });
   }
 
+  /**
+   * Format file size
+   */
   formatFileSize(bytes: number | null): string {
     if (!bytes) return 'Unknown';
     const units = ['B', 'KB', 'MB', 'GB'];
@@ -458,6 +524,9 @@ export class BackupsComponent implements OnInit, OnDestroy {
     return `${Math.round(size * 100) / 100} ${units[unitIndex]}`;
   }
 
+  /**
+   * Clear SSE subscription
+   */
   private clearSseSubscription(): void {
     if (this.sseSubscription) {
       this.sseSubscription.unsubscribe();

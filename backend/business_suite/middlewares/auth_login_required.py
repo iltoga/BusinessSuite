@@ -37,7 +37,9 @@ class AuthLoginRequiredMiddleware(MiddlewareMixin):
             MOCK_AWAY_PREFIXES = ("admin", "nested_admin", "api")
             is_protected_for_mock = any(path == p or path.startswith(p + "/") for p in MOCK_AWAY_PREFIXES)
 
-            if getattr(settings, "MOCK_AUTH_ENABLED", False) and not is_protected_for_mock:
+            from core.services.app_setting_service import AppSettingService
+
+            if AppSettingService.parse_bool(AppSettingService.get_effective_raw("MOCK_AUTH_ENABLED", False), False) and not is_protected_for_mock:
                 from business_suite.authentication import ensure_mock_user
 
                 request.user = ensure_mock_user()

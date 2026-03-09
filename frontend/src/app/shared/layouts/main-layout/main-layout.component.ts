@@ -93,8 +93,8 @@ export class MainLayoutComponent implements AfterViewInit, OnDestroy {
   );
 
   logoSrc = computed(() => {
-    const normal = '/assets/logo_transparent.png';
-    const inverted = '/assets/logo_inverted_transparent.png';
+    const normal = '/assets/logo_transparent_sidebar.png';
+    const inverted = '/assets/logo_inverted_transparent_sidebar.png';
     return this.themeService.isDarkMode() ? inverted : normal;
   });
 

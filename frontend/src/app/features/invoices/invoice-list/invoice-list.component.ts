@@ -2,21 +2,21 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
-  HostListener,
-  PLATFORM_ID,
   computed,
   inject,
+  PLATFORM_ID,
   signal,
   viewChild,
   viewChildren,
-  type OnInit,
   type TemplateRef,
 } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 
 import { InvoicesService, type InvoiceList, type PaginatedInvoiceListList } from '@/core/api';
-import { AuthService } from '@/core/services/auth.service';
-import { GlobalToastService } from '@/core/services/toast.service';
+import {
+  BaseListComponent,
+  BaseListConfig,
+} from '@/shared/core/base-list.component';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import {
   BulkDeleteDialogComponent,
@@ -45,6 +45,16 @@ import { ContextHelpDirective } from '@/shared/directives';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 
+/**
+ * Invoice list component
+ * 
+ * Extends BaseListComponent to inherit common list patterns:
+ * - Keyboard shortcuts (N for new, B/Left for back)
+ * - Navigation state restoration
+ * - Pagination, sorting, search
+ * - Focus management
+ * - Bulk delete support
+ */
 @Component({
   selector: 'app-invoice-list',
   standalone: true,
@@ -70,13 +80,22 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
   styleUrls: ['./invoice-list.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class InvoiceListComponent implements OnInit {
-  private invoicesApi = inject(InvoicesService);
-  private authService = inject(AuthService);
-  private toast = inject(GlobalToastService);
-  private platformId = inject(PLATFORM_ID);
-  private router = inject(Router);
+export class InvoiceListComponent extends BaseListComponent<InvoiceList> {
+  private readonly invoicesApi = inject(InvoicesService);
 
+  // Expose invoices for template compatibility
+  get invoices() {
+    return this.items;
+  }
+
+  // Invoice-specific state
+  readonly hidePaid = signal(false);
+  readonly invoiceDeleteOpen = signal(false);
+  readonly invoiceDeleteData = signal<InvoiceDeletePreviewData | null>(null);
+  readonly pendingInvoiceId = signal<number | null>(null);
+  readonly showDownloadMenu = signal(true);
+
+  // Template references
   private readonly numberTemplate =
     viewChild.required<TemplateRef<{ $implicit: InvoiceList; value: any; row: InvoiceList }>>(
       'numberTemplate',
@@ -110,37 +129,13 @@ export class InvoiceListComponent implements OnInit {
       'createdAtTemplate',
     );
 
-  // Access the data table for focus management
-  private readonly dataTable = viewChild.required(DataTableComponent);
+  // Access the data table for focus management and row download dropdowns
   private readonly rowDownloadDropdowns = viewChildren(InvoiceDownloadDropdownComponent);
 
-  readonly invoices = signal<InvoiceList[]>([]);
-  readonly isLoading = signal(false);
-  readonly query = signal('');
-  readonly page = signal(1);
-  readonly pageSize = signal(10);
-  readonly totalItems = signal(0);
-  readonly ordering = signal<string | undefined>('-invoice_date');
-  readonly hidePaid = signal(false);
-  readonly isSuperuser = this.authService.isSuperuser;
-
-  readonly bulkDeleteOpen = signal(false);
-  readonly bulkDeleteData = signal<BulkDeleteDialogData | null>(null);
+  // Invoice-specific bulk delete context
   private readonly bulkDeleteContext = signal<{ query: string; hidePaid: boolean } | null>(null);
 
-  readonly invoiceDeleteOpen = signal(false);
-  readonly invoiceDeleteData = signal<InvoiceDeletePreviewData | null>(null);
-  private readonly pendingInvoiceId = signal<number | null>(null);
-  readonly showDownloadMenu = signal(true);
-
-  readonly bulkDeleteLabel = computed(() =>
-    this.query().trim() ? 'Delete Selected Invoices' : 'Delete All Invoices',
-  );
-
-  // When navigating back to the list we may want to focus a specific id or the table
-  private readonly focusTableOnInit = signal(false);
-  private readonly focusIdOnInit = signal<number | null>(null);
-
+  // Columns configuration
   readonly columns = computed<ColumnConfig<InvoiceList>[]>(() => [
     {
       key: 'invoiceNoDisplay',
@@ -176,34 +171,19 @@ export class InvoiceListComponent implements OnInit {
     { key: 'actions', header: 'Actions', template: this.actionsTemplate() },
   ]);
 
-  readonly actions = computed<DataTableAction<InvoiceList>[]>(() => [
+  // Actions configuration
+  override readonly actions = computed<DataTableAction<InvoiceList>[]>(() => [
     {
       label: 'View',
       icon: 'eye',
       variant: 'default',
-      action: (item) =>
-        this.router.navigate(['/invoices', item.id], {
-          state: {
-            from: 'invoices',
-            focusId: item.id,
-            searchQuery: this.query(),
-            page: this.page(),
-          },
-        }),
+      action: (item) => this.navigateToDetail(item.id),
     },
     {
       label: 'Edit',
       icon: 'settings',
       variant: 'warning',
-      action: (item) =>
-        this.router.navigate(['/invoices', item.id, 'edit'], {
-          state: {
-            from: 'invoices',
-            focusId: item.id,
-            searchQuery: this.query(),
-            page: this.page(),
-          },
-        }),
+      action: (item) => this.navigateToEdit(item.id),
     },
     {
       label: 'Delete',
@@ -215,91 +195,64 @@ export class InvoiceListComponent implements OnInit {
     },
   ]);
 
-  readonly totalPages = computed(() => {
-    const total = this.totalItems();
-    const size = this.pageSize();
-    return Math.max(1, Math.ceil(total / size));
-  });
+  constructor() {
+    super();
+    this.config = {
+      entityType: 'invoices',
+      entityLabel: 'Invoices',
+      defaultPageSize: 10,
+      defaultOrdering: '-invoice_date',
+      enableBulkDelete: true,
+      enableDelete: true,
+    } as BaseListConfig<InvoiceList>;
+  }
 
-  @HostListener('window:keydown', ['$event'])
-  handleGlobalKeydown(event: KeyboardEvent): void {
-    const activeElement = document.activeElement;
-    const isInput =
-      activeElement instanceof HTMLInputElement ||
-      activeElement instanceof HTMLTextAreaElement ||
-      (activeElement instanceof HTMLElement && activeElement.isContentEditable);
+  /**
+   * Load invoices from service
+   */
+  protected override loadItems(): void {
+    if (!this.isBrowser) return;
 
-    if (isInput) return;
-    if (event.repeat) return;
+    this.isLoading.set(true);
+    const ordering = this.ordering();
 
-    // Shift+N for New Invoice
-    if (event.key === 'N' && !event.ctrlKey && !event.altKey && !event.metaKey) {
-      event.preventDefault();
-      this.router.navigate(['/invoices', 'new'], {
-        state: { from: 'invoices', searchQuery: this.query(), page: this.page() },
+    const params: any = {
+      ordering: ordering ?? undefined,
+      page: this.page(),
+      pageSize: this.pageSize(),
+      search: this.query() || undefined,
+      hidePaid: this.hidePaid() ? true : undefined,
+    };
+
+    this.invoicesApi
+      .invoicesList(params.hidePaid, params.ordering, params.page, params.pageSize, params.search)
+      .subscribe({
+        next: (response: PaginatedInvoiceListList) => {
+          this.items.set(response.results ?? []);
+          this.totalItems.set(response.count ?? 0);
+          this.isLoading.set(false);
+          this.focusAfterLoad();
+        },
+        error: () => {
+          this.toast.error('Failed to load invoices');
+          this.isLoading.set(false);
+        },
       });
-      return;
-    }
-
-    // P --> Print Preview on selected row
-    if (event.key.toLowerCase() === 'p' && !event.ctrlKey && !event.altKey && !event.metaKey) {
-      const selected = this.dataTable().selectedRow();
-      if (!selected) {
-        return;
-      }
-
-      const dropdown = this.rowDownloadDropdowns().find((item) => item.invoiceId() === selected.id);
-      if (!dropdown) {
-        return;
-      }
-
-      event.preventDefault();
-      dropdown.openPrintPreview();
-    }
   }
 
-  ngOnInit(): void {
-    if (!isPlatformBrowser(this.platformId)) {
-      return;
-    }
-    const st = (window as any).history.state || {};
-    this.focusTableOnInit.set(Boolean(st.focusTable));
-    this.focusIdOnInit.set(st.focusId ? Number(st.focusId) : null);
-    const restoredPage = Number(st.page);
-    if (Number.isFinite(restoredPage) && restoredPage > 0) {
-      this.page.set(Math.floor(restoredPage));
-    }
-    if (st.searchQuery) {
-      this.query.set(String(st.searchQuery));
-    }
-    this.loadInvoices();
-  }
-
-  onQueryChange(value: string): void {
-    this.query.set(value.trim());
-    this.page.set(1);
-    this.loadInvoices();
-  }
-
+  /**
+   * Handle toggle hide paid
+   */
   onToggleHidePaid(event: Event): void {
     const checked = (event.target as HTMLInputElement).checked;
     this.hidePaid.set(checked);
     this.page.set(1);
-    this.loadInvoices();
+    this.loadItems();
   }
 
-  onPageChange(page: number): void {
-    this.page.set(page);
-    this.loadInvoices();
-  }
-
-  onSortChange(sort: SortEvent): void {
-    const ordering = sort.direction === 'desc' ? `-${sort.column}` : sort.column;
-    this.ordering.set(ordering);
-    this.page.set(1);
-    this.loadInvoices();
-  }
-
+  /**
+   * Format currency value
+   */
   formatCurrency(value?: string | number | null): string {
     if (value === null || value === undefined || value === '') return '—';
     const n = Number(value);
@@ -312,10 +265,7 @@ export class InvoiceListComponent implements OnInit {
   }
 
   /**
-   * Returns true when the invoice should be considered fully paid and we only
-   * want to display the paid amount. We prefer checking the explicit status
-   * first ("paid") and fall back to totalDueAmount <= 0 which covers cases
-   * where rounding or write-offs made due amount zero.
+   * Check if invoice is fully paid
    */
   isFullyPaid(row: InvoiceList): boolean {
     if (row.status === 'paid') return true;
@@ -324,6 +274,9 @@ export class InvoiceListComponent implements OnInit {
     return false;
   }
 
+  /**
+   * Get status badge variant
+   */
   statusVariant(
     status?: string | null,
   ): 'default' | 'secondary' | 'success' | 'warning' | 'destructive' {
@@ -345,11 +298,54 @@ export class InvoiceListComponent implements OnInit {
     }
   }
 
+  /**
+   * Set download menu visible
+   */
   setDownloadMenuVisible(visible: boolean): void {
     this.showDownloadMenu.set(visible);
   }
 
-  openBulkDeleteDialog(): void {
+  /**
+   * Handle keyboard shortcuts
+   */
+  override handleGlobalKeydown(event: KeyboardEvent): void {
+    const activeElement = document.activeElement;
+    const isInput =
+      activeElement instanceof HTMLInputElement ||
+      activeElement instanceof HTMLTextAreaElement ||
+      (activeElement instanceof HTMLElement && activeElement.isContentEditable);
+
+    if (isInput) return;
+    if (event.repeat) return;
+
+    // N for New Invoice
+    if (event.key === 'N' && !event.ctrlKey && !event.altKey && !event.metaKey) {
+      event.preventDefault();
+      this.navigateToNew();
+      return;
+    }
+
+    // P --> Print Preview on selected row
+    if (event.key.toLowerCase() === 'p' && !event.ctrlKey && !event.altKey && !event.metaKey) {
+      const selected = this.dataTable().selectedRow();
+      if (!selected) {
+        return;
+      }
+
+      const dropdown = this.rowDownloadDropdowns().find((item) => item.invoiceId() === selected.id);
+      if (!dropdown) {
+        return;
+      }
+
+      event.preventDefault();
+      dropdown.openPrintPreview();
+    }
+  }
+
+  /**
+   * Open bulk delete dialog
+   */
+  override openBulkDeleteDialog(): void {
     const query = this.query().trim();
     const mode = query ? 'selected' : 'all';
     const detailsText = query
@@ -369,6 +365,9 @@ export class InvoiceListComponent implements OnInit {
     this.bulkDeleteOpen.set(true);
   }
 
+  /**
+   * Handle bulk delete confirmation
+   */
   onBulkDeleteConfirmed(result: { extraChecked: boolean }): void {
     const context = this.bulkDeleteContext();
     if (!context) {
@@ -389,7 +388,7 @@ export class InvoiceListComponent implements OnInit {
           this.bulkDeleteOpen.set(false);
           this.bulkDeleteData.set(null);
           this.bulkDeleteContext.set(null);
-          this.loadInvoices();
+          this.loadItems();
         },
         error: (error) => {
           const message = extractServerErrorMessage(error);
@@ -403,12 +402,18 @@ export class InvoiceListComponent implements OnInit {
       });
   }
 
-  onBulkDeleteCancelled(): void {
+  /**
+   * Handle bulk delete cancellation
+   */
+  override onBulkDeleteCancelled(): void {
     this.bulkDeleteOpen.set(false);
     this.bulkDeleteData.set(null);
     this.bulkDeleteContext.set(null);
   }
 
+  /**
+   * Open invoice delete dialog
+   */
   openInvoiceDeleteDialog(invoice: InvoiceList): void {
     if (!this.isSuperuser()) {
       return;
@@ -463,6 +468,9 @@ export class InvoiceListComponent implements OnInit {
     });
   }
 
+  /**
+   * Handle invoice delete confirmation
+   */
   onInvoiceDeleteConfirmed(result: InvoiceDeleteDialogResult): void {
     const invoiceId = this.pendingInvoiceId();
     if (!invoiceId) {
@@ -480,7 +488,7 @@ export class InvoiceListComponent implements OnInit {
           this.invoiceDeleteOpen.set(false);
           this.invoiceDeleteData.set(null);
           this.pendingInvoiceId.set(null);
-          this.loadInvoices();
+          this.loadItems();
         },
         error: (error) => {
           const message = extractServerErrorMessage(error);
@@ -494,52 +502,12 @@ export class InvoiceListComponent implements OnInit {
       });
   }
 
+  /**
+   * Handle invoice delete cancellation
+   */
   onInvoiceDeleteCancelled(): void {
     this.invoiceDeleteOpen.set(false);
     this.invoiceDeleteData.set(null);
     this.pendingInvoiceId.set(null);
-  }
-
-  private loadInvoices(): void {
-    if (!isPlatformBrowser(this.platformId)) {
-      return;
-    }
-
-    this.isLoading.set(true);
-    const ordering = this.ordering();
-
-    const params: any = {
-      ordering: ordering ?? undefined,
-      page: this.page(),
-      pageSize: this.pageSize(),
-      search: this.query() || undefined,
-      hidePaid: this.hidePaid() ? true : undefined,
-    };
-
-    this.invoicesApi
-      .invoicesList(params.hidePaid, params.ordering, params.page, params.pageSize, params.search)
-      .subscribe({
-        next: (response: PaginatedInvoiceListList) => {
-          this.invoices.set(response.results ?? []);
-          this.totalItems.set(response.count ?? 0);
-          this.isLoading.set(false);
-
-          const table = this.dataTable();
-          if (table) {
-            const focusId = this.focusIdOnInit();
-            if (focusId) {
-              this.focusIdOnInit.set(null);
-              table.focusRowById(focusId);
-            } else if (this.focusTableOnInit()) {
-              this.focusTableOnInit.set(false);
-              table.focusFirstRowIfNone();
-            }
-          }
-        },
-        error: () => {
-          this.toast.error('Failed to load invoices');
-          this.isLoading.set(false);
-        },
-      });
   }
 }

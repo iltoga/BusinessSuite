@@ -9,19 +9,20 @@ progress to the frontend.
 
 import traceback as tb_module
 
+from core.services.ai_client import get_ai_user_message, is_ai_timeout_exception
 from core.services.ai_document_categorizer import (
     AIDocumentCategorizer,
     extract_validation_details_markdown,
     extract_validation_doc_number,
     extract_validation_expiration_date,
+    format_validation_reasoning,
 )
-from core.services.ai_client import get_ai_user_message, is_ai_timeout_exception
 from core.services.logger_service import Logger
 from core.tasks.idempotency import acquire_task_lock, build_task_lock_key, release_task_lock
-from customer_applications.services.document_expiration_state_service import DocumentExpirationStateService
+from core.tasks.runtime import QUEUE_REALTIME, db_task, retry_on_transient_external_failure
 from customer_applications.models import Document
+from customer_applications.services.document_expiration_state_service import DocumentExpirationStateService
 from django.core.files.storage import default_storage
-from core.tasks.runtime import QUEUE_REALTIME, db_task
 
 logger = Logger.get_logger(__name__)
 
@@ -46,18 +47,23 @@ def _apply_expiration_metadata(document: Document, validation: dict) -> tuple[di
     if expiration_state.reason and expiration_state.reason not in issues:
         issues.append(expiration_state.reason)
 
-    reasoning = str(validation.get("reasoning", "") or "").strip()
-    if expiration_state.reason and expiration_state.reason not in reasoning:
-        reasoning = f"{reasoning} {expiration_state.reason}".strip() if reasoning else expiration_state.reason
-
     validation["negative_issues"] = issues
-    validation["reasoning"] = reasoning
+    validation["reasoning"] = format_validation_reasoning(
+        valid=False,
+        reasoning=validation.get("reasoning", ""),
+        negative_issues=issues,
+    )
     validation["valid"] = False
     return validation, False
 
 
-@db_task(queue=QUEUE_REALTIME)
-def run_document_validation(document_id: int) -> None:
+@db_task(
+    context=True,
+    queue=QUEUE_REALTIME,
+    queue_defaults=True,
+    retry_when=retry_on_transient_external_failure,
+)
+def run_document_validation(document_id: int, task=None) -> None:
     """Validate a single document file against its document-type and product prompts."""
     lock_key = build_task_lock_key(namespace="doc_upload_validation", item_id=str(document_id))
     lock_token = acquire_task_lock(lock_key)
@@ -102,9 +108,7 @@ def run_document_validation(document_id: int) -> None:
                 "extracted_details_markdown": None,
             }
             validation, is_valid = _apply_expiration_metadata(document, validation)
-            document.ai_validation_status = (
-                Document.AI_VALIDATION_VALID if is_valid else Document.AI_VALIDATION_INVALID
-            )
+            document.ai_validation_status = Document.AI_VALIDATION_VALID if is_valid else Document.AI_VALIDATION_INVALID
             document.ai_validation_result = validation
             document.save(update_fields=["ai_validation_status", "ai_validation_result", "updated_at"])
             return
@@ -194,6 +198,33 @@ def run_document_validation(document_id: int) -> None:
             full_tb = tb_module.format_exc()
             logger.error("AI validation failed for document %s: %s\n%s", document_id, exc, full_tb)
             user_message = get_ai_user_message(exc)
+            runtime_provider = str(getattr(exc, "ai_provider", "") or "").strip().lower() or None
+            runtime_provider_name = str(getattr(exc, "ai_provider_name", "") or "").strip() or None
+            runtime_model = str(getattr(exc, "ai_model", "") or "").strip() or None
+
+            if task and task.retries > 0 and retry_on_transient_external_failure(task.retries_used, exc):
+                logger.warning(
+                    "Document validation retry scheduled for document %s on attempt %s/%s. retries_remaining=%s time_limit_ms=%s error_type=%s",
+                    document_id,
+                    getattr(task, "attempt", "?"),
+                    getattr(task, "max_retries", 0) + 1 if task else "?",
+                    task.retries,
+                    getattr(task, "time_limit_ms", None),
+                    "timeout" if is_ai_timeout_exception(exc) else "provider_error",
+                )
+                document.ai_validation_status = Document.AI_VALIDATION_VALIDATING
+                document.ai_validation_result = {
+                    "status": "retrying",
+                    "message": user_message,
+                    "error_type": "timeout" if is_ai_timeout_exception(exc) else "provider_error",
+                    "retries_remaining": task.retries,
+                    "ai_provider": runtime_provider,
+                    "ai_provider_name": runtime_provider_name or runtime_provider,
+                    "ai_model": runtime_model,
+                }
+                document.save(update_fields=["ai_validation_status", "ai_validation_result", "updated_at"])
+                raise
+
             document.ai_validation_status = Document.AI_VALIDATION_ERROR
             document.ai_validation_result = {
                 "valid": False,
@@ -205,6 +236,9 @@ def run_document_validation(document_id: int) -> None:
                 "extracted_doc_number": None,
                 "extracted_details_markdown": None,
                 "error_type": "timeout" if is_ai_timeout_exception(exc) else "provider_error",
+                "ai_provider": runtime_provider,
+                "ai_provider_name": runtime_provider_name or runtime_provider,
+                "ai_model": runtime_model,
             }
             document.save(update_fields=["ai_validation_status", "ai_validation_result", "updated_at"])
 

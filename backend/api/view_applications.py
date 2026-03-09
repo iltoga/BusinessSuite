@@ -1,4 +1,86 @@
+from api.utils.stream_payloads import normalize_document_ocr_job_payload, normalize_ocr_job_payload
+
 from .views_imports import *
+
+
+def _build_ocr_status_payload(job: OCRJob, request) -> dict[str, Any]:
+    response_data = {
+        "job_id": str(job.id),
+        "status": job.status,
+        "progress": job.progress,
+    }
+
+    if job.status == OCRJob.STATUS_COMPLETED:
+        if job.result:
+            result_data = dict(job.result)
+            preview_storage_path = result_data.get("preview_storage_path")
+            if preview_storage_path:
+                try:
+                    preview_url = get_ocr_preview_url(preview_storage_path)
+                except Exception:
+                    preview_url = None
+                if preview_url:
+                    result_data["preview_url"] = preview_url
+                    result_data["previewUrl"] = preview_url
+            response_data.update(result_data)
+        if job.save_session and not job.session_saved and job.result:
+            request.session["file_path"] = job.file_path
+            request.session["file_url"] = job.file_url
+            request.session["mrz_data"] = job.result.get("mrz_data")
+            request.session.save()
+            job.session_saved = True
+            job.save(update_fields=["session_saved", "updated_at"])
+    elif job.status == OCRJob.STATUS_FAILED:
+        response_data["error"] = job.error_message or "OCR job failed"
+
+    return response_data
+
+
+def _build_document_ocr_status_payload(job: DocumentOCRJob) -> dict[str, Any]:
+    response_data = {
+        "job_id": str(job.id),
+        "status": job.status,
+        "progress": job.progress,
+    }
+
+    if job.status == DocumentOCRJob.STATUS_COMPLETED:
+        response_data["text"] = job.result_text
+        try:
+            structured_data = json.loads(job.result_text or "")
+        except (TypeError, ValueError, json.JSONDecodeError):
+            structured_data = None
+        if isinstance(structured_data, dict):
+            response_data["structured_data"] = structured_data
+            response_data["structuredData"] = structured_data
+    elif job.status == DocumentOCRJob.STATUS_FAILED:
+        response_data["error"] = job.error_message or "Document OCR job failed"
+
+    return response_data
+
+
+def _build_ocr_stream_payload(stream_payload: dict[str, Any]) -> dict[str, Any]:
+    response_data = {
+        "job_id": str(stream_payload["job_id"]),
+        "status": stream_payload["status"],
+        "progress": stream_payload["progress"],
+    }
+    error_message = stream_payload.get("error") or stream_payload.get("errorMessage")
+    if error_message:
+        response_data["error"] = error_message
+    return response_data
+
+
+def _build_document_ocr_stream_payload(stream_payload: dict[str, Any]) -> dict[str, Any]:
+    response_data = {
+        "job_id": str(stream_payload["job_id"]),
+        "status": stream_payload["status"],
+        "progress": stream_payload["progress"],
+    }
+    error_message = stream_payload.get("error") or stream_payload.get("errorMessage")
+    if error_message:
+        response_data["error"] = error_message
+    return response_data
+
 
 class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
@@ -71,9 +153,13 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         return context
 
     def _serialize_application_detail(self, application):
-        detail_instance = (
-            self.get_queryset().filter(pk=application.pk).first() if getattr(application, "pk", None) else application
-        )
+        detail_instance = application
+        if not self._can_serialize_application_without_refetch(application):
+            detail_instance = (
+                self.get_queryset().filter(pk=application.pk).first()
+                if getattr(application, "pk", None)
+                else application
+            )
         return DocApplicationDetailSerializer(
             detail_instance or application,
             context={
@@ -81,6 +167,22 @@ class CustomerApplicationViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                 "prefer_cached_file_url": True,
             },
         ).data
+
+    def _can_serialize_application_without_refetch(self, application) -> bool:
+        if not getattr(application, "pk", None):
+            return False
+
+        prefetched = getattr(application, "_prefetched_objects_cache", None) or {}
+        if not {"documents", "workflows", "invoice_applications"}.issubset(prefetched.keys()):
+            return False
+
+        product = getattr(application, "product", None)
+        customer = getattr(application, "customer", None)
+        if product is None or customer is None:
+            return False
+
+        product_prefetched = getattr(product, "_prefetched_objects_cache", None) or {}
+        return "tasks" in product_prefetched
 
     def _ensure_application_product_is_active(self, application):
         if application.product and application.product.deprecated:
@@ -699,7 +801,7 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
     throttle_classes = [ScopedRateThrottle]
 
     def get_throttles(self):
-        if getattr(self, "action", None) == "status":
+        if getattr(self, "action", None) in {"status", "stream"}:
             self.throttle_scope = "ocr_status"
         else:
             self.throttle_scope = "ocr"
@@ -736,12 +838,14 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
 
         def build_existing_response(existing_job):
             status_url = request.build_absolute_uri(reverse("api-ocr-status", kwargs={"job_id": str(existing_job.id)}))
+            stream_url = request.build_absolute_uri(reverse("api-ocr-stream", kwargs={"job_id": str(existing_job.id)}))
             return Response(
                 data={
                     "job_id": str(existing_job.id),
                     "status": existing_job.status,
                     "progress": existing_job.progress,
                     "status_url": status_url,
+                    "stream_url": stream_url,
                     "queued": False,
                     "deduplicated": True,
                 },
@@ -785,12 +889,14 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             run_ocr_job(str(job.id))
 
             status_url = request.build_absolute_uri(reverse("api-ocr-status", kwargs={"job_id": str(job.id)}))
+            stream_url = request.build_absolute_uri(reverse("api-ocr-stream", kwargs={"job_id": str(job.id)}))
             return Response(
                 data={
                     "job_id": str(job.id),
                     "status": job.status,
                     "progress": job.progress,
                     "status_url": status_url,
+                    "stream_url": stream_url,
                     "queued": True,
                     "deduplicated": False,
                 },
@@ -809,36 +915,61 @@ class OCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
         if not job:
             return self.error_response("OCR job not found", status.HTTP_404_NOT_FOUND)
 
-        response_data = {
-            "job_id": str(job.id),
-            "status": job.status,
-            "progress": job.progress,
-        }
+        return Response(data=_build_ocr_status_payload(job, request), status=status.HTTP_200_OK)
 
-        if job.status == OCRJob.STATUS_COMPLETED:
-            if job.result:
-                result_data = dict(job.result)
-                preview_storage_path = result_data.get("preview_storage_path")
-                if preview_storage_path:
-                    try:
-                        preview_url = get_ocr_preview_url(preview_storage_path)
-                    except Exception:
-                        preview_url = None
-                    if preview_url:
-                        result_data["preview_url"] = preview_url
-                        result_data["previewUrl"] = preview_url
-                response_data.update(result_data)
-            if job.save_session and not job.session_saved and job.result:
-                request.session["file_path"] = job.file_path
-                request.session["file_url"] = job.file_url
-                request.session["mrz_data"] = job.result.get("mrz_data")
-                request.session.save()
-                job.session_saved = True
-                job.save(update_fields=["session_saved", "updated_at"])
-        elif job.status == OCRJob.STATUS_FAILED:
-            response_data["error"] = job.error_message or "OCR job failed"
+    @action(detail=False, methods=["get"], url_path=r"stream/(?P<job_id>[^/.]+)")
+    def stream(self, request, job_id=None):
+        job_queryset = restrict_to_owner_unless_privileged(OCRJob.objects.filter(id=job_id), request.user)
+        job = job_queryset.first()
+        if not job:
+            return self.error_response("OCR job not found", status.HTTP_404_NOT_FOUND)
 
-        return Response(data=response_data, status=status.HTTP_200_OK)
+        response = StreamingHttpResponse(
+            self._stream_ocr_job(request, job_queryset, job, last_event_id=resolve_last_event_id(request)),
+            content_type="text/event-stream",
+        )
+        response["Cache-Control"] = "no-cache"
+        response["X-Accel-Buffering"] = "no"
+        return response
+
+    def _stream_ocr_job(self, request, job_queryset, job: OCRJob, *, last_event_id: str | None = None):
+        stream_key = stream_job_key(job.id)
+        initial_payload = _build_ocr_status_payload(job, request)
+        last_progress = initial_payload["progress"]
+        last_status = initial_payload["status"]
+
+        yield format_sse_event(data=initial_payload)
+        if last_status in {OCRJob.STATUS_COMPLETED, OCRJob.STATUS_FAILED}:
+            return
+
+        for stream_event in iter_replay_and_live_events(stream_key=stream_key, last_event_id=last_event_id):
+            try:
+                if stream_event is None:
+                    yield ": keepalive\n\n"
+                    continue
+
+                data = normalize_ocr_job_payload(stream_event.payload)
+                if data is None or data["status"] in {OCRJob.STATUS_COMPLETED, OCRJob.STATUS_FAILED}:
+                    refreshed_job = job_queryset.get()
+                    data = _build_ocr_status_payload(refreshed_job, request)
+                else:
+                    data = _build_ocr_stream_payload(data)
+
+                if data["progress"] == last_progress and data["status"] == last_status:
+                    continue
+
+                yield format_sse_event(event_id=stream_event.id, data=data)
+                last_progress = data["progress"]
+                last_status = data["status"]
+
+                if last_status in {OCRJob.STATUS_COMPLETED, OCRJob.STATUS_FAILED}:
+                    return
+            except OCRJob.DoesNotExist:
+                yield format_sse_event(data={"error": "OCR job not found"})
+                return
+            except Exception as exc:
+                yield format_sse_event(data={"error": str(exc)})
+                return
 
 
 class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
@@ -858,7 +989,7 @@ class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
     throttle_classes = [ScopedRateThrottle]
 
     def get_throttles(self):
-        if getattr(self, "action", None) == "status":
+        if getattr(self, "action", None) in {"status", "stream"}:
             self.throttle_scope = "document_ocr_status"
         else:
             self.throttle_scope = "document_ocr"
@@ -930,12 +1061,16 @@ class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             status_url = request.build_absolute_uri(
                 reverse("api-document-ocr-status", kwargs={"job_id": str(existing_job.id)})
             )
+            stream_url = request.build_absolute_uri(
+                reverse("api-document-ocr-stream", kwargs={"job_id": str(existing_job.id)})
+            )
             return Response(
                 data={
                     "job_id": str(existing_job.id),
                     "status": existing_job.status,
                     "progress": existing_job.progress,
                     "status_url": status_url,
+                    "stream_url": stream_url,
                     "queued": False,
                     "deduplicated": True,
                 },
@@ -980,12 +1115,14 @@ class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             run_document_ocr_job(str(job.id))
 
             status_url = request.build_absolute_uri(reverse("api-document-ocr-status", kwargs={"job_id": str(job.id)}))
+            stream_url = request.build_absolute_uri(reverse("api-document-ocr-stream", kwargs={"job_id": str(job.id)}))
             return Response(
                 data={
                     "job_id": str(job.id),
                     "status": job.status,
                     "progress": job.progress,
                     "status_url": status_url,
+                    "stream_url": stream_url,
                     "queued": True,
                     "deduplicated": False,
                 },
@@ -1004,25 +1141,61 @@ class DocumentOCRViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
         if not job:
             return self.error_response("Document OCR job not found", status.HTTP_404_NOT_FOUND)
 
-        response_data = {
-            "job_id": str(job.id),
-            "status": job.status,
-            "progress": job.progress,
-        }
+        return Response(data=_build_document_ocr_status_payload(job), status=status.HTTP_200_OK)
 
-        if job.status == DocumentOCRJob.STATUS_COMPLETED:
-            response_data["text"] = job.result_text
+    @action(detail=False, methods=["get"], url_path=r"stream/(?P<job_id>[^/.]+)")
+    def stream(self, request, job_id=None):
+        job_queryset = restrict_to_owner_unless_privileged(DocumentOCRJob.objects.filter(id=job_id), request.user)
+        job = job_queryset.first()
+        if not job:
+            return self.error_response("Document OCR job not found", status.HTTP_404_NOT_FOUND)
+
+        response = StreamingHttpResponse(
+            self._stream_document_ocr_job(job_queryset, job, last_event_id=resolve_last_event_id(request)),
+            content_type="text/event-stream",
+        )
+        response["Cache-Control"] = "no-cache"
+        response["X-Accel-Buffering"] = "no"
+        return response
+
+    def _stream_document_ocr_job(self, job_queryset, job: DocumentOCRJob, *, last_event_id: str | None = None):
+        stream_key = stream_job_key(job.id)
+        initial_payload = _build_document_ocr_status_payload(job)
+        last_progress = initial_payload["progress"]
+        last_status = initial_payload["status"]
+
+        yield format_sse_event(data=initial_payload)
+        if last_status in {DocumentOCRJob.STATUS_COMPLETED, DocumentOCRJob.STATUS_FAILED}:
+            return
+
+        for stream_event in iter_replay_and_live_events(stream_key=stream_key, last_event_id=last_event_id):
             try:
-                structured_data = json.loads(job.result_text or "")
-            except (TypeError, ValueError, json.JSONDecodeError):
-                structured_data = None
-            if isinstance(structured_data, dict):
-                response_data["structured_data"] = structured_data
-                response_data["structuredData"] = structured_data
-        elif job.status == DocumentOCRJob.STATUS_FAILED:
-            response_data["error"] = job.error_message or "Document OCR job failed"
+                if stream_event is None:
+                    yield ": keepalive\n\n"
+                    continue
 
-        return Response(data=response_data, status=status.HTTP_200_OK)
+                data = normalize_document_ocr_job_payload(stream_event.payload)
+                if data is None or data["status"] in {DocumentOCRJob.STATUS_COMPLETED, DocumentOCRJob.STATUS_FAILED}:
+                    refreshed_job = job_queryset.get()
+                    data = _build_document_ocr_status_payload(refreshed_job)
+                else:
+                    data = _build_document_ocr_stream_payload(data)
+
+                if data["progress"] == last_progress and data["status"] == last_status:
+                    continue
+
+                yield format_sse_event(event_id=stream_event.id, data=data)
+                last_progress = data["progress"]
+                last_status = data["status"]
+
+                if last_status in {DocumentOCRJob.STATUS_COMPLETED, DocumentOCRJob.STATUS_FAILED}:
+                    return
+            except DocumentOCRJob.DoesNotExist:
+                yield format_sse_event(data={"error": "Document OCR job not found"})
+                return
+            except Exception as exc:
+                yield format_sse_event(data={"error": str(exc)})
+                return
 
 
 # the urlpattern for this view is:
@@ -1112,7 +1285,9 @@ def exec_cron_jobs(request):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def mock_auth_config(request):
-    if not getattr(settings, "MOCK_AUTH_ENABLED", False):
+    from core.services.app_setting_service import AppSettingService
+
+    if not AppSettingService.parse_bool(AppSettingService.get_effective_raw("MOCK_AUTH_ENABLED", False), False):
         return Response(
             {
                 "code": "mock_auth_disabled",
@@ -1297,4 +1472,3 @@ def product_quick_create(request):
             {"success": False, "error": "Server error while creating product."},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
-

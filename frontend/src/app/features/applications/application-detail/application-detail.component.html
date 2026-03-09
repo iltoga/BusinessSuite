@@ -29,58 +29,77 @@
 } @else if (!application()) {
   <div class="text-muted-foreground">Application not found.</div>
 } @else {
-  <div class="space-y-6">
-    <div class="flex flex-wrap items-start justify-between gap-4">
-      <div>
-        <h1 class="text-2xl font-semibold">
-          Application #{{ application()!.id }} — {{ application()!.product.name }}
-        </h1>
-        <p class="text-sm text-muted-foreground">
-          Customer: {{ application()!.customer.fullName }}
-        </p>
-      </div>
-      <div class="application-header-actions flex w-full flex-wrap gap-2 sm:w-auto">
-        @if (canCreateInvoice()) {
-          <button
-            z-button
-            zType="success"
-            (click)="createInvoice()"
-            [disabled]="workflowAction() !== null"
-          >
-            Create Invoice
-          </button>
-        }
-        @if (isSuperuser()) {
-          <button
-            z-button
-            zType="destructive"
-            (click)="deleteApplication()"
-            [disabled]="workflowAction() !== null"
-          >
-            Delete Application
-          </button>
-        }
-        @if (canForceClose()) {
-          <button
-            z-button
-            zType="destructive"
-            (click)="confirmForceClose()"
-            [disabled]="workflowAction() !== null"
-          >
-            Force Close
-          </button>
-        }
-        <button z-button zType="ghost" (click)="goBack()">Back</button>
+  <div class="application-detail-container -m-3 sm:-m-6 space-y-4">
+    <!-- Sticky Header -->
+    <div
+      class="application-header sticky top-0 z-50 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 border-b py-2 isolate"
+    >
+      <div class="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 class="text-2xl font-semibold">
+            Application #{{ application()!.id }} — {{ application()!.product.name }}
+          </h1>
+          <p class="text-sm text-muted-foreground">
+            Customer:
+            <a
+              [routerLink]="customerDetailLink()"
+              [state]="customerDetailState()"
+              class="inline-flex items-center gap-1 font-medium underline decoration-muted-foreground/50 underline-offset-4 transition-colors hover:text-foreground"
+            >
+              <span>{{ application()!.customer.fullName }}</span>
+              <z-icon zType="arrow-up-right" class="h-3.5 w-3.5" />
+            </a>
+          </p>
+        </div>
+        <div class="application-header-actions flex w-full flex-wrap gap-2 sm:w-auto">
+          @if (canCreateInvoice()) {
+            <button
+              z-button
+              zType="success"
+              (click)="createInvoice()"
+              [disabled]="workflowAction() !== null"
+            >
+              Create Invoice
+            </button>
+          }
+          @if (isSuperuser()) {
+            <button
+              z-button
+              zType="destructive"
+              (click)="deleteApplication()"
+              [disabled]="workflowAction() !== null"
+            >
+              Delete Application
+            </button>
+          }
+          @if (canForceClose()) {
+            <button
+              z-button
+              zType="destructive"
+              (click)="confirmForceClose()"
+              [disabled]="workflowAction() !== null"
+            >
+              Force Close
+            </button>
+          }
+          <button z-button zType="ghost" (click)="goBack()">Back</button>
+        </div>
       </div>
     </div>
 
     <z-card class="p-4 sm:p-6">
       <div class="grid gap-6">
         <div class="flex flex-wrap items-end gap-6">
-          <div class="w-full sm:w-48">
-            <div class="text-sm text-muted-foreground mb-1">Application Date</div>
+          <div
+            class="w-full sm:w-48"
+            [zTooltip]="isApplicationDateLocked() ? applicationDateLockedTooltip : null"
+          >
+            <div class="text-sm text-muted-foreground mb-1">Application Submission Date</div>
             <z-date-input
               [ngModel]="docDateAsDate()"
+              [minDate]="submissionWindowMinDate()"
+              [maxDate]="submissionWindowMaxDate()"
+              [disabled]="isApplicationDateLocked() || isSavingMeta()"
               (ngModelChange)="onInlineDateChange('docDate', $event)"
             />
           </div>
@@ -106,6 +125,12 @@
             <z-badge [zType]="getApplicationStatusVariant(application()!.status)">
               {{ application()!.status | titlecase }}
             </z-badge>
+            @if (passportImportPending()) {
+              <z-badge zType="outline" class="mt-2 inline-flex items-center gap-1.5">
+                <z-icon zType="loader-circle" class="h-3.5 w-3.5 app-circle-spinner" />
+                Importing passport...
+              </z-badge>
+            }
           </div>
         </div>
 
@@ -113,8 +138,8 @@
           <div class="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
             Visa submission window:
             <span class="font-medium"
-              >{{ stayPermitSubmissionWindow()!.firstDateIso }} to
-              {{ stayPermitSubmissionWindow()!.lastDateIso }}</span
+              >{{ stayPermitSubmissionWindow()!.firstDateDisplay }} to
+              {{ stayPermitSubmissionWindow()!.lastDateDisplay }}</span
             >
             (inclusive).
           </div>
@@ -178,400 +203,321 @@
           ></textarea>
         </div>
       </div>
-      </z-card>
+    </z-card>
 
     @if (hasConfiguredDocuments()) {
-      <z-card class="p-4 sm:p-6">
-      <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
-        <h3 class="text-lg font-semibold">Tasks Timeline</h3>
-        <div class="flex flex-wrap gap-2">
-          @if (canReopen()) {
-            <button
-              z-button
-              zType="destructive"
-              (click)="reopenApplication()"
-              [disabled]="workflowAction() !== null"
-            >
-              Re-open Application
-            </button>
-          }
-        </div>
-      </div>
+      <app-application-workflow-timeline
+        [canReopen]="canReopen()"
+        [workflowAction]="workflowAction()"
+        [sortedWorkflowsCount]="sortedWorkflows().length"
+        [timelineItems]="timelineItems()"
+        [documentCollectionStatus]="documentCollectionStatus()"
+        [pendingStartNotice]="pendingStartNotice()"
+        [canRollbackWorkflow]="canRollbackWorkflowFn"
+        [isWorkflowDueDateEditable]="isWorkflowDueDateEditableFn"
+        [isWorkflowEditable]="isWorkflowEditableFn"
+        [getWorkflowStatusGuardMessage]="getWorkflowStatusGuardMessageFn"
+        (reopenApplication)="reopenApplication()"
+        (rollbackWorkflow)="rollbackWorkflow($event)"
+        (updateWorkflowDueDate)="updateWorkflowDueDate($event.workflow, $event.value)"
+        (updateWorkflowStatus)="updateWorkflowStatus($event.workflowId, $event.status)"
+      />
 
-      <div class="mb-4">
-        <z-badge [zType]="documentCollectionStatus().type">
-          {{ documentCollectionStatus().label }}
-        </z-badge>
-      </div>
-
-      @if (sortedWorkflows().length === 0) {
-        <div class="text-sm text-muted-foreground">Not started yet</div>
-      } @else {
-        <ol class="timeline-list">
-          @for (item of timelineItems(); track item.workflow.id; let isLast = $last) {
-            <li class="timeline-item">
-              <div class="timeline-track">
-                <span
-                  class="timeline-dot"
-                  [ngClass]="getWorkflowDotClass(item.workflow.status)"
-                ></span>
-                @if (!isLast) {
-                  <span class="timeline-line"></span>
+      <z-card class="mt-4 p-4 sm:mt-6 sm:p-6">
+        <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+          <h3 class="text-lg font-semibold">Uploaded Documents</h3>
+          <div class="flex flex-wrap gap-2">
+            @if (selectedDocumentIds().size > 0) {
+              <button
+                z-button
+                zType="success"
+                (click)="mergeAndDownloadSelected()"
+                [disabled]="isMerging()"
+              >
+                @if (isMerging()) {
+                  <z-icon zType="loader-circle" class="mr-2 h-4 w-4 app-circle-spinner" />
+                  Merging...
+                } @else {
+                  Merge & Download PDF ({{ selectedDocumentIds().size }})
                 }
-              </div>
-
-              <div class="timeline-content">
-                @if (item.gapDaysFromPrevious !== null) {
-                  <div class="timeline-gap-label">
-                    {{ getTimelineGapLabel(item.gapDaysFromPrevious) }}
-                  </div>
-                }
-
-                <div class="rounded-lg border p-4">
-                  <div class="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <div class="text-sm text-muted-foreground">
-                        Step {{ item.workflow.task.step }}
-                      </div>
-                      <div class="font-medium">{{ item.workflow.task.name }}</div>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <z-badge
-                        [zType]="
-                          getWorkflowStatusVariant(item.workflow.status, item.workflow.isOverdue)
-                        "
-                      >
-                        {{ item.workflow.status | titlecase }}
-                      </z-badge>
-                      @if (canRollbackWorkflow(item.workflow)) {
-                        <button
-                          z-button
-                          zType="outline"
-                          zSize="sm"
-                          (click)="rollbackWorkflow(item.workflow)"
-                          [disabled]="workflowAction() !== null"
-                        >
-                          Cancel Task
-                        </button>
-                      }
-                      @if (item.workflow.hasNotes) {
-                        <span class="text-warning">&#9888;</span>
-                      }
-                    </div>
-                  </div>
-
-                  <div
-                    class="mt-2 grid items-center gap-3 text-sm text-muted-foreground md:grid-cols-3"
-                  >
-                    <div class="flex items-center gap-2">
-                      <span class="font-medium text-foreground shrink-0">Start:</span>
-                      <span>{{ item.workflow.startDate | appDate }}</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <span class="font-medium text-foreground shrink-0">Due:</span>
-                      @if (isWorkflowDueDateEditable(item.workflow)) {
-                        <div class="w-full max-w-50">
-                          <z-date-input
-                            [ngModel]="getWorkflowDueDateAsDate(item.workflow)"
-                            [disabled]="workflowAction() !== null"
-                            (ngModelChange)="updateWorkflowDueDate(item.workflow, $event)"
-                          />
-                        </div>
-                      } @else {
-                        <span>{{ item.workflow.dueDate | appDate }}</span>
-                      }
-                    </div>
-                    @if (item.workflow.completionDate) {
-                      <div class="flex items-center gap-2">
-                        <span class="font-medium text-foreground shrink-0">
-                          {{ item.workflow.status === 'rejected' ? 'Rejected:' : 'Completed:' }}
-                        </span>
-                        <span>{{ item.workflow.completionDate | appDate }}</span>
-                      </div>
-                    }
-                  </div>
-
-                  @if (isWorkflowEditable(item.workflow)) {
-                    <div class="mt-3 max-w-xs">
-                      <z-combobox
-                        [value]="item.workflow.status"
-                        [options]="getWorkflowStatusOptions(item.workflow)"
-                        [searchable]="false"
-                        [zWidth]="'full'"
-                        [disabled]="workflowAction() !== null"
-                        (zValueChange)="updateWorkflowStatus(item.workflow.id, $event)"
-                      />
-                    </div>
-                    @if (getWorkflowStatusGuardMessage(item.workflow)) {
-                      <div class="mt-2 text-xs text-muted-foreground">
-                        {{ getWorkflowStatusGuardMessage(item.workflow) }}
-                      </div>
-                    }
-                  }
-                </div>
-              </div>
-            </li>
-          }
-        </ol>
-      }
-      </z-card>
-
-    <z-card class="p-4 sm:p-6">
-      <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
-        <h3 class="text-lg font-semibold">Uploaded Documents</h3>
-        <div class="flex flex-wrap gap-2">
-          @if (selectedDocumentIds().size > 0) {
-            <button
-              z-button
-              zType="success"
-              (click)="mergeAndDownloadSelected()"
-              [disabled]="isMerging()"
-            >
-              @if (isMerging()) {
-                <z-icon zType="loader-circle" class="mr-2 h-4 w-4 app-circle-spinner" />
-                Merging...
-              } @else {
-                Merge & Download PDF ({{ selectedDocumentIds().size }})
-              }
-            </button>
-          }
-          <button
-            z-button
-            zType="outline"
-            (click)="openAddDocumentDialog()"
-            [disabled]="filteredDocTypeOptions().length === 0"
-          >
-            Add Document type to the List
-          </button>
-        </div>
-      </div>
-
-      <!-- AI Document Categorization area -->
-      @if (!isCategorizationActive()) {
-        <div class="mb-4">
-          <app-multi-file-upload
-            accept="image/*,.pdf,.doc,.docx"
-            label="Upload Multiple Documents"
-            helperText="Drag and drop files to upload them. They will be automatically verified using AI."
-            [disabled]="isCategorizationActive()"
-            (filesSelected)="onCategorizationFilesSelected($event)"
-            (cleared)="onCategorizationFilesCleared()"
-          />
-          @if (categorizationFiles().length > 0) {
-            <div class="mt-2 flex justify-end">
-              <button z-button zType="default" (click)="startCategorization()">
-                🤖 Validate {{ categorizationFiles().length }} File(s) with AI
               </button>
-            </div>
-          }
+            }
+            <button
+              z-button
+              zType="outline"
+              (click)="openAddDocumentDialog()"
+              [disabled]="filteredDocTypeOptions().length === 0"
+            >
+              Add Document type to the List
+            </button>
+          </div>
         </div>
-      }
 
-      @if (isCategorizationActive()) {
-        <div class="mb-4">
-          <app-categorization-progress
-            [totalFiles]="categorizationTotalFiles()"
-            [processedFiles]="categorizationProcessedFiles()"
-            [progressPercentOverride]="categorizationProgressPercentOverride()"
-            [results]="categorizationResults()"
-            [isComplete]="categorizationComplete()"
-            [isApplying]="isCategorizationApplying()"
-            [statusMessage]="categorizationStatusMessage()"
-            (applyAll)="onApplyCategorization($event)"
-            (dismissSelected)="dismissSelectedCategorization($event)"
-            (dismiss)="dismissCategorization()"
-          />
-        </div>
-      }
+        <!-- AI Document Categorization area -->
+        @if (!isCategorizationActive()) {
+          <div class="mb-4">
+            <app-multi-file-upload
+              accept="image/*,.pdf,.doc,.docx"
+              label="Upload Multiple Documents"
+              helperText="Drag and drop files to upload them. They will be automatically verified using AI."
+              [disabled]="isCategorizationActive()"
+              (filesSelected)="onCategorizationFilesSelected($event)"
+              (cleared)="onCategorizationFilesCleared()"
+            />
+            @if (categorizationFiles().length > 0) {
+              <div class="mt-2 flex justify-end">
+                <button z-button zType="default" (click)="startCategorization()">
+                  🤖 Validate {{ categorizationFiles().length }} File(s) with AI
+                </button>
+              </div>
+            }
+          </div>
+        }
 
-      @if (localUploadedDocuments().length === 0) {
-        <div class="text-sm text-muted-foreground">No uploaded documents yet.</div>
-      } @else {
-        <div class="overflow-x-auto app-detail-table-wrap">
-          <table class="app-detail-table app-uploaded-docs-table w-full border-collapse">
-            <thead>
-              <tr class="border-b text-sm text-muted-foreground">
-                <th class="w-10"></th>
-                <th class="w-10 py-2 px-2">
-                  <input
-                    type="checkbox"
-                    [checked]="areAllUploadedDocumentsSelected()"
-                    [indeterminate]="isUploadedDocumentSelectionPartial()"
-                    (change)="toggleAllUploadedDocumentsSelection()"
-                    class="h-4 w-4 rounded border text-primary"
-                  />
-                </th>
-                <th class="text-left py-2">Document</th>
-                <th class="text-left py-2">Doc Number</th>
-                <th class="text-left py-2">Expiration</th>
-                <th class="text-left py-2">Last Updated</th>
-                <th class="text-left py-2">Completed</th>
-                <th class="text-left py-2">AI Check</th>
-                <th class="text-left py-2">Actions</th>
-              </tr>
-            </thead>
-            <tbody cdkDropList (cdkDropListDropped)="onDocumentDrop($event)">
-              @for (doc of localUploadedDocuments(); track doc.id) {
-                <tr
-                  class="border-b bg-card uploaded-doc-row"
-                  [ngClass]="getUploadedDocumentRowClass(doc)"
-                  cdkDrag
-                >
-                  <td class="py-3 px-2 uploaded-doc-sort-cell" data-label="Sort">
-                    <div
-                      class="cursor-move text-muted-foreground"
-                      cdkDragHandle
-                      title="Drag to reorder"
-                    >
-                      <z-icon zType="ellipsis" zSize="sm" class="rotate-90" />
-                    </div>
-                  </td>
-                  <td class="py-3 px-2 uploaded-doc-select-cell" data-label="Select">
+        @if (isCategorizationActive()) {
+          <div class="mb-4">
+            <app-categorization-progress
+              [totalFiles]="categorizationTotalFiles()"
+              [processedFiles]="categorizationProcessedFiles()"
+              [progressPercentOverride]="categorizationProgressPercentOverride()"
+              [results]="categorizationResults()"
+              [isComplete]="categorizationComplete()"
+              [isApplying]="isCategorizationApplying()"
+              [statusMessage]="categorizationStatusMessage()"
+              (applyAll)="onApplyCategorization($event)"
+              (dismissSelected)="dismissSelectedCategorization($event)"
+              (dismiss)="dismissCategorization()"
+            />
+          </div>
+        }
+
+        @if (localUploadedDocuments().length === 0) {
+          <div class="text-sm text-muted-foreground">No uploaded documents yet.</div>
+        } @else {
+          <div class="overflow-x-auto app-detail-table-wrap">
+            <table class="app-detail-table app-uploaded-docs-table w-full border-collapse">
+              <thead>
+                <tr class="border-b text-sm text-muted-foreground">
+                  <th class="w-10"></th>
+                  <th class="w-10 py-2 px-2">
                     <input
                       type="checkbox"
-                      [checked]="selectedDocumentIds().has(doc.id)"
-                      (change)="toggleDocumentSelection(doc.id)"
+                      [checked]="areAllUploadedDocumentsSelected()"
+                      [indeterminate]="isUploadedDocumentSelectionPartial()"
+                      (change)="toggleAllUploadedDocumentsSelection()"
                       class="h-4 w-4 rounded border text-primary"
                     />
-                  </td>
-                  <td class="py-3" data-label="Document">{{ doc.docType.name }}</td>
-                  <td class="py-3" data-label="Doc Number">{{ doc.docNumber || '—' }}</td>
-                  <td class="py-3" data-label="Expiration">{{ doc.expirationDate | appDate }}</td>
-                  <td class="py-3" data-label="Last Updated">
-                    <div class="text-sm">{{ doc.updatedAt | appDate: 'datetime' }}</div>
-                    @if (doc.updatedByUsername) {
-                      <div class="text-xs text-muted-foreground">{{ doc.updatedByUsername }}</div>
-                    }
-                  </td>
-                  <td class="py-3" data-label="Completed">
-                    @if (doc.completed) {
-                      <z-badge zType="success">Yes</z-badge>
-                    } @else {
-                      <z-badge zType="secondary">No</z-badge>
-                    }
-                  </td>
-                  <td class="py-3" data-label="AI Check">
-                    @if (isDocumentAiValid(doc)) {
-                      <z-badge zType="success" [zTooltip]="getDocumentValidationTooltip(doc)"
-                        >✅ Valid</z-badge
+                  </th>
+                  <th class="text-left py-2">Document</th>
+                  <th class="text-left py-2">Doc Number</th>
+                  <th class="text-left py-2">Expiration</th>
+                  <th class="text-left py-2">Last Updated</th>
+                  <th class="text-left py-2">Completed</th>
+                  <th class="text-left py-2">AI Check</th>
+                  <th class="text-left py-2">Actions</th>
+                </tr>
+              </thead>
+              <tbody cdkDropList (cdkDropListDropped)="onDocumentDrop($event)">
+                @for (doc of localUploadedDocuments(); track doc.id) {
+                  <tr
+                    class="border-b bg-card uploaded-doc-row"
+                    [ngClass]="getUploadedDocumentRowClass(doc)"
+                    cdkDrag
+                  >
+                    <td class="py-3 px-2 uploaded-doc-sort-cell" data-label="Sort">
+                      <div
+                        class="cursor-move text-muted-foreground"
+                        cdkDragHandle
+                        title="Drag to reorder"
                       >
-                    } @else if (isDocumentAiInvalid(doc)) {
-                      <z-badge zType="destructive" [zTooltip]="getDocumentValidationTooltip(doc)"
-                        >⚠️ Invalid</z-badge
-                      >
-                    } @else if (
-                      doc.aiValidationStatus === 'pending' ||
-                      doc.aiValidationStatus === 'validating'
-                    ) {
-                      <z-badge zType="outline"
-                        ><z-icon
-                          zType="loader-circle"
-                          class="mr-1 h-3.5 w-3.5 text-muted-foreground app-circle-spinner"
-                        />
-                        Checking…</z-badge
-                      >
-                    } @else if (doc.aiValidationStatus === 'error') {
-                      <z-badge zType="destructive">Error</z-badge>
-                    } @else {
-                      <span class="text-muted-foreground">—</span>
-                    }
-                  </td>
-                  <td class="py-3 uploaded-doc-actions-cell" data-label="Actions">
-                    <div class="flex flex-wrap gap-2">
-                      <button z-button zType="warning" zSize="default" (click)="openUpload(doc)">
-                        Update
-                      </button>
-                      <app-document-preview
-                        [documentId]="doc.id"
-                        [fileLink]="doc.fileLink"
-                        [thumbnailLink]="doc.thumbnailLink"
-                        [centerInViewport]="true"
-                        zType="default"
-                        zSize="default"
-                        label="View"
-                        (viewFull)="viewDocument(doc)"
+                        <z-icon zType="ellipsis" zSize="sm" class="rotate-90" />
+                      </div>
+                    </td>
+                    <td class="py-3 px-2 uploaded-doc-select-cell" data-label="Select">
+                      <input
+                        type="checkbox"
+                        [checked]="selectedDocumentIds().has(doc.id)"
+                        (change)="toggleDocumentSelection(doc.id)"
+                        class="h-4 w-4 rounded border text-primary"
                       />
-                    </div>
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      }
-    </z-card>
+                    </td>
+                    <td class="py-3" data-label="Document">{{ doc.docType.name }}</td>
+                    <td class="py-3" data-label="Doc Number">{{ doc.docNumber || '—' }}</td>
+                    <td class="py-3" data-label="Expiration">{{ doc.expirationDate | appDate }}</td>
+                    <td class="py-3" data-label="Last Updated">
+                      <div class="text-sm">{{ doc.updatedAt | appDate: 'datetime' }}</div>
+                      @if (doc.updatedByUsername) {
+                        <div class="text-xs text-muted-foreground">{{ doc.updatedByUsername }}</div>
+                      }
+                    </td>
+                    <td class="py-3" data-label="Completed">
+                      @if (doc.completed) {
+                        <z-badge zType="success">Yes</z-badge>
+                      } @else {
+                        <z-badge zType="secondary">No</z-badge>
+                      }
+                    </td>
+                    <td class="py-3" data-label="AI Check">
+                      @let aiCheckBadge = getDocumentAiCheckBadge(doc);
+                      @if (aiCheckBadge) {
+                        <z-badge
+                          [zType]="$any(aiCheckBadge.type)"
+                          [zTooltip]="getDocumentValidationTooltip(doc) || null"
+                        >
+                          @if (aiCheckBadge.showSpinner) {
+                            <z-icon
+                              zType="loader-circle"
+                              class="mr-1 h-3.5 w-3.5 text-muted-foreground app-circle-spinner"
+                            />
+                          }
+                          {{ aiCheckBadge.label }}
+                        </z-badge>
+                      } @else {
+                        <span class="text-muted-foreground">—</span>
+                      }
+                    </td>
+                    <td class="py-3 uploaded-doc-actions-cell" data-label="Actions">
+                      <div class="flex flex-wrap gap-2">
+                        <button z-button zType="warning" zSize="default" (click)="openUpload(doc)">
+                          Update
+                        </button>
+                        <app-document-preview
+                          [documentId]="doc.id"
+                          [fileLink]="doc.fileLink"
+                          [thumbnailLink]="doc.thumbnailLink"
+                          [centerInViewport]="true"
+                          zType="default"
+                          zSize="default"
+                          label="View"
+                          (viewFull)="viewDocument(doc)"
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </z-card>
 
-    <z-card class="p-4 sm:p-6">
-      <div class="mb-4 flex items-center justify-between">
-        <h3 class="text-lg font-semibold">Required Documents</h3>
-      </div>
-      @if (requiredDocuments().length === 0) {
-        <div class="text-sm text-muted-foreground">No required documents pending.</div>
-      } @else {
-        <div class="overflow-x-auto app-detail-table-wrap">
-          <table class="app-detail-table app-required-docs-table w-full border-collapse">
-            <thead>
-              <tr class="border-b text-sm text-muted-foreground">
-                <th class="text-left py-2">Document</th>
-                <th class="text-left py-2">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (doc of requiredDocuments(); track doc.id) {
-                <tr class="border-b app-doc-row">
-                  <td class="py-3" data-label="Document">{{ doc.docType.name }}</td>
-                  <td class="py-3 app-doc-actions-cell" data-label="Actions">
-                    <div class="flex flex-wrap gap-2">
-                      <button z-button zType="default" zSize="sm" (click)="openUpload(doc)">
-                        Upload
-                      </button>
-                      <button
-                        z-button
-                        zType="destructive"
-                        zSize="sm"
-                        (click)="removeApplicationDocument(doc)"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
+      <z-card class="p-4 sm:p-6">
+        <div class="mb-4 flex items-center justify-between">
+          <h3 class="text-lg font-semibold">Required Documents</h3>
         </div>
-      }
-    </z-card>
+        @if (requiredDocuments().length === 0) {
+          <div class="text-sm text-muted-foreground">No required documents pending.</div>
+        } @else {
+          <div class="overflow-x-auto app-detail-table-wrap">
+            <table class="app-detail-table app-required-docs-table w-full border-collapse">
+              <thead>
+                <tr class="border-b text-sm text-muted-foreground">
+                  <th class="text-left py-2">Document</th>
+                  <th class="text-left py-2">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (doc of requiredDocuments(); track doc.id) {
+                  <tr class="border-b app-doc-row">
+                    <td class="py-3" data-label="Document">
+                      <span class="inline-flex items-center gap-1.5">
+                        {{ doc.docType.name }}
+                        @if (canShowAutomaticShortcut(doc)) {
+                          <button
+                            type="button"
+                            class="text-muted-foreground hover:text-primary transition-colors disabled:opacity-40"
+                            [zTooltip]="getAutomaticShortcutTooltip(doc) || null"
+                            [disabled]="actionLoading() !== null"
+                            (click)="runAutomaticShortcut(doc)"
+                            [attr.aria-label]="getAutomaticShortcutLabel(doc)"
+                          >
+                            @if (isAutomaticShortcutLoading(doc)) {
+                              <z-icon
+                                zType="loader-circle"
+                                class="h-3.5 w-3.5 app-circle-spinner"
+                              />
+                            } @else {
+                              <z-icon zType="sparkles" class="h-3.5 w-3.5" />
+                            }
+                          </button>
+                        }
+                      </span>
+                    </td>
+                    <td class="py-3 app-doc-actions-cell" data-label="Actions">
+                      <div class="flex flex-wrap gap-2">
+                        <button z-button zType="default" zSize="sm" (click)="openUpload(doc)">
+                          Upload
+                        </button>
+                        <button
+                          z-button
+                          zType="destructive"
+                          zSize="sm"
+                          (click)="removeApplicationDocument(doc)"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </z-card>
 
       @if (optionalDocuments().length > 0) {
         <z-card class="p-4 sm:p-6">
-        <div class="mb-4 flex items-center justify-between">
-          <h3 class="text-lg font-semibold">Optional Documents</h3>
-        </div>
-        <div class="overflow-x-auto app-detail-table-wrap">
-          <table class="app-detail-table app-optional-docs-table w-full border-collapse">
-            <thead>
-              <tr class="border-b text-sm text-muted-foreground">
-                <th class="text-left py-2">Document</th>
-                <th class="text-left py-2">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (doc of optionalDocuments(); track doc.id) {
-                <tr class="border-b app-doc-row">
-                  <td class="py-3" data-label="Document">{{ doc.docType.name }}</td>
-                  <td class="py-3 app-doc-actions-cell" data-label="Actions">
-                    <div class="flex flex-wrap gap-2">
-                      <button z-button zType="default" zSize="sm" (click)="openUpload(doc)">
-                        Upload
-                      </button>
-                    </div>
-                  </td>
+          <div class="mb-4 flex items-center justify-between">
+            <h3 class="text-lg font-semibold">Optional Documents</h3>
+          </div>
+          <div class="overflow-x-auto app-detail-table-wrap">
+            <table class="app-detail-table app-optional-docs-table w-full border-collapse">
+              <thead>
+                <tr class="border-b text-sm text-muted-foreground">
+                  <th class="text-left py-2">Document</th>
+                  <th class="text-left py-2">Actions</th>
                 </tr>
-              }
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                @for (doc of optionalDocuments(); track doc.id) {
+                  <tr class="border-b app-doc-row">
+                    <td class="py-3" data-label="Document">
+                      <span class="inline-flex items-center gap-1.5">
+                        {{ doc.docType.name }}
+                        @if (canShowAutomaticShortcut(doc)) {
+                          <button
+                            type="button"
+                            class="text-muted-foreground hover:text-primary transition-colors disabled:opacity-40"
+                            [zTooltip]="getAutomaticShortcutTooltip(doc) || null"
+                            [disabled]="actionLoading() !== null"
+                            (click)="runAutomaticShortcut(doc)"
+                            [attr.aria-label]="getAutomaticShortcutLabel(doc)"
+                          >
+                            @if (isAutomaticShortcutLoading(doc)) {
+                              <z-icon
+                                zType="loader-circle"
+                                class="h-3.5 w-3.5 app-circle-spinner"
+                              />
+                            } @else {
+                              <z-icon zType="sparkles" class="h-3.5 w-3.5" />
+                            }
+                          </button>
+                        }
+                      </span>
+                    </td>
+                    <td class="py-3 app-doc-actions-cell" data-label="Actions">
+                      <div class="flex flex-wrap gap-2">
+                        <button z-button zType="default" zSize="sm" (click)="openUpload(doc)">
+                          Upload
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
         </z-card>
       }
     }
@@ -680,7 +626,7 @@
                   />
                 }
                 {{ action.label }}
-                @if (actionLoading() === action.name) {
+                @if (isActionLoadingFor(selectedDocument()!, action.name)) {
                   <z-icon zType="loader-circle" class="ml-2 h-4 w-4 app-circle-spinner" />
                 }
               </button>
@@ -791,6 +737,11 @@
                   'This file does not satisfy the AI validation checks.'
               }}
             </div>
+            @if (isDevelopmentMode && preUploadValidationRuntimeLabel()) {
+              <div class="mt-1 font-mono text-[11px] text-muted-foreground">
+                AI runtime: {{ preUploadValidationRuntimeLabel() }}
+              </div>
+            }
             @if (preUploadValidationIssues().length > 0) {
               <ul class="mt-2 list-disc space-y-1 pl-4 text-xs text-muted-foreground">
                 @for (issue of preUploadValidationIssues(); track issue) {

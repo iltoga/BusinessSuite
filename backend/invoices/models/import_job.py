@@ -41,6 +41,12 @@ class InvoiceImportJob(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(
+                fields=["created_by", "status", "-created_at", "-id"],
+                name="inv_import_guard_idx",
+            ),
+        ]
 
     def __str__(self) -> str:
         return f"InvoiceImportJob {self.id} ({self.status})"

@@ -4,10 +4,12 @@ from typing import Iterable, Tuple
 
 import requests
 from django.conf import settings
+from core.services.app_setting_service import AppSettingService
 from django.core.cache import cache
 from django.core.management import call_command
 from core.tasks.runtime import QUEUE_LOW, QUEUE_SCHEDULED, crontab, db_periodic_task, db_task
 
+from core.services.ai_runtime_settings_service import AIRuntimeSettingsService
 from core.services.logger_service import Logger
 
 logger = Logger.get_logger(__name__)
@@ -225,7 +227,7 @@ def _perform_prune_auditlog() -> None:
     This uses the built-in management command `auditlogflush --before-date` to delete
     old log entries. If `AUDITLOG_RETENTION_DAYS` is <= 0 the pruning is skipped.
     """
-    retention_days = getattr(settings, "AUDITLOG_RETENTION_DAYS", 14)
+    retention_days = AppSettingService.parse_int(AppSettingService.get_effective_raw("AUDITLOG_RETENTION_DAYS", 14), 14)
     if retention_days <= 0:
         logger.info("AUDITLOG_RETENTION_DAYS is <= 0; skipping audit log pruning.")
         return
@@ -239,7 +241,7 @@ def _perform_prune_auditlog() -> None:
 
 
 def _register_auditlog_prune() -> None:
-    schedule = getattr(settings, "AUDITLOG_RETENTION_SCHEDULE", "04:00")
+    schedule = str(AppSettingService.get_effective_raw("AUDITLOG_RETENTION_SCHEDULE", "04:00") or "").strip()
     if not schedule:
         # Explicitly disabled
         return
@@ -272,7 +274,7 @@ def _perform_openrouter_health_check() -> bool:
         logger.warning("OpenRouter health check skipped: OPENROUTER_API_KEY is not configured.")
         return False
 
-    base_url = getattr(settings, "OPENROUTER_API_BASE_URL", "https://openrouter.ai/api/v1").rstrip("/")
+    base_url = str(AIRuntimeSettingsService.get("OPENROUTER_API_BASE_URL") or "https://openrouter.ai/api/v1").rstrip("/")
     timeout = float(getattr(settings, "OPENROUTER_HEALTHCHECK_TIMEOUT", 10.0))
     endpoint = f"{base_url}/key"
 

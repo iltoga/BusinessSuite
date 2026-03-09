@@ -1882,7 +1882,9 @@ def repair_media_paths():
                                 "refreshed file_link"
                             )
                         elif needs_path_update:
-                            repairs.append(f"Fixed {model._meta.label} #{obj.pk}: relinked {old_path} -> {resolved_path}")
+                            repairs.append(
+                                f"Fixed {model._meta.label} #{obj.pk}: relinked {old_path} -> {resolved_path}"
+                            )
                         else:
                             repairs.append(
                                 f"Fixed {model._meta.label} #{obj.pk}: refreshed file_link for {resolved_path}"
@@ -1983,4 +1985,68 @@ def get_cache_health_status(user_id: int | None = None) -> dict:
         "writeReadDeleteOk": write_read_delete_ok,
         "probeLatencyMs": probe_latency_ms,
         "errors": errors,
+    }
+
+
+def get_calendar_sync_health_status(*, stuck_after_minutes: int = 5, sample_limit: int = 20) -> dict:
+    """
+    Inspect application calendar mirror events and report pending events that look stuck.
+
+    A pending event is considered "stuck" when it is still pending after the
+    configured threshold window.
+    """
+
+    from core.models.calendar_event import CalendarEvent
+
+    safe_minutes = max(1, int(stuck_after_minutes))
+    safe_sample_limit = max(1, min(int(sample_limit), 100))
+    checked_at = timezone.now()
+    cutoff = checked_at - datetime.timedelta(minutes=safe_minutes)
+
+    application_events = CalendarEvent.objects.filter(source=CalendarEvent.SOURCE_APPLICATION)
+    pending_qs = application_events.filter(sync_status=CalendarEvent.SYNC_STATUS_PENDING)
+    failed_qs = application_events.filter(sync_status=CalendarEvent.SYNC_STATUS_FAILED)
+    stuck_qs = pending_qs.filter(updated_at__lte=cutoff)
+
+    pending_count = pending_qs.count()
+    failed_count = failed_qs.count()
+    stuck_count = stuck_qs.count()
+
+    samples = list(
+        stuck_qs.order_by("updated_at").values(
+            "id",
+            "application_id",
+            "title",
+            "updated_at",
+            "google_event_id",
+            "google_calendar_id",
+            "sync_error",
+        )[:safe_sample_limit]
+    )
+
+    ok = stuck_count == 0 and failed_count == 0
+    if ok:
+        message = "Calendar sync health check passed."
+        severity = "ok"
+    elif stuck_count > 0:
+        message = f"Detected {stuck_count} stuck pending calendar sync event(s) older than {safe_minutes} minute(s)."
+        severity = "critical"
+    else:
+        message = f"Detected {failed_count} failed calendar sync event(s)."
+        severity = "warning"
+
+    return {
+        "ok": ok,
+        "severity": severity,
+        "message": message,
+        "checkedAt": checked_at.isoformat(),
+        "thresholdMinutes": safe_minutes,
+        "sampleLimit": safe_sample_limit,
+        "counts": {
+            "applicationEvents": application_events.count(),
+            "pending": pending_count,
+            "failed": failed_count,
+            "stuckPending": stuck_count,
+        },
+        "stuckPendingSamples": samples,
     }

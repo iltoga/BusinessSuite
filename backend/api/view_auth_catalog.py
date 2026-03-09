@@ -1,5 +1,6 @@
 from .views_imports import *
 
+
 class TokenAuthView(TokenObtainPairView):
     authentication_classes = []
     permission_classes = [AllowAny]
@@ -130,6 +131,124 @@ class HolidayViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         if country:
             queryset = queryset.filter(country=country)
         return queryset
+
+
+class AiModelViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated, IsStaffOrAdminGroup]
+    queryset = AiModel.objects.all()
+    serializer_class = AiModelSerializer
+    pagination_class = None
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["provider", "model_id", "name", "description", "modality"]
+    ordering_fields = ["provider", "name", "model_id", "updated_at", "created_at"]
+    ordering = ["provider", "name"]
+
+    @action(detail=False, methods=["get"], url_path="catalog")
+    def catalog(self, request):
+        return Response(AIRuntimeSettingsService.get_model_catalog())
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(name="q", type=OpenApiTypes.STR, location=OpenApiParameter.QUERY, required=False),
+            OpenApiParameter(name="limit", type=OpenApiTypes.INT, location=OpenApiParameter.QUERY, required=False),
+        ]
+    )
+    @action(detail=False, methods=["get"], url_path="openrouter-search")
+    def openrouter_search(self, request):
+        query = str(request.query_params.get("q") or "").strip().lower()
+        raw_limit = request.query_params.get("limit")
+        try:
+            limit = min(max(int(raw_limit or 20), 1), 50)
+        except (TypeError, ValueError):
+            return self.error_response("Invalid limit parameter.", status.HTTP_400_BAD_REQUEST)
+        api_key = getattr(settings, "OPENROUTER_API_KEY", None)
+        base_url = str(
+            AIRuntimeSettingsService.get("OPENROUTER_API_BASE_URL") or "https://openrouter.ai/api/v1"
+        ).rstrip("/")
+
+        if not api_key:
+            return Response({"results": [], "message": "OPENROUTER_API_KEY is not configured."}, status=200)
+
+        headers = {"Authorization": f"Bearer {api_key}", "Accept": "application/json"}
+        try:
+            response = requests.get(f"{base_url}/models", headers=headers, timeout=15)
+            response.raise_for_status()
+            payload = response.json()
+        except Exception as exc:
+            return self.error_response(f"OpenRouter model lookup failed: {exc}", status.HTTP_502_BAD_GATEWAY)
+
+        raw_models = payload.get("data", []) if isinstance(payload, dict) else []
+        results = []
+        for item in raw_models:
+            model_id = str(item.get("id") or "").strip()
+            name = str(item.get("name") or model_id).strip()
+            description = str(item.get("description") or "").strip()
+            searchable = f"{model_id} {name} {description}".lower()
+            if query and query not in searchable:
+                continue
+
+            # Extract architecture info
+            architecture = item.get("architecture") if isinstance(item.get("architecture"), dict) else {}
+            modality = str(architecture.get("modality") or "").strip()
+            tokenizer = str(architecture.get("tokenizer") or "").strip()
+            instruct_type = str(architecture.get("instruct_type") or "").strip()
+
+            # Extract pricing info - OpenRouter uses these field names
+            pricing = item.get("pricing") if isinstance(item.get("pricing"), dict) else {}
+            prompt_price = pricing.get("prompt")
+            completion_price = pricing.get("completion")
+            image_price = pricing.get("image")
+            request_price = pricing.get("request")
+
+            # Extract top provider info
+            top_provider = item.get("top_provider") if isinstance(item.get("top_provider"), dict) else {}
+            # OpenRouter doesn't return id/name in top_provider, use model_id prefix as provider
+            provider_prefix = model_id.split("/")[0] if "/" in model_id else model_id
+            top_provider_id = provider_prefix
+            provider_name = provider_prefix.title()
+
+            # Extract other fields
+            context_length = item.get("context_length")
+            max_completion_tokens = top_provider.get("max_completion_tokens")
+            supported_parameters = item.get("supported_parameters", [])
+            per_request_limits = item.get("per_request_limits", {})
+
+            # Detect capabilities from searchable text and modality
+            vision = "image" in modality.lower() or "vision" in searchable or "multimodal" in searchable
+            file_upload = "file" in searchable or "document" in searchable
+            reasoning = "reason" in searchable or "think" in searchable or "reasoning" in searchable
+
+            results.append(
+                {
+                    "provider": "openrouter",
+                    "model_id": model_id,
+                    "name": name,
+                    "description": description,
+                    "vision": vision,
+                    "file_upload": file_upload,
+                    "reasoning": reasoning,
+                    "context_length": context_length,
+                    "max_completion_tokens": max_completion_tokens,
+                    "modality": modality,
+                    "architecture_modality": modality,
+                    "architecture_tokenizer": tokenizer,
+                    "instruct_type": instruct_type,
+                    "prompt_price_per_token": prompt_price,
+                    "completion_price_per_token": completion_price,
+                    "image_price": image_price,
+                    "request_price": request_price,
+                    "top_provider_id": top_provider_id,
+                    "provider_name": provider_name,
+                    "supported_parameters": supported_parameters,
+                    "per_request_limits": per_request_limits,
+                    "source": "openrouter",
+                    "raw_metadata": item,
+                }
+            )
+            if len(results) >= limit:
+                break
+
+        return Response({"results": results})
 
 
 class LettersViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
@@ -371,14 +490,38 @@ class DocumentTypeViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
+    @staticmethod
+    def _with_case_insensitive_name_sorting(queryset):
+        return queryset.annotate(
+            sort_last_name=Coalesce(
+                NullIf(Lower("last_name"), Value("")),
+                NullIf(Lower("company_name"), Value("")),
+                NullIf(Lower("first_name"), Value("")),
+                Value(""),
+            ),
+            sort_first_name=Coalesce(
+                NullIf(Lower("first_name"), Value("")),
+                NullIf(Lower("company_name"), Value("")),
+                Value(""),
+            ),
+            sort_company_name=Coalesce(
+                NullIf(Lower("company_name"), Value("")),
+                Value(""),
+            ),
+        )
+
     def get_queryset(self):
-        queryset = Customer.objects.select_related("nationality").all()
+        queryset = self._with_case_insensitive_name_sorting(
+            Customer.objects.select_related("nationality").all()
+        )
 
         # Only apply search and active filters for the list action
         if self.action == "list":
             query = self.request.query_params.get("q") or self.request.query_params.get("search")
             if query:
-                queryset = Customer.objects.search_customers(query).select_related("nationality")
+                queryset = self._with_case_insensitive_name_sorting(
+                    Customer.objects.search_customers(query).select_related("nationality")
+                )
 
             status_param = self.request.query_params.get("status")
             if status_param:
@@ -397,7 +540,17 @@ class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     pagination_class = StandardResultsSetPagination
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["first_name", "last_name", "email", "company_name", "passport_number"]
-    ordering_fields = ["first_name", "last_name", "email", "company_name", "passport_number", "created_at"]
+    ordering_fields = [
+        "first_name",
+        "last_name",
+        "email",
+        "company_name",
+        "passport_number",
+        "created_at",
+        "sort_last_name",
+        "sort_first_name",
+        "sort_company_name",
+    ]
     ordering = ["-created_at"]
 
     @action(detail=False, methods=["get"], url_path="search")
@@ -429,7 +582,9 @@ class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     def uninvoiced_applications(self, request, pk=None):
         customer = self.get_object()
         applications = (
-            customer.doc_applications.filter(invoice_applications__isnull=True, product__uses_customer_app_workflow=True)
+            customer.doc_applications.filter(
+                invoice_applications__isnull=True, product__uses_customer_app_workflow=True
+            )
             .select_related("customer", "product")
             .prefetch_related("invoice_applications__invoice")
             .distinct()
@@ -443,7 +598,8 @@ class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     def applications_history(self, request, pk=None):
         customer = self.get_object()
         applications = (
-            customer.doc_applications.filter(product__uses_customer_app_workflow=True).select_related("customer", "product")
+            customer.doc_applications.filter(product__uses_customer_app_workflow=True)
+            .select_related("customer", "product")
             .prefetch_related(
                 Prefetch(
                     "invoice_applications",
@@ -474,7 +630,6 @@ class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     @extend_schema(
         request=PassportCheckSerializer,
         responses={202: OpenApiResponse(description="Job ID for SSE tracking")},
-        operation_id="customers_check_passport_create",
     )
     @action(detail=False, methods=["post"], url_path="check-passport", parser_classes=[MultiPartParser, FormParser])
     def check_passport(self, request):

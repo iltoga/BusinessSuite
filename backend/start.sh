@@ -102,17 +102,26 @@ $PYTHON_BIN manage.py compilemessages || echo "Warning: compilemessages skipped 
 # 7. Start Gunicorn
 # Optimization: --worker-tmp-dir /dev/shm prevents heartbeat blocking on disk I/O
 # Optimization: gthread is best for the mixed I/O (Database) and API (LLM/OpenAI) profile
+GUNICORN_BIND="${GUNICORN_BIND:-0.0.0.0:8000}"
+GUNICORN_WORKERS="${GUNICORN_WORKERS:-4}"
+GUNICORN_THREADS="${GUNICORN_THREADS:-2}"
+GUNICORN_WORKER_CLASS="${GUNICORN_WORKER_CLASS:-gthread}"
+GUNICORN_TIMEOUT="${GUNICORN_TIMEOUT:-120}"
+GUNICORN_MAX_REQUESTS="${GUNICORN_MAX_REQUESTS:-1200}"
+GUNICORN_MAX_REQUESTS_JITTER="${GUNICORN_MAX_REQUESTS_JITTER:-50}"
+GUNICORN_LOG_LEVEL="${GUNICORN_LOG_LEVEL:-info}"
+
 echo "Starting Gunicorn..."
 exec gunicorn business_suite.wsgi:application \
-  --bind 0.0.0.0:8000 \
+  --bind "${GUNICORN_BIND}" \
   --no-control-socket \
-  --workers 4 \
-  --threads 2 \
-  --worker-class gthread \
-  --timeout 120 \
-  --max-requests 1200 \
-  --max-requests-jitter 50 \
+  --workers "${GUNICORN_WORKERS}" \
+  --threads "${GUNICORN_THREADS}" \
+  --worker-class "${GUNICORN_WORKER_CLASS}" \
+  --timeout "${GUNICORN_TIMEOUT}" \
+  --max-requests "${GUNICORN_MAX_REQUESTS}" \
+  --max-requests-jitter "${GUNICORN_MAX_REQUESTS_JITTER}" \
   --worker-tmp-dir /dev/shm \
   --access-logfile - \
   --error-logfile - \
-  --log-level info
+  --log-level "${GUNICORN_LOG_LEVEL}"

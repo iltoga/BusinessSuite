@@ -23,6 +23,7 @@ class CoreConfig(AppConfig):
 
         # Keep app startup side effects minimal outside of broker initialization.
         import core.signals  # noqa: F401
+        import core.signals_app_setting  # noqa: F401
         import core.signals_calendar  # noqa: F401
         import core.signals_calendar_reminder  # noqa: F401
         import core.signals_streams  # noqa: F401

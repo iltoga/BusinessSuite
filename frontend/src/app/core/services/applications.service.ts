@@ -34,6 +34,7 @@ export interface ApplicationProduct {
 export interface DocumentTypeInfo {
   id: number;
   name: string;
+  autoGeneration?: boolean;
   aiValidation: boolean;
   hasExpirationDate: boolean;
   isStayPermit?: boolean;
@@ -192,23 +193,33 @@ export class ApplicationsService {
     );
   }
 
+  updateApplicationPartial(
+    applicationId: number,
+    payload: Record<string, unknown>,
+  ): Observable<any> {
+    return this.customerApplicationsService.customerApplicationsPartialUpdate(
+      applicationId,
+      payload as any,
+    );
+  }
+
   updateWorkflowDueDate(
     applicationId: number,
     workflowId: number,
     dueDate: string,
   ): Observable<any> {
-    return this.http.post(
-      `/api/customer-applications/${applicationId}/workflows/${workflowId}/due-date/`,
-      {
-        dueDate,
-      },
+    return this.customerApplicationsService.customerApplicationsWorkflowsDueDateCreate(
+      applicationId,
+      workflowId,
+      { dueDate },
     );
   }
 
   rollbackWorkflow(applicationId: number, workflowId: number): Observable<any> {
-    return this.http.post(
-      `/api/customer-applications/${applicationId}/workflows/${workflowId}/rollback/`,
-      {},
+    return this.customerApplicationsService.customerApplicationsWorkflowsRollbackCreate(
+      applicationId,
+      workflowId,
+      {} as any,
     );
   }
 

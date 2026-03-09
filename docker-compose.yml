@@ -30,6 +30,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    mem_limit: 512m
+    cpus: "1.0"
 
   # pgadmin:
   #   container_name: pgadmin
@@ -74,11 +76,13 @@ services:
         ipv4_address: 192.168.2.62
     # ports:
     #   - "6379:6379"
+    mem_limit: 256m
+    cpus: "0.5"
     deploy:
       resources:
         limits:
           memory: 256M
-          cpus: "1"
+          cpus: "0.5"
 
   bs-core:
     container_name: bs-core
@@ -126,6 +130,11 @@ services:
       LOCAL_SYNC_REMOTE_TOKEN: ${LOCAL_SYNC_REMOTE_TOKEN:-}
       LOCAL_SYNC_PUSH_LIMIT: ${LOCAL_SYNC_PUSH_LIMIT:-200}
       LOCAL_SYNC_PULL_LIMIT: ${LOCAL_SYNC_PULL_LIMIT:-200}
+      GUNICORN_WORKERS: ${GUNICORN_WORKERS:-2}
+      GUNICORN_THREADS: ${GUNICORN_THREADS:-2}
+      GUNICORN_TIMEOUT: ${GUNICORN_TIMEOUT:-120}
+      GUNICORN_MAX_REQUESTS: ${GUNICORN_MAX_REQUESTS:-1200}
+      GUNICORN_MAX_REQUESTS_JITTER: ${GUNICORN_MAX_REQUESTS_JITTER:-50}
     volumes:
       - ./.env:/usr/src/app/.env:ro
       - type: bind
@@ -150,6 +159,8 @@ services:
         target: /backups
       - le-certs:/etc/letsencrypt
     restart: unless-stopped
+    mem_limit: 768m
+    cpus: "1.0"
     healthcheck:
       test:
         - "CMD"
@@ -187,12 +198,12 @@ services:
       REDIS_URL: ${DOCKER_REDIS_URL:-redis://bs-redis:6379/1}
       DRAMATIQ_REDIS_DB: ${DRAMATIQ_REDIS_DB:-0}
       DRAMATIQ_REDIS_URL: ${DOCKER_DRAMATIQ_REDIS_URL:-redis://bs-redis:6379/0}
-      DRAMATIQ_HIGH_THREADS: ${DRAMATIQ_HIGH_THREADS:-8}
-      DRAMATIQ_LOW_THREADS: ${DRAMATIQ_LOW_THREADS:-2}
-      DRAMATIQ_HIGH_PROCESSES: ${DRAMATIQ_HIGH_PROCESSES:-1}
-      DRAMATIQ_LOW_PROCESSES: ${DRAMATIQ_LOW_PROCESSES:-1}
-      DRAMATIQ_DOC_PROCESSES: ${DRAMATIQ_DOC_PROCESSES:-1}
-      DRAMATIQ_DOC_THREADS: ${DRAMATIQ_DOC_THREADS:-1}
+      DRAMATIQ_HIGH_THREADS: ${DRAMATIQ_HIGH_THREADS_WORKER:-2}
+      DRAMATIQ_LOW_THREADS: ${DRAMATIQ_LOW_THREADS_WORKER:-1}
+      DRAMATIQ_HIGH_PROCESSES: ${DRAMATIQ_HIGH_PROCESSES_WORKER:-1}
+      DRAMATIQ_LOW_PROCESSES: ${DRAMATIQ_LOW_PROCESSES_WORKER:-1}
+      DRAMATIQ_DOC_PROCESSES: ${DRAMATIQ_DOC_PROCESSES_WORKER:-1}
+      DRAMATIQ_DOC_THREADS: ${DRAMATIQ_DOC_THREADS_WORKER:-1}
       COMPONENT: task_worker
       MEDIA_ROOT: /media
       MEDIA_URL: /media/
@@ -234,6 +245,8 @@ services:
       - le-certs:/etc/letsencrypt
     restart: unless-stopped
     init: true
+    mem_limit: 1280m
+    cpus: "1.5"
     command:
       - /bin/sh
       - -lc
@@ -300,6 +313,8 @@ services:
       - le-certs:/etc/letsencrypt
     restart: unless-stopped
     init: true
+    mem_limit: 256m
+    cpus: "0.5"
     command: /opt/venv/bin/python manage.py run_dramatiq_scheduler
 
   bs-frontend:
@@ -335,6 +350,8 @@ services:
         source: ${DATA_PATH}/logs
         target: /logs
     restart: unless-stopped
+    mem_limit: 256m
+    cpus: "0.5"
 
   bs-alloy:
     container_name: bs-alloy
@@ -366,6 +383,8 @@ services:
     #   - "4318:4318"
     networks:
       - dockernet
+    mem_limit: 128m
+    cpus: "0.3"
     deploy:
       resources:
         limits:

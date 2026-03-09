@@ -1,5 +1,6 @@
 from unittest.mock import patch
 
+import dramatiq
 from core.services.ai_client import AIConnectionError
 from core.tasks.document_categorization import _run_validation_step, run_document_categorization_item
 from customer_applications.models import DocApplication, Document, DocumentCategorizationItem, DocumentCategorizationJob
@@ -138,11 +139,14 @@ class DocumentCategorizationValidationGateTests(TestCase):
         run_validation_step_mock.assert_called_once()
 
     @patch("core.tasks.document_categorization.AIDocumentCategorizer.validate_document")
-    def test_validation_timeout_skips_ai_validation_without_marking_invalid(self, validate_document_mock):
-        validate_document_mock.side_effect = AIConnectionError("AI slow response", error_code="timeout", is_timeout=True)
+    def test_validation_timeout_marks_validation_error_and_keeps_item_categorized(self, validate_document_mock):
+        validate_document_mock.side_effect = AIConnectionError(
+            "AI slow response", error_code="timeout", is_timeout=True
+        )
 
+        self.item.status = DocumentCategorizationItem.STATUS_CATEGORIZED
         self.item.result = {"stage": "validating", "ai_validation_enabled": True}
-        self.item.save(update_fields=["result", "updated_at"])
+        self.item.save(update_fields=["status", "result", "updated_at"])
 
         _run_validation_step(
             item=self.item,
@@ -154,9 +158,39 @@ class DocumentCategorizationValidationGateTests(TestCase):
         )
 
         self.item.refresh_from_db()
-        self.assertEqual(self.item.validation_status, "")
-        self.assertIsNone(self.item.validation_result)
-        self.assertEqual(self.item.result.get("stage"), "categorized")
-        self.assertFalse(self.item.result.get("ai_validation_enabled"))
-        self.assertEqual(self.item.result.get("validation_skipped_reason"), "ai_timeout")
-        self.assertEqual(self.item.result.get("validation_skipped_message"), "AI slow response")
+        self.assertEqual(self.item.status, DocumentCategorizationItem.STATUS_CATEGORIZED)
+        self.assertEqual(self.item.validation_status, "error")
+        self.assertEqual(self.item.result.get("stage"), "validated")
+        self.assertTrue(self.item.result.get("ai_validation_enabled"))
+        self.assertTrue(self.item.result.get("validation_failed"))
+        self.assertEqual(self.item.validation_result.get("reasoning"), "AI slow response")
+        self.assertEqual(self.item.validation_result.get("error_type"), "timeout")
+
+    @patch("core.tasks.document_categorization.acquire_task_lock", return_value="lock-token")
+    @patch("core.tasks.document_categorization.release_task_lock")
+    @patch("core.tasks.document_categorization.default_storage.open")
+    @patch("core.tasks.document_categorization.get_document_types_for_prompt")
+    @patch("core.tasks.document_categorization.AIDocumentCategorizer.categorize_file_two_pass")
+    def test_transient_categorization_failure_raises_retry_without_marking_item_error(
+        self,
+        categorize_file_mock,
+        get_types_mock,
+        storage_open_mock,
+        _release_lock_mock,
+        _acquire_lock_mock,
+    ):
+        storage_open_mock.return_value.__enter__.return_value.read.return_value = b"fake-file-bytes"
+        get_types_mock.return_value = [{"id": self.doc_type.id, "name": self.doc_type.name}]
+        categorize_file_mock.side_effect = AIConnectionError(
+            "AI slow response",
+            error_code="timeout",
+            is_timeout=True,
+        )
+
+        with self.assertRaises(dramatiq.Retry):
+            run_document_categorization_item.actor.fn(item_id=str(self.item.id))
+
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.status, DocumentCategorizationItem.STATUS_PROCESSING)
+        self.assertEqual(self.item.result.get("stage"), "retrying")
+        self.assertEqual(self.item.result.get("retryable_error"), "AI slow response")

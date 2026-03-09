@@ -1,7 +1,6 @@
 import os
 import shutil
 
-from core.models import CountryCode
 from core.services.logger_service import Logger
 from core.utils.form_validators import validate_birthdate, validate_email, validate_phone_number
 from core.utils.helpers import whitespaces_to_underscores
@@ -119,7 +118,7 @@ class Customer(models.Model):
     twitter = models.CharField(max_length=50, blank=True, null=True, db_index=True)
     npwp = models.CharField(max_length=30, blank=True, null=True, db_index=True, verbose_name="NPWP (Indonesia)")
     nationality = models.ForeignKey(
-        CountryCode,
+        "core.CountryCode",
         on_delete=models.PROTECT,
         null=True,
         blank=True,
@@ -202,7 +201,9 @@ class Customer(models.Model):
                 # If setup fails (e.g., DJANGO_SETTINGS_MODULE not set),
                 # proceed and rely on defaults to avoid crashing.
                 pass
-        lang = lang or getattr(settings, "DEFAULT_DOCUMENT_LANGUAGE_CODE", "en")
+        from core.services.app_setting_service import AppSettingService
+
+        lang = lang or AppSettingService.get_effective_raw("DEFAULT_DOCUMENT_LANGUAGE_CODE", "en")
         current_lang = get_language()
         activate(lang)
         try:

@@ -4,17 +4,20 @@ from time import perf_counter
 
 from core.services.logger_service import Logger
 from core.tasks.idempotency import acquire_task_lock, build_task_lock_key, release_task_lock
+from core.tasks.progress import persist_progress
+from core.tasks.runtime import QUEUE_DOC_CONVERSION, db_task
 from core.utils.pdf_converter import PDFConverter, PDFConverterError
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.utils.text import slugify
-from core.tasks.runtime import QUEUE_REALTIME, db_task
-from invoices.models import InvoiceDownloadJob
+from invoices.models import Invoice, InvoiceDownloadJob
 from invoices.services.InvoiceService import InvoiceService
 
 logger = Logger.get_logger(__name__)
-INVOICE_DOC_QUEUE = str(getattr(settings, "DRAMATIQ_INVOICE_DOC_QUEUE", QUEUE_REALTIME) or QUEUE_REALTIME).strip()
+INVOICE_DOC_QUEUE = str(
+    getattr(settings, "DRAMATIQ_INVOICE_DOC_QUEUE", QUEUE_DOC_CONVERSION) or QUEUE_DOC_CONVERSION
+).strip()
 
 
 @db_task(queue=INVOICE_DOC_QUEUE)
@@ -27,7 +30,7 @@ def run_invoice_download_job(job_id: str) -> None:
 
     try:
         try:
-            job = InvoiceDownloadJob.objects.select_related("invoice", "invoice__customer").get(id=job_id)
+            job = InvoiceDownloadJob.objects.get(id=job_id)
         except InvoiceDownloadJob.DoesNotExist:
             logger.error(f"InvoiceDownloadJob {job_id} not found")
             return
@@ -36,12 +39,10 @@ def run_invoice_download_job(job_id: str) -> None:
             logger.info("Skipping invoice download job already finalized: job_id=%s status=%s", job_id, job.status)
             return
 
-        job.status = InvoiceDownloadJob.STATUS_PROCESSING
-        job.progress = 5
-        job.save(update_fields=["status", "progress", "updated_at"])
+        persist_progress(job, status=InvoiceDownloadJob.STATUS_PROCESSING, progress=5, force=True)
 
         try:
-            invoice = job.invoice
+            invoice = Invoice.objects.for_document_generation().get(id=job.invoice_id)
             service = InvoiceService(invoice)
             started_at = perf_counter()
 
@@ -53,8 +54,7 @@ def run_invoice_download_job(job_id: str) -> None:
                 doc_buffer = service.generate_invoice_document(data, line_items, payments)
             docx_generated_at = perf_counter()
 
-            job.progress = 60
-            job.save(update_fields=["progress", "updated_at"])
+            persist_progress(job, progress=60, force=True)
 
             raw_name = f"{invoice.invoice_no_display}_{invoice.customer.full_name}"
             safe_name = slugify(raw_name, allow_unicode=False).replace("-", "_") or f"Invoice_{invoice.pk}"
@@ -71,8 +71,7 @@ def run_invoice_download_job(job_id: str) -> None:
                 extension = "docx"
             conversion_completed_at = perf_counter()
 
-            job.progress = 85
-            job.save(update_fields=["progress", "updated_at"])
+            persist_progress(job, progress=85, force=True)
 
             output_name = f"{safe_name}.{extension}"
             output_path = os.path.join("tmpfiles", "invoice_downloads", str(job.id), output_name)

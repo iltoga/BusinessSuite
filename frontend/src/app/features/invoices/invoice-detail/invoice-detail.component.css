@@ -2,6 +2,25 @@
   display: block;
 }
 
+.invoice-detail-container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Sticky header styling */
+.invoice-header {
+  transition: box-shadow 0.2s ease;
+}
+
+.invoice-header.sticky {
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+/* Ensure cards don't overlap the header */
+.invoice-detail-container z-card {
+  position: relative;
+}
+
 .invoice-application-summary {
   display: grid;
   grid-template-columns: minmax(16rem, 1fr) minmax(26rem, 32rem) auto;
@@ -30,13 +49,13 @@
 }
 
 .invoice-linked-app-link {
-  color: hsl(var(--primary));
+  color: var(--primary);
   text-decoration: underline;
   text-underline-offset: 0.125rem;
 }
 
 .invoice-linked-app-link:hover {
-  color: hsl(var(--primary) / 0.88);
+  color: color-mix(in oklab, var(--primary) 88%, transparent);
 }
 
 @media (max-width: 1199px) {
@@ -112,10 +131,10 @@
   .invoice-payments-table tbody tr {
     display: grid;
     gap: 0.625rem;
-    border: 1px solid hsl(var(--border));
+    border: 1px solid var(--border);
     border-radius: 0.75rem;
     padding: 0.75rem;
-    background-color: hsl(var(--card));
+    background-color: var(--card);
   }
 
   .invoice-payments-table tbody tr td {
@@ -135,18 +154,18 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: hsl(var(--muted-foreground));
+    color: var(--muted-foreground);
   }
 
   .invoice-payments-table tbody tr td.invoice-payment-actions-cell {
     grid-template-columns: 1fr;
     margin-top: 0.125rem;
     padding-top: 0.5rem;
-    border-top: 1px dashed hsl(var(--border));
+    border-top: 1px dashed var(--border);
   }
 
   .invoice-payments-table tbody tr td.invoice-payment-actions-cell::before {
-    color: hsl(var(--primary));
+    color: var(--primary);
   }
 
   .invoice-payments-table tbody tr td.invoice-payment-actions-cell > div {

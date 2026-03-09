@@ -14,6 +14,10 @@ export interface DocumentType {
     name: string;
     description?: string;
     deprecated?: boolean;
+    /**
+     * Whether this document type exposes a system-provided automatic generation/upload action.
+     */
+    autoGeneration?: boolean;
     aiValidation?: boolean;
     hasExpirationDate?: boolean;
     expiringThresholdDays?: number | null;

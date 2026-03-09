@@ -40,10 +40,60 @@ describe('ServerManagementComponent - Cache Controls', () => {
       ),
       serverManagementLocalResiliencePartialUpdate: vi
         .fn()
-        .mockReturnValue(of({ enabled: true, encryptionRequired: true, desktopMode: 'localPrimary', vaultEpoch: 1 })),
+        .mockReturnValue(
+          of({
+            enabled: true,
+            encryptionRequired: true,
+            desktopMode: 'localPrimary',
+            vaultEpoch: 1,
+          }),
+        ),
       serverManagementLocalResilienceResetVaultCreate: vi
         .fn()
-        .mockReturnValue(of({ ok: true, message: 'Local media vault reset requested', vaultEpoch: 2 })),
+        .mockReturnValue(
+          of({ ok: true, message: 'Local media vault reset requested', vaultEpoch: 2 }),
+        ),
+      serverManagementCacheHealthRetrieve: vi.fn().mockReturnValue(
+        of({
+          ok: true,
+          message: 'Cache probe succeeded.',
+          checkedAt: '2026-02-24T10:00:00+00:00',
+          cacheBackend: 'django_redis.cache.RedisCache',
+          cacheLocation: 'redis://bs-redis:6379/1',
+          redisConfigured: true,
+          redisConnected: true,
+          userCacheEnabled: true,
+          probeSkipped: false,
+          writeReadDeleteOk: true,
+          probeLatencyMs: 1.2,
+          errors: [],
+        }),
+      ),
+      serverManagementUiSettingsRetrieve: vi.fn().mockReturnValue(
+        of({
+          useOverlayMenu: false,
+        }),
+      ),
+      serverManagementUiSettingsPartialUpdate: vi.fn().mockReturnValue(
+        of({
+          useOverlayMenu: true,
+        }),
+      ),
+      serverManagementOpenrouterStatusRetrieve: vi.fn().mockReturnValue(
+        of({
+          aiModels: {
+            provider: 'openrouter',
+            providerName: 'OpenRouter',
+            defaultModel: 'google/gemini-2.5-flash-lite',
+            failover: {
+              enabled: true,
+              configuredProviderOrder: ['openai'],
+              effectiveProviderOrder: ['openai'],
+            },
+            features: [],
+          },
+        }),
+      ),
     };
 
     await TestBed.configureTestingModule({
@@ -83,24 +133,18 @@ describe('ServerManagementComponent - Cache Controls', () => {
         cacheBackend: 'django_redis.cache.RedisCache',
       });
 
-      const healthReq = httpMock.expectOne('/api/server-management/cache-health/');
-      expect(healthReq.request.method).toBe('GET');
-      healthReq.flush({
-        ok: true,
-        message: 'Cache probe succeeded.',
-        checkedAt: '2026-02-24T10:00:00+00:00',
-        cacheBackend: 'django_redis.cache.RedisCache',
-        cacheLocation: 'redis://bs-redis:6379/1',
-        redisConfigured: true,
-        redisConnected: true,
-        userCacheEnabled: true,
-        probeSkipped: false,
-        writeReadDeleteOk: true,
-        probeLatencyMs: 1.2,
-        errors: [],
-      });
-
-      expect(mockServerManagementService.serverManagementLocalResilienceRetrieve).toHaveBeenCalledTimes(1);
+      expect(
+        mockServerManagementService.serverManagementLocalResilienceRetrieve,
+      ).toHaveBeenCalledTimes(1);
+      expect(
+        mockServerManagementService.serverManagementOpenrouterStatusRetrieve,
+      ).toHaveBeenCalledTimes(1);
+      expect(mockServerManagementService.serverManagementCacheHealthRetrieve).toHaveBeenCalledTimes(
+        1,
+      );
+      expect(mockServerManagementService.serverManagementUiSettingsRetrieve).toHaveBeenCalledTimes(
+        1,
+      );
 
       expect(component.cacheStatus()).toEqual({
         enabled: true,
@@ -117,23 +161,18 @@ describe('ServerManagementComponent - Cache Controls', () => {
       const req = httpMock.expectOne('/api/cache/status/');
       req.error(new ProgressEvent('error'));
 
-      const healthReq = httpMock.expectOne('/api/server-management/cache-health/');
-      healthReq.flush({
-        ok: true,
-        message: 'Cache probe succeeded.',
-        checkedAt: '2026-02-24T10:00:00+00:00',
-        cacheBackend: 'django_redis.cache.RedisCache',
-        cacheLocation: 'redis://bs-redis:6379/1',
-        redisConfigured: true,
-        redisConnected: true,
-        userCacheEnabled: true,
-        probeSkipped: false,
-        writeReadDeleteOk: true,
-        probeLatencyMs: 1.2,
-        errors: [],
-      });
-
-      expect(mockServerManagementService.serverManagementLocalResilienceRetrieve).toHaveBeenCalledTimes(1);
+      expect(
+        mockServerManagementService.serverManagementLocalResilienceRetrieve,
+      ).toHaveBeenCalledTimes(1);
+      expect(
+        mockServerManagementService.serverManagementOpenrouterStatusRetrieve,
+      ).toHaveBeenCalledTimes(1);
+      expect(mockServerManagementService.serverManagementCacheHealthRetrieve).toHaveBeenCalledTimes(
+        1,
+      );
+      expect(mockServerManagementService.serverManagementUiSettingsRetrieve).toHaveBeenCalledTimes(
+        1,
+      );
 
       expect(mockToastService.error).toHaveBeenCalledWith('Failed to load cache status');
       expect(component.cacheStatus()).toBeNull();
@@ -285,49 +324,34 @@ describe('ServerManagementComponent - Cache Controls', () => {
     it('should run cache probe and update health state', () => {
       component.runCacheHealthCheck();
 
-      const req = httpMock.expectOne('/api/server-management/cache-health/');
-      expect(req.request.method).toBe('GET');
-      req.flush({
-        ok: true,
-        message: 'Cache probe succeeded.',
-        checkedAt: '2026-02-24T10:00:00+00:00',
-        cacheBackend: 'django_redis.cache.RedisCache',
-        cacheLocation: 'redis://bs-redis:6379/1',
-        redisConfigured: true,
-        redisConnected: true,
-        userCacheEnabled: true,
-        probeSkipped: false,
-        writeReadDeleteOk: true,
-        probeLatencyMs: 1.2,
-        errors: [],
-      });
-
+      expect(mockServerManagementService.serverManagementCacheHealthRetrieve).toHaveBeenCalledTimes(
+        1,
+      );
       expect(component.cacheHealth()?.writeReadDeleteOk).toBe(true);
       expect(mockToastService.success).toHaveBeenCalledWith('Cache probe succeeded.');
     });
 
     it('should show info toast when cache probe is skipped because cache is disabled', () => {
+      mockServerManagementService.serverManagementCacheHealthRetrieve.mockReturnValue(
+        of({
+          ok: true,
+          message:
+            'Cache is disabled for your user. Backend connectivity is healthy; write/read/delete probe was skipped.',
+          checkedAt: '2026-02-24T10:00:00+00:00',
+          cacheBackend: 'django_redis.cache.RedisCache',
+          cacheLocation: 'redis://bs-redis:6379/1',
+          redisConfigured: true,
+          redisConnected: true,
+          userCacheEnabled: false,
+          probeSkipped: true,
+          writeReadDeleteOk: false,
+          probeLatencyMs: 0,
+          errors: [],
+        }),
+      );
       component.cacheStatus.set({ enabled: false, version: 1, message: 'Cache is disabled' });
 
       component.runCacheHealthCheck();
-
-      const req = httpMock.expectOne('/api/server-management/cache-health/');
-      expect(req.request.method).toBe('GET');
-      req.flush({
-        ok: true,
-        message:
-          'Cache is disabled for your user. Backend connectivity is healthy; write/read/delete probe was skipped.',
-        checkedAt: '2026-02-24T10:00:00+00:00',
-        cacheBackend: 'django_redis.cache.RedisCache',
-        cacheLocation: 'redis://bs-redis:6379/1',
-        redisConfigured: true,
-        redisConnected: true,
-        userCacheEnabled: false,
-        probeSkipped: true,
-        writeReadDeleteOk: false,
-        probeLatencyMs: 0,
-        errors: [],
-      });
 
       expect(mockToastService.info).toHaveBeenCalledWith(
         'Cache is disabled for your user. Backend connectivity is healthy; write/read/delete probe was skipped.',
@@ -335,10 +359,10 @@ describe('ServerManagementComponent - Cache Controls', () => {
     });
 
     it('should handle cache probe request errors', () => {
+      mockServerManagementService.serverManagementCacheHealthRetrieve.mockReturnValue(
+        throwError(() => new Error('Network error')),
+      );
       component.runCacheHealthCheck();
-
-      const req = httpMock.expectOne('/api/server-management/cache-health/');
-      req.error(new ProgressEvent('error'));
 
       expect(mockToastService.error).toHaveBeenCalledWith('Failed to run cache health check');
     });
@@ -405,6 +429,7 @@ describe('ServerManagementComponent - Cache Controls', () => {
 
       expect(text).toContain('Cache status not loaded yet');
     });
+
   });
 
   describe('Backward Compatibility', () => {
@@ -452,6 +477,251 @@ describe('ServerManagementComponent - Cache Controls', () => {
 
       // Verify loading state
       expect(component.cacheLoading()).toBe(true);
+    });
+  });
+
+  describe('AI Workflow Settings', () => {
+    it('should save AI runtime settings via patch endpoint', () => {
+      component.aiWorkflowStatus.set({
+        aiModels: {
+          provider: 'openrouter',
+          providerName: 'OpenRouter',
+          defaultModel: 'google/gemini-3-flash-preview',
+          settingsMap: {
+            LLM_PROVIDER: 'openrouter',
+            LLM_DEFAULT_MODEL: 'google/gemini-3-flash-preview',
+          },
+          runtimeSettings: [],
+          workflowBindings: [],
+          modelCatalog: { providers: {} },
+          failover: {
+            enabled: true,
+            configuredProviderOrder: ['openai'],
+            effectiveProviderOrder: ['openai'],
+          },
+          features: [],
+        },
+      });
+      component.aiWorkflowDraft.set({
+        LLM_PROVIDER: 'openai',
+        LLM_DEFAULT_MODEL: 'gpt-5-mini',
+      });
+
+      component.saveAiWorkflowSettings();
+
+      const req = httpMock.expectOne('/api/server-management/openrouter-status/');
+      expect(req.request.method).toBe('PATCH');
+      expect(req.request.body.settings).toEqual({
+        LLM_PROVIDER: 'openai',
+        LLM_DEFAULT_MODEL: 'gpt-5-mini',
+      });
+      req.flush({
+        aiModels: {
+          provider: 'openai',
+          providerName: 'OpenAI',
+          defaultModel: 'gpt-5-mini',
+          settingsMap: { LLM_PROVIDER: 'openai', LLM_DEFAULT_MODEL: 'gpt-5-mini' },
+          runtimeSettings: [],
+          workflowBindings: [],
+          modelCatalog: { providers: {} },
+          failover: {
+            enabled: true,
+            configuredProviderOrder: ['openrouter'],
+            effectiveProviderOrder: ['openrouter'],
+          },
+          features: [],
+        },
+      });
+
+      expect(component.aiWorkflowStatus()?.aiModels.provider).toBe('openai');
+      expect(component.aiWorkflowDraft()['LLM_PROVIDER']).toBe('openai');
+      expect(mockToastService.success).toHaveBeenCalledWith('AI runtime settings updated');
+    });
+
+    it('should show backend validation error when saving AI runtime settings fails', () => {
+      component.aiWorkflowStatus.set({
+        aiModels: {
+          provider: 'openrouter',
+          providerName: 'OpenRouter',
+          defaultModel: 'google/gemini-3-flash-preview',
+          settingsMap: { LLM_PROVIDER: 'openrouter' },
+          runtimeSettings: [],
+          workflowBindings: [],
+          modelCatalog: { providers: {} },
+          failover: {
+            enabled: true,
+            configuredProviderOrder: [],
+            effectiveProviderOrder: [],
+          },
+          features: [],
+        },
+      });
+      component.aiWorkflowDraft.set({ LLM_PROVIDER: 'invalid-provider' });
+
+      component.saveAiWorkflowSettings();
+
+      const req = httpMock.expectOne('/api/server-management/openrouter-status/');
+      expect(req.request.method).toBe('PATCH');
+      req.flush(
+        { detail: 'LLM_PROVIDER must be one of: openrouter, openai, groq.' },
+        { status: 400, statusText: 'Bad Request' },
+      );
+
+      expect(mockToastService.error).toHaveBeenCalledWith(
+        'Failed to update AI settings: LLM_PROVIDER must be one of: openrouter, openai, groq.',
+      );
+    });
+
+    it('should autosave a single model setting change', () => {
+      component.aiWorkflowStatus.set({
+        aiModels: {
+          provider: 'openrouter',
+          providerName: 'OpenRouter',
+          defaultModel: 'openai/gpt-5-mini',
+          settingsMap: { OPENAI_DEFAULT_MODEL: 'gpt-5-mini' },
+          runtimeSettings: [],
+          workflowBindings: [],
+          modelCatalog: {
+            providers: {
+              openai: {
+                name: 'OpenAI Direct',
+                models: [
+                  {
+                    id: 'gpt-5',
+                    name: 'GPT-5',
+                    description: 'OpenAI GPT-5',
+                    capabilities: { vision: true, fileUpload: true, reasoning: true },
+                  },
+                ],
+              },
+            },
+          },
+          failover: {
+            enabled: true,
+            configuredProviderOrder: ['openai'],
+            effectiveProviderOrder: ['openai'],
+          },
+          features: [],
+        },
+      });
+      component.aiWorkflowDraft.set({ OPENAI_DEFAULT_MODEL: 'gpt-5-mini' });
+
+      component.onModelSettingComboboxChange('OPENAI_DEFAULT_MODEL', 'gpt-5');
+
+      const req = httpMock.expectOne('/api/server-management/openrouter-status/');
+      expect(req.request.method).toBe('PATCH');
+      expect(req.request.body.settings).toEqual({ OPENAI_DEFAULT_MODEL: 'gpt-5' });
+      req.flush({
+        aiModels: {
+          provider: 'openrouter',
+          providerName: 'OpenRouter',
+          defaultModel: 'openai/gpt-5-mini',
+          settingsMap: { OPENAI_DEFAULT_MODEL: 'gpt-5' },
+          runtimeSettings: [],
+          workflowBindings: [],
+          modelCatalog: { providers: {} },
+          failover: {
+            enabled: true,
+            configuredProviderOrder: ['openai'],
+            effectiveProviderOrder: ['openai'],
+          },
+          features: [],
+        },
+      });
+
+      expect(component.aiWorkflowDraft()['OPENAI_DEFAULT_MODEL']).toBe('gpt-5');
+    });
+
+    it('should autosave the active groq primary model via GROQ_DEFAULT_MODEL', () => {
+      component.aiWorkflowStatus.set({
+        aiModels: {
+          provider: 'groq',
+          providerName: 'Groq',
+          defaultModel: 'meta-llama/llama-4-maverick-17b-128e-instruct',
+          settingsMap: {
+            LLM_PROVIDER: 'groq',
+            LLM_DEFAULT_MODEL: 'google/gemini-3-flash-preview',
+            GROQ_DEFAULT_MODEL: 'meta-llama/llama-4-maverick-17b-128e-instruct',
+          },
+          runtimeSettings: [],
+          workflowBindings: [],
+          modelCatalog: {
+            providers: {
+              groq: {
+                name: 'Groq',
+                models: [
+                  {
+                    id: 'meta-llama/llama-4-maverick-17b-128e-instruct',
+                    name: 'Llama 4 Maverick 17B',
+                    description: 'Groq model',
+                    capabilities: { vision: true, fileUpload: false, reasoning: true },
+                  },
+                ],
+              },
+              openrouter: {
+                name: 'OpenRouter',
+                models: [
+                  {
+                    id: 'openai/gpt-5-mini',
+                    name: 'GPT-5 Mini',
+                    description: 'OpenRouter model',
+                    capabilities: { vision: true, fileUpload: true, reasoning: true },
+                  },
+                ],
+              },
+            },
+          },
+          failover: {
+            enabled: true,
+            configuredProviderOrder: ['openai'],
+            effectiveProviderOrder: ['openai'],
+          },
+          features: [],
+        },
+      });
+      component.aiWorkflowDraft.set({
+        LLM_PROVIDER: 'groq',
+        LLM_DEFAULT_MODEL: 'google/gemini-3-flash-preview',
+        GROQ_DEFAULT_MODEL: 'meta-llama/llama-4-maverick-17b-128e-instruct',
+      });
+
+      component.onPrimaryModelValueChange('meta-llama/llama-4-maverick-17b-128e-instruct');
+
+      const req = httpMock.expectOne('/api/server-management/openrouter-status/');
+      expect(req.request.method).toBe('PATCH');
+      expect(req.request.body.settings).toEqual({
+        LLM_PROVIDER: 'groq',
+        GROQ_DEFAULT_MODEL: 'meta-llama/llama-4-maverick-17b-128e-instruct',
+      });
+      req.flush({
+        aiModels: {
+          provider: 'groq',
+          providerName: 'Groq',
+          defaultModel: 'meta-llama/llama-4-maverick-17b-128e-instruct',
+          settingsMap: {
+            LLM_PROVIDER: 'groq',
+            GROQ_DEFAULT_MODEL: 'meta-llama/llama-4-maverick-17b-128e-instruct',
+            LLM_DEFAULT_MODEL: 'google/gemini-3-flash-preview',
+          },
+          runtimeSettings: [],
+          workflowBindings: [],
+          modelCatalog: { providers: {} },
+          failover: {
+            enabled: true,
+            configuredProviderOrder: ['openai'],
+            effectiveProviderOrder: ['openai'],
+          },
+          features: [],
+        },
+      });
+
+      expect(component.aiWorkflowDraft()['LLM_PROVIDER']).toBe('groq');
+      expect(component.aiWorkflowDraft()['GROQ_DEFAULT_MODEL']).toBe(
+        'meta-llama/llama-4-maverick-17b-128e-instruct',
+      );
+      expect(component.aiWorkflowDraft()['LLM_DEFAULT_MODEL']).toBe(
+        'google/gemini-3-flash-preview',
+      );
     });
   });
 });
