@@ -116,7 +116,7 @@
   <z-card class="p-0">
     <app-data-table
       [data]="filteredHolidays()"
-      [columns]="columns"
+      [columns]="columns()"
       [isLoading]="isLoading()"
       (sortChange)="onSortChange($event)"
     />

@@ -145,57 +145,56 @@
 
             <div class="mt-4">
               <div class="text-sm font-medium mb-2">Payments</div>
-              <div class="overflow-x-auto invoice-payments-table-wrap">
-                <table class="invoice-payments-table w-full text-sm">
-                  <thead>
-                    <tr class="text-left text-muted-foreground">
-                      <th class="py-2">Date</th>
-                      <th class="py-2">Amount</th>
-                      <th class="py-2">Type</th>
-                      <th class="py-2">Notes</th>
-                      <th class="py-2 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (payment of app.payments; track payment.id) {
-                      <tr class="border-t">
-                        <td class="py-2" data-label="Date">{{ payment.paymentDate | appDate }}</td>
-                        <td class="py-2" data-label="Amount">
-                          {{ formatCurrency(payment.amount) }}
-                        </td>
-                        <td class="py-2" data-label="Type">{{ payment.paymentType }}</td>
-                        <td class="py-2" data-label="Notes">{{ payment.notes || '—' }}</td>
-                        <td
-                          class="py-2 text-right invoice-payment-actions-cell"
-                          data-label="Actions"
-                        >
-                          <div class="flex justify-end gap-2">
-                            <z-button
-                              zType="warning"
-                              zSize="sm"
-                              (click)="openEditPaymentModal(app, payment)"
-                            >
-                              Edit
-                            </z-button>
-                            <z-button
-                              zType="destructive"
-                              zSize="sm"
-                              (click)="requestDeletePayment(payment)"
-                            >
-                              Delete
-                            </z-button>
-                          </div>
-                        </td>
+              @if (app.payments.length) {
+                <div class="overflow-x-auto invoice-payments-table-wrap">
+                  <table class="invoice-payments-table w-full text-sm">
+                    <thead>
+                      <tr class="text-left text-muted-foreground">
+                        <th class="py-2">Date</th>
+                        <th class="py-2">Amount</th>
+                        <th class="py-2">Type</th>
+                        <th class="py-2">Notes</th>
+                        <th class="py-2 text-right">Actions</th>
                       </tr>
-                    }
-                    @if (!app.payments.length) {
-                      <tr class="border-t">
-                        <td colspan="5" class="py-2 text-muted-foreground">No payments yet.</td>
-                      </tr>
-                    }
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      @for (payment of app.payments; track payment.id) {
+                        <tr class="border-t">
+                          <td class="py-2" data-label="Date">{{ payment.paymentDate | appDate }}</td>
+                          <td class="py-2" data-label="Amount">
+                            {{ formatCurrency(payment.amount) }}
+                          </td>
+                          <td class="py-2" data-label="Type">{{ payment.paymentType }}</td>
+                          <td class="py-2" data-label="Notes">{{ payment.notes || '—' }}</td>
+                          <td
+                            class="py-2 text-right invoice-payment-actions-cell"
+                            data-label="Actions"
+                          >
+                            <div class="flex justify-end gap-2">
+                              <z-button
+                                zType="warning"
+                                zSize="sm"
+                                (click)="openEditPaymentModal(app, payment)"
+                              >
+                                Edit
+                              </z-button>
+                              <z-button
+                                zType="destructive"
+                                zSize="sm"
+                                (click)="requestDeletePayment(payment)"
+                              >
+                                Delete
+                              </z-button>
+                            </div>
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              } @else {
+                <div class="py-2 text-sm text-muted-foreground">No Payments Yet</div>
+              }
             </div>
           </div>
         }

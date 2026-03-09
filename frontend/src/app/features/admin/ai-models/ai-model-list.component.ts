@@ -1,17 +1,19 @@
-import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
-  HostListener,
-  PLATFORM_ID,
   computed,
   inject,
   signal,
-  viewChild,
+  type WritableSignal,
 } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 
+import {
+  BaseListComponent,
+  BaseListConfig,
+} from '@/shared/core/base-list.component';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
@@ -33,6 +35,15 @@ interface AiModelItem {
   description: string;
 }
 
+/**
+ * AI Model list component
+ * 
+ * Extends BaseListComponent to inherit common list patterns:
+ * - Keyboard shortcuts (N for new, B/Left for back)
+ * - Navigation state restoration
+ * - Pagination, sorting, search
+ * - Focus management
+ */
 @Component({
   selector: 'app-ai-model-list',
   standalone: true,
@@ -49,23 +60,14 @@ interface AiModelItem {
   styleUrls: ['./ai-model-list.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class AiModelListComponent {
+export class AiModelListComponent extends BaseListComponent<AiModelItem> {
   private readonly http = inject(HttpClient);
-  private readonly router = inject(Router);
-  private readonly toast = inject(GlobalToastService);
-  private readonly platformId = inject(PLATFORM_ID);
 
-  private readonly isBrowser = isPlatformBrowser(this.platformId);
-  private readonly dataTable = viewChild.required(DataTableComponent<AiModelItem>);
-
-  readonly items = signal<AiModelItem[]>([]);
-  readonly query = signal('');
-  readonly loading = signal(false);
-  readonly ordering = signal('provider,name');
-
+  // AI Model-specific state
   readonly pendingDelete = signal<AiModelItem | null>(null);
   readonly showDeleteConfirm = computed(() => this.pendingDelete() !== null);
 
+  // Columns configuration
   readonly columns = computed<ColumnConfig<AiModelItem>[]>(() => [
     { key: 'provider', header: 'Provider', sortable: true, sortKey: 'provider' },
     { key: 'name', header: 'Name', sortable: true, sortKey: 'name' },
@@ -74,7 +76,8 @@ export class AiModelListComponent {
     { key: 'actions', header: 'Actions' },
   ]);
 
-  readonly actions = computed<DataTableAction<AiModelItem>[]>(() => [
+  // Actions configuration
+  override readonly actions = computed<DataTableAction<AiModelItem>[]>(() => [
     {
       label: 'Edit',
       icon: 'settings',
@@ -93,92 +96,103 @@ export class AiModelListComponent {
   ]);
 
   constructor() {
-    this.load();
+    super();
+    this.config = {
+      entityType: 'admin/ai-models',
+      entityLabel: 'AI Models',
+      defaultOrdering: 'provider,name',
+    } as BaseListConfig<AiModelItem>;
   }
 
-  @HostListener('window:keydown', ['$event'])
-  handleGlobalKeydown(event: KeyboardEvent): void {
+  /**
+   * Load AI models from API
+   */
+  protected override loadItems(): void {
     if (!this.isBrowser) return;
 
-    const activeElement = document.activeElement;
-    const isInput =
-      activeElement instanceof HTMLInputElement ||
-      activeElement instanceof HTMLTextAreaElement ||
-      (activeElement instanceof HTMLElement && activeElement.isContentEditable);
-
-    if (isInput) return;
-
-    if (event.key === 'N' && !event.ctrlKey && !event.altKey && !event.metaKey) {
-      event.preventDefault();
-      this.createNew();
-    }
-  }
-
-  onQueryChange(value: string): void {
-    this.query.set(value.trim());
-    this.load();
-  }
-
-  onEnterSearch(): void {
-    this.dataTable().focusFirstRowIfNone();
-  }
-
-  onSortChange(event: SortEvent): void {
-    const sortPrefix = event.direction === 'desc' ? '-' : '';
-    this.ordering.set(`${sortPrefix}${event.column}`);
-    this.load();
-  }
-
-  createNew(): void {
-    this.router.navigate(['/admin/ai-models/new']);
-  }
-
-  edit(item: AiModelItem): void {
-    this.router.navigate(['/admin/ai-models', item.id, 'edit']);
-  }
-
-  requestDelete(item: AiModelItem): void {
-    this.pendingDelete.set(item);
-  }
-
-  cancelDelete(): void {
-    this.pendingDelete.set(null);
-  }
-
-  confirmDelete(): void {
-    const model = this.pendingDelete();
-    if (!model) return;
-
-    this.loading.set(true);
-    this.http.delete(`/api/ai-models/${model.id}/`).subscribe({
-      next: () => {
-        this.toast.success('Model deleted');
-        this.pendingDelete.set(null);
-        this.load();
-      },
-      error: (error) => {
-        this.loading.set(false);
-        this.toast.error(extractServerErrorMessage(error) || 'Failed to delete model');
-      },
-    });
-  }
-
-  private load(): void {
-    let params = new HttpParams().set('ordering', this.ordering());
+    const ordering = this.ordering() ?? 'provider,name';
+    let params = new HttpParams().set('ordering', ordering);
     const search = this.query();
     if (search) {
       params = params.set('search', search);
     }
 
-    this.loading.set(true);
+    this.isLoading.set(true);
     this.http.get<AiModelItem[]>('/api/ai-models/', { params }).subscribe({
       next: (rows) => {
         this.items.set(rows ?? []);
-        this.loading.set(false);
+        this.totalItems.set(rows?.length ?? 0);
+        this.isLoading.set(false);
+        this.focusAfterLoad();
       },
       error: (error) => {
-        this.loading.set(false);
+        this.isLoading.set(false);
         this.toast.error(extractServerErrorMessage(error) || 'Failed to load models');
+      },
+    });
+  }
+
+  /**
+   * Handle sort change
+   */
+  override onSortChange(event: SortEvent): void {
+    const sortPrefix = event.direction === 'desc' ? '-' : '';
+    this.ordering.set(`${sortPrefix}${event.column}`);
+    this.loadItems();
+  }
+
+  /**
+   * Handle enter in search to focus table
+   */
+  onEnterSearch(): void {
+    this.dataTable().focusFirstRowIfNone();
+  }
+
+  /**
+   * Create new AI model
+   */
+  createNew(): void {
+    this.router.navigate(['/admin/ai-models/new']);
+  }
+
+  /**
+   * Edit AI model
+   */
+  edit(item: AiModelItem): void {
+    this.router.navigate(['/admin/ai-models', item.id, 'edit']);
+  }
+
+  /**
+   * Request delete for AI model
+   */
+  requestDelete(item: AiModelItem): void {
+    this.pendingDelete.set(item);
+  }
+
+  /**
+   * Cancel delete
+   */
+  cancelDelete(): void {
+    this.pendingDelete.set(null);
+  }
+
+  /**
+   * Confirm delete
+   */
+  confirmDelete(): void {
+    const model = this.pendingDelete();
+    if (!model) return;
+
+    this.isLoading.set(true);
+    this.http.delete(`/api/ai-models/${model.id}/`).subscribe({
+      next: () => {
+        this.toast.success('Model deleted');
+        this.pendingDelete.set(null);
+        this.loadItems();
+      },
+      error: (error) => {
+        this.isLoading.set(false);
+        this.toast.error(extractServerErrorMessage(error) || 'Failed to delete model');
       },
     });
   }

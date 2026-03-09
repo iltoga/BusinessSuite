@@ -3,8 +3,8 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   inject,
-  OnInit,
   signal,
   TemplateRef,
   ViewChild,
@@ -15,6 +15,10 @@ import { catchError, EMPTY, finalize } from 'rxjs';
 
 import { DocumentTypesService } from '@/core/api';
 import { DocumentType } from '@/core/api/model/document-type';
+import {
+  BaseListComponent,
+  BaseListConfig,
+} from '@/shared/core/base-list.component';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
@@ -23,12 +27,24 @@ import {
   ColumnConfig,
   DataTableAction,
   DataTableComponent,
+  type SortEvent,
 } from '@/shared/components/data-table/data-table.component';
 import { ZardDialogService } from '@/shared/components/dialog';
 import { ZardInputDirective } from '@/shared/components/input';
 import { JsonFieldMappingEditorComponent } from '@/shared/components/json-field-mapping-editor';
 import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
 
+/**
+ * Document Types component
+ * 
+ * Extends BaseListComponent to inherit common list patterns:
+ * - Keyboard shortcuts (N for new, B/Left for back)
+ * - Navigation state restoration
+ * - Pagination, sorting, search
+ * - Focus management
+ * 
+ * Note: This component has complex deprecation logic that is component-specific
+ */
 @Component({
   selector: 'app-document-types',
   standalone: true,
@@ -47,23 +63,18 @@ import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
   styleUrls: ['./document-types.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class DocumentTypesComponent implements OnInit {
+export class DocumentTypesComponent extends BaseListComponent<DocumentType> {
   @ViewChild('documentTypeModalTemplate', { static: true })
   documentTypeModalTemplate!: TemplateRef<any>;
-  @ViewChild('dataTable') dataTable?: DataTableComponent<DocumentType>;
+  @ViewChild('dataTable') localDataTable?: DataTableComponent<DocumentType>;
 
-  private fb = inject(FormBuilder);
-  private router = inject(Router);
-  private http = inject(HttpClient);
-  private documentTypesApi = inject(DocumentTypesService);
-  private toast = inject(GlobalToastService);
-  private dialogService = inject(ZardDialogService);
+  private readonly fb = inject(FormBuilder);
+  private readonly http = inject(HttpClient);
+  private readonly documentTypesApi = inject(DocumentTypesService);
+  private readonly dialogService = inject(ZardDialogService);
 
+  // Document types-specific state
   private dialogRef: any = null;
-
-  readonly documentTypes = signal<DocumentType[]>([]);
-  readonly isLoading = signal(true);
-  readonly query = signal('');
   readonly includeDeprecated = signal(false);
   readonly isDialogOpen = signal(false);
   readonly isSaving = signal(false);
@@ -75,15 +86,18 @@ export class DocumentTypesComponent implements OnInit {
   readonly pendingDeprecationPayload = signal<DocumentType | null>(null);
   readonly pendingEditId = signal<number | null>(null);
 
-  columns: ColumnConfig<DocumentType>[] = [
+  // Columns configuration
+  readonly columns = computed<ColumnConfig<DocumentType>[]>(() => [
     { key: 'name', header: 'Name', sortable: true },
     { key: 'description', header: 'Description', sortable: false },
     { key: 'aiValidation', header: 'AI Validation', sortable: false },
     { key: 'deprecated', header: 'Deprecated', sortable: false },
     { key: 'hasExpirationDate', header: 'Expiration', sortable: false },
     { key: 'actions', header: 'Actions' },
-  ];
-  readonly actions: DataTableAction<DocumentType>[] = [
+  ]);
+
+  // Actions configuration
+  override readonly actions = computed<DataTableAction<DocumentType>[]>(() => [
     {
       label: 'View details',
       icon: 'eye',
@@ -113,8 +127,9 @@ export class DocumentTypesComponent implements OnInit {
       shortcut: 'd',
       action: (item) => this.deleteDocumentType(item),
     },
-  ];
+  ]);
 
+  // Document type form
   readonly documentTypeForm = this.fb.group({
     name: ['', Validators.required],
     description: [''],
@@ -133,39 +148,18 @@ export class DocumentTypesComponent implements OnInit {
     isInRequiredDocuments: [false],
   });
 
-  ngOnInit(): void {
-    this.bindStayPermitRule();
-    this.bindExpirationThresholdRule();
-    if (typeof window !== 'undefined') {
-      const state = (window as any).history.state ?? {};
-      const openEditId = Number(state.openEditId ?? 0);
-      if (openEditId > 0) {
-        this.pendingEditId.set(openEditId);
-      }
-      if (typeof state.searchQuery === 'string' && state.searchQuery.trim()) {
-        this.query.set(state.searchQuery.trim());
-      }
-    }
-    this.loadDocumentTypes();
+  constructor() {
+    super();
+    this.config = {
+      entityType: 'admin/document-types',
+      entityLabel: 'Document Types',
+    } as BaseListConfig<DocumentType>;
   }
 
-  onQueryChange(value: string): void {
-    const trimmed = value.trim();
-    if (this.query() === trimmed) return;
-    this.query.set(trimmed);
-    this.loadDocumentTypes();
-  }
-
-  onEnterSearch(): void {
-    this.dataTable?.focusFirstRowIfNone();
-  }
-
-  onToggleIncludeDeprecated(value: boolean): void {
-    this.includeDeprecated.set(value);
-    this.loadDocumentTypes();
-  }
-
-  private loadDocumentTypes(): void {
+  /**
+   * Load document types from API
+   */
+  protected override loadItems(): void {
     const query = this.query().trim();
     this.isLoading.set(true);
 
@@ -185,11 +179,61 @@ export class DocumentTypesComponent implements OnInit {
       )
       .subscribe((data) => {
         const items = data || [];
-        this.documentTypes.set(items);
+        this.items.set(items);
+        this.totalItems.set(items.length);
         this.openPendingEditIfRequested(items);
+        this.focusAfterLoad();
       });
   }
 
+  /**
+   * Handle sort change
+   */
+  override onSortChange(event: SortEvent): void {
+    const ordering = event.direction === 'desc' ? `-${event.column}` : event.column;
+    this.ordering.set(ordering);
+    this.loadItems();
+  }
+
+  /**
+   * Initialize component
+   */
+  override ngOnInit(): void {
+    super.ngOnInit();
+
+    this.bindStayPermitRule();
+    this.bindExpirationThresholdRule();
+
+    if (typeof window !== 'undefined') {
+      const state = (window as any).history.state ?? {};
+      const openEditId = Number(state.openEditId ?? 0);
+      if (openEditId > 0) {
+        this.pendingEditId.set(openEditId);
+      }
+      if (typeof state.searchQuery === 'string' && state.searchQuery.trim()) {
+        this.query.set(state.searchQuery.trim());
+      }
+    }
+  }
+
+  /**
+   * Handle toggle include deprecated
+   */
+  onToggleIncludeDeprecated(value: boolean): void {
+    this.includeDeprecated.set(value);
+    this.loadItems();
+  }
+
+  /**
+   * Handle enter in search to focus table
+   */
+  onEnterSearch(): void {
+    this.dataTable().focusFirstRowIfNone();
+  }
+
+  /**
+   * Open pending edit if requested
+   */
   private openPendingEditIfRequested(items: DocumentType[]): void {
     const pendingId = this.pendingEditId();
     if (!pendingId) {
@@ -215,6 +259,9 @@ export class DocumentTypesComponent implements OnInit {
       .subscribe((documentType) => this.editDocumentType(documentType));
   }
 
+  /**
+   * Create new document type
+   */
   createNew(): void {
     this.editingDocumentType.set(null);
     this.documentTypeForm.reset({
@@ -240,12 +287,10 @@ export class DocumentTypesComponent implements OnInit {
       zContent: this.documentTypeModalTemplate,
       zHideFooter: true,
       zClosable: true,
-      // Custom sizing and border for clearer modal presentation
       zCustomClasses:
         'border-2 border-primary/30 sm:max-w-[760px] max-h-[calc(100vh-2rem)] overflow-hidden',
       zWidth: '760px',
       zOnCancel: () => {
-        // ensure internal state is reset when the dialog is closed via header X or backdrop
         this.isDialogOpen.set(false);
         this.editingDocumentType.set(null);
         this.dialogRef = null;
@@ -254,6 +299,9 @@ export class DocumentTypesComponent implements OnInit {
     this.isDialogOpen.set(true);
   }
 
+  /**
+   * Edit document type
+   */
   editDocumentType(documentType: DocumentType): void {
     this.editingDocumentType.set(documentType);
     this.documentTypeForm.patchValue({
@@ -279,12 +327,10 @@ export class DocumentTypesComponent implements OnInit {
       zContent: this.documentTypeModalTemplate,
       zHideFooter: true,
       zClosable: true,
-      // Custom sizing and border for clearer modal presentation
       zCustomClasses:
         'border-2 border-primary/30 sm:max-w-[760px] max-h-[calc(100vh-2rem)] overflow-hidden',
       zWidth: '760px',
       zOnCancel: () => {
-        // ensure internal state is reset when the dialog is closed via header X or backdrop
         this.isDialogOpen.set(false);
         this.editingDocumentType.set(null);
         this.dialogRef = null;
@@ -293,6 +339,9 @@ export class DocumentTypesComponent implements OnInit {
     this.isDialogOpen.set(true);
   }
 
+  /**
+   * Save document type
+   */
   saveDocumentType(): void {
     if (this.documentTypeForm.invalid) return;
 
@@ -333,13 +382,15 @@ export class DocumentTypesComponent implements OnInit {
         finalize(() => this.isSaving.set(false)),
       )
       .subscribe(() => {
-        const action = 'created';
-        this.toast.success(`Document type ${action} successfully`);
+        this.toast.success('Document type created successfully');
         this.closeForm();
-        this.loadDocumentTypes();
+        this.loadItems();
       });
   }
 
+  /**
+   * Update document type
+   */
   private updateDocumentType(
     documentTypeId: number,
     payload: DocumentType,
@@ -387,10 +438,13 @@ export class DocumentTypesComponent implements OnInit {
         this.showDeprecationConfirm.set(false);
         this.pendingDeprecationPayload.set(null);
         this.closeForm();
-        this.loadDocumentTypes();
+        this.loadItems();
       });
   }
 
+  /**
+   * Confirm deprecation cascade
+   */
   confirmDeprecationCascade(): void {
     const payload = this.pendingDeprecationPayload();
     const editingId = this.editingDocumentType()?.id;
@@ -402,11 +456,17 @@ export class DocumentTypesComponent implements OnInit {
     this.updateDocumentType(editingId, payload, true);
   }
 
+  /**
+   * Cancel deprecation cascade
+   */
   cancelDeprecationCascade(): void {
     this.showDeprecationConfirm.set(false);
     this.pendingDeprecationPayload.set(null);
   }
 
+  /**
+   * Delete document type
+   */
   deleteDocumentType(documentType: DocumentType): void {
     this.documentTypesApi
       .documentTypesCanDeleteRetrieve(documentType.id!)
@@ -431,6 +491,9 @@ export class DocumentTypesComponent implements OnInit {
       });
   }
 
+  /**
+   * Confirm delete
+   */
   confirmDelete(): void {
     const documentType = this.editingDocumentType();
     if (!documentType) return;
@@ -447,10 +510,13 @@ export class DocumentTypesComponent implements OnInit {
         this.toast.success('Document type deleted successfully');
         this.showConfirmDelete.set(false);
         this.editingDocumentType.set(null);
-        this.loadDocumentTypes();
+        this.loadItems();
       });
   }
 
+  /**
+   * Close form dialog
+   */
   closeForm(): void {
     if (this.dialogRef) {
       this.dialogRef.close();
@@ -462,6 +528,9 @@ export class DocumentTypesComponent implements OnInit {
     this.editingDocumentType.set(null);
   }
 
+  /**
+   * Bind stay permit rule
+   */
   private bindStayPermitRule(): void {
     const isStayPermitControl = this.documentTypeForm.get('isStayPermit');
     if (!isStayPermitControl) {
@@ -474,6 +543,9 @@ export class DocumentTypesComponent implements OnInit {
     });
   }
 
+  /**
+   * Bind expiration threshold rule
+   */
   private bindExpirationThresholdRule(): void {
     const hasExpirationDateControl = this.documentTypeForm.get('hasExpirationDate');
     if (!hasExpirationDateControl) {
@@ -486,6 +558,9 @@ export class DocumentTypesComponent implements OnInit {
     });
   }
 
+  /**
+   * Sync expiration threshold state
+   */
   private syncExpirationThresholdState(hasExpirationDate: boolean): void {
     const expiringThresholdControl = this.documentTypeForm.get('expiringThresholdDays');
     if (!expiringThresholdControl) {
@@ -501,6 +576,9 @@ export class DocumentTypesComponent implements OnInit {
     expiringThresholdControl.disable({ emitEvent: false });
   }
 
+  /**
+   * Sync stay permit expiration state
+   */
   private syncStayPermitExpirationState(isStayPermit: boolean): void {
     const hasExpirationDateControl = this.documentTypeForm.get('hasExpirationDate');
     if (!hasExpirationDateControl) {

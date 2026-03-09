@@ -9,7 +9,7 @@
       <app-search-toolbar
         [query]="query()"
         [placeholder]="'Search model name, id, provider...'"
-        [isLoading]="loading()"
+        [isLoading]="isLoading()"
         (queryChange)="onQueryChange($event)"
         (tabOut)="onEnterSearch()"
       />
@@ -20,7 +20,7 @@
         #dataTable
         [columns]="columns()"
         [data]="items()"
-        [isLoading]="loading()"
+        [isLoading]="isLoading()"
         [actions]="actions()"
         (sortChange)="onSortChange($event)"
       />

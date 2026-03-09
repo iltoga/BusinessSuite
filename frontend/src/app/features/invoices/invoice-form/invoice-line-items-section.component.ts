@@ -20,6 +20,7 @@ import { ZardComboboxComponent, type ZardComboboxOption } from '@/shared/compone
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class InvoiceLineItemsSectionComponent {
+  @Input({ required: true }) form!: FormGroup;
   @Input({ required: true }) invoiceApplications!: FormArray<FormGroup>;
   @Input({ required: true }) billableProductOptions: ZardComboboxOption[] = [];
   @Input({ required: true }) customerSelected = false;

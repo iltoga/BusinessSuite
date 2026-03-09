@@ -13,23 +13,38 @@ class AiModel(models.Model):
     ]
 
     provider = models.CharField(max_length=32, choices=PROVIDER_CHOICES, db_index=True)
-    model_id = models.CharField(max_length=255)
+    model_id = models.CharField(max_length=255, blank=True)
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
 
+    # Capabilities
     vision = models.BooleanField(default=False)
     file_upload = models.BooleanField(default=False)
     reasoning = models.BooleanField(default=False)
 
+    # Architecture & Modality
     context_length = models.IntegerField(null=True, blank=True)
     max_completion_tokens = models.IntegerField(null=True, blank=True)
     modality = models.CharField(max_length=120, blank=True)
+    architecture_modality = models.CharField(max_length=120, blank=True)
+    architecture_tokenizer = models.CharField(max_length=255, blank=True)
+    instruct_type = models.CharField(max_length=120, blank=True)
 
+    # Pricing - per token
     prompt_price_per_token = models.DecimalField(max_digits=20, decimal_places=12, null=True, blank=True)
     completion_price_per_token = models.DecimalField(max_digits=20, decimal_places=12, null=True, blank=True)
     image_price = models.DecimalField(max_digits=20, decimal_places=12, null=True, blank=True)
     request_price = models.DecimalField(max_digits=20, decimal_places=12, null=True, blank=True)
 
+    # Provider info
+    top_provider_id = models.CharField(max_length=255, blank=True)
+    provider_name = models.CharField(max_length=255, blank=True)
+    
+    # Endpoints and parameters
+    supported_parameters = models.JSONField(default=list, blank=True)
+    per_request_limits = models.JSONField(default=dict, blank=True)
+    
+    # Source and metadata
     source = models.CharField(max_length=32, blank=True, default="manual")
     raw_metadata = models.JSONField(default=dict, blank=True)
 

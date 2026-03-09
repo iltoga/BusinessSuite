@@ -55,6 +55,7 @@
     </z-card>
 
     <app-invoice-line-items-section
+      [form]="form"
       [invoiceApplications]="invoiceApplications"
       [billableProductOptions]="billableProductOptions()"
       [customerSelected]="!!form.get('customer')?.value"

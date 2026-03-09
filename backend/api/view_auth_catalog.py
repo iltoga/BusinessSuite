@@ -171,7 +171,7 @@ class AiModelViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
 
         headers = {"Authorization": f"Bearer {api_key}", "Accept": "application/json"}
         try:
-            response = requests.get(f"{base_url}/models", headers=headers, timeout=10)
+            response = requests.get(f"{base_url}/models", headers=headers, timeout=15)
             response.raise_for_status()
             payload = response.json()
         except Exception as exc:
@@ -187,10 +187,36 @@ class AiModelViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             if query and query not in searchable:
                 continue
 
+            # Extract architecture info
             architecture = item.get("architecture") if isinstance(item.get("architecture"), dict) else {}
-            pricing = item.get("pricing") if isinstance(item.get("pricing"), dict) else {}
-            top_provider = item.get("top_provider") if isinstance(item.get("top_provider"), dict) else {}
             modality = str(architecture.get("modality") or "").strip()
+            tokenizer = str(architecture.get("tokenizer") or "").strip()
+            instruct_type = str(architecture.get("instruct_type") or "").strip()
+
+            # Extract pricing info - OpenRouter uses these field names
+            pricing = item.get("pricing") if isinstance(item.get("pricing"), dict) else {}
+            prompt_price = pricing.get("prompt")
+            completion_price = pricing.get("completion")
+            image_price = pricing.get("image")
+            request_price = pricing.get("request")
+
+            # Extract top provider info
+            top_provider = item.get("top_provider") if isinstance(item.get("top_provider"), dict) else {}
+            # OpenRouter doesn't return id/name in top_provider, use model_id prefix as provider
+            provider_prefix = model_id.split("/")[0] if "/" in model_id else model_id
+            top_provider_id = provider_prefix
+            provider_name = provider_prefix.title()
+
+            # Extract other fields
+            context_length = item.get("context_length")
+            max_completion_tokens = top_provider.get("max_completion_tokens")
+            supported_parameters = item.get("supported_parameters", [])
+            per_request_limits = item.get("per_request_limits", {})
+
+            # Detect capabilities from searchable text and modality
+            vision = "image" in modality.lower() or "vision" in searchable or "multimodal" in searchable
+            file_upload = "file" in searchable or "document" in searchable
+            reasoning = "reason" in searchable or "think" in searchable or "reasoning" in searchable
 
             results.append(
                 {
@@ -198,16 +224,23 @@ class AiModelViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                     "model_id": model_id,
                     "name": name,
                     "description": description,
-                    "vision": "image" in modality.lower() or "vision" in searchable,
-                    "file_upload": "file" in searchable,
-                    "reasoning": "reason" in searchable or "think" in searchable,
-                    "context_length": item.get("context_length"),
-                    "max_completion_tokens": top_provider.get("max_completion_tokens"),
+                    "vision": vision,
+                    "file_upload": file_upload,
+                    "reasoning": reasoning,
+                    "context_length": context_length,
+                    "max_completion_tokens": max_completion_tokens,
                     "modality": modality,
-                    "prompt_price_per_token": pricing.get("prompt"),
-                    "completion_price_per_token": pricing.get("completion"),
-                    "image_price": pricing.get("image"),
-                    "request_price": pricing.get("request"),
+                    "architecture_modality": modality,
+                    "architecture_tokenizer": tokenizer,
+                    "instruct_type": instruct_type,
+                    "prompt_price_per_token": prompt_price,
+                    "completion_price_per_token": completion_price,
+                    "image_price": image_price,
+                    "request_price": request_price,
+                    "top_provider_id": top_provider_id,
+                    "provider_name": provider_name,
+                    "supported_parameters": supported_parameters,
+                    "per_request_limits": per_request_limits,
                     "source": "openrouter",
                     "raw_metadata": item,
                 }

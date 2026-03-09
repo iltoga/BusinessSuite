@@ -7,6 +7,8 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
+import { AiModelArchitecture } from './ai-model-architecture';
+import { AiModelPricing } from './ai-model-pricing';
 import { AiModelCapabilities } from './ai-model-capabilities';
 
 
@@ -25,13 +27,22 @@ export interface AiModel {
     contextLength?: number | null;
     maxCompletionTokens?: number | null;
     modality?: string;
+    architectureModality?: string;
+    architectureTokenizer?: string;
+    instructType?: string;
     promptPricePerToken?: string | null;
     completionPricePerToken?: string | null;
     imagePrice?: string | null;
     requestPrice?: string | null;
+    topProviderId?: string;
+    providerName?: string;
+    supportedParameters?: any | null;
+    perRequestLimits?: any | null;
     source?: string;
     rawMetadata?: any | null;
     readonly capabilities: AiModelCapabilities;
+    readonly pricing: AiModelPricing;
+    readonly architecture: AiModelArchitecture;
     readonly createdAt: string;
     readonly updatedAt: string;
 }

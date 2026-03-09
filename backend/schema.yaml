@@ -11182,6 +11182,15 @@ components:
         modality:
           type: string
           maxLength: 120
+        architecture_modality:
+          type: string
+          maxLength: 120
+        architecture_tokenizer:
+          type: string
+          maxLength: 255
+        instruct_type:
+          type: string
+          maxLength: 120
         prompt_price_per_token:
           type: string
           format: decimal
@@ -11202,6 +11211,14 @@ components:
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,12})?$
           nullable: true
+        top_provider_id:
+          type: string
+          maxLength: 255
+        provider_name:
+          type: string
+          maxLength: 255
+        supported_parameters: {}
+        per_request_limits: {}
         source:
           type: string
           maxLength: 32
@@ -11209,6 +11226,14 @@ components:
         capabilities:
           allOf:
           - $ref: '#/components/schemas/AiModelCapabilities'
+          readOnly: true
+        pricing:
+          allOf:
+          - $ref: '#/components/schemas/AiModelPricing'
+          readOnly: true
+        architecture:
+          allOf:
+          - $ref: '#/components/schemas/AiModelArchitecture'
           readOnly: true
         created_at:
           type: string
@@ -11219,13 +11244,28 @@ components:
           format: date-time
           readOnly: true
       required:
+      - architecture
       - capabilities
       - created_at
       - id
       - model_id
       - name
+      - pricing
       - provider
       - updated_at
+    AiModelArchitecture:
+      type: object
+      properties:
+        modality:
+          type: string
+        tokenizer:
+          type: string
+        instruct_type:
+          type: string
+      required:
+      - instruct_type
+      - modality
+      - tokenizer
     AiModelCapabilities:
       type: object
       properties:
@@ -11239,6 +11279,34 @@ components:
       - fileUpload
       - reasoning
       - vision
+    AiModelPricing:
+      type: object
+      properties:
+        prompt_price_per_token:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,12})?$
+          nullable: true
+        completion_price_per_token:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,12})?$
+          nullable: true
+        image_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,12})?$
+          nullable: true
+        request_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,12})?$
+          nullable: true
+      required:
+      - completion_price_per_token
+      - image_price
+      - prompt_price_per_token
+      - request_price
     AsyncJob:
       type: object
       properties:

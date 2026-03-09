@@ -3,19 +3,20 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
-  DestroyRef,
   inject,
-  OnInit,
+  signal,
   TemplateRef,
   ViewChild,
-  signal,
 } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { EMPTY, catchError, finalize } from 'rxjs';
 
 import { HolidaysService } from '@/core/api/api/holidays.service';
 import { Holiday } from '@/core/api/model/holiday';
+import {
+  BaseListComponent,
+  BaseListConfig,
+} from '@/shared/core/base-list.component';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
@@ -24,11 +25,23 @@ import { ZardDateInputComponent } from '@/shared/components/date-input';
 import {
   ColumnConfig,
   DataTableComponent,
+  type SortEvent,
 } from '@/shared/components/data-table/data-table.component';
 import { ZardDialogService } from '@/shared/components/dialog';
 import { ZardInputDirective } from '@/shared/components/input';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 
+/**
+ * Holidays component
+ * 
+ * Extends BaseListComponent to inherit common list patterns:
+ * - Keyboard shortcuts (N for new, B/Left for back)
+ * - Navigation state restoration
+ * - Pagination, sorting, search
+ * - Focus management
+ * 
+ * Note: This component has complex client-side filtering that is component-specific
+ */
 @Component({
   selector: 'app-holidays',
   standalone: true,
@@ -47,21 +60,17 @@ import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
   styleUrls: ['./holidays.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class HolidaysComponent implements OnInit {
+export class HolidaysComponent extends BaseListComponent<Holiday> {
   @ViewChild('actionsTemplate', { static: true }) actionsTemplate!: TemplateRef<any>;
   @ViewChild('dateTemplate', { static: true }) dateTemplate!: TemplateRef<any>;
   @ViewChild('holidayModalTemplate', { static: true }) holidayModalTemplate!: TemplateRef<any>;
 
-  private fb = inject(FormBuilder);
-  private destroyRef = inject(DestroyRef);
-  private holidaysApi = inject(HolidaysService);
-  private toast = inject(GlobalToastService);
-  private dialogService = inject(ZardDialogService);
+  private readonly fb = inject(FormBuilder);
+  private readonly holidaysApi = inject(HolidaysService);
+  private readonly dialogService = inject(ZardDialogService);
 
+  // Holidays-specific state
   private dialogRef: any = null;
-
-  readonly holidays = signal<Holiday[]>([]);
-  readonly isLoading = signal(true);
   readonly isSaving = signal(false);
   readonly isDialogOpen = signal(false);
   readonly editingHoliday = signal<Holiday | null>(null);
@@ -70,8 +79,8 @@ export class HolidaysComponent implements OnInit {
   readonly selectedCountryFilter = signal('ID');
   readonly selectedYearFilter = signal<number>(new Date().getFullYear());
   readonly selectedMonthFilter = signal<number | null>(null);
-  readonly ordering = signal<string>('date');
 
+  // Client-side filtered holidays
   readonly filteredHolidays = computed(() => {
     const selectedCountry = this.normalizeCountryCode(this.selectedCountryFilter()) || 'ID';
     const selectedDate = this.selectedDateFilter();
@@ -79,7 +88,7 @@ export class HolidaysComponent implements OnInit {
     const selectedYear = this.selectedYearFilter();
     const selectedMonth = this.selectedMonthFilter();
 
-    return this.holidays().filter((holiday) => {
+    return this.items().filter((holiday) => {
       const holidayCountry = this.normalizeCountryCode(holiday.country);
       if (holidayCountry !== selectedCountry) {
         return false;
@@ -111,14 +120,16 @@ export class HolidaysComponent implements OnInit {
     });
   });
 
-  columns: ColumnConfig[] = [
-    { key: 'date', header: 'Date', sortable: true },
+  // Columns configuration
+  readonly columns = computed<ColumnConfig<Holiday>[]>(() => [
+    { key: 'date', header: 'Date', sortable: true, template: this.dateTemplate },
     { key: 'name', header: 'Name', sortable: true },
     { key: 'country', header: 'Country', sortable: true },
     { key: 'description', header: 'Description', sortable: false },
-    { key: 'actions', header: '' },
-  ];
+    { key: 'actions', header: '', template: this.actionsTemplate },
+  ]);
 
+  // Holiday form
   readonly holidayForm = this.fb.group({
     name: ['', Validators.required],
     date: [null as Date | null, Validators.required],
@@ -126,6 +137,7 @@ export class HolidaysComponent implements OnInit {
     description: [''],
   });
 
+  // Filter form
   readonly filterForm = this.fb.group({
     date: [null as Date | null],
     country: ['ID', Validators.required],
@@ -133,45 +145,19 @@ export class HolidaysComponent implements OnInit {
     month: [null as number | null],
   });
 
-  ngOnInit(): void {
-    this.columns[0].template = this.dateTemplate;
-    this.columns[this.columns.length - 1].template = this.actionsTemplate;
-
-    this.filterForm.controls.country.valueChanges
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((value) => {
-        const normalized = this.normalizeCountryCode(value) || 'ID';
-        this.selectedCountryFilter.set(normalized);
-      });
-
-    this.filterForm.controls.date.valueChanges
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((value) => this.applyDateFilter(value));
-
-    this.filterForm.controls.year.valueChanges
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((value) => {
-        const normalized = this.normalizeYear(value);
-        this.selectedYearFilter.set(normalized);
-        if (normalized !== value) {
-          this.filterForm.controls.year.setValue(normalized, { emitEvent: false });
-        }
-      });
-
-    this.filterForm.controls.month.valueChanges
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((value) => {
-        const normalized = this.normalizeMonth(value);
-        this.selectedMonthFilter.set(normalized);
-        if (normalized !== value) {
-          this.filterForm.controls.month.setValue(normalized, { emitEvent: false });
-        }
-      });
-
-    this.loadHolidays();
+  constructor() {
+    super();
+    this.config = {
+      entityType: 'admin/holidays',
+      entityLabel: 'Holidays',
+      defaultOrdering: 'date',
+    } as BaseListConfig<Holiday>;
   }
 
-  private loadHolidays(): void {
+  /**
+   * Load holidays from API
+   */
+  protected override loadItems(): void {
     this.isLoading.set(true);
     this.holidaysApi
       .holidaysList(this.ordering())
@@ -182,22 +168,17 @@ export class HolidaysComponent implements OnInit {
         }),
         finalize(() => this.isLoading.set(false)),
       )
-      .subscribe((data) => this.holidays.set(data ?? []));
+      .subscribe((data) => {
+        this.items.set(data ?? []);
+        this.totalItems.set(data?.length ?? 0);
+        this.focusAfterLoad();
+      });
   }
 
-  createHoliday(): void {
-    this.editingHoliday.set(null);
-    this.holidayForm.reset({ name: '', date: null, country: 'ID', description: '' });
-    this.openHolidayDialog('Add Holiday');
-  }
-
-  onCountryFilterInput(event: Event): void {
-    const target = event.target as HTMLInputElement | null;
-    const normalized = this.normalizeCountryCode(target?.value) || 'ID';
-    this.filterForm.controls.country.setValue(normalized, { emitEvent: true });
-  }
-
-  onSortChange(event: { column: string; direction: 'asc' | 'desc' }): void {
+  /**
+   * Handle sort change
+   */
+  override onSortChange(event: SortEvent): void {
     const column = event.column;
     const currentOrdering = this.ordering();
 
@@ -211,14 +192,73 @@ export class HolidaysComponent implements OnInit {
     }
 
     this.ordering.set(nextOrdering);
-    this.loadHolidays();
+    this.loadItems();
   }
 
+  /**
+   * Initialize component
+   */
+  override ngOnInit(): void {
+    super.ngOnInit();
+
+    // Set column templates
+    this.columns()[0].template = this.dateTemplate;
+    this.columns()[this.columns().length - 1].template = this.actionsTemplate;
+
+    // Setup filter form subscriptions
+    this.filterForm.controls.country.valueChanges.subscribe((value) => {
+      const normalized = this.normalizeCountryCode(value) || 'ID';
+      this.selectedCountryFilter.set(normalized);
+    });
+
+    this.filterForm.controls.date.valueChanges.subscribe((value) => this.applyDateFilter(value));
+
+    this.filterForm.controls.year.valueChanges.subscribe((value) => {
+      const normalized = this.normalizeYear(value);
+      this.selectedYearFilter.set(normalized);
+      if (normalized !== value) {
+        this.filterForm.controls.year.setValue(normalized, { emitEvent: false });
+      }
+    });
+
+    this.filterForm.controls.month.valueChanges.subscribe((value) => {
+      const normalized = this.normalizeMonth(value);
+      this.selectedMonthFilter.set(normalized);
+      if (normalized !== value) {
+        this.filterForm.controls.month.setValue(normalized, { emitEvent: false });
+      }
+    });
+  }
+
+  /**
+   * Create new holiday
+   */
+  createHoliday(): void {
+    this.editingHoliday.set(null);
+    this.holidayForm.reset({ name: '', date: null, country: 'ID', description: '' });
+    this.openHolidayDialog('Add Holiday');
+  }
+
+  /**
+   * Handle country filter input
+   */
+  onCountryFilterInput(event: Event): void {
+    const target = event.target as HTMLInputElement | null;
+    const normalized = this.normalizeCountryCode(target?.value) || 'ID';
+    this.filterForm.controls.country.setValue(normalized, { emitEvent: true });
+  }
+
+  /**
+   * Clear date filter
+   */
   clearDateFilter(): void {
     this.filterForm.controls.date.setValue(null);
     this.filterForm.controls.month.setValue(null);
   }
 
+  /**
+   * Edit holiday
+   */
   editHoliday(holiday: Holiday): void {
     this.editingHoliday.set(holiday);
     this.holidayForm.patchValue({
@@ -230,6 +270,9 @@ export class HolidaysComponent implements OnInit {
     this.openHolidayDialog('Edit Holiday');
   }
 
+  /**
+   * Save holiday
+   */
   saveHoliday(): void {
     if (this.holidayForm.invalid) {
       this.holidayForm.markAllAsTouched();
@@ -267,15 +310,21 @@ export class HolidaysComponent implements OnInit {
       .subscribe(() => {
         this.toast.success(`Holiday ${current ? 'updated' : 'created'} successfully`);
         this.closeForm();
-        this.loadHolidays();
+        this.loadItems();
       });
   }
 
+  /**
+   * Delete holiday
+   */
   deleteHoliday(holiday: Holiday): void {
     this.editingHoliday.set(holiday);
     this.showConfirmDelete.set(true);
   }
 
+  /**
+   * Confirm delete
+   */
   confirmDelete(): void {
     const current = this.editingHoliday();
     if (!current) return;
@@ -292,10 +341,13 @@ export class HolidaysComponent implements OnInit {
         this.toast.success('Holiday deleted successfully');
         this.showConfirmDelete.set(false);
         this.editingHoliday.set(null);
-        this.loadHolidays();
+        this.loadItems();
       });
   }
 
+  /**
+   * Close form dialog
+   */
   closeForm(): void {
     if (this.dialogRef) {
       this.dialogRef.close();
@@ -305,6 +357,9 @@ export class HolidaysComponent implements OnInit {
     this.editingHoliday.set(null);
   }
 
+  /**
+   * Open holiday dialog
+   */
   private openHolidayDialog(title: string): void {
     this.dialogRef = this.dialogService.create({
       zTitle: title,
@@ -321,6 +376,9 @@ export class HolidaysComponent implements OnInit {
     this.isDialogOpen.set(true);
   }
 
+  /**
+   * Apply date filter
+   */
   private applyDateFilter(value: unknown): void {
     const parsedDate = this.parseDateInput(value);
     this.selectedDateFilter.set(parsedDate);
@@ -330,7 +388,7 @@ export class HolidaysComponent implements OnInit {
     const selectedIsoDate = this.toIsoDateString(parsedDate);
     if (!selectedIsoDate) return;
 
-    const holidayExists = this.holidays().some(
+    const holidayExists = this.items().some(
       (holiday) =>
         holiday.date === selectedIsoDate &&
         this.normalizeCountryCode(holiday.country) === selectedCountry,
@@ -350,6 +408,9 @@ export class HolidaysComponent implements OnInit {
     this.openHolidayDialog('Add Holiday');
   }
 
+  /**
+   * Convert date to ISO string
+   */
   private toIsoDateString(value: unknown): string | null {
     const date = this.parseDateInput(value);
     if (!date) return null;
@@ -360,6 +421,9 @@ export class HolidaysComponent implements OnInit {
     return `${year}-${month}-${day}`;
   }
 
+  /**
+   * Parse date input
+   */
   private parseDateInput(value: unknown): Date | null {
     if (value instanceof Date && !Number.isNaN(value.getTime())) {
       return new Date(value.getFullYear(), value.getMonth(), value.getDate());
@@ -386,6 +450,9 @@ export class HolidaysComponent implements OnInit {
     return null;
   }
 
+  /**
+   * Build date from components
+   */
   private buildDate(year: number, month: number, day: number): Date | null {
     const date = new Date(year, month - 1, day);
     if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
@@ -394,15 +461,24 @@ export class HolidaysComponent implements OnInit {
     return date;
   }
 
+  /**
+   * Normalize country code
+   */
   private normalizeCountryCode(value: string | null | undefined): string {
     return (value ?? '').trim().toUpperCase();
   }
 
+  /**
+   * Check if date is weekend
+   */
   private isWeekendDate(date: Date): boolean {
     const day = date.getDay();
     return day === 0 || day === 6;
   }
 
+  /**
+   * Normalize year
+   */
   private normalizeYear(value: unknown): number {
     const parsed = Number(value);
     if (!Number.isFinite(parsed)) {
@@ -412,6 +488,9 @@ export class HolidaysComponent implements OnInit {
     return intValue > 0 ? intValue : new Date().getFullYear();
   }
 
+  /**
+   * Normalize month
+   */
   private normalizeMonth(value: unknown): number | null {
     if (value === null || value === undefined || value === '') {
       return null;

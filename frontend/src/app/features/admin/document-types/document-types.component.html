@@ -188,9 +188,9 @@
     </div>
     <app-data-table
       #dataTable
-      [data]="documentTypes()"
-      [columns]="columns"
-      [actions]="actions"
+      [data]="items()"
+      [columns]="columns()"
+      [actions]="actions()"
       [isLoading]="isLoading()"
     />
   </z-card>
