@@ -106,3 +106,43 @@ describe('ApplicationDetailComponent customer navigation', () => {
     });
   });
 });
+
+describe('ApplicationDetailComponent inline application date editing', () => {
+  const createHarness = () => {
+    const component = Object.create(ApplicationDetailComponent.prototype) as any;
+    component.toast = { error: vi.fn() };
+    component.applicationDateLockedTooltip =
+      'Application date cannot be changed after Step 1 is completed.';
+    component.dueDateLockedTooltip =
+      'Please update Due date in Task Timeline to change this deadline.';
+    component.isApplicationDateLocked = vi.fn(() => false);
+    component.isDueDateLocked = vi.fn(() => false);
+    component.stayPermitSubmissionWindow = vi.fn(() => null);
+    component.formatDateForApi = vi.fn(() => '2026-03-13');
+    component.updateApplicationPartial = vi.fn();
+    component.onInlineDateChange =
+      ApplicationDetailComponent.prototype.onInlineDateChange.bind(component);
+    return component;
+  };
+
+  it('blocks application date changes when step 1 is completed', () => {
+    const component = createHarness();
+    component.isApplicationDateLocked = vi.fn(() => true);
+
+    component.onInlineDateChange('docDate', new Date('2026-03-13'));
+
+    expect(component.toast.error).toHaveBeenCalledWith(component.applicationDateLockedTooltip);
+    expect(component.updateApplicationPartial).not.toHaveBeenCalled();
+  });
+
+  it('updates the application date when step 1 is still open', () => {
+    const component = createHarness();
+
+    component.onInlineDateChange('docDate', new Date('2026-03-13'));
+
+    expect(component.updateApplicationPartial).toHaveBeenCalledWith(
+      { docDate: '2026-03-13' },
+      'Application date updated',
+    );
+  });
+});

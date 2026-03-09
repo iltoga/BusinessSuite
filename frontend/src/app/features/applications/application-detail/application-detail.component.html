@@ -88,10 +88,14 @@
     <z-card class="p-4 sm:p-6">
       <div class="grid gap-6">
         <div class="flex flex-wrap items-end gap-6">
-          <div class="w-full sm:w-48">
+          <div
+            class="w-full sm:w-48"
+            [zTooltip]="isApplicationDateLocked() ? applicationDateLockedTooltip : null"
+          >
             <div class="text-sm text-muted-foreground mb-1">Application Date</div>
             <z-date-input
               [ngModel]="docDateAsDate()"
+              [disabled]="isApplicationDateLocked() || isSavingMeta()"
               (ngModelChange)="onInlineDateChange('docDate', $event)"
             />
           </div>

@@ -217,7 +217,7 @@ export class ProductFormComponent extends BaseFormComponent<
    * Update existing product
    */
   protected override saveUpdate(dto: ProductCreateUpdate): Observable<any> {
-    return this.productsApi.productsUpdate(this.itemId!, dto);
+    return this.productsApi.productsPartialUpdate(this.itemId!, dto);
   }
 
   /**
@@ -245,6 +245,32 @@ export class ProductFormComponent extends BaseFormComponent<
    */
   override onCancel(): void {
     this.navigateBack();
+  }
+
+  protected override patchForm(item: ProductDetail): void {
+    this.product.set(item);
+
+    this.form.patchValue(
+      {
+        name: item.name ?? '',
+        code: item.code ?? '',
+        description: item.description ?? '',
+        basePrice: item.basePrice !== null && item.basePrice !== undefined ? Number(item.basePrice) : 0,
+        retailPrice: item.retailPrice !== null && item.retailPrice !== undefined ? Number(item.retailPrice) : 0,
+        currency: item.currency ?? this.configService.settings.baseCurrency ?? 'IDR',
+        productType: item.productType ?? 'visa',
+        validity: item.validity ?? null,
+        documentsMinValidity: item.documentsMinValidity ?? null,
+        applicationWindowDays: item.applicationWindowDays ?? null,
+        validationPrompt: item.validationPrompt ?? '',
+        requiredDocumentIds: (item.requiredDocumentTypes ?? []).map((doc) => doc.id),
+        optionalDocumentIds: (item.optionalDocumentTypes ?? []).map((doc) => doc.id),
+      },
+      { emitEvent: false },
+    );
+
+    this.tasksArray.clear({ emitEvent: false });
+    (item.tasks ?? []).forEach((task) => this.addTask(task));
   }
 
   /**

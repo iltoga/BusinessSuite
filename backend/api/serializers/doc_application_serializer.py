@@ -327,9 +327,72 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id"]
 
+    def _get_step_one_workflow(self, application: DocApplication):
+        return (
+            application.workflows.select_related("task")
+            .filter(task__step=1)
+            .order_by("task__step", "created_at", "id")
+            .first()
+        )
+
+    def _calculate_due_date_for_doc_date(self, *, doc_date, product=None, application: DocApplication | None = None):
+        if not doc_date:
+            return None
+
+        if application is None:
+            next_calendar_task = product.tasks.filter(add_task_to_calendar=True).order_by("step").first() if product else None
+            if next_calendar_task:
+                from core.utils.dateutils import calculate_due_date
+
+                return calculate_due_date(
+                    doc_date,
+                    next_calendar_task.duration,
+                    next_calendar_task.duration_is_business_days,
+                )
+            return doc_date if product and product.tasks.exists() else None
+
+        target = application or DocApplication(product=product, doc_date=doc_date)
+        original_doc_date = getattr(target, "doc_date", None)
+        original_product = getattr(target, "product", None)
+
+        target.doc_date = doc_date
+        if product is not None:
+            target.product = product
+
+        try:
+            return target.calculate_next_calendar_due_date(start_date=doc_date)
+        finally:
+            if application is not None:
+                target.doc_date = original_doc_date
+                target.product = original_product
+
     def validate(self, attrs):
         doc_date = attrs.get("doc_date") or getattr(self.instance, "doc_date", None)
-        due_date = attrs.get("due_date") or getattr(self.instance, "due_date", None)
+        due_date = attrs.get("due_date")
+        product = attrs.get("product") or getattr(self.instance, "product", None)
+        doc_date_changed = (
+            self.instance is not None
+            and "doc_date" in attrs
+            and attrs.get("doc_date") != getattr(self.instance, "doc_date", None)
+        )
+
+        if doc_date_changed:
+            step_one_workflow = self._get_step_one_workflow(self.instance)
+            if step_one_workflow and step_one_workflow.status == step_one_workflow.STATUS_COMPLETED:
+                raise serializers.ValidationError(
+                    {"doc_date": "Application date cannot be changed after step 1 is completed."}
+                )
+
+        if due_date is None:
+            if doc_date_changed:
+                due_date = self._calculate_due_date_for_doc_date(
+                    doc_date=doc_date,
+                    product=product,
+                    application=self.instance,
+                )
+            else:
+                due_date = getattr(self.instance, "due_date", None)
+
         if due_date and doc_date and due_date < doc_date:
             raise serializers.ValidationError({"due_date": "Due date cannot be before document date."})
 
@@ -341,7 +404,6 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
             notify_customer_channel = self.instance.notify_customer_channel
 
         customer = attrs.get("customer") or getattr(self.instance, "customer", None)
-        product = attrs.get("product") or getattr(self.instance, "product", None)
 
         if product and getattr(product, "deprecated", False):
             raise serializers.ValidationError({"product": "Deprecated products cannot be used for applications."})
@@ -386,19 +448,10 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
 
         # Create application
         if not validated_data.get("due_date"):
-            product = validated_data.get("product")
-            doc_date = validated_data.get("doc_date")
-            next_calendar_task = (
-                product.tasks.filter(add_task_to_calendar=True).order_by("step").first() if product else None
+            validated_data["due_date"] = self._calculate_due_date_for_doc_date(
+                doc_date=validated_data.get("doc_date"),
+                product=validated_data.get("product"),
             )
-            if next_calendar_task:
-                from core.utils.dateutils import calculate_due_date
-
-                validated_data["due_date"] = calculate_due_date(
-                    doc_date, next_calendar_task.duration, next_calendar_task.duration_is_business_days
-                )
-            else:
-                validated_data["due_date"] = doc_date
 
         validated_data["created_by"] = user
         application = DocApplication.objects.create(**validated_data)
@@ -450,7 +503,7 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
         task = Task.objects.filter(product=application.product, step=1).first()
         if task:
             step1 = DocWorkflow(
-                start_date=timezone.now().date(),
+                start_date=application.doc_date,
                 task=task,
                 doc_application=application,
                 created_by=user,
@@ -475,52 +528,73 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
         return application
 
     def update(self, instance, validated_data):
+        from customer_applications.models.doc_workflow import DocWorkflow
         from customer_applications.models.document import Document
+        from django.db import transaction
         from django.utils import timezone
         from products.models.document_type import DocumentType
 
         document_types = validated_data.pop("document_types", None)
-        application = super().update(instance, validated_data)
+        doc_date_changed = (
+            "doc_date" in validated_data and validated_data.get("doc_date") != getattr(instance, "doc_date", None)
+        )
+        if doc_date_changed and "due_date" not in validated_data:
+            validated_data["due_date"] = self._calculate_due_date_for_doc_date(
+                doc_date=validated_data.get("doc_date"),
+                product=validated_data.get("product") or getattr(instance, "product", None),
+                application=instance,
+            )
 
-        if document_types is not None:
-            desired: dict[int, bool] = {}
-            for dt in document_types:
-                doc_type_id = dt.get("doc_type_id") or dt.get("id")
-                if not doc_type_id:
-                    continue
-                desired[int(doc_type_id)] = bool(dt.get("required", True))
+        step_one_workflow = self._get_step_one_workflow(instance) if doc_date_changed else None
+        user = self.context.get("request").user if self.context.get("request") else None
 
-            existing_docs = Document.objects.filter(doc_application=application)
-            existing_by_type = {doc.doc_type_id: doc for doc in existing_docs}
+        with transaction.atomic():
+            application = super().update(instance, validated_data)
 
-            # Remove only pending placeholder docs that are no longer requested.
-            for doc in existing_docs:
-                if doc.doc_type_id not in desired and not doc.completed:
-                    doc.delete()
+            if doc_date_changed and step_one_workflow:
+                step_one_workflow.start_date = application.doc_date
+                step_one_workflow.due_date = application.due_date or step_one_workflow.calculate_workflow_due_date()
+                step_one_workflow.updated_by = user
+                step_one_workflow.save()
 
-            user = self.context.get("request").user if self.context.get("request") else None
-            for doc_type_id, required in desired.items():
-                existing = existing_by_type.get(doc_type_id)
-                if existing:
-                    if existing.required != required:
-                        existing.required = required
-                        existing.updated_by = user
-                        existing.updated_at = timezone.now()
-                        existing.save(update_fields=["required", "updated_by", "updated_at"])
-                    continue
-                try:
-                    doc_type = DocumentType.objects.get(pk=doc_type_id)
-                except DocumentType.DoesNotExist:
-                    raise serializers.ValidationError({"document_types": f"Invalid document type id: {doc_type_id}"})
-                Document.objects.create(
-                    doc_application=application,
-                    doc_type=doc_type,
-                    required=required,
-                    created_by=user,
-                    updated_by=user,
-                )
+            if document_types is not None:
+                desired: dict[int, bool] = {}
+                for dt in document_types:
+                    doc_type_id = dt.get("doc_type_id") or dt.get("id")
+                    if not doc_type_id:
+                        continue
+                    desired[int(doc_type_id)] = bool(dt.get("required", True))
 
-        self._prime_detail_caches(application)
+                existing_docs = Document.objects.filter(doc_application=application)
+                existing_by_type = {doc.doc_type_id: doc for doc in existing_docs}
+
+                # Remove only pending placeholder docs that are no longer requested.
+                for doc in existing_docs:
+                    if doc.doc_type_id not in desired and not doc.completed:
+                        doc.delete()
+
+                for doc_type_id, required in desired.items():
+                    existing = existing_by_type.get(doc_type_id)
+                    if existing:
+                        if existing.required != required:
+                            existing.required = required
+                            existing.updated_by = user
+                            existing.updated_at = timezone.now()
+                            existing.save(update_fields=["required", "updated_by", "updated_at"])
+                        continue
+                    try:
+                        doc_type = DocumentType.objects.get(pk=doc_type_id)
+                    except DocumentType.DoesNotExist:
+                        raise serializers.ValidationError({"document_types": f"Invalid document type id: {doc_type_id}"})
+                    Document.objects.create(
+                        doc_application=application,
+                        doc_type=doc_type,
+                        required=required,
+                        created_by=user,
+                        updated_by=user,
+                    )
+
+            self._prime_detail_caches(application)
 
         return application
 

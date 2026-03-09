@@ -284,6 +284,14 @@ export class ApplicationDetailComponent implements OnInit {
     }
     return this.sortedWorkflows().length > 0 || !!app.nextTask || !!app.hasNextTask;
   });
+  readonly stepOneWorkflow = computed(
+    () => this.sortedWorkflows().find((workflow) => workflow.task?.step === 1) ?? null,
+  );
+  readonly isApplicationDateLocked = computed(
+    () => this.stepOneWorkflow()?.status === 'completed',
+  );
+  readonly applicationDateLockedTooltip =
+    'Application date cannot be changed after Step 1 is completed.';
   readonly isDueDateLocked = computed(() => this.hasWorkflowTasks());
   readonly dueDateLockedTooltip =
     'Please update Due date in Task Timeline to change this deadline.';
@@ -1782,6 +1790,10 @@ export class ApplicationDetailComponent implements OnInit {
 
   onInlineDateChange(field: 'docDate' | 'dueDate', value: Date | null): void {
     if (!value) return;
+    if (field === 'docDate' && this.isApplicationDateLocked()) {
+      this.toast.error(this.applicationDateLockedTooltip);
+      return;
+    }
     if (field === 'dueDate' && this.isDueDateLocked()) {
       this.toast.error(this.dueDateLockedTooltip);
       return;
@@ -1803,7 +1815,7 @@ export class ApplicationDetailComponent implements OnInit {
     const iso = this.formatDateForApi(value);
     this.updateApplicationPartial(
       { [field]: iso } as any,
-      `${field === 'docDate' ? 'Document' : 'Due'} date updated`,
+      `${field === 'docDate' ? 'Application' : 'Due'} date updated`,
     );
   }
 
