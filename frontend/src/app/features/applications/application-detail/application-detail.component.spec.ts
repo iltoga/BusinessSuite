@@ -112,7 +112,7 @@ describe('ApplicationDetailComponent inline application date editing', () => {
     const component = Object.create(ApplicationDetailComponent.prototype) as any;
     component.toast = { error: vi.fn() };
     component.applicationDateLockedTooltip =
-      'Application date cannot be changed after Step 1 is completed.';
+      'Application submission date cannot be changed after Step 1 is completed.';
     component.dueDateLockedTooltip =
       'Please update Due date in Task Timeline to change this deadline.';
     component.isApplicationDateLocked = vi.fn(() => false);
@@ -142,7 +142,7 @@ describe('ApplicationDetailComponent inline application date editing', () => {
 
     expect(component.updateApplicationPartial).toHaveBeenCalledWith(
       { docDate: '2026-03-13' },
-      'Application date updated',
+      'Application submission date updated',
     );
   });
 });

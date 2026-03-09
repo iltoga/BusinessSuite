@@ -36,6 +36,7 @@ def test_create_google_event_task_updates_sync_metadata():
     assert event.google_event_id == "google-evt-1"
     assert event.sync_status == CalendarEvent.SYNC_STATUS_SYNCED
     assert event.last_synced_at is not None
+    assert google_client.create_event.call_args.kwargs["event_id"] is not None
 
 
 @pytest.mark.django_db
@@ -159,3 +160,28 @@ def test_delete_google_event_task_logs_critical_on_error():
     status = result["status"] if isinstance(result, dict) else getattr(result, "status", None)
     assert status == "failed"
     google_client_cls.return_value.delete_event.assert_called_once_with(event_id="google-delete-id")
+
+
+@pytest.mark.django_db
+def test_create_google_event_task_reuses_preferred_google_id_on_conflict():
+    event = CalendarEvent.objects.create(
+        id="evt-task-create-conflict",
+        title="Mirror Event",
+        description="sync me",
+        start_date="2026-02-10",
+        end_date="2026-02-11",
+    )
+
+    with patch("core.tasks.calendar_sync.GoogleClient") as google_client_cls:
+        google_client = google_client_cls.return_value
+        google_client.list_events.return_value = []
+        google_client.create_event.side_effect = RuntimeError("409 already exists")
+        google_client.get_event.return_value = {"id": "rb-existing-id"}
+
+        result = _run_huey_task(create_google_event_task, event_id=event.id)
+
+    status = result["status"] if isinstance(result, dict) else getattr(result, "status", None)
+    assert status == "ok"
+    google_client.get_event.assert_called_once()
+    event.refresh_from_db()
+    assert event.google_event_id == "rb-existing-id"

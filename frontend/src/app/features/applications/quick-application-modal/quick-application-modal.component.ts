@@ -66,7 +66,7 @@ export class QuickApplicationModalComponent {
 
   readonly formErrorLabels: Record<string, string> = {
     product: 'Product',
-    docDate: 'Application Date',
+    docDate: 'Application Submission Date',
     notes: 'Notes',
   };
 

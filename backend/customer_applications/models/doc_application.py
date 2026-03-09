@@ -328,12 +328,7 @@ class DocApplication(models.Model):
         if not self.pk:
             return None
 
-        window = service.get_submission_window(product=self.product, application=self)
-        if not window:
-            return None
-        if self.doc_date and self.doc_date > window.first_date:
-            return self.doc_date
-        return window.first_date
+        return service.resolve_submission_date(product=self.product, application=self)
 
     @property
     def upload_folder(self):
@@ -578,6 +573,19 @@ def pre_delete_doc_application_signal(sender, instance, **kwargs):
     known_event_ids = set()
     if instance.calendar_event_id:
         known_event_ids.add(instance.calendar_event_id)
+    try:
+        refs = instance.calendar_events.values_list("id", "google_event_id")
+        for local_event_id, google_event_id in refs:
+            if local_event_id:
+                known_event_ids.add(local_event_id)
+            if google_event_id:
+                known_event_ids.add(google_event_id)
+    except Exception as exc:
+        logger.warning(
+            "Failed to collect calendar event references for application #%s: %s",
+            instance.id,
+            exc,
+        )
     try:
         from customer_applications.models.workflow_notification import WorkflowNotification
 

@@ -10,16 +10,10 @@ import {
   ViewChild,
 } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
 import { catchError, EMPTY, finalize } from 'rxjs';
 
 import { DocumentTypesService } from '@/core/api';
 import { DocumentType } from '@/core/api/model/document-type';
-import {
-  BaseListComponent,
-  BaseListConfig,
-} from '@/shared/core/base-list.component';
-import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
 import { ConfirmDialogComponent } from '@/shared/components/confirm-dialog/confirm-dialog.component';
@@ -33,16 +27,17 @@ import { ZardDialogService } from '@/shared/components/dialog';
 import { ZardInputDirective } from '@/shared/components/input';
 import { JsonFieldMappingEditorComponent } from '@/shared/components/json-field-mapping-editor';
 import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
+import { BaseListComponent, BaseListConfig } from '@/shared/core/base-list.component';
 
 /**
  * Document Types component
- * 
+ *
  * Extends BaseListComponent to inherit common list patterns:
  * - Keyboard shortcuts (N for new, B/Left for back)
  * - Navigation state restoration
  * - Pagination, sorting, search
  * - Focus management
- * 
+ *
  * Note: This component has complex deprecation logic that is component-specific
  */
 @Component({
@@ -90,6 +85,7 @@ export class DocumentTypesComponent extends BaseListComponent<DocumentType> {
   readonly columns = computed<ColumnConfig<DocumentType>[]>(() => [
     { key: 'name', header: 'Name', sortable: true },
     { key: 'description', header: 'Description', sortable: false },
+    { key: 'autoGeneration', header: 'Auto', sortable: false },
     { key: 'aiValidation', header: 'AI Validation', sortable: false },
     { key: 'deprecated', header: 'Deprecated', sortable: false },
     { key: 'hasExpirationDate', header: 'Expiration', sortable: false },
@@ -139,6 +135,7 @@ export class DocumentTypesComponent extends BaseListComponent<DocumentType> {
     aiStructuredOutput: [''],
     aiValidation: [true],
     deprecated: [false],
+    autoGeneration: [false],
     hasExpirationDate: [false],
     expiringThresholdDays: [null as number | null, [Validators.min(0)]],
     isStayPermit: [false],
@@ -273,6 +270,7 @@ export class DocumentTypesComponent extends BaseListComponent<DocumentType> {
       aiStructuredOutput: '',
       aiValidation: true,
       deprecated: false,
+      autoGeneration: false,
       hasExpirationDate: false,
       expiringThresholdDays: null,
       isStayPermit: false,
@@ -313,6 +311,7 @@ export class DocumentTypesComponent extends BaseListComponent<DocumentType> {
       aiStructuredOutput: documentType.aiStructuredOutput || '',
       aiValidation: documentType.aiValidation ?? true,
       deprecated: documentType.deprecated ?? false,
+      autoGeneration: documentType.autoGeneration ?? false,
       hasExpirationDate: documentType.hasExpirationDate || false,
       expiringThresholdDays: documentType.expiringThresholdDays ?? null,
       isStayPermit: documentType.isStayPermit || false,
@@ -357,6 +356,7 @@ export class DocumentTypesComponent extends BaseListComponent<DocumentType> {
       aiStructuredOutput: formValue.aiStructuredOutput || '',
       aiValidation: formValue.aiValidation ?? true,
       deprecated: formValue.deprecated || false,
+      autoGeneration: formValue.autoGeneration || false,
       hasExpirationDate: formValue.hasExpirationDate || false,
       expiringThresholdDays: formValue.expiringThresholdDays ?? null,
       isStayPermit: formValue.isStayPermit || false,

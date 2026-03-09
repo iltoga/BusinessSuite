@@ -33,6 +33,11 @@ class GoogleCalendarEventColors:
         return cls.validate_color_id(configured, field_name="GOOGLE_CALENDAR_VISA_WINDOW_COLOR_ID")
 
     @classmethod
+    def submission_color_id(cls):
+        configured = getattr(settings, "GOOGLE_CALENDAR_SUBMISSION_COLOR_ID", "9")
+        return cls.validate_color_id(configured, field_name="GOOGLE_CALENDAR_SUBMISSION_COLOR_ID")
+
+    @classmethod
     def color_for_done_state(cls, done: bool):
         return cls.done_color_id() if done else cls.todo_color_id()
 

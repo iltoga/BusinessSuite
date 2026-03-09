@@ -164,7 +164,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
   readonly formErrorLabels: Record<string, string> = {
     customer: 'Customer',
     product: 'Product',
-    docDate: 'Application Date',
+    docDate: 'Application Submission Date',
     dueDate: 'Due Date',
     addDeadlinesToCalendar: 'Add deadlines to calendar',
     notifyCustomer: 'Notify customer',
@@ -663,7 +663,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
 
     const docDateStr = this.toApiDate(this.form.value.docDate);
     if (!docDateStr) {
-      this.toast.error('Application date is required');
+      this.toast.error('Application submission date is required');
       this.isSubmitting.set(false);
       return;
     }

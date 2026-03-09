@@ -31,7 +31,9 @@
 } @else {
   <div class="application-detail-container -m-3 sm:-m-6 space-y-4">
     <!-- Sticky Header -->
-    <div class="application-header sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b py-2 isolate">
+    <div
+      class="application-header sticky top-0 z-50 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 border-b py-2 isolate"
+    >
       <div class="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 class="text-2xl font-semibold">
@@ -92,9 +94,11 @@
             class="w-full sm:w-48"
             [zTooltip]="isApplicationDateLocked() ? applicationDateLockedTooltip : null"
           >
-            <div class="text-sm text-muted-foreground mb-1">Application Date</div>
+            <div class="text-sm text-muted-foreground mb-1">Application Submission Date</div>
             <z-date-input
               [ngModel]="docDateAsDate()"
+              [minDate]="submissionWindowMinDate()"
+              [maxDate]="submissionWindowMaxDate()"
               [disabled]="isApplicationDateLocked() || isSavingMeta()"
               (ngModelChange)="onInlineDateChange('docDate', $event)"
             />
@@ -219,7 +223,7 @@
         (updateWorkflowStatus)="updateWorkflowStatus($event.workflowId, $event.status)"
       />
 
-      <z-card class="p-4 sm:p-6">
+      <z-card class="mt-4 p-4 sm:mt-6 sm:p-6">
         <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
           <h3 class="text-lg font-semibold">Uploaded Documents</h3>
           <div class="flex flex-wrap gap-2">
@@ -415,7 +419,30 @@
               <tbody>
                 @for (doc of requiredDocuments(); track doc.id) {
                   <tr class="border-b app-doc-row">
-                    <td class="py-3" data-label="Document">{{ doc.docType.name }}</td>
+                    <td class="py-3" data-label="Document">
+                      <span class="inline-flex items-center gap-1.5">
+                        {{ doc.docType.name }}
+                        @if (canShowAutomaticShortcut(doc)) {
+                          <button
+                            type="button"
+                            class="text-muted-foreground hover:text-primary transition-colors disabled:opacity-40"
+                            [zTooltip]="getAutomaticShortcutTooltip(doc) || null"
+                            [disabled]="actionLoading() !== null"
+                            (click)="runAutomaticShortcut(doc)"
+                            [attr.aria-label]="getAutomaticShortcutLabel(doc)"
+                          >
+                            @if (isAutomaticShortcutLoading(doc)) {
+                              <z-icon
+                                zType="loader-circle"
+                                class="h-3.5 w-3.5 app-circle-spinner"
+                              />
+                            } @else {
+                              <z-icon zType="sparkles" class="h-3.5 w-3.5" />
+                            }
+                          </button>
+                        }
+                      </span>
+                    </td>
                     <td class="py-3 app-doc-actions-cell" data-label="Actions">
                       <div class="flex flex-wrap gap-2">
                         <button z-button zType="default" zSize="sm" (click)="openUpload(doc)">
@@ -455,7 +482,30 @@
               <tbody>
                 @for (doc of optionalDocuments(); track doc.id) {
                   <tr class="border-b app-doc-row">
-                    <td class="py-3" data-label="Document">{{ doc.docType.name }}</td>
+                    <td class="py-3" data-label="Document">
+                      <span class="inline-flex items-center gap-1.5">
+                        {{ doc.docType.name }}
+                        @if (canShowAutomaticShortcut(doc)) {
+                          <button
+                            type="button"
+                            class="text-muted-foreground hover:text-primary transition-colors disabled:opacity-40"
+                            [zTooltip]="getAutomaticShortcutTooltip(doc) || null"
+                            [disabled]="actionLoading() !== null"
+                            (click)="runAutomaticShortcut(doc)"
+                            [attr.aria-label]="getAutomaticShortcutLabel(doc)"
+                          >
+                            @if (isAutomaticShortcutLoading(doc)) {
+                              <z-icon
+                                zType="loader-circle"
+                                class="h-3.5 w-3.5 app-circle-spinner"
+                              />
+                            } @else {
+                              <z-icon zType="sparkles" class="h-3.5 w-3.5" />
+                            }
+                          </button>
+                        }
+                      </span>
+                    </td>
                     <td class="py-3 app-doc-actions-cell" data-label="Actions">
                       <div class="flex flex-wrap gap-2">
                         <button z-button zType="default" zSize="sm" (click)="openUpload(doc)">
@@ -576,7 +626,7 @@
                   />
                 }
                 {{ action.label }}
-                @if (actionLoading() === action.name) {
+                @if (isActionLoadingFor(selectedDocument()!, action.name)) {
                   <z-icon zType="loader-circle" class="ml-2 h-4 w-4 app-circle-spinner" />
                 }
               </button>

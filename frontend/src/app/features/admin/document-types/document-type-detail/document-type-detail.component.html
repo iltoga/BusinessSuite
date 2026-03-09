@@ -123,6 +123,12 @@
 
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <div class="flag-item">
+          <span class="text-sm">Auto Generation</span>
+          <z-badge [zType]="badgeType(documentType()!.autoGeneration)">
+            {{ yesNo(documentType()!.autoGeneration) }}
+          </z-badge>
+        </div>
+        <div class="flag-item">
           <span class="text-sm">AI Validation</span>
           <z-badge [zType]="badgeType(documentType()!.aiValidation)">
             {{ yesNo(documentType()!.aiValidation) }}

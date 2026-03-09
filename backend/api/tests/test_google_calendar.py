@@ -227,8 +227,12 @@ class TestGoogleCalendarAPI:
 
         resp = self.client.get("/api/calendar/")
         assert resp.status_code == status.HTTP_200_OK
-        assert len(resp.data) == 1
-        assert str(application.id) in resp.data[0]["summary"]
+        assert len(resp.data) == 2
+        assert any(
+            event["summary"].endswith("Application submission") and str(application.id) in event["summary"]
+            for event in resp.data
+        )
+        assert any("Biometrics" in event["summary"] for event in resp.data)
 
     @pytest.mark.django_db
     def test_calendar_list_local_includes_completed_workflow_events_as_done(self):
@@ -297,6 +301,13 @@ class TestGoogleCalendarAPI:
 
         resp = self.client.get("/api/calendar/")
         assert resp.status_code == status.HTTP_200_OK
+
+        submission_event = next(
+            (event for event in resp.data if event["id"] == f"local-app-{application.id}-submission"),
+            None,
+        )
+        assert submission_event is not None
+        assert submission_event["colorId"] == GoogleCalendarEventColors.submission_color_id()
 
         done_event = next((event for event in resp.data if event["id"].endswith(f"workflow-{completed.id}")), None)
         assert done_event is not None

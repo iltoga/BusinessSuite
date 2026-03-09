@@ -224,6 +224,34 @@ class GoogleCalendarViewSet(viewsets.ViewSet):
             },
         }
 
+    def _serialize_local_submission_event_for_application(self, application):
+        submission_date = application.doc_date
+        if not submission_date:
+            return None
+
+        notes = application.notes or "-"
+        return {
+            "id": f"{self.LOCAL_EVENT_ID_PREFIX}{application.id}-submission",
+            "summary": f"[Application #{application.id}] {application.customer.full_name} - Application submission",
+            "description": (
+                f"Application #{application.id}\n"
+                f"Customer: {application.customer.full_name}\n"
+                f"Product: {application.product.name}\n"
+                f"Application submission date: {submission_date.isoformat()}\n"
+                f"Application Notes: {notes}"
+            ),
+            "start": {"date": submission_date.isoformat()},
+            "end": {"date": (submission_date + timedelta(days=1)).isoformat()},
+            "colorId": GoogleCalendarEventColors.submission_color_id(),
+            "extendedProperties": {
+                "private": {
+                    "revisbali_entity": "customer_application",
+                    "revisbali_customer_application_id": str(application.id),
+                    "revisbali_event_kind": "application_submission",
+                }
+            },
+        }
+
     def _serialize_local_done_event_for_workflow(self, application, workflow):
         if not workflow.task.add_task_to_calendar or not workflow.due_date:
             return None
@@ -248,6 +276,10 @@ class GoogleCalendarViewSet(viewsets.ViewSet):
 
         events = []
         for application in applications:
+            submission_event = self._serialize_local_submission_event_for_application(application)
+            if submission_event:
+                events.append(submission_event)
+
             # Use prefetched data to avoid N+1 DB queries from model helper properties.
             tasks = list(application.product.tasks.all())
             workflows = list(application.workflows.all())

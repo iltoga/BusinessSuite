@@ -418,7 +418,7 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
             step_one_workflow = self._get_step_one_workflow(self.instance)
             if step_one_workflow and step_one_workflow.status == step_one_workflow.STATUS_COMPLETED:
                 raise serializers.ValidationError(
-                    {"doc_date": "Application date cannot be changed after step 1 is completed."}
+                    {"doc_date": "Application submission date cannot be changed after step 1 is completed."}
                 )
 
         if due_date is None:

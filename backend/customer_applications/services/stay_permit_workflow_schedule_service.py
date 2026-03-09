@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from django.db import transaction
 
+from core.utils.dateutils import calculate_due_date
 from customer_applications.models.doc_workflow import DocWorkflow
 
 
@@ -37,10 +38,10 @@ class StayPermitWorkflowScheduleService:
             .order_by("task__step", "created_at", "id")
             .first()
         )
-        start_date = application.get_first_task_start_date()
+        submission_date = window_service.resolve_submission_date(product=product, application=application)
 
         with transaction.atomic():
-            if not start_date:
+            if not submission_date:
                 if step_one and step_one.status == DocWorkflow.STATUS_PENDING:
                     step_one.delete()
                 if application.due_date is not None:
@@ -48,7 +49,16 @@ class StayPermitWorkflowScheduleService:
                     application.save(update_fields=["due_date", "updated_at"])
                 return None
 
-            due_date = application.calculate_next_calendar_due_date(start_date=start_date)
+            if application.doc_date != submission_date:
+                application.doc_date = submission_date
+                application.save(update_fields=["doc_date", "updated_at"])
+
+            start_date = submission_date
+            due_date = calculate_due_date(
+                start_date=start_date,
+                days_to_complete=first_task.duration,
+                business_days_only=first_task.duration_is_business_days,
+            )
 
             if step_one is None:
                 step_one = DocWorkflow.objects.create(

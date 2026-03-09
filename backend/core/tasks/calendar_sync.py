@@ -1,4 +1,5 @@
 import logging
+from hashlib import sha1
 
 from core.models.calendar_event import CalendarEvent
 from core.utils.google_client import GoogleClient
@@ -20,6 +21,11 @@ def _is_google_not_found_error(exc: Exception) -> bool:
     return "404" in message and "not found" in message
 
 
+def _is_google_conflict_error(exc: Exception) -> bool:
+    message = str(exc).lower()
+    return "409" in message or "already exists" in message or "duplicate" in message
+
+
 def _is_retryable_google_error(exc: Exception) -> bool:
     if _is_google_not_found_error(exc):
         return False
@@ -27,7 +33,21 @@ def _is_retryable_google_error(exc: Exception) -> bool:
     return "google calendar" in message or "httperror" in message or "failed to initialize google client" in message
 
 
-def _create_missing_remote_event(*, client: GoogleClient, event: CalendarEvent, payload: dict, reason: str):
+def _preferred_google_event_id(local_event_id: str | None) -> str | None:
+    if not local_event_id:
+        return None
+    digest = sha1(str(local_event_id).encode("utf-8")).hexdigest()
+    return f"rb{digest[:30]}"
+
+
+def _create_missing_remote_event(
+    *,
+    client: GoogleClient,
+    event: CalendarEvent,
+    payload: dict,
+    reason: str,
+    preferred_google_event_id: str | None = None,
+):
     logger.error(
         "calendar_remote_event_missing_local_present event_id=%s google_event_id=%s calendar_id=%s reason=%s",
         event.pk,
@@ -35,10 +55,19 @@ def _create_missing_remote_event(*, client: GoogleClient, event: CalendarEvent, 
         _calendar_id_for_event(event),
         reason,
     )
-    remote_event = client.create_event(
-        payload,
-        calendar_id=_calendar_id_for_event(event),
-    )
+    try:
+        remote_event = client.create_event(
+            payload,
+            calendar_id=_calendar_id_for_event(event),
+            event_id=preferred_google_event_id,
+        )
+    except Exception as exc:
+        if not preferred_google_event_id or not _is_google_conflict_error(exc):
+            raise
+        remote_event = client.get_event(
+            preferred_google_event_id,
+            calendar_id=_calendar_id_for_event(event),
+        )
     logger.debug(
         "calendar_remote_event_recreated event_id=%s old_google_event_id=%s new_google_event_id=%s",
         event.pk,
@@ -237,11 +266,15 @@ def create_google_event_task(event_id: str, task=None):
                     event=event,
                     payload=payload,
                     reason="create_task_update_target_missing",
+                    preferred_google_event_id=_preferred_google_event_id(event.pk),
                 )
         else:
-            remote_event = client.create_event(
-                payload,
-                calendar_id=_calendar_id_for_event(event),
+            remote_event = _create_missing_remote_event(
+                client=client,
+                event=event,
+                payload=payload,
+                reason="create_task_new_remote_event",
+                preferred_google_event_id=_preferred_google_event_id(event.pk),
             )
         CalendarEvent.objects.filter(pk=event_id).update(
             google_event_id=remote_event.get("id") or target_google_event_id or event.google_event_id,
@@ -321,6 +354,7 @@ def update_google_event_task(event_id: str, task=None):
                 event=event,
                 payload=payload,
                 reason="update_task_google_event_id_unresolved",
+                preferred_google_event_id=_preferred_google_event_id(event.pk),
             )
             target_google_event_id = remote_event.get("id") or event.google_event_id
         else:
@@ -338,6 +372,7 @@ def update_google_event_task(event_id: str, task=None):
                     event=event,
                     payload=payload,
                     reason="update_task_update_target_missing",
+                    preferred_google_event_id=_preferred_google_event_id(event.pk),
                 )
                 target_google_event_id = remote_event.get("id") or target_google_event_id
 

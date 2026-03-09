@@ -107,7 +107,7 @@ class ApplicationDocDateSyncApiTests(TestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertIn(
-            "Application date cannot be changed after step 1 is completed.",
+            "Application submission date cannot be changed after step 1 is completed.",
             json.dumps(response.json()),
         )
 

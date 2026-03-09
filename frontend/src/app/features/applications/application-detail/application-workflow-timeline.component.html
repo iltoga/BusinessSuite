@@ -43,7 +43,7 @@
           </div>
         </div>
 
-        <div class="mt-3 text-sm text-muted-foreground">
+        <div class="mt-3 text-xs italic text-muted-foreground">
           This application cannot start till {{ pendingStartNotice.startDateDisplay }}, which is
           {{ pendingStartNotice.windowDays }} day{{
             pendingStartNotice.windowDays === 1 ? '' : 's'
@@ -140,7 +140,7 @@
 
               @if (isEditable(item.workflow)) {
                 @if (shouldDisablePendingWorkflow(item.workflow)) {
-                  <div class="mt-3 text-sm text-muted-foreground">
+                  <div class="mt-3 text-xs italic text-muted-foreground">
                     @if (pendingStartNotice) {
                       This application cannot start till {{ pendingStartNotice.startDateDisplay }},
                       which is {{ pendingStartNotice.windowDays }} day{{

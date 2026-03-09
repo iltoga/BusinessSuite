@@ -34,6 +34,7 @@ export interface ApplicationProduct {
 export interface DocumentTypeInfo {
   id: number;
   name: string;
+  autoGeneration?: boolean;
   aiValidation: boolean;
   hasExpirationDate: boolean;
   isStayPermit?: boolean;

@@ -124,7 +124,7 @@ class GoogleClient:
         except Exception as e:
             raise APIException(f"Google Calendar Get Error: {str(e)}")
 
-    def create_event(self, data, calendar_id=None):
+    def create_event(self, data, calendar_id=None, event_id=None):
         """
         Expects data: { 'summary': str, 'description': str, 'start_time': iso_str|datetime, 'end_time': iso_str|datetime }
         """
@@ -157,6 +157,8 @@ class GoogleClient:
             event_body["attendees"] = data.get("attendees")
         if data.get("extended_properties"):
             event_body["extendedProperties"] = data.get("extended_properties")
+        if event_id:
+            event_body["id"] = str(event_id)
         if data.get("colorId") is not None:
             event_body["colorId"] = GoogleCalendarEventColors.validate_color_id(data.get("colorId"))
         elif data.get("color_id") is not None:

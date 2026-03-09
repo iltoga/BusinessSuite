@@ -92,9 +92,31 @@ class StayPermitSubmissionWindowService:
             raise ValidationError(
                 {
                     "doc_date": [
-                        "Application date must be between "
+                        "Application submission date must be between "
                         f"{window.first_date.isoformat()} and {window.last_date.isoformat()} "
                         "(inclusive) based on stay permit expiration."
                     ]
                 }
             )
+
+    def resolve_submission_date(
+        self,
+        *,
+        product: Product | None,
+        application=None,
+        preferred_date: date | None = None,
+    ) -> date | None:
+        """Return the submission date that should drive step 1 for stay-permit-gated products.
+
+        If no submission window exists yet, return ``None``.
+        If a preferred/current date is inside the window, keep it.
+        Otherwise, normalize to the first day of the submission window.
+        """
+        window = self.get_submission_window(product=product, application=application)
+        if window is None:
+            return None
+
+        candidate = preferred_date or getattr(application, "doc_date", None)
+        if candidate and window.first_date <= candidate <= window.last_date:
+            return candidate
+        return window.first_date

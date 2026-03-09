@@ -24,13 +24,13 @@
       </div>
 
       <div class="flex flex-col gap-2">
-        <label class="text-sm font-medium">Doc Date</label>
+        <label class="text-sm font-medium">Application Submission Date</label>
         <z-date-input formControlName="docDate"></z-date-input>
         <div
           *ngIf="form.get('docDate')?.invalid && form.get('docDate')?.touched"
           class="text-xs text-destructive mt-1"
         >
-          Document date is required
+          Application submission date is required
         </div>
       </div>
 

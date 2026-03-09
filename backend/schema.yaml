@@ -12591,6 +12591,10 @@ components:
           maxLength: 500
         deprecated:
           type: boolean
+        auto_generation:
+          type: boolean
+          description: Whether this document type exposes a system-provided automatic
+            generation/upload action.
         ai_validation:
           type: boolean
         has_expiration_date:

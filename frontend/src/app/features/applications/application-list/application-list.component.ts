@@ -144,7 +144,7 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationSe
     },
     {
       key: 'docDate',
-      header: 'Doc Date',
+      header: 'Application Submission Date',
       sortable: true,
       sortKey: 'doc_date',
       template: this.dateTemplate(),

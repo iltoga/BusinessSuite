@@ -276,7 +276,9 @@ export class ApplicationDetailComponent implements OnInit {
         .filter((id): id is number => typeof id === 'number')
         .map((id) => String(id)),
     );
-    const hasStayPermitAlready = (app.documents ?? []).some((doc) => Boolean(doc.docType?.isStayPermit));
+    const hasStayPermitAlready = (app.documents ?? []).some((doc) =>
+      Boolean(doc.docType?.isStayPermit),
+    );
     const stayPermitTypeIds = new Set(
       this.availableDocumentTypes()
         .filter((docType) => docType.isStayPermit)
@@ -309,11 +311,9 @@ export class ApplicationDetailComponent implements OnInit {
   readonly stepOneWorkflow = computed(
     () => this.sortedWorkflows().find((workflow) => workflow.task?.step === 1) ?? null,
   );
-  readonly isApplicationDateLocked = computed(
-    () => this.stepOneWorkflow()?.status === 'completed',
-  );
+  readonly isApplicationDateLocked = computed(() => this.stepOneWorkflow()?.status === 'completed');
   readonly applicationDateLockedTooltip =
-    'Application date cannot be changed after Step 1 is completed.';
+    'Application submission date cannot be changed after Step 1 is completed.';
   readonly isDueDateLocked = computed(() => this.hasWorkflowTasks());
   readonly dueDateLockedTooltip =
     'Please update Due date in Task Timeline to change this deadline.';
@@ -376,6 +376,12 @@ export class ApplicationDetailComponent implements OnInit {
       lastDateDisplay: this.formatDateForDisplay(this.formatDateForApi(lastDate)),
     };
   });
+  readonly submissionWindowMinDate = computed(
+    () => this.stayPermitSubmissionWindow()?.firstDate ?? null,
+  );
+  readonly submissionWindowMaxDate = computed(
+    () => this.stayPermitSubmissionWindow()?.lastDate ?? null,
+  );
   readonly customerNotificationOptions = computed<ZardComboboxOption[]>(() => {
     const customer = this.application()?.customer;
     const options: ZardComboboxOption[] = [];
@@ -843,6 +849,10 @@ export class ApplicationDetailComponent implements OnInit {
           } else {
             this.uploadProgress.set(state.progress);
             this.replaceDocument(state.document);
+            const app = this.application();
+            if (app) {
+              this.loadApplication(app.id, { silent: true });
+            }
             this.toast.success('Document updated');
             this.isSaving.set(false);
             this.closeUpload();
@@ -1305,12 +1315,79 @@ export class ApplicationDetailComponent implements OnInit {
   }
 
   executeAction(action: DocumentAction): void {
-    const document = this.selectedDocument();
+    this.executeDocumentAction(action);
+  }
+
+  canShowAutomaticShortcut(doc: ApplicationDocument): boolean {
+    return this.getAutomaticShortcutAction(doc) !== null;
+  }
+
+  getAutomaticShortcutLabel(doc: ApplicationDocument): string {
+    return this.getAutomaticShortcutAction(doc)?.label ?? 'Run automatic document action';
+  }
+
+  getAutomaticShortcutTooltip(doc: ApplicationDocument): string {
+    const action = this.getAutomaticShortcutAction(doc);
+    if (!action) {
+      return '';
+    }
+
+    return `${action.label} without opening the upload dialog`;
+  }
+
+  runAutomaticShortcut(doc: ApplicationDocument): void {
+    const action = this.getAutomaticShortcutAction(doc);
+    if (!action) {
+      return;
+    }
+
+    this.executeDocumentAction(action, doc);
+  }
+
+  isAutomaticShortcutLoading(doc: ApplicationDocument): boolean {
+    const actionName = this.getAutomaticShortcutAction(doc)?.name;
+    return !!actionName && this.isActionLoadingFor(doc, actionName);
+  }
+
+  isActionLoadingFor(doc: ApplicationDocument, actionName: string): boolean {
+    return this.actionLoading() === this.buildActionLoadingKey(doc.id, actionName);
+  }
+
+  private getAutomaticShortcutAction(doc: ApplicationDocument): DocumentAction | null {
+    if (!doc.docType?.autoGeneration) {
+      return null;
+    }
+
+    const actions = doc.extraActions ?? [];
+    if (actions.length === 0) {
+      return null;
+    }
+
+    const preferredNames = ['auto_generate', 'upload_default'];
+    for (const name of preferredNames) {
+      const match = actions.find((action) => action.name === name);
+      if (match) {
+        return match;
+      }
+    }
+
+    return actions[0] ?? null;
+  }
+
+  private buildActionLoadingKey(documentId: number, actionName: string): string {
+    return `${documentId}:${actionName}`;
+  }
+
+  private executeDocumentAction(
+    action: DocumentAction,
+    documentOverride?: ApplicationDocument | null,
+  ): void {
+    const document = documentOverride ?? this.selectedDocument();
     if (!document) {
       return;
     }
 
-    this.actionLoading.set(action.name);
+    this.actionLoading.set(this.buildActionLoadingKey(document.id, action.name));
 
     this.applicationsService.executeDocumentAction(document.id, action.name).subscribe({
       next: (response) => {
@@ -1642,7 +1719,9 @@ export class ApplicationDetailComponent implements OnInit {
 
   customerDetailState(): Record<string, unknown> {
     const app = this.application();
-    const currentState = this.isBrowser ? ((history.state as Record<string, unknown> | null) ?? {}) : {};
+    const currentState = this.isBrowser
+      ? ((history.state as Record<string, unknown> | null) ?? {})
+      : {};
     return {
       from: 'application-detail',
       applicationId: app?.id,
@@ -1721,12 +1800,19 @@ export class ApplicationDetailComponent implements OnInit {
   }
 
   isDocumentAiValid(doc: ApplicationDocument): boolean {
-    return this.getDocumentAiCheckBadge(doc)?.label === 'Valid' && this.getDocumentExpirationState(doc) === 'ok';
+    return (
+      this.getDocumentAiCheckBadge(doc)?.label === 'Valid' &&
+      this.getDocumentExpirationState(doc) === 'ok'
+    );
   }
 
   isDocumentAiInvalid(doc: ApplicationDocument): boolean {
     const badge = this.getDocumentAiCheckBadge(doc);
-    return badge?.label === 'Invalid' || badge?.label === 'Error' || this.getDocumentExpirationState(doc) !== 'ok';
+    return (
+      badge?.label === 'Invalid' ||
+      badge?.label === 'Error' ||
+      this.getDocumentExpirationState(doc) !== 'ok'
+    );
   }
 
   getDocumentAiCheckBadge(doc: ApplicationDocument): PipelineBadgeState | null {
@@ -1735,7 +1821,10 @@ export class ApplicationDetailComponent implements OnInit {
 
   getDocumentValidationTooltip(doc: ApplicationDocument): string {
     const activePipelineResult = this.getActiveCategorizationResultForDocument(doc.id);
-    if (activePipelineResult?.validationStatus === 'invalid' || activePipelineResult?.validationStatus === 'error') {
+    if (
+      activePipelineResult?.validationStatus === 'invalid' ||
+      activePipelineResult?.validationStatus === 'error'
+    ) {
       const details = [
         activePipelineResult.validationReasoning ?? '',
         ...(activePipelineResult.validationNegativeIssues ?? []),
@@ -1782,9 +1871,7 @@ export class ApplicationDetailComponent implements OnInit {
   private getActiveCategorizationResultForDocument(
     documentId: number,
   ): CategorizationFileResult | null {
-    return (
-      this.categorizationResults().find((result) => result.documentId === documentId) ?? null
-    );
+    return this.categorizationResults().find((result) => result.documentId === documentId) ?? null;
   }
 
   /**
@@ -1864,7 +1951,7 @@ export class ApplicationDetailComponent implements OnInit {
         !this.isDateInRange(value, submissionWindow.firstDate, submissionWindow.lastDate)
       ) {
         this.toast.error(
-          `Application date must be between ${submissionWindow.firstDateDisplay} and ${submissionWindow.lastDateDisplay} (inclusive) based on stay permit expiration.`,
+          `Application submission date must be between ${submissionWindow.firstDateDisplay} and ${submissionWindow.lastDateDisplay} (inclusive) based on stay permit expiration.`,
         );
         return;
       }
@@ -1873,7 +1960,7 @@ export class ApplicationDetailComponent implements OnInit {
     const iso = this.formatDateForApi(value);
     this.updateApplicationPartial(
       { [field]: iso } as any,
-      `${field === 'docDate' ? 'Application' : 'Due'} date updated`,
+      `${field === 'docDate' ? 'Application submission' : 'Due'} date updated`,
     );
   }
 
@@ -1928,12 +2015,15 @@ export class ApplicationDetailComponent implements OnInit {
     const docTypeId = this.selectedNewDocType();
     const app = this.application();
     if (!docTypeId || !app) return;
-    const selectedDocType = this.availableDocumentTypes().find((doc) => String(doc.id) === String(docTypeId));
+    const selectedDocType = this.availableDocumentTypes().find(
+      (doc) => String(doc.id) === String(docTypeId),
+    );
     if (
       selectedDocType?.isStayPermit &&
       app.documents.some(
         (document) =>
-          Boolean(document.docType?.isStayPermit) && String(document.docType?.id) !== String(docTypeId),
+          Boolean(document.docType?.isStayPermit) &&
+          String(document.docType?.id) !== String(docTypeId),
       )
     ) {
       this.toast.error('Only one stay permit document type can be added to an application.');
@@ -2821,7 +2911,9 @@ export class ApplicationDetailComponent implements OnInit {
     this.categorizationSub = this.categorizationService.watchCategorizationJob(jobId).subscribe({
       next: (event: CategorizationSseEvent) => this.handleCategorizationEvent(event),
       error: () => {
-        this.categorizationStatusMessage.set('Connection lost. Waiting for the final pipeline state.');
+        this.categorizationStatusMessage.set(
+          'Connection lost. Waiting for the final pipeline state.',
+        );
         this.maybeFinalizeCategorizationFromClientState();
       },
       complete: () => {
@@ -3187,7 +3279,10 @@ export class ApplicationDetailComponent implements OnInit {
     this.categorizationProcessedFiles.set(total);
     this.categorizationProgressPercentOverride.set(100);
     const currentMessage = this.categorizationStatusMessage().trim();
-    if (!currentMessage || /processing|categorizing|validating|uploading|connection lost/i.test(currentMessage)) {
+    if (
+      !currentMessage ||
+      /processing|categorizing|validating|uploading|connection lost/i.test(currentMessage)
+    ) {
       this.categorizationStatusMessage.set('Processing complete');
     }
   }

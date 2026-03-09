@@ -62,13 +62,23 @@ class ApplicationCalendarServiceTests(TestCase):
         )
         self.assertEqual(event.extended_properties["private"]["revisbali_entity"], "customer_application")
         self.assertEqual(event.source, CalendarEvent.SOURCE_APPLICATION)
-        send_task_mock.assert_called_once_with(
+        self.assertEqual(send_task_mock.call_count, 2)
+        send_task_mock.assert_any_call(
             "core.tasks.calendar_sync.create_google_event_task",
             event_id=event.id,
         )
 
         self.application.refresh_from_db()
         self.assertEqual(self.application.calendar_event_id, event.id)
+
+        submission_event = CalendarEvent.objects.filter(
+            application=self.application,
+            source=CalendarEvent.SOURCE_APPLICATION,
+            extended_properties__private__revisbali_event_kind="application_submission",
+        ).first()
+        self.assertIsNotNone(submission_event)
+        self.assertEqual(submission_event.start_date.isoformat(), "2026-01-10")
+        self.assertEqual(submission_event.color_id, GoogleCalendarEventColors.submission_color_id())
 
     def test_sync_updates_existing_calendar_event_when_due_date_changes(self):
         with (patch("core.signals_calendar._send_calendar_task") as send_task_mock,):
@@ -88,14 +98,34 @@ class ApplicationCalendarServiceTests(TestCase):
         self.assertEqual(old_event.id, updated_event.id)
         self.assertEqual(updated_event.start_date.isoformat(), "2026-01-25")
         self.assertTrue(CalendarEvent.objects.filter(pk=old_event.id).exists())
-        self.assertEqual(CalendarEvent.objects.filter(application=self.application).count(), 1)
+        self.assertEqual(CalendarEvent.objects.filter(application=self.application).count(), 2)
         assert send_task_mock.call_args_list[0].args == ("core.tasks.calendar_sync.create_google_event_task",)
         assert send_task_mock.call_args_list[0].kwargs == {"event_id": old_event.id}
-        assert send_task_mock.call_args_list[1].args == ("core.tasks.calendar_sync.update_google_event_task",)
-        assert send_task_mock.call_args_list[1].kwargs == {"event_id": old_event.id}
+        assert send_task_mock.call_args_list[1].args == ("core.tasks.calendar_sync.create_google_event_task",)
+        assert send_task_mock.call_args_list[2].args == ("core.tasks.calendar_sync.update_google_event_task",)
+        assert send_task_mock.call_args_list[2].kwargs == {"event_id": old_event.id}
 
         self.application.refresh_from_db()
         self.assertEqual(self.application.calendar_event_id, updated_event.id)
+
+    def test_sync_updates_submission_event_when_application_date_changes(self):
+        with (
+            patch("core.signals_calendar._send_calendar_task"),
+            patch("django.db.transaction.on_commit", side_effect=lambda callback: callback()),
+        ):
+            ApplicationCalendarService().sync_next_task_deadline(self.application)
+
+            self.application.doc_date = date(2026, 1, 12)
+            self.application.save(update_fields=["doc_date", "updated_at"])
+            ApplicationCalendarService().sync_next_task_deadline(self.application)
+
+        submission_event = CalendarEvent.objects.get(
+            application=self.application,
+            source=CalendarEvent.SOURCE_APPLICATION,
+            extended_properties__private__revisbali_event_kind="application_submission",
+        )
+        self.assertEqual(submission_event.start_date.isoformat(), "2026-01-12")
+        self.assertEqual(submission_event.color_id, GoogleCalendarEventColors.submission_color_id())
 
     def test_sync_keeps_existing_events_when_no_next_calendar_task(self):
         with patch("core.tasks.calendar_sync.create_google_event_task"):
