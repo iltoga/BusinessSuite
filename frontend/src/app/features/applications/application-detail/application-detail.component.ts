@@ -712,10 +712,11 @@ export class ApplicationDetailComponent implements OnInit {
     const shouldPreValidate =
       this.isAiValidationEnabledForSelectedDocument() && this.validateWithAi() && !!file;
 
-    if (shouldPreValidate && file) {
+    if (shouldPreValidate) {
       const preUploadOutcome = this.preUploadValidationOutcome();
       if (!preUploadOutcome) {
-        this.runPreUploadAiValidation(document, file, formValue);
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        this.runPreUploadAiValidation(document, file!, formValue);
         return;
       }
       this.uploadDocument(
@@ -728,15 +729,9 @@ export class ApplicationDetailComponent implements OnInit {
       return;
     }
 
-    const shouldClearAiValidation =
-      !!file && this.isAiValidationEnabledForSelectedDocument() && !this.validateWithAi();
-    this.uploadDocument(
-      document,
-      formValue,
-      file,
-      shouldClearAiValidation ? '' : undefined,
-      shouldClearAiValidation ? null : undefined,
-    );
+    // 'Validate with AI' is unchecked, no file selected, or AI is not enabled for this
+    // document type: upload as-is without triggering or modifying any AI validation.
+    this.uploadDocument(document, formValue, file);
   }
 
   private runPreUploadAiValidation(
