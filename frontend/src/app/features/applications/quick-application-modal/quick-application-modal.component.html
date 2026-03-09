@@ -9,6 +9,7 @@
           [label]="'Product'"
           [placeholder]="'Select a product...'"
           [searchPlaceholder]="'Search products...'"
+          [usesCustomerAppWorkflow]="true"
           [zWidth]="'full'"
           [zStatus]="
             form.get('product')?.invalid && form.get('product')?.touched ? 'error' : undefined

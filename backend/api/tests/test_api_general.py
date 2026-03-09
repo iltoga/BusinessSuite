@@ -1211,6 +1211,42 @@ class ProductApiTestCase(TestCase):
         self.assertIn(active_product.code, visible_codes)
         self.assertIn(deprecated_product.code, visible_codes)
 
+    def test_products_list_can_filter_by_customer_application_workflow_flag(self):
+        docs_product = Product.objects.create(
+            name="Docs Workflow",
+            code="DOCS-WF-LIST",
+            product_type="visa",
+            required_documents="Passport",
+        )
+        task_product = Product.objects.create(name="Task Workflow", code="TASK-WF-LIST", product_type="other")
+        Task.objects.create(
+            product=task_product,
+            step=1,
+            name="Collect docs",
+            duration=1,
+            duration_is_business_days=False,
+        )
+        invoice_only_product = Product.objects.create(
+            name="Invoice Only Product",
+            code="INV-ONLY-LIST",
+            product_type="other",
+        )
+
+        url = reverse("products-list")
+        response = self.client.get(f"{url}?uses_customer_app_workflow=true")
+        self.assertEqual(response.status_code, 200)
+        visible_codes = {item.get("code") for item in response.json().get("results", [])}
+        self.assertIn(docs_product.code, visible_codes)
+        self.assertIn(task_product.code, visible_codes)
+        self.assertNotIn(invoice_only_product.code, visible_codes)
+
+        response = self.client.get(f"{url}?uses_customer_app_workflow=false")
+        self.assertEqual(response.status_code, 200)
+        visible_codes = {item.get("code") for item in response.json().get("results", [])}
+        self.assertIn(invoice_only_product.code, visible_codes)
+        self.assertNotIn(docs_product.code, visible_codes)
+        self.assertNotIn(task_product.code, visible_codes)
+
     def test_invoice_create_rejects_applications_with_deprecated_products(self):
         customer = Customer.objects.create(customer_type="person", first_name="Dep", last_name="Invoice")
         deprecated_product = Product.objects.create(
