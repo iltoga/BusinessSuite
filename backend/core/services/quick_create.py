@@ -1,6 +1,4 @@
 from django.db import transaction
-from django.utils import timezone
-
 from core.utils.dateutils import calculate_due_date
 from customer_applications.models import DocApplication
 from customer_applications.models.doc_workflow import DocWorkflow
@@ -84,15 +82,18 @@ def _create_initial_workflow(*, doc_app, product, created_by) -> None:
     first_task = product.tasks.order_by("step").first()
     if not first_task:
         return
+    start_date = doc_app.get_first_task_start_date()
+    if not start_date:
+        return
     due_date = calculate_due_date(
-        start_date=doc_app.doc_date,
+        start_date=start_date,
         days_to_complete=first_task.duration,
         business_days_only=first_task.duration_is_business_days,
     )
     DocWorkflow.objects.create(
         doc_application=doc_app,
         task=first_task,
-        start_date=timezone.now().date(),
+        start_date=start_date,
         due_date=due_date,
         status=DocWorkflow.STATUS_PENDING,
         created_by=created_by,

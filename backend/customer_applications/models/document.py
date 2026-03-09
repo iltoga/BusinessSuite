@@ -248,7 +248,22 @@ def _queue_visa_submission_window_sync(document: Document, *, operation: str) ->
 
     def _queue_calendar_sync():
         try:
+            from customer_applications.services.stay_permit_workflow_schedule_service import (
+                StayPermitWorkflowScheduleService,
+            )
             from customer_applications.tasks import SYNC_ACTION_UPSERT, sync_application_calendar_task
+
+            application = (
+                DocApplication.objects.select_related("product")
+                .prefetch_related("product__tasks")
+                .filter(pk=application_id)
+                .first()
+            )
+            if application:
+                StayPermitWorkflowScheduleService().sync(
+                    application=application,
+                    actor_user_id=actor_user_id,
+                )
 
             sync_application_calendar_task(
                 application_id=application_id,

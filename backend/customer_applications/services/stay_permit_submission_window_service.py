@@ -25,7 +25,7 @@ class StayPermitSubmissionWindowService:
             return set()
         return {name.strip() for name in value.split(",") if name and name.strip()}
 
-    def _stay_permit_document_names_for_product(self, product: Product | None) -> set[str]:
+    def stay_permit_document_names_for_product(self, product: Product | None) -> set[str]:
         if not product or product.product_type != "visa":
             return set()
 
@@ -42,13 +42,16 @@ class StayPermitSubmissionWindowService:
             )
         )
 
+    def product_requires_submission_window(self, product: Product | None) -> bool:
+        return bool(self.stay_permit_document_names_for_product(product))
+
     def get_submission_window(
         self,
         *,
         product: Product | None,
         application=None,
     ) -> StayPermitSubmissionWindow | None:
-        stay_permit_doc_names = self._stay_permit_document_names_for_product(product)
+        stay_permit_doc_names = self.stay_permit_document_names_for_product(product)
         if not stay_permit_doc_names or application is None:
             return None
 

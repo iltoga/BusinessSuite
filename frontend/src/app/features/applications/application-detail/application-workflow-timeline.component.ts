@@ -22,6 +22,15 @@ interface TimelineWorkflowItem {
   gapDaysFromPrevious: number | null;
 }
 
+interface PendingStartNotice {
+  step: number;
+  taskName: string;
+  startDateDisplay: string;
+  dueDateDisplay: string | null;
+  expirationDateDisplay: string;
+  windowDays: number;
+}
+
 interface DocumentCollectionStatus {
   label:
     | 'Document Collection Pending'
@@ -61,6 +70,7 @@ export class ApplicationWorkflowTimelineComponent implements OnChanges {
   @Input({ required: true }) sortedWorkflowsCount = 0;
   @Input({ required: true }) timelineItems: TimelineWorkflowItem[] = [];
   @Input({ required: true }) documentCollectionStatus!: DocumentCollectionStatus;
+  @Input() pendingStartNotice: PendingStartNotice | null = null;
 
   @Input({ required: true }) canRollbackWorkflow!: (workflow: ApplicationWorkflow) => boolean;
   @Input({ required: true }) isWorkflowDueDateEditable!: (workflow: ApplicationWorkflow) => boolean;
@@ -82,6 +92,18 @@ export class ApplicationWorkflowTimelineComponent implements OnChanges {
 
   ngOnChanges(): void {
     this.rebuildWorkflowCaches();
+  }
+
+  shouldDisablePendingWorkflow(workflow: ApplicationWorkflow): boolean {
+    if (workflow.status !== 'pending') {
+      return false;
+    }
+    const startDate = this.parseIsoDate(workflow.startDate);
+    if (!startDate) {
+      return false;
+    }
+    const today = this.getTodayInWorkflowTimezoneDate();
+    return startDate.getTime() > today.getTime();
   }
 
   getWorkflowStatusVariant(

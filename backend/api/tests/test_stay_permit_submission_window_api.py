@@ -6,7 +6,7 @@ from customers.models import Customer
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.urls import reverse
-from products.models import DocumentType, Product
+from products.models import DocumentType, Product, Task
 
 TEST_CACHES = {
     "default": {
@@ -58,6 +58,14 @@ class StayPermitSubmissionWindowApiTests(TestCase):
             optional_documents="Passport",
             application_window_days=30,
         )
+        self.task = Task.objects.create(
+            product=self.product,
+            step=1,
+            name="Biometrics",
+            duration=2,
+            duration_is_business_days=False,
+            add_task_to_calendar=True,
+        )
 
     def _extract_doc_date_errors(self, payload: dict) -> list[str]:
         errors = payload.get("errors", {}) if isinstance(payload, dict) else {}
@@ -98,6 +106,111 @@ class StayPermitSubmissionWindowApiTests(TestCase):
         doc_type.save()
         doc_type.refresh_from_db()
         self.assertIsNone(doc_type.expiring_threshold_days)
+
+    def test_create_application_does_not_schedule_step_one_before_stay_permit_uploaded(self):
+        response = self.client.post(
+            reverse("customer-applications-list"),
+            data=json.dumps(
+                {
+                    "customer": self.customer.id,
+                    "product": self.product.id,
+                    "doc_date": "2026-03-09",
+                }
+            ),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        application = DocApplication.objects.get(pk=response.json()["id"])
+        self.assertIsNone(application.due_date)
+        self.assertFalse(application.workflows.exists())
+
+    def test_rejects_multiple_stay_permit_document_types_on_create(self):
+        second_stay_doc_type = DocumentType.objects.create(
+            name="KITAS",
+            is_stay_permit=True,
+            has_expiration_date=True,
+            has_file=True,
+        )
+
+        response = self.client.post(
+            reverse("customer-applications-list"),
+            data=json.dumps(
+                {
+                    "customer": self.customer.id,
+                    "product": self.product.id,
+                    "doc_date": "2026-03-09",
+                    "document_types": [
+                        {"id": self.stay_doc_type.id, "required": True},
+                        {"id": second_stay_doc_type.id, "required": False},
+                    ],
+                }
+            ),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Only one stay permit document type", json.dumps(response.json()))
+
+    def test_rejects_multiple_stay_permit_document_types_on_update(self):
+        second_stay_doc_type = DocumentType.objects.create(
+            name="KITAS",
+            is_stay_permit=True,
+            has_expiration_date=True,
+            has_file=True,
+        )
+        application = DocApplication.objects.create(
+            customer=self.customer,
+            product=self.product,
+            doc_date=date(2026, 3, 9),
+            created_by=self.user,
+        )
+        Document.objects.create(
+            doc_application=application,
+            doc_type=self.stay_doc_type,
+            required=True,
+            created_by=self.user,
+        )
+
+        response = self.client.patch(
+            reverse("customer-applications-detail", kwargs={"pk": application.id}),
+            data=json.dumps(
+                {
+                    "document_types": [
+                        {"id": self.stay_doc_type.id, "required": True},
+                        {"id": second_stay_doc_type.id, "required": False},
+                    ]
+                }
+            ),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Only one stay permit document type", json.dumps(response.json()))
+
+    def test_stay_permit_upload_schedules_step_one_from_submission_window(self):
+        application = DocApplication.objects.create(
+            customer=self.customer,
+            product=self.product,
+            doc_date=date(2026, 2, 20),
+            created_by=self.user,
+        )
+
+        with self.captureOnCommitCallbacks(execute=True):
+            Document.objects.create(
+                doc_application=application,
+                doc_type=self.stay_doc_type,
+                expiration_date=date(2026, 4, 1),
+                required=True,
+                created_by=self.user,
+                updated_by=self.user,
+            )
+
+        application.refresh_from_db()
+        workflow = application.workflows.get(task__step=1)
+        self.assertEqual(workflow.start_date, date(2026, 3, 2))
+        self.assertEqual(workflow.due_date, date(2026, 3, 4))
+        self.assertEqual(application.due_date, date(2026, 3, 4))
 
     def test_document_type_api_create_and_update_roundtrip_expiring_threshold_days(self):
         create_payload = {

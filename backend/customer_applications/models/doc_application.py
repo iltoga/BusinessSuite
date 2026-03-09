@@ -304,9 +304,36 @@ class DocApplication(models.Model):
     def calculate_next_calendar_due_date(self, start_date=None):
         task = self.get_next_calendar_task()
         if not task:
-            return None if not self.has_configured_tasks else self.doc_date
-        base_date = start_date or timezone.localdate()
+            if not self.has_configured_tasks:
+                return None
+            base_date = start_date or self.get_first_task_start_date()
+            return base_date
+        base_date = start_date or self.get_first_task_start_date()
+        if not base_date:
+            return None
         return calculate_due_date(base_date, task.duration, task.duration_is_business_days)
+
+    def get_first_task_start_date(self):
+        if not self.has_configured_tasks:
+            return None
+
+        from customer_applications.services.stay_permit_submission_window_service import (
+            StayPermitSubmissionWindowService,
+        )
+
+        service = StayPermitSubmissionWindowService()
+        if not service.product_requires_submission_window(getattr(self, "product", None)):
+            return self.doc_date
+
+        if not self.pk:
+            return None
+
+        window = service.get_submission_window(product=self.product, application=self)
+        if not window:
+            return None
+        if self.doc_date and self.doc_date > window.first_date:
+            return self.doc_date
+        return window.first_date
 
     @property
     def upload_folder(self):
@@ -374,7 +401,9 @@ class DocApplication(models.Model):
         else:
             if not self.has_configured_tasks:
                 return None
-            start_date = self.doc_date
+            start_date = self.get_first_task_start_date()
+            if not start_date:
+                return None
             tasks = self.product.tasks.all()
 
         due_date = start_date

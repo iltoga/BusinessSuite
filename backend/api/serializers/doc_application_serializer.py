@@ -8,6 +8,7 @@ from customer_applications.models import DocApplication
 from customer_applications.services.stay_permit_submission_window_service import StayPermitSubmissionWindowService
 from django.core.exceptions import ValidationError as DjangoValidationError
 from invoices.models.invoice import InvoiceApplication
+from products.models.document_type import DocumentType
 from rest_framework import serializers
 
 
@@ -339,7 +340,10 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
         if not doc_date:
             return None
 
+        window_service = StayPermitSubmissionWindowService()
         if application is None:
+            if window_service.product_requires_submission_window(product):
+                return None
             next_calendar_task = product.tasks.filter(add_task_to_calendar=True).order_by("step").first() if product else None
             if next_calendar_task:
                 from core.utils.dateutils import calculate_due_date
@@ -360,16 +364,50 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
             target.product = product
 
         try:
-            return target.calculate_next_calendar_due_date(start_date=doc_date)
+            start_date = target.get_first_task_start_date()
+            return target.calculate_next_calendar_due_date(start_date=start_date)
         finally:
             if application is not None:
                 target.doc_date = original_doc_date
                 target.product = original_product
 
+    def _validate_single_stay_permit_document_type(self, document_types) -> None:
+        if not document_types:
+            return
+
+        document_type_ids: list[int] = []
+        for item in document_types:
+            raw_id = item.get("doc_type_id") or item.get("id")
+            try:
+                document_type_ids.append(int(raw_id))
+            except (TypeError, ValueError):
+                continue
+
+        if not document_type_ids:
+            return
+
+        document_types_by_id = DocumentType.objects.in_bulk(document_type_ids)
+        stay_permit_names: list[str] = []
+        for doc_type_id in document_type_ids:
+            doc_type = document_types_by_id.get(doc_type_id)
+            if doc_type and doc_type.is_stay_permit and doc_type.name not in stay_permit_names:
+                stay_permit_names.append(doc_type.name)
+
+        if len(stay_permit_names) > 1:
+            raise serializers.ValidationError(
+                {
+                    "document_types": [
+                        "Only one stay permit document type can be added to an application. "
+                        f"Selected: {', '.join(stay_permit_names)}."
+                    ]
+                }
+            )
+
     def validate(self, attrs):
         doc_date = attrs.get("doc_date") or getattr(self.instance, "doc_date", None)
         due_date = attrs.get("due_date")
         product = attrs.get("product") or getattr(self.instance, "product", None)
+        document_types = attrs.get("document_types")
         doc_date_changed = (
             self.instance is not None
             and "doc_date" in attrs
@@ -412,6 +450,8 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
                 {"product": "This product is invoice-only and does not support customer applications."}
             )
 
+        self._validate_single_stay_permit_document_type(document_types)
+
         should_validate_submission_window = self.instance is None or "doc_date" in attrs or "product" in attrs
         if should_validate_submission_window:
             try:
@@ -438,6 +478,9 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         from customer_applications.models.doc_workflow import DocWorkflow
         from customer_applications.models.document import Document
+        from customer_applications.services.stay_permit_workflow_schedule_service import (
+            StayPermitWorkflowScheduleService,
+        )
         from django.db import transaction
         from django.utils import timezone
         from products.models.document_type import DocumentType
@@ -499,19 +542,22 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
         if placeholder_documents:
             Document.objects.bulk_create(placeholder_documents)
 
-        # Create the first workflow step (step 1) if it exists
+        # Create the first workflow step immediately only when the application can already start.
         task = Task.objects.filter(product=application.product, step=1).first()
         if task:
-            step1 = DocWorkflow(
-                start_date=application.doc_date,
-                task=task,
-                doc_application=application,
-                created_by=user,
-                status=DocWorkflow.STATUS_PENDING,
-            )
-            # Keep step 1 in sync with the application due date selected/saved at creation time.
-            step1.due_date = application.due_date or step1.calculate_workflow_due_date()
-            step1.save()
+            start_date = application.get_first_task_start_date()
+            if start_date:
+                step1 = DocWorkflow(
+                    start_date=start_date,
+                    task=task,
+                    doc_application=application,
+                    created_by=user,
+                    status=DocWorkflow.STATUS_PENDING,
+                )
+                step1.due_date = application.calculate_next_calendar_due_date(start_date=start_date) or start_date
+                step1.save()
+
+        StayPermitWorkflowScheduleService().sync(application=application, actor_user_id=user.id)
 
         if has_auto_passport:
             from customer_applications.tasks import auto_import_passport_task
@@ -530,6 +576,9 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         from customer_applications.models.doc_workflow import DocWorkflow
         from customer_applications.models.document import Document
+        from customer_applications.services.stay_permit_workflow_schedule_service import (
+            StayPermitWorkflowScheduleService,
+        )
         from django.db import transaction
         from django.utils import timezone
         from products.models.document_type import DocumentType
@@ -552,10 +601,14 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
             application = super().update(instance, validated_data)
 
             if doc_date_changed and step_one_workflow:
-                step_one_workflow.start_date = application.doc_date
-                step_one_workflow.due_date = application.due_date or step_one_workflow.calculate_workflow_due_date()
-                step_one_workflow.updated_by = user
-                step_one_workflow.save()
+                start_date = application.get_first_task_start_date()
+                if start_date:
+                    step_one_workflow.start_date = start_date
+                    step_one_workflow.due_date = (
+                        application.calculate_next_calendar_due_date(start_date=start_date) or start_date
+                    )
+                    step_one_workflow.updated_by = user
+                    step_one_workflow.save()
 
             if document_types is not None:
                 desired: dict[int, bool] = {}
@@ -593,6 +646,11 @@ class DocApplicationCreateUpdateSerializer(serializers.ModelSerializer):
                         created_by=user,
                         updated_by=user,
                     )
+
+            StayPermitWorkflowScheduleService().sync(
+                application=application,
+                actor_user_id=getattr(user, "id", None),
+            )
 
             self._prime_detail_caches(application)
 

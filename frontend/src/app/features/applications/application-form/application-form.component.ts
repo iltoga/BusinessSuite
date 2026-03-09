@@ -57,6 +57,7 @@ import { ApplicationFormDocumentsSectionComponent } from './application-form-doc
 interface ApplicationDocumentTypeOption {
   id: number;
   name: string;
+  isStayPermit: boolean;
 }
 
 interface ApplicationCalendarTaskOption {
@@ -224,6 +225,11 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
       ),
     ),
     { initialValue: [] as string[] },
+  );
+  readonly stayPermitDocTypeIds = computed(() =>
+    this.documentTypes()
+      .filter((doc) => doc.isStayPermit)
+      .map((doc) => String(doc.id)),
   );
 
   get documentsArray() {
@@ -425,8 +431,15 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
         }
 
         this.documentsArray.clear();
+        let stayPermitAdded = false;
         const processDocs = (docs: ApplicationDocumentTypeOption[], required: boolean) => {
           docs.forEach((dt) => {
+            if (dt.isStayPermit) {
+              if (stayPermitAdded) {
+                return;
+              }
+              stayPermitAdded = true;
+            }
             if (this.checkPassportAutoImport(dt.id)) {
               return; // Skip adding to form correctly
             }
@@ -471,6 +484,11 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
   addDocument(docTypeId: number | string = '', required = true) {
     // Ensure panel is open when a document is added manually
     this.documentsPanelOpen.set(true);
+
+    if (docTypeId && this.wouldCreateDuplicateStayPermit(docTypeId)) {
+      this.toast.error('Only one stay permit document type can be added to an application.');
+      return;
+    }
 
     const docGroup = this.fb.group({
       docTypeId: [String(docTypeId), Validators.required],
@@ -837,6 +855,7 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
       .map((entry) => ({
         id: this.toNumber(entry['id']) ?? 0,
         name: typeof entry['name'] === 'string' ? entry['name'] : '',
+        isStayPermit: Boolean(entry['isStayPermit'] ?? entry['is_stay_permit']),
       }))
       .filter((entry) => entry.id > 0 && entry.name.length > 0);
   }
@@ -883,6 +902,22 @@ export class ApplicationFormComponent implements OnInit, OnDestroy {
       name: typeof source['name'] === 'string' ? source['name'] : '',
       addTaskToCalendar: Boolean(source['addTaskToCalendar'] ?? source['add_task_to_calendar']),
     };
+  }
+
+  private wouldCreateDuplicateStayPermit(docTypeId: number | string): boolean {
+    const target = this.documentTypes().find((doc) => String(doc.id) === String(docTypeId));
+    if (!target?.isStayPermit) {
+      return false;
+    }
+
+    return this.documentsArray.controls.some((control) => {
+      const currentId = String(control.get('docTypeId')?.value ?? '');
+      if (!currentId || currentId === String(docTypeId)) {
+        return false;
+      }
+      const currentDoc = this.documentTypes().find((doc) => String(doc.id) === currentId);
+      return Boolean(currentDoc?.isStayPermit);
+    });
   }
 
   private toRecord(value: unknown): Record<string, unknown> | null {

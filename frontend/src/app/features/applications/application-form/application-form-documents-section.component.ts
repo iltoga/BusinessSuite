@@ -34,6 +34,7 @@ export class ApplicationFormDocumentsSectionComponent implements OnChanges {
   @Input({ required: true }) documentsPanelOpen = false;
   @Input({ required: true }) documentTypeOptions: ZardComboboxOption[] = [];
   @Input({ required: true }) selectedDocTypeIds: string[] = [];
+  @Input({ required: true }) stayPermitDocTypeIds: string[] = [];
   @Input({ required: true }) productSelected = false;
 
   filteredDocumentTypeOptions: Array<ZardComboboxOption[] | undefined> = [];
@@ -52,9 +53,13 @@ export class ApplicationFormDocumentsSectionComponent implements OnChanges {
       const otherSelected = this.selectedDocTypeIds.filter(
         (_, selectedIndex) => selectedIndex !== index,
       );
+      const hasOtherStayPermit = otherSelected.some((id) => this.stayPermitDocTypeIds.includes(id));
 
       return allOptions.filter(
-        (opt) => opt.value === currentSelected || !otherSelected.includes(opt.value),
+        (opt) =>
+          opt.value === currentSelected ||
+          (!otherSelected.includes(opt.value) &&
+            (!hasOtherStayPermit || !this.stayPermitDocTypeIds.includes(opt.value))),
       );
     });
   }

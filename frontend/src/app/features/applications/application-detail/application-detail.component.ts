@@ -82,6 +82,15 @@ interface TimelineWorkflowItem {
   gapDaysFromPrevious: number | null;
 }
 
+interface PendingStartNotice {
+  step: number;
+  taskName: string;
+  startDateDisplay: string;
+  dueDateDisplay: string | null;
+  expirationDateDisplay: string;
+  windowDays: number;
+}
+
 interface PreUploadValidationOutcome {
   status: 'valid' | 'invalid' | 'error';
   result: Record<string, unknown> | null;
@@ -252,6 +261,9 @@ export class ApplicationDetailComponent implements OnInit {
   }
   readonly selectedNewDocType = signal<string | null>(null);
   readonly docTypeOptions = signal<ZardComboboxOption[]>([]);
+  readonly availableDocumentTypes = signal<
+    Array<{ id: number; name: string; isStayPermit: boolean }>
+  >([]);
   readonly filteredDocTypeOptions = computed(() => {
     const options = this.docTypeOptions();
     const app = this.application();
@@ -264,7 +276,17 @@ export class ApplicationDetailComponent implements OnInit {
         .filter((id): id is number => typeof id === 'number')
         .map((id) => String(id)),
     );
-    return options.filter((opt) => !existingDocTypeIds.has(opt.value));
+    const hasStayPermitAlready = (app.documents ?? []).some((doc) => Boolean(doc.docType?.isStayPermit));
+    const stayPermitTypeIds = new Set(
+      this.availableDocumentTypes()
+        .filter((docType) => docType.isStayPermit)
+        .map((docType) => String(docType.id)),
+    );
+    return options.filter(
+      (opt) =>
+        !existingDocTypeIds.has(opt.value) &&
+        (!hasStayPermitAlready || !stayPermitTypeIds.has(opt.value)),
+    );
   });
 
   // Computed signals for stable object references in templates
@@ -504,6 +526,42 @@ export class ApplicationDetailComponent implements OnInit {
       workflow,
       gapDaysFromPrevious: index > 0 ? this.calculateGapDays(workflows[index - 1], workflow) : null,
     }));
+  });
+  readonly pendingStartNotice = computed<PendingStartNotice | null>(() => {
+    const app = this.application();
+    const window = this.stayPermitSubmissionWindow();
+    if (!app || !window) {
+      return null;
+    }
+
+    const todayIso = this.formatDateForApi(new Date());
+    const today = this.parseApiDate(todayIso);
+    if (!today) {
+      return null;
+    }
+
+    const firstWorkflow = this.sortedWorkflows()[0] ?? null;
+    const scheduledStart =
+      this.parseApiDate(firstWorkflow?.startDate) ?? this.parseApiDate(window.firstDateIso);
+    if (!scheduledStart || scheduledStart.getTime() <= today.getTime()) {
+      return null;
+    }
+
+    const task = firstWorkflow?.task ?? app.nextTask;
+    if (!task) {
+      return null;
+    }
+
+    return {
+      step: task.step,
+      taskName: task.name,
+      startDateDisplay: this.formatDateForDisplay(window.firstDateIso),
+      dueDateDisplay: firstWorkflow?.dueDate
+        ? this.formatDateForDisplay(firstWorkflow.dueDate)
+        : null,
+      expirationDateDisplay: window.lastDateDisplay,
+      windowDays: Number(app.product?.applicationWindowDays ?? 0) || 0,
+    };
   });
 
   readonly canReopen = computed(() => !!this.application()?.isApplicationCompleted);
@@ -1870,6 +1928,17 @@ export class ApplicationDetailComponent implements OnInit {
     const docTypeId = this.selectedNewDocType();
     const app = this.application();
     if (!docTypeId || !app) return;
+    const selectedDocType = this.availableDocumentTypes().find((doc) => String(doc.id) === String(docTypeId));
+    if (
+      selectedDocType?.isStayPermit &&
+      app.documents.some(
+        (document) =>
+          Boolean(document.docType?.isStayPermit) && String(document.docType?.id) !== String(docTypeId),
+      )
+    ) {
+      this.toast.error('Only one stay permit document type can be added to an application.');
+      return;
+    }
     const payloadDocs = app.documents.map((d) => ({ id: d.docType.id, required: d.required }));
     if (!payloadDocs.some((d) => String(d.id) === String(docTypeId))) {
       payloadDocs.push({ id: Number(docTypeId), required: true });
@@ -2114,9 +2183,19 @@ export class ApplicationDetailComponent implements OnInit {
 
   private loadDocumentTypes(): void {
     this.documentTypesService.documentTypesList().subscribe({
-      next: (types) =>
-        this.docTypeOptions.set((types ?? []).map((t) => ({ value: String(t.id), label: t.name }))),
-      error: () => this.docTypeOptions.set([]),
+      next: (types) => {
+        const normalized = (types ?? []).map((t) => ({
+          id: Number(t.id),
+          name: t.name,
+          isStayPermit: Boolean(t.isStayPermit),
+        }));
+        this.availableDocumentTypes.set(normalized);
+        this.docTypeOptions.set(normalized.map((t) => ({ value: String(t.id), label: t.name })));
+      },
+      error: () => {
+        this.availableDocumentTypes.set([]);
+        this.docTypeOptions.set([]);
+      },
     });
   }
 
