@@ -1445,14 +1445,14 @@ def product_quick_create(request):
         return Response(
             {
                 "success": True,
-                "product": {
-                    "id": product.id,
-                    "name": product.name,
-                    "code": product.code,
-                    "product_type": product.product_type,
-                    "base_price": product.base_price,
-                    "retail_price": product.retail_price,
-                    "created_at": product.created_at,
+                    "product": {
+                        "id": product.id,
+                        "name": product.name,
+                        "code": product.code,
+                        "product_type": product.product_category.product_type if product.product_category else None,
+                        "base_price": product.base_price,
+                        "retail_price": product.retail_price,
+                        "created_at": product.created_at,
                     "updated_at": product.updated_at,
                     "created_by": product.created_by_id,
                     "updated_by": product.updated_by_id,

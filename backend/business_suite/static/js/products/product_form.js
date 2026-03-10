@@ -298,8 +298,15 @@
         $('#id_tasks-' + formIdx + '-step').val(parseInt(formIdx) + 1);
 
         // If product type is 'visa', set default values for the first task form
-        const productType = $('#id_product_type').val();
-        if (productType === 'visa' && formIdx === '0') {
+        const productCategorySelect = $('#id_product_category');
+        const selectedOption = productCategorySelect.find('option:selected');
+        const selectedLabel = (selectedOption.text() || '').trim().toLowerCase();
+        const selectedType = (
+            selectedOption.data('productType') ||
+            selectedOption.data('product-type') ||
+            selectedLabel
+        ).toString().trim().toLowerCase();
+        if (selectedType.includes('visa') && formIdx === '0') {
             $('#id_tasks-' + formIdx + '-name').val('Document Collection');
             $('#id_tasks-' + formIdx + '-description').val('Collecting documents from Customer');
         }

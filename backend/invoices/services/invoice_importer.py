@@ -19,7 +19,7 @@ from core.services.logger_service import Logger
 from customer_applications.models import DocApplication
 from customers.models import Customer
 from invoices.models import Invoice, InvoiceApplication
-from products.models import Product
+from products.models import Product, ProductCategory
 
 logger = Logger.get_logger(__name__)
 
@@ -475,7 +475,7 @@ class InvoiceImporter:
                 description=sanitized_description,
                 base_price=Decimal(str(item_data.unit_price)),
                 retail_price=Decimal(str(item_data.unit_price)),
-                product_type="visa",  # Always visa as per requirements
+                product_category=ProductCategory.get_default_for_type("visa"),  # Always visa as per requirements
             )
 
             logger.info(f"Created new product: {product.code} - {product.name}")

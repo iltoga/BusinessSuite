@@ -143,7 +143,6 @@
             (pointerup)="onWeekCalendarDragEnd($event)"
             (pointercancel)="onWeekCalendarDragEnd($event)"
           >
-            <span class="week-calendar-drag-strip__hint">Click and drag here to scroll</span>
           </div>
         } @else if (restOfWeekCalendarDays().length === 0) {
           <div class="text-sm text-muted-foreground">Nothing yet for the rest of the week.</div>
@@ -199,7 +198,6 @@
             (pointerup)="onWeekCalendarDragEnd($event)"
             (pointercancel)="onWeekCalendarDragEnd($event)"
           >
-            <span class="week-calendar-drag-strip__hint">Click and drag here to scroll</span>
           </div>
           @if (restOfWeekEvents().length === 0) {
             <div class="mt-3 text-xs text-muted-foreground">

@@ -20,10 +20,8 @@ export interface ProductDetail {
     basePrice?: string | null;
     retailPrice?: string;
     currency?: string;
-    /**
-     * * `visa` - Visa * `other` - Other
-     */
-    productType?: ProductDetail.ProductTypeEnum;
+    readonly productCategory: number;
+    readonly productType: string;
     validity?: number | null;
     requiredDocuments?: string;
     optionalDocuments?: string;
@@ -46,12 +44,4 @@ export interface ProductDetail {
      */
     readonly updatedBy: string;
 }
-export namespace ProductDetail {
-    export const ProductTypeEnum = {
-        Visa: 'visa',
-        Other: 'other'
-    } as const;
-    export type ProductTypeEnum = typeof ProductTypeEnum[keyof typeof ProductTypeEnum];
-}
-
 

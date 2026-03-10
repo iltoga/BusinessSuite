@@ -511,9 +511,7 @@ class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         )
 
     def get_queryset(self):
-        queryset = self._with_case_insensitive_name_sorting(
-            Customer.objects.select_related("nationality").all()
-        )
+        queryset = self._with_case_insensitive_name_sorting(Customer.objects.select_related("nationality").all())
 
         # Only apply search and active filters for the list action
         if self.action == "list":
@@ -661,14 +659,39 @@ class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         return Response({"job_id": str(job.id)}, status=status.HTTP_202_ACCEPTED)
 
 
+class ProductOrderingFilter(filters.OrderingFilter):
+    def get_ordering(self, request, queryset, view):
+        ordering = super().get_ordering(request, queryset, view)
+        if not ordering:
+            return ordering
+        mapped = []
+        for field in ordering:
+            prefix = "-" if field.startswith("-") else ""
+            name = field[1:] if prefix else field
+            if name == "product_type":
+                mapped.append(f"{prefix}product_category__product_type")
+            else:
+                mapped.append(field)
+        return mapped
+
+
 class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     throttle_scope = None
-    queryset = Product.objects.prefetch_related("tasks").all()
+    queryset = Product.objects.select_related("product_category").prefetch_related("tasks").all()
     pagination_class = StandardResultsSetPagination
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ["name", "code", "description", "product_type"]
-    ordering_fields = ["name", "code", "product_type", "base_price", "retail_price", "created_at", "updated_at"]
+    filter_backends = [filters.SearchFilter, ProductOrderingFilter]
+    search_fields = ["name", "code", "description", "product_category__product_type"]
+    ordering_fields = [
+        "name",
+        "code",
+        "product_type",
+        "product_category__product_type",
+        "base_price",
+        "retail_price",
+        "created_at",
+        "updated_at",
+    ]
     ordering = ["name"]
     authenticated_lookup_actions = frozenset(
         {
@@ -726,7 +749,7 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         queryset = super().get_queryset()
         product_type = self.request.query_params.get("product_type")
         if product_type:
-            queryset = queryset.filter(product_type=product_type)
+            queryset = queryset.filter(product_category__product_type=product_type)
 
         deprecated_param = self.request.query_params.get("deprecated")
         hide_deprecated = parse_bool(self.request.query_params.get("hide_deprecated"), True)
@@ -845,9 +868,23 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             }
         )
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="product_type",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.PATH,
+                required=True,
+                description="Product type (visa|other).",
+            ),
+        ]
+    )
     @action(detail=False, methods=["get"], url_path="get_products_by_product_type/(?P<product_type>[^/.]+)")
     def get_products_by_product_type(self, request, product_type=None):
-        products = Product.objects.filter(product_type=product_type, deprecated=False)
+        products = Product.objects.select_related("product_category").filter(
+            product_category__product_type=product_type,
+            deprecated=False,
+        )
         page = self.paginate_queryset(products)
         if page is not None:
             serializer = self.get_serializer(page, many=True)

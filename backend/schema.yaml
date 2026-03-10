@@ -4130,14 +4130,8 @@ paths:
       - in: path
         name: productType
         schema:
-          enum:
-          - visa
-          - other
           type: string
-          description: |-
-            * `visa` - Visa
-            * `other` - Other
-          x-spec-enum-id: baefb5ad11fd4bd8
+        description: Product type (visa|other).
         required: true
       tags:
       - products
@@ -9398,14 +9392,8 @@ paths:
       - in: path
         name: productType
         schema:
-          enum:
-          - visa
-          - other
           type: string
-          description: |-
-            * `visa` - Visa
-            * `other` - Other
-          x-spec-enum-id: baefb5ad11fd4bd8
+        description: Product type (visa|other).
         required: true
       tags:
       - v1
@@ -13447,15 +13435,12 @@ components:
           type: string
           pattern: ^[A-Za-z]{2,3}$
           maxLength: 3
+        product_category:
+          type: integer
+          readOnly: true
         product_type:
-          enum:
-          - visa
-          - other
           type: string
-          description: |-
-            * `visa` - Visa
-            * `other` - Other
-          x-spec-enum-id: baefb5ad11fd4bd8
+          readOnly: true
         validity:
           type: integer
           maximum: 2147483647
@@ -13507,6 +13492,8 @@ components:
       - created_by
       - id
       - name
+      - product_category
+      - product_type
       - updated_at
       - updated_by
     ProductCreateUpdate:
@@ -13540,15 +13527,21 @@ components:
           type: string
           pattern: ^[A-Za-z]{2,3}$
           maxLength: 3
+        product_category:
+          type: integer
+          nullable: true
         product_type:
           enum:
           - visa
           - other
+          - null
           type: string
           description: |-
             * `visa` - Visa
             * `other` - Other
           x-spec-enum-id: baefb5ad11fd4bd8
+          writeOnly: true
+          nullable: true
         validity:
           type: integer
           maximum: 2147483647
@@ -13617,15 +13610,12 @@ components:
           type: string
           pattern: ^[A-Za-z]{2,3}$
           maxLength: 3
+        product_category:
+          type: integer
+          readOnly: true
         product_type:
-          enum:
-          - visa
-          - other
           type: string
-          description: |-
-            * `visa` - Visa
-            * `other` - Other
-          x-spec-enum-id: baefb5ad11fd4bd8
+          readOnly: true
         validity:
           type: integer
           maximum: 2147483647
@@ -13693,6 +13683,8 @@ components:
       - id
       - name
       - optional_document_types
+      - product_category
+      - product_type
       - required_document_types
       - tasks
       - updated_at

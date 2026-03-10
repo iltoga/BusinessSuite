@@ -56,8 +56,10 @@ class ProductRevenueAnalysisView(LoginRequiredMixin, TemplateView):
                     "product": product,
                     "code": product.code,
                     "name": product.name,
-                    "type": product.get_product_type_display(),
-                    "product_type": product.product_type,
+                    "type": product.product_category.get_product_type_display()
+                    if product.product_category
+                    else "",
+                    "product_type": product.product_category.product_type if product.product_category else None,
                     "application_count": product.application_count,
                     "invoiced_application_count": invoiced_count,
                     "total_revenue": total_revenue,
@@ -82,7 +84,9 @@ class ProductRevenueAnalysisView(LoginRequiredMixin, TemplateView):
 
         # Product type comparison
         type_data = []
-        for type_code, type_label in Product.PRODUCT_TYPE_CHOICES:
+        from products.models import ProductCategory
+
+        for type_code, type_label in ProductCategory.PRODUCT_TYPE_CHOICES:
             rows = [row for row in product_data if row["product_type"] == type_code]
             count = len(rows)
             revenue = sum((row["total_revenue"] for row in rows), Decimal("0.00"))

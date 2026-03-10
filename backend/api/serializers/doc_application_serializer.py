@@ -163,7 +163,9 @@ class CustomerUninvoicedApplicationSerializer(DocApplicationInvoiceSerializer):
         read_only_fields = fields
 
     def get_product_type_display(self, instance) -> str:
-        return instance.product.get_product_type_display() if instance.product else ""
+        if not instance.product or not getattr(instance.product, "product_category", None):
+            return ""
+        return instance.product.product_category.get_product_type_display()
 
     def get_has_invoice(self, instance) -> bool:
         return instance.has_invoice()

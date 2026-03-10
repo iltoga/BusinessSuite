@@ -228,14 +228,17 @@ def _queue_visa_submission_window_sync(document: Document, *, operation: str) ->
     doc_application = getattr(document, "doc_application", None)
     if not doc_application and document.doc_application_id:
         doc_application = (
-            DocApplication.objects.select_related("product")
+            DocApplication.objects.select_related("product", "product__product_category")
             .filter(pk=document.doc_application_id)
-            .only("id", "product__product_type", "created_by_id", "updated_by_id")
+            .only("id", "product__product_category__product_type", "created_by_id", "updated_by_id")
             .first()
         )
     if not doc_application:
         return
-    if not getattr(doc_application, "product", None) or doc_application.product.product_type != "visa":
+    product = getattr(doc_application, "product", None)
+    if not product or not getattr(product, "product_category", None):
+        return
+    if product.product_category.product_type != "visa":
         return
 
     actor_user_id = (
@@ -254,7 +257,7 @@ def _queue_visa_submission_window_sync(document: Document, *, operation: str) ->
             from customer_applications.tasks import SYNC_ACTION_UPSERT, sync_application_calendar_task
 
             application = (
-                DocApplication.objects.select_related("product")
+                DocApplication.objects.select_related("product", "product__product_category")
                 .prefetch_related("product__tasks")
                 .filter(pk=application_id)
                 .first()

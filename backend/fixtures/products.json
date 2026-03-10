@@ -1,15 +1,33 @@
 [
     {
+        "model": "products.productcategory",
+        "pk": 1,
+        "fields": {
+            "name": "Visa",
+            "product_type": "visa",
+            "description": ""
+        }
+    },
+    {
+        "model": "products.productcategory",
+        "pk": 2,
+        "fields": {
+            "name": "Other",
+            "product_type": "other",
+            "description": ""
+        }
+    },
+    {
         "model": "products.product",
         "pk": 1,
         "fields": {
             "name": "Tourist Visa",
             "code": "VISA_TOUR",
             "description": "A visa for tourists visiting Indonesia for leisure and sightseeing.",
+            "product_category": 1,
             "immigration_id": null,
             "base_price": "500000.00",
             "retail_price": "500000.00",
-            "product_type": "visa",
             "validity": 30,
             "required_documents": "Passport,Visa Application Form",
             "optional_documents": "",
@@ -23,10 +41,10 @@
             "name": "Work Permit",
             "code": "WORK_PERMIT",
             "description": "A permit for foreign workers to legally work in Indonesia.",
+            "product_category": 1,
             "immigration_id": null,
             "base_price": "2000000.00",
             "retail_price": "2000000.00",
-            "product_type": "visa",
             "validity": 365,
             "required_documents": "Passport,Work Contract,Visa Application Form",
             "optional_documents": "Invitation Letter",

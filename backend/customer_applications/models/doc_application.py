@@ -70,7 +70,7 @@ class DocApplicationManager(models.Manager):
         return self.filter(
             models.Q(product__name__icontains=query)
             | models.Q(product__code__icontains=query)
-            | models.Q(product__product_type__icontains=query)
+            | models.Q(product__product_category__product_type__icontains=query)
             | models.Q(customer__first_name__icontains=query)
             | models.Q(customer__last_name__icontains=query)
             | models.Q(doc_date__icontains=query)
@@ -184,11 +184,15 @@ class DocApplication(models.Model):
     @property
     def application_type(self):
         """Returns the product type for backward compatibility."""
-        return self.product.product_type if self.product else None
+        if not self.product or not getattr(self.product, "product_category", None):
+            return None
+        return self.product.product_category.product_type
 
     def get_application_type_display(self):
         """Returns the display name of the product type."""
-        return self.product.get_product_type_display() if self.product else ""
+        if not self.product or not getattr(self.product, "product_category", None):
+            return ""
+        return self.product.product_category.get_product_type_display()
 
     @property
     def is_document_collection_completed(self):

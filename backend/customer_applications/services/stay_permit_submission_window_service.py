@@ -26,7 +26,9 @@ class StayPermitSubmissionWindowService:
         return {name.strip() for name in value.split(",") if name and name.strip()}
 
     def stay_permit_document_names_for_product(self, product: Product | None) -> set[str]:
-        if not product or product.product_type != "visa":
+        if not product or not getattr(product, "product_category", None):
+            return set()
+        if product.product_category.product_type != "visa":
             return set()
 
         configured_doc_names = self._split_document_names(product.required_documents) | self._split_document_names(
