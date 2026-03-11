@@ -1,14 +1,13 @@
 import json
-import httpx
 from unittest.mock import MagicMock, patch
 
 import core.services.ai_client as ai_client_module
-from django.test import TestCase, override_settings
-from django.core.cache import cache
-
+import httpx
 from core.services.ai_client import AIClient, AIConnectionError
-from core.services.app_setting_service import AppSettingService
 from core.services.ai_usage_service import AIUsageFeature
+from core.services.app_setting_service import AppSettingService
+from django.core.cache import cache
+from django.test import TestCase, override_settings
 
 OPENAI_PATCH_TARGET = "core.services.ai_client.OpenAI"
 GROQ_PATCH_TARGET = "core.services.ai_client.Groq"
@@ -28,6 +27,16 @@ def _build_rate_limit_error(module):
     request = httpx.Request("POST", "https://api.example.com/v1/chat/completions")
     response = httpx.Response(status_code=429, request=request)
     return module.RateLimitError("rate limited", response=response, body={"error": "rate_limit"})
+
+
+def _build_not_found_error(module, *, url: str = "https://api.example.com/v1/chat/completions"):
+    request = httpx.Request("POST", url)
+    response = httpx.Response(status_code=404, request=request)
+    return module.NotFoundError(
+        "model_not_found",
+        response=response,
+        body={"error": {"code": "model_not_found", "message": "The requested model does not exist."}},
+    )
 
 
 def _build_groq_json_validate_failed_error(module):
@@ -64,9 +73,6 @@ class AIClientJsonParsingTests(TestCase):
     def setUp(self):
         AppSettingService.invalidate_cache()
         cache.clear()
-
-
-
 
     @override_settings(
         OPENROUTER_API_KEY="openrouter-test-key",
@@ -148,7 +154,52 @@ class AIClientJsonParsingTests(TestCase):
         providers = [call.kwargs["provider"] for call in mock_enqueue.call_args_list]
         self.assertEqual(providers, ["openrouter", "openrouter"])
 
+    @override_settings(
+        GROQ_API_KEY="groq-test-key",
+        OPENROUTER_API_KEY="openrouter-test-key",
+        LLM_PROVIDER="groq",
+        GROQ_DEFAULT_MODEL="meta-llama/llama-4-maverick-17b-128e-instruct",
+        OPENROUTER_DEFAULT_MODEL="google/gemini-3-flash-preview",
+        LLM_AUTO_FALLBACK_ENABLED=True,
+        LLM_FALLBACK_PROVIDER_ORDER=["openrouter"],
+        LLM_FALLBACK_STICKY_CACHE_KEY="tests:ai_client:sticky:model_not_found_fallback",
+    )
+    @patch(OPENAI_PATCH_TARGET)
+    @patch(GROQ_PATCH_TARGET)
+    @patch(ENQUEUE_PATCH_TARGET)
+    def test_model_not_found_retries_with_fallback_provider(
+        self,
+        mock_enqueue,
+        mock_groq,
+        mock_openai,
+    ):
+        if ai_client_module.groq is None:
+            self.skipTest("groq SDK not installed in test environment")
 
+        cache.delete("tests:ai_client:sticky:model_not_found_fallback")
+
+        groq_client = MagicMock()
+        groq_client.chat.completions.create.side_effect = _build_not_found_error(
+            ai_client_module.groq,
+            url="https://api.groq.com/openai/v1/chat/completions",
+        )
+        mock_groq.return_value = groq_client
+
+        openrouter_client = MagicMock()
+        openrouter_client.chat.completions.create.return_value = _build_mock_response("fallback-ok")
+        mock_openai.return_value = openrouter_client
+
+        client = AIClient(provider="groq")
+        result = client.chat_completion(messages=[{"role": "user", "content": "test"}])
+
+        self.assertEqual(result, "fallback-ok")
+        self.assertEqual(client.provider_key, "openrouter")
+        self.assertEqual(client.model, "google/gemini-3-flash-preview")
+        groq_client.chat.completions.create.assert_called_once()
+        openrouter_client.chat.completions.create.assert_called_once()
+
+        providers = [call.kwargs["provider"] for call in mock_enqueue.call_args_list]
+        self.assertEqual(providers, ["groq", "openrouter"])
 
     @override_settings(
         GROQ_API_KEY="",
@@ -158,8 +209,6 @@ class AIClientJsonParsingTests(TestCase):
         with self.assertRaises(ValueError) as context:
             AIClient(provider="groq")
         self.assertIn("Groq API key not configured", str(context.exception))
-
-
 
     @override_settings(
         GROQ_API_KEY="groq-test-key",
@@ -186,4 +235,3 @@ class AIClientJsonParsingTests(TestCase):
         self.assertEqual(result, "groq-ok")
         mock_groq.assert_called_once()
         mock_openai.assert_not_called()
-

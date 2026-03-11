@@ -28,6 +28,16 @@ import { provideApi } from '@/core/api';
 import { provideServiceWorker } from '@angular/service-worker';
 import { ThemeName } from './core/theme.config';
 
+type UserSettingsThemePayload = {
+  theme?: ThemeName | null;
+  dark_mode?: boolean | null;
+  darkMode?: boolean | null;
+};
+
+type AppTitleSettings = {
+  title?: string | null;
+};
+
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
@@ -61,12 +71,14 @@ export const appConfig: ApplicationConfig = {
         const applyFromServer = async () => {
           try {
             if (authService.isAuthenticated()) {
-              const settings = await firstValueFrom(userSettingsApi.getMe());
+              const settings = (await firstValueFrom(
+                userSettingsApi.getMe(),
+              )) as UserSettingsThemePayload;
               themeService.initializeTheme(
                 (settings.theme ?? configService.settings.theme) as ThemeName,
               );
               // Accept either snake_case or camelCase keys from server
-              const serverDark = (settings as any)?.dark_mode ?? (settings as any)?.darkMode;
+              const serverDark = settings.dark_mode ?? settings.darkMode;
               themeService.setDarkMode(
                 typeof serverDark === 'boolean' ? serverDark : themeService.isDarkMode(),
               );
@@ -86,7 +98,7 @@ export const appConfig: ApplicationConfig = {
         // Set browser tab title from config if available
         try {
           const titleSvc = inject(Title);
-          const cfgTitle = (configService.settings as any).title;
+          const cfgTitle = (configService.settings as AppTitleSettings).title;
           if (cfgTitle) {
             titleSvc.setTitle(String(cfgTitle));
           }

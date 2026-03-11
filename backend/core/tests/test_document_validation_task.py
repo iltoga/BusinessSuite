@@ -92,7 +92,7 @@ class DocumentValidationTaskTests(TestCase):
     @patch("core.tasks.document_validation.AIDocumentCategorizer.validate_document")
     @patch("core.tasks.document_validation.acquire_task_lock", return_value="token-2")
     @patch("core.tasks.document_validation.release_task_lock")
-    def test_validation_does_not_override_existing_expiration_date(
+    def test_validation_overrides_existing_expiration_date_and_doc_number(
         self,
         _release_lock_mock,
         _acquire_lock_mock,
@@ -119,8 +119,8 @@ class DocumentValidationTaskTests(TestCase):
         _run_huey_task(run_document_validation, document_id=self.document.id)
 
         self.document.refresh_from_db()
-        self.assertEqual(self.document.expiration_date, date(2029, 6, 1))
-        self.assertEqual(self.document.doc_number, "EXISTING-DOC-NO")
+        self.assertEqual(self.document.expiration_date, date(2031, 12, 31))
+        self.assertEqual(self.document.doc_number, "NEW-DOC-NO")
         self.assertEqual(self.document.details, "Existing details")
 
     @patch("core.tasks.document_validation.default_storage.open")

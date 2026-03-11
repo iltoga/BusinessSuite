@@ -92,6 +92,7 @@ class AIClient:
         "timeout",
         "connection_error",
         "rate_limit",
+        "not_found",
         "internal_server",
         "status_error",
         "schema_validation_failed",
@@ -468,9 +469,7 @@ class AIClient:
         last_error: Optional[AIConnectionError] = None
 
         for index, route in enumerate(attempted_routes):
-            if route.provider_key != self.provider_key or (
-                route.timeout is not None and route.timeout != self.timeout
-            ):
+            if route.provider_key != self.provider_key or (route.timeout is not None and route.timeout != self.timeout):
                 self._activate_provider(route.provider_key, timeout_override=route.timeout)
             self.model = route.model
 
@@ -779,9 +778,7 @@ class AIClient:
             return self._parse_json_dict(response_text)
         except ValueError as first_exc:
             if not retry_on_invalid_json:
-                raise ValueError(
-                    f"Invalid JSON response from {self.provider_name}: {first_exc}"
-                ) from first_exc
+                raise ValueError(f"Invalid JSON response from {self.provider_name}: {first_exc}") from first_exc
             logger.warning(
                 "Received malformed JSON from %s. Retrying once with corrective prompt. Error: %s",
                 self.provider_name,
