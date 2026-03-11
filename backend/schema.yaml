@@ -3771,6 +3771,11 @@ paths:
         description: Number of results to return per page.
         schema:
           type: integer
+      - in: query
+        name: product_category
+        schema:
+          type: string
+        description: Filter by product category name (comma-separated).
       - name: search
         required: false
         in: query
@@ -4050,6 +4055,45 @@ paths:
               schema:
                 $ref: '#/components/schemas/Product'
           description: ''
+  /api/products/category-options/:
+    get:
+      operationId: productsCategoryOptionsList
+      parameters:
+      - in: query
+        name: deprecated
+        schema:
+          type: boolean
+        description: Filter category options by explicit deprecated product status.
+      - in: query
+        name: hide_deprecated
+        schema:
+          type: boolean
+        description: When true (default), hide categories that only belong to deprecated
+          products.
+      - in: query
+        name: product_type
+        schema:
+          type: string
+        description: Restrict category options to a product type.
+      - in: query
+        name: uses_customer_app_workflow
+        schema:
+          type: boolean
+        description: Restrict category options to workflow-enabled products.
+      tags:
+      - products
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProductCategoryFilterOption'
+          description: ''
   /api/products/export/download/{jobId}/:
     get:
       operationId: productsExportDownloadRetrieve
@@ -4154,10 +4198,10 @@ paths:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Product'
+              $ref: '#/components/schemas/ProductImportStart'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Product'
+              $ref: '#/components/schemas/ProductImportStart'
         required: true
       security:
       - jwtAuth: []
@@ -4167,7 +4211,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Product'
+                $ref: '#/components/schemas/ProductImportStart'
           description: ''
   /api/push-notifications/fcm-register-proxy/:
     post:
@@ -9033,6 +9077,11 @@ paths:
         description: Number of results to return per page.
         schema:
           type: integer
+      - in: query
+        name: product_category
+        schema:
+          type: string
+        description: Filter by product category name (comma-separated).
       - name: search
         required: false
         in: query
@@ -9312,6 +9361,45 @@ paths:
               schema:
                 $ref: '#/components/schemas/Product'
           description: ''
+  /api/v1/products/category-options/:
+    get:
+      operationId: v1ProductsCategoryOptionsList
+      parameters:
+      - in: query
+        name: deprecated
+        schema:
+          type: boolean
+        description: Filter category options by explicit deprecated product status.
+      - in: query
+        name: hide_deprecated
+        schema:
+          type: boolean
+        description: When true (default), hide categories that only belong to deprecated
+          products.
+      - in: query
+        name: product_type
+        schema:
+          type: string
+        description: Restrict category options to a product type.
+      - in: query
+        name: uses_customer_app_workflow
+        schema:
+          type: boolean
+        description: Restrict category options to workflow-enabled products.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProductCategoryFilterOption'
+          description: ''
   /api/v1/products/export/download/{jobId}/:
     get:
       operationId: v1ProductsExportDownloadRetrieve
@@ -9416,10 +9504,10 @@ paths:
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Product'
+              $ref: '#/components/schemas/ProductImportStart'
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Product'
+              $ref: '#/components/schemas/ProductImportStart'
         required: true
       security:
       - jwtAuth: []
@@ -9429,7 +9517,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Product'
+                $ref: '#/components/schemas/ProductImportStart'
           description: ''
   /api/v1/push-notifications/fcm-register-proxy/:
     post:
@@ -13438,6 +13526,9 @@ components:
         product_category:
           type: integer
           readOnly: true
+        product_category_name:
+          type: string
+          readOnly: true
         product_type:
           type: string
           readOnly: true
@@ -13493,9 +13584,20 @@ components:
       - id
       - name
       - product_category
+      - product_category_name
       - product_type
       - updated_at
       - updated_by
+    ProductCategoryFilterOption:
+      type: object
+      properties:
+        value:
+          type: string
+        label:
+          type: string
+      required:
+      - label
+      - value
     ProductCreateUpdate:
       type: object
       properties:
@@ -13613,6 +13715,9 @@ components:
         product_category:
           type: integer
           readOnly: true
+        product_category_name:
+          type: string
+          readOnly: true
         product_type:
           type: string
           readOnly: true
@@ -13684,11 +13789,20 @@ components:
       - name
       - optional_document_types
       - product_category
+      - product_category_name
       - product_type
       - required_document_types
       - tasks
       - updated_at
       - updated_by
+    ProductImportStart:
+      type: object
+      properties:
+        file:
+          type: string
+          format: uri
+      required:
+      - file
     PushNotificationTest:
       type: object
       properties:

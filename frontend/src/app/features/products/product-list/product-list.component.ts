@@ -1,39 +1,32 @@
-import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
   computed,
   ElementRef,
   inject,
-  PLATFORM_ID,
   signal,
   viewChild,
   type TemplateRef,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Router, RouterLink } from '@angular/router';
-import { Subject, catchError, of, switchMap, takeWhile } from 'rxjs';
+import { RouterLink } from '@angular/router';
+import { catchError, forkJoin, of, Subject, switchMap } from 'rxjs';
 
 import { ProductsService, type Product } from '@/core/api';
-import { JobService } from '@/core/services/job.service';
 import { ConfigService } from '@/core/services/config.service';
+import { JobService } from '@/core/services/job.service';
 import { ProductImportExportService } from '@/core/services/product-import-export.service';
-import {
-  BaseListComponent,
-  BaseListConfig,
-} from '@/shared/core/base-list.component';
 import { ZardBadgeComponent } from '@/shared/components/badge';
-import {
-  BulkDeleteDialogComponent,
-  type BulkDeleteDialogData,
-} from '@/shared/components/bulk-delete-dialog/bulk-delete-dialog.component';
+import { BulkDeleteDialogComponent } from '@/shared/components/bulk-delete-dialog/bulk-delete-dialog.component';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
 import {
   DataTableComponent,
   type ColumnConfig,
+  type ColumnFilterChangeEvent,
+  type ColumnFilterOption,
   type DataTableAction,
-  type SortEvent,
 } from '@/shared/components/data-table/data-table.component';
 import { ZardIconComponent } from '@/shared/components/icon';
 import { PaginationControlsComponent } from '@/shared/components/pagination-controls';
@@ -44,6 +37,7 @@ import {
 } from '@/shared/components/product-delete-dialog/product-delete-dialog.component';
 import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
 import { ZardTooltipImports } from '@/shared/components/tooltip';
+import { BaseListComponent, BaseListConfig } from '@/shared/core/base-list.component';
 import { ContextHelpDirective } from '@/shared/directives';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 import { downloadBlob } from '@/shared/utils/file-download';
@@ -51,7 +45,7 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 
 /**
  * Product list component
- * 
+ *
  * Extends BaseListComponent to inherit common list patterns:
  * - Keyboard shortcuts (N for new, B/Left for back)
  * - Navigation state restoration
@@ -95,7 +89,6 @@ export class ProductListComponent extends BaseListComponent<Product> {
   }
 
   // Product-specific state
-  readonly includeDeprecated = signal(false);
   readonly exportInProgress = signal(false);
   readonly exportProgress = signal<number | null>(null);
   readonly importInProgress = signal(false);
@@ -120,6 +113,14 @@ export class ProductListComponent extends BaseListComponent<Product> {
     viewChild.required<TemplateRef<{ $implicit: Product; value: any; row: Product }>>(
       'typeTemplate',
     );
+  private readonly categoryTemplate =
+    viewChild.required<TemplateRef<{ $implicit: Product; value: any; row: Product }>>(
+      'categoryTemplate',
+    );
+  private readonly deprecatedTemplate =
+    viewChild.required<TemplateRef<{ $implicit: Product; value: any; row: Product }>>(
+      'deprecatedTemplate',
+    );
   private readonly basePriceHeaderTemplate =
     viewChild.required<TemplateRef<{ column: ColumnConfig<Product> }>>('basePriceHeaderTemplate');
   private readonly priceTemplate =
@@ -142,6 +143,16 @@ export class ProductListComponent extends BaseListComponent<Product> {
 
   // Product-specific bulk delete query
   private readonly productBulkDeleteQuery = signal<string>('');
+  readonly columnFilters = signal<Record<string, string[]>>({
+    deprecated: ['active'],
+    productCategoryName: [],
+  });
+
+  readonly deprecatedFilterOptions: ColumnFilterOption[] = [
+    { value: 'active', label: 'Not deprecated' },
+    { value: 'deprecated', label: 'Deprecated' },
+  ];
+  readonly categoryFilterOptions = signal<ColumnFilterOption[]>([]);
 
   // Columns configuration
   readonly columns = computed<ColumnConfig<Product>[]>(() => [
@@ -154,6 +165,19 @@ export class ProductListComponent extends BaseListComponent<Product> {
       sortable: true,
       sortKey: 'product_type',
       template: this.typeTemplate(),
+    },
+    {
+      key: 'productCategoryName',
+      header: 'Category',
+      sortable: true,
+      sortKey: 'product_category__name',
+      template: this.categoryTemplate(),
+      filter: {
+        options: this.categoryFilterOptions(),
+        selectedValues: this.columnFilters()['productCategoryName'] ?? [],
+        emptyLabel: 'No categories found',
+        searchPlaceholder: 'Search categories...',
+      },
     },
     {
       key: 'basePrice',
@@ -174,6 +198,17 @@ export class ProductListComponent extends BaseListComponent<Product> {
       key: 'unitProfit',
       header: 'Unit Profit',
       template: this.profitTemplate(),
+    },
+    {
+      key: 'deprecated',
+      header: 'Deprecated',
+      template: this.deprecatedTemplate(),
+      filter: {
+        options: this.deprecatedFilterOptions,
+        selectedValues: this.columnFilters()['deprecated'] ?? [],
+        emptyLabel: 'No status found',
+        searchPlaceholder: 'Filter status...',
+      },
     },
     {
       key: 'createdAt',
@@ -230,22 +265,31 @@ export class ProductListComponent extends BaseListComponent<Product> {
           this.isLoading.set(true);
           const ordering = this.ordering();
           const search = this.query().trim();
+          const deprecatedFilter = this.resolveDeprecatedFilter();
+          const categoryParam = this.resolveCategoryFilter();
 
-          return this.productsApi
-            .productsList(
-              undefined,
-              !this.includeDeprecated(),
+          return forkJoin({
+            products: this.productsApi.productsList(
+              deprecatedFilter.deprecated,
+              deprecatedFilter.hideDeprecated,
               ordering,
               this.page(),
               this.pageSize(),
+              categoryParam,
               search || undefined,
-            )
-            .pipe(
-              catchError(() => {
-                this.toast.error('Failed to load products');
-                return of(null);
-              }),
-            );
+              undefined,
+            ),
+            categoryOptions: this.productsApi.productsCategoryOptionsList(
+              deprecatedFilter.deprecated,
+              deprecatedFilter.hideDeprecated,
+              undefined,
+            ),
+          }).pipe(
+            catchError(() => {
+              this.toast.error('Failed to load products');
+              return of(null);
+            }),
+          );
         }),
         takeUntilDestroyed(this.destroyRef),
       )
@@ -255,8 +299,9 @@ export class ProductListComponent extends BaseListComponent<Product> {
           return;
         }
 
-        this.items.set(response.results ?? []);
-        this.totalItems.set(response.count ?? 0);
+        this.items.set(response.products.results ?? []);
+        this.totalItems.set(response.products.count ?? 0);
+        this.categoryFilterOptions.set(response.categoryOptions ?? []);
         this.isLoading.set(false);
         this.focusAfterLoad();
       });
@@ -271,10 +316,16 @@ export class ProductListComponent extends BaseListComponent<Product> {
   }
 
   /**
-   * Handle toggle include deprecated
+   * Handle column filter change
    */
-  onToggleIncludeDeprecated(value: boolean): void {
-    this.includeDeprecated.set(value);
+  onColumnFilterChange(event: ColumnFilterChangeEvent): void {
+    if (event.column !== 'deprecated' && event.column !== 'productCategoryName') {
+      return;
+    }
+    this.columnFilters.update((current) => ({
+      ...current,
+      [event.column]: event.values,
+    }));
     this.page.set(1);
     this.loadItems();
   }
@@ -311,7 +362,9 @@ export class ProductListComponent extends BaseListComponent<Product> {
       return;
     }
     const deleteRequest = result.forceDelete
-      ? this.productsApi.productsForceDeleteCreate(product.id, { forceDeleteConfirmed: true } as any)
+      ? this.productsApi.productsForceDeleteCreate(product.id, {
+          forceDeleteConfirmed: true,
+        } as any)
       : this.productsApi.productsDestroy(product.id);
 
     deleteRequest.subscribe({
@@ -487,6 +540,19 @@ export class ProductListComponent extends BaseListComponent<Product> {
     return type ?? '—';
   }
 
+  categoryLabel(row?: Product | null): string {
+    return this.categoryValue(row) || '—';
+  }
+
+  private categoryValue(row?: Product | null): string {
+    const value = (row as any)?.productCategoryName;
+    return value ? String(value) : '';
+  }
+
+  deprecatedLabel(row?: Product | null): string {
+    return row?.deprecated ? 'Deprecated' : 'Active';
+  }
+
   /**
    * Toggle base price visibility
    */
@@ -559,6 +625,31 @@ export class ProductListComponent extends BaseListComponent<Product> {
       return 0;
     }
     return retail - base;
+  }
+
+  private resolveDeprecatedFilter(): { deprecated: boolean | undefined; hideDeprecated: boolean } {
+    const selected = new Set(this.columnFilters()['deprecated'] ?? []);
+    if (selected.size === 0) {
+      return { deprecated: undefined, hideDeprecated: true };
+    }
+    if (selected.has('active') && selected.has('deprecated')) {
+      return { deprecated: undefined, hideDeprecated: false };
+    }
+    if (selected.has('deprecated')) {
+      return { deprecated: true, hideDeprecated: false };
+    }
+    if (selected.has('active')) {
+      return { deprecated: false, hideDeprecated: false };
+    }
+    return { deprecated: undefined, hideDeprecated: true };
+  }
+
+  private resolveCategoryFilter(): string | undefined {
+    const selected = this.columnFilters()['productCategoryName'] ?? [];
+    if (!selected.length) {
+      return undefined;
+    }
+    return selected.join(',');
   }
 
   /**
@@ -677,7 +768,9 @@ export class ProductListComponent extends BaseListComponent<Product> {
     ).map((invoiceLine: any) => ({
       id: this.asNumber(invoiceLine?.id),
       invoiceId: this.asNumber(invoiceLine?.invoiceId ?? invoiceLine?.invoice_id),
-      invoiceNoDisplay: String(invoiceLine?.invoiceNoDisplay ?? invoiceLine?.invoice_no_display ?? ''),
+      invoiceNoDisplay: String(
+        invoiceLine?.invoiceNoDisplay ?? invoiceLine?.invoice_no_display ?? '',
+      ),
       invoiceStatus: String(invoiceLine?.invoiceStatus ?? invoiceLine?.invoice_status ?? ''),
       customerApplicationId: this.asNullableNumber(
         invoiceLine?.customerApplicationId ?? invoiceLine?.customer_application_id,
@@ -719,7 +812,7 @@ export class ProductListComponent extends BaseListComponent<Product> {
         applications: Boolean(relatedRecordsTruncated.applications),
         invoiceApplications: Boolean(
           relatedRecordsTruncated.invoiceApplications ??
-            relatedRecordsTruncated.invoice_applications,
+          relatedRecordsTruncated.invoice_applications,
         ),
       },
       recordLimit: this.asNullableNumber(payload.recordLimit ?? payload.record_limit) ?? undefined,

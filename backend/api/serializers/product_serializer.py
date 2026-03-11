@@ -1,6 +1,7 @@
 from api.serializers.document_type_serializer import DocumentTypeSerializer
-from drf_spectacular.utils import extend_schema_field
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
+from drf_spectacular.utils import extend_schema_field
 from products.models import Product, ProductCategory
 from products.models.document_type import DocumentType
 from products.models.task import Task
@@ -40,6 +41,13 @@ def ordered_document_types(names):
     return documents
 
 
+def _raise_serializer_validation_error(exc: DjangoValidationError) -> None:
+    if getattr(exc, "message_dict", None):
+        raise serializers.ValidationError(exc.message_dict)
+    messages = getattr(exc, "messages", None) or [str(exc)]
+    raise serializers.ValidationError({"__all__": messages})
+
+
 class TaskNestedSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(required=False, allow_null=True)
 
@@ -64,6 +72,7 @@ class ProductSerializer(serializers.ModelSerializer):
     created_by = serializers.SlugRelatedField(read_only=True, slug_field="username")
     updated_by = serializers.SlugRelatedField(read_only=True, slug_field="username")
     product_category = serializers.PrimaryKeyRelatedField(read_only=True)
+    product_category_name = serializers.CharField(source="product_category.name", read_only=True)
     product_type = serializers.CharField(source="product_category.product_type", read_only=True)
 
     class Meta:
@@ -78,6 +87,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "retail_price",
             "currency",
             "product_category",
+            "product_category_name",
             "product_type",
             "validity",
             "required_documents",
@@ -101,6 +111,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     created_by = serializers.SlugRelatedField(read_only=True, slug_field="username")
     updated_by = serializers.SlugRelatedField(read_only=True, slug_field="username")
     product_category = serializers.PrimaryKeyRelatedField(read_only=True)
+    product_category_name = serializers.CharField(source="product_category.name", read_only=True)
     product_type = serializers.CharField(source="product_category.product_type", read_only=True)
 
     class Meta:
@@ -115,6 +126,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "retail_price",
             "currency",
             "product_category",
+            "product_category_name",
             "product_type",
             "validity",
             "required_documents",
@@ -231,9 +243,7 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
-        representation["product_type"] = (
-            instance.product_category.product_type if instance.product_category else None
-        )
+        representation["product_type"] = instance.product_category.product_type if instance.product_category else None
         return representation
 
     def validate_tasks(self, value):
@@ -273,7 +283,10 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
             for task_data in tasks_data:
                 task_data.pop("id", None)  # Remove potentially null ID for new tasks
                 task = Task(product=product, **task_data)
-                task.full_clean()
+                try:
+                    task.full_clean()
+                except DjangoValidationError as exc:
+                    _raise_serializer_validation_error(exc)
                 task.save()
             return product
 
@@ -307,7 +320,10 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
                             Task.objects.filter(product=instance).exclude(id=task_id).update(last_step=False)
                         for attr, value in task_data.items():
                             setattr(task, attr, value)
-                        task.full_clean()
+                        try:
+                            task.full_clean()
+                        except DjangoValidationError as exc:
+                            _raise_serializer_validation_error(exc)
                         task.save()
                         updated_ids.add(task_id)
                     else:
@@ -315,7 +331,10 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
                         if task_data.get("last_step"):
                             Task.objects.filter(product=instance).update(last_step=False)
                         task = Task(product=instance, **task_data)
-                        task.full_clean()
+                        try:
+                            task.full_clean()
+                        except DjangoValidationError as exc:
+                            _raise_serializer_validation_error(exc)
                         task.save()
                         updated_ids.add(task.id)
 
@@ -324,3 +343,20 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
                     Task.objects.filter(id__in=tasks_to_delete, product=instance).delete()
 
             return instance
+
+
+class ProductImportStartSerializer(serializers.Serializer):
+    file = serializers.FileField()
+
+
+class ProductImportStartResponseSerializer(serializers.Serializer):
+    job_id = serializers.UUIDField()
+    status = serializers.CharField()
+    progress = serializers.IntegerField()
+    queued = serializers.BooleanField()
+    deduplicated = serializers.BooleanField()
+
+
+class ProductCategoryFilterOptionSerializer(serializers.Serializer):
+    value = serializers.CharField(source="name")
+    label = serializers.CharField(source="name")

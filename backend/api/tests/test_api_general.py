@@ -17,7 +17,7 @@ from django.utils import timezone
 from invoices.models import Invoice, InvoiceApplication
 from payments.models import Payment
 from PIL import Image
-from products.models import Product, Task
+from products.models import Product, ProductCategory, Task
 from products.models.document_type import DocumentType
 from rest_framework.test import APIRequestFactory, force_authenticate
 
@@ -775,7 +775,9 @@ class ProductApiTestCase(TestCase):
 
     def test_create_invoice_legacy_customer_application_payload_derives_product(self):
         self.client.force_login(self.user)
-        customer = Customer.objects.create(customer_type="person", first_name="Legacy", last_name="Payload", active=True)
+        customer = Customer.objects.create(
+            customer_type="person", first_name="Legacy", last_name="Payload", active=True
+        )
         product = Product.objects.create(
             name="Legacy Workflow Product",
             code="LEGACY-WF-1",
@@ -956,6 +958,78 @@ class ProductApiTestCase(TestCase):
         self.assertEqual(product.tasks.count(), 1)
         self.assertEqual(product.tasks.first().name, "Collect Docs")
         self.assertTrue(product.tasks.first().notify_customer)
+
+    def test_product_update_duplicate_step_from_stale_task_payload_returns_400(self):
+        product = Product.objects.create(
+            name="Stale Payload Product",
+            code="STALE-1",
+            product_type="visa",
+            required_documents="Passport",
+        )
+        task_one = product.tasks.create(
+            step=1,
+            name="Collect Documents",
+            description="",
+            cost=0,
+            duration=2,
+            duration_is_business_days=True,
+            notify_days_before=1,
+            last_step=False,
+        )
+        product.tasks.create(
+            step=2,
+            name="Verification",
+            description="",
+            cost=0,
+            duration=7,
+            duration_is_business_days=True,
+            notify_days_before=0,
+            last_step=True,
+        )
+
+        url = reverse("products-detail", kwargs={"pk": product.id})
+        stale_payload = {
+            "name": "Stale Payload Product",
+            "code": "STALE-1",
+            "productType": "visa",
+            "requiredDocumentIds": [self.required_doc.id],
+            "optionalDocumentIds": [],
+            "tasks": [
+                {
+                    "id": task_one.id,
+                    "step": 1,
+                    "name": "Collect Documents",
+                    "description": "",
+                    "cost": "0.00",
+                    "duration": 2,
+                    "durationIsBusinessDays": True,
+                    "addTaskToCalendar": False,
+                    "notifyDaysBefore": 1,
+                    "notifyCustomer": False,
+                    "lastStep": False,
+                },
+                {
+                    "step": 2,
+                    "name": "Verification",
+                    "description": "",
+                    "cost": "0.00",
+                    "duration": 7,
+                    "durationIsBusinessDays": True,
+                    "addTaskToCalendar": False,
+                    "notifyDaysBefore": 0,
+                    "notifyCustomer": False,
+                    "lastStep": True,
+                },
+            ],
+        }
+
+        response = self.client.patch(url, data=json.dumps(stale_payload), content_type="application/json")
+
+        self.assertEqual(response.status_code, 400)
+        body = response.json()
+        self.assertIn("errors", body)
+        error_messages = body["errors"].get("__all__") or body["errors"].get("_All__") or []
+        self.assertIn("Each step within a product must be unique.", error_messages)
 
     def test_product_create_rejects_retail_price_below_base_price(self):
         url = reverse("products-list")
@@ -1246,6 +1320,34 @@ class ProductApiTestCase(TestCase):
         self.assertIn(invoice_only_product.code, visible_codes)
         self.assertNotIn(docs_product.code, visible_codes)
         self.assertNotIn(task_product.code, visible_codes)
+
+    def test_product_category_options_include_categories_beyond_current_page(self):
+        alpha_category = ProductCategory.objects.create(name="Alpha Category", product_type="other")
+        zeta_category = ProductCategory.objects.create(name="Zeta Category", product_type="other")
+
+        for index in range(11):
+            Product.objects.create(
+                name=f"Alpha Product {index:02d}",
+                code=f"ALPHA-{index:02d}",
+                product_category=alpha_category,
+            )
+
+        Product.objects.create(
+            name="Zeta Product",
+            code="ZETA-00",
+            product_category=zeta_category,
+        )
+
+        list_response = self.client.get(f'{reverse("products-list")}?page_size=10')
+        self.assertEqual(list_response.status_code, 200)
+        page_category_names = {item.get("productCategoryName") for item in list_response.json().get("results", [])}
+        self.assertNotIn("Zeta Category", page_category_names)
+
+        options_response = self.client.get(reverse("products-category-options"))
+        self.assertEqual(options_response.status_code, 200)
+        category_labels = {item.get("label") for item in options_response.json()}
+        self.assertIn("Alpha Category", category_labels)
+        self.assertIn("Zeta Category", category_labels)
 
     def test_invoice_create_rejects_applications_with_deprecated_products(self):
         customer = Customer.objects.create(customer_type="person", first_name="Dep", last_name="Invoice")

@@ -86,7 +86,7 @@
                     <input
                       type="text"
                       class="mb-2 h-8 w-full rounded border border-input bg-background px-2 text-xs outline-none focus:border-primary"
-                      [value]="filterSearch()[column.key]"
+                      [value]="filterSearch()[column.key] ?? ''"
                       [placeholder]="column.filter.searchPlaceholder || 'Search values...'"
                       (input)="onFilterSearchChange(column.key, $any($event.target).value)"
                       (click)="$event.stopPropagation()"
@@ -99,19 +99,18 @@
                         </div>
                       } @else {
                         @for (option of getFilteredOptions(column); track option.value) {
-                          <button
-                            type="button"
+                          <label
                             class="flex cursor-pointer items-center gap-2 rounded px-1 py-1 text-xs hover:bg-muted/60"
-                            (click)="toggleFilterValue(column, option.value, $event)"
+                            (click)="$event.stopPropagation()"
                           >
                             <input
                               type="checkbox"
                               class="h-3.5 w-3.5 accent-primary"
                               [checked]="isFilterValueSelected(column, option.value)"
-                              tabindex="-1"
+                              (change)="toggleFilterValue(column, option.value, $event)"
                             />
                             <span class="truncate">{{ option.label }}</span>
-                          </button>
+                          </label>
                         }
                       }
                     </div>

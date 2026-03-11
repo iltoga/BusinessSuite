@@ -1,145 +1,191 @@
-import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
-import { TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ProductsService } from '@/core/api';
+import { AuthService } from '@/core/services/auth.service';
+import { ConfigService } from '@/core/services/config.service';
+import { JobService } from '@/core/services/job.service';
 import { ProductImportExportService } from '@/core/services/product-import-export.service';
-import { RouterTestingModule } from '@angular/router/testing';
+import { GlobalToastService } from '@/core/services/toast.service';
+
 import { ProductListComponent } from './product-list.component';
 
 describe('ProductListComponent', () => {
-  let fixture: any;
+  let fixture: ComponentFixture<ProductListComponent>;
   let component: ProductListComponent;
-  let httpMock: HttpTestingController;
-
-  const mockProductsService: any = {
-    productsList: (_ordering?: string, _page?: number, _pageSize?: number, _search?: string) =>
-      of({
-        count: 1,
-        results: [
-          {
-            id: 1,
-            name: 'TEST',
-            code: 'T-1',
-            description: 'Short test description',
-            productType: 'visa',
-            basePrice: '200000.00',
-          },
-        ],
-      }),
-    productsDeletePreviewRetrieve: () =>
-      of({
-        can_delete: true,
-        requires_force_delete: false,
-        related_counts: {
-          tasks: 0,
-          applications: 0,
-          workflows: 0,
-          documents: 0,
-          invoice_applications: 0,
-          invoices: 0,
-          payments: 0,
-        },
-        related_records: {
-          tasks: [],
-          applications: [],
-          invoice_applications: [],
-        },
-      }),
-    productsForceDeleteCreate: () => of({ deleted: true }),
-  };
-  const mockProductImportExportService: any = {
-    startExport: () => of({ job_id: 'job-1', status: 'pending', progress: 0 }),
-    startImport: () => of({ job_id: 'job-2', status: 'pending', progress: 0 }),
-    downloadExport: () => of({ body: new Blob(), headers: { get: () => null } }),
-    pollJob: () => of({ status: 'completed', progress: 100 }),
+  let mockProductsService: {
+    productsList: ReturnType<typeof vi.fn>;
+    productsCategoryOptionsList: ReturnType<typeof vi.fn>;
+    productsDeletePreviewRetrieve: ReturnType<typeof vi.fn>;
+    productsForceDeleteCreate: ReturnType<typeof vi.fn>;
+    productsDestroy: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(async () => {
+    mockProductsService = {
+      productsList: vi.fn().mockReturnValue(
+        of({
+          count: 1,
+          results: [
+            {
+              id: 1,
+              name: 'TEST',
+              code: 'T-1',
+              description: 'Short test description',
+              productType: 'visa',
+              basePrice: '200000.00',
+              retailPrice: '250000.00',
+              deprecated: false,
+            },
+          ],
+        }),
+      ),
+      productsCategoryOptionsList: vi.fn().mockReturnValue(
+        of([
+          { value: 'Visa Category', label: 'Visa Category' },
+          { value: 'Zeta Category', label: 'Zeta Category' },
+        ]),
+      ),
+      productsDeletePreviewRetrieve: vi.fn().mockReturnValue(
+        of({
+          can_delete: true,
+          requires_force_delete: false,
+          related_counts: {
+            tasks: 0,
+            applications: 0,
+            workflows: 0,
+            documents: 0,
+            invoice_applications: 0,
+            invoices: 0,
+            payments: 0,
+          },
+          related_records: {
+            tasks: [],
+            applications: [],
+            invoice_applications: [],
+          },
+        }),
+      ),
+      productsForceDeleteCreate: vi.fn().mockReturnValue(of({ deleted: true })),
+      productsDestroy: vi.fn().mockReturnValue(of({ deleted: true })),
+    };
+
     await TestBed.configureTestingModule({
-      imports: [ProductListComponent, RouterTestingModule, HttpClientTestingModule],
+      imports: [ProductListComponent],
       providers: [
+        provideRouter([]),
+        provideHttpClient(),
         { provide: ProductsService, useValue: mockProductsService },
-        { provide: ProductImportExportService, useValue: mockProductImportExportService },
+        {
+          provide: ProductImportExportService,
+          useValue: {
+            startExport: vi.fn().mockReturnValue(of({ job_id: 'job-1' })),
+            startImport: vi.fn().mockReturnValue(of({ job_id: 'job-2' })),
+            downloadExport: vi.fn().mockReturnValue(of({ body: new Blob() })),
+          },
+        },
+        {
+          provide: JobService,
+          useValue: {
+            watchJob: vi.fn().mockReturnValue(of({ status: 'completed', progress: 100 })),
+          },
+        },
+        { provide: ConfigService, useValue: { settings: { baseCurrency: 'IDR' } } },
+        {
+          provide: AuthService,
+          useValue: {
+            isSuperuser: vi.fn().mockReturnValue(true),
+          },
+        },
+        {
+          provide: GlobalToastService,
+          useValue: {
+            success: vi.fn(),
+            error: vi.fn(),
+            info: vi.fn(),
+            warning: vi.fn(),
+          },
+        },
       ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(ProductListComponent);
     component = fixture.componentInstance;
-    httpMock = TestBed.inject(HttpTestingController);
   });
 
-  afterEach(() => {
-    httpMock.verify();
-  });
-
-  function flushProductsList(): void {
-    const req = httpMock.expectOne((request) => request.url.startsWith('/api/products/'));
-    expect(req.request.method).toBe('GET');
-    req.flush({
-      count: 1,
-      results: [
-        {
-          id: 1,
-          name: 'TEST',
-          code: 'T-1',
-          description: 'Short test description',
-          productType: 'visa',
-          basePrice: '200000.00',
-          retailPrice: '250000.00',
-        },
-      ],
-    });
-  }
-
-  it('should render product type and formatted base price in the table', async () => {
-    // trigger ngOnInit through Angular lifecycle
+  it('hides deprecated products by default and restores that default when the filter is cleared', async () => {
     fixture.detectChanges();
-    flushProductsList();
-
     await fixture.whenStable();
-    fixture.detectChanges();
-    const el: HTMLElement = fixture.nativeElement;
-    const text = String((el.innerText ?? el.textContent) || '');
-    expect(text).toContain('Visa');
-    expect(text).toContain('****');
-    // description should be present in the list
-    expect(text).toContain('Short test description');
+
+    expect(mockProductsService.productsList).toHaveBeenLastCalledWith(
+      undefined,
+      true,
+      'name',
+      1,
+      10,
+      undefined,
+      undefined,
+      undefined,
+    );
+
+    component.onColumnFilterChange({ column: 'deprecated', values: ['deprecated'] });
+    expect(mockProductsService.productsList).toHaveBeenLastCalledWith(
+      true,
+      false,
+      'name',
+      1,
+      10,
+      undefined,
+      undefined,
+      undefined,
+    );
+
+    component.onColumnFilterChange({ column: 'deprecated', values: [] });
+    expect(mockProductsService.productsList).toHaveBeenLastCalledWith(
+      undefined,
+      true,
+      'name',
+      1,
+      10,
+      undefined,
+      undefined,
+      undefined,
+    );
   });
 
-  it('should reveal base prices when clicking the header eye toggle', async () => {
+  it('shows all products only when both deprecated states are explicitly selected', async () => {
     fixture.detectChanges();
-    flushProductsList();
-
     await fixture.whenStable();
-    fixture.detectChanges();
 
-    const host: HTMLElement = fixture.nativeElement;
-    const toggle = host.querySelector(
-      'button[aria-label="Show base prices"]',
-    ) as HTMLButtonElement | null;
-    expect(toggle).toBeTruthy();
+    component.onColumnFilterChange({ column: 'deprecated', values: ['active', 'deprecated'] });
 
-    toggle?.click();
-    fixture.detectChanges();
-
-    const text = String((host.innerText ?? host.textContent) || '');
-    expect(text).toContain('Rp');
-    expect(text).not.toContain('****');
+    expect(mockProductsService.productsList).toHaveBeenLastCalledWith(
+      undefined,
+      false,
+      'name',
+      1,
+      10,
+      undefined,
+      undefined,
+      undefined,
+    );
   });
 
-  it('should restore page and search query from navigation state', async () => {
-    window.history.replaceState({ page: 3, searchQuery: 'visa' }, '');
-
+  it('loads category filter options from the server instead of deriving them from the current page', async () => {
     fixture.detectChanges();
-    const req = httpMock.expectOne((request) => request.url.startsWith('/api/products/'));
-    expect(req.request.method).toBe('GET');
-    expect(req.request.params.get('page')).toBe('3');
-    expect(req.request.params.get('search')).toBe('visa');
-    req.flush({ count: 0, results: [] });
-
     await fixture.whenStable();
-    expect(component.page()).toBe(3);
-    expect(component.query()).toBe('visa');
+
+    expect(mockProductsService.productsCategoryOptionsList).toHaveBeenLastCalledWith(
+      undefined,
+      true,
+      undefined,
+    );
+    expect(component.categoryFilterOptions()).toEqual([
+      { value: 'Visa Category', label: 'Visa Category' },
+      { value: 'Zeta Category', label: 'Zeta Category' },
+    ]);
   });
 });

@@ -2,7 +2,23 @@
   display: block;
 }
 
-table[z-table] {
+.customer-cell {
+  align-items: flex-start;
+  width: 100%;
+}
+
+.customer-name {
+  display: inline-block;
+  max-width: 30ch;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+:host ::ng-deep table[z-table] {
   border-radius: 0;
   overflow: hidden;
   table-layout: fixed;
@@ -10,42 +26,54 @@ table[z-table] {
 }
 
 /* Column widths to match Django layout */
-table[z-table] th:nth-child(1),
-table[z-table] td:nth-child(1) {
-  width: 25%;
-  min-width: 200px;
+:host ::ng-deep table[z-table] th:nth-child(1),
+:host ::ng-deep table[z-table] td:nth-child(1) {
+  width: 20%;
+  min-width: 140px;
 }
 
-table[z-table] th:nth-child(2),
-table[z-table] td:nth-child(2) {
-  width: 18%;
+:host ::ng-deep table[z-table] th:nth-child(2),
+:host ::ng-deep table[z-table] td:nth-child(2) {
+  width: 12%;
+  min-width: 140px;
+}
+
+:host ::ng-deep table[z-table] th:nth-child(3),
+:host ::ng-deep table[z-table] td:nth-child(3) {
+  width: 14%;
+  min-width: 140px;
+}
+
+:host ::ng-deep table[z-table] th:nth-child(4),
+:host ::ng-deep table[z-table] td:nth-child(4) {
+  width: 26%;
+  min-width: 260px;
+}
+
+:host ::ng-deep table[z-table] th:nth-child(5),
+:host ::ng-deep table[z-table] td:nth-child(5) {
+  width: 10%;
+  min-width: 140px;
+}
+
+:host ::ng-deep table[z-table] th:nth-child(6),
+:host ::ng-deep table[z-table] td:nth-child(6) {
+  width: 12%;
   min-width: 180px;
 }
 
-table[z-table] th:nth-child(3),
-table[z-table] td:nth-child(3) {
-  width: 18%;
-  min-width: 150px;
+:host ::ng-deep table[z-table] th:nth-child(7),
+:host ::ng-deep table[z-table] td:nth-child(7) {
+  width: 4%;
+  min-width: 64px;
 }
 
-table[z-table] th:nth-child(4),
-table[z-table] td:nth-child(4) {
-  width: 12%;
-  min-width: 120px;
-}
-
-table[z-table] th:nth-child(5),
-table[z-table] td:nth-child(5) {
-  width: 27%;
-  min-width: 400px;
-}
-
-table[z-table] thead {
+:host ::ng-deep table[z-table] thead {
   background-color: color-mix(in oklab, var(--muted) 50%, transparent);
   border-bottom: 2px solid var(--border);
 }
 
-table[z-table] th {
+:host ::ng-deep table[z-table] th {
   font-weight: 600;
   text-transform: uppercase;
   font-size: 0.75rem;
@@ -55,33 +83,33 @@ table[z-table] th {
   text-align: left;
 }
 
-table[z-table] td {
+:host ::ng-deep table[z-table] td {
   vertical-align: middle;
   padding: 0.75rem 1rem;
   word-wrap: break-word;
   overflow-wrap: break-word;
 }
 
-table[z-table] tbody tr {
+:host ::ng-deep table[z-table] tbody tr {
   border-bottom: 1px solid color-mix(in oklab, var(--border) 50%, transparent);
   transition: background-color 0.15s ease-in-out;
 }
 
-table[z-table] tbody tr:hover {
+:host ::ng-deep table[z-table] tbody tr:hover {
   background-color: color-mix(in oklab, var(--accent) 30%, transparent);
 }
 
-table[z-table] tbody tr:last-child {
+:host ::ng-deep table[z-table] tbody tr:last-child {
   border-bottom: none;
 }
 
 /* Actions column - prevent wrapping */
-table[z-table] td:nth-child(5) {
+:host ::ng-deep table[z-table] td:nth-child(5) {
   white-space: nowrap;
 }
 
 /* Ensure action buttons don't wrap */
-table[z-table] td:nth-child(5) > div {
+:host ::ng-deep table[z-table] td:nth-child(5) > div {
   display: flex;
   flex-wrap: nowrap;
   gap: 0.375rem;

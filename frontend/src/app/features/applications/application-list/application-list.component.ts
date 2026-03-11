@@ -235,11 +235,7 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationSe
 
   // Row class for rejected or deprecated products
   readonly rowClassFn = (row: DocApplicationSerializerWithRelations): string =>
-    row.status === 'rejected'
-      ? 'row-danger-soft'
-      : this.isDeprecatedProduct(row)
-        ? 'opacity-60'
-        : '';
+    row.status === 'rejected' ? 'row-danger-soft' : '';
 
   // Filtered items based on column filters
   readonly filteredItems = computed(() => {

@@ -12,6 +12,8 @@ class HolidayManager(models.Manager):
         )
 
     def is_holiday(self, date, country):
+        if date.weekday() >= 5:
+            return True
         return self.filter(date=date, country=country).exists()
 
 

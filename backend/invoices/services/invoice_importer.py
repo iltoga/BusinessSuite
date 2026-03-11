@@ -9,17 +9,16 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional, Tuple
 
-from django.db import transaction
-from django.db.models import Q
-from django.utils import timezone
-
 from core.services import AIInvoiceParser, ParsedInvoiceResult
 from core.services.ai_runtime_settings_service import AIRuntimeSettingsService
 from core.services.logger_service import Logger
 from customer_applications.models import DocApplication
 from customers.models import Customer
+from django.db import transaction
+from django.db.models import Q
 from invoices.models import Invoice, InvoiceApplication
 from products.models import Product, ProductCategory
+from products.models.product_price_history import ProductPriceHistory
 
 logger = Logger.get_logger(__name__)
 
@@ -405,12 +404,14 @@ class InvoiceImporter:
                     )
 
                     # Step 3: Create InvoiceApplication linking DocApplication to invoice
+                    price_history = self._resolve_price_history(product=product, invoice_date=invoice_date)
                     InvoiceApplication.objects.create(
                         invoice=invoice,
                         product=product,
                         customer_application=doc_application,
                         amount=unit_amount,  # Use unit price, not total amount
                         status=InvoiceApplication.PENDING,
+                        price_history=price_history,
                     )
 
             # Recalculate and save total (this will trigger save() again)
@@ -494,3 +495,8 @@ class InvoiceImporter:
         except Exception as e:
             logger.error(f"Error getting/creating product: {str(e)}", exc_info=True)
             return None
+
+    def _resolve_price_history(self, *, product: Product, invoice_date) -> ProductPriceHistory | None:
+        if not product:
+            return None
+        return ProductPriceHistory.resolve_for_invoice_date(product_id=product.id, invoice_date=invoice_date)

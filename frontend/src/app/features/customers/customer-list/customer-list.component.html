@@ -69,11 +69,11 @@
 </div>
 
 <ng-template #customerTemplate let-row>
-  <div class="flex items-center gap-2">
+  <div class="customer-cell flex items-center gap-2">
     <a
       [routerLink]="['/customers', row.id]"
       [state]="{ from: 'customers', focusId: row.id, searchQuery: query(), page: page() }"
-      class="font-medium hover:underline"
+      class="customer-name font-medium hover:underline"
     >
       {{ row.fullNameWithCompany }}
     </a>

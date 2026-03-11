@@ -4,8 +4,11 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import models
+from django.db.utils import OperationalError, ProgrammingError
+from django.utils import timezone
 
 from products.models.product_category import ProductCategory
+from products.models.product_price_history import ProductPriceHistory
 
 
 class ProductManager(models.Manager):
@@ -211,6 +214,46 @@ class Product(models.Model):
         self.sync_deprecated_status_from_documents()
         self.uses_customer_app_workflow = self.recompute_uses_customer_app_workflow()
         super().save(*args, **kwargs)
+        self._sync_price_history(update_fields=kwargs.get("update_fields"))
+
+    def _sync_price_history(self, *, update_fields=None) -> None:
+        try:
+            now = timezone.now()
+            active = (
+                ProductPriceHistory.objects.filter(product_id=self.id, effective_to__isnull=True)
+                .order_by("-effective_from")
+                .first()
+            )
+            if update_fields is not None:
+                tracked = {"base_price", "retail_price", "currency"}
+                if not tracked.intersection(set(update_fields)) and active:
+                    return
+            if (
+                active
+                and active.base_price == self.base_price
+                and active.retail_price == self.retail_price
+                and active.currency == self.currency
+            ):
+                return
+
+            if active:
+                active.effective_to = now
+                active.save(update_fields=["effective_to"])
+
+            effective_from = self.created_at or now
+            if active:
+                effective_from = now
+
+            ProductPriceHistory.objects.create(
+                product_id=self.id,
+                base_price=self.base_price,
+                retail_price=self.retail_price,
+                currency=self.currency,
+                effective_from=effective_from,
+            )
+        except (ProgrammingError, OperationalError):
+            # Schema not ready (e.g. during migrations). Skip history sync.
+            return
 
     def can_be_deleted(self):
         # Block deletion if directly referenced by invoice lines or by linked applications.

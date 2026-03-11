@@ -433,11 +433,9 @@
                         class="h-3.5 w-3.5 text-muted-foreground"
                         [zTooltip]="fieldTooltips['taskAddToCalendar']"
                     /></label>
-                    <input
-                      type="checkbox"
-                      class="h-4 w-4 rounded border-muted-foreground/40 text-primary"
-                      formControlName="addTaskToCalendar"
-                    />
+                    <z-checkbox formControlName="addTaskToCalendar">
+                      <span class="text-sm">Enable</span>
+                    </z-checkbox>
                   </div>
                   <div class="flex flex-col gap-2">
                     <label class="text-sm font-medium inline-flex items-center gap-1"
@@ -447,11 +445,21 @@
                         class="h-3.5 w-3.5 text-muted-foreground"
                         [zTooltip]="fieldTooltips['taskNotifyCustomer']"
                     /></label>
-                    <input
-                      type="checkbox"
-                      class="h-4 w-4 rounded border-muted-foreground/40 text-primary"
-                      formControlName="notifyCustomer"
-                    />
+                    <z-checkbox formControlName="notifyCustomer">
+                      <span class="text-sm">Enable</span>
+                    </z-checkbox>
+                  </div>
+                  <div class="flex flex-col gap-2">
+                    <label class="text-sm font-medium inline-flex items-center gap-1"
+                      >Business days?
+                      <z-icon
+                        zType="info"
+                        class="h-3.5 w-3.5 text-muted-foreground"
+                        [zTooltip]="fieldTooltips['taskDurationIsBusinessDays']"
+                    /></label>
+                    <z-checkbox formControlName="durationIsBusinessDays">
+                      <span class="text-sm">Use business days</span>
+                    </z-checkbox>
                   </div>
                   @if (task.get('addTaskToCalendar')?.value) {
                     <div class="flex flex-col gap-2">
@@ -476,20 +484,6 @@
                         "
                       />
                     </div>
-                    <div class="flex flex-col gap-2">
-                      <label class="text-sm font-medium inline-flex items-center gap-1"
-                        >Business days?
-                        <z-icon
-                          zType="info"
-                          class="h-3.5 w-3.5 text-muted-foreground"
-                          [zTooltip]="fieldTooltips['taskDurationIsBusinessDays']"
-                      /></label>
-                      <input
-                        type="checkbox"
-                        class="h-4 w-4 rounded border-muted-foreground/40 text-primary"
-                        formControlName="durationIsBusinessDays"
-                      />
-                    </div>
                   }
                   <div class="flex flex-col gap-2">
                     <label class="text-sm font-medium inline-flex items-center gap-1"
@@ -499,12 +493,9 @@
                         class="h-3.5 w-3.5 text-muted-foreground"
                         [zTooltip]="fieldTooltips['taskLastStep']"
                     /></label>
-                    <input
-                      type="checkbox"
-                      class="h-4 w-4 rounded border-muted-foreground/40 text-primary"
-                      formControlName="lastStep"
-                      (change)="toggleLastStep($index)"
-                    />
+                    <z-checkbox formControlName="lastStep" (click)="toggleLastStep($index)">
+                      <span class="text-sm">Mark as final step</span>
+                    </z-checkbox>
                   </div>
                 </div>
                 @if (task.errors?.['notifyBeforeDuration']) {

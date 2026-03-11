@@ -21,6 +21,7 @@ export interface ProductDetail {
     retailPrice?: string;
     currency?: string;
     readonly productCategory: number;
+    readonly productCategoryName: string;
     readonly productType: string;
     validity?: number | null;
     requiredDocuments?: string;

@@ -126,7 +126,7 @@ export class DataTableComponent<T = Record<string, any>> implements AfterViewIni
 
   private sortState = signal<SortEvent | null>(null);
   currentSort = computed(() => this.sortState());
-  readonly filterSearch = signal<Record<string, string>>({});
+  readonly filterSearch = signal<Record<string, string | undefined>>({});
 
   // Speed dial / selection
   selectedRow = signal<T | null>(null);
