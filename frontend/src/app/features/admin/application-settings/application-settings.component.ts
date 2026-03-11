@@ -1,8 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, inject, OnInit, signal } from '@angular/core';
 import { catchError, EMPTY, finalize } from 'rxjs';
 
+import { ServerManagementService } from '@/core/api/api/server-management.service';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
@@ -33,7 +33,7 @@ interface AdminAppSettingItem {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ApplicationSettingsComponent implements OnInit {
-  private readonly http = inject(HttpClient);
+  private readonly serverManagementApi = inject(ServerManagementService);
   private readonly toast = inject(GlobalToastService);
 
   readonly appSettings = signal<AdminAppSettingItem[]>([]);
@@ -46,8 +46,8 @@ export class ApplicationSettingsComponent implements OnInit {
 
   loadAppSettings(): void {
     this.appSettingsLoading.set(true);
-    this.http
-      .get<{ items: AdminAppSettingItem[] }>('/api/server-management/app-settings/')
+    this.serverManagementApi
+      .serverManagementAppSettingsRetrieve()
       .pipe(
         catchError(() => {
           this.toast.error('Failed to load app settings');
@@ -56,7 +56,8 @@ export class ApplicationSettingsComponent implements OnInit {
         finalize(() => this.appSettingsLoading.set(false)),
       )
       .subscribe((response) => {
-        this.appSettings.set(Array.isArray(response?.items) ? response.items : []);
+        const items = response?.['items'];
+        this.appSettings.set(Array.isArray(items) ? (items as AdminAppSettingItem[]) : []);
       });
   }
 
@@ -70,8 +71,8 @@ export class ApplicationSettingsComponent implements OnInit {
       return;
     }
 
-    this.http
-      .post('/api/server-management/app-settings/', {
+    this.serverManagementApi
+      .serverManagementAppSettingsCreate({
         name,
         value: draft.value,
         scope: draft.scope,
@@ -91,8 +92,8 @@ export class ApplicationSettingsComponent implements OnInit {
   }
 
   updateAppSetting(item: AdminAppSettingItem, value: string): void {
-    this.http
-      .patch(`/api/server-management/app-settings/${encodeURIComponent(item.name)}/`, {
+    this.serverManagementApi
+      .serverManagementAppSettingsPartialUpdate(item.name, {
         value,
         scope: item.scope,
         description: item.description,
@@ -110,8 +111,8 @@ export class ApplicationSettingsComponent implements OnInit {
   }
 
   deleteAppSetting(name: string): void {
-    this.http
-      .delete(`/api/server-management/app-settings/${encodeURIComponent(name)}/`)
+    this.serverManagementApi
+      .serverManagementAppSettingsDestroy(name)
       .pipe(
         catchError((error) => {
           this.toast.error(error?.error?.detail || `Failed to delete ${name}`);

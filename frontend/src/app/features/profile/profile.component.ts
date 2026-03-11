@@ -1,5 +1,4 @@
 import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -13,6 +12,7 @@ import {
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { finalize } from 'rxjs';
 
+import { ServerManagementService } from '@/core/api/api/server-management.service';
 import { UserProfileService } from '@/core/api/api/user-profile.service';
 import { UserProfile } from '@/core/api/model/user-profile';
 import { UserSettingsApiService } from '@/core/api/user-settings.service';
@@ -75,7 +75,7 @@ export class ProfileComponent implements OnInit {
   private desktopBridge = inject(DesktopBridgeService);
   private toast = inject(GlobalToastService);
   private dialogService = inject(ZardDialogService);
-  private http = inject(HttpClient);
+  private serverManagementApi = inject(ServerManagementService);
 
   readonly passwordModalTemplate = viewChild.required<TemplateRef<any>>('passwordModalTemplate');
 
@@ -352,8 +352,8 @@ export class ProfileComponent implements OnInit {
 
   loadCacheStatus(): void {
     this.cacheLoading.set(true);
-    this.http
-      .get<CacheStatusResponse>('/api/cache/status/')
+    this.serverManagementApi
+      .serverManagementCacheStatusRetrieve()
       .pipe(finalize(() => this.cacheLoading.set(false)))
       .subscribe({
         next: (response) => {
@@ -384,11 +384,11 @@ export class ProfileComponent implements OnInit {
 
     const previous = { ...current };
     this.cacheStatus.set({ ...current, enabled: nextEnabled });
-    const endpoint = nextEnabled ? '/api/cache/enable/' : '/api/cache/disable/';
-
     this.cacheLoading.set(true);
-    this.http
-      .post<CacheStatusResponse>(endpoint, {})
+    (nextEnabled
+      ? this.serverManagementApi.serverManagementCacheEnableCreate()
+      : this.serverManagementApi.serverManagementCacheDisableCreate()
+    )
       .pipe(finalize(() => this.cacheLoading.set(false)))
       .subscribe({
         next: (response) => {
@@ -407,12 +407,12 @@ export class ProfileComponent implements OnInit {
 
   clearUserCache(): void {
     this.cacheLoading.set(true);
-    this.http
-      .post<CacheClearResponse>('/api/cache/clear/', {})
+    this.serverManagementApi
+      .serverManagementClearCacheCreate()
       .pipe(finalize(() => this.cacheLoading.set(false)))
       .subscribe({
         next: (response) => {
-          this.toast.success(response.message || 'Cache cleared');
+          this.toast.success(String(response?.['message'] ?? 'Cache cleared'));
           this.loadCacheStatus();
         },
         error: () => {
@@ -431,8 +431,7 @@ export class ProfileComponent implements OnInit {
       message: this.toOptionalString(source?.['message']) ?? '',
       cacheBackend: this.toOptionalString(source?.['cacheBackend'] ?? source?.['cache_backend']),
       cacheLocation: this.toOptionalString(source?.['cacheLocation'] ?? source?.['cache_location']),
-      globalEnabled:
-        globalEnabledRaw === undefined ? undefined : Boolean(globalEnabledRaw),
+      globalEnabled: globalEnabledRaw === undefined ? undefined : Boolean(globalEnabledRaw),
       userEnabled: userEnabledRaw === undefined ? undefined : Boolean(userEnabledRaw),
     };
   }

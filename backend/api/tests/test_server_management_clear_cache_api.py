@@ -4,6 +4,7 @@ from core.models.local_resilience import LocalResilienceSettings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.test import TestCase, override_settings
+from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient
 
 
@@ -231,3 +232,16 @@ class ServerManagementClearCacheApiTests(TestCase):
         self.assertFalse(payload["cleanup"]["dryRun"])
         self.assertEqual(payload["cleanup"]["deletedFiles"], 2)
         cleanup_mock.assert_called_once_with(dry_run=False)
+
+    @patch("api.views_admin.admin_tasks.run_media_cleanup_stream.delay")
+    def test_media_cleanup_stream_starts_background_scan(self, media_cleanup_delay_mock):
+        token = Token.objects.create(user=self.user)
+        response = self.client.get(
+            "/api/server-management/media-cleanup/stream/?dry_run=1",
+            HTTP_AUTHORIZATION=f"Token {token.key}",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response["Content-Type"].startswith("text/event-stream"))
+        next(response.streaming_content)
+        media_cleanup_delay_mock.assert_called_once_with(user_id=self.user.id, dry_run=True)

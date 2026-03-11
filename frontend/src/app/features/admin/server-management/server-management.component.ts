@@ -1,15 +1,15 @@
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
   computed,
   inject,
+  OnDestroy,
   OnInit,
   PLATFORM_ID,
   signal,
 } from '@angular/core';
-import { catchError, EMPTY, finalize } from 'rxjs';
+import { catchError, EMPTY, finalize, Subscription } from 'rxjs';
 
 import { ServerManagementService } from '@/core/api';
 import {
@@ -32,6 +32,10 @@ import {
   AiWorkflowFailoverProvider,
   AiWorkflowFeature,
 } from './server-management-ai-workflow.models';
+import {
+  MediaCleanupStreamEvent,
+  ServerManagementMediaCleanupStreamService,
+} from './server-management-media-cleanup-stream.service';
 
 interface MediaDiagnosticResult {
   model: string;
@@ -148,6 +152,8 @@ interface VaultResetResponse extends ServerActionResponse {
   vaultEpoch?: number;
 }
 
+type ServerActionName = 'clearCache' | 'mediaDiagnostic' | 'mediaRepair' | 'mediaCleanup';
+
 @Component({
   selector: 'app-server-management',
   standalone: true,
@@ -163,15 +169,17 @@ interface VaultResetResponse extends ServerActionResponse {
   styleUrls: ['./server-management.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ServerManagementComponent implements OnInit {
+export class ServerManagementComponent implements OnInit, OnDestroy {
   private readonly platformId = inject(PLATFORM_ID);
-  private serverManagementApi = inject(ServerManagementService);
-  private http = inject(HttpClient);
-  private desktopBridge = inject(DesktopBridgeService);
-  private toast = inject(GlobalToastService);
-  private aiWorkflowFacade = inject(ServerManagementAiWorkflowFacade);
+  private readonly serverManagementApi = inject(ServerManagementService);
+  private readonly mediaCleanupStream = inject(ServerManagementMediaCleanupStreamService);
+  private readonly desktopBridge = inject(DesktopBridgeService);
+  private readonly toast = inject(GlobalToastService);
+  private readonly aiWorkflowFacade = inject(ServerManagementAiWorkflowFacade);
+  private mediaCleanupSubscription: Subscription | null = null;
 
   readonly isLoading = signal(false);
+  readonly activeServerAction = signal<ServerActionName | null>(null);
   readonly diagnosticResults = signal<MediaDiagnosticResult[]>([]);
   readonly repairResults = signal<string[]>([]);
   readonly cleanupDryRun = signal(true);
@@ -225,7 +233,12 @@ export class ServerManagementComponent implements OnInit {
     void this.loadDesktopResilienceState();
   }
 
+  ngOnDestroy(): void {
+    this.stopMediaCleanupStream();
+  }
+
   clearCache(): void {
+    this.startServerAction('clearCache');
     this.isLoading.set(true);
     this.serverManagementApi
       .serverManagementClearCacheCreate()
@@ -234,7 +247,7 @@ export class ServerManagementComponent implements OnInit {
           this.toast.error('Failed to clear cache');
           return EMPTY;
         }),
-        finalize(() => this.isLoading.set(false)),
+        finalize(() => this.finishServerAction('clearCache')),
       )
       .subscribe((response) => {
         const normalized = this.normalizeServerActionResponse(response);
@@ -249,8 +262,8 @@ export class ServerManagementComponent implements OnInit {
 
   loadCacheStatus(): void {
     this.cacheLoading.set(true);
-    this.http
-      .get<CacheStatusResponse>('/api/server-management/cache-status/')
+    this.serverManagementApi
+      .serverManagementCacheStatusRetrieve()
       .pipe(
         catchError(() => {
           this.toast.error('Failed to load cache status');
@@ -270,13 +283,12 @@ export class ServerManagementComponent implements OnInit {
       return;
     }
 
-    const endpoint = currentStatus.enabled
-      ? '/api/server-management/cache-disable/'
-      : '/api/server-management/cache-enable/';
     this.cacheLoading.set(true);
 
-    this.http
-      .post<CacheStatusResponse>(endpoint, {})
+    (currentStatus.enabled
+      ? this.serverManagementApi.serverManagementCacheDisableCreate()
+      : this.serverManagementApi.serverManagementCacheEnableCreate()
+    )
       .pipe(
         catchError(() => {
           this.toast.error(`Failed to ${currentStatus.enabled ? 'disable' : 'enable'} cache`);
@@ -680,6 +692,7 @@ export class ServerManagementComponent implements OnInit {
   }
 
   runMediaDiagnostic(): void {
+    this.startServerAction('mediaDiagnostic');
     this.isLoading.set(true);
     this.diagnosticResults.set([]);
     this.repairResults.set([]);
@@ -691,7 +704,7 @@ export class ServerManagementComponent implements OnInit {
           this.toast.error('Failed to run media diagnostic');
           return EMPTY;
         }),
-        finalize(() => this.isLoading.set(false)),
+        finalize(() => this.finishServerAction('mediaDiagnostic')),
       )
       .subscribe((response) => {
         const normalized = this.normalizeMediaDiagnosticResponse(response);
@@ -723,6 +736,7 @@ export class ServerManagementComponent implements OnInit {
       return;
     }
 
+    this.startServerAction('mediaRepair');
     this.isLoading.set(true);
     this.repairResults.set([]);
 
@@ -733,7 +747,7 @@ export class ServerManagementComponent implements OnInit {
           this.toast.error('Failed to repair media paths');
           return EMPTY;
         }),
-        finalize(() => this.isLoading.set(false)),
+        finalize(() => this.finishServerAction('mediaRepair')),
       )
       .subscribe((response) => {
         const normalized = this.normalizeMediaRepairResponse(response);
@@ -754,41 +768,121 @@ export class ServerManagementComponent implements OnInit {
   }
 
   runMediaCleanup(): void {
+    this.startServerAction('mediaCleanup');
     this.isLoading.set(true);
-    this.cleanupResult.set(null);
+    this.cleanupResult.set(this.createCleanupProgressState(this.cleanupDryRun()));
+    this.stopMediaCleanupStream();
 
-    this.serverManagementApi
-      .serverManagementMediaCleanupCreate({
-        dryRun: this.cleanupDryRun(),
-      })
-      .pipe(
-        catchError(() => {
+    this.mediaCleanupSubscription = this.mediaCleanupStream
+      .connect(this.cleanupDryRun())
+      .subscribe({
+        next: (event) => this.handleMediaCleanupStreamEvent(event),
+        error: () => {
           this.toast.error('Failed to clean unlinked media files');
-          return EMPTY;
-        }),
-        finalize(() => this.isLoading.set(false)),
-      )
-      .subscribe((response) => {
-        const normalized = this.normalizeMediaCleanupResponse(response);
-        if (!normalized.ok || !normalized.cleanup) {
-          this.toast.error(normalized.message || 'Media cleanup failed');
-          return;
-        }
-
-        this.cleanupResult.set(normalized.cleanup);
-
-        if (normalized.cleanup.dryRun) {
-          this.toast.success(
-            `Dry run found ${normalized.cleanup.orphanedFiles} unlinked media files`,
-          );
-        } else if (normalized.cleanup.errors.length > 0) {
-          this.toast.info(
-            `Deleted ${normalized.cleanup.deletedFiles} files, with ${normalized.cleanup.errors.length} issue(s)`,
-          );
-        } else {
-          this.toast.success(`Deleted ${normalized.cleanup.deletedFiles} unlinked media files`);
-        }
+          this.finishServerAction('mediaCleanup');
+          this.stopMediaCleanupStream();
+        },
+        complete: () => {
+          this.finishServerAction('mediaCleanup');
+          this.stopMediaCleanupStream();
+        },
       });
+  }
+
+  private handleMediaCleanupStreamEvent(event: MediaCleanupStreamEvent): void {
+    if (event.cleanup) {
+      const normalizedCleanup = this.normalizeMediaCleanupResult(event.cleanup);
+      if (normalizedCleanup) {
+        this.cleanupResult.set(normalizedCleanup);
+      }
+    } else {
+      this.applyMediaCleanupProgress(event);
+    }
+
+    if (event.event === 'media_cleanup_failed') {
+      this.toast.error(event.message || event.error || 'Media cleanup failed');
+      this.finishServerAction('mediaCleanup');
+      this.stopMediaCleanupStream();
+      return;
+    }
+
+    if (event.event === 'media_cleanup_finished') {
+      const cleanup = this.cleanupResult();
+      if (!cleanup) {
+        this.toast.error(event.message || 'Media cleanup failed');
+      } else if (cleanup.dryRun) {
+        this.toast.success(`Preview found ${cleanup.orphanedFiles} unlinked files`);
+      } else if (cleanup.errors.length > 0) {
+        this.toast.info(
+          `Deleted ${cleanup.deletedFiles} files, with ${cleanup.errors.length} issue(s)`,
+        );
+      } else {
+        this.toast.success(`Deleted ${cleanup.deletedFiles} unlinked files`);
+      }
+      this.finishServerAction('mediaCleanup');
+      this.stopMediaCleanupStream();
+    }
+  }
+
+  private applyMediaCleanupProgress(event: MediaCleanupStreamEvent): void {
+    const current = this.cleanupResult() ?? this.createCleanupProgressState(Boolean(event.dryRun));
+    const nextFiles = [...current.files];
+    const foundFile = this.normalizeMediaCleanupFile(event.file);
+    if (foundFile && !nextFiles.some((entry) => entry.path === foundFile.path)) {
+      nextFiles.push(foundFile);
+    }
+
+    this.cleanupResult.set({
+      ...current,
+      message: this.toOptionalString(event.message) ?? current.message,
+      dryRun: Boolean(event.dryRun ?? current.dryRun),
+      prefixes: Array.isArray(event.prefixes)
+        ? event.prefixes.map((entry) => String(entry))
+        : current.prefixes,
+      scannedFiles: this.toOptionalNumber(event.scannedFiles) ?? current.scannedFiles,
+      referencedFiles: this.toOptionalNumber(event.referencedFiles) ?? current.referencedFiles,
+      orphanedFiles: this.toOptionalNumber(event.orphanedFiles) ?? current.orphanedFiles,
+      deletedFiles: this.toOptionalNumber(event.deletedFiles) ?? current.deletedFiles,
+      totalOrphanBytes: this.toOptionalNumber(event.totalOrphanBytes) ?? current.totalOrphanBytes,
+      errors: Array.isArray(event.errors)
+        ? event.errors.map((entry) => String(entry))
+        : current.errors,
+      files: nextFiles,
+      storageBackend: this.toOptionalString(event.storage?.backend) ?? current.storageBackend,
+      storageProvider: this.toOptionalString(event.storage?.provider) ?? current.storageProvider,
+    });
+  }
+
+  private createCleanupProgressState(dryRun: boolean): MediaCleanupResult {
+    return {
+      ok: true,
+      message: dryRun ? 'Scanning for unlinked files...' : 'Deleting unlinked files...',
+      dryRun,
+      prefixes: [],
+      scannedFiles: 0,
+      referencedFiles: 0,
+      orphanedFiles: 0,
+      deletedFiles: 0,
+      totalOrphanBytes: 0,
+      files: [],
+      errors: [],
+    };
+  }
+
+  private startServerAction(action: ServerActionName): void {
+    this.activeServerAction.set(action);
+  }
+
+  private finishServerAction(action: ServerActionName): void {
+    if (this.activeServerAction() === action) {
+      this.activeServerAction.set(null);
+    }
+    this.isLoading.set(false);
+  }
+
+  private stopMediaCleanupStream(): void {
+    this.mediaCleanupSubscription?.unsubscribe();
+    this.mediaCleanupSubscription = null;
   }
 
   getCacheBackendType(cacheBackend?: string | null): string {

@@ -1,5 +1,4 @@
-import { HttpClient } from '@angular/common/http';
-import { Injectable, inject, signal } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
 import { catchError, EMPTY, finalize, Observable, of } from 'rxjs';
 
 import { ServerManagementService } from '@/core/api';
@@ -10,12 +9,12 @@ import {
   AiModelDefinition,
   AiModelProviderCatalog,
   AiProviderModelOption,
+  AiRuntimeSettingRow,
+  AiWorkflowBinding,
   AiWorkflowFailoverChainStep,
   AiWorkflowFailoverProvider,
   AiWorkflowFeature,
   AiWorkflowStatusResponse,
-  AiRuntimeSettingRow,
-  AiWorkflowBinding,
 } from './server-management-ai-workflow.models';
 
 const CLEARABLE_WORKFLOW_MODEL_SETTINGS = new Set([
@@ -33,7 +32,6 @@ const CLEARABLE_WORKFLOW_MODEL_SETTINGS = new Set([
 })
 export class ServerManagementAiWorkflowFacade {
   private readonly serverManagementApi = inject(ServerManagementService);
-  private readonly http = inject(HttpClient);
   private readonly toast = inject(GlobalToastService);
 
   readonly aiWorkflowStatus = signal<AiWorkflowStatusResponse | null>(null);
@@ -637,8 +635,8 @@ export class ServerManagementAiWorkflowFacade {
     this.aiWorkflowDraft.update((current) => ({ ...current, ...normalizedUpdates }));
     this.aiWorkflowSaving.set(true);
 
-    this.http
-      .patch('/api/server-management/openrouter-status/', {
+    this.serverManagementApi
+      .serverManagementOpenrouterStatusPartialUpdate({
         settings: normalizedUpdates,
       })
       .pipe(

@@ -1,5 +1,4 @@
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { HttpClient, HttpParams } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -12,6 +11,8 @@ import { ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { Observable } from 'rxjs';
 
+import { AiModelsService } from '@/core/api/api/ai-models.service';
+import { AiModel } from '@/core/api/model/ai-model';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardComboboxComponent, type ZardComboboxOption } from '@/shared/components/combobox';
 import { BaseFormComponent, BaseFormConfig } from '@/shared/core/base-form.component';
@@ -49,29 +50,29 @@ interface OpenRouterModelResult {
 }
 
 interface AiModelDto {
-  provider: string;
-  model_id: string;
+  provider: AiModel['provider'];
+  modelId: string;
   name: string;
   description: string;
-  vision: boolean;
-  file_upload: boolean;
+  vision?: boolean;
+  fileUpload?: boolean;
   reasoning: boolean;
-  context_length: number | null;
-  max_completion_tokens: number | null;
+  contextLength: number | null;
+  maxCompletionTokens: number | null;
   modality: string;
-  architecture_modality: string;
-  architecture_tokenizer: string;
-  instruct_type: string;
-  prompt_price_per_token: string;
-  completion_price_per_token: string;
-  image_price: string;
-  request_price: string;
-  top_provider_id: string;
-  provider_name: string;
-  supported_parameters: string[];
-  per_request_limits: any;
+  architectureModality: string;
+  architectureTokenizer: string;
+  instructType: string;
+  promptPricePerToken: string;
+  completionPricePerToken: string;
+  imagePrice: string;
+  requestPrice: string;
+  topProviderId: string;
+  providerName: string;
+  supportedParameters: string[];
+  perRequestLimits: any;
   source: string;
-  raw_metadata: any;
+  rawMetadata: any;
 }
 
 interface ModelOption extends ZardComboboxOption {
@@ -102,7 +103,7 @@ interface ModelOption extends ZardComboboxOption {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AiModelFormComponent extends BaseFormComponent<any, AiModelDto, AiModelDto> {
-  private readonly http = inject(HttpClient);
+  private readonly aiModelsApi = inject(AiModelsService);
 
   // AI Model-specific state
   readonly isEdit = signal(false);
@@ -174,7 +175,7 @@ export class AiModelFormComponent extends BaseFormComponent<any, AiModelDto, AiM
    * Load AI model for edit mode
    */
   protected override loadItem(id: number): Observable<any> {
-    return this.http.get<any>(`/api/ai-models/${id}/`);
+    return this.aiModelsApi.aiModelsRetrieve(id);
   }
 
   /**
@@ -183,30 +184,30 @@ export class AiModelFormComponent extends BaseFormComponent<any, AiModelDto, AiM
   protected override createDto(): AiModelDto {
     const formValue = this.form.getRawValue();
     return {
-      provider: formValue.provider ?? 'openrouter',
-      model_id: formValue.model_id ?? '',
+      provider: (formValue.provider as AiModel['provider']) ?? AiModel.ProviderEnum.Openrouter,
+      modelId: formValue.model_id ?? '',
       name: formValue.name ?? '',
       description: formValue.description ?? '',
       vision: formValue.vision ?? false,
-      file_upload: formValue.file_upload ?? false,
+      fileUpload: formValue.file_upload ?? false,
       reasoning: formValue.reasoning ?? false,
-      context_length: formValue.context_length,
-      max_completion_tokens: formValue.max_completion_tokens,
+      contextLength: formValue.context_length,
+      maxCompletionTokens: formValue.max_completion_tokens,
       modality: formValue.modality ?? '',
-      architecture_modality: formValue.architecture_modality ?? '',
-      architecture_tokenizer: formValue.architecture_tokenizer ?? '',
-      instruct_type: formValue.instruct_type ?? '',
+      architectureModality: formValue.architecture_modality ?? '',
+      architectureTokenizer: formValue.architecture_tokenizer ?? '',
+      instructType: formValue.instruct_type ?? '',
       // Convert from per-1M-tokens back to per-token for backend storage
-      prompt_price_per_token: this.toPerTokenPrice(formValue.prompt_price_per_token ?? ''),
-      completion_price_per_token: this.toPerTokenPrice(formValue.completion_price_per_token ?? ''),
-      image_price: this.toPerTokenPrice(formValue.image_price ?? ''),
-      request_price: this.toPerTokenPrice(formValue.request_price ?? ''),
-      top_provider_id: formValue.top_provider_id ?? '',
-      provider_name: formValue.provider_name ?? '',
-      supported_parameters: formValue.supported_parameters ?? [],
-      per_request_limits: formValue.per_request_limits ?? {},
+      promptPricePerToken: this.toPerTokenPrice(formValue.prompt_price_per_token ?? ''),
+      completionPricePerToken: this.toPerTokenPrice(formValue.completion_price_per_token ?? ''),
+      imagePrice: this.toPerTokenPrice(formValue.image_price ?? ''),
+      requestPrice: this.toPerTokenPrice(formValue.request_price ?? ''),
+      topProviderId: formValue.top_provider_id ?? '',
+      providerName: formValue.provider_name ?? '',
+      supportedParameters: formValue.supported_parameters ?? [],
+      perRequestLimits: formValue.per_request_limits ?? {},
       source: formValue.source ?? 'manual',
-      raw_metadata: formValue.raw_metadata ?? {},
+      rawMetadata: formValue.raw_metadata ?? {},
     };
   }
 
@@ -216,30 +217,30 @@ export class AiModelFormComponent extends BaseFormComponent<any, AiModelDto, AiM
   protected override updateDto(): AiModelDto {
     const formValue = this.form.getRawValue();
     return {
-      provider: formValue.provider ?? 'openrouter',
-      model_id: formValue.model_id ?? '',
+      provider: (formValue.provider as AiModel['provider']) ?? AiModel.ProviderEnum.Openrouter,
+      modelId: formValue.model_id ?? '',
       name: formValue.name ?? '',
       description: formValue.description ?? '',
       vision: formValue.vision ?? false,
-      file_upload: formValue.file_upload ?? false,
+      fileUpload: formValue.file_upload ?? false,
       reasoning: formValue.reasoning ?? false,
-      context_length: formValue.context_length,
-      max_completion_tokens: formValue.max_completion_tokens,
+      contextLength: formValue.context_length,
+      maxCompletionTokens: formValue.max_completion_tokens,
       modality: formValue.modality ?? '',
-      architecture_modality: formValue.architecture_modality ?? '',
-      architecture_tokenizer: formValue.architecture_tokenizer ?? '',
-      instruct_type: formValue.instruct_type ?? '',
+      architectureModality: formValue.architecture_modality ?? '',
+      architectureTokenizer: formValue.architecture_tokenizer ?? '',
+      instructType: formValue.instruct_type ?? '',
       // Convert from per-1M-tokens back to per-token for backend storage
-      prompt_price_per_token: this.toPerTokenPrice(formValue.prompt_price_per_token ?? ''),
-      completion_price_per_token: this.toPerTokenPrice(formValue.completion_price_per_token ?? ''),
-      image_price: this.toPerTokenPrice(formValue.image_price ?? ''),
-      request_price: this.toPerTokenPrice(formValue.request_price ?? ''),
-      top_provider_id: formValue.top_provider_id ?? '',
-      provider_name: formValue.provider_name ?? '',
-      supported_parameters: formValue.supported_parameters ?? [],
-      per_request_limits: formValue.per_request_limits ?? {},
+      promptPricePerToken: this.toPerTokenPrice(formValue.prompt_price_per_token ?? ''),
+      completionPricePerToken: this.toPerTokenPrice(formValue.completion_price_per_token ?? ''),
+      imagePrice: this.toPerTokenPrice(formValue.image_price ?? ''),
+      requestPrice: this.toPerTokenPrice(formValue.request_price ?? ''),
+      topProviderId: formValue.top_provider_id ?? '',
+      providerName: formValue.provider_name ?? '',
+      supportedParameters: formValue.supported_parameters ?? [],
+      perRequestLimits: formValue.per_request_limits ?? {},
       source: formValue.source ?? 'manual',
-      raw_metadata: formValue.raw_metadata ?? {},
+      rawMetadata: formValue.raw_metadata ?? {},
     };
   }
 
@@ -276,14 +277,32 @@ export class AiModelFormComponent extends BaseFormComponent<any, AiModelDto, AiM
   /**
    * Populate form with existing item data - converts per-token prices to per-1M-tokens for display
    */
-  protected populateForm(item: any): void {
+  protected populateForm(item: AiModel): void {
     this.form.patchValue({
-      ...item,
+      provider: item.provider,
+      model_id: item.modelId,
+      name: item.name,
+      description: item.description ?? '',
+      vision: item.vision ?? false,
+      file_upload: item.fileUpload ?? false,
+      reasoning: item.reasoning ?? false,
+      context_length: item.contextLength ?? null,
+      max_completion_tokens: item.maxCompletionTokens ?? null,
+      modality: item.modality ?? '',
+      architecture_modality: item.architectureModality ?? '',
+      architecture_tokenizer: item.architectureTokenizer ?? '',
+      instruct_type: item.instructType ?? '',
+      top_provider_id: item.topProviderId ?? '',
+      provider_name: item.providerName ?? '',
+      supported_parameters: (item.supportedParameters as string[] | undefined) ?? [],
+      per_request_limits: item.perRequestLimits ?? {},
+      source: item.source ?? 'manual',
+      raw_metadata: item.rawMetadata ?? {},
       // Convert from per-token to per-1M-tokens for display
-      prompt_price_per_token: this.toPer1MPrice(item.prompt_price_per_token),
-      completion_price_per_token: this.toPer1MPrice(item.completion_price_per_token),
-      image_price: this.toPer1MPrice(item.image_price),
-      request_price: this.toPer1MPrice(item.request_price),
+      prompt_price_per_token: this.toPer1MPrice(item.promptPricePerToken),
+      completion_price_per_token: this.toPer1MPrice(item.completionPricePerToken),
+      image_price: this.toPer1MPrice(item.imagePrice),
+      request_price: this.toPer1MPrice(item.requestPrice),
     });
   }
 
@@ -291,14 +310,14 @@ export class AiModelFormComponent extends BaseFormComponent<any, AiModelDto, AiM
    * Save new AI model
    */
   protected override saveCreate(dto: AiModelDto): Observable<any> {
-    return this.http.post('/api/ai-models/', dto);
+    return this.aiModelsApi.aiModelsCreate(dto as AiModel);
   }
 
   /**
    * Update existing AI model
    */
   protected override saveUpdate(dto: AiModelDto): Observable<any> {
-    return this.http.put(`/api/ai-models/${this.itemId!}/`, dto);
+    return this.aiModelsApi.aiModelsUpdate(this.itemId!, dto as AiModel);
   }
 
   /**
@@ -345,30 +364,27 @@ export class AiModelFormComponent extends BaseFormComponent<any, AiModelDto, AiM
    */
   private loadModels(query: string): void {
     this.isLoadingModels.set(true);
-    const params = new HttpParams().set('q', query).set('limit', 10);
-    this.http
-      .get<{ results: OpenRouterModelResult[] }>('/api/ai-models/openrouter-search/', { params })
-      .subscribe({
-        next: (resp) => {
-          const results = resp.results ?? [];
-          this.modelOptions.set(
-            results.map((result) => {
-              const modelId = result.model_id ?? result.modelId ?? '';
-              const name = result.name ?? modelId ?? 'Unknown Model';
-              return {
-                value: modelId,
-                label: name,
-                model: result,
-              };
-            }),
-          );
-          this.isLoadingModels.set(false);
-        },
-        error: () => {
-          this.isLoadingModels.set(false);
-          this.modelOptions.set([]);
-        },
-      });
+    this.aiModelsApi.aiModelsOpenrouterSearchRetrieve(10, query).subscribe({
+      next: (resp) => {
+        const results = ((resp as any)?.results ?? []) as OpenRouterModelResult[];
+        this.modelOptions.set(
+          results.map((result) => {
+            const modelId = result.model_id ?? result.modelId ?? '';
+            const name = result.name ?? modelId ?? 'Unknown Model';
+            return {
+              value: modelId,
+              label: name,
+              model: result,
+            };
+          }),
+        );
+        this.isLoadingModels.set(false);
+      },
+      error: () => {
+        this.isLoadingModels.set(false);
+        this.modelOptions.set([]);
+      },
+    });
   }
 
   /**
@@ -399,17 +415,6 @@ export class AiModelFormComponent extends BaseFormComponent<any, AiModelDto, AiM
       result.imagePrice != null ? (Number(result.imagePrice) * 1000000).toFixed(2) : '';
     const requestPrice =
       result.requestPrice != null ? (Number(result.requestPrice) * 1000000).toFixed(2) : '';
-
-    console.log('[AI Model Form] Selected model:', {
-      modelId,
-      name: result.name,
-      promptPricePerToken: result.promptPricePerToken,
-      promptPricePer1M: promptPrice,
-      completionPricePerToken: result.completionPricePerToken,
-      completionPricePer1M: completionPrice,
-      rawResult: result,
-    });
-
     this.form.patchValue({
       provider: result.provider ?? 'openrouter',
       model_id: modelId,
@@ -450,11 +455,11 @@ export class AiModelFormComponent extends BaseFormComponent<any, AiModelDto, AiM
     this.saveError.set(null);
     this.isSaving.set(true);
 
-    const payload = this.form.getRawValue();
+    const payload = (this.itemId ? this.updateDto() : this.createDto()) as AiModel;
     const id = this.itemId;
     const req = id
-      ? this.http.put(`/api/ai-models/${id}/`, payload)
-      : this.http.post('/api/ai-models/', payload);
+      ? this.aiModelsApi.aiModelsUpdate(id, payload)
+      : this.aiModelsApi.aiModelsCreate(payload);
 
     req.subscribe({
       next: () => {
@@ -484,7 +489,7 @@ export class AiModelFormComponent extends BaseFormComponent<any, AiModelDto, AiM
   delete(): void {
     const id = this.itemId;
     if (!id) return;
-    this.http.delete(`/api/ai-models/${id}/`).subscribe(() => {
+    this.aiModelsApi.aiModelsDestroy(id).subscribe(() => {
       this.toast.success('AI model deleted successfully');
       this.router.navigate(['/admin/ai-models']);
     });

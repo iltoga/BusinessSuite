@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ServerManagementService } from '@/core/api';
 import { GlobalToastService } from '@/core/services/toast.service';
+import { ServerManagementMediaCleanupStreamService } from './server-management-media-cleanup-stream.service';
 import { ServerManagementComponent } from './server-management.component';
 
 describe('ServerManagementComponent - Cache Controls', () => {
@@ -14,12 +15,35 @@ describe('ServerManagementComponent - Cache Controls', () => {
   let httpMock: HttpTestingController;
   let mockToastService: any;
   let mockServerManagementService: any;
+  let mockMediaCleanupStreamService: any;
 
   beforeEach(async () => {
     mockToastService = {
       success: vi.fn(),
       error: vi.fn(),
       info: vi.fn(),
+    };
+
+    mockMediaCleanupStreamService = {
+      connect: vi.fn().mockReturnValue(
+        of({
+          event: 'media_cleanup_finished',
+          cleanup: {
+            ok: true,
+            message: 'Dry run complete. Found 1 unlinked media files.',
+            dryRun: true,
+            prefixes: ['documents', 'ocr_previews', 'tmp', 'tmpfiles'],
+            scannedFiles: 2,
+            referencedFiles: 1,
+            orphanedFiles: 1,
+            deletedFiles: 0,
+            totalOrphanBytes: 20,
+            files: [{ path: 'documents/orphan.pdf', sizeBytes: 20 }],
+            errors: [],
+            storage: { provider: 's3', backend: 'storages.backends.s3boto3.S3Boto3Storage' },
+          },
+        }),
+      ),
     };
 
     mockServerManagementService = {
@@ -120,6 +144,10 @@ describe('ServerManagementComponent - Cache Controls', () => {
         provideHttpClientTesting(),
         { provide: GlobalToastService, useValue: mockToastService },
         { provide: ServerManagementService, useValue: mockServerManagementService },
+        {
+          provide: ServerManagementMediaCleanupStreamService,
+          useValue: mockMediaCleanupStreamService,
+        },
       ],
     }).compileComponents();
 
@@ -471,11 +499,9 @@ describe('ServerManagementComponent - Cache Controls', () => {
 
       component.runMediaCleanup();
 
-      expect(mockServerManagementService.serverManagementMediaCleanupCreate).toHaveBeenCalledWith({
-        dryRun: true,
-      });
+      expect(mockMediaCleanupStreamService.connect).toHaveBeenCalledWith(true);
       expect(component.cleanupResult()?.orphanedFiles).toBe(1);
-      expect(mockToastService.success).toHaveBeenCalledWith('Dry run found 1 unlinked media files');
+      expect(mockToastService.success).toHaveBeenCalledWith('Preview found 1 unlinked files');
     });
 
     it('should not treat semantic local vault reset failures as success', () => {

@@ -10,6 +10,7 @@ import tarfile
 import tempfile
 import time
 import uuid
+from collections.abc import Callable
 from contextlib import contextmanager, nullcontext
 from functools import lru_cache
 from pathlib import Path
@@ -2080,10 +2081,15 @@ def _collect_referenced_media_keys(prefixes: list[str]) -> set[str]:
     return referenced_keys
 
 
-def cleanup_unlinked_media_files(*, dry_run: bool = True) -> dict:
+def cleanup_unlinked_media_files(
+    *,
+    dry_run: bool = True,
+    progress_callback: Callable[[dict], None] | None = None,
+) -> dict:
     prefixes = _cleanup_target_prefixes()
     referenced_keys = _collect_referenced_media_keys(prefixes)
     media_store = get_media_store_adapter(default_storage)
+    storage_descriptor = _build_storage_descriptor(default_storage)
 
     orphaned_files: list[dict] = []
     deleted_count = 0
@@ -2092,12 +2098,74 @@ def cleanup_unlinked_media_files(*, dry_run: bool = True) -> dict:
     total_orphan_size = 0
     scanned_keys: set[str] = set()
 
+    def emit_progress(
+        event: str,
+        *,
+        message: str,
+        file_entry: dict | None = None,
+        current_prefix: str | None = None,
+        include_cleanup: bool = False,
+    ) -> None:
+        if progress_callback is None:
+            return
+
+        payload: dict = {
+            "event": event,
+            "message": message,
+            "dryRun": dry_run,
+            "storage": storage_descriptor,
+            "prefixes": prefixes,
+            "scannedFiles": scanned_count,
+            "referencedFiles": len(referenced_keys),
+            "orphanedFiles": len(orphaned_files),
+            "deletedFiles": deleted_count,
+            "totalOrphanBytes": total_orphan_size,
+            "errors": list(errors),
+        }
+        if current_prefix:
+            payload["currentPrefix"] = current_prefix
+        if file_entry is not None:
+            payload["file"] = file_entry
+        if include_cleanup:
+            payload["cleanup"] = {
+                "ok": not errors,
+                "message": message,
+                "dryRun": dry_run,
+                "storage": storage_descriptor,
+                "prefixes": prefixes,
+                "scannedFiles": scanned_count,
+                "referencedFiles": len(referenced_keys),
+                "orphanedFiles": len(orphaned_files),
+                "deletedFiles": deleted_count,
+                "totalOrphanBytes": total_orphan_size,
+                "files": list(orphaned_files),
+                "errors": list(errors),
+            }
+        progress_callback(payload)
+
+    emit_progress(
+        "media_cleanup_started",
+        message="Starting unlinked file scan.",
+        include_cleanup=True,
+    )
+
     for prefix in prefixes:
         try:
             files = media_store.iter_files(prefix)
         except Exception as exc:
             errors.append(f"Failed to enumerate {prefix}: {exc}")
+            emit_progress(
+                "media_cleanup_progress",
+                message=f"Failed to enumerate {prefix}: {exc}",
+                current_prefix=prefix,
+            )
             continue
+
+        emit_progress(
+            "media_cleanup_progress",
+            message=f"Scanning {prefix} for unlinked files...",
+            current_prefix=prefix,
+        )
 
         for raw_key in files:
             key = _normalize_cleanup_storage_key(raw_key)
@@ -2107,6 +2175,13 @@ def cleanup_unlinked_media_files(*, dry_run: bool = True) -> dict:
             scanned_keys.add(key)
             scanned_count += 1
 
+            if scanned_count == 1 or scanned_count % 25 == 0:
+                emit_progress(
+                    "media_cleanup_progress",
+                    message=f"Scanned {scanned_count} files so far.",
+                    current_prefix=prefix,
+                )
+
             if key in referenced_keys:
                 continue
 
@@ -2114,19 +2189,36 @@ def cleanup_unlinked_media_files(*, dry_run: bool = True) -> dict:
             if size_bytes is not None:
                 total_orphan_size += size_bytes
 
-            orphaned_files.append({"path": key, "sizeBytes": size_bytes})
+            file_entry = {"path": key, "sizeBytes": size_bytes}
+            orphaned_files.append(file_entry)
 
             if dry_run:
+                emit_progress(
+                    "media_cleanup_found",
+                    message=f"Found unlinked file: {key}",
+                    file_entry=file_entry,
+                    current_prefix=prefix,
+                )
                 continue
 
             try:
                 media_store.delete(key)
                 deleted_count += 1
+                emit_progress(
+                    "media_cleanup_found",
+                    message=f"Deleted unlinked file: {key}",
+                    file_entry=file_entry,
+                    current_prefix=prefix,
+                )
             except Exception as exc:
                 errors.append(f"Failed to delete {key}: {exc}")
+                emit_progress(
+                    "media_cleanup_progress",
+                    message=f"Failed to delete {key}: {exc}",
+                    current_prefix=prefix,
+                )
 
     orphaned_files.sort(key=lambda entry: str(entry.get("path", "")))
-    storage_descriptor = _build_storage_descriptor(default_storage)
 
     if dry_run:
         message = f"Dry run complete. Found {len(orphaned_files)} unlinked media files."
@@ -2138,7 +2230,7 @@ def cleanup_unlinked_media_files(*, dry_run: bool = True) -> dict:
                 "Some files could not be removed."
             )
 
-    return {
+    result = {
         "ok": not errors,
         "message": message,
         "dryRun": dry_run,
@@ -2152,6 +2244,14 @@ def cleanup_unlinked_media_files(*, dry_run: bool = True) -> dict:
         "files": orphaned_files,
         "errors": errors,
     }
+
+    emit_progress(
+        "media_cleanup_finished",
+        message=message,
+        include_cleanup=True,
+    )
+
+    return result
 
 
 def get_cache_health_status(user_id: int | None = None) -> dict:

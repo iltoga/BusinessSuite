@@ -2,19 +2,18 @@ import json
 from datetime import date, timedelta
 from unittest.mock import patch
 
-from django.contrib.auth import get_user_model
-from django.test import TestCase
-from django.utils import timezone
-from rest_framework.authtoken.models import Token
-from rest_framework.test import APIClient
-
 from customer_applications.models import DocApplication, WorkflowNotification
 from customer_applications.services.workflow_notification_stream import (
     get_workflow_notification_stream_cursor,
     reset_workflow_notification_stream_state,
 )
 from customers.models import Customer
+from django.contrib.auth import get_user_model
+from django.test import TestCase
+from django.utils import timezone
 from products.models import Product
+from rest_framework.authtoken.models import Token
+from rest_framework.test import APIClient
 
 User = get_user_model()
 
@@ -57,6 +56,15 @@ class WorkflowNotificationApiTests(TestCase):
         self.assertTrue(data_line, f"Expected SSE data line in chunk: {chunk!r}")
         return json.loads(data_line.replace("data: ", "", 1))
 
+    def _next_sse_payload(self, stream):
+        while True:
+            chunk = next(stream)
+            if isinstance(chunk, bytes):
+                chunk = chunk.decode("utf-8")
+            if chunk.startswith(":"):
+                continue
+            return self._decode_sse_payload(chunk)
+
     @patch("customer_applications.tasks.schedule_whatsapp_status_poll")
     @patch("notifications.services.providers.NotificationDispatcher.send")
     def test_resend_keeps_status_pending_when_provider_returns_queued_placeholder(self, send_mock, schedule_poll_mock):
@@ -94,7 +102,7 @@ class WorkflowNotificationApiTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response["Content-Type"].startswith("text/event-stream"))
-        payload = self._decode_sse_payload(next(response.streaming_content))
+        payload = self._next_sse_payload(response.streaming_content)
         self.assertEqual(payload["event"], "workflow_notifications_snapshot")
         self.assertEqual(payload["reason"], "initial")
         self.assertEqual(payload["windowHours"], 24)
@@ -104,12 +112,12 @@ class WorkflowNotificationApiTests(TestCase):
     def test_stream_emits_changed_event_after_notification_update(self):
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.token.key}")
         response = self.client.get("/api/workflow-notifications/stream/")
-        _ = self._decode_sse_payload(next(response.streaming_content))
+        _ = self._next_sse_payload(response.streaming_content)
 
         self.notification.status = WorkflowNotification.STATUS_DELIVERED
         self.notification.save(update_fields=["status", "updated_at"])
 
-        payload = self._decode_sse_payload(next(response.streaming_content))
+        payload = self._next_sse_payload(response.streaming_content)
         self.assertEqual(payload["event"], "workflow_notifications_changed")
         self.assertEqual(payload["lastNotificationId"], self.notification.id)
         self.assertIn(payload["reason"], {"signal", "db_state_change"})
@@ -125,7 +133,9 @@ class WorkflowNotificationApiTests(TestCase):
         self.assertEqual(response.json()["error"], "Staff or 'admin' group permission required")
 
     def test_updating_old_notification_does_not_bump_stream_cursor(self):
-        WorkflowNotification.objects.filter(pk=self.notification.id).update(created_at=timezone.now() - timedelta(days=2))
+        WorkflowNotification.objects.filter(pk=self.notification.id).update(
+            created_at=timezone.now() - timedelta(days=2)
+        )
         self.notification.refresh_from_db()
         before_cursor = get_workflow_notification_stream_cursor()
 
@@ -134,3 +144,15 @@ class WorkflowNotificationApiTests(TestCase):
         after_cursor = get_workflow_notification_stream_cursor()
 
         self.assertEqual(after_cursor, before_cursor)
+
+    @patch("api.view_notifications.iter_replay_and_live_events", return_value=iter([None]))
+    def test_stream_emits_keepalive_when_idle(self, _iter_events):
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.token.key}")
+        response = self.client.get("/api/workflow-notifications/stream/")
+
+        self.assertEqual(response.status_code, 200)
+        _ = self._decode_sse_payload(next(response.streaming_content))
+        keepalive_chunk = next(response.streaming_content)
+        if isinstance(keepalive_chunk, bytes):
+            keepalive_chunk = keepalive_chunk.decode("utf-8")
+        self.assertEqual(keepalive_chunk, ": keepalive\n\n")

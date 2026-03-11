@@ -16,7 +16,7 @@
           [checked]="cleanupDryRun()"
           (change)="cleanupDryRun.set($any($event.target).checked)"
         />
-        Dry run media cleanup
+        Preview unlinked file cleanup
       </label>
       <p class="text-sm text-muted-foreground">
         Scans only <code>documents/</code>, <code>ocr_previews/</code>, <code>tmp/</code>, and
@@ -31,7 +31,7 @@
         [zDisabled]="isLoading()"
         zType="outline"
       >
-        @if (isLoading()) {
+        @if (activeServerAction() === 'clearCache') {
           <span>Clearing...</span>
         } @else {
           <span>Clear Cache</span>
@@ -44,7 +44,7 @@
         [zDisabled]="isLoading()"
         zType="outline"
       >
-        @if (isLoading()) {
+        @if (activeServerAction() === 'mediaDiagnostic') {
           <span>Running...</span>
         } @else {
           <span>Media Diagnostic</span>
@@ -57,7 +57,7 @@
         [zDisabled]="isLoading() || !diagnosticResults().length"
         zType="outline"
       >
-        @if (isLoading()) {
+        @if (activeServerAction() === 'mediaRepair') {
           <span>Repairing...</span>
         } @else {
           <span>Repair Media Paths</span>
@@ -70,10 +70,10 @@
         [zDisabled]="isLoading()"
         [zType]="cleanupDryRun() ? 'outline' : 'destructive'"
       >
-        @if (isLoading()) {
-          <span>{{ cleanupDryRun() ? 'Scanning...' : 'Cleaning...' }}</span>
+        @if (activeServerAction() === 'mediaCleanup') {
+          <span>{{ cleanupDryRun() ? 'Scanning...' : 'Deleting...' }}</span>
         } @else {
-          <span>{{ cleanupDryRun() ? 'Scan Unlinked Media' : 'Delete Unlinked Media' }}</span>
+          <span>{{ cleanupDryRun() ? 'Preview Unlinked Files' : 'Delete Unlinked Files' }}</span>
         }
       </button>
     </div>
@@ -657,7 +657,7 @@
           }
         </div>
       } @else {
-        <p class="text-sm text-muted-foreground">No unlinked media files were found.</p>
+        <p class="text-sm text-muted-foreground">No unlinked files were found.</p>
       }
     </z-card>
   }

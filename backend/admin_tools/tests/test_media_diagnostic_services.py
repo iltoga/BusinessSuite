@@ -286,3 +286,33 @@ class MediaDiagnosticServiceTests(SimpleTestCase):
         self.assertEqual(result["orphanedFiles"], 2)
         self.assertEqual(result["deletedFiles"], 2)
         self.assertCountEqual(adapter.deleted, ["documents/orphan.pdf", "tmp/unreferenced.txt"])
+
+    def test_cleanup_unlinked_media_files_emits_progress_updates(self):
+        adapter = _FakeMediaStoreAdapter(
+            files_by_prefix={
+                "documents": ["documents/orphan.pdf"],
+                "ocr_previews": [],
+                "tmp": [],
+                "tmpfiles": [],
+            }
+        )
+
+        fake_model = _build_fake_multi_field_model(
+            label="core.EmptyOwner",
+            fields=[_FakeJSONField(name="result")],
+            objects=[type("_EmptyObject", (), {"result": {}})()],
+        )
+        progress_updates: list[dict] = []
+
+        with (
+            patch.object(services, "get_media_store_adapter", return_value=adapter),
+            patch.object(services.apps, "get_models", return_value=[fake_model]),
+        ):
+            services.cleanup_unlinked_media_files(dry_run=True, progress_callback=progress_updates.append)
+
+        event_names = [update.get("event") for update in progress_updates]
+        self.assertIn("media_cleanup_started", event_names)
+        self.assertIn("media_cleanup_found", event_names)
+        self.assertIn("media_cleanup_finished", event_names)
+        found_update = next(update for update in progress_updates if update.get("event") == "media_cleanup_found")
+        self.assertEqual(found_update.get("file"), {"path": "documents/orphan.pdf", "sizeBytes": 20})

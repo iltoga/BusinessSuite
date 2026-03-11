@@ -187,6 +187,33 @@ def backup_restore_sse(request):
     )
 
 
+@sse_token_auth_required()
+def media_cleanup_start_sse(request):
+    """SSE endpoint for live unlinked media cleanup progress."""
+    if not is_superuser_or_admin_group(request.user):
+        return JsonResponse({"error": SUPERUSER_OR_ADMIN_PERMISSION_REQUIRED_ERROR}, status=403)
+
+    dry_run = _as_bool(_query_param(request, "dry_run", "1"))
+    replay_mode = _as_bool(_query_param(request, "replay", "0"))
+    replay_cursor = resolve_last_event_id(request) if replay_mode else None
+    return _stream_admin_events(
+        user_id=request.user.id,
+        replay_cursor=replay_cursor,
+        start_new=not replay_mode,
+        accepted_events={
+            "media_cleanup_started",
+            "media_cleanup_progress",
+            "media_cleanup_found",
+            "media_cleanup_finished",
+            "media_cleanup_failed",
+        },
+        enqueue_callback=lambda: admin_tasks.run_media_cleanup_stream.delay(
+            user_id=request.user.id,
+            dry_run=dry_run,
+        ),
+    )
+
+
 # ============================================================================
 # DRF ViewSets for REST API endpoints
 # ============================================================================

@@ -77,4 +77,21 @@ describe('AuthService logout', () => {
 
     consoleSpy.mockRestore();
   });
+
+  it('does not call backend logout when there is no token', () => {
+    service.logout();
+
+    expect(routerMock.navigate).toHaveBeenCalledWith(['/login']);
+    httpMock.expectNone('/api/user-profile/logout/');
+  });
+
+  it('does not call backend logout when token is already expired', () => {
+    const expiredPayload = btoa(JSON.stringify({ exp: Math.floor(Date.now() / 1000) - 60 }));
+    (service as any)._token.set(`header.${expiredPayload}.signature`);
+
+    service.logout();
+
+    expect(routerMock.navigate).toHaveBeenCalledWith(['/login']);
+    httpMock.expectNone('/api/user-profile/logout/');
+  });
 });

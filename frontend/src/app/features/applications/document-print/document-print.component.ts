@@ -11,7 +11,8 @@ import {
 import { DomSanitizer, type SafeResourceUrl } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import { ConfigService } from '@/core/services/config.service';
+import { DocumentsService } from '@/core/api/api/documents.service';
+import type { Document } from '@/core/api/model/document';
 import { ZardBadgeComponent } from '@/shared/components/badge';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
@@ -62,8 +63,8 @@ export class DocumentPrintComponent implements OnInit {
   private router = inject(Router);
   private location = inject(Location);
   private http = inject(HttpClient);
+  private documentsApi = inject(DocumentsService);
   private destroyRef = inject(DestroyRef);
-  private configService = inject(ConfigService);
   private sanitizer = inject(DomSanitizer);
 
   readonly document = signal<DocumentPrintData | null>(null);
@@ -88,14 +89,15 @@ export class DocumentPrintComponent implements OnInit {
   }
 
   private loadDocument(id: number): void {
-    this.http.get<any>(`/api/documents/${id}/print/`).subscribe({
+    this.documentsApi.documentsPrintRetrieve(id).subscribe({
       next: (data) => {
-        this.document.set(data);
+        const document = this.mapDocumentPrintData(data);
+        this.document.set(document);
         this.isLoading.set(false);
 
         // If file is PDF, try to fetch a blob and create a preview iframe/object
-        if (data.fileLink && this.isPdf(data.fileLink)) {
-          this.loadPdfPreview(data.fileLink);
+        if (document.fileLink && this.isPdf(document.fileLink)) {
+          this.loadPdfPreview(document.fileLink);
         }
       },
       error: (err) => {
@@ -166,5 +168,30 @@ export class DocumentPrintComponent implements OnInit {
         } catch (e) {}
       }
     });
+  }
+
+  private mapDocumentPrintData(data: Document): DocumentPrintData {
+    return {
+      id: data.id,
+      docType: {
+        name: data.docType?.name ?? '',
+        aiValidation: data.docType?.aiValidation ?? false,
+      },
+      docApplication: {
+        id: data.docApplication,
+        customer: {
+          fullName: '',
+        },
+        product: {
+          name: '',
+        },
+      },
+      docNumber: data.docNumber ?? null,
+      expirationDate: data.expirationDate ?? null,
+      details: data.details ?? null,
+      fileLink: data.fileLink ?? data.file ?? null,
+      aiValidation: data.aiValidation,
+      completed: data.completed,
+    };
   }
 }

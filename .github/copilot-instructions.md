@@ -190,6 +190,14 @@ businesssuite/
   1. Update Django serializer
   2. Run `bun run generate:api` in `frontend/`
   3. Import from `src/app/core/api/`
+- **NEVER add new manual `HttpClient` or `fetch` calls for BusinessSuite backend `/api/...` endpoints when a generated client method exists**
+- **ALWAYS prefer a small wrapper/adapter around the generated client** when the UI needs a different shape; do not bypass the generated client just to keep legacy UI code unchanged
+- **Manual backend calls are allowed only for documented exceptions** such as SSE/stream transports, browser bootstrap/config loading before DI is ready, third-party/proxy passthrough flows, or generator gaps for unsupported multipart/progress endpoints
+- **When an exception is necessary:**
+  1. Confirm the generated client truly cannot express the call correctly
+  2. Keep the manual transport isolated in a dedicated service/helper
+  3. Add a short code comment explaining why the generated client could not be used
+  4. Prefer revisiting the schema/generator configuration instead of spreading more manual calls
 - Use error handling utility from `shared/utils/error-handler.ts`
 - Map API errors to form controls using `mapApiErrorsToForm()`
 
@@ -415,6 +423,17 @@ cd frontend && bun run generate:api
 
 Import all generated types and services from `src/app/core/api/`.
 
+### Generated Client Enforcement
+
+For Angular application code, the generated OpenAPI client is the default and mandatory integration path for backend APIs.
+
+- Treat `frontend/src/app/core/api/` as the single source of truth for backend request/response types and service methods
+- Before writing frontend API code, search the generated client for an existing method and use it
+- If the UI needs a stable local view model, create an adapter function/service that maps from generated DTOs to UI models
+- Do **not** create parallel hand-written API services that duplicate generated endpoints
+- Do **not** manually reconstruct auth headers, endpoint URLs, or request payload contracts for standard backend endpoints already represented in the generated client
+- If a generated endpoint is broken or missing, fix the backend schema or isolate the temporary workaround and document it clearly
+
 ### Critical Rules
 
 ❌ **NEVER:**
@@ -422,6 +441,7 @@ Import all generated types and services from `src/app/core/api/`.
 - Use `NgModules`
 - Use `BehaviorSubject` or RxJS subjects for state
 - Manually write TypeScript interfaces for API models
+- Add hand-written Angular service methods for standard `/api/` endpoints that already exist in the generated OpenAPI client
 - Put business logic in components (keep it in `core/services/`)
 - Use `localStorage` / `sessionStorage` (use signals)
 
@@ -430,6 +450,7 @@ Import all generated types and services from `src/app/core/api/`.
 - Use standalone components with `ChangeDetectionStrategy.OnPush`
 - Use `signal()` and `computed()` for all state
 - Run `bun run generate:api` after backend changes
+- Use generated API services/types from `src/app/core/api/` for backend integration, adding wrapper/adapters instead of bypassing them
 - Update `../docs/shared_components.md` when creating reusable components
 - Update contextual help in `HelpService` when modifying a view
 
