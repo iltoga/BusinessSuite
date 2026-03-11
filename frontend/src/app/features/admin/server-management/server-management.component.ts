@@ -31,7 +31,6 @@ import {
   AiProviderModelOption,
   AiWorkflowFailoverProvider,
   AiWorkflowFeature,
-  AiWorkflowStatusResponse,
 } from './server-management-ai-workflow.models';
 
 interface MediaDiagnosticResult {
@@ -118,6 +117,37 @@ interface MediaRepairResponse {
   repairs: string[];
 }
 
+interface MediaCleanupFile {
+  path: string;
+  sizeBytes?: number;
+}
+
+interface MediaCleanupResult {
+  ok: boolean;
+  message: string;
+  dryRun: boolean;
+  prefixes: string[];
+  scannedFiles: number;
+  referencedFiles: number;
+  orphanedFiles: number;
+  deletedFiles: number;
+  totalOrphanBytes: number;
+  files: MediaCleanupFile[];
+  errors: string[];
+  storageBackend?: string;
+  storageProvider?: string;
+}
+
+interface MediaCleanupResponse {
+  ok: boolean;
+  message: string;
+  cleanup: MediaCleanupResult | null;
+}
+
+interface VaultResetResponse extends ServerActionResponse {
+  vaultEpoch?: number;
+}
+
 @Component({
   selector: 'app-server-management',
   standalone: true,
@@ -144,6 +174,8 @@ export class ServerManagementComponent implements OnInit {
   readonly isLoading = signal(false);
   readonly diagnosticResults = signal<MediaDiagnosticResult[]>([]);
   readonly repairResults = signal<string[]>([]);
+  readonly cleanupDryRun = signal(true);
+  readonly cleanupResult = signal<MediaCleanupResult | null>(null);
   readonly serverSettings = signal<ServerSettings | null>(null);
 
   // Cache management state
@@ -347,7 +379,12 @@ export class ServerManagementComponent implements OnInit {
         finalize(() => this.localResilienceSaving.set(false)),
       )
       .subscribe((response) => {
-        const payload = response as { ok?: boolean; message?: string; vaultEpoch?: number };
+        const payload = this.normalizeVaultResetResponse(response);
+        if (!payload.ok) {
+          this.toast.error(payload.message || 'Failed to reset local media vault');
+          return;
+        }
+
         this.toast.success(payload.message || 'Local media vault reset requested');
         if (this.isDesktop() && payload.vaultEpoch) {
           void this.desktopBridge.setVaultEpoch(payload.vaultEpoch);
@@ -560,7 +597,10 @@ export class ServerManagementComponent implements OnInit {
     return this.aiWorkflowFacade.formatModelCapabilities(model);
   }
 
-  findModelDefinition(provider: string, modelId: string | null | undefined): AiModelDefinition | null {
+  findModelDefinition(
+    provider: string,
+    modelId: string | null | undefined,
+  ): AiModelDefinition | null {
     return this.aiWorkflowFacade.findModelDefinition(provider, modelId);
   }
 
@@ -713,6 +753,44 @@ export class ServerManagementComponent implements OnInit {
       });
   }
 
+  runMediaCleanup(): void {
+    this.isLoading.set(true);
+    this.cleanupResult.set(null);
+
+    this.serverManagementApi
+      .serverManagementMediaCleanupCreate({
+        dryRun: this.cleanupDryRun(),
+      })
+      .pipe(
+        catchError(() => {
+          this.toast.error('Failed to clean unlinked media files');
+          return EMPTY;
+        }),
+        finalize(() => this.isLoading.set(false)),
+      )
+      .subscribe((response) => {
+        const normalized = this.normalizeMediaCleanupResponse(response);
+        if (!normalized.ok || !normalized.cleanup) {
+          this.toast.error(normalized.message || 'Media cleanup failed');
+          return;
+        }
+
+        this.cleanupResult.set(normalized.cleanup);
+
+        if (normalized.cleanup.dryRun) {
+          this.toast.success(
+            `Dry run found ${normalized.cleanup.orphanedFiles} unlinked media files`,
+          );
+        } else if (normalized.cleanup.errors.length > 0) {
+          this.toast.info(
+            `Deleted ${normalized.cleanup.deletedFiles} files, with ${normalized.cleanup.errors.length} issue(s)`,
+          );
+        } else {
+          this.toast.success(`Deleted ${normalized.cleanup.deletedFiles} unlinked media files`);
+        }
+      });
+  }
+
   getCacheBackendType(cacheBackend?: string | null): string {
     if (!cacheBackend) {
       return 'Unknown';
@@ -734,7 +812,9 @@ export class ServerManagementComponent implements OnInit {
     return mode || 'Unknown';
   }
 
-  getFailoverProviderBadgeType(provider: AiWorkflowFailoverProvider): 'default' | 'secondary' | 'destructive' {
+  getFailoverProviderBadgeType(
+    provider: AiWorkflowFailoverProvider,
+  ): 'default' | 'secondary' | 'destructive' {
     return this.aiWorkflowFacade.getFailoverProviderBadgeType(provider);
   }
 
@@ -746,7 +826,9 @@ export class ServerManagementComponent implements OnInit {
     const source = this.toRecord(raw);
     return {
       enabled: Boolean(source?.['enabled']),
-      encryptionRequired: Boolean(source?.['encryptionRequired'] ?? source?.['encryption_required'] ?? true),
+      encryptionRequired: Boolean(
+        source?.['encryptionRequired'] ?? source?.['encryption_required'] ?? true,
+      ),
       desktopMode: String(source?.['desktopMode'] ?? source?.['desktop_mode'] ?? 'localPrimary'),
       vaultEpoch: Number(source?.['vaultEpoch'] ?? source?.['vault_epoch'] ?? 1),
       updatedAt: this.toOptionalString(source?.['updatedAt'] ?? source?.['updated_at']),
@@ -777,7 +859,9 @@ export class ServerManagementComponent implements OnInit {
       checkedAt: String(source?.['checkedAt'] ?? source?.['checked_at'] ?? ''),
       cacheBackend: String(source?.['cacheBackend'] ?? source?.['cache_backend'] ?? ''),
       cacheLocation: String(source?.['cacheLocation'] ?? source?.['cache_location'] ?? ''),
-      redisConfigured: Boolean(source?.['redisConfigured'] ?? source?.['redis_configured'] ?? false),
+      redisConfigured: Boolean(
+        source?.['redisConfigured'] ?? source?.['redis_configured'] ?? false,
+      ),
       redisConnected:
         redisConnectedRaw === null || redisConnectedRaw === undefined
           ? null
@@ -811,8 +895,7 @@ export class ServerManagementComponent implements OnInit {
       message: String(source?.['message'] ?? 'Cache status updated'),
       cacheBackend: String(source?.['cacheBackend'] ?? source?.['cache_backend'] ?? ''),
       cacheLocation: String(source?.['cacheLocation'] ?? source?.['cache_location'] ?? ''),
-      globalEnabled:
-        globalEnabledRaw === undefined ? undefined : Boolean(globalEnabledRaw),
+      globalEnabled: globalEnabledRaw === undefined ? undefined : Boolean(globalEnabledRaw),
       userEnabled: userEnabledRaw === undefined ? undefined : Boolean(userEnabledRaw),
     };
   }
@@ -822,6 +905,15 @@ export class ServerManagementComponent implements OnInit {
     return {
       ok: Boolean(source?.['ok']),
       message: this.toOptionalString(source?.['message']) ?? '',
+    };
+  }
+
+  private normalizeVaultResetResponse(raw: unknown): VaultResetResponse {
+    const source = this.toRecord(raw);
+    return {
+      ok: Boolean(source?.['ok']),
+      message: this.toOptionalString(source?.['message']) ?? '',
+      vaultEpoch: this.toOptionalNumber(source?.['vaultEpoch'] ?? source?.['vault_epoch']),
     };
   }
 
@@ -847,6 +939,59 @@ export class ServerManagementComponent implements OnInit {
       repairs: Array.isArray(source?.['repairs'])
         ? (source['repairs'] as unknown[]).map((entry) => String(entry))
         : [],
+    };
+  }
+
+  private normalizeMediaCleanupResponse(raw: unknown): MediaCleanupResponse {
+    const source = this.toRecord(raw);
+    return {
+      ok: Boolean(source?.['ok']),
+      message: this.toOptionalString(source?.['message']) ?? '',
+      cleanup: this.normalizeMediaCleanupResult(source?.['cleanup']),
+    };
+  }
+
+  private normalizeMediaCleanupResult(raw: unknown): MediaCleanupResult | null {
+    const source = this.toRecord(raw);
+    if (!source) {
+      return null;
+    }
+
+    const storage = this.toRecord(source['storage']);
+    return {
+      ok: Boolean(source['ok'] ?? true),
+      message: String(source['message'] ?? ''),
+      dryRun: Boolean(source['dryRun'] ?? source['dry_run'] ?? true),
+      prefixes: Array.isArray(source['prefixes'])
+        ? (source['prefixes'] as unknown[]).map((entry) => String(entry))
+        : [],
+      scannedFiles: Number(source['scannedFiles'] ?? source['scanned_files'] ?? 0),
+      referencedFiles: Number(source['referencedFiles'] ?? source['referenced_files'] ?? 0),
+      orphanedFiles: Number(source['orphanedFiles'] ?? source['orphaned_files'] ?? 0),
+      deletedFiles: Number(source['deletedFiles'] ?? source['deleted_files'] ?? 0),
+      totalOrphanBytes: Number(source['totalOrphanBytes'] ?? source['total_orphan_bytes'] ?? 0),
+      files: Array.isArray(source['files'])
+        ? (source['files'] as unknown[])
+            .map((entry) => this.normalizeMediaCleanupFile(entry))
+            .filter((entry): entry is MediaCleanupFile => !!entry)
+        : [],
+      errors: Array.isArray(source['errors'])
+        ? (source['errors'] as unknown[]).map((entry) => String(entry))
+        : [],
+      storageBackend: this.toOptionalString(storage?.['backend']),
+      storageProvider: this.toOptionalString(storage?.['provider']),
+    };
+  }
+
+  private normalizeMediaCleanupFile(raw: unknown): MediaCleanupFile | null {
+    const source = this.toRecord(raw);
+    if (!source) {
+      return null;
+    }
+
+    return {
+      path: String(source['path'] ?? ''),
+      sizeBytes: this.toOptionalNumber(source['sizeBytes'] ?? source['size_bytes']),
     };
   }
 
@@ -892,5 +1037,16 @@ export class ServerManagementComponent implements OnInit {
       return undefined;
     }
     return value;
+  }
+
+  private toOptionalNumber(value: unknown): number | undefined {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+    if (typeof value === 'string' && value.trim() !== '') {
+      const numericValue = Number(value);
+      return Number.isFinite(numericValue) ? numericValue : undefined;
+    }
+    return undefined;
   }
 }

@@ -38,6 +38,7 @@ export * from './invoice-application-write';
 export * from './invoice-create-update';
 export * from './invoice-detail';
 export * from './invoice-list';
+export * from './media-cleanup-request';
 export * from './paginated-calendar-reminder-list';
 export * from './paginated-customer-application-history-list';
 export * from './paginated-customer-list';

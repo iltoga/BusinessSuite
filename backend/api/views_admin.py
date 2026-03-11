@@ -832,6 +832,29 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
             return Response({"ok": False, "message": str(e)}, status=500)
 
     @extend_schema(
+        summary="Clean unlinked media files",
+        request=inline_serializer(
+            name="MediaCleanupRequestSerializer",
+            fields={"dryRun": serializers.BooleanField(required=False, default=True)},
+        ),
+        responses={200: OpenApiTypes.OBJECT},
+    )
+    @action(detail=False, methods=["post"], url_path="media-cleanup")
+    def media_cleanup(self, request):
+        """Delete unlinked media files from the active media store."""
+        try:
+            raw_dry_run = request.data.get("dryRun", request.data.get("dry_run", True))
+            if isinstance(raw_dry_run, bool):
+                dry_run = raw_dry_run
+            else:
+                dry_run = str(raw_dry_run).strip().lower() in {"1", "true", "yes", "on"}
+
+            cleanup = services.cleanup_unlinked_media_files(dry_run=dry_run)
+            return Response({"ok": cleanup.get("ok", True), "cleanup": cleanup})
+        except Exception as e:
+            return Response({"ok": False, "message": str(e)}, status=500)
+
+    @extend_schema(
         summary="List and create application settings",
         request=OpenApiTypes.OBJECT,
         responses={200: OpenApiTypes.OBJECT},

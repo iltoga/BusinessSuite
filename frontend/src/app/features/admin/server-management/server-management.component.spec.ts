@@ -30,6 +30,25 @@ describe('ServerManagementComponent - Cache Controls', () => {
         .fn()
         .mockReturnValue(of({ ok: true, results: [], settings: null })),
       serverManagementMediaRepairCreate: vi.fn().mockReturnValue(of({ ok: true, repairs: [] })),
+      serverManagementMediaCleanupCreate: vi.fn().mockReturnValue(
+        of({
+          ok: true,
+          cleanup: {
+            ok: true,
+            message: 'Dry run complete. Found 1 unlinked media files.',
+            dryRun: true,
+            prefixes: ['documents', 'ocr_previews', 'tmp', 'tmpfiles'],
+            scannedFiles: 2,
+            referencedFiles: 1,
+            orphanedFiles: 1,
+            deletedFiles: 0,
+            totalOrphanBytes: 20,
+            files: [{ path: 'documents/orphan.pdf', sizeBytes: 20 }],
+            errors: [],
+            storage: { provider: 's3', backend: 'storages.backends.s3boto3.S3Boto3Storage' },
+          },
+        }),
+      ),
       serverManagementLocalResilienceRetrieve: vi.fn().mockReturnValue(
         of({
           enabled: false,
@@ -38,16 +57,14 @@ describe('ServerManagementComponent - Cache Controls', () => {
           vaultEpoch: 1,
         }),
       ),
-      serverManagementLocalResiliencePartialUpdate: vi
-        .fn()
-        .mockReturnValue(
-          of({
-            enabled: true,
-            encryptionRequired: true,
-            desktopMode: 'localPrimary',
-            vaultEpoch: 1,
-          }),
-        ),
+      serverManagementLocalResiliencePartialUpdate: vi.fn().mockReturnValue(
+        of({
+          enabled: true,
+          encryptionRequired: true,
+          desktopMode: 'localPrimary',
+          vaultEpoch: 1,
+        }),
+      ),
       serverManagementLocalResilienceResetVaultCreate: vi
         .fn()
         .mockReturnValue(
@@ -426,7 +443,6 @@ describe('ServerManagementComponent - Cache Controls', () => {
 
       expect(text).toContain('Cache status not loaded yet');
     });
-
   });
 
   describe('Backward Compatibility', () => {
@@ -446,6 +462,31 @@ describe('ServerManagementComponent - Cache Controls', () => {
       component.clearCache();
 
       expect(mockToastService.error).toHaveBeenCalledWith('Failed to clear cache');
+    });
+  });
+
+  describe('Media Cleanup', () => {
+    it('should run dry-run media cleanup and store the results', () => {
+      component.cleanupDryRun.set(true);
+
+      component.runMediaCleanup();
+
+      expect(mockServerManagementService.serverManagementMediaCleanupCreate).toHaveBeenCalledWith({
+        dryRun: true,
+      });
+      expect(component.cleanupResult()?.orphanedFiles).toBe(1);
+      expect(mockToastService.success).toHaveBeenCalledWith('Dry run found 1 unlinked media files');
+    });
+
+    it('should not treat semantic local vault reset failures as success', () => {
+      mockServerManagementService.serverManagementLocalResilienceResetVaultCreate.mockReturnValue(
+        of({ ok: false, message: 'Vault reset blocked' }),
+      );
+
+      component.resetLocalVault();
+
+      expect(mockToastService.error).toHaveBeenCalledWith('Vault reset blocked');
+      expect(mockToastService.success).not.toHaveBeenCalledWith('Vault reset blocked');
     });
   });
 

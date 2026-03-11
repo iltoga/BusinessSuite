@@ -177,3 +177,57 @@ class ServerManagementClearCacheApiTests(TestCase):
 
         settings_obj.refresh_from_db()
         self.assertEqual(settings_obj.vault_epoch, original_epoch + 1)
+
+    @patch("api.views_admin.services.cleanup_unlinked_media_files")
+    def test_media_cleanup_passes_dry_run_flag(self, cleanup_mock):
+        cleanup_mock.return_value = {
+            "ok": True,
+            "message": "Dry run complete. Found 1 unlinked media files.",
+            "dryRun": True,
+            "prefixes": ["documents", "ocr_previews", "tmp", "tmpfiles"],
+            "files": [{"path": "documents/orphan.pdf", "sizeBytes": 20}],
+            "orphanedFiles": 1,
+            "deletedFiles": 0,
+            "errors": [],
+        }
+
+        response = self.client.post(
+            "/api/server-management/media-cleanup/",
+            {"dryRun": True},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["ok"])
+        self.assertTrue(payload["cleanup"]["dryRun"])
+        cleanup_mock.assert_called_once_with(dry_run=True)
+
+    @patch("api.views_admin.services.cleanup_unlinked_media_files")
+    def test_media_cleanup_can_delete_files(self, cleanup_mock):
+        cleanup_mock.return_value = {
+            "ok": True,
+            "message": "Deleted 2 unlinked media files.",
+            "dryRun": False,
+            "prefixes": ["documents", "ocr_previews", "tmp", "tmpfiles"],
+            "files": [
+                {"path": "documents/orphan.pdf", "sizeBytes": 20},
+                {"path": "tmp/junk.txt", "sizeBytes": 12},
+            ],
+            "orphanedFiles": 2,
+            "deletedFiles": 2,
+            "errors": [],
+        }
+
+        response = self.client.post(
+            "/api/server-management/media-cleanup/",
+            {"dryRun": False},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["ok"])
+        self.assertFalse(payload["cleanup"]["dryRun"])
+        self.assertEqual(payload["cleanup"]["deletedFiles"], 2)
+        cleanup_mock.assert_called_once_with(dry_run=False)

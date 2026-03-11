@@ -15,6 +15,8 @@ from functools import lru_cache
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
+from core.services.ocr_preview_storage import get_ocr_preview_storage_prefix
+from core.storage import get_media_store_adapter
 from django.apps import apps
 from django.conf import settings
 from django.core.cache import caches
@@ -22,6 +24,7 @@ from django.core.files import File
 from django.core.files.storage import FileSystemStorage, default_storage
 from django.core.management import call_command
 from django.db import connections
+from django.db.models import CharField, JSONField, TextField
 from django.db.models.fields.files import FileField
 from django.utils import timezone
 from django.utils.module_loading import import_string
@@ -68,11 +71,7 @@ def _resolve_product_category_id(product_type: str | None) -> int | None:
 @lru_cache(maxsize=256)
 def _product_category_type_by_id(category_id: int) -> str | None:
     ProductCategory = apps.get_model("products", "ProductCategory")
-    return (
-        ProductCategory.objects.filter(pk=category_id)
-        .values_list("product_type", flat=True)
-        .first()
-    )
+    return ProductCategory.objects.filter(pk=category_id).values_list("product_type", flat=True).first()
 
 
 def _extract_product_type_from_category_value(category_value) -> str | None:
@@ -1949,6 +1948,210 @@ def repair_media_paths():
                             )
 
     return repairs
+
+
+def _cleanup_target_prefixes() -> list[str]:
+    prefixes: list[str] = []
+    seen: set[str] = set()
+
+    for raw_prefix in (
+        getattr(settings, "DOCUMENTS_FOLDER", "documents"),
+        get_ocr_preview_storage_prefix(),
+        "tmp",
+        getattr(settings, "TMPFILES_FOLDER", "tmpfiles"),
+    ):
+        normalized = str(raw_prefix or "").strip().strip("/")
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        prefixes.append(normalized)
+
+    return prefixes
+
+
+def _normalize_cleanup_storage_key(raw_path: str | None) -> str:
+    if raw_path is None:
+        return ""
+
+    value = str(raw_path).strip().strip("'").strip('"')
+    if not value:
+        return ""
+
+    parsed = urlparse(value)
+    if parsed.scheme and parsed.netloc:
+        value = parsed.path or ""
+    else:
+        value = value.split("?", 1)[0]
+
+    value = unquote(value).replace("\\", "/")
+    while "//" in value:
+        value = value.replace("//", "/")
+
+    media_root = str(getattr(settings, "MEDIA_ROOT", "") or "").replace("\\", "/").rstrip("/")
+    if media_root and value.startswith(media_root):
+        value = value[len(media_root) :]
+
+    media_url_path = urlparse(str(getattr(settings, "MEDIA_URL", "") or "")).path.replace("\\", "/").strip()
+    if media_url_path and value.startswith(media_url_path):
+        value = value[len(media_url_path) :]
+
+    return value.strip().strip("/")
+
+
+def _extract_cleanup_storage_keys(raw_value, *, prefixes: list[str]) -> set[str]:
+    normalized = _normalize_cleanup_storage_key(raw_value)
+    if not normalized:
+        return set()
+
+    keys: set[str] = set()
+    for prefix in prefixes:
+        marker = f"{prefix}/"
+        if normalized == prefix or normalized.startswith(marker):
+            keys.add(normalized)
+            continue
+
+        marker_index = normalized.find(marker)
+        if marker_index >= 0:
+            keys.add(normalized[marker_index:])
+
+    return keys
+
+
+def _extract_cleanup_paths_from_json(value, *, prefixes: list[str]) -> set[str]:
+    matches: set[str] = set()
+    if isinstance(value, dict):
+        for nested_value in value.values():
+            matches.update(_extract_cleanup_paths_from_json(nested_value, prefixes=prefixes))
+        return matches
+
+    if isinstance(value, (list, tuple, set)):
+        for item in value:
+            matches.update(_extract_cleanup_paths_from_json(item, prefixes=prefixes))
+        return matches
+
+    if isinstance(value, str):
+        matches.update(_extract_cleanup_storage_keys(value, prefixes=prefixes))
+    return matches
+
+
+def _iter_model_instances(model):
+    manager = getattr(model, "_default_manager", None) or getattr(model, "objects", None)
+    if manager is None:
+        return []
+
+    queryset = manager.all() if hasattr(manager, "all") else manager
+    if hasattr(queryset, "iterator"):
+        return queryset.iterator(chunk_size=500)
+    return queryset
+
+
+def _collect_referenced_media_keys(prefixes: list[str]) -> set[str]:
+    referenced_keys: set[str] = set()
+    tracked_suffixes = ("_path", "_url", "_link")
+
+    for model in apps.get_models():
+        concrete_fields = (
+            getattr(model._meta, "concrete_fields", None) or getattr(model._meta, "get_fields", lambda: [])()
+        )
+        relevant_fields = [
+            field for field in concrete_fields if isinstance(field, (FileField, JSONField, CharField, TextField))
+        ]
+        if not relevant_fields:
+            continue
+
+        for obj in _iter_model_instances(model):
+            for field in relevant_fields:
+                field_name = getattr(field, "name", "")
+                value = getattr(obj, field_name, None)
+
+                if isinstance(field, FileField):
+                    referenced_keys.update(
+                        _extract_cleanup_storage_keys(getattr(value, "name", value), prefixes=prefixes)
+                    )
+                    continue
+
+                if isinstance(field, JSONField):
+                    referenced_keys.update(_extract_cleanup_paths_from_json(value, prefixes=prefixes))
+                    continue
+
+                if field_name == "path" or field_name.endswith(tracked_suffixes):
+                    referenced_keys.update(_extract_cleanup_storage_keys(value, prefixes=prefixes))
+
+    return referenced_keys
+
+
+def cleanup_unlinked_media_files(*, dry_run: bool = True) -> dict:
+    prefixes = _cleanup_target_prefixes()
+    referenced_keys = _collect_referenced_media_keys(prefixes)
+    media_store = get_media_store_adapter(default_storage)
+
+    orphaned_files: list[dict] = []
+    deleted_count = 0
+    errors: list[str] = []
+    scanned_count = 0
+    total_orphan_size = 0
+    scanned_keys: set[str] = set()
+
+    for prefix in prefixes:
+        try:
+            files = media_store.iter_files(prefix)
+        except Exception as exc:
+            errors.append(f"Failed to enumerate {prefix}: {exc}")
+            continue
+
+        for raw_key in files:
+            key = _normalize_cleanup_storage_key(raw_key)
+            if not key or key in scanned_keys:
+                continue
+
+            scanned_keys.add(key)
+            scanned_count += 1
+
+            if key in referenced_keys:
+                continue
+
+            size_bytes = media_store.size(key)
+            if size_bytes is not None:
+                total_orphan_size += size_bytes
+
+            orphaned_files.append({"path": key, "sizeBytes": size_bytes})
+
+            if dry_run:
+                continue
+
+            try:
+                media_store.delete(key)
+                deleted_count += 1
+            except Exception as exc:
+                errors.append(f"Failed to delete {key}: {exc}")
+
+    orphaned_files.sort(key=lambda entry: str(entry.get("path", "")))
+    storage_descriptor = _build_storage_descriptor(default_storage)
+
+    if dry_run:
+        message = f"Dry run complete. Found {len(orphaned_files)} unlinked media files."
+    else:
+        message = f"Deleted {deleted_count} unlinked media files."
+        if deleted_count != len(orphaned_files):
+            message = (
+                f"Deleted {deleted_count} of {len(orphaned_files)} unlinked media files. "
+                "Some files could not be removed."
+            )
+
+    return {
+        "ok": not errors,
+        "message": message,
+        "dryRun": dry_run,
+        "storage": storage_descriptor,
+        "prefixes": prefixes,
+        "scannedFiles": scanned_count,
+        "referencedFiles": len(referenced_keys),
+        "orphanedFiles": len(orphaned_files),
+        "deletedFiles": deleted_count,
+        "totalOrphanBytes": total_orphan_size,
+        "files": orphaned_files,
+        "errors": errors,
+    }
 
 
 def get_cache_health_status(user_id: int | None = None) -> dict:
