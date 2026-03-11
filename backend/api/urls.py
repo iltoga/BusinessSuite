@@ -27,7 +27,13 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, Spec
 from rest_framework.routers import DefaultRouter
 
 from . import views
-from .views_admin import BackupsViewSet, ServerManagementViewSet, backup_restore_sse, backup_start_sse
+from .views_admin import (
+    BackupsViewSet,
+    ServerManagementViewSet,
+    backup_restore_sse,
+    backup_start_sse,
+    media_cleanup_start_sse,
+)
 from .views_categorization import (
     categorization_apply,
     categorization_job_status,
@@ -104,6 +110,11 @@ urlpatterns = [
     # Used for real-time updates in Angular components
     path("backups/start/", backup_start_sse, name="api-backup-start-sse"),
     path("backups/restore/", backup_restore_sse, name="api-backup-restore-sse"),
+    path(
+        "server-management/media-cleanup/stream/",
+        media_cleanup_start_sse,
+        name="api-server-management-media-cleanup-stream-sse",
+    ),
     path("ocr/check/", views.OCRViewSet.as_view({"post": "check"}), name="api-ocr-check"),
     path("ocr/status/<uuid:job_id>/", views.OCRViewSet.as_view({"get": "status"}), name="api-ocr-status"),
     path("ocr/stream/<uuid:job_id>/", views.OCRViewSet.as_view({"get": "stream"}), name="api-ocr-stream"),

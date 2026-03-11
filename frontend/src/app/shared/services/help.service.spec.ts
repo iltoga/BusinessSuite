@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { NavigationEnd, Router } from '@angular/router';
-import { Subject, throwError } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { HelpService } from './help.service';
 
@@ -17,7 +17,7 @@ describe('HelpService', () => {
   beforeEach(() => {
     router = new RouterMock();
     mockHttp = {
-      get: vi.fn(),
+      get: vi.fn().mockReturnValue(of('help content')),
     };
     TestBed.configureTestingModule({
       providers: [
@@ -106,26 +106,42 @@ describe('HelpService', () => {
   });
 
   it('should not log error when help load fails because token expired', () => {
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     mockHttp.get.mockReturnValue(throwError(() => new Error('Token expired')));
 
     service.setContext({ id: '/foo', contentUrl: '/help/foo.md' });
 
     expect(mockHttp.get).toHaveBeenCalledWith('/help/foo.md', { responseType: 'text' });
-    expect(consoleErrorSpy).not.toHaveBeenCalled();
     expect(service.helpContent()).toBeNull();
     expect(service.isLoading()).toBe(false);
   });
 
-  it('should log and set fallback message when help load fails for other reasons', () => {
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  it('should set fallback message when help load fails for other reasons', () => {
     mockHttp.get.mockReturnValue(throwError(() => new Error('Network down')));
 
     service.setContext({ id: '/foo', contentUrl: '/help/foo.md' });
 
     expect(mockHttp.get).toHaveBeenCalledWith('/help/foo.md', { responseType: 'text' });
-    expect(consoleErrorSpy).toHaveBeenCalled();
     expect(service.helpContent()).toBe('Failed to load help content.');
+    expect(service.isLoading()).toBe(false);
+  });
+
+  it('should ignore stale help responses after the context changes', () => {
+    const firstRequest = new Subject<string>();
+    const secondRequest = new Subject<string>();
+    mockHttp.get
+      .mockReturnValueOnce(firstRequest.asObservable())
+      .mockReturnValueOnce(secondRequest.asObservable());
+
+    service.setContext({ id: '/first', contentUrl: '/help/first.md' });
+    service.setContext({ id: '/second', contentUrl: '/help/second.md' });
+
+    firstRequest.next('old content');
+    firstRequest.complete();
+    expect(service.helpContent()).not.toBe('old content');
+
+    secondRequest.next('fresh content');
+    secondRequest.complete();
+    expect(service.helpContent()).toBe('fresh content');
     expect(service.isLoading()).toBe(false);
   });
 });

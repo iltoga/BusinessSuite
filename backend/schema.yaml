@@ -4580,11 +4580,65 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/server-management/cache-disable/:
+    post:
+      operationId: serverManagementCacheDisableCreate
+      description: Disable cache globally for all users.
+      summary: Disable application cache
+      tags:
+      - server-management
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/server-management/cache-enable/:
+    post:
+      operationId: serverManagementCacheEnableCreate
+      description: Enable cache globally for all users.
+      summary: Enable application cache
+      tags:
+      - server-management
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/server-management/cache-health/:
     get:
       operationId: serverManagementCacheHealthRetrieve
       description: Run a live cache round-trip and Redis connectivity probe.
       summary: Run live cache health check
+      tags:
+      - server-management
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/server-management/cache-status/:
+    get:
+      operationId: serverManagementCacheStatusRetrieve
+      description: Return global cache status and backend descriptor.
+      summary: Get application cache status
       tags:
       - server-management
       security:
@@ -4717,6 +4771,38 @@ paths:
       summary: Reset local media vault epoch
       tags:
       - server-management
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/server-management/media-cleanup/:
+    post:
+      operationId: serverManagementMediaCleanupCreate
+      description: Delete unlinked media files from the active media store.
+      summary: Clean unlinked media files
+      tags:
+      - server-management
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MediaCleanupRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MediaCleanupRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MediaCleanupRequest'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/MediaCleanupRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -9886,11 +9972,65 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/v1/server-management/cache-disable/:
+    post:
+      operationId: v1ServerManagementCacheDisableCreate
+      description: Disable cache globally for all users.
+      summary: Disable application cache
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/server-management/cache-enable/:
+    post:
+      operationId: v1ServerManagementCacheEnableCreate
+      description: Enable cache globally for all users.
+      summary: Enable application cache
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/server-management/cache-health/:
     get:
       operationId: v1ServerManagementCacheHealthRetrieve
       description: Run a live cache round-trip and Redis connectivity probe.
       summary: Run live cache health check
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/server-management/cache-status/:
+    get:
+      operationId: v1ServerManagementCacheStatusRetrieve
+      description: Return global cache status and backend descriptor.
+      summary: Get application cache status
       tags:
       - v1
       security:
@@ -10023,6 +10163,38 @@ paths:
       summary: Reset local media vault epoch
       tags:
       - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/server-management/media-cleanup/:
+    post:
+      operationId: v1ServerManagementMediaCleanupCreate
+      description: Delete unlinked media files from the active media store.
+      summary: Clean unlinked media files
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MediaCleanupRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MediaCleanupRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MediaCleanupRequest'
+          '*/*':
+            schema:
+              $ref: '#/components/schemas/MediaCleanupRequest'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -12399,6 +12571,10 @@ components:
           type: boolean
           description: Return True if the current user can force close this application.
           readOnly: true
+        submission_window_last_date:
+          type: string
+          nullable: true
+          readOnly: true
       required:
       - can_force_close
       - created_at
@@ -12410,6 +12586,7 @@ components:
       - invoice_id
       - product
       - ready_for_invoice
+      - submission_window_last_date
       - updated_at
     DocWorkflow:
       type: object
@@ -13221,6 +13398,12 @@ components:
       - total_paid_amount
       - updated_at
       - updated_by
+    MediaCleanupRequest:
+      type: object
+      properties:
+        dryRun:
+          type: boolean
+          default: true
     PaginatedCalendarReminderList:
       type: object
       required:

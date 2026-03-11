@@ -4,6 +4,7 @@ from core.models.local_resilience import LocalResilienceSettings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.test import TestCase, override_settings
+from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient
 
 
@@ -177,3 +178,70 @@ class ServerManagementClearCacheApiTests(TestCase):
 
         settings_obj.refresh_from_db()
         self.assertEqual(settings_obj.vault_epoch, original_epoch + 1)
+
+    @patch("api.views_admin.services.cleanup_unlinked_media_files")
+    def test_media_cleanup_passes_dry_run_flag(self, cleanup_mock):
+        cleanup_mock.return_value = {
+            "ok": True,
+            "message": "Dry run complete. Found 1 unlinked media files.",
+            "dryRun": True,
+            "prefixes": ["documents", "ocr_previews", "tmp", "tmpfiles"],
+            "files": [{"path": "documents/orphan.pdf", "sizeBytes": 20}],
+            "orphanedFiles": 1,
+            "deletedFiles": 0,
+            "errors": [],
+        }
+
+        response = self.client.post(
+            "/api/server-management/media-cleanup/",
+            {"dryRun": True},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["ok"])
+        self.assertTrue(payload["cleanup"]["dryRun"])
+        cleanup_mock.assert_called_once_with(dry_run=True)
+
+    @patch("api.views_admin.services.cleanup_unlinked_media_files")
+    def test_media_cleanup_can_delete_files(self, cleanup_mock):
+        cleanup_mock.return_value = {
+            "ok": True,
+            "message": "Deleted 2 unlinked media files.",
+            "dryRun": False,
+            "prefixes": ["documents", "ocr_previews", "tmp", "tmpfiles"],
+            "files": [
+                {"path": "documents/orphan.pdf", "sizeBytes": 20},
+                {"path": "tmp/junk.txt", "sizeBytes": 12},
+            ],
+            "orphanedFiles": 2,
+            "deletedFiles": 2,
+            "errors": [],
+        }
+
+        response = self.client.post(
+            "/api/server-management/media-cleanup/",
+            {"dryRun": False},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["ok"])
+        self.assertFalse(payload["cleanup"]["dryRun"])
+        self.assertEqual(payload["cleanup"]["deletedFiles"], 2)
+        cleanup_mock.assert_called_once_with(dry_run=False)
+
+    @patch("api.views_admin.admin_tasks.run_media_cleanup_stream.delay")
+    def test_media_cleanup_stream_starts_background_scan(self, media_cleanup_delay_mock):
+        token = Token.objects.create(user=self.user)
+        response = self.client.get(
+            "/api/server-management/media-cleanup/stream/?dry_run=1",
+            HTTP_AUTHORIZATION=f"Token {token.key}",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response["Content-Type"].startswith("text/event-stream"))
+        next(response.streaming_content)
+        media_cleanup_delay_mock.assert_called_once_with(user_id=self.user.id, dry_run=True)

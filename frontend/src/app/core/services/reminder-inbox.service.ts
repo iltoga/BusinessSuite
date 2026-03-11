@@ -1,8 +1,8 @@
 import { isPlatformBrowser } from '@angular/common';
-import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Inject, Injectable, NgZone, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { Subscription, catchError, finalize, interval, of } from 'rxjs';
 
+import { CalendarRemindersService } from '@/core/api/api/calendar-reminders.service';
 import { AuthService } from '@/core/services/auth.service';
 import { DesktopBridgeService } from '@/core/services/desktop-bridge.service';
 import { PushNotificationsService } from '@/core/services/push-notifications.service';
@@ -29,8 +29,8 @@ export class ReminderInboxService {
   private readonly reconnectBaseDelayMs = 2_000;
   private readonly reconnectMaxDelayMs = 30_000;
 
-  private readonly http = inject(HttpClient);
   private readonly authService = inject(AuthService);
+  private readonly calendarRemindersApi = inject(CalendarRemindersService);
   private readonly desktopBridge = inject(DesktopBridgeService);
   private readonly pushNotifications = inject(PushNotificationsService);
   private readonly remindersStreamService = inject(RemindersStreamService);
@@ -114,12 +114,8 @@ export class ReminderInboxService {
 
     this.isLoading.set(true);
 
-    const params = new HttpParams().set('limit', 100);
-    this.activeRefreshSubscription = this.http
-      .get<any>('/api/calendar-reminders/inbox/', {
-        params,
-        headers: this.buildHeaders(),
-      })
+    this.activeRefreshSubscription = this.calendarRemindersApi
+      .calendarRemindersInboxRetrieve()
       .pipe(
         catchError((error) => {
           if (showError) {
@@ -144,25 +140,21 @@ export class ReminderInboxService {
           return;
         }
 
+        const inbox = response as unknown as Record<string, unknown>;
+
         this.hasHydratedInbox = true;
-        this.setUnreadCount(Number(response?.unreadCount ?? response?.unread_count ?? 0));
+        this.setUnreadCount(Number(inbox['unreadCount'] ?? inbox['unread_count'] ?? 0));
         this.todayReminders.set(
-          Array.isArray(response?.today)
-            ? response.today.map((item: any) => this.mapReminder(item))
+          Array.isArray(inbox['today'])
+            ? (inbox['today'] as any[]).map((item: any) => this.mapReminder(item))
             : [],
         );
       });
   }
 
   markRead(ids: number[] = []): void {
-    this.http
-      .post<any>(
-        '/api/calendar-reminders/inbox/mark-read/',
-        { ids, deviceLabel: this.deviceLabel() },
-        {
-          headers: this.buildHeaders(),
-        },
-      )
+    this.calendarRemindersApi
+      .calendarRemindersInboxMarkReadCreate({ ids, deviceLabel: this.deviceLabel() })
       .pipe(
         catchError((error) => {
           console.error('[ReminderInboxService] Failed to mark reminders as read', error);
@@ -172,7 +164,9 @@ export class ReminderInboxService {
       .subscribe((response) => {
         if (!response) return;
 
-        const unreadCount = Number(response?.unreadCount ?? response?.unread_count ?? 0);
+        const payload = response as unknown as Record<string, unknown>;
+
+        const unreadCount = Number(payload['unreadCount'] ?? payload['unread_count'] ?? 0);
         this.setUnreadCount(unreadCount);
 
         if (!ids.length) {
@@ -202,11 +196,6 @@ export class ReminderInboxService {
       return;
     }
     this.markRead([id]);
-  }
-
-  private buildHeaders(): HttpHeaders | undefined {
-    const token = this.authService.getToken();
-    return token ? new HttpHeaders({ Authorization: `Bearer ${token}` }) : undefined;
   }
 
   private mapReminder(item: any): ReminderInboxItem {
@@ -281,7 +270,10 @@ export class ReminderInboxService {
       this.reconnectBaseDelayMs * 2 ** this.reconnectAttempt,
     );
     this.reconnectAttempt += 1;
-    this.streamReconnectTimeoutId = window.setTimeout(() => this.subscribeToReminderStream(), delay);
+    this.streamReconnectTimeoutId = window.setTimeout(
+      () => this.subscribeToReminderStream(),
+      delay,
+    );
   }
 
   private clearReconnectTimeout(): void {

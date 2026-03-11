@@ -1,18 +1,18 @@
-import signal
 import json
+import signal
 from datetime import datetime, timedelta
-
-from django.contrib.auth import get_user_model
-from django.test import TestCase
-from django.utils import timezone
-from rest_framework.authtoken.models import Token
-from rest_framework.test import APIClient
+from unittest.mock import patch
 
 from core.models import CalendarReminder
 from core.services.calendar_reminder_stream import (
     get_calendar_reminder_stream_cursor,
     reset_calendar_reminder_stream_state,
 )
+from django.contrib.auth import get_user_model
+from django.test import TestCase
+from django.utils import timezone
+from rest_framework.authtoken.models import Token
+from rest_framework.test import APIClient
 
 User = get_user_model()
 
@@ -36,6 +36,15 @@ class CalendarReminderApiTests(TestCase):
         data_line = next((line for line in chunk.splitlines() if line.startswith("data: ")), "")
         self.assertTrue(data_line, f"Expected SSE data line in chunk: {chunk!r}")
         return json.loads(data_line.replace("data: ", "", 1))
+
+    def _next_sse_payload_with_timeout(self, stream, timeout_seconds: int = 5):
+        while True:
+            chunk = self._next_sse_chunk_with_timeout(stream, timeout_seconds)
+            if isinstance(chunk, bytes):
+                chunk = chunk.decode("utf-8")
+            if chunk.startswith(":"):
+                continue
+            return self._decode_sse_payload(chunk)
 
     def _next_sse_chunk_with_timeout(self, stream, timeout_seconds: int = 5):
         def _on_timeout(signum, frame):  # pragma: no cover - signal handler
@@ -378,7 +387,7 @@ class CalendarReminderApiTests(TestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.token.key}")
         response = self.client.get("/api/calendar-reminders/stream/")
         self.assertEqual(response.status_code, 200)
-        payload = self._decode_sse_payload(self._next_sse_chunk_with_timeout(response.streaming_content))
+        payload = self._next_sse_payload_with_timeout(response.streaming_content)
         self.assertEqual(payload["event"], "calendar_reminders_snapshot")
         self.assertEqual(payload["reason"], "initial")
         self.assertEqual(payload["lastReminderId"], reminder.id)
@@ -387,7 +396,7 @@ class CalendarReminderApiTests(TestCase):
         reminder.error_message = "Delivery error"
         reminder.save(update_fields=["status", "error_message", "updated_at"])
 
-        changed_payload = self._decode_sse_payload(self._next_sse_chunk_with_timeout(response.streaming_content))
+        changed_payload = self._next_sse_payload_with_timeout(response.streaming_content)
         self.assertEqual(changed_payload["event"], "calendar_reminders_changed")
         self.assertEqual(changed_payload["lastReminderId"], reminder.id)
         self.assertIn(changed_payload["reason"], {"signal", "db_state_change"})
@@ -407,3 +416,15 @@ class CalendarReminderApiTests(TestCase):
         reminder.save(update_fields=["status", "updated_at"])
         after_cursor = get_calendar_reminder_stream_cursor()
         self.assertGreater(after_cursor, before_cursor)
+
+    @patch("api.view_notifications.iter_replay_and_live_events", return_value=iter([None]))
+    def test_stream_emits_keepalive_when_idle(self, _iter_events):
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.token.key}")
+        response = self.client.get("/api/calendar-reminders/stream/")
+
+        self.assertEqual(response.status_code, 200)
+        _ = self._decode_sse_payload(next(response.streaming_content))
+        keepalive_chunk = next(response.streaming_content)
+        if isinstance(keepalive_chunk, bytes):
+            keepalive_chunk = keepalive_chunk.decode("utf-8")
+        self.assertEqual(keepalive_chunk, ": keepalive\n\n")

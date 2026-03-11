@@ -66,6 +66,7 @@ export const appConfig: ApplicationConfig = {
 
       return configService.loadConfig().then(() => {
         authService.initMockAuth();
+        themeService.initializeTheme(configService.settings.theme as ThemeName);
 
         // If authenticated, attempt to fetch user settings and apply theme/darkMode from server
         const applyFromServer = async () => {
@@ -74,26 +75,20 @@ export const appConfig: ApplicationConfig = {
               const settings = (await firstValueFrom(
                 userSettingsApi.getMe(),
               )) as UserSettingsThemePayload;
-              themeService.initializeTheme(
-                (settings.theme ?? configService.settings.theme) as ThemeName,
-              );
+              themeService.setTheme((settings.theme ?? configService.settings.theme) as ThemeName);
               // Accept either snake_case or camelCase keys from server
               const serverDark = settings.dark_mode ?? settings.darkMode;
               themeService.setDarkMode(
                 typeof serverDark === 'boolean' ? serverDark : themeService.isDarkMode(),
               );
-            } else {
-              // Not authenticated: fall back to config.json and localStorage
-              themeService.initializeTheme(configService.settings.theme as ThemeName);
             }
-          } catch (e) {
-            // On any failure, fall back to config+localstorage
-            themeService.initializeTheme(configService.settings.theme as ThemeName);
+          } catch {
+            // Baseline theme is already applied synchronously above.
           }
         };
 
         // Run asynchronously so initialization doesn't block excessively
-        applyFromServer();
+        void applyFromServer();
 
         // Set browser tab title from config if available
         try {

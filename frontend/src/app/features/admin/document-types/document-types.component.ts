@@ -160,13 +160,8 @@ export class DocumentTypesComponent extends BaseListComponent<DocumentType> {
     const query = this.query().trim();
     this.isLoading.set(true);
 
-    let params = new HttpParams().set('hide_deprecated', String(!this.includeDeprecated()));
-    if (query) {
-      params = params.set('search', query);
-    }
-
-    this.http
-      .get<DocumentType[]>('/api/document-types/', { params })
+    this.documentTypesApi
+      .documentTypesList(undefined, !this.includeDeprecated(), undefined, query || undefined)
       .pipe(
         catchError(() => {
           this.toast.error('Failed to load document types');

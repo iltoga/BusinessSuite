@@ -1,5 +1,4 @@
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -23,6 +22,7 @@ import {
   type Product,
 } from '@/core/api';
 import { GlobalToastService } from '@/core/services/toast.service';
+import { FormNavigationFacadeService } from '@/features/shared/services/form-navigation-facade.service';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
 import { ZardComboboxComponent, type ZardComboboxOption } from '@/shared/components/combobox';
@@ -32,7 +32,6 @@ import { FormErrorSummaryComponent } from '@/shared/components/form-error-summar
 import { ZardInputDirective } from '@/shared/components/input';
 import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/utils/form-errors';
 import { InvoiceLineItemsSectionComponent } from './invoice-line-items-section.component';
-import { FormNavigationFacadeService } from '@/features/shared/services/form-navigation-facade.service';
 
 interface BillableProductRow {
   product: Product;
@@ -75,7 +74,6 @@ export class InvoiceFormComponent implements OnInit {
   private readonly invoicesApi = inject(InvoicesService);
   private readonly toast = inject(GlobalToastService);
   private readonly platformId = inject(PLATFORM_ID);
-  private readonly http = inject(HttpClient);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly formNavigationFacade = inject(FormNavigationFacadeService);
 
@@ -258,7 +256,9 @@ export class InvoiceFormComponent implements OnInit {
         group.get('amount')?.setValue(this.resolveApplicationPrice(app), { emitEvent: false });
       }
     } else if (initial.product && initial.amount === undefined) {
-      group.get('amount')?.setValue(this.resolveProductPrice(initial.product), { emitEvent: false });
+      group
+        .get('amount')
+        ?.setValue(this.resolveProductPrice(initial.product), { emitEvent: false });
     }
   }
 
@@ -299,7 +299,8 @@ export class InvoiceFormComponent implements OnInit {
     }
 
     return row.pendingApplications.filter(
-      (app) => !selectedIds.has(app.id) || (selectedCurrentId !== null && app.id === selectedCurrentId),
+      (app) =>
+        !selectedIds.has(app.id) || (selectedCurrentId !== null && app.id === selectedCurrentId),
     );
   }
 
@@ -430,7 +431,11 @@ export class InvoiceFormComponent implements OnInit {
     return selected;
   }
 
-  private onLineProductChanged(group: FormGroup, rawProductId: unknown, allowAutoExpand: boolean): void {
+  private onLineProductChanged(
+    group: FormGroup,
+    rawProductId: unknown,
+    allowAutoExpand: boolean,
+  ): void {
     const productId = Number(rawProductId ?? 0);
     if (!productId) {
       group.get('customerApplication')?.setValue(null, { emitEvent: false });
@@ -470,7 +475,9 @@ export class InvoiceFormComponent implements OnInit {
         return;
       }
 
-      group.get('amount')?.setValue(this.resolveApplicationPrice(selectedApp), { emitEvent: false });
+      group
+        .get('amount')
+        ?.setValue(this.resolveApplicationPrice(selectedApp), { emitEvent: false });
       return;
     }
 
@@ -540,10 +547,12 @@ export class InvoiceFormComponent implements OnInit {
       next: (response) => {
         const payload = (response ?? null) as Record<string, any> | null;
         const customerId = payload?.['customer']?.id ?? null;
-        const sourceLine = payload?.['invoiceApplication'] ?? payload?.['invoice_application'] ?? null;
+        const sourceLine =
+          payload?.['invoiceApplication'] ?? payload?.['invoice_application'] ?? null;
         const sourceApplication =
           payload?.['sourceApplication'] ?? payload?.['source_application'] ?? null;
-        const sourceApplicationId = sourceLine?.['customerApplication'] ?? sourceLine?.['customer_application'] ?? null;
+        const sourceApplicationId =
+          sourceLine?.['customerApplication'] ?? sourceLine?.['customer_application'] ?? null;
         const sourceProductId = sourceLine?.['product'] ?? null;
 
         if (!customerId || !sourceProductId || !sourceApplicationId) {
@@ -560,7 +569,9 @@ export class InvoiceFormComponent implements OnInit {
 
         this.fetchBillableProducts(customerId).subscribe({
           next: (rows) => {
-            this.billableProducts.set(this.ensureSourceApplicationIncluded(rows, sourceApplication));
+            this.billableProducts.set(
+              this.ensureSourceApplicationIncluded(rows, sourceApplication),
+            );
             this.invoiceApplications.clear();
             this.addLineItem(
               {
@@ -577,7 +588,9 @@ export class InvoiceFormComponent implements OnInit {
           error: (error) => {
             const message = extractServerErrorMessage(error);
             this.toast.error(
-              message ? `Failed to load billable products: ${message}` : 'Failed to load billable products',
+              message
+                ? `Failed to load billable products: ${message}`
+                : 'Failed to load billable products',
             );
             this.invoiceApplications.clear();
             this.addLineItem({}, { manual: false, skipAutoExpand: true });
@@ -587,7 +600,11 @@ export class InvoiceFormComponent implements OnInit {
       },
       error: (error) => {
         const message = extractServerErrorMessage(error);
-        this.toast.error(message ? `Failed to load source application: ${message}` : 'Failed to load source application');
+        this.toast.error(
+          message
+            ? `Failed to load source application: ${message}`
+            : 'Failed to load source application',
+        );
         this.invoiceApplications.clear();
         this.addLineItem({}, { manual: false, skipAutoExpand: true });
         this.isLoading.set(false);
@@ -648,7 +665,9 @@ export class InvoiceFormComponent implements OnInit {
           error: (error) => {
             const message = extractServerErrorMessage(error);
             this.toast.error(
-              message ? `Failed to load billable products: ${message}` : 'Failed to load billable products',
+              message
+                ? `Failed to load billable products: ${message}`
+                : 'Failed to load billable products',
             );
             this.invoiceApplications.clear();
             this.addLineItem({}, { manual: false, skipAutoExpand: true });
@@ -673,7 +692,9 @@ export class InvoiceFormComponent implements OnInit {
       error: (error) => {
         const message = extractServerErrorMessage(error);
         this.toast.error(
-          message ? `Failed to load billable products: ${message}` : 'Failed to load billable products',
+          message
+            ? `Failed to load billable products: ${message}`
+            : 'Failed to load billable products',
         );
       },
     });
@@ -686,7 +707,11 @@ export class InvoiceFormComponent implements OnInit {
   }
 
   private normalizeBillableRows(rows: unknown): BillableProductRow[] {
-    const list = Array.isArray(rows) ? rows : Array.isArray((rows as any)?.results) ? (rows as any).results : [];
+    const list = Array.isArray(rows)
+      ? rows
+      : Array.isArray((rows as any)?.results)
+        ? (rows as any).results
+        : [];
     return list
       .map((row: any) => {
         const product = (row?.product ?? null) as Product | null;
@@ -698,7 +723,9 @@ export class InvoiceFormComponent implements OnInit {
           row?.pending_applications ??
           []) as DocApplicationInvoice[];
         const pendingApplicationsCount = Number(
-          row?.pendingApplicationsCount ?? row?.pending_applications_count ?? pendingApplications.length,
+          row?.pendingApplicationsCount ??
+            row?.pending_applications_count ??
+            pendingApplications.length,
         );
         const hasPendingApplications =
           row?.hasPendingApplications ??
@@ -744,7 +771,9 @@ export class InvoiceFormComponent implements OnInit {
     }
 
     const existingRow = rows[existingRowIndex];
-    if (existingRow.pendingApplications.some((application) => application.id === sourceApplicationId)) {
+    if (
+      existingRow.pendingApplications.some((application) => application.id === sourceApplicationId)
+    ) {
       return rows;
     }
 
@@ -821,13 +850,11 @@ export class InvoiceFormComponent implements OnInit {
     const day = String(date.getDate()).padStart(2, '0');
     const dateStr = `${year}-${month}-${day}`;
 
-    const params: any = { invoice_date: dateStr };
-
-    this.http.get<any>(`/api/invoices/propose/`, { params }).subscribe({
+    this.invoicesApi.invoicesProposeRetrieve(dateStr).subscribe({
       next: (res) => {
         const ctrl = this.form.get('invoiceNo');
         if (ctrl && !ctrl.dirty) {
-          const proposedNo = res.invoiceNo || res.invoice_no;
+          const proposedNo = res.invoiceNo;
           if (proposedNo) {
             ctrl.setValue(proposedNo, { emitEvent: false });
             ctrl.markAsPristine();

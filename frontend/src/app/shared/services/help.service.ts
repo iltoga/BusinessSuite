@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
 
 export interface HelpLink {
@@ -30,6 +31,7 @@ type HelpAnalyticsWindow = Window & {
 @Injectable({ providedIn: 'root' })
 export class HelpService {
   private readonly http = inject(HttpClient);
+  private readonly router = inject(Router);
   private readonly _visible = signal(false);
   readonly visible = this._visible.asReadonly();
 
@@ -89,13 +91,16 @@ export class HelpService {
       { id: '/letters/surat-permohonan', contentUrl: '/help/letters/surat-permohonan.md' },
     ],
     ['/admin/systemcosts', { id: '/admin/systemcosts', contentUrl: '/help/admin/system-costs.md' }],
+    ['/admin/server', { id: '/admin/server', contentUrl: '/help/admin/server-management.md' }],
     ['/profile', { id: '/profile', contentUrl: '/help/profile/index.md' }],
   ]);
 
   private readonly _openCount = signal(0);
   readonly openCount = this._openCount.asReadonly();
+  private activeContentRequest: Subscription | null = null;
+  private activeContentRequestId = 0;
 
-  constructor(private router: Router) {
+  constructor() {
     // Update help context automatically on navigation
     this.router.events.pipe(filter((e) => e instanceof NavigationEnd)).subscribe((e) => {
       const nav = e as NavigationEnd;
@@ -145,28 +150,40 @@ export class HelpService {
 
   setContext(ctx: HelpContext) {
     this._context.set(ctx);
+    this.activeContentRequest?.unsubscribe();
+    this.activeContentRequest = null;
+    this.activeContentRequestId += 1;
 
-    if (ctx.contentUrl) {
-      this._isLoading.set(true);
-      this.http.get(ctx.contentUrl, { responseType: 'text' }).subscribe({
-        next: (content) => {
-          this._helpContent.set(content);
-          this._isLoading.set(false);
-        },
-        error: (err) => {
-          if (!this.isTokenExpiredError(err)) {
-            this._helpContent.set('Failed to load help content.');
-          } else {
-            // Expired auth token is handled globally via redirect to /login.
-            // Avoid noisy console errors from background help content fetches.
-            this._helpContent.set(null);
-          }
-          this._isLoading.set(false);
-        },
-      });
-    } else {
+    if (!ctx.contentUrl) {
       this._helpContent.set(null);
+      this._isLoading.set(false);
+      return;
     }
+
+    this._isLoading.set(true);
+    const requestId = this.activeContentRequestId;
+    this.activeContentRequest = this.http.get(ctx.contentUrl, { responseType: 'text' }).subscribe({
+      next: (content) => {
+        if (requestId !== this.activeContentRequestId) {
+          return;
+        }
+        this._helpContent.set(content);
+        this._isLoading.set(false);
+      },
+      error: (err) => {
+        if (requestId !== this.activeContentRequestId) {
+          return;
+        }
+        if (!this.isTokenExpiredError(err)) {
+          this._helpContent.set('Failed to load help content.');
+        } else {
+          // Expired auth token is handled globally via redirect to /login.
+          // Avoid noisy console errors from background help content fetches.
+          this._helpContent.set(null);
+        }
+        this._isLoading.set(false);
+      },
+    });
   }
 
   register(id: string, ctx: HelpContext) {

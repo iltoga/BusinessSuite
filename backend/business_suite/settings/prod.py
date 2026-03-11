@@ -58,8 +58,14 @@ TESSERACT_CMD = "/usr/bin/tesseract"
 # Route production file logs per runtime component.
 # - bs-core (COMPONENT=backend) -> /logs/django.log
 # - bs-worker (COMPONENT=task_worker) -> /logs/task_worker.log
+# - bs-scheduler (COMPONENT=scheduler) -> /logs/scheduler.log
 COMPONENT = os.getenv("COMPONENT", "backend")
-LOG_FILE_PATH = "/logs/task_worker.log" if COMPONENT == "task_worker" else "/logs/django.log"
+if COMPONENT == "task_worker":
+    LOG_FILE_PATH = "/logs/task_worker.log"
+elif COMPONENT == "scheduler":
+    LOG_FILE_PATH = "/logs/scheduler.log"
+else:
+    LOG_FILE_PATH = "/logs/django.log"
 
 LOGGING = {
     "version": 1,

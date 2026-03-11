@@ -1,26 +1,27 @@
-import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { inject, Injectable } from '@angular/core';
+import { map, Observable } from 'rxjs';
 
-import { AuthService } from '@/core/services/auth.service';
+import { DashboardStatsService } from '@/core/api/api/dashboard-stats.service';
+import type { DashboardStats as DashboardStatsDto } from '@/core/api/model/dashboard-stats';
 
-export interface DashboardStats {
-  customers: number;
-  applications: number;
-  invoices: number;
-}
+export type DashboardStats = DashboardStatsDto;
 
 @Injectable({
   providedIn: 'root',
 })
 export class DashboardService {
-  private http = inject(HttpClient);
-  private authService = inject(AuthService);
-  private apiUrl = '/api/dashboard-stats/';
+  private readonly dashboardStatsApi = inject(DashboardStatsService);
 
   getStats(): Observable<DashboardStats> {
-    const token = this.authService.getToken();
-    const headers = token ? new HttpHeaders({ Authorization: `Bearer ${token}` }) : undefined;
-    return this.http.get<DashboardStats>(this.apiUrl, { headers });
+    return this.dashboardStatsApi.dashboardStatsList().pipe(
+      map((response) => {
+        if (Array.isArray(response)) {
+          return response[0] ?? { customers: 0, applications: 0, invoices: 0 };
+        }
+        return (
+          (response as DashboardStats | null) ?? { customers: 0, applications: 0, invoices: 0 }
+        );
+      }),
+    );
   }
 }

@@ -1,15 +1,16 @@
 from unittest.mock import patch
 
+from admin_tools import services
+from django.db.models import JSONField
 from django.db.models.fields.files import FileField
 from django.test import SimpleTestCase, override_settings
-
-from admin_tools import services
 
 
 class _FakeStorage:
     def __init__(self, *, existing_keys: set[str], location: str = "media"):
         self._existing_keys = set(existing_keys)
         self.location = location
+        self.deleted_keys: list[str] = []
 
     def exists(self, key: str) -> bool:
         return key in self._existing_keys
@@ -19,6 +20,13 @@ class _FakeStorage:
 
     def path(self, key: str) -> str:
         raise NotImplementedError("Object storage has no local filesystem path.")
+
+    def delete(self, key: str) -> None:
+        self.deleted_keys.append(key)
+        self._existing_keys.discard(key)
+
+    def size(self, key: str) -> int:
+        return len(key.encode("utf-8"))
 
 
 class _FakeFileValue:
@@ -45,6 +53,9 @@ class _FakeManager:
     def __init__(self, objects, *, field_name: str):
         self._objects = list(objects)
         self._field_name = field_name
+
+    def all(self):
+        return list(self._objects)
 
     def exclude(self, **kwargs):
         expected_empty = kwargs.get(self._field_name, None)
@@ -75,6 +86,12 @@ class _FakeFileField(FileField):
         return filename
 
 
+class _FakeJSONField(JSONField):
+    def __init__(self, *, name: str):
+        super().__init__()
+        self.name = name
+
+
 def _build_fake_model(*, label: str, field_name: str, objects):
     field = _FakeFileField(name=field_name)
 
@@ -86,6 +103,32 @@ def _build_fake_model(*, label: str, field_name: str, objects):
             "objects": _FakeManager(objects, field_name=field_name),
         },
     )
+
+
+def _build_fake_multi_field_model(*, label: str, fields, objects):
+    return type(
+        "_FakeMultiFieldModel",
+        (),
+        {
+            "_meta": _FakeMeta(label=label, fields=fields),
+            "_default_manager": _FakeManager(objects, field_name=getattr(fields[0], "name", "file")),
+        },
+    )
+
+
+class _FakeMediaStoreAdapter:
+    def __init__(self, *, files_by_prefix: dict[str, list[str]]):
+        self.files_by_prefix = {key: list(value) for key, value in files_by_prefix.items()}
+        self.deleted: list[str] = []
+
+    def iter_files(self, prefix: str):
+        return list(self.files_by_prefix.get(prefix, []))
+
+    def delete(self, key: str):
+        self.deleted.append(key)
+
+    def size(self, key: str) -> int:
+        return len(key)
 
 
 @override_settings(
@@ -108,7 +151,9 @@ class MediaDiagnosticServiceTests(SimpleTestCase):
         fake_model = _build_fake_model(label="customer_applications.Document", field_name=field_name, objects=[obj])
         fake_storage = _FakeStorage(existing_keys={storage_path}, location="media")
 
-        with patch.object(services, "default_storage", fake_storage), patch.object(services.apps, "get_models") as models:
+        with patch.object(services, "default_storage", fake_storage), patch.object(
+            services.apps, "get_models"
+        ) as models:
             models.return_value = [fake_model]
             results = services.check_media_files()
 
@@ -134,7 +179,9 @@ class MediaDiagnosticServiceTests(SimpleTestCase):
         fake_model = _build_fake_model(label="customer_applications.Document", field_name=field_name, objects=[obj])
         fake_storage = _FakeStorage(existing_keys={storage_path}, location="media")
 
-        with patch.object(services, "default_storage", fake_storage), patch.object(services.apps, "get_models") as models:
+        with patch.object(services, "default_storage", fake_storage), patch.object(
+            services.apps, "get_models"
+        ) as models:
             models.return_value = [fake_model]
             repairs = services.repair_media_paths()
 
@@ -157,7 +204,9 @@ class MediaDiagnosticServiceTests(SimpleTestCase):
         fake_model = _build_fake_model(label="customers.Customer", field_name=field_name, objects=[obj])
         fake_storage = _FakeStorage(existing_keys={db_path}, location="media")
 
-        with patch.object(services, "default_storage", fake_storage), patch.object(services.apps, "get_models") as models:
+        with patch.object(services, "default_storage", fake_storage), patch.object(
+            services.apps, "get_models"
+        ) as models:
             models.return_value = [fake_model]
             repairs = services.repair_media_paths()
 
@@ -167,3 +216,103 @@ class MediaDiagnosticServiceTests(SimpleTestCase):
         self.assertEqual(getattr(current_file_value, "name", current_file_value), db_path)
         self.assertEqual(obj.file_link, f"https://bucket.test/{db_path}")
         self.assertEqual(obj.saved_update_fields, ["file_link"])
+
+    def test_cleanup_unlinked_media_files_dry_run_keeps_referenced_paths(self):
+        adapter = _FakeMediaStoreAdapter(
+            files_by_prefix={
+                "documents": [
+                    "documents/linked.pdf",
+                    "documents/orphan.pdf",
+                ],
+                "ocr_previews": ["ocr_previews/job-1.png"],
+                "tmp": [],
+                "tmpfiles": [],
+            }
+        )
+
+        file_field = _FakeFileField(name="file")
+        json_field = _FakeJSONField(name="result")
+        obj = type(
+            "_OwnedFileObject",
+            (),
+            {
+                "file": _FakeFileValue("documents/linked.pdf"),
+                "result": {"preview_storage_path": "ocr_previews/job-1.png"},
+            },
+        )()
+        fake_model = _build_fake_multi_field_model(
+            label="core.CleanupOwner",
+            fields=[file_field, json_field],
+            objects=[obj],
+        )
+
+        with (
+            patch.object(services, "get_media_store_adapter", return_value=adapter),
+            patch.object(services.apps, "get_models", return_value=[fake_model]),
+        ):
+            result = services.cleanup_unlinked_media_files(dry_run=True)
+
+        self.assertTrue(result["ok"])
+        self.assertTrue(result["dryRun"])
+        self.assertEqual(result["orphanedFiles"], 1)
+        self.assertEqual(result["deletedFiles"], 0)
+        self.assertEqual(result["files"], [{"path": "documents/orphan.pdf", "sizeBytes": 20}])
+        self.assertEqual(adapter.deleted, [])
+
+    def test_cleanup_unlinked_media_files_deletes_orphans_when_not_dry_run(self):
+        adapter = _FakeMediaStoreAdapter(
+            files_by_prefix={
+                "documents": ["documents/orphan.pdf"],
+                "ocr_previews": [],
+                "tmp": ["tmp/unreferenced.txt"],
+                "tmpfiles": [],
+            }
+        )
+
+        fake_model = _build_fake_multi_field_model(
+            label="core.EmptyOwner",
+            fields=[_FakeJSONField(name="result")],
+            objects=[type("_EmptyObject", (), {"result": {}})()],
+        )
+
+        with (
+            patch.object(services, "get_media_store_adapter", return_value=adapter),
+            patch.object(services.apps, "get_models", return_value=[fake_model]),
+        ):
+            result = services.cleanup_unlinked_media_files(dry_run=False)
+
+        self.assertTrue(result["ok"])
+        self.assertFalse(result["dryRun"])
+        self.assertEqual(result["orphanedFiles"], 2)
+        self.assertEqual(result["deletedFiles"], 2)
+        self.assertCountEqual(adapter.deleted, ["documents/orphan.pdf", "tmp/unreferenced.txt"])
+
+    def test_cleanup_unlinked_media_files_emits_progress_updates(self):
+        adapter = _FakeMediaStoreAdapter(
+            files_by_prefix={
+                "documents": ["documents/orphan.pdf"],
+                "ocr_previews": [],
+                "tmp": [],
+                "tmpfiles": [],
+            }
+        )
+
+        fake_model = _build_fake_multi_field_model(
+            label="core.EmptyOwner",
+            fields=[_FakeJSONField(name="result")],
+            objects=[type("_EmptyObject", (), {"result": {}})()],
+        )
+        progress_updates: list[dict] = []
+
+        with (
+            patch.object(services, "get_media_store_adapter", return_value=adapter),
+            patch.object(services.apps, "get_models", return_value=[fake_model]),
+        ):
+            services.cleanup_unlinked_media_files(dry_run=True, progress_callback=progress_updates.append)
+
+        event_names = [update.get("event") for update in progress_updates]
+        self.assertIn("media_cleanup_started", event_names)
+        self.assertIn("media_cleanup_found", event_names)
+        self.assertIn("media_cleanup_finished", event_names)
+        found_update = next(update for update in progress_updates if update.get("event") == "media_cleanup_found")
+        self.assertEqual(found_update.get("file"), {"path": "documents/orphan.pdf", "sizeBytes": 20})

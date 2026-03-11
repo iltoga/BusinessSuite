@@ -6,6 +6,23 @@
   <!-- Server Actions -->
   <z-card class="p-6">
     <h3 class="text-lg font-medium mb-4">Server Actions</h3>
+    <div
+      class="mb-4 flex flex-wrap items-center gap-3 rounded border border-border/70 bg-muted/20 px-3 py-2"
+    >
+      <label class="flex items-center gap-2 text-sm font-medium">
+        <input
+          type="checkbox"
+          class="h-4 w-4 rounded border-input"
+          [checked]="cleanupDryRun()"
+          (change)="cleanupDryRun.set($any($event.target).checked)"
+        />
+        Preview unlinked file cleanup
+      </label>
+      <p class="text-sm text-muted-foreground">
+        Scans only <code>documents/</code>, <code>ocr_previews/</code>, <code>tmp/</code>, and
+        <code>tmpfiles/</code>.
+      </p>
+    </div>
     <div class="server-actions flex flex-wrap gap-3">
       <button
         z-button
@@ -14,7 +31,7 @@
         [zDisabled]="isLoading()"
         zType="outline"
       >
-        @if (isLoading()) {
+        @if (activeServerAction() === 'clearCache') {
           <span>Clearing...</span>
         } @else {
           <span>Clear Cache</span>
@@ -27,7 +44,7 @@
         [zDisabled]="isLoading()"
         zType="outline"
       >
-        @if (isLoading()) {
+        @if (activeServerAction() === 'mediaDiagnostic') {
           <span>Running...</span>
         } @else {
           <span>Media Diagnostic</span>
@@ -40,10 +57,23 @@
         [zDisabled]="isLoading() || !diagnosticResults().length"
         zType="outline"
       >
-        @if (isLoading()) {
+        @if (activeServerAction() === 'mediaRepair') {
           <span>Repairing...</span>
         } @else {
           <span>Repair Media Paths</span>
+        }
+      </button>
+      <button
+        z-button
+        class="w-full sm:w-auto"
+        (click)="runMediaCleanup()"
+        [zDisabled]="isLoading()"
+        [zType]="cleanupDryRun() ? 'outline' : 'destructive'"
+      >
+        @if (activeServerAction() === 'mediaCleanup') {
+          <span>{{ cleanupDryRun() ? 'Scanning...' : 'Deleting...' }}</span>
+        } @else {
+          <span>{{ cleanupDryRun() ? 'Preview Unlinked Files' : 'Delete Unlinked Files' }}</span>
         }
       </button>
     </div>
@@ -124,7 +154,9 @@
           @if (cacheLoading()) {
             <span>Processing...</span>
           } @else {
-            <span>{{ status.enabled ? 'Disable Application Cache' : 'Enable Application Cache' }}</span>
+            <span>{{
+              status.enabled ? 'Disable Application Cache' : 'Enable Application Cache'
+            }}</span>
           }
         </button>
         <button
@@ -548,6 +580,85 @@
           <div class="text-sm bg-muted p-2 rounded font-mono">{{ repair }}</div>
         }
       </div>
+    </z-card>
+  }
+
+  <!-- Cleanup Results -->
+  @if (cleanupResult(); as cleanup) {
+    <z-card class="p-6">
+      <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 class="text-lg font-medium">Media Cleanup Results</h3>
+          <p class="text-sm text-muted-foreground">
+            {{
+              cleanup.dryRun
+                ? 'Preview only — nothing was deleted.'
+                : 'Applied to the active media store.'
+            }}
+          </p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <z-badge zType="secondary">Scanned: {{ cleanup.scannedFiles }}</z-badge>
+          <z-badge zType="default">Orphans: {{ cleanup.orphanedFiles }}</z-badge>
+          <z-badge [zType]="cleanup.dryRun ? 'secondary' : 'destructive'">
+            Deleted: {{ cleanup.deletedFiles }}
+          </z-badge>
+        </div>
+      </div>
+
+      <div class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div>
+          <label class="text-sm font-medium text-muted-foreground">Mode</label>
+          <p class="mt-1 rounded bg-muted p-2 text-sm font-mono">
+            {{ cleanup.dryRun ? 'Dry Run' : 'Delete' }}
+          </p>
+        </div>
+        <div>
+          <label class="text-sm font-medium text-muted-foreground">Storage</label>
+          <p class="mt-1 rounded bg-muted p-2 text-sm font-mono">
+            {{ cleanup.storageProvider || cleanup.storageBackend || 'Unknown' }}
+          </p>
+        </div>
+        <div>
+          <label class="text-sm font-medium text-muted-foreground">Referenced</label>
+          <p class="mt-1 rounded bg-muted p-2 text-sm font-mono">{{ cleanup.referencedFiles }}</p>
+        </div>
+        <div>
+          <label class="text-sm font-medium text-muted-foreground">Bytes Found</label>
+          <p class="mt-1 rounded bg-muted p-2 text-sm font-mono">{{ cleanup.totalOrphanBytes }}</p>
+        </div>
+      </div>
+
+      <p class="mb-3 text-sm">{{ cleanup.message }}</p>
+
+      @if (cleanup.prefixes.length > 0) {
+        <p class="mb-3 text-xs text-muted-foreground">
+          Scanned prefixes: {{ cleanup.prefixes.join(', ') }}
+        </p>
+      }
+
+      @if (cleanup.errors.length > 0) {
+        <div class="mb-4 space-y-1">
+          @for (error of cleanup.errors; track error) {
+            <p class="text-sm text-destructive">{{ error }}</p>
+          }
+        </div>
+      }
+
+      @if (cleanup.files.length > 0) {
+        <div class="space-y-2">
+          @for (file of cleanup.files; track file.path) {
+            <div class="rounded bg-muted p-2 text-sm font-mono">
+              {{ file.path }}
+              @if (file.sizeBytes !== undefined) {
+                <span class="text-muted-foreground"> — {{ file.sizeBytes }} bytes</span>
+              }
+            </div>
+          }
+        </div>
+      } @else {
+        <p class="text-sm text-muted-foreground">No unlinked files were found.</p>
+      }
     </z-card>
   }
 </div>

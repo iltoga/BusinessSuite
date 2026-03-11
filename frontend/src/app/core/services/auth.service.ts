@@ -1,6 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
-import { HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { computed, Inject, Injectable, PLATFORM_ID, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, finalize, map, Observable, of, shareReplay, tap, throwError } from 'rxjs';
@@ -182,6 +181,7 @@ export class AuthService {
 
   logout(): void {
     const tokenAtLogout = this.getToken();
+    const shouldNotifyBackend = tokenAtLogout ? !this.isTokenExpired(tokenAtLogout) : false;
 
     // Clear local tokens and claims first to avoid recursive interceptor behavior
     this.clearToken();
@@ -189,13 +189,13 @@ export class AuthService {
     this.router.navigate(['/login']);
 
     // If mock auth is enabled, there's no backend to record logout against
-    if (this.mockAuthEnabled) {
+    if (this.mockAuthEnabled || !shouldNotifyBackend) {
       return;
     }
 
     // Attempt to record logout event in backend (best-effort).
     // Treat 401 (already logged out / unauthorized) as success and swallow it.
-    const headers = tokenAtLogout ? new HttpHeaders({ Authorization: `Bearer ${tokenAtLogout}` }) : undefined;
+    const headers = new HttpHeaders({ Authorization: `Bearer ${tokenAtLogout}` });
     this.http
       .post(`${this.API_URL}/user-profile/logout/`, {}, { headers })
       .pipe(

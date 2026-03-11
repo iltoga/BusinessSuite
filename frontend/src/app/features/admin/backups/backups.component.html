@@ -28,6 +28,7 @@
     <app-file-upload
       accept=".json,.gz,.tar.gz,.tgz,.tar.zst,.zst"
       [disabled]="isOperationRunning()"
+      [disablePreview]="true"
       [progress]="uploadProgress()"
       [fileName]="uploadFileName()"
       [helperText]="uploadHelperText()"

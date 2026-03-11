@@ -962,6 +962,7 @@ def calendar_reminders_stream_sse(request):
         ):
             try:
                 if stream_event is None:
+                    yield ": keepalive\n\n"
                     now = time.monotonic()
                     if (now - last_fallback_refresh_at) >= fallback_refresh_interval_seconds:
                         current_reminder_id, current_last_updated_at = _latest_reminder_state()
@@ -1082,6 +1083,7 @@ def workflow_notifications_stream_sse(request):
         ):
             try:
                 if stream_event is None:
+                    yield ": keepalive\n\n"
                     now = time.monotonic()
                     if (now - last_fallback_refresh_at) >= fallback_refresh_interval_seconds:
                         current_notification_id, current_last_updated_at = _latest_recent_notification_state()

@@ -76,6 +76,7 @@ model/invoice-application-write.ts
 model/invoice-create-update.ts
 model/invoice-detail.ts
 model/invoice-list.ts
+model/media-cleanup-request.ts
 model/models.ts
 model/paginated-calendar-reminder-list.ts
 model/paginated-customer-application-history-list.ts

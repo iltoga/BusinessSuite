@@ -30,6 +30,7 @@ export class FileUploadComponent {
   label = input<string>('Upload file');
   accept = input<string>('*/*');
   disabled = input<boolean>(false);
+  disablePreview = input<boolean>(false);
   progress = input<number | null | undefined>(null);
   fileName = input<string | null | undefined>(null);
   helperText = input<string | null | undefined>(null);
@@ -51,21 +52,25 @@ export class FileUploadComponent {
 
   readonly hasImagePreview = computed(
     () =>
+      !this.disablePreview() &&
       this.previewType() === 'image' &&
       Boolean(this.previewUrl()) &&
       Boolean(this.sanitizedPreview()),
   );
   readonly hasPdfPreview = computed(
-    () => this.previewType() === 'pdf' && Boolean(this.sanitizedPreview()),
+    () =>
+      !this.disablePreview() && this.previewType() === 'pdf' && Boolean(this.sanitizedPreview()),
   );
   readonly showPreview = computed(() => this.hasImagePreview() || this.hasPdfPreview());
   readonly hasPreviewCandidate = computed(
-    () => Boolean(this.fileName()) || Boolean(this.previewUrl()),
+    () => !this.disablePreview() && (Boolean(this.fileName()) || Boolean(this.previewUrl())),
   );
   readonly showPreviewContainer = computed(
-    () => this.previewLoading() || this.showPreview() || this.hasPreviewCandidate(),
+    () =>
+      !this.disablePreview() &&
+      (this.previewLoading() || this.showPreview() || this.hasPreviewCandidate()),
   );
-  readonly hasPreviewUrl = computed(() => Boolean(this.previewUrl()));
+  readonly hasPreviewUrl = computed(() => !this.disablePreview() && Boolean(this.previewUrl()));
   readonly showImageLoadingSkeleton = computed(
     () => this.previewType() === 'image' && this.hasPreviewUrl() && this.imagePreviewLoading(),
   );
@@ -80,6 +85,10 @@ export class FileUploadComponent {
   );
 
   readonly sanitizedPreview = computed<SafeResourceUrl | null>(() => {
+    if (this.disablePreview()) {
+      return null;
+    }
+
     const url = this.previewUrl();
     if (!url) {
       return null;
@@ -89,7 +98,8 @@ export class FileUploadComponent {
 
   constructor() {
     effect(() => {
-      const shouldTrackImageLoad = this.previewType() === 'image' && Boolean(this.previewUrl());
+      const shouldTrackImageLoad =
+        !this.disablePreview() && this.previewType() === 'image' && Boolean(this.previewUrl());
       this.imagePreviewLoading.set(shouldTrackImageLoad);
     });
   }

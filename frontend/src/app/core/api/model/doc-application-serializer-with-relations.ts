@@ -38,7 +38,7 @@ export interface DocApplicationSerializerWithRelations {
      * Return True if the current user can force close this application.
      */
     readonly canForceClose: boolean;
-    submissionWindowLastDate?: string | null;
+    readonly submissionWindowLastDate: string | null;
 }
 export namespace DocApplicationSerializerWithRelations {
     export const StatusEnum = {
@@ -49,4 +49,5 @@ export namespace DocApplicationSerializerWithRelations {
     } as const;
     export type StatusEnum = typeof StatusEnum[keyof typeof StatusEnum];
 }
+
 

@@ -28,6 +28,7 @@ describe('authInterceptor', () => {
       getToken: vi.fn().mockReturnValue(null),
       isTokenExpired: vi.fn().mockReturnValue(false),
       logout: vi.fn(),
+      refreshToken: vi.fn().mockReturnValue(of('new-token')),
     };
 
     TestBed.configureTestingModule({
@@ -59,22 +60,33 @@ describe('authInterceptor', () => {
     });
   });
 
-  it('calls logout and fails the request immediately when token is expired', () => {
+  it('refreshes the token before sending the request when token is expired', () => {
     mockAuth.getToken.mockReturnValue('expired');
     mockAuth.isTokenExpired.mockReturnValue(true);
+    mockAuth.refreshToken.mockReturnValue(
+      of('new-token').pipe(
+        tap(() => {
+          mockAuth.getToken.mockReturnValue('new-token');
+          mockAuth.isTokenExpired.mockReturnValue(false);
+        }),
+      ),
+    );
 
     return new Promise<void>((resolve) => {
-      http.get('/no-request').subscribe({
+      http.get('/protected-preflight').subscribe({
         next: () => {
-          throw new Error('should not succeed');
-        },
-        error: () => {
-          expect(mockAuth.logout).toHaveBeenCalled();
-          // ensure no network request was performed
-          httpTestingController.expectNone('/no-request');
+          expect(mockAuth.refreshToken).toHaveBeenCalled();
+          expect(mockAuth.logout).not.toHaveBeenCalled();
           resolve();
         },
+        error: () => {
+          throw new Error('should not fail');
+        },
       });
+
+      const req = httpTestingController.expectOne('/protected-preflight');
+      expect(req.request.headers.get('Authorization')).toBe('Bearer new-token');
+      req.flush({ ok: true });
     });
   });
 

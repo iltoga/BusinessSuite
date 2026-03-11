@@ -187,6 +187,33 @@ def backup_restore_sse(request):
     )
 
 
+@sse_token_auth_required()
+def media_cleanup_start_sse(request):
+    """SSE endpoint for live unlinked media cleanup progress."""
+    if not is_superuser_or_admin_group(request.user):
+        return JsonResponse({"error": SUPERUSER_OR_ADMIN_PERMISSION_REQUIRED_ERROR}, status=403)
+
+    dry_run = _as_bool(_query_param(request, "dry_run", "1"))
+    replay_mode = _as_bool(_query_param(request, "replay", "0"))
+    replay_cursor = resolve_last_event_id(request) if replay_mode else None
+    return _stream_admin_events(
+        user_id=request.user.id,
+        replay_cursor=replay_cursor,
+        start_new=not replay_mode,
+        accepted_events={
+            "media_cleanup_started",
+            "media_cleanup_progress",
+            "media_cleanup_found",
+            "media_cleanup_finished",
+            "media_cleanup_failed",
+        },
+        enqueue_callback=lambda: admin_tasks.run_media_cleanup_stream.delay(
+            user_id=request.user.id,
+            dry_run=dry_run,
+        ),
+    )
+
+
 # ============================================================================
 # DRF ViewSets for REST API endpoints
 # ============================================================================
@@ -828,6 +855,29 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
         try:
             repairs = services.repair_media_paths()
             return Response({"ok": True, "repairs": repairs})
+        except Exception as e:
+            return Response({"ok": False, "message": str(e)}, status=500)
+
+    @extend_schema(
+        summary="Clean unlinked media files",
+        request=inline_serializer(
+            name="MediaCleanupRequestSerializer",
+            fields={"dryRun": serializers.BooleanField(required=False, default=True)},
+        ),
+        responses={200: OpenApiTypes.OBJECT},
+    )
+    @action(detail=False, methods=["post"], url_path="media-cleanup")
+    def media_cleanup(self, request):
+        """Delete unlinked media files from the active media store."""
+        try:
+            raw_dry_run = request.data.get("dryRun", request.data.get("dry_run", True))
+            if isinstance(raw_dry_run, bool):
+                dry_run = raw_dry_run
+            else:
+                dry_run = str(raw_dry_run).strip().lower() in {"1", "true", "yes", "on"}
+
+            cleanup = services.cleanup_unlinked_media_files(dry_run=dry_run)
+            return Response({"ok": cleanup.get("ok", True), "cleanup": cleanup})
         except Exception as e:
             return Response({"ok": False, "message": str(e)}, status=500)
 

@@ -62,7 +62,9 @@ jobs:
             docker ps -a -q --filter "name=pgadmin" | xargs -r docker rm -f || true
             docker ps -a -q --filter "name=bs-core" | xargs -r docker rm -f || true
             docker ps -a -q --filter "name=bs-worker" | xargs -r docker rm -f || true
+            docker ps -a -q --filter "name=bs-scheduler" | xargs -r docker rm -f || true
             docker ps -a -q --filter "name=bs-redis" | xargs -r docker rm -f || true
+            docker ps -a -q --filter "name=bs-alloy" | xargs -r docker rm -f || true
             docker ps -a -q --filter "name=crmrevisbalicom" | xargs -r docker rm -f || true
             echo "✅  All containers removed"
 
@@ -105,11 +107,11 @@ jobs:
             export DOCKER_BUILDKIT=1
             export COMPOSE_DOCKER_CLI_BUILD=1
 
-            echo "�️  Building and starting containers …"
+            echo "🏗️  Building and starting containers …"
             if [ "$DEP_CHANGED" = true ]; then
               docker compose build --pull
             fi
-            docker compose up -d --remove-orphans bs-core bs-worker bs-frontend
+            docker compose up -d --remove-orphans bs-alloy bs-core bs-worker bs-scheduler bs-frontend
 
             # Optionally run initial data seeding if explicitly requested via .env (INITIALIZE_DB=true)
             if [ "${INITIALIZE_DB:-false}" = "true" ]; then
