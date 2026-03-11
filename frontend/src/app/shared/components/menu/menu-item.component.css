@@ -26,8 +26,15 @@ button.menu-entry:disabled {
 .overlay-entry {
   border-radius: 0.25rem;
   color: var(--foreground);
-  padding-inline: 0.5rem;
+  padding: 0.25rem 0.4rem;
+  font-size: 0.875rem;
+  line-height: 1.1;
   app-region: no-drag;
+}
+
+.overlay-entry z-icon {
+  width: 0.875rem;
+  height: 0.875rem;
 }
 
 .overlay-chevron {

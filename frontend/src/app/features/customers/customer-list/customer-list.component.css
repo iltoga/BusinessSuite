@@ -79,15 +79,16 @@
   font-size: 0.75rem;
   letter-spacing: 0.05em;
   color: var(--muted-foreground);
-  padding: 0.75rem 1rem;
+  padding: 0.5rem 0.75rem;
   text-align: left;
 }
 
 :host ::ng-deep table[z-table] td {
   vertical-align: middle;
-  padding: 0.75rem 1rem;
+  padding: 0.5rem 0.75rem;
   word-wrap: break-word;
   overflow-wrap: break-word;
+  line-height: 1.25;
 }
 
 :host ::ng-deep table[z-table] tbody tr {

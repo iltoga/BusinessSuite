@@ -66,6 +66,7 @@ class DocApplicationSerializerWithRelations(serializers.ModelSerializer):
     invoice_id = serializers.SerializerMethodField()
     ready_for_invoice = serializers.SerializerMethodField()
     can_force_close = serializers.SerializerMethodField()
+    submission_window_last_date = serializers.SerializerMethodField()
 
     class Meta:
         model = DocApplication
@@ -86,6 +87,7 @@ class DocApplicationSerializerWithRelations(serializers.ModelSerializer):
             "invoice_id",
             "ready_for_invoice",
             "can_force_close",
+            "submission_window_last_date",
         ]
         read_only_fields = ["created_at", "updated_at"]
 
@@ -110,6 +112,13 @@ class DocApplicationSerializerWithRelations(serializers.ModelSerializer):
             DocApplication.STATUS_COMPLETED,
             DocApplication.STATUS_REJECTED,
         )
+
+    def get_submission_window_last_date(self, instance) -> str | None:
+        window = StayPermitSubmissionWindowService().get_submission_window(
+            product=getattr(instance, "product", None),
+            application=instance,
+        )
+        return window.last_date.isoformat() if window else None
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
@@ -183,6 +192,7 @@ class CustomerApplicationHistorySerializer(CustomerUninvoicedApplicationSerializ
     payment_status_display = serializers.SerializerMethodField()
     invoice_status = serializers.SerializerMethodField()
     invoice_status_display = serializers.SerializerMethodField()
+    submission_window_last_date = serializers.SerializerMethodField()
 
     class Meta(CustomerUninvoicedApplicationSerializer.Meta):
         fields = CustomerUninvoicedApplicationSerializer.Meta.fields + [
@@ -190,6 +200,7 @@ class CustomerApplicationHistorySerializer(CustomerUninvoicedApplicationSerializ
             "payment_status_display",
             "invoice_status",
             "invoice_status_display",
+            "submission_window_last_date",
         ]
         read_only_fields = fields
 
@@ -240,6 +251,13 @@ class CustomerApplicationHistorySerializer(CustomerUninvoicedApplicationSerializ
         if not latest:
             return "Uninvoiced"
         return latest.invoice.get_status_display()
+
+    def get_submission_window_last_date(self, instance) -> str | None:
+        window = StayPermitSubmissionWindowService().get_submission_window(
+            product=getattr(instance, "product", None),
+            application=instance,
+        )
+        return window.last_date.isoformat() if window else None
 
 
 class DocApplicationDetailSerializer(serializers.ModelSerializer):

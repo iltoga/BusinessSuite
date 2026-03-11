@@ -74,6 +74,7 @@ export interface CustomerApplicationHistory extends UninvoicedApplication {
   paymentStatusDisplay: string;
   invoiceStatus: string | null;
   invoiceStatusDisplay: string;
+  submissionWindowLastDate?: string | null;
 }
 
 export interface CountryCode {
@@ -347,6 +348,8 @@ export class CustomersService {
         item?.invoiceStatus ??
         item?.invoice_status ??
         (paymentStatus === 'uninvoiced' ? 'Uninvoiced' : '—'),
+      submissionWindowLastDate:
+        item?.submissionWindowLastDate ?? item?.submission_window_last_date ?? null,
     };
   }
 }

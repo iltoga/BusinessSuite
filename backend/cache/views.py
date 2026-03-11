@@ -49,13 +49,21 @@ class CacheStatusView(APIView):
         user_id = request.user.id
         
         try:
-            enabled = namespace_manager.is_cache_enabled(user_id)
+            global_enabled = namespace_manager.is_global_cache_enabled()
+            user_enabled = namespace_manager.is_user_cache_enabled(user_id)
+            enabled = global_enabled and user_enabled
             version = namespace_manager.get_user_version(user_id)
             
             data = {
                 'enabled': enabled,
+                'global_enabled': global_enabled,
+                'user_enabled': user_enabled,
                 'version': version,
-                'message': f"Cache is {'enabled' if enabled else 'disabled'}",
+                'message': (
+                    "Cache is disabled globally"
+                    if not global_enabled
+                    else f"Cache is {'enabled' if user_enabled else 'disabled'}"
+                ),
                 **_get_default_cache_descriptor(),
             }
             
@@ -92,11 +100,20 @@ class CacheEnableView(APIView):
         try:
             namespace_manager.set_cache_enabled(user_id, True)
             version = namespace_manager.get_user_version(user_id)
+            global_enabled = namespace_manager.is_global_cache_enabled()
+            user_enabled = True
+            enabled = global_enabled and user_enabled
             
             data = {
-                'enabled': True,
+                'enabled': enabled,
+                'global_enabled': global_enabled,
+                'user_enabled': user_enabled,
                 'version': version,
-                'message': 'Cache enabled successfully',
+                'message': (
+                    'Cache enabled successfully'
+                    if global_enabled
+                    else 'Cache enabled for your user, but global cache is disabled by admin.'
+                ),
                 **_get_default_cache_descriptor(),
             }
             
@@ -135,9 +152,13 @@ class CacheDisableView(APIView):
         
         try:
             namespace_manager.set_cache_enabled(user_id, False)
+            global_enabled = namespace_manager.is_global_cache_enabled()
+            user_enabled = False
             
             data = {
                 'enabled': False,
+                'global_enabled': global_enabled,
+                'user_enabled': user_enabled,
                 'version': namespace_manager.get_user_version(user_id),
                 'message': 'Cache disabled successfully',
                 **_get_default_cache_descriptor(),

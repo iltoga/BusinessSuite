@@ -92,6 +92,64 @@
           </button>
         </div>
       </z-card>
+
+      <z-card class="space-y-4 p-4">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <h3 class="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+              Cache Preferences
+            </h3>
+            <p class="text-xs text-muted-foreground">Control your personal cache for faster loading.</p>
+          </div>
+          @if (cacheStatus(); as status) {
+            <z-badge [zType]="status.enabled ? 'default' : 'secondary'">
+              {{ status.enabled ? 'Enabled' : 'Disabled' }}
+            </z-badge>
+          }
+        </div>
+
+        @if (cacheStatus(); as status) {
+          <div class="flex items-center justify-between gap-3 rounded-md border border-border/60 bg-muted/20 p-3">
+            <div class="space-y-1">
+              <p class="text-sm font-medium">Use cache</p>
+              <p class="text-xs text-muted-foreground">
+                Speeds up dashboards and lists on this device.
+              </p>
+              @if (status.globalEnabled === false) {
+                <p class="text-xs text-destructive">Disabled globally by an administrator.</p>
+              }
+            </div>
+            <z-switch
+              zSize="sm"
+              [(zChecked)]="cacheEnabledFlag"
+              [zDisabled]="cacheLoading() || status.globalEnabled === false"
+            >
+              <span class="sr-only">Enable cache</span>
+            </z-switch>
+          </div>
+
+          <div class="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+            <span>Version v{{ status.version }}</span>
+            <button
+              z-button
+              zType="outline"
+              zSize="sm"
+              [zDisabled]="cacheLoading() || !status.enabled"
+              (click)="clearUserCache()"
+            >
+              Clear My Cache
+            </button>
+          </div>
+        } @else {
+          <div class="rounded-md border border-dashed border-border/70 p-3 text-sm text-muted-foreground">
+            @if (cacheLoading()) {
+              Loading cache status...
+            } @else {
+              Cache status is not available right now.
+            }
+          </div>
+        }
+      </z-card>
     </div>
 
     <!-- Main Settings Area -->

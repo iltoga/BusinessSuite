@@ -11963,6 +11963,10 @@ components:
         invoice_status_display:
           type: string
           readOnly: true
+        submission_window_last_date:
+          type: string
+          nullable: true
+          readOnly: true
       required:
       - add_deadlines_to_calendar
       - customer
@@ -11983,6 +11987,7 @@ components:
       - status
       - status_display
       - str_field
+      - submission_window_last_date
     CustomerUninvoicedApplication:
       type: object
       properties:
