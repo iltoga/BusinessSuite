@@ -747,6 +747,7 @@ export class ApplicationDetailComponent implements OnInit {
       next: (response) => {
         const outcome = this.normalizePreUploadValidationOutcome(response);
         this.preUploadValidationOutcome.set(outcome);
+        this.applyValidationExtractionToUploadForm(outcome.result);
         this.aiValidationInProgress.set(false);
 
         if (outcome.status === 'valid') {
@@ -933,8 +934,54 @@ export class ApplicationDetailComponent implements OnInit {
     expirationDate: string | null;
     details: string | null;
   } {
+    const extracted = this.extractValidationAutoFillFields(validationResult);
+
+    return {
+      expirationDate: extracted.expirationDate || payload.expirationDate || null,
+      docNumber: extracted.docNumber || payload.docNumber || null,
+      details: payload.details || extracted.details || null,
+    };
+  }
+
+  private applyValidationExtractionToUploadForm(
+    validationResult: Record<string, unknown> | null,
+  ): void {
+    const extracted = this.extractValidationAutoFillFields(validationResult);
+    const patchValue: {
+      docNumber?: string;
+      expirationDate?: Date | null;
+      details?: string;
+    } = {};
+
+    if (extracted.docNumber) {
+      patchValue.docNumber = extracted.docNumber;
+    }
+
+    if (extracted.expirationDate) {
+      patchValue.expirationDate = this.parseApiDate(extracted.expirationDate);
+    }
+
+    const currentDetails = this.uploadForm.getRawValue().details?.trim() ?? '';
+    if (!currentDetails && extracted.details) {
+      patchValue.details = extracted.details;
+    }
+
+    if (Object.keys(patchValue).length > 0) {
+      this.uploadForm.patchValue(patchValue);
+    }
+  }
+
+  private extractValidationAutoFillFields(validationResult: Record<string, unknown> | null): {
+    expirationDate: string | null;
+    docNumber: string | null;
+    details: string | null;
+  } {
     if (!validationResult) {
-      return payload;
+      return {
+        expirationDate: null,
+        docNumber: null,
+        details: null,
+      };
     }
 
     const extractedExpirationDate =
@@ -965,9 +1012,9 @@ export class ApplicationDetailComponent implements OnInit {
         : null;
 
     return {
-      expirationDate: payload.expirationDate || extractedExpirationDate || null,
-      docNumber: payload.docNumber || extractedDocNumber || null,
-      details: payload.details || extractedDetails || null,
+      expirationDate: extractedExpirationDate,
+      docNumber: extractedDocNumber,
+      details: extractedDetails,
     };
   }
 

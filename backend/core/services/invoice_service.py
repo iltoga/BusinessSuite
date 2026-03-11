@@ -11,6 +11,7 @@ from django.utils import timezone
 from invoices.models.invoice import Invoice, InvoiceApplication
 from payments.models import Payment
 from products.models import Product
+from products.models.product_price_history import ProductPriceHistory
 from rest_framework.exceptions import ValidationError
 
 
@@ -99,6 +100,11 @@ def _build_payloads(raw_items: Iterable[dict]) -> list[InvoiceApplicationPayload
     return payloads
 
 
+def _resolve_price_history_id(*, product_id: int, invoice_date: date | None) -> int | None:
+    history = ProductPriceHistory.resolve_for_invoice_date(product_id=product_id, invoice_date=invoice_date)
+    return history.id if history else None
+
+
 def _validate_application_ids(payloads: list[InvoiceApplicationPayload]) -> None:
     ids = [payload.customer_application_id for payload in payloads if payload.customer_application_id]
     if len(ids) != len(set(ids)):
@@ -119,17 +125,13 @@ def _validate_application_availability(
     existing_product_map = {product.id: product for product in existing_products}
     missing_products = sorted({product_id for product_id in product_ids if product_id not in existing_product_map})
     if missing_products:
-        raise ValidationError({"invoice_applications": [f"Unknown product id(s): {', '.join(map(str, missing_products))}."]})
+        raise ValidationError(
+            {"invoice_applications": [f"Unknown product id(s): {', '.join(map(str, missing_products))}."]}
+        )
 
     deprecated_products = [product for product in existing_product_map.values() if product.deprecated]
     if deprecated_products:
-        raise ValidationError(
-            {
-                "invoice_applications": [
-                    "Cannot create/update invoice with deprecated products."
-                ]
-            }
-        )
+        raise ValidationError({"invoice_applications": ["Cannot create/update invoice with deprecated products."]})
 
     application_ids = [payload.customer_application_id for payload in payloads if payload.customer_application_id]
     if not application_ids:
@@ -154,7 +156,9 @@ def _validate_application_availability(
             continue
         application = app_map[payload.customer_application_id]
         if application.customer_id != customer_id:
-            raise ValidationError({"invoice_applications": ["Customer application customer must match invoice customer."]})
+            raise ValidationError(
+                {"invoice_applications": ["Customer application customer must match invoice customer."]}
+            )
         if payload.product_id and application.product_id != payload.product_id:
             raise ValidationError(
                 {"invoice_applications": ["Customer application product must match the invoice line product."]}
@@ -264,11 +268,13 @@ def _sync_invoice_applications(*, invoice: Invoice, payloads: list[InvoiceApplic
     seen_ids: set[int] = set()
 
     for payload in payloads:
+        history_id = _resolve_price_history_id(product_id=payload.product_id, invoice_date=invoice.invoice_date)
         if payload.invoice_application_id and payload.invoice_application_id in existing:
             invoice_app = existing[payload.invoice_application_id]
             invoice_app.customer_application_id = payload.customer_application_id
             invoice_app.product_id = payload.product_id
             invoice_app.amount = payload.amount
+            invoice_app.price_history_id = history_id
             invoice_app.save()
             seen_ids.add(invoice_app.id)
         else:
@@ -277,6 +283,7 @@ def _sync_invoice_applications(*, invoice: Invoice, payloads: list[InvoiceApplic
                 product_id=payload.product_id,
                 customer_application_id=payload.customer_application_id,
                 amount=payload.amount,
+                price_history_id=history_id,
             )
             seen_ids.add(invoice_app.id)
 

@@ -3,6 +3,16 @@
   display: block;
 }
 
+.topbar-action {
+  transform: scale(0.95);
+  transform-origin: center;
+}
+
+.topbar-avatar {
+  height: calc(2.25rem * 0.95);
+  width: calc(2.25rem * 0.95);
+}
+
 .sidebar-menu-scroll {
   max-height: calc(100dvh - 8rem);
   -ms-overflow-style: none;

@@ -559,8 +559,23 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
 
         # Global cache clear (backward compatible)
         try:
+            global_enabled = None
+            try:
+                from cache.namespace import namespace_manager
+
+                global_enabled = namespace_manager.is_global_cache_enabled()
+            except Exception:
+                global_enabled = None
+
             caches["default"].clear()
             _clear_cacheops_query_store()
+
+            if global_enabled is not None:
+                try:
+                    namespace_manager.set_global_cache_enabled(global_enabled)
+                except Exception:
+                    # Non-fatal: cache clear should still succeed
+                    pass
             return Response(
                 {
                     "ok": True,
@@ -571,6 +586,65 @@ class ServerManagementViewSet(ApiErrorHandlingMixin, viewsets.ViewSet):
         except Exception as e:
             logger.error("Failed to clear global caches: %s", e, exc_info=True)
             return Response({"ok": False, "message": str(e)}, status=500)
+
+    @extend_schema(summary="Get application cache status", responses={200: OpenApiTypes.OBJECT})
+    @action(detail=False, methods=["get"], url_path="cache-status")
+    def cache_status(self, request):
+        """Return global cache status and backend descriptor."""
+        try:
+            from cache.namespace import namespace_manager
+
+            cache_settings = settings.CACHES.get("default", {})
+            backend_path = str(cache_settings.get("BACKEND", ""))
+            location = str(cache_settings.get("LOCATION", ""))
+
+            global_enabled = namespace_manager.is_global_cache_enabled()
+            user_enabled = namespace_manager.is_user_cache_enabled(request.user.id)
+            enabled = global_enabled
+
+            return Response(
+                {
+                    "enabled": enabled,
+                    "global_enabled": global_enabled,
+                    "user_enabled": user_enabled,
+                    "version": namespace_manager.get_user_version(request.user.id),
+                    "message": f"Application cache is {'enabled' if enabled else 'disabled'}",
+                    "cache_backend": backend_path,
+                    "cache_location": location,
+                }
+            )
+        except Exception as e:
+            logger.error("Failed to load cache status: %s", e, exc_info=True)
+            return Response(
+                {"ok": False, "message": "Failed to load cache status", "errors": [str(e)]},
+                status=500,
+            )
+
+    @extend_schema(summary="Enable application cache", responses={200: OpenApiTypes.OBJECT})
+    @action(detail=False, methods=["post"], url_path="cache-enable")
+    def cache_enable(self, request):
+        """Enable cache globally for all users."""
+        try:
+            from cache.namespace import namespace_manager
+
+            namespace_manager.set_global_cache_enabled(True)
+            return self.cache_status(request)
+        except Exception as e:
+            logger.error("Failed to enable global cache: %s", e, exc_info=True)
+            return Response({"ok": False, "message": "Failed to enable cache"}, status=500)
+
+    @extend_schema(summary="Disable application cache", responses={200: OpenApiTypes.OBJECT})
+    @action(detail=False, methods=["post"], url_path="cache-disable")
+    def cache_disable(self, request):
+        """Disable cache globally for all users."""
+        try:
+            from cache.namespace import namespace_manager
+
+            namespace_manager.set_global_cache_enabled(False)
+            return self.cache_status(request)
+        except Exception as e:
+            logger.error("Failed to disable global cache: %s", e, exc_info=True)
+            return Response({"ok": False, "message": "Failed to disable cache"}, status=500)
 
     @extend_schema(summary="Run live cache health check", responses={200: OpenApiTypes.OBJECT})
     @action(detail=False, methods=["get"], url_path="cache-health")

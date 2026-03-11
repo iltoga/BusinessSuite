@@ -23,8 +23,12 @@ class ProductRevenueAnalysisView(LoginRequiredMixin, TemplateView):
         money_field = DecimalField(max_digits=14, decimal_places=2)
         zero_value = Value(Decimal("0.00"), output_field=money_field)
 
-        product_unit_profit_expression = ExpressionWrapper(
-            Coalesce(F("retail_price"), zero_value) - Coalesce(F("base_price"), zero_value),
+        invoice_profit_expression = ExpressionWrapper(
+            Coalesce(F("invoice_applications__amount"), zero_value)
+            - Coalesce(
+                F("invoice_applications__price_history__base_price"),
+                Coalesce(F("base_price"), zero_value),
+            ),
             output_field=money_field,
         )
 
@@ -34,7 +38,7 @@ class ProductRevenueAnalysisView(LoginRequiredMixin, TemplateView):
                 application_count=Count("doc_applications", distinct=True),
                 invoiced_application_count=Count("invoice_applications", distinct=True),
                 total_revenue=Coalesce(Sum("invoice_applications__amount"), zero_value),
-                unit_profit=product_unit_profit_expression,
+                total_profit=Coalesce(Sum(invoice_profit_expression), zero_value),
             )
             .order_by("-total_revenue", "name")
             .all()
@@ -44,11 +48,11 @@ class ProductRevenueAnalysisView(LoginRequiredMixin, TemplateView):
         for product in products:
             invoiced_count = product.invoiced_application_count or 0
             total_revenue = product.total_revenue or Decimal("0.00")
-            unit_profit = product.unit_profit or Decimal("0.00")
-            total_profit = unit_profit * Decimal(invoiced_count)
+            total_profit = product.total_profit or Decimal("0.00")
+            unit_profit = total_profit / Decimal(invoiced_count) if invoiced_count > 0 else Decimal("0.00")
             avg_price = total_revenue / invoiced_count if invoiced_count > 0 else Decimal("0.00")
-            profit_margin_percent = (unit_profit / product.retail_price * Decimal("100")) if product.retail_price else Decimal(
-                "0.00"
+            profit_margin_percent = (
+                (total_profit / total_revenue * Decimal("100")) if total_revenue else Decimal("0.00")
             )
 
             product_data.append(
@@ -56,8 +60,10 @@ class ProductRevenueAnalysisView(LoginRequiredMixin, TemplateView):
                     "product": product,
                     "code": product.code,
                     "name": product.name,
-                    "type": product.get_product_type_display(),
-                    "product_type": product.product_type,
+                    "type": product.product_category.get_product_type_display()
+                    if product.product_category
+                    else "",
+                    "product_type": product.product_category.product_type if product.product_category else None,
                     "application_count": product.application_count,
                     "invoiced_application_count": invoiced_count,
                     "total_revenue": total_revenue,
@@ -82,7 +88,9 @@ class ProductRevenueAnalysisView(LoginRequiredMixin, TemplateView):
 
         # Product type comparison
         type_data = []
-        for type_code, type_label in Product.PRODUCT_TYPE_CHOICES:
+        from products.models import ProductCategory
+
+        for type_code, type_label in ProductCategory.PRODUCT_TYPE_CHOICES:
             rows = [row for row in product_data if row["product_type"] == type_code]
             count = len(rows)
             revenue = sum((row["total_revenue"] for row in rows), Decimal("0.00"))
@@ -141,12 +149,16 @@ class ProductRevenueAnalysisView(LoginRequiredMixin, TemplateView):
                 InvoiceApplication.objects.filter(
                     invoice__invoice_date__gte=month_start,
                     invoice__invoice_date__lt=month_end,
-                ).aggregate(
+                )
+                .aggregate(
                     total=Coalesce(
                         Sum(
                             ExpressionWrapper(
-                                Coalesce(F("product__retail_price"), zero_value)
-                                - Coalesce(F("product__base_price"), zero_value),
+                                Coalesce(F("amount"), zero_value)
+                                - Coalesce(
+                                    F("price_history__base_price"),
+                                    Coalesce(F("product__base_price"), zero_value),
+                                ),
                                 output_field=money_field,
                             )
                         ),
@@ -165,8 +177,11 @@ class ProductRevenueAnalysisView(LoginRequiredMixin, TemplateView):
             )
 
         invoice_profit_expression = ExpressionWrapper(
-            Coalesce(F("invoice_applications__product__retail_price"), zero_value)
-            - Coalesce(F("invoice_applications__product__base_price"), zero_value),
+            Coalesce(F("invoice_applications__amount"), zero_value)
+            - Coalesce(
+                F("invoice_applications__price_history__base_price"),
+                Coalesce(F("invoice_applications__product__base_price"), zero_value),
+            ),
             output_field=money_field,
         )
 

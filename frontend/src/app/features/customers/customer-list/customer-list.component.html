@@ -10,7 +10,7 @@
     </a>
   </div>
 
-  <z-card class="bg-card rounded-lg border shadow-sm py-0 gap-0 [&_[data-slot=card-content]]:px-0">
+  <z-card class="bg-card rounded-lg border shadow-sm py-0 gap-0 **:data-[slot=card-content]:px-0">
     <div class="border-b p-3 sm:p-4">
       <app-search-toolbar
         [query]="query()"
@@ -69,11 +69,11 @@
 </div>
 
 <ng-template #customerTemplate let-row>
-  <div class="flex items-center gap-2">
+  <div class="customer-cell flex items-center gap-2">
     <a
       [routerLink]="['/customers', row.id]"
       [state]="{ from: 'customers', focusId: row.id, searchQuery: query(), page: page() }"
-      class="font-medium hover:underline"
+      class="customer-name font-medium hover:underline"
     >
       {{ row.fullNameWithCompany }}
     </a>

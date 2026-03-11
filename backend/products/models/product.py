@@ -4,6 +4,11 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import models
+from django.db.utils import OperationalError, ProgrammingError
+from django.utils import timezone
+
+from products.models.product_category import ProductCategory
+from products.models.product_price_history import ProductPriceHistory
 
 
 class ProductManager(models.Manager):
@@ -12,7 +17,7 @@ class ProductManager(models.Manager):
             models.Q(name__icontains=query)
             | models.Q(code__icontains=query)
             | models.Q(description__icontains=query)
-            | models.Q(product_type__icontains=query)
+            | models.Q(product_category__product_type__icontains=query)
         )
 
     def filter_by_document_type_name(self, document_type_name: str):
@@ -33,14 +38,15 @@ def default_product_currency() -> str:
 
 
 class Product(models.Model):
-    PRODUCT_TYPE_CHOICES = [
-        ("visa", "Visa"),
-        ("other", "Other"),
-    ]
-
     name = models.CharField(max_length=100, db_index=True)
     code = models.CharField(max_length=20, unique=True, db_index=True)
     description = models.TextField(blank=True, db_index=True)
+    product_category = models.ForeignKey(
+        ProductCategory,
+        on_delete=models.PROTECT,
+        related_name="products",
+        db_index=True,
+    )
     immigration_id = models.UUIDField(blank=True, null=True, db_index=True)
     base_price = models.DecimalField(max_digits=12, decimal_places=2, blank=True, null=True, default=0.00)
     retail_price = models.DecimalField(max_digits=12, decimal_places=2, blank=True, default=0.00)
@@ -54,7 +60,6 @@ class Product(models.Model):
             )
         ],
     )
-    product_type = models.CharField(max_length=50, choices=PRODUCT_TYPE_CHOICES, default="other", db_index=True)
     # Validity in days
     validity = models.PositiveIntegerField(blank=True, null=True)
     # A comma-separated list of required documents
@@ -106,13 +111,16 @@ class Product(models.Model):
         """
         Returns a natural key that can be used to serialize this object.
         """
+        product_type = None
+        if getattr(self, "product_category", None):
+            product_type = self.product_category.product_type
         return {
             "code": self.code,
             "name": self.name,
             "base_price": self.base_price,
             "retail_price": self.retail_price,
             "currency": self.currency,
-            "product_type": self.product_type,
+            "product_type": product_type,
         }
 
     def clean(self):
@@ -188,6 +196,8 @@ class Product(models.Model):
             self.deprecated = False
 
     def save(self, *args, **kwargs):
+        if not self.product_category_id:
+            self.product_category = ProductCategory.get_default_for_type(self._product_type_hint)
         # Preserve legacy creates where base_price is provided but retail_price is omitted.
         if (
             self._state.adding
@@ -204,6 +214,46 @@ class Product(models.Model):
         self.sync_deprecated_status_from_documents()
         self.uses_customer_app_workflow = self.recompute_uses_customer_app_workflow()
         super().save(*args, **kwargs)
+        self._sync_price_history(update_fields=kwargs.get("update_fields"))
+
+    def _sync_price_history(self, *, update_fields=None) -> None:
+        try:
+            now = timezone.now()
+            active = (
+                ProductPriceHistory.objects.filter(product_id=self.id, effective_to__isnull=True)
+                .order_by("-effective_from")
+                .first()
+            )
+            if update_fields is not None:
+                tracked = {"base_price", "retail_price", "currency"}
+                if not tracked.intersection(set(update_fields)) and active:
+                    return
+            if (
+                active
+                and active.base_price == self.base_price
+                and active.retail_price == self.retail_price
+                and active.currency == self.currency
+            ):
+                return
+
+            if active:
+                active.effective_to = now
+                active.save(update_fields=["effective_to"])
+
+            effective_from = self.created_at or now
+            if active:
+                effective_from = now
+
+            ProductPriceHistory.objects.create(
+                product_id=self.id,
+                base_price=self.base_price,
+                retail_price=self.retail_price,
+                currency=self.currency,
+                effective_from=effective_from,
+            )
+        except (ProgrammingError, OperationalError):
+            # Schema not ready (e.g. during migrations). Skip history sync.
+            return
 
     def can_be_deleted(self):
         # Block deletion if directly referenced by invoice lines or by linked applications.
@@ -226,3 +276,7 @@ class Product(models.Model):
 
             raise ProtectedError(msg, self)
         super().delete(*args, **kwargs)
+
+    def __init__(self, *args, **kwargs):
+        self._product_type_hint = kwargs.pop("product_type", None)
+        super().__init__(*args, **kwargs)

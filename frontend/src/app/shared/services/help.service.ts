@@ -15,6 +15,18 @@ export interface HelpContext {
   contentUrl?: string;
 }
 
+type AnalyticsFn = (event: string, payload?: Record<string, unknown>) => void;
+
+type HelpAnalyticsWindow = Window & {
+  gtag?: (command: 'event', name: string, params?: Record<string, unknown>) => void;
+  analytics?: {
+    track?: AnalyticsFn;
+  };
+  mixpanel?: {
+    track?: AnalyticsFn;
+  };
+};
+
 @Injectable({ providedIn: 'root' })
 export class HelpService {
   private readonly http = inject(HttpClient);
@@ -143,7 +155,6 @@ export class HelpService {
         },
         error: (err) => {
           if (!this.isTokenExpiredError(err)) {
-            console.error('Failed to load help content', err);
             this._helpContent.set('Failed to load help content.');
           } else {
             // Expired auth token is handled globally via redirect to /login.
@@ -205,12 +216,9 @@ export class HelpService {
   private reportOpenEvent() {
     // Simple telemetry hook: increment local counter and attempt to send to global analytics
     try {
-      const w: any = window as any;
+      const w = window as HelpAnalyticsWindow;
       const contextId = this._context()?.id || 'unknown';
       const totalOpens = this._openCount();
-      console.info(
-        `[HelpService] Help drawer opened context=${contextId} open_count=${totalOpens}`,
-      );
 
       // Google Analytics / gtag
       if (typeof w.gtag === 'function') {

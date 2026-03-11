@@ -166,12 +166,12 @@ def run_document_validation(document_id: int, task=None) -> None:
             update_fields = {"updated_at"}
 
             extracted_expiration_date = extract_validation_expiration_date(validation)
-            if doc_type.has_expiration_date and extracted_expiration_date and not document.expiration_date:
+            if doc_type.has_expiration_date and extracted_expiration_date:
                 document.expiration_date = extracted_expiration_date
                 update_fields.update({"expiration_date", "completed"})
 
             extracted_doc_number = extract_validation_doc_number(validation)
-            if doc_type.has_doc_number and extracted_doc_number and not (document.doc_number or "").strip():
+            if doc_type.has_doc_number and extracted_doc_number:
                 document.doc_number = extracted_doc_number
                 update_fields.update({"doc_number", "completed"})
 

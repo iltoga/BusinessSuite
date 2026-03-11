@@ -6,7 +6,9 @@ describe('ApplicationDetailComponent pending passport refresh', () => {
   type ApplicationDetailHarness = any;
 
   const createHarness = (): ApplicationDetailHarness => {
-    const component = Object.create(ApplicationDetailComponent.prototype) as ApplicationDetailHarness;
+    const component = Object.create(
+      ApplicationDetailComponent.prototype,
+    ) as ApplicationDetailHarness;
 
     component.isBrowser = true;
     component.pendingPassportRefreshEnabled = true;
@@ -144,5 +146,63 @@ describe('ApplicationDetailComponent inline application date editing', () => {
       { docDate: '2026-03-13' },
       'Application submission date updated',
     );
+  });
+});
+
+describe('ApplicationDetailComponent validation extraction merge', () => {
+  it('prefers freshly extracted doc number and expiration date over stale form values', () => {
+    const component = Object.create(ApplicationDetailComponent.prototype) as any;
+    component.extractValidationAutoFillFields =
+      ApplicationDetailComponent.prototype['extractValidationAutoFillFields'].bind(component);
+    component.mergeUploadFormWithValidationExtraction =
+      ApplicationDetailComponent.prototype['mergeUploadFormWithValidationExtraction'].bind(
+        component,
+      );
+
+    const merged = component.mergeUploadFormWithValidationExtraction(
+      {
+        docNumber: 'OLD-ITK-001',
+        expirationDate: '2025-01-01',
+        details: 'Keep my manual notes',
+      },
+      {
+        extracted_doc_number: 'NEW-ITK-999',
+        extracted_expiration_date: '2026-01-30',
+        extracted_details_markdown: '## OCR details',
+      },
+    );
+
+    expect(merged).toEqual({
+      docNumber: 'NEW-ITK-999',
+      expirationDate: '2026-01-30',
+      details: 'Keep my manual notes',
+    });
+  });
+
+  it('patches extracted values into the upload form', () => {
+    const component = Object.create(ApplicationDetailComponent.prototype) as any;
+    component.parseApiDate = vi.fn((value: string | null) =>
+      value ? new Date(`${value}T00:00:00`) : null,
+    );
+    component.uploadForm = {
+      getRawValue: vi.fn(() => ({ details: '   ' })),
+      patchValue: vi.fn(),
+    };
+    component.extractValidationAutoFillFields =
+      ApplicationDetailComponent.prototype['extractValidationAutoFillFields'].bind(component);
+    component.applyValidationExtractionToUploadForm =
+      ApplicationDetailComponent.prototype['applyValidationExtractionToUploadForm'].bind(component);
+
+    component.applyValidationExtractionToUploadForm({
+      extracted_doc_number: 'ITK-2026-ABC',
+      extracted_expiration_date: '2026-01-30',
+      extracted_details_markdown: '## OCR details',
+    });
+
+    expect(component.uploadForm.patchValue).toHaveBeenCalledWith({
+      docNumber: 'ITK-2026-ABC',
+      expirationDate: new Date('2026-01-30T00:00:00'),
+      details: '## OCR details',
+    });
   });
 });

@@ -63,7 +63,14 @@
           </div>
         </ng-template>
         <ng-template #columnDate let-row>
-          <div class="whitespace-nowrap">{{ row.docDate | appDate }}</div>
+          <div class="flex flex-col leading-tight">
+            <span class="whitespace-nowrap">{{ row.docDate | appDate }}</span>
+            @if (row.submissionWindowLastDate) {
+              <span class="text-xs whitespace-nowrap">{{ row.submissionWindowLastDate | appDate }}</span>
+            } @else {
+              <span class="text-xs">&nbsp;</span>
+            }
+          </div>
         </ng-template>
         <ng-template #columnStatus let-row>
           @switch (row.status) {

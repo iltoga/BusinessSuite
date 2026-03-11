@@ -11,6 +11,7 @@ import tempfile
 import time
 import uuid
 from contextlib import contextmanager, nullcontext
+from functools import lru_cache
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
@@ -39,6 +40,52 @@ _LEGACY_FIELD_RENAMES: dict[str, dict[str, str]] = {
     # customer_applications.Document.ocr_check -> customer_applications.Document.ai_validation
     "customer_applications.document": {"ocr_check": "ai_validation"},
 }
+
+
+@lru_cache(maxsize=1)
+def _default_product_category_ids() -> dict[str, int]:
+    ProductCategory = apps.get_model("products", "ProductCategory")
+    defaults = {"visa": "Visa", "other": "Other"}
+    ids = {}
+    for product_type, name in defaults.items():
+        category, _ = ProductCategory.objects.get_or_create(
+            product_type=product_type,
+            name=name,
+            defaults={"description": ""},
+        )
+        ids[product_type] = int(category.pk)
+    return ids
+
+
+def _resolve_product_category_id(product_type: str | None) -> int | None:
+    normalized = (product_type or "").strip().lower() or "other"
+    defaults = _default_product_category_ids()
+    if normalized not in defaults:
+        normalized = "other"
+    return defaults.get(normalized)
+
+
+@lru_cache(maxsize=256)
+def _product_category_type_by_id(category_id: int) -> str | None:
+    ProductCategory = apps.get_model("products", "ProductCategory")
+    return (
+        ProductCategory.objects.filter(pk=category_id)
+        .values_list("product_type", flat=True)
+        .first()
+    )
+
+
+def _extract_product_type_from_category_value(category_value) -> str | None:
+    if isinstance(category_value, dict):
+        value = category_value.get("product_type") or category_value.get("name")
+        return str(value).strip() if value else None
+    if category_value is None:
+        return None
+    try:
+        category_id = int(category_value)
+    except (TypeError, ValueError):
+        return None
+    return _product_category_type_by_id(category_id)
 
 
 def _get_zstd_module():
@@ -442,6 +489,10 @@ def _normalize_legacy_natural_key_fixture(fixture_path: str) -> tuple[str | None
         fields = obj.get("fields")
         if not isinstance(model_label, str) or not isinstance(fields, dict):
             continue
+        if model_label == "products.product" and "product_type" not in fields:
+            derived_type = _extract_product_type_from_category_value(fields.get("product_category"))
+            if derived_type:
+                fields["product_type"] = derived_type
         objects_by_model.setdefault(model_label, []).append(obj)
 
         if "pk" not in obj:
@@ -661,6 +712,13 @@ def _sanitize_fixture_model_fields(
                 renamed_count += 1
             fields.pop(old_name, None)
             changed = True
+
+        if model_label == "products.product" and "product_type" in fields and "product_category" not in fields:
+            resolved_category_id = _resolve_product_category_id(fields.get("product_type"))
+            if resolved_category_id is not None:
+                fields["product_category"] = resolved_category_id
+                renamed_count += 1
+                changed = True
 
         # 2) Drop unknown fields against current model metadata.
         if model_label not in valid_field_cache:

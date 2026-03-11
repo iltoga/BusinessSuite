@@ -7,7 +7,7 @@ from customer_applications.services.stay_permit_submission_window_service import
     StayPermitSubmissionWindowService,
 )
 from customers.models import Customer
-from products.models import Product
+from products.models import Product, ProductCategory
 from products.models.document_type import DocumentType
 
 
@@ -16,6 +16,9 @@ def create_quick_customer(*, validated_data) -> Customer:
 
 
 def create_quick_product(*, validated_data, user=None) -> Product:
+    if not validated_data.get("product_category"):
+        product_type = validated_data.pop("product_type", None)
+        validated_data["product_category"] = ProductCategory.get_default_for_type(product_type)
     if validated_data.get("retail_price") is None:
         validated_data["retail_price"] = validated_data.get("base_price")
     if user:

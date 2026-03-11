@@ -34,6 +34,7 @@ export interface CustomerApplicationHistory {
     readonly paymentStatusDisplay: string;
     readonly invoiceStatus: string | null;
     readonly invoiceStatusDisplay: string;
+    readonly submissionWindowLastDate: string | null;
 }
 export namespace CustomerApplicationHistory {
     export const StatusEnum = {

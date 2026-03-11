@@ -1,7 +1,8 @@
 from api.serializers.document_type_serializer import DocumentTypeSerializer
-from drf_spectacular.utils import extend_schema_field
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
-from products.models import Product
+from drf_spectacular.utils import extend_schema_field
+from products.models import Product, ProductCategory
 from products.models.document_type import DocumentType
 from products.models.task import Task
 from rest_framework import serializers
@@ -40,6 +41,13 @@ def ordered_document_types(names):
     return documents
 
 
+def _raise_serializer_validation_error(exc: DjangoValidationError) -> None:
+    if getattr(exc, "message_dict", None):
+        raise serializers.ValidationError(exc.message_dict)
+    messages = getattr(exc, "messages", None) or [str(exc)]
+    raise serializers.ValidationError({"__all__": messages})
+
+
 class TaskNestedSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(required=False, allow_null=True)
 
@@ -63,6 +71,9 @@ class TaskNestedSerializer(serializers.ModelSerializer):
 class ProductSerializer(serializers.ModelSerializer):
     created_by = serializers.SlugRelatedField(read_only=True, slug_field="username")
     updated_by = serializers.SlugRelatedField(read_only=True, slug_field="username")
+    product_category = serializers.PrimaryKeyRelatedField(read_only=True)
+    product_category_name = serializers.CharField(source="product_category.name", read_only=True)
+    product_type = serializers.CharField(source="product_category.product_type", read_only=True)
 
     class Meta:
         model = Product
@@ -75,6 +86,8 @@ class ProductSerializer(serializers.ModelSerializer):
             "base_price",
             "retail_price",
             "currency",
+            "product_category",
+            "product_category_name",
             "product_type",
             "validity",
             "required_documents",
@@ -97,6 +110,9 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     optional_document_types = serializers.SerializerMethodField()
     created_by = serializers.SlugRelatedField(read_only=True, slug_field="username")
     updated_by = serializers.SlugRelatedField(read_only=True, slug_field="username")
+    product_category = serializers.PrimaryKeyRelatedField(read_only=True)
+    product_category_name = serializers.CharField(source="product_category.name", read_only=True)
+    product_type = serializers.CharField(source="product_category.product_type", read_only=True)
 
     class Meta:
         model = Product
@@ -109,6 +125,8 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "base_price",
             "retail_price",
             "currency",
+            "product_category",
+            "product_category_name",
             "product_type",
             "validity",
             "required_documents",
@@ -142,6 +160,17 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
     tasks = TaskNestedSerializer(many=True, required=False)
     required_document_ids = serializers.ListField(child=serializers.IntegerField(), write_only=True, required=False)
     optional_document_ids = serializers.ListField(child=serializers.IntegerField(), write_only=True, required=False)
+    product_category = serializers.PrimaryKeyRelatedField(
+        queryset=ProductCategory.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+    product_type = serializers.ChoiceField(
+        choices=ProductCategory.PRODUCT_TYPE_CHOICES,
+        required=False,
+        allow_null=True,
+        write_only=True,
+    )
 
     class Meta:
         model = Product
@@ -154,6 +183,7 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
             "base_price",
             "retail_price",
             "currency",
+            "product_category",
             "product_type",
             "validity",
             "documents_min_validity",
@@ -165,12 +195,29 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
             "optional_document_ids",
         ]
 
+    def _apply_product_category(self, attrs):
+        if "product_category" in attrs:
+            if attrs["product_category"] is None:
+                raise serializers.ValidationError({"product_category": "Product category is required."})
+            attrs.pop("product_type", None)
+            return
+
+        product_type = attrs.pop("product_type", None)
+        if product_type:
+            attrs["product_category"] = ProductCategory.get_default_for_type(product_type)
+            return
+
+        if self.instance is None:
+            attrs["product_category"] = ProductCategory.get_default_for_type("other")
+
     def validate_currency(self, value):
         if value is None:
             return value
         return str(value).strip().upper()
 
     def validate(self, attrs):
+        self._apply_product_category(attrs)
+
         base_price = attrs.get("base_price")
         if base_price is None and self.instance is not None:
             base_price = self.instance.base_price
@@ -193,6 +240,11 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
             attrs["retail_price"] = retail_price
 
         return attrs
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation["product_type"] = instance.product_category.product_type if instance.product_category else None
+        return representation
 
     def validate_tasks(self, value):
         if len(value) > 10:
@@ -231,7 +283,10 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
             for task_data in tasks_data:
                 task_data.pop("id", None)  # Remove potentially null ID for new tasks
                 task = Task(product=product, **task_data)
-                task.full_clean()
+                try:
+                    task.full_clean()
+                except DjangoValidationError as exc:
+                    _raise_serializer_validation_error(exc)
                 task.save()
             return product
 
@@ -265,7 +320,10 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
                             Task.objects.filter(product=instance).exclude(id=task_id).update(last_step=False)
                         for attr, value in task_data.items():
                             setattr(task, attr, value)
-                        task.full_clean()
+                        try:
+                            task.full_clean()
+                        except DjangoValidationError as exc:
+                            _raise_serializer_validation_error(exc)
                         task.save()
                         updated_ids.add(task_id)
                     else:
@@ -273,7 +331,10 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
                         if task_data.get("last_step"):
                             Task.objects.filter(product=instance).update(last_step=False)
                         task = Task(product=instance, **task_data)
-                        task.full_clean()
+                        try:
+                            task.full_clean()
+                        except DjangoValidationError as exc:
+                            _raise_serializer_validation_error(exc)
                         task.save()
                         updated_ids.add(task.id)
 
@@ -282,3 +343,20 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
                     Task.objects.filter(id__in=tasks_to_delete, product=instance).delete()
 
             return instance
+
+
+class ProductImportStartSerializer(serializers.Serializer):
+    file = serializers.FileField()
+
+
+class ProductImportStartResponseSerializer(serializers.Serializer):
+    job_id = serializers.UUIDField()
+    status = serializers.CharField()
+    progress = serializers.IntegerField()
+    queued = serializers.BooleanField()
+    deduplicated = serializers.BooleanField()
+
+
+class ProductCategoryFilterOptionSerializer(serializers.Serializer):
+    value = serializers.CharField(source="name")
+    label = serializers.CharField(source="name")

@@ -93,9 +93,13 @@ import { Payment } from '../model/payment';
 // @ts-ignore
 import { Product } from '../model/product';
 // @ts-ignore
+import { ProductCategoryFilterOption } from '../model/product-category-filter-option';
+// @ts-ignore
 import { ProductCreateUpdate } from '../model/product-create-update';
 // @ts-ignore
 import { ProductDetail } from '../model/product-detail';
+// @ts-ignore
+import { ProductImportStart } from '../model/product-import-start';
 // @ts-ignore
 import { PushNotificationTest } from '../model/push-notification-test';
 // @ts-ignore
@@ -10047,6 +10051,105 @@ export class V1Service extends BaseService {
     }
 
     /**
+     * @endpoint get /api/v1/products/category-options/
+     * @param deprecated Filter category options by explicit deprecated product status.
+     * @param hideDeprecated When true (default), hide categories that only belong to deprecated products.
+     * @param productType Restrict category options to a product type.
+     * @param usesCustomerAppWorkflow Restrict category options to workflow-enabled products.
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     * @param options additional options
+     */
+    public v1ProductsCategoryOptionsList(deprecated?: boolean, hideDeprecated?: boolean, productType?: string, usesCustomerAppWorkflow?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<Array<ProductCategoryFilterOption>>;
+    public v1ProductsCategoryOptionsList(deprecated?: boolean, hideDeprecated?: boolean, productType?: string, usesCustomerAppWorkflow?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<Array<ProductCategoryFilterOption>>>;
+    public v1ProductsCategoryOptionsList(deprecated?: boolean, hideDeprecated?: boolean, productType?: string, usesCustomerAppWorkflow?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<Array<ProductCategoryFilterOption>>>;
+    public v1ProductsCategoryOptionsList(deprecated?: boolean, hideDeprecated?: boolean, productType?: string, usesCustomerAppWorkflow?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+
+        let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
+
+        localVarQueryParameters = this.addToHttpParams(
+            localVarQueryParameters,
+            'deprecated',
+            <any>deprecated,
+            QueryParamStyle.Form,
+            true,
+        );
+
+
+        localVarQueryParameters = this.addToHttpParams(
+            localVarQueryParameters,
+            'hide_deprecated',
+            <any>hideDeprecated,
+            QueryParamStyle.Form,
+            true,
+        );
+
+
+        localVarQueryParameters = this.addToHttpParams(
+            localVarQueryParameters,
+            'product_type',
+            <any>productType,
+            QueryParamStyle.Form,
+            true,
+        );
+
+
+        localVarQueryParameters = this.addToHttpParams(
+            localVarQueryParameters,
+            'uses_customer_app_workflow',
+            <any>usesCustomerAppWorkflow,
+            QueryParamStyle.Form,
+            true,
+        );
+
+
+        let localVarHeaders = this.defaultHeaders;
+
+        // authentication (cookieAuth) required
+
+        // authentication (jwtAuth) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('jwtAuth', 'Authorization', localVarHeaders, 'Bearer ');
+
+        const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            'application/json'
+        ]);
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+        const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/v1/products/category-options/`;
+        const { basePath, withCredentials } = this.configuration;
+        return this.httpClient.request<Array<ProductCategoryFilterOption>>('get', `${basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                params: localVarQueryParameters.toHttpParams(),
+                responseType: <any>responseType_,
+                ...(withCredentials ? { withCredentials } : {}),
+                headers: localVarHeaders,
+                observe: observe,
+                ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
      * @endpoint post /api/v1/products/
      * @param productCreateUpdate 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
@@ -10504,15 +10607,15 @@ export class V1Service extends BaseService {
 
     /**
      * @endpoint get /api/v1/products/get_products_by_product_type/{productType}/
-     * @param productType 
+     * @param productType Product type (visa|other).
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public v1ProductsGetProductsByProductTypeRetrieve(productType: 'visa' | 'other', observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<Product>;
-    public v1ProductsGetProductsByProductTypeRetrieve(productType: 'visa' | 'other', observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<Product>>;
-    public v1ProductsGetProductsByProductTypeRetrieve(productType: 'visa' | 'other', observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<Product>>;
-    public v1ProductsGetProductsByProductTypeRetrieve(productType: 'visa' | 'other', observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+    public v1ProductsGetProductsByProductTypeRetrieve(productType: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<Product>;
+    public v1ProductsGetProductsByProductTypeRetrieve(productType: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<Product>>;
+    public v1ProductsGetProductsByProductTypeRetrieve(productType: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<Product>>;
+    public v1ProductsGetProductsByProductTypeRetrieve(productType: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
         if (productType === null || productType === undefined) {
             throw new Error('Required parameter productType was null or undefined when calling v1ProductsGetProductsByProductTypeRetrieve.');
         }
@@ -10547,7 +10650,7 @@ export class V1Service extends BaseService {
             }
         }
 
-        let localVarPath = `/api/v1/products/get_products_by_product_type/${this.configuration.encodeParam({name: "productType", value: productType, in: "path", style: "simple", explode: false, dataType: "'visa' | 'other'", dataFormat: undefined})}/`;
+        let localVarPath = `/api/v1/products/get_products_by_product_type/${this.configuration.encodeParam({name: "productType", value: productType, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: undefined})}/`;
         const { basePath, withCredentials } = this.configuration;
         return this.httpClient.request<Product>('get', `${basePath}${localVarPath}`,
             {
@@ -10564,55 +10667,17 @@ export class V1Service extends BaseService {
 
     /**
      * @endpoint post /api/v1/products/import/start/
-     * @param id 
-     * @param name 
-     * @param code 
-     * @param createdAt 
-     * @param updatedAt 
-     * @param createdBy Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.
-     * @param updatedBy Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.
-     * @param description 
-     * @param immigrationId 
-     * @param basePrice 
-     * @param retailPrice 
-     * @param currency 
-     * @param productType * &#x60;visa&#x60; - Visa * &#x60;other&#x60; - Other
-     * @param validity 
-     * @param requiredDocuments 
-     * @param optionalDocuments 
-     * @param documentsMinValidity 
-     * @param applicationWindowDays 
-     * @param validationPrompt 
-     * @param deprecated 
-     * @param usesCustomerAppWorkflow 
+     * @param file 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public v1ProductsImportStartCreate(id: number, name: string, code: string, createdAt: string, updatedAt: string, createdBy: string, updatedBy: string, description?: string, immigrationId?: string, basePrice?: string, retailPrice?: string, currency?: string, productType?: string, validity?: number, requiredDocuments?: string, optionalDocuments?: string, documentsMinValidity?: number, applicationWindowDays?: number, validationPrompt?: string, deprecated?: boolean, usesCustomerAppWorkflow?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<Product>;
-    public v1ProductsImportStartCreate(id: number, name: string, code: string, createdAt: string, updatedAt: string, createdBy: string, updatedBy: string, description?: string, immigrationId?: string, basePrice?: string, retailPrice?: string, currency?: string, productType?: string, validity?: number, requiredDocuments?: string, optionalDocuments?: string, documentsMinValidity?: number, applicationWindowDays?: number, validationPrompt?: string, deprecated?: boolean, usesCustomerAppWorkflow?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<Product>>;
-    public v1ProductsImportStartCreate(id: number, name: string, code: string, createdAt: string, updatedAt: string, createdBy: string, updatedBy: string, description?: string, immigrationId?: string, basePrice?: string, retailPrice?: string, currency?: string, productType?: string, validity?: number, requiredDocuments?: string, optionalDocuments?: string, documentsMinValidity?: number, applicationWindowDays?: number, validationPrompt?: string, deprecated?: boolean, usesCustomerAppWorkflow?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<Product>>;
-    public v1ProductsImportStartCreate(id: number, name: string, code: string, createdAt: string, updatedAt: string, createdBy: string, updatedBy: string, description?: string, immigrationId?: string, basePrice?: string, retailPrice?: string, currency?: string, productType?: string, validity?: number, requiredDocuments?: string, optionalDocuments?: string, documentsMinValidity?: number, applicationWindowDays?: number, validationPrompt?: string, deprecated?: boolean, usesCustomerAppWorkflow?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
-        if (id === null || id === undefined) {
-            throw new Error('Required parameter id was null or undefined when calling v1ProductsImportStartCreate.');
-        }
-        if (name === null || name === undefined) {
-            throw new Error('Required parameter name was null or undefined when calling v1ProductsImportStartCreate.');
-        }
-        if (code === null || code === undefined) {
-            throw new Error('Required parameter code was null or undefined when calling v1ProductsImportStartCreate.');
-        }
-        if (createdAt === null || createdAt === undefined) {
-            throw new Error('Required parameter createdAt was null or undefined when calling v1ProductsImportStartCreate.');
-        }
-        if (updatedAt === null || updatedAt === undefined) {
-            throw new Error('Required parameter updatedAt was null or undefined when calling v1ProductsImportStartCreate.');
-        }
-        if (createdBy === null || createdBy === undefined) {
-            throw new Error('Required parameter createdBy was null or undefined when calling v1ProductsImportStartCreate.');
-        }
-        if (updatedBy === null || updatedBy === undefined) {
-            throw new Error('Required parameter updatedBy was null or undefined when calling v1ProductsImportStartCreate.');
+    public v1ProductsImportStartCreate(file: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<ProductImportStart>;
+    public v1ProductsImportStartCreate(file: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<ProductImportStart>>;
+    public v1ProductsImportStartCreate(file: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<ProductImportStart>>;
+    public v1ProductsImportStartCreate(file: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+        if (file === null || file === undefined) {
+            throw new Error('Required parameter file was null or undefined when calling v1ProductsImportStartCreate.');
         }
 
         let localVarHeaders = this.defaultHeaders;
@@ -10650,68 +10715,8 @@ export class V1Service extends BaseService {
             localVarFormParams = new HttpParams({encoder: this.encoder});
         }
 
-        if (id !== undefined) {
-            localVarFormParams = localVarFormParams.append('id', <any>id) as any || localVarFormParams;
-        }
-        if (name !== undefined) {
-            localVarFormParams = localVarFormParams.append('name', <any>name) as any || localVarFormParams;
-        }
-        if (code !== undefined) {
-            localVarFormParams = localVarFormParams.append('code', <any>code) as any || localVarFormParams;
-        }
-        if (description !== undefined) {
-            localVarFormParams = localVarFormParams.append('description', <any>description) as any || localVarFormParams;
-        }
-        if (immigrationId !== undefined) {
-            localVarFormParams = localVarFormParams.append('immigration_id', <any>immigrationId) as any || localVarFormParams;
-        }
-        if (basePrice !== undefined) {
-            localVarFormParams = localVarFormParams.append('base_price', <any>basePrice) as any || localVarFormParams;
-        }
-        if (retailPrice !== undefined) {
-            localVarFormParams = localVarFormParams.append('retail_price', <any>retailPrice) as any || localVarFormParams;
-        }
-        if (currency !== undefined) {
-            localVarFormParams = localVarFormParams.append('currency', <any>currency) as any || localVarFormParams;
-        }
-        if (productType !== undefined) {
-            localVarFormParams = localVarFormParams.append('product_type', <any>productType) as any || localVarFormParams;
-        }
-        if (validity !== undefined) {
-            localVarFormParams = localVarFormParams.append('validity', <any>validity) as any || localVarFormParams;
-        }
-        if (requiredDocuments !== undefined) {
-            localVarFormParams = localVarFormParams.append('required_documents', <any>requiredDocuments) as any || localVarFormParams;
-        }
-        if (optionalDocuments !== undefined) {
-            localVarFormParams = localVarFormParams.append('optional_documents', <any>optionalDocuments) as any || localVarFormParams;
-        }
-        if (documentsMinValidity !== undefined) {
-            localVarFormParams = localVarFormParams.append('documents_min_validity', <any>documentsMinValidity) as any || localVarFormParams;
-        }
-        if (applicationWindowDays !== undefined) {
-            localVarFormParams = localVarFormParams.append('application_window_days', <any>applicationWindowDays) as any || localVarFormParams;
-        }
-        if (validationPrompt !== undefined) {
-            localVarFormParams = localVarFormParams.append('validation_prompt', <any>validationPrompt) as any || localVarFormParams;
-        }
-        if (deprecated !== undefined) {
-            localVarFormParams = localVarFormParams.append('deprecated', <any>deprecated) as any || localVarFormParams;
-        }
-        if (usesCustomerAppWorkflow !== undefined) {
-            localVarFormParams = localVarFormParams.append('uses_customer_app_workflow', <any>usesCustomerAppWorkflow) as any || localVarFormParams;
-        }
-        if (createdAt !== undefined) {
-            localVarFormParams = localVarFormParams.append('created_at', <any>createdAt) as any || localVarFormParams;
-        }
-        if (updatedAt !== undefined) {
-            localVarFormParams = localVarFormParams.append('updated_at', <any>updatedAt) as any || localVarFormParams;
-        }
-        if (createdBy !== undefined) {
-            localVarFormParams = localVarFormParams.append('created_by', <any>createdBy) as any || localVarFormParams;
-        }
-        if (updatedBy !== undefined) {
-            localVarFormParams = localVarFormParams.append('updated_by', <any>updatedBy) as any || localVarFormParams;
+        if (file !== undefined) {
+            localVarFormParams = localVarFormParams.append('file', <any>file) as any || localVarFormParams;
         }
 
         let responseType_: 'text' | 'json' | 'blob' = 'json';
@@ -10727,7 +10732,7 @@ export class V1Service extends BaseService {
 
         let localVarPath = `/api/v1/products/import/start/`;
         const { basePath, withCredentials } = this.configuration;
-        return this.httpClient.request<Product>('post', `${basePath}${localVarPath}`,
+        return this.httpClient.request<ProductImportStart>('post', `${basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 body: localVarConvertFormParamsToString ? localVarFormParams.toString() : localVarFormParams,
@@ -10748,16 +10753,17 @@ export class V1Service extends BaseService {
      * @param ordering Which field to use when ordering the results.
      * @param page A page number within the paginated result set.
      * @param pageSize Number of results to return per page.
+     * @param productCategory Filter by product category name (comma-separated).
      * @param search A search term.
      * @param usesCustomerAppWorkflow Filter products by whether they use customer-application workflows.
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public v1ProductsList(deprecated?: boolean, hideDeprecated?: boolean, ordering?: string, page?: number, pageSize?: number, search?: string, usesCustomerAppWorkflow?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<PaginatedProductList>;
-    public v1ProductsList(deprecated?: boolean, hideDeprecated?: boolean, ordering?: string, page?: number, pageSize?: number, search?: string, usesCustomerAppWorkflow?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<PaginatedProductList>>;
-    public v1ProductsList(deprecated?: boolean, hideDeprecated?: boolean, ordering?: string, page?: number, pageSize?: number, search?: string, usesCustomerAppWorkflow?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<PaginatedProductList>>;
-    public v1ProductsList(deprecated?: boolean, hideDeprecated?: boolean, ordering?: string, page?: number, pageSize?: number, search?: string, usesCustomerAppWorkflow?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+    public v1ProductsList(deprecated?: boolean, hideDeprecated?: boolean, ordering?: string, page?: number, pageSize?: number, productCategory?: string, search?: string, usesCustomerAppWorkflow?: boolean, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<PaginatedProductList>;
+    public v1ProductsList(deprecated?: boolean, hideDeprecated?: boolean, ordering?: string, page?: number, pageSize?: number, productCategory?: string, search?: string, usesCustomerAppWorkflow?: boolean, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<PaginatedProductList>>;
+    public v1ProductsList(deprecated?: boolean, hideDeprecated?: boolean, ordering?: string, page?: number, pageSize?: number, productCategory?: string, search?: string, usesCustomerAppWorkflow?: boolean, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<PaginatedProductList>>;
+    public v1ProductsList(deprecated?: boolean, hideDeprecated?: boolean, ordering?: string, page?: number, pageSize?: number, productCategory?: string, search?: string, usesCustomerAppWorkflow?: boolean, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
 
         let localVarQueryParameters = new OpenApiHttpParams(this.encoder);
 
@@ -10801,6 +10807,15 @@ export class V1Service extends BaseService {
             localVarQueryParameters,
             'page_size',
             <any>pageSize,
+            QueryParamStyle.Form,
+            true,
+        );
+
+
+        localVarQueryParameters = this.addToHttpParams(
+            localVarQueryParameters,
+            'product_category',
+            <any>productCategory,
             QueryParamStyle.Form,
             true,
         );

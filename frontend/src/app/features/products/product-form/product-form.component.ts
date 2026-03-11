@@ -1,4 +1,4 @@
-import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -7,9 +7,8 @@ import {
   signal,
   type OnInit,
 } from '@angular/core';
-import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
-import { Observable } from 'rxjs';
+import { FormArray, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Observable, switchMap, tap } from 'rxjs';
 
 import {
   DocumentTypesService,
@@ -19,27 +18,24 @@ import {
   type ProductDetail,
 } from '@/core/api';
 import { ConfigService } from '@/core/services/config.service';
-import {
-  BaseFormComponent,
-  BaseFormConfig,
-} from '@/shared/core/base-form.component';
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardCardComponent } from '@/shared/components/card';
+import { ZardCheckboxComponent } from '@/shared/components/checkbox';
 import { FormErrorSummaryComponent } from '@/shared/components/form-error-summary/form-error-summary.component';
 import { ZardIconComponent } from '@/shared/components/icon';
 import { ZardInputDirective } from '@/shared/components/input';
-import { ZardTooltipImports } from '@/shared/components/tooltip';
 import {
   SortableMultiSelectComponent,
   type SortableOption,
 } from '@/shared/components/sortable-multi-select';
-import { applyServerErrorsToForm, extractServerErrorMessage } from '@/shared/utils/form-errors';
+import { ZardTooltipImports } from '@/shared/components/tooltip';
+import { BaseFormComponent, BaseFormConfig } from '@/shared/core/base-form.component';
 
 type ProductTask = NonNullable<ProductDetail['tasks']>[number];
 
 /**
  * Product form component
- * 
+ *
  * Extends BaseFormComponent to inherit common form patterns:
  * - Keyboard shortcuts (Ctrl/Cmd+S to save, Escape to cancel)
  * - Edit mode detection from route
@@ -55,6 +51,7 @@ type ProductTask = NonNullable<ProductDetail['tasks']>[number];
     ZardInputDirective,
     ZardButtonComponent,
     ZardCardComponent,
+    ZardCheckboxComponent,
     SortableMultiSelectComponent,
     ZardIconComponent,
     ...ZardTooltipImports,
@@ -64,11 +61,10 @@ type ProductTask = NonNullable<ProductDetail['tasks']>[number];
   styleUrls: ['./product-form.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ProductFormComponent extends BaseFormComponent<
-  ProductDetail,
-  ProductCreateUpdate,
-  ProductCreateUpdate
-> implements OnInit {
+export class ProductFormComponent
+  extends BaseFormComponent<ProductDetail, ProductCreateUpdate, ProductCreateUpdate>
+  implements OnInit
+{
   private readonly productsApi = inject(ProductsService);
   private readonly documentTypesApi = inject(DocumentTypesService);
   private readonly configService = inject(ConfigService);
@@ -217,7 +213,13 @@ export class ProductFormComponent extends BaseFormComponent<
    * Update existing product
    */
   protected override saveUpdate(dto: ProductCreateUpdate): Observable<any> {
-    return this.productsApi.productsPartialUpdate(this.itemId!, dto);
+    return this.productsApi.productsPartialUpdate(this.itemId!, dto).pipe(
+      switchMap(() => this.productsApi.productsRetrieve(this.itemId!)),
+      tap((item) => {
+        this.item.set(item);
+        this.patchForm(item);
+      }),
+    );
   }
 
   /**
@@ -255,8 +257,12 @@ export class ProductFormComponent extends BaseFormComponent<
         name: item.name ?? '',
         code: item.code ?? '',
         description: item.description ?? '',
-        basePrice: item.basePrice !== null && item.basePrice !== undefined ? Number(item.basePrice) : 0,
-        retailPrice: item.retailPrice !== null && item.retailPrice !== undefined ? Number(item.retailPrice) : 0,
+        basePrice:
+          item.basePrice !== null && item.basePrice !== undefined ? Number(item.basePrice) : 0,
+        retailPrice:
+          item.retailPrice !== null && item.retailPrice !== undefined
+            ? Number(item.retailPrice)
+            : 0,
         currency: item.currency ?? this.configService.settings.baseCurrency ?? 'IDR',
         productType: item.productType ?? 'visa',
         validity: item.validity ?? null,
@@ -283,25 +289,6 @@ export class ProductFormComponent extends BaseFormComponent<
         group.markAllAsTouched();
         Object.values(group.controls).forEach((control) => control.markAsTouched());
       });
-
-      console.group('Product Form Validation Errors');
-      Object.keys(this.form.controls).forEach((key) => {
-        const control = this.form.get(key);
-        if (control?.invalid) {
-          console.error(`Field "${key}" is invalid:`, control.errors);
-        }
-      });
-      this.tasksArray.controls.forEach((group, index) => {
-        if (group.invalid) {
-          console.error(`Task ${index + 1} is invalid:`, group.errors);
-          Object.keys(group.controls).forEach((key) => {
-            if (group.get(key)?.invalid) {
-              console.error(`  - Task field "${key}" is invalid:`, group.get(key)?.errors);
-            }
-          });
-        }
-      });
-      console.groupEnd();
 
       if (this.hasMultipleLastSteps()) {
         this.toast.error('Only one task can be marked as the last step.');

@@ -511,9 +511,7 @@ class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         )
 
     def get_queryset(self):
-        queryset = self._with_case_insensitive_name_sorting(
-            Customer.objects.select_related("nationality").all()
-        )
+        queryset = self._with_case_insensitive_name_sorting(Customer.objects.select_related("nationality").all())
 
         # Only apply search and active filters for the list action
         if self.action == "list":
@@ -661,17 +659,44 @@ class CustomerViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         return Response({"job_id": str(job.id)}, status=status.HTTP_202_ACCEPTED)
 
 
+class ProductOrderingFilter(filters.OrderingFilter):
+    def get_ordering(self, request, queryset, view):
+        ordering = super().get_ordering(request, queryset, view)
+        if not ordering:
+            return ordering
+        mapped = []
+        for field in ordering:
+            prefix = "-" if field.startswith("-") else ""
+            name = field[1:] if prefix else field
+            if name == "product_type":
+                mapped.append(f"{prefix}product_category__product_type")
+            else:
+                mapped.append(field)
+        return mapped
+
+
 class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     throttle_scope = None
-    queryset = Product.objects.prefetch_related("tasks").all()
+    queryset = Product.objects.select_related("product_category").prefetch_related("tasks").all()
     pagination_class = StandardResultsSetPagination
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ["name", "code", "description", "product_type"]
-    ordering_fields = ["name", "code", "product_type", "base_price", "retail_price", "created_at", "updated_at"]
+    filter_backends = [filters.SearchFilter, ProductOrderingFilter]
+    search_fields = ["name", "code", "description", "product_category__product_type"]
+    ordering_fields = [
+        "name",
+        "code",
+        "product_type",
+        "product_category__product_type",
+        "product_category__name",
+        "base_price",
+        "retail_price",
+        "created_at",
+        "updated_at",
+    ]
     ordering = ["name"]
     authenticated_lookup_actions = frozenset(
         {
+            "category_options",
             "list",
             "get_product_by_id",
             "get_products_by_product_type",
@@ -683,6 +708,10 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action in ["create", "update", "partial_update"]:
             return ProductCreateUpdateSerializer
+        if self.action == "category_options":
+            return ProductCategoryFilterOptionSerializer
+        if self.action == "import_start":
+            return ProductImportStartSerializer
         if self.action == "retrieve":
             return ProductDetailSerializer
         return ProductSerializer
@@ -711,6 +740,13 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
                 description="Filter by explicit deprecated status.",
             ),
             OpenApiParameter(
+                name="product_category",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Filter by product category name (comma-separated).",
+            ),
+            OpenApiParameter(
                 name="uses_customer_app_workflow",
                 type=OpenApiTypes.BOOL,
                 location=OpenApiParameter.QUERY,
@@ -722,11 +758,18 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
 
-    def get_queryset(self):
+    def _get_filtered_product_queryset(self, *, include_category_filter: bool = True):
         queryset = super().get_queryset()
         product_type = self.request.query_params.get("product_type")
         if product_type:
-            queryset = queryset.filter(product_type=product_type)
+            queryset = queryset.filter(product_category__product_type=product_type)
+
+        if include_category_filter:
+            product_category_param = self.request.query_params.get("product_category")
+            if product_category_param:
+                categories = [item.strip() for item in product_category_param.split(",") if item.strip()]
+                if categories:
+                    queryset = queryset.filter(product_category__name__in=categories)
 
         deprecated_param = self.request.query_params.get("deprecated")
         hide_deprecated = parse_bool(self.request.query_params.get("hide_deprecated"), True)
@@ -740,6 +783,60 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             queryset = queryset.filter(uses_customer_app_workflow=parse_bool(workflow_param, False))
 
         return queryset
+
+    def get_queryset(self):
+        return self._get_filtered_product_queryset()
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="hide_deprecated",
+                type=OpenApiTypes.BOOL,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="When true (default), hide categories that only belong to deprecated products.",
+            ),
+            OpenApiParameter(
+                name="deprecated",
+                type=OpenApiTypes.BOOL,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Filter category options by explicit deprecated product status.",
+            ),
+            OpenApiParameter(
+                name="product_type",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Restrict category options to a product type.",
+            ),
+            OpenApiParameter(
+                name="uses_customer_app_workflow",
+                type=OpenApiTypes.BOOL,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Restrict category options to workflow-enabled products.",
+            ),
+        ],
+        responses=ProductCategoryFilterOptionSerializer(many=True),
+    )
+    @action(
+        detail=False,
+        methods=["get"],
+        url_path="category-options",
+        pagination_class=None,
+        filter_backends=[],
+    )
+    def category_options(self, request):
+        categories = (
+            ProductCategory.objects.filter(
+                products__in=self._get_filtered_product_queryset(include_category_filter=False)
+            )
+            .distinct()
+            .order_by("name")
+        )
+        serializer = self.get_serializer(categories, many=True)
+        return Response(serializer.data)
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user, updated_by=self.request.user)
@@ -845,9 +942,23 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
             }
         )
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="product_type",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.PATH,
+                required=True,
+                description="Product type (visa|other).",
+            ),
+        ]
+    )
     @action(detail=False, methods=["get"], url_path="get_products_by_product_type/(?P<product_type>[^/.]+)")
     def get_products_by_product_type(self, request, product_type=None):
-        products = Product.objects.filter(product_type=product_type, deprecated=False)
+        products = Product.objects.select_related("product_category").filter(
+            product_category__product_type=product_type,
+            deprecated=False,
+        )
         page = self.paginate_queryset(products)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
@@ -955,6 +1066,10 @@ class ProductViewSet(ApiErrorHandlingMixin, viewsets.ModelViewSet):
         parser_classes=[MultiPartParser, FormParser],
         throttle_scope="products_import_start",
         throttle_classes=[AnonRateThrottle, UserRateThrottle, ScopedRateThrottle],
+    )
+    @extend_schema(
+        request=ProductImportStartSerializer,
+        responses={202: ProductImportStartResponseSerializer},
     )
     def import_start(self, request):
         from products.tasks import run_product_import_job

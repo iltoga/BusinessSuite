@@ -1,7 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { of, throwError } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ServerManagementService } from '@/core/api';
@@ -124,7 +124,7 @@ describe('ServerManagementComponent - Cache Controls', () => {
     it('should load cache status on init', () => {
       component.ngOnInit();
 
-      const statusReq = httpMock.expectOne('/api/cache/status/');
+      const statusReq = httpMock.expectOne('/api/server-management/cache-status/');
       expect(statusReq.request.method).toBe('GET');
       statusReq.flush({
         enabled: true,
@@ -158,7 +158,7 @@ describe('ServerManagementComponent - Cache Controls', () => {
     it('should handle cache status load error', () => {
       component.ngOnInit();
 
-      const req = httpMock.expectOne('/api/cache/status/');
+      const req = httpMock.expectOne('/api/server-management/cache-status/');
       req.error(new ProgressEvent('error'));
 
       expect(
@@ -186,7 +186,7 @@ describe('ServerManagementComponent - Cache Controls', () => {
       component.loadCacheStatus();
       expect(component.cacheLoading()).toBe(true);
 
-      const req = httpMock.expectOne('/api/cache/status/');
+      const req = httpMock.expectOne('/api/server-management/cache-status/');
       req.flush({ enabled: true, version: 2, message: 'Cache is enabled' });
 
       expect(component.cacheLoading()).toBe(false);
@@ -195,7 +195,7 @@ describe('ServerManagementComponent - Cache Controls', () => {
     it('should update cache status on success', () => {
       component.loadCacheStatus();
 
-      const req = httpMock.expectOne('/api/cache/status/');
+      const req = httpMock.expectOne('/api/server-management/cache-status/');
       req.flush({ enabled: false, version: 3, message: 'Cache is disabled' });
 
       expect(component.cacheStatus()).toEqual({
@@ -212,7 +212,7 @@ describe('ServerManagementComponent - Cache Controls', () => {
 
       component.toggleCache();
 
-      const req = httpMock.expectOne('/api/cache/enable/');
+      const req = httpMock.expectOne('/api/server-management/cache-enable/');
       expect(req.request.method).toBe('POST');
 
       req.flush({ enabled: true, version: 1, message: 'Cache enabled successfully' });
@@ -226,7 +226,7 @@ describe('ServerManagementComponent - Cache Controls', () => {
 
       component.toggleCache();
 
-      const req = httpMock.expectOne('/api/cache/disable/');
+      const req = httpMock.expectOne('/api/server-management/cache-disable/');
       expect(req.request.method).toBe('POST');
 
       req.flush({ enabled: false, version: 1, message: 'Cache disabled successfully' });
@@ -241,8 +241,8 @@ describe('ServerManagementComponent - Cache Controls', () => {
       component.toggleCache();
 
       expect(mockToastService.error).toHaveBeenCalledWith('Cache status not loaded');
-      httpMock.expectNone('/api/cache/enable/');
-      httpMock.expectNone('/api/cache/disable/');
+      httpMock.expectNone('/api/server-management/cache-enable/');
+      httpMock.expectNone('/api/server-management/cache-disable/');
     });
 
     it('should handle toggle error', () => {
@@ -250,7 +250,7 @@ describe('ServerManagementComponent - Cache Controls', () => {
 
       component.toggleCache();
 
-      const req = httpMock.expectOne('/api/cache/disable/');
+      const req = httpMock.expectOne('/api/server-management/cache-disable/');
       req.error(new ProgressEvent('error'));
 
       expect(mockToastService.error).toHaveBeenCalledWith('Failed to disable cache');
@@ -264,56 +264,53 @@ describe('ServerManagementComponent - Cache Controls', () => {
       component.toggleCache();
       expect(component.cacheLoading()).toBe(true);
 
-      const req = httpMock.expectOne('/api/cache/disable/');
+      const req = httpMock.expectOne('/api/server-management/cache-disable/');
       req.flush({ enabled: false, version: 1, message: 'Cache disabled successfully' });
 
       expect(component.cacheLoading()).toBe(false);
     });
   });
 
-  describe('clearUserCache', () => {
-    it('should clear cache and update version', () => {
-      component.clearUserCache();
+  describe('clearAllCache', () => {
+    it('should clear cache and refresh status', () => {
+      component.clearAllCache();
 
-      const clearReq = httpMock.expectOne('/api/cache/clear/');
-      expect(clearReq.request.method).toBe('POST');
-
-      clearReq.flush({
-        version: 2,
-        cleared: true,
-        message: 'Cache cleared successfully (new version: 2)',
-      });
-
-      expect(mockToastService.success).toHaveBeenCalledWith(
-        'Cache cleared successfully (new version: 2)',
-      );
+      expect(mockServerManagementService.serverManagementClearCacheCreate).toHaveBeenCalledTimes(1);
+      expect(mockToastService.success).toHaveBeenCalledWith('Cache cleared');
 
       // Should reload status after clearing
-      const statusReq = httpMock.expectOne('/api/cache/status/');
+      const statusReq = httpMock.expectOne('/api/server-management/cache-status/');
       statusReq.flush({ enabled: true, version: 2, message: 'Cache is enabled' });
 
       expect(component.cacheStatus()?.version).toBe(2);
     });
 
     it('should handle clear error', () => {
-      component.clearUserCache();
+      mockServerManagementService.serverManagementClearCacheCreate.mockReturnValue(
+        throwError(() => new Error('Network error')),
+      );
 
-      const req = httpMock.expectOne('/api/cache/clear/');
-      req.error(new ProgressEvent('error'));
+      component.clearAllCache();
 
-      expect(mockToastService.error).toHaveBeenCalledWith('Failed to clear user cache');
+      expect(mockToastService.error).toHaveBeenCalledWith('Failed to clear cache');
+      httpMock.expectNone('/api/server-management/cache-status/');
     });
 
     it('should set loading state during clear', () => {
+      const subject = new Subject<any>();
+      mockServerManagementService.serverManagementClearCacheCreate.mockReturnValue(
+        subject.asObservable(),
+      );
+
       expect(component.cacheLoading()).toBe(false);
 
-      component.clearUserCache();
+      component.clearAllCache();
       expect(component.cacheLoading()).toBe(true);
 
-      const clearReq = httpMock.expectOne('/api/cache/clear/');
-      clearReq.flush({ version: 2, cleared: true, message: 'Cache cleared' });
+      subject.next({ ok: true, message: 'Cache cleared' });
+      subject.complete();
 
-      const statusReq = httpMock.expectOne('/api/cache/status/');
+      const statusReq = httpMock.expectOne('/api/server-management/cache-status/');
       statusReq.flush({ enabled: true, version: 2, message: 'Cache is enabled' });
 
       expect(component.cacheLoading()).toBe(false);
@@ -438,7 +435,7 @@ describe('ServerManagementComponent - Cache Controls', () => {
 
       expect(mockServerManagementService.serverManagementClearCacheCreate).toHaveBeenCalled();
       expect(component.isLoading()).toBe(false);
-      expect(mockToastService.success).toHaveBeenCalledWith('Cache cleared successfully');
+      expect(mockToastService.success).toHaveBeenCalledWith('Cache cleared');
     });
 
     it('should handle existing clearCache errors', () => {

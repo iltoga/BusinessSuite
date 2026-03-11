@@ -80,14 +80,14 @@
 </div>
 
 <ng-template #topBarActions>
-  <app-theme-switcher></app-theme-switcher>
+  <app-theme-switcher class="topbar-action"></app-theme-switcher>
 
   <button
     z-dropdown
     [zDropdownMenu]="userMenu"
     z-button
     variant="ghost"
-    class="relative h-9 w-9 p-0 hover:bg-accent rounded-full overflow-visible"
+    class="topbar-avatar relative h-9 w-9 p-0 hover:bg-accent rounded-full overflow-visible"
     aria-label="Open user menu"
     aria-haspopup="menu"
   >

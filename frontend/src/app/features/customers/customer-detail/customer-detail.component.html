@@ -31,7 +31,9 @@
 } @else {
   <div class="customer-detail-container -m-3 sm:-m-6 space-y-4">
     <!-- Sticky Header -->
-    <div class="customer-header sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b py-2 isolate">
+    <div
+      class="customer-header sticky top-0 z-50 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 border-b py-2 isolate"
+    >
       <div class="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 class="text-2xl font-semibold">Customer ID #{{ customer()!.id }}</h1>
@@ -172,7 +174,13 @@
         <z-card class="p-4 sm:p-5">
           <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
             <h3 class="text-lg font-semibold">Applications</h3>
-            <button type="button" z-button zType="outline" zSize="sm" (click)="onCreateApplication()">
+            <button
+              type="button"
+              z-button
+              zType="outline"
+              zSize="sm"
+              (click)="onCreateApplication()"
+            >
               New application
             </button>
           </div>
@@ -196,13 +204,20 @@
               <table class="customer-applications-table w-full border-collapse">
                 <thead>
                   <tr class="border-b">
-                    <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">#ID</th>
+                    <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
+                      #ID
+                    </th>
                     <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
                       Product
                     </th>
-                    <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Type</th>
                     <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
-                      Application Submission Date
+                      Type
+                    </th>
+                    <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
+                      <div class="flex flex-col leading-tight">
+                        <span>Submission Date</span>
+                        <span class="text-xs font-normal">Last Date</span>
+                      </div>
                     </th>
                     <th class="text-left py-3 px-4 text-sm font-medium text-muted-foreground">
                       Status
@@ -235,10 +250,21 @@
                         <span class="text-primary">{{ app.product.name }}</span>
                       </td>
                       <td class="py-3 px-4 text-sm" data-label="Type">
-                        {{ app.product.productTypeDisplay || (app.product.productType | titlecase) }}
+                        {{
+                          app.product.productTypeDisplay || (app.product.productType | titlecase)
+                        }}
                       </td>
-                      <td class="py-3 px-4 text-sm" data-label="Application Submission Date">
-                        {{ app.docDate | appDate }}
+                      <td class="py-3 px-4 text-sm" data-label="Submission Date / Last Date">
+                        <div class="flex flex-col leading-tight">
+                          <span>{{ app.docDate | appDate }}</span>
+                          @if (app.submissionWindowLastDate) {
+                            <span class="text-xs">{{
+                              app.submissionWindowLastDate | appDate
+                            }}</span>
+                          } @else {
+                            <span class="text-xs">&nbsp;</span>
+                          }
+                        </div>
                       </td>
                       <td class="py-3 px-4 text-sm" data-label="Status">
                         <z-badge [zType]="getStatusBadgeType(app.status)">{{
@@ -305,7 +331,9 @@
               </table>
             </div>
 
-            <div class="applications-pagination mt-4 flex flex-wrap items-center justify-between gap-3">
+            <div
+              class="applications-pagination mt-4 flex flex-wrap items-center justify-between gap-3"
+            >
               <div class="text-sm text-muted-foreground">
                 Showing {{ applicationsStartIndex() }}-{{ applicationsEndIndex() }} of
                 {{ totalApplications() }}

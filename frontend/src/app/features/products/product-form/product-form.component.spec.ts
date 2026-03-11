@@ -17,7 +17,14 @@ describe('ProductFormComponent', () => {
     component.documentTypes = vi.fn();
     component.productsApi = {
       productsPartialUpdate: vi.fn().mockReturnValue(of({})),
+      productsRetrieve: vi.fn().mockReturnValue(of({ tasks: [] })),
       productsUpdate: vi.fn(),
+    };
+    component.item = {
+      value: null,
+      set(value: ProductDetail | null) {
+        this.value = value;
+      },
     };
     component.product = {
       value: null,
@@ -30,6 +37,7 @@ describe('ProductFormComponent', () => {
 
     component.form = ProductFormComponent.prototype.buildForm.call(component);
     component.addTask = ProductFormComponent.prototype.addTask.bind(component);
+    component.patchForm = ProductFormComponent.prototype.patchForm.bind(component);
     Object.defineProperty(component, 'tasksArray', {
       get() {
         return component.form.get('tasks');
@@ -90,6 +98,58 @@ describe('ProductFormComponent', () => {
     component.saveUpdate(dto).subscribe();
 
     expect(component.productsApi.productsPartialUpdate).toHaveBeenCalledWith(3, dto);
+    expect(component.productsApi.productsRetrieve).toHaveBeenCalledWith(3);
     expect(component.productsApi.productsUpdate).not.toHaveBeenCalled();
+  });
+
+  it('refreshes tasks after PATCH so newly created task ids are preserved for the next save', () => {
+    const component = createHarness();
+    const refreshedItem = {
+      id: 3,
+      name: 'KITAS',
+      code: 'KITAS-1',
+      basePrice: '100.00',
+      retailPrice: '150.00',
+      currency: 'IDR',
+      productType: 'visa',
+      requiredDocumentTypes: [],
+      optionalDocumentTypes: [],
+      tasks: [
+        {
+          id: 7,
+          step: 1,
+          name: 'Collect docs',
+          description: '',
+          cost: '0.00',
+          duration: 2,
+          addTaskToCalendar: false,
+          notifyCustomer: false,
+          durationIsBusinessDays: true,
+          notifyDaysBefore: 0,
+          lastStep: false,
+        },
+        {
+          id: 11,
+          step: 2,
+          name: 'Verification',
+          description: '',
+          cost: '0.00',
+          duration: 7,
+          addTaskToCalendar: false,
+          notifyCustomer: false,
+          durationIsBusinessDays: true,
+          notifyDaysBefore: 0,
+          lastStep: true,
+        },
+      ],
+    } as ProductDetail;
+    component.productsApi.productsRetrieve.mockReturnValue(of(refreshedItem));
+
+    component.saveUpdate({ name: 'KITAS' } as ProductCreateUpdate).subscribe();
+
+    expect(component.tasksArray.length).toBe(2);
+    expect(component.tasksArray.at(1).get('id')?.value).toBe(11);
+    expect(component.item.value).toBe(refreshedItem);
+    expect(component.product.value).toBe(refreshedItem);
   });
 });

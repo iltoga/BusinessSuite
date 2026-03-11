@@ -89,7 +89,7 @@
     @if (cacheStatus(); as status) {
       <div class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div>
-          <label class="text-sm font-medium text-muted-foreground">Cache Status</label>
+          <label class="text-sm font-medium text-muted-foreground">Application Cache</label>
           <div class="mt-1">
             <z-badge [zType]="status.enabled ? 'default' : 'secondary'">
               {{ status.enabled ? 'Enabled' : 'Disabled' }}
@@ -124,20 +124,20 @@
           @if (cacheLoading()) {
             <span>Processing...</span>
           } @else {
-            <span>{{ status.enabled ? 'Disable Cache' : 'Enable Cache' }}</span>
+            <span>{{ status.enabled ? 'Disable Application Cache' : 'Enable Application Cache' }}</span>
           }
         </button>
         <button
           z-button
           class="w-full sm:w-auto"
-          (click)="clearUserCache()"
-          [zDisabled]="cacheLoading() || !status.enabled"
+          (click)="clearAllCache()"
+          [zDisabled]="cacheLoading()"
           zType="destructive"
         >
           @if (cacheLoading()) {
             <span>Clearing...</span>
           } @else {
-            <span>Clear My Cache</span>
+            <span>Clear All Users' Cache</span>
           }
         </button>
       </div>

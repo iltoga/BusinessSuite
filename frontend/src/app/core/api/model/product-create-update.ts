@@ -19,10 +19,11 @@ export interface ProductCreateUpdate {
     basePrice?: string | null;
     retailPrice?: string;
     currency?: string;
+    productCategory?: number | null;
     /**
      * * `visa` - Visa * `other` - Other
      */
-    productType?: ProductCreateUpdate.ProductTypeEnum;
+    productType?: ProductCreateUpdate.ProductTypeEnum | null;
     validity?: number | null;
     documentsMinValidity?: number | null;
     applicationWindowDays?: number | null;

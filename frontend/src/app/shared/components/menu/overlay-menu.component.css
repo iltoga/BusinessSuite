@@ -3,13 +3,20 @@
   left: env(titlebar-area-x, 0);
   top: env(titlebar-area-y, 0);
   width: env(titlebar-area-width, 100%);
-  min-height: max(env(titlebar-area-height, 36px), 56px);
+  --overlay-titlebar-height: max(env(titlebar-area-height, 36px), 56px);
+  min-height: calc(var(--overlay-titlebar-height) * 0.67);
+  height: calc(var(--overlay-titlebar-height) * 0.67);
   display: flex;
   align-items: center;
   border-bottom: 1px solid var(--border);
   background: var(--card);
   isolation: isolate;
   z-index: 200;
+}
+
+.overlay-titlebar-content {
+  min-height: 0;
+  height: 100%;
 }
 
 .app-drag-region {

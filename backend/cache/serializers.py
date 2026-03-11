@@ -31,6 +31,14 @@ class CacheStatusSerializer(serializers.Serializer):
         allow_blank=True,
         help_text="Configured default Django cache location",
     )
+    global_enabled = serializers.BooleanField(
+        required=False,
+        help_text="Whether caching is enabled globally across the application",
+    )
+    user_enabled = serializers.BooleanField(
+        required=False,
+        help_text="Whether caching is enabled for the user (ignores global override)",
+    )
 
 
 class CacheClearSerializer(serializers.Serializer):

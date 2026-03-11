@@ -58,12 +58,8 @@ interface CacheStatusResponse {
   message: string;
   cacheBackend?: string;
   cacheLocation?: string;
-}
-
-interface CacheClearResponse {
-  version: number;
-  cleared: boolean;
-  message: string;
+  globalEnabled?: boolean;
+  userEnabled?: boolean;
 }
 
 interface CacheHealthResponse {
@@ -222,7 +218,7 @@ export class ServerManagementComponent implements OnInit {
   loadCacheStatus(): void {
     this.cacheLoading.set(true);
     this.http
-      .get<CacheStatusResponse>('/api/cache/status/')
+      .get<CacheStatusResponse>('/api/server-management/cache-status/')
       .pipe(
         catchError(() => {
           this.toast.error('Failed to load cache status');
@@ -231,7 +227,7 @@ export class ServerManagementComponent implements OnInit {
         finalize(() => this.cacheLoading.set(false)),
       )
       .subscribe((response) => {
-        this.cacheStatus.set(response);
+        this.cacheStatus.set(this.normalizeCacheStatus(response));
       });
   }
 
@@ -242,7 +238,9 @@ export class ServerManagementComponent implements OnInit {
       return;
     }
 
-    const endpoint = currentStatus.enabled ? '/api/cache/disable/' : '/api/cache/enable/';
+    const endpoint = currentStatus.enabled
+      ? '/api/server-management/cache-disable/'
+      : '/api/server-management/cache-enable/';
     this.cacheLoading.set(true);
 
     this.http
@@ -255,26 +253,32 @@ export class ServerManagementComponent implements OnInit {
         finalize(() => this.cacheLoading.set(false)),
       )
       .subscribe((response) => {
-        this.cacheStatus.set(response);
-        this.toast.success(response.message);
+        const normalized = this.normalizeCacheStatus(response);
+        this.cacheStatus.set(normalized);
+        this.toast.success(normalized.message);
         this.loadCacheHealth();
       });
   }
 
-  clearUserCache(): void {
+  clearAllCache(): void {
     this.cacheLoading.set(true);
-    this.http
-      .post<CacheClearResponse>('/api/cache/clear/', {})
+    this.serverManagementApi
+      .serverManagementClearCacheCreate()
       .pipe(
         catchError(() => {
-          this.toast.error('Failed to clear user cache');
+          this.toast.error('Failed to clear cache');
           return EMPTY;
         }),
         finalize(() => this.cacheLoading.set(false)),
       )
       .subscribe((response) => {
-        this.toast.success(response.message);
-        // Update cache status with new version
+        const normalized = this.normalizeServerActionResponse(response);
+        if (normalized.ok) {
+          this.toast.success(normalized.message || 'Cache cleared');
+        } else {
+          this.toast.error(normalized.message || 'Failed to clear cache');
+        }
+        // Update cache status after clearing
         this.loadCacheStatus();
         this.loadCacheHealth();
       });
@@ -794,6 +798,22 @@ export class ServerManagementComponent implements OnInit {
       errors: Array.isArray(source?.['errors'])
         ? (source?.['errors'] as unknown[]).map((e) => String(e))
         : [],
+    };
+  }
+
+  private normalizeCacheStatus(raw: unknown): CacheStatusResponse {
+    const source = this.toRecord(raw);
+    const globalEnabledRaw = source?.['globalEnabled'] ?? source?.['global_enabled'];
+    const userEnabledRaw = source?.['userEnabled'] ?? source?.['user_enabled'];
+    return {
+      enabled: Boolean(source?.['enabled']),
+      version: Number(source?.['version'] ?? 1),
+      message: String(source?.['message'] ?? 'Cache status updated'),
+      cacheBackend: String(source?.['cacheBackend'] ?? source?.['cache_backend'] ?? ''),
+      cacheLocation: String(source?.['cacheLocation'] ?? source?.['cache_location'] ?? ''),
+      globalEnabled:
+        globalEnabledRaw === undefined ? undefined : Boolean(globalEnabledRaw),
+      userEnabled: userEnabledRaw === undefined ? undefined : Boolean(userEnabledRaw),
     };
   }
 

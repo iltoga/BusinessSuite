@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -28,7 +29,24 @@ import { ZardDialogService } from '@/shared/components/dialog';
 import { ZardIconComponent } from '@/shared/components/icon';
 import { ZardInputDirective } from '@/shared/components/input';
 import { ZardSelectImports } from '@/shared/components/select';
+import { ZardSwitchComponent } from '@/shared/components/switch';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
+
+interface CacheStatusResponse {
+  enabled: boolean;
+  version: number;
+  message?: string;
+  cacheBackend?: string;
+  cacheLocation?: string;
+  globalEnabled?: boolean;
+  userEnabled?: boolean;
+}
+
+interface CacheClearResponse {
+  version: number;
+  cleared: boolean;
+  message?: string;
+}
 
 @Component({
   selector: 'app-profile',
@@ -43,6 +61,7 @@ import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
     ZardBadgeComponent,
     ZardCheckboxComponent,
     ZardIconComponent,
+    ZardSwitchComponent,
     ...ZardSelectImports,
     AppDatePipe,
   ],
@@ -56,12 +75,15 @@ export class ProfileComponent implements OnInit {
   private desktopBridge = inject(DesktopBridgeService);
   private toast = inject(GlobalToastService);
   private dialogService = inject(ZardDialogService);
+  private http = inject(HttpClient);
 
   readonly passwordModalTemplate = viewChild.required<TemplateRef<any>>('passwordModalTemplate');
 
   profile = signal<UserProfile | null>(null);
   isLoading = signal(true);
   isSaving = signal(false);
+  cacheStatus = signal<CacheStatusResponse | null>(null);
+  cacheLoading = signal(false);
 
   // Theme related
   private themeService = inject(ThemeService);
@@ -106,6 +128,7 @@ export class ProfileComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadProfile();
+    this.loadCacheStatus();
     void this.loadDesktopPreferences();
     // Also attempt to load and apply user settings for display
     if (this.authService.isAuthenticated()) {
@@ -160,6 +183,14 @@ export class ProfileComponent implements OnInit {
           this.toast.error('Failed to load profile');
         },
       });
+  }
+
+  get cacheEnabledFlag(): boolean {
+    return this.cacheStatus()?.enabled ?? true;
+  }
+
+  set cacheEnabledFlag(next: boolean) {
+    this.toggleCache(next);
   }
 
   onAvatarSelected(event: Event): void {
@@ -317,5 +348,107 @@ export class ProfileComponent implements OnInit {
       this.dialogRef.close();
       this.dialogRef = null;
     }
+  }
+
+  loadCacheStatus(): void {
+    this.cacheLoading.set(true);
+    this.http
+      .get<CacheStatusResponse>('/api/cache/status/')
+      .pipe(finalize(() => this.cacheLoading.set(false)))
+      .subscribe({
+        next: (response) => {
+          this.cacheStatus.set(this.normalizeCacheStatus(response));
+        },
+        error: () => {
+          this.toast.error('Failed to load cache status');
+          this.cacheStatus.set(null);
+        },
+      });
+  }
+
+  toggleCache(nextEnabled: boolean): void {
+    const current = this.cacheStatus();
+    if (!current) {
+      this.toast.error('Cache status not loaded');
+      return;
+    }
+
+    if (current.globalEnabled === false && nextEnabled) {
+      this.toast.info('Cache is disabled globally by an administrator');
+      return;
+    }
+
+    if (current.enabled === nextEnabled) {
+      return;
+    }
+
+    const previous = { ...current };
+    this.cacheStatus.set({ ...current, enabled: nextEnabled });
+    const endpoint = nextEnabled ? '/api/cache/enable/' : '/api/cache/disable/';
+
+    this.cacheLoading.set(true);
+    this.http
+      .post<CacheStatusResponse>(endpoint, {})
+      .pipe(finalize(() => this.cacheLoading.set(false)))
+      .subscribe({
+        next: (response) => {
+          const normalized = this.normalizeCacheStatus(response);
+          this.cacheStatus.set(normalized);
+          if (normalized.message) {
+            this.toast.success(normalized.message);
+          }
+        },
+        error: () => {
+          this.cacheStatus.set(previous);
+          this.toast.error(`Failed to ${nextEnabled ? 'enable' : 'disable'} cache`);
+        },
+      });
+  }
+
+  clearUserCache(): void {
+    this.cacheLoading.set(true);
+    this.http
+      .post<CacheClearResponse>('/api/cache/clear/', {})
+      .pipe(finalize(() => this.cacheLoading.set(false)))
+      .subscribe({
+        next: (response) => {
+          this.toast.success(response.message || 'Cache cleared');
+          this.loadCacheStatus();
+        },
+        error: () => {
+          this.toast.error('Failed to clear cache');
+        },
+      });
+  }
+
+  private normalizeCacheStatus(raw: unknown): CacheStatusResponse {
+    const source = this.toRecord(raw);
+    const globalEnabledRaw = source?.['globalEnabled'] ?? source?.['global_enabled'];
+    const userEnabledRaw = source?.['userEnabled'] ?? source?.['user_enabled'];
+    return {
+      enabled: Boolean(source?.['enabled']),
+      version: Number(source?.['version'] ?? 1),
+      message: this.toOptionalString(source?.['message']) ?? '',
+      cacheBackend: this.toOptionalString(source?.['cacheBackend'] ?? source?.['cache_backend']),
+      cacheLocation: this.toOptionalString(source?.['cacheLocation'] ?? source?.['cache_location']),
+      globalEnabled:
+        globalEnabledRaw === undefined ? undefined : Boolean(globalEnabledRaw),
+      userEnabled: userEnabledRaw === undefined ? undefined : Boolean(userEnabledRaw),
+    };
+  }
+
+  private toOptionalString(value: unknown): string | undefined {
+    if (value === null || value === undefined) {
+      return undefined;
+    }
+    const text = String(value);
+    return text.length ? text : undefined;
+  }
+
+  private toRecord(value: unknown): Record<string, unknown> | null {
+    if (!value || typeof value !== 'object') {
+      return null;
+    }
+    return value as Record<string, unknown>;
   }
 }

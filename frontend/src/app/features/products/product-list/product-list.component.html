@@ -19,15 +19,6 @@
         (tabOut)="dataTable.focusFirstRowIfNone()"
         [contextHelp]="'/products/search'"
       >
-        <label class="flex items-center gap-2 text-sm text-muted-foreground">
-          <input
-            type="checkbox"
-            class="rounded"
-            [checked]="includeDeprecated()"
-            (change)="onToggleIncludeDeprecated($any($event.target).checked)"
-          />
-          Include deprecated
-        </label>
         <z-button
           zType="default"
           zSize="sm"
@@ -84,6 +75,7 @@
         [totalPages]="totalPages()"
         (pageChange)="onPageChange($any($event))"
         (sortChange)="onSortChange($any($event))"
+        (columnFilterChange)="onColumnFilterChange($any($event))"
       />
     </div>
 
@@ -134,6 +126,10 @@
   <z-badge zType="secondary">{{ productTypeLabel(row.productType) }}</z-badge>
 </ng-template>
 
+<ng-template #categoryTemplate let-row>
+  <span>{{ categoryLabel(row) }}</span>
+</ng-template>
+
 <ng-template #basePriceHeaderTemplate>
   <button
     type="button"
@@ -158,6 +154,10 @@
 
 <ng-template #profitTemplate let-row>
   <span>{{ formatCurrency(unitProfitValue(row), resolveCurrency(row)) }}</span>
+</ng-template>
+
+<ng-template #deprecatedTemplate let-row>
+  <span>{{ deprecatedLabel(row) }}</span>
 </ng-template>
 
 <ng-template #createdAtTemplate let-row>

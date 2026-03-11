@@ -52,6 +52,9 @@ class NamespaceManager:
     
     # Cache enabled key format: cache_user_enabled:{user_id}
     ENABLED_KEY_PREFIX = "cache_user_enabled"
+
+    # Global cache enabled key format: cache_global_enabled
+    GLOBAL_ENABLED_KEY = "cache_global_enabled"
     
     # Cache key prefix format: cache:{user_id}:v{version}:cacheops:
     CACHE_KEY_PREFIX_FORMAT = "cache:{user_id}:v{version}:cacheops:"
@@ -241,7 +244,7 @@ class NamespaceManager:
     
     def is_cache_enabled(self, user_id: int) -> bool:
         """
-        Check if caching is enabled for a user.
+        Check if caching is enabled for a user (global + user-specific).
         
         Args:
             user_id: Positive integer user ID
@@ -263,18 +266,30 @@ class NamespaceManager:
         # Validate user_id
         self._validate_user_id(user_id)
         
+        if not self.is_global_cache_enabled():
+            return False
+
+        return self.is_user_cache_enabled(user_id)
+
+    def is_user_cache_enabled(self, user_id: int) -> bool:
+        """
+        Check if caching is enabled for a user (ignores global override).
+        """
+        # Validate user_id
+        self._validate_user_id(user_id)
+
         enabled_key = self._get_enabled_key(user_id)
-        
+
         try:
             # Get enabled status, default to True if not set
             enabled = self.cache.get(enabled_key)
-            
+
             if enabled is None:
                 # Default to enabled
                 return True
-            
+
             return bool(enabled)
-            
+
         except Exception as e:
             logger.error(
                 f"Error checking cache enabled status for user {user_id}: {e}",
@@ -282,6 +297,41 @@ class NamespaceManager:
             )
             # Default to enabled on error
             return True
+
+    def is_global_cache_enabled(self) -> bool:
+        """
+        Check if caching is enabled globally across the application.
+        """
+        try:
+            enabled = self.cache.get(self.GLOBAL_ENABLED_KEY)
+            if enabled is None:
+                return True
+            return bool(enabled)
+        except Exception as e:
+            logger.error(
+                "Error checking global cache enabled status: %s",
+                e,
+                exc_info=True,
+            )
+            return True
+
+    def set_global_cache_enabled(self, enabled: bool) -> None:
+        """
+        Set whether caching is enabled globally across the application.
+        """
+        try:
+            self.cache.set(self.GLOBAL_ENABLED_KEY, enabled, timeout=None)
+            logger.info(
+                "Global cache status changed - operation=set_global_enabled, enabled=%s",
+                enabled,
+            )
+        except Exception as e:
+            logger.error(
+                "Cache error - operation=set_global_enabled, error=%s",
+                str(e),
+                exc_info=True,
+            )
+            raise
     
     def set_cache_enabled(self, user_id: int, enabled: bool) -> None:
         """

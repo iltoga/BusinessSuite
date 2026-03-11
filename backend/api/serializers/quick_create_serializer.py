@@ -6,7 +6,7 @@ from core.models import CountryCode
 from core.utils.dateutils import parse_date_field
 from core.utils.form_validators import normalize_phone_number
 from customers.models import CUSTOMER_TYPE_CHOICES, Customer
-from products.models import Product
+from products.models import Product, ProductCategory
 
 
 class CustomerQuickCreateSerializer(serializers.Serializer):
@@ -101,7 +101,12 @@ class CustomerApplicationQuickCreateSerializer(serializers.Serializer):
 class ProductQuickCreateSerializer(serializers.Serializer):
     name = serializers.CharField()
     code = serializers.CharField()
-    product_type = serializers.ChoiceField(choices=Product.PRODUCT_TYPE_CHOICES, default="other")
+    product_category = serializers.PrimaryKeyRelatedField(
+        queryset=ProductCategory.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+    product_type = serializers.ChoiceField(choices=ProductCategory.PRODUCT_TYPE_CHOICES, default="other")
     description = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     base_price = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
     retail_price = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
