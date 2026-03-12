@@ -44,7 +44,11 @@ function parseDotenvValue(rawValue: string): string {
 }
 
 function loadRuntimeEnvFiles(): void {
-  const envFileCandidates = [resolve(process.cwd(), '.env'), resolve(process.cwd(), '..', '.env')];
+  const envFileCandidates = [
+    resolve(process.cwd(), '.env'),
+    resolve(process.cwd(), '..', '.env'),
+    '/app/.env',
+  ];
 
   for (const envPath of envFileCandidates) {
     if (!existsSync(envPath)) continue;
