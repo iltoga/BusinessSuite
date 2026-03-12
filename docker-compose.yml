@@ -30,7 +30,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    mem_limit: 512m
+    mem_limit: 384m
     cpus: "1.0"
 
   # pgadmin:
@@ -159,7 +159,7 @@ services:
         target: /backups
       - le-certs:/etc/letsencrypt
     restart: unless-stopped
-    mem_limit: 768m
+    mem_limit: 800m
     cpus: "1.0"
     healthcheck:
       test:
@@ -198,12 +198,12 @@ services:
       REDIS_URL: ${DOCKER_REDIS_URL:-redis://bs-redis:6379/1}
       DRAMATIQ_REDIS_DB: ${DRAMATIQ_REDIS_DB:-0}
       DRAMATIQ_REDIS_URL: ${DOCKER_DRAMATIQ_REDIS_URL:-redis://bs-redis:6379/0}
-      DRAMATIQ_HIGH_THREADS: ${DRAMATIQ_HIGH_THREADS_WORKER:-2}
-      DRAMATIQ_LOW_THREADS: ${DRAMATIQ_LOW_THREADS_WORKER:-1}
-      DRAMATIQ_HIGH_PROCESSES: ${DRAMATIQ_HIGH_PROCESSES_WORKER:-1}
-      DRAMATIQ_LOW_PROCESSES: ${DRAMATIQ_LOW_PROCESSES_WORKER:-1}
-      DRAMATIQ_DOC_PROCESSES: ${DRAMATIQ_DOC_PROCESSES_WORKER:-1}
-      DRAMATIQ_DOC_THREADS: ${DRAMATIQ_DOC_THREADS_WORKER:-1}
+      DRAMATIQ_HIGH_THREADS: ${DRAMATIQ_HIGH_THREADS:-2}
+      DRAMATIQ_LOW_THREADS: ${DRAMATIQ_LOW_THREADS:-1}
+      DRAMATIQ_HIGH_PROCESSES: ${DRAMATIQ_HIGH_PROCESSES:-1}
+      DRAMATIQ_LOW_PROCESSES: ${DRAMATIQ_LOW_PROCESSES:-1}
+      DRAMATIQ_DOC_PROCESSES: ${DRAMATIQ_DOC_PROCESSES:-1}
+      DRAMATIQ_DOC_THREADS: ${DRAMATIQ_DOC_THREADS:-1}
       COMPONENT: task_worker
       MEDIA_ROOT: /media
       MEDIA_URL: /media/
@@ -245,7 +245,7 @@ services:
       - le-certs:/etc/letsencrypt
     restart: unless-stopped
     init: true
-    mem_limit: 1280m
+    mem_limit: 1024m
     cpus: "1.5"
     command:
       - /bin/sh
@@ -313,7 +313,7 @@ services:
       - le-certs:/etc/letsencrypt
     restart: unless-stopped
     init: true
-    mem_limit: 256m
+    mem_limit: 320m
     cpus: "0.5"
     command: /opt/venv/bin/python manage.py run_dramatiq_scheduler
 
