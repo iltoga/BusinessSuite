@@ -72,6 +72,18 @@ function loadRuntimeEnvFiles(): void {
 
 loadRuntimeEnvFiles();
 
+function readEnvValue(primaryKey: string, fallbackKeys: string[] = []): string {
+  const primaryValue = (process.env[primaryKey] || '').trim();
+  if (primaryValue) return primaryValue;
+
+  for (const key of fallbackKeys) {
+    const fallbackValue = (process.env[key] || '').trim();
+    if (fallbackValue) return fallbackValue;
+  }
+
+  return '';
+}
+
 const browserDistFolder = join(import.meta.dirname, '../browser');
 
 const app = express();
@@ -680,15 +692,20 @@ app.use(async (req, res, next) => {
         const mockAuthEnv = (process.env['MOCK_AUTH_ENABLED'] || 'False').trim();
         const appTitleEnv = process.env['APP_TITLE'] || 'BusinessSuite';
         const baseCurrencyEnv = ((process.env['BASE_CURRENCY'] || 'IDR').trim() || 'IDR').toUpperCase();
-        const fcmSenderIdEnv = (process.env['FCM_SENDER_ID'] || '').trim();
-        const fcmProjectNumberEnv = (process.env['FCM_PROJECT_NUMBER'] || '').trim();
-        const fcmVapidPublicKeyEnv = (process.env['FCM_VAPID_PUBLIC_KEY'] || '').trim();
-        const fcmProjectIdEnv = (process.env['FCM_PROJECT_ID'] || '').trim();
-        const fcmWebApiKeyEnv = (process.env['FCM_WEB_API_KEY'] || '').trim();
-        const fcmWebAppIdEnv = (process.env['FCM_WEB_APP_ID'] || '').trim();
-        const fcmWebAuthDomainEnv = (process.env['FCM_WEB_AUTH_DOMAIN'] || '').trim();
-        const fcmWebStorageBucketEnv = (process.env['FCM_WEB_STORAGE_BUCKET'] || '').trim();
-        const fcmWebMeasurementIdEnv = (process.env['FCM_WEB_MEASUREMENT_ID'] || '').trim();
+        const fcmSenderIdEnv = readEnvValue('FCM_SENDER_ID', ['FCM_MESSAGING_SENDER_ID']);
+        const fcmProjectNumberEnv = readEnvValue('FCM_PROJECT_NUMBER', [
+          'FCM_MESSAGING_SENDER_ID',
+          'FCM_SENDER_ID',
+        ]);
+        const fcmVapidPublicKeyEnv = readEnvValue('FCM_VAPID_PUBLIC_KEY');
+        const fcmProjectIdEnv = readEnvValue('FCM_PROJECT_ID');
+        const fcmWebApiKeyEnv = readEnvValue('FCM_WEB_API_KEY', ['FCM_API_KEY']);
+        const fcmWebAppIdEnv = readEnvValue('FCM_WEB_APP_ID', ['FCM_APP_ID']);
+        const fcmWebAuthDomainEnv = readEnvValue('FCM_WEB_AUTH_DOMAIN', ['FCM_AUTH_DOMAIN']);
+        const fcmWebStorageBucketEnv = readEnvValue('FCM_WEB_STORAGE_BUCKET', ['FCM_STORAGE_BUCKET']);
+        const fcmWebMeasurementIdEnv = readEnvValue('FCM_WEB_MEASUREMENT_ID', [
+          'FCM_MEASUREMENT_ID',
+        ]);
         const configScript = `<script nonce="${nonce}">(function(){
           window.APP_CONFIG={
             MOCK_AUTH_ENABLED: ${JSON.stringify(mockAuthEnv)},
@@ -739,15 +756,20 @@ app.use(async (req, res, next) => {
         const mockAuthEnv = (process.env['MOCK_AUTH_ENABLED'] || 'False').trim();
         const appTitleEnv = process.env['APP_TITLE'] || 'BusinessSuite';
         const baseCurrencyEnv = ((process.env['BASE_CURRENCY'] || 'IDR').trim() || 'IDR').toUpperCase();
-        const fcmSenderIdEnv = (process.env['FCM_SENDER_ID'] || '').trim();
-        const fcmProjectNumberEnv = (process.env['FCM_PROJECT_NUMBER'] || '').trim();
-        const fcmVapidPublicKeyEnv = (process.env['FCM_VAPID_PUBLIC_KEY'] || '').trim();
-        const fcmProjectIdEnv = (process.env['FCM_PROJECT_ID'] || '').trim();
-        const fcmWebApiKeyEnv = (process.env['FCM_WEB_API_KEY'] || '').trim();
-        const fcmWebAppIdEnv = (process.env['FCM_WEB_APP_ID'] || '').trim();
-        const fcmWebAuthDomainEnv = (process.env['FCM_WEB_AUTH_DOMAIN'] || '').trim();
-        const fcmWebStorageBucketEnv = (process.env['FCM_WEB_STORAGE_BUCKET'] || '').trim();
-        const fcmWebMeasurementIdEnv = (process.env['FCM_WEB_MEASUREMENT_ID'] || '').trim();
+        const fcmSenderIdEnv = readEnvValue('FCM_SENDER_ID', ['FCM_MESSAGING_SENDER_ID']);
+        const fcmProjectNumberEnv = readEnvValue('FCM_PROJECT_NUMBER', [
+          'FCM_MESSAGING_SENDER_ID',
+          'FCM_SENDER_ID',
+        ]);
+        const fcmVapidPublicKeyEnv = readEnvValue('FCM_VAPID_PUBLIC_KEY');
+        const fcmProjectIdEnv = readEnvValue('FCM_PROJECT_ID');
+        const fcmWebApiKeyEnv = readEnvValue('FCM_WEB_API_KEY', ['FCM_API_KEY']);
+        const fcmWebAppIdEnv = readEnvValue('FCM_WEB_APP_ID', ['FCM_APP_ID']);
+        const fcmWebAuthDomainEnv = readEnvValue('FCM_WEB_AUTH_DOMAIN', ['FCM_AUTH_DOMAIN']);
+        const fcmWebStorageBucketEnv = readEnvValue('FCM_WEB_STORAGE_BUCKET', ['FCM_STORAGE_BUCKET']);
+        const fcmWebMeasurementIdEnv = readEnvValue('FCM_WEB_MEASUREMENT_ID', [
+          'FCM_MEASUREMENT_ID',
+        ]);
         const configScript = `<script>(function(){
           window.APP_CONFIG={
             MOCK_AUTH_ENABLED: ${JSON.stringify(mockAuthEnv)},
