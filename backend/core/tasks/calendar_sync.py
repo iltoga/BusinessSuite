@@ -48,13 +48,20 @@ def _create_missing_remote_event(
     reason: str,
     preferred_google_event_id: str | None = None,
 ):
-    logger.error(
-        "calendar_remote_event_missing_local_present event_id=%s google_event_id=%s calendar_id=%s reason=%s",
-        event.pk,
-        event.google_event_id,
-        _calendar_id_for_event(event),
-        reason,
-    )
+    if reason == "create_task_new_remote_event":
+        logger.info(
+            "calendar_creating_new_remote_event event_id=%s calendar_id=%s",
+            event.pk,
+            _calendar_id_for_event(event),
+        )
+    else:
+        logger.warning(
+            "calendar_remote_event_missing_local_present event_id=%s google_event_id=%s calendar_id=%s reason=%s",
+            event.pk,
+            event.google_event_id,
+            _calendar_id_for_event(event),
+            reason,
+        )
     try:
         remote_event = client.create_event(
             payload,

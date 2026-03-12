@@ -403,7 +403,25 @@
 
       <z-card class="p-4 sm:p-6">
         <div class="mb-4 flex items-center justify-between">
-          <h3 class="text-lg font-semibold">Required Documents</h3>
+          <h3 class="text-lg font-semibold flex items-center gap-2">
+            Required Documents
+            @if (canAutoGenerateAnyDocuments()) {
+              <button
+                type="button"
+                class="text-muted-foreground hover:text-primary transition-colors disabled:opacity-40 flex items-center"
+                [zTooltip]="'Auto-generate all possible documents'"
+                [disabled]="isAutoGeneratingAll() || actionLoading() !== null"
+                (click)="autoGenerateAllDocuments()"
+                aria-label="Auto-generate all documents"
+              >
+                @if (isAutoGeneratingAll()) {
+                  <z-icon zType="loader-circle" class="h-3.5 w-3.5 app-circle-spinner" />
+                } @else {
+                  <z-icon zType="sparkles" class="h-4 w-4" />
+                }
+              </button>
+            }
+          </h3>
         </div>
         @if (requiredDocuments().length === 0) {
           <div class="text-sm text-muted-foreground">No required documents pending.</div>
@@ -427,7 +445,7 @@
                             type="button"
                             class="text-muted-foreground hover:text-primary transition-colors disabled:opacity-40"
                             [zTooltip]="getAutomaticShortcutTooltip(doc) || null"
-                            [disabled]="actionLoading() !== null"
+                            [disabled]="actionLoading() !== null || isAutoGeneratingAll()"
                             (click)="runAutomaticShortcut(doc)"
                             [attr.aria-label]="getAutomaticShortcutLabel(doc)"
                           >
@@ -490,7 +508,7 @@
                             type="button"
                             class="text-muted-foreground hover:text-primary transition-colors disabled:opacity-40"
                             [zTooltip]="getAutomaticShortcutTooltip(doc) || null"
-                            [disabled]="actionLoading() !== null"
+                            [disabled]="actionLoading() !== null || isAutoGeneratingAll()"
                             (click)="runAutomaticShortcut(doc)"
                             [attr.aria-label]="getAutomaticShortcutLabel(doc)"
                           >

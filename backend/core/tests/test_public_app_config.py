@@ -42,12 +42,12 @@ class PublicAppConfigTests(TestCase):
         self.assertIn("useOverlayMenu", payload)
         self.assertIs(payload["useOverlayMenu"], True)
 
-    def test_public_app_config_does_not_expose_fcm_fields(self):
+    def test_public_app_config_exposes_fcm_fields(self):
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 200)
         payload = response.json()
-        disallowed_keys = {
+        required_keys = {
             "fcmSenderId",
             "fcmVapidPublicKey",
             "fcmProjectId",
@@ -58,7 +58,8 @@ class PublicAppConfigTests(TestCase):
             "fcmWebStorageBucket",
             "fcmWebMeasurementId",
         }
-        self.assertTrue(disallowed_keys.isdisjoint(payload.keys()))
+        for key in required_keys:
+            self.assertIn(key, payload)
 
     def test_public_app_config_includes_frontend_and_both_scoped_db_settings(self):
         AppSetting.objects.update_or_create(

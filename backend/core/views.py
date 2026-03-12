@@ -43,8 +43,15 @@ def public_app_config(request):
         "baseCurrency": str(AppSettingService.get_effective_raw("BASE_CURRENCY", "IDR") or "IDR"),
         "calendarTodoColorId": GoogleCalendarEventColors.todo_color_id(),
         "calendarDoneColorId": GoogleCalendarEventColors.done_color_id(),
-        "logoFilename": global_settings.get("LOGO_FILENAME", "logo_transparent.png"),
-        "logoInvertedFilename": global_settings.get("LOGO_INVERTED_FILENAME", "logo_inverted_transparent.png"),
+        "fcmSenderId": global_settings.get("FCM_SENDER_ID", settings.FCM_SENDER_ID),
+        "fcmVapidPublicKey": global_settings.get("FCM_VAPID_PUBLIC_KEY", settings.FCM_VAPID_PUBLIC_KEY),
+        "fcmProjectId": global_settings.get("FCM_PROJECT_ID", settings.FCM_PROJECT_ID),
+        "fcmProjectNumber": global_settings.get("FCM_PROJECT_NUMBER", settings.FCM_PROJECT_NUMBER),
+        "fcmWebApiKey": global_settings.get("FCM_WEB_API_KEY", settings.FCM_WEB_API_KEY),
+        "fcmWebAppId": global_settings.get("FCM_WEB_APP_ID", settings.FCM_WEB_APP_ID),
+        "fcmWebAuthDomain": global_settings.get("FCM_WEB_AUTH_DOMAIN", settings.FCM_WEB_AUTH_DOMAIN),
+        "fcmWebStorageBucket": global_settings.get("FCM_WEB_STORAGE_BUCKET", settings.FCM_WEB_STORAGE_BUCKET),
+        "fcmWebMeasurementId": global_settings.get("FCM_WEB_MEASUREMENT_ID", settings.FCM_WEB_MEASUREMENT_ID),
     }
     payload.update(frontend_setting_overrides)
 

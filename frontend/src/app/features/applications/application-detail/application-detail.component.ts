@@ -67,7 +67,7 @@ import {
 } from '@/shared/utils/document-preview-source';
 import { downloadBlob } from '@/shared/utils/file-download';
 import { extractServerErrorMessage } from '@/shared/utils/form-errors';
-import { Subscription } from 'rxjs';
+import { catchError, forkJoin, of, Subscription } from 'rxjs';
 
 import { MultiFileUploadComponent } from '@/shared/components/multi-file-upload/multi-file-upload.component';
 import { ApplicationWorkflowTimelineComponent } from './application-workflow-timeline.component';
@@ -195,6 +195,11 @@ export class ApplicationDetailComponent implements OnInit {
   readonly isAddDocumentDialogOpen = signal(false);
   readonly actionLoading = signal<string | null>(null);
   readonly workflowAction = signal<string | null>(null);
+  readonly isAutoGeneratingAll = signal(false);
+  readonly canAutoGenerateAnyDocuments = computed(() => {
+    const docs = [...this.requiredDocuments(), ...this.optionalDocuments()];
+    return docs.some((doc) => this.canShowAutomaticShortcut(doc));
+  });
 
   // AI validation on upload
   readonly validateWithAi = signal(true);
@@ -1386,9 +1391,64 @@ export class ApplicationDetailComponent implements OnInit {
     this.executeDocumentAction(action, doc);
   }
 
+  autoGenerateAllDocuments(): void {
+    const docs = [...this.requiredDocuments(), ...this.optionalDocuments()].filter((doc) =>
+      this.canShowAutomaticShortcut(doc),
+    );
+    if (docs.length === 0) return;
+
+    this.isAutoGeneratingAll.set(true);
+
+    const requests = docs.map((doc) => {
+      const action = this.getAutomaticShortcutAction(doc);
+      if (!action) return of(null);
+      return this.applicationsService.executeDocumentAction(doc.id, action.name).pipe(
+        catchError((error) => of({ success: false, error, document: undefined })),
+      );
+    });
+
+    forkJoin(requests).subscribe({
+      next: (results) => {
+        let successCount = 0;
+        let errorCount = 0;
+
+        results.forEach((res) => {
+          if (res && 'success' in res && res.success) {
+            successCount++;
+            if (res.document) {
+              this.replaceDocument(res.document);
+            }
+          } else if (res) {
+            errorCount++;
+          }
+        });
+
+        if (successCount > 0 && errorCount === 0) {
+          this.toast.success(`Successfully started auto-generation for ${successCount} document(s)`);
+        } else if (successCount > 0) {
+          this.toast.error(`Started auto-generation for ${successCount} document(s), but ${errorCount} failed`);
+        } else if (errorCount > 0) {
+          this.toast.error('Failed to auto-generate documents');
+        }
+
+        this.isAutoGeneratingAll.set(false);
+      },
+      error: () => {
+        this.toast.error('An unexpected error occurred during auto-generation');
+        this.isAutoGeneratingAll.set(false);
+      },
+    });
+  }
+
   isAutomaticShortcutLoading(doc: ApplicationDocument): boolean {
     const actionName = this.getAutomaticShortcutAction(doc)?.name;
-    return !!actionName && this.isActionLoadingFor(doc, actionName);
+    if (!actionName) return false;
+
+    if (this.isAutoGeneratingAll()) {
+      return true;
+    }
+
+    return this.isActionLoadingFor(doc, actionName);
   }
 
   isActionLoadingFor(doc: ApplicationDocument, actionName: string): boolean {
