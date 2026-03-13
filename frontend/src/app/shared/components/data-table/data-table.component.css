@@ -8,8 +8,8 @@
 
 .data-table-scroll {
   width: 100%;
+  /* let cdk-virtual-scroll-viewport handle overflow-y */
   overflow-x: auto;
-  overflow-y: visible;
   overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
 }
@@ -98,10 +98,7 @@ tr.row-danger-soft:not(.selected) {
 }
 
 @media (max-width: 767px) and (orientation: portrait) {
-  .data-table-scroll {
-    overflow: visible;
-  }
-
+  /* don't unset overflow here, virtual scrolling needs it */
   .data-table-scroll table[z-table] {
     min-width: 0;
   }

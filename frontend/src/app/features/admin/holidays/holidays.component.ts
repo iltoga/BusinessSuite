@@ -9,13 +9,15 @@ import {
   ViewChild,
 } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { EMPTY, catchError, finalize } from 'rxjs';
+import { EMPTY, catchError, finalize, map, type Observable } from 'rxjs';
 
 import { HolidaysService } from '@/core/api/api/holidays.service';
 import { Holiday } from '@/core/api/model/holiday';
 import {
   BaseListComponent,
   BaseListConfig,
+  type ListRequestParams,
+  type PaginatedResponse,
 } from '@/shared/core/base-list.component';
 import { GlobalToastService } from '@/core/services/toast.service';
 import { ZardButtonComponent } from '@/shared/components/button';
@@ -155,24 +157,23 @@ export class HolidaysComponent extends BaseListComponent<Holiday> {
   }
 
   /**
-   * Load holidays from API
+   * Create the Observable that fetches holidays.
+   * The API returns a flat array, so we wrap it in a PaginatedResponse.
    */
-  protected override loadItems(): void {
-    this.isLoading.set(true);
-    this.holidaysApi
-      .holidaysList(this.ordering())
+  protected override createListLoader(
+    params: ListRequestParams,
+  ): Observable<PaginatedResponse<Holiday>> {
+    return this.holidaysApi
+      .holidaysList(params.ordering)
       .pipe(
-        catchError(() => {
-          this.toast.error('Failed to load holidays');
-          return EMPTY;
+        map((data) => {
+          const items = data ?? [];
+          return {
+            results: items,
+            count: items.length,
+          };
         }),
-        finalize(() => this.isLoading.set(false)),
-      )
-      .subscribe((data) => {
-        this.items.set(data ?? []);
-        this.totalItems.set(data?.length ?? 0);
-        this.focusAfterLoad();
-      });
+      );
   }
 
   /**
@@ -192,7 +193,7 @@ export class HolidaysComponent extends BaseListComponent<Holiday> {
     }
 
     this.ordering.set(nextOrdering);
-    this.loadItems();
+    this.reload();
   }
 
   /**
@@ -310,7 +311,7 @@ export class HolidaysComponent extends BaseListComponent<Holiday> {
       .subscribe(() => {
         this.toast.success(`Holiday ${current ? 'updated' : 'created'} successfully`);
         this.closeForm();
-        this.loadItems();
+        this.reload();
       });
   }
 
@@ -341,7 +342,7 @@ export class HolidaysComponent extends BaseListComponent<Holiday> {
         this.toast.success('Holiday deleted successfully');
         this.showConfirmDelete.set(false);
         this.editingHoliday.set(null);
-        this.loadItems();
+        this.reload();
       });
   }
 

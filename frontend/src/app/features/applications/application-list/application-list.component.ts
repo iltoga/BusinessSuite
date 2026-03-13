@@ -9,15 +9,16 @@ import {
   viewChild,
   type TemplateRef,
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
-import { Subject, catchError, of, switchMap } from 'rxjs';
+import { type Observable } from 'rxjs';
 
 import { CustomerApplicationsService } from '@/core/api/api/customer-applications.service';
 import { DocApplicationList } from '@/core/api/model/doc-application-list';
 import {
   BaseListComponent,
   BaseListConfig,
+  type ListRequestParams,
+  type PaginatedResponse,
 } from '@/shared/core/base-list.component';
 import {
   ApplicationDeleteDialogComponent,
@@ -79,7 +80,6 @@ import { extractServerErrorMessage } from '@/shared/utils/form-errors';
 })
 export class ApplicationListComponent extends BaseListComponent<DocApplicationList> {
   private readonly service = inject(CustomerApplicationsService);
-  private readonly loadTrigger$ = new Subject<void>();
 
   // Application-specific state
   readonly columnFilters = signal<Record<string, string[]>>({
@@ -278,6 +278,7 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationLi
 
   constructor() {
     super();
+    // Setup base config
     this.config = {
       entityType: 'applications',
       entityLabel: 'Applications',
@@ -286,42 +287,20 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationLi
       enableBulkDelete: true,
       enableDelete: true,
     } as BaseListConfig<DocApplicationList>;
-
-    // Setup load trigger with rxjs pattern
-    this.loadTrigger$
-      .pipe(
-        switchMap(() => {
-          this.isLoading.set(true);
-          return this.service
-            .customerApplicationsList(this.ordering(), this.page(), this.pageSize(), this.query())
-            .pipe(
-              catchError(() => {
-                this.toast.error('Failed to load applications');
-                return of(null);
-              }),
-            );
-        }),
-        takeUntilDestroyed(),
-      )
-      .subscribe((res) => {
-        if (!res) {
-          this.isLoading.set(false);
-          return;
-        }
-
-        this.items.set(res.results ?? []);
-        this.totalItems.set(res.count ?? 0);
-        this.isLoading.set(false);
-        this.focusAfterLoad();
-      });
   }
 
   /**
-   * Load applications from service
+   * Create the Observable that fetches a page of applications.
    */
-  protected override loadItems(): void {
-    if (!this.isBrowser) return;
-    this.loadTrigger$.next();
+  protected override createListLoader(
+    params: ListRequestParams,
+  ): Observable<PaginatedResponse<DocApplicationList>> {
+    return this.service.customerApplicationsList(
+      params.ordering,
+      params.page,
+      params.pageSize,
+      params.query,
+    );
   }
 
   /**
@@ -373,7 +352,7 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationLi
     this.service.customerApplicationsDestroy(row.id).subscribe({
       next: () => {
         this.toast.success('Application deleted');
-        this.loadItems();
+        this.reload();
         this.confirmOpen.set(false);
         this.pendingDelete.set(null);
       },
@@ -417,7 +396,7 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationLi
     this.service.customerApplicationsDestroy(row.id, true).subscribe({
       next: () => {
         this.toast.success('Application deleted');
-        this.loadItems();
+        this.reload();
         this.deleteWithInvoiceOpen.set(false);
         this.deleteWithInvoiceData.set(null);
         this.pendingDelete.set(null);
@@ -479,7 +458,7 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationLi
       this.service.customerApplicationsForceCloseCreate(row.id).subscribe({
         next: () => {
           this.toast.success('Application force closed');
-          this.loadItems();
+          this.reload();
         },
         error: (err: any) => {
           const msg = err?.error?.detail || err?.error || 'Failed to force close application';
@@ -538,7 +517,7 @@ export class ApplicationListComponent extends BaseListComponent<DocApplicationLi
           this.bulkDeleteOpen.set(false);
           this.bulkDeleteData.set(null);
           this.applicationBulkDeleteQuery.set('');
-          this.loadItems();
+          this.reload();
         },
         error: (error) => {
           const message = extractServerErrorMessage(error);

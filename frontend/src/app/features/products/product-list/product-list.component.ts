@@ -9,9 +9,9 @@ import {
   viewChild,
   type TemplateRef,
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+
 import { RouterLink } from '@angular/router';
-import { catchError, forkJoin, of, Subject, switchMap } from 'rxjs';
+import { catchError, forkJoin, map, of, type Observable } from 'rxjs';
 
 import { ProductsService, type Product } from '@/core/api';
 import { ConfigService } from '@/core/services/config.service';
@@ -37,7 +37,7 @@ import {
 } from '@/shared/components/product-delete-dialog/product-delete-dialog.component';
 import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
 import { ZardTooltipImports } from '@/shared/components/tooltip';
-import { BaseListComponent, BaseListConfig } from '@/shared/core/base-list.component';
+import { BaseListComponent, BaseListConfig, type ListRequestParams, type PaginatedResponse } from '@/shared/core/base-list.component';
 import { ContextHelpDirective } from '@/shared/directives';
 import { AppDatePipe } from '@/shared/pipes/app-date-pipe';
 import { downloadBlob } from '@/shared/utils/file-download';
@@ -81,7 +81,6 @@ export class ProductListComponent extends BaseListComponent<Product> {
   private readonly productImportExportApi = inject(ProductImportExportService);
   private readonly jobService = inject(JobService);
   private readonly configService = inject(ConfigService);
-  private readonly loadProductsTrigger$ = new Subject<void>();
 
   // Expose products for template compatibility
   get products() {
@@ -257,62 +256,41 @@ export class ProductListComponent extends BaseListComponent<Product> {
       enableBulkDelete: true,
       enableDelete: true,
     } as BaseListConfig<Product>;
-
-    // Setup load trigger with rxjs pattern
-    this.loadProductsTrigger$
-      .pipe(
-        switchMap(() => {
-          this.isLoading.set(true);
-          const ordering = this.ordering();
-          const search = this.query().trim();
-          const deprecatedFilter = this.resolveDeprecatedFilter();
-          const categoryParam = this.resolveCategoryFilter();
-
-          return forkJoin({
-            products: this.productsApi.productsList(
-              deprecatedFilter.deprecated,
-              deprecatedFilter.hideDeprecated,
-              ordering,
-              this.page(),
-              this.pageSize(),
-              categoryParam,
-              search || undefined,
-              undefined,
-            ),
-            categoryOptions: this.productsApi.productsCategoryOptionsList(
-              deprecatedFilter.deprecated,
-              deprecatedFilter.hideDeprecated,
-              undefined,
-            ),
-          }).pipe(
-            catchError(() => {
-              this.toast.error('Failed to load products');
-              return of(null);
-            }),
-          );
-        }),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe((response) => {
-        if (!response) {
-          this.isLoading.set(false);
-          return;
-        }
-
-        this.items.set(response.products.results ?? []);
-        this.totalItems.set(response.products.count ?? 0);
-        this.categoryFilterOptions.set(response.categoryOptions ?? []);
-        this.isLoading.set(false);
-        this.focusAfterLoad();
-      });
   }
 
   /**
-   * Load products from service
+   * Create the Observable that fetches a page of products.
+   * Also fetches category options as a side-effect.
    */
-  protected override loadItems(): void {
-    if (!this.isBrowser) return;
-    this.loadProductsTrigger$.next();
+  protected override createListLoader(
+    params: ListRequestParams,
+  ): Observable<PaginatedResponse<Product>> {
+    const deprecatedFilter = this.resolveDeprecatedFilter();
+    const categoryParam = this.resolveCategoryFilter();
+    const search = params.query?.trim();
+
+    return forkJoin({
+      products: this.productsApi.productsList(
+        deprecatedFilter.deprecated,
+        deprecatedFilter.hideDeprecated,
+        params.ordering,
+        params.page,
+        params.pageSize,
+        categoryParam,
+        search || undefined,
+        undefined,
+      ),
+      categoryOptions: this.productsApi.productsCategoryOptionsList(
+        deprecatedFilter.deprecated,
+        deprecatedFilter.hideDeprecated,
+        undefined,
+      ),
+    }).pipe(
+      map((response) => {
+        this.categoryFilterOptions.set(response.categoryOptions ?? []);
+        return response.products;
+      }),
+    );
   }
 
   /**
@@ -327,7 +305,7 @@ export class ProductListComponent extends BaseListComponent<Product> {
       [event.column]: event.values,
     }));
     this.page.set(1);
-    this.loadItems();
+    this.reload();
   }
 
   /**
@@ -371,7 +349,7 @@ export class ProductListComponent extends BaseListComponent<Product> {
       next: () => {
         this.toast.success(result.forceDelete ? 'Product force deleted' : 'Product deleted');
         this.resetProductDeleteDialog();
-        this.loadItems();
+        this.reload();
       },
       error: (error) => {
         const message = extractServerErrorMessage(error);
@@ -425,7 +403,7 @@ export class ProductListComponent extends BaseListComponent<Product> {
         this.bulkDeleteOpen.set(false);
         this.bulkDeleteData.set(null);
         this.productBulkDeleteQuery.set('');
-        this.loadItems();
+        this.reload();
       },
       error: (error) => {
         const message = extractServerErrorMessage(error);
@@ -689,7 +667,7 @@ export class ProductListComponent extends BaseListComponent<Product> {
           this.toast.success('Import completed successfully');
           this.importInProgress.set(false);
           this.importProgress.set(null);
-          this.loadItems();
+          this.reload();
         } else if (job.status === 'failed') {
           this.toast.error(job.errorMessage || 'Product import failed');
           this.importInProgress.set(false);

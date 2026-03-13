@@ -10,7 +10,7 @@ import {
   ViewChild,
 } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { catchError, EMPTY, finalize } from 'rxjs';
+import { catchError, EMPTY, finalize, map, type Observable } from 'rxjs';
 
 import { DocumentTypesService } from '@/core/api';
 import { DocumentType } from '@/core/api/model/document-type';
@@ -27,7 +27,7 @@ import { ZardDialogService } from '@/shared/components/dialog';
 import { ZardInputDirective } from '@/shared/components/input';
 import { JsonFieldMappingEditorComponent } from '@/shared/components/json-field-mapping-editor';
 import { SearchToolbarComponent } from '@/shared/components/search-toolbar';
-import { BaseListComponent, BaseListConfig } from '@/shared/core/base-list.component';
+import { BaseListComponent, BaseListConfig, type ListRequestParams, type PaginatedResponse } from '@/shared/core/base-list.component';
 
 /**
  * Document Types component
@@ -154,28 +154,26 @@ export class DocumentTypesComponent extends BaseListComponent<DocumentType> {
   }
 
   /**
-   * Load document types from API
+   * Create the Observable that fetches document types.
+   * The API returns a flat array, so we wrap it in a PaginatedResponse.
    */
-  protected override loadItems(): void {
-    const query = this.query().trim();
-    this.isLoading.set(true);
+  protected override createListLoader(
+    params: ListRequestParams,
+  ): Observable<PaginatedResponse<DocumentType>> {
+    const query = params.query?.trim();
 
-    this.documentTypesApi
+    return this.documentTypesApi
       .documentTypesList(undefined, !this.includeDeprecated(), undefined, query || undefined)
       .pipe(
-        catchError(() => {
-          this.toast.error('Failed to load document types');
-          return EMPTY;
+        map((data) => {
+          const items = data || [];
+          this.openPendingEditIfRequested(items);
+          return {
+            results: items,
+            count: items.length,
+          };
         }),
-        finalize(() => this.isLoading.set(false)),
-      )
-      .subscribe((data) => {
-        const items = data || [];
-        this.items.set(items);
-        this.totalItems.set(items.length);
-        this.openPendingEditIfRequested(items);
-        this.focusAfterLoad();
-      });
+      );
   }
 
   /**
@@ -184,7 +182,7 @@ export class DocumentTypesComponent extends BaseListComponent<DocumentType> {
   override onSortChange(event: SortEvent): void {
     const ordering = event.direction === 'desc' ? `-${event.column}` : event.column;
     this.ordering.set(ordering);
-    this.loadItems();
+    this.reload();
   }
 
   /**
@@ -213,7 +211,7 @@ export class DocumentTypesComponent extends BaseListComponent<DocumentType> {
    */
   onToggleIncludeDeprecated(value: boolean): void {
     this.includeDeprecated.set(value);
-    this.loadItems();
+    this.reload();
   }
 
   /**
@@ -379,7 +377,7 @@ export class DocumentTypesComponent extends BaseListComponent<DocumentType> {
       .subscribe(() => {
         this.toast.success('Document type created successfully');
         this.closeForm();
-        this.loadItems();
+        this.reload();
       });
   }
 
@@ -433,7 +431,7 @@ export class DocumentTypesComponent extends BaseListComponent<DocumentType> {
         this.showDeprecationConfirm.set(false);
         this.pendingDeprecationPayload.set(null);
         this.closeForm();
-        this.loadItems();
+        this.reload();
       });
   }
 
@@ -505,7 +503,7 @@ export class DocumentTypesComponent extends BaseListComponent<DocumentType> {
         this.toast.success('Document type deleted successfully');
         this.showConfirmDelete.set(false);
         this.editingDocumentType.set(null);
-        this.loadItems();
+        this.reload();
       });
   }
 

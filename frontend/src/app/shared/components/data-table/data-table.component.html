@@ -6,9 +6,9 @@
   (keydown)="handleTableKeydown($event)"
   aria-label="Data table"
 >
-  <div class="data-table-scroll">
-    <table z-table class="w-full">
-      <thead z-table-header>
+  <cdk-virtual-scroll-viewport itemSize="50" class="data-table-scroll h-[calc(100vh-280px)] w-full">
+    <table z-table class="w-full relative">
+      <thead z-table-header class="sticky top-0 z-10 bg-background shadow-sm border-b">
         <tr z-table-row>
           @for (column of columns(); track column.key) {
             <th z-table-head [class]="'col-' + (column.sortKey ?? column.key)">
@@ -144,11 +144,11 @@
               </td>
             </tr>
           } @else {
-            @for (row of data(); track (row && $any(row).id) || $index) {
-              <tr
-                #rowRef
-                z-table-row
-                [attr.tabindex]="selectedRow() === row ? 0 : -1"
+            <tr
+              *cdkVirtualFor="let row of data(); trackBy: trackByFn"
+              #rowRef
+              z-table-row
+              [attr.tabindex]="selectedRow() === row ? 0 : -1"
                 [attr.aria-selected]="selectedRow() === row ? 'true' : 'false'"
                 [class.selected]="selectedRow() === row"
                 [ngClass]="rowClass()?.(row) || ''"
@@ -216,10 +216,9 @@
                   </td>
                 }
               </tr>
-            }
           }
         }
       </tbody>
     </table>
-  </div>
+  </cdk-virtual-scroll-viewport>
 </div>

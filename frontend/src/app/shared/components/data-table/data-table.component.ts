@@ -14,10 +14,12 @@ import {
   QueryList,
   signal,
   ViewChildren,
+  viewChild,
   type TemplateRef,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ShortcutHighlightPipe } from './shortcut-highlight.pipe';
+import { CdkVirtualScrollViewport, ScrollingModule } from '@angular/cdk/scrolling';
 
 import { ZardButtonComponent } from '@/shared/components/button';
 import { ZardDropdownImports } from '@/shared/components/dropdown/dropdown.imports';
@@ -97,6 +99,7 @@ export interface ColumnFilterChangeEvent {
     ...ZardDropdownImports,
     ...ZardTableImports,
     ZardSkeletonComponent,
+    ScrollingModule,
     // shortcut pipe for highlighting first letter
     ShortcutHighlightPipe,
   ],
@@ -148,6 +151,12 @@ export class DataTableComponent<T = Record<string, any>> implements AfterViewIni
 
   @ViewChildren('tableWrapper', { read: ElementRef })
   private tableWrapper!: QueryList<ElementRef<HTMLElement>>;
+
+  readonly viewport = viewChild(CdkVirtualScrollViewport);
+
+  trackByFn(index: number, item: T): unknown {
+    return item && typeof item === 'object' && 'id' in item ? (item as any).id : index;
+  }
 
   constructor() {
     effect(() => {
@@ -325,6 +334,12 @@ export class DataTableComponent<T = Record<string, any>> implements AfterViewIni
     // Update state immediately to trigger aria-selected and tabindex updates in template
     this.selectedRow.set(rowData);
 
+    // Ensure the row is visible in the virtual viewport
+    const viewport = this.viewport();
+    if (viewport) {
+      viewport.scrollToIndex(normalizedIndex, 'smooth');
+    }
+
     // Try to focus immediately if elements are ready
     const elements = this.rowElements?.toArray() ?? [];
     const el = elements[normalizedIndex]?.nativeElement as HTMLElement | undefined;
@@ -332,7 +347,7 @@ export class DataTableComponent<T = Record<string, any>> implements AfterViewIni
     if (el) {
       this._applyFocusToElement(el);
     } else {
-      // Elements not ready, retry a few times
+      // Elements not ready (perhaps just scrolled into view), retry a few times
       this._retryFocus(normalizedIndex, 1);
     }
   }
@@ -341,7 +356,6 @@ export class DataTableComponent<T = Record<string, any>> implements AfterViewIni
     el.setAttribute('tabindex', '0');
     try {
       el.focus({ preventScroll: true });
-      el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     } catch (e) {}
   }
 
@@ -350,10 +364,20 @@ export class DataTableComponent<T = Record<string, any>> implements AfterViewIni
 
     setTimeout(() => {
       const elements = this.rowElements?.toArray() ?? [];
-      const el = elements[index]?.nativeElement as HTMLElement | undefined;
-      if (el) {
-        this._applyFocusToElement(el);
-        if (this.isBrowser && document.activeElement !== el && attempt < 5) {
+      // Note: With virtual scrolling, index in the DOM might not match absolute index.
+      // We rely on the DOM rendering the focused item correctly due to selectedRow.set()
+      // To strictly focus the specific row, we find the element matching the item.
+      const rowItem = this.data()?.[index];
+      let targetEl: HTMLElement | undefined;
+      
+      if (rowItem) {
+        // Find by selected row class
+        targetEl = elements.find(e => e.nativeElement.classList.contains('selected'))?.nativeElement;
+      }
+
+      if (targetEl) {
+        this._applyFocusToElement(targetEl);
+        if (this.isBrowser && document.activeElement !== targetEl && attempt < 5) {
           this._retryFocus(index, attempt + 1);
         }
       } else {
